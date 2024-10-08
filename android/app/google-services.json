@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "486404013987",
+    "project_id": "skiddoapp",
+    "storage_bucket": "skiddoapp.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:486404013987:android:551b8ac3900ebbd0916416",
+        "android_client_info": {
+          "package_name": "com.example.skiddo_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "486404013987-vqouvugv06fciggg658sjofp8qnnkqod.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.skiddo_app",
+            "certificate_hash": "199a6a4a674763de2398eb0cc3ed65338437e503"
+          }
+        },
+        {
+          "client_id": "486404013987-n73onsrdvu00tv6bmgoudb6i8721l84i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-6BnZffEvwfKB-L05ncjnyryTTCKswCc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "486404013987-n73onsrdvu00tv6bmgoudb6i8721l84i.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "486404013987-lk5st7bknsh8pruuep5nrr7l0jdmm3j7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.skiddoApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:486404013987:android:40b679b2ebaa23fd916416",
+        "android_client_info": {
+          "package_name": "com.example.skidoo_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "486404013987-n73onsrdvu00tv6bmgoudb6i8721l84i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-6BnZffEvwfKB-L05ncjnyryTTCKswCc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "486404013987-n73onsrdvu00tv6bmgoudb6i8721l84i.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "486404013987-lk5st7bknsh8pruuep5nrr7l0jdmm3j7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.skiddoApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

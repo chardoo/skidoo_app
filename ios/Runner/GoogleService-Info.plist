@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>486404013987-vqouvugv06fciggg658sjofp8qnnkqod.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyD_UGVjZFLrRK9Rgc2QlEqvZM-U-a3N54Q</string>
+	<key>GCM_SENDER_ID</key>
+	<string>486404013987</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.skidooApp</string>
+	<key>PROJECT_ID</key>
+	<string>skiddoapp</string>
+	<key>STORAGE_BUCKET</key>
+	<string>skiddoapp.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:486404013987:ios:8ca9cc116d4f7e99916416</string>
+</dict>
+</plist>
