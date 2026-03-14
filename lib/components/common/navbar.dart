@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:skidoo_app/constants/icons.dart';
-import 'package:skidoo_app/core/theme/app_colors.dart';
 
 class AppNavbar extends StatefulWidget {
   const AppNavbar(

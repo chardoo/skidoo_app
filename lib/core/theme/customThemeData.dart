@@ -57,7 +57,6 @@ class Styles {
     entryModeIconColor: Colors.green,
     // Customize other aspects of the theme here...
       ),
-      backgroundColor: isDarkTheme ? Colors.black : Colors.white,
       inputDecorationTheme: InputDecorationTheme(
         hintStyle: TextStyle(color: Colors.black),
         border: OutlineInputBorder(
@@ -92,7 +91,7 @@ class Styles {
       hintColor: isDarkTheme
           ? const Color(0xff280C0B)
           : const Color.fromARGB(255, 255, 255, 255),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: isDarkTheme ? const Color(0xFF1C1C1E) : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),

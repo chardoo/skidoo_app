@@ -1,0 +1,15 @@
+part of 'user_profile_bloc.dart';
+
+abstract class UserProfileEvent extends Equatable {
+  const UserProfileEvent();
+  @override
+  List<Object?> get props => [];
+}
+
+class UserProfileLoadRequested extends UserProfileEvent {
+  const UserProfileLoadRequested();
+}
+
+class UserLogoutRequested extends UserProfileEvent {
+  const UserLogoutRequested();
+}

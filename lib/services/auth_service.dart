@@ -1,72 +1,30 @@
-import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:skidoo_app/core/di/service_locator.dart';
 
 class AuthService {
-  static login(String username, String password) async {}
+  SharedPreferences get _prefs => sl<SharedPreferences>();
 
-  static Future<bool> setToken(String token) async {
-    var prefs = Get.find<SharedPreferences>();
-    return prefs.setString('access_token', token);
-  }
+  Future<bool> setToken(String token) => _prefs.setString('access_token', token);
 
-  static Future<String> getToken() async {
-    var prefs = Get.find<SharedPreferences>();
-    var token = prefs.getString('access_token') ?? "";
-    return Future.value(token);
-  }
+  Future<String> getToken() async => _prefs.getString('access_token') ?? '';
 
-  static removeToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-  }
+  Future<void> removeToken() => _prefs.clear();
 
-  static Future<String> getUniqueName() async {
-    var prefs = Get.find<SharedPreferences>();
-    var uniqueName = prefs.getString('unique_name') ?? "";
-    return Future.value(uniqueName);
-  }
+  Future<bool> setUniqueName(String uniqueName) =>
+      _prefs.setString('unique_name', uniqueName);
 
-  static Future<bool> setUniqueName(String  uniqueName) async {
-    var prefs = Get.find<SharedPreferences>();
-    return prefs.setString('unique_name',  uniqueName);
-  }
+  Future<String> getUniqueName() async =>
+      _prefs.getString('unique_name') ?? '';
 
-  static Future<String> getEmail() async {
-    var prefs = Get.find<SharedPreferences>();
-    var email = prefs.getString('email') ?? "";
-    return Future.value(email);
-  }
+  Future<bool> setEmail(String email) => _prefs.setString('email', email);
 
-  static Future<bool> setEmail(String  email) async {
-    var prefs = Get.find<SharedPreferences>();
-    return prefs.setString('email',  email);
-  }
+  Future<String> getEmail() async => _prefs.getString('email') ?? '';
 
-  static Future<String> getUserId() async {
-    var prefs = Get.find<SharedPreferences>();
-    var id = prefs.getString('id') ?? "";
-    return Future.value(id);
-  }
+  Future<bool> setId(String id) => _prefs.setString('id', id);
 
-  static Future<bool> setId(String id) async {
-    var prefs = Get.find<SharedPreferences>();
-    return prefs.setString('id', id);
-  }
+  Future<String> getUserId() async => _prefs.getString('id') ?? '';
 
-  static removeUniqueName() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-  }
+  Future<bool> setName(String name) => _prefs.setString('name', name);
 
-
-  static Future<bool> setName(String name) async {
-    var prefs = Get.find<SharedPreferences>();
-    return prefs.setString('name', name);
-  }
-
-  static Future<String> getName() async {
-    var prefs = Get.find<SharedPreferences>();
-    var name = prefs.getString('name') ?? "";
-    return Future.value(name);
-  }
+  Future<String> getName() async => _prefs.getString('name') ?? '';
 }

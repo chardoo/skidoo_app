@@ -1,113 +1,100 @@
 import 'dart:io';
-
-import 'package:dio/dio.dart';
-import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'dart:async';
+
 import 'package:dio/dio.dart' as dio;
-import 'package:http/http.dart' as httpre;
+import 'package:http/http.dart' as http;
 import 'package:skidoo_app/API/DioClietService.dart';
 import 'package:skidoo_app/models/Auth/LoginResponse.dart';
 import 'package:skidoo_app/models/badrequest.dart';
-// import 'package:docoradi/Models/Auth/LoginResponse.dart';
 
 class AuthHttpService {
-  // static const BASE_URL = "https://docoradi-app-phrl5joxbq-uc.a.run.app"
-  Future<dynamic> login(Map<String, dynamic> resquestData) async {
+  Future<dynamic> login(Map<String, dynamic> requestData) async {
     try {
-      print("payload is her man");
-      print(resquestData);
-      var res =
-          await Api().dio.post("/client/login", data: jsonEncode(resquestData));
-      print("man is here man");
-      print(res.data);
+      final res = await Api().dio.post(
+            '/client/login',
+            data: jsonEncode(requestData),
+          );
       switch (res.statusCode) {
         case 200:
-          dynamic body = res.data;
-          LoginResponseObject LoggedInuser = LoginResponseObject.fromJson(body);
-          return LoggedInuser;
+          return LoginResponseObject.fromJson(res.data as Map<String, dynamic>);
         default:
-          dynamic body = jsonDecode(res.data);
-          BadRequest badRequest = BadRequest.fromMap(body);
-          return badRequest;
+          return BadRequest.fromMap(res.data as Map<String, dynamic>);
       }
     } on dio.DioException catch (err) {
       if (err.response == null) {
-        return null;
-      } else {
-        print("hello error is here aman");
-        return false;
+        throw Exception('No internet connection. Please try again.');
       }
+      final statusCode = err.response?.statusCode;
+      if (statusCode == 401) throw Exception('Invalid credentials.');
+      if (statusCode == 400) throw Exception('Bad request. Check your input.');
+      throw Exception('Login failed. Status: $statusCode');
+    } catch (e) {
+      throw Exception('An unexpected error occurred during login.');
     }
   }
 
-  Future<dynamic> register(Map<String, String> resquestData, File file) async {
-    var request = httpre.MultipartRequest(
-      "POST",
-      Uri.parse(
-          "https://photoapp-backend-b71j.onrender.com/client/createClient"),
-    );
-
-    List<httpre.MultipartFile> data = [];
-    request.fields.addAll(resquestData);
-    request.files.add(httpre.MultipartFile(
-        'images', file.readAsBytes().asStream(), file.lengthSync(),
-        filename: file.path));
-    var res = await request.send();
-    switch (res.statusCode) {
-      case 201:
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  Future<dynamic> confirmEmail(Map<String, dynamic> resquestData) async {
+  Future<bool> register(Map<String, String> requestData, File file) async {
     try {
-      var res = await Api()
-          .dio
-          .post("/client/confirmEmail", data: jsonEncode(resquestData));
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse(
+            'https://photoapp-backend-b71j.onrender.com/client/createClient'),
+      );
+      request.fields.addAll(requestData);
+      request.files.add(http.MultipartFile(
+        'images',
+        file.readAsBytes().asStream(),
+        file.lengthSync(),
+        filename: file.path.split('/').last,
+      ));
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 201) return true;
+      throw Exception(
+          'Registration failed. Status: ${response.statusCode}');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('An unexpected error occurred during registration.');
+    }
+  }
+
+  Future<dynamic> confirmEmail(Map<String, dynamic> requestData) async {
+    try {
+      final res = await Api().dio.post(
+            '/client/confirmEmail',
+            data: jsonEncode(requestData),
+          );
       switch (res.statusCode) {
         case 200:
-          dynamic body = jsonDecode(res.data);
-          LoginResponseObject LoggedInuser = LoginResponseObject.fromJson(body);
-          return LoggedInuser;
+          return LoginResponseObject.fromJson(res.data as Map<String, dynamic>);
         default:
-          dynamic body = res.data;
-          BadRequest badRequest = BadRequest.fromMap(body);
-          return badRequest;
+          return BadRequest.fromMap(res.data as Map<String, dynamic>);
       }
     } on dio.DioException catch (err) {
       if (err.response == null) {
-        return null;
-      } else {
-        return false;
+        throw Exception('No internet connection.');
       }
+      throw Exception('Email confirmation failed. Status: ${err.response?.statusCode}');
     }
   }
 
-  Future<dynamic> verifyCode(Map<String, dynamic> resquestData) async {
+  Future<dynamic> verifyCode(Map<String, dynamic> requestData) async {
     try {
-      var res = await Api()
-          .dio
-          .post("/client/confirmEmail", data: jsonEncode(resquestData));
+      final res = await Api().dio.post(
+            '/client/confirmEmail',
+            data: jsonEncode(requestData),
+          );
       switch (res.statusCode) {
         case 200:
-          dynamic body = jsonDecode(res.data);
-          LoginResponseObject loggedInuser = LoginResponseObject.fromJson(body);
-          return loggedInuser;
+          return LoginResponseObject.fromJson(res.data as Map<String, dynamic>);
         default:
-          dynamic body = jsonDecode(res.data);
-          BadRequest badRequest = BadRequest.fromMap(body);
-          return badRequest;
+          return BadRequest.fromMap(res.data as Map<String, dynamic>);
       }
     } on dio.DioException catch (err) {
       if (err.response == null) {
-        return null;
-      } else {
-        return false;
+        throw Exception('No internet connection.');
       }
+      throw Exception('Code verification failed. Status: ${err.response?.statusCode}');
     }
   }
 }
