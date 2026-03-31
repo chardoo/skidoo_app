@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
@@ -8,6 +9,7 @@ import 'package:skidoo_app/features/chat/data/datasources/chat_background_servic
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
+import 'package:skidoo_app/models/chat/like_update.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
 part 'chat_room_event.dart';
@@ -18,13 +20,15 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   final GetCachedMessagesUseCase _getCachedMessages;
   final CacheMessageUseCase _cacheMessage;
   final MarkRoomAsReadUseCase _markAsRead;
+  final UploadChatImageUseCase _uploadImage;
   final ChatWebSocketService _ws;
   final AuthService _authService;
   final ChatBackgroundService _bgService;
 
   String? _currentRoomId;
   String _myUserId = '';
-  StreamSubscription<ChatMessage>? _wsSub;
+  StreamSubscription<ChatMessage>? _wsMsgSub;
+  StreamSubscription<LikeUpdate>? _wsLikeSub;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
   DateTime? _lastConnectedAt;
@@ -35,6 +39,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     required GetCachedMessagesUseCase getCachedMessages,
     required CacheMessageUseCase cacheMessage,
     required MarkRoomAsReadUseCase markRoomAsRead,
+    required UploadChatImageUseCase uploadImage,
     required ChatWebSocketService wsService,
     required AuthService authService,
     required ChatBackgroundService bgService,
@@ -42,12 +47,16 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         _getCachedMessages = getCachedMessages,
         _cacheMessage = cacheMessage,
         _markAsRead = markRoomAsRead,
+        _uploadImage = uploadImage,
         _ws = wsService,
         _authService = authService,
         _bgService = bgService,
         super(const ChatRoomState()) {
     on<ChatRoomJoined>(_onJoined);
     on<ChatRoomMessageSent>(_onSent);
+    on<ChatRoomImagePicked>(_onImagePicked);
+    on<ChatRoomReplySet>(_onReplySet);
+    on<ChatRoomLikeToggled>(_onLikeToggled);
     on<ChatRoomMessageReceived>(_onReceived);
     on<ChatRoomLoadMoreRequested>(_onLoadMore);
     on<ChatRoomLeft>(_onLeft);
@@ -55,6 +64,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_WsFailed>(_onWsFailed);
     on<_WsDropped>(_onWsDropped);
     on<_WsGaveUp>(_onWsGaveUp);
+    on<_LikeUpdateReceived>(_onLikeUpdateReceived);
   }
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -66,22 +76,18 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _currentRoomId = event.roomId;
     _reconnectAttempts = 0;
 
-    // Hand off the connection to this bloc; background service stops listening.
     _bgService.pause(event.roomId);
 
-    // Cache userId once so _onSent never has to await it.
     if (_myUserId.isEmpty) {
       _myUserId = await _authService.getUserId();
     }
 
-    // 1. Load cache instantly — skip full-screen loader when cache exists.
     List<ChatMessage> cached = [];
     try {
       cached = await _getCachedMessages(event.roomId);
     } catch (_) {}
 
     if (cached.isNotEmpty) {
-      // Show cached content immediately; thin sync bar instead of blocker.
       emit(ChatRoomState(
         messages: _sorted(cached),
         isConnecting: true,
@@ -95,22 +101,15 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       ));
     }
 
-    // 2. Kick off WS in the background — does NOT block history loading.
     _connectWsInBackground(event.roomId);
 
-    // 3. Fetch fresh from API, diff against cache, merge new messages in.
     try {
       final fresh = await _getMessages(event.roomId);
       await _markAsRead(event.roomId);
-      // Notify rooms list immediately so the badge clears without a page reload.
       _bgService.onUnreadUpdate?.call();
 
-      // Only add messages not already in the displayed set so the list doesn't
-      // visually "reset" — existing messages stay in place, new ones slide in.
       final knownIds = state.messages.map((m) => m.id).toSet();
       final incoming = fresh.where((m) => !knownIds.contains(m.id)).toList();
-
-      // Merge: keep any still-pending optimistic messages + confirmed messages.
       final merged = _sorted([...state.messages, ...incoming]);
 
       emit(state.copyWith(
@@ -128,24 +127,31 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
   }
 
-  /// Connects to the WebSocket without blocking the BLoC handler.
   void _connectWsInBackground(String roomId) {
     debugPrint('[ChatBloc] _connectWsInBackground called for room: $roomId');
-    _wsSub?.cancel();
+    _wsMsgSub?.cancel();
+    _wsLikeSub?.cancel();
     _ws.connect(roomId).then((_) {
       if (isClosed) return;
-      _wsSub = _ws.messages.listen(
+
+      _wsMsgSub = _ws.messages.listen(
         (msg) {
           if (!isClosed) add(ChatRoomMessageReceived(msg));
         },
         onDone: () {
-          // Server closed the socket unexpectedly — try to reconnect.
           if (!isClosed) add(const _WsDropped());
         },
         onError: (_) {
           if (!isClosed) add(const _WsDropped());
         },
       );
+
+      _wsLikeSub = _ws.likeUpdates.listen(
+        (update) {
+          if (!isClosed) add(_LikeUpdateReceived(update));
+        },
+      );
+
       debugPrint('[ChatBloc] WS connected successfully');
       if (!isClosed) add(const _WsConnected());
     }).catchError((e) {
@@ -174,7 +180,6 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   }
 
   void _onWsDropped(_WsDropped event, Emitter<ChatRoomState> emit) {
-    // If the connection lasted less than 3 seconds, count it as a failed attempt.
     final connectedFor = _lastConnectedAt == null
         ? null
         : DateTime.now().difference(_lastConnectedAt!);
@@ -182,7 +187,6 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _reconnectAttempts++;
       debugPrint('[ChatBloc] WS dropped immediately (attempt $_reconnectAttempts)');
     } else {
-      // Stable connection that dropped — reset counter for fresh backoff.
       _reconnectAttempts = 1;
     }
     emit(state.copyWith(
@@ -218,7 +222,6 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     ));
   }
 
-  /// Exponential backoff: 2, 4, 8, 16, 30 seconds (capped).
   int _backoffSeconds(int attempt) =>
       attempt == 0 ? 2 : (2 << attempt).clamp(2, 30);
 
@@ -233,21 +236,99 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
 
     final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+    final replyPreview = event.replyToId != null
+        ? _buildReplyPreview(event.replyToId!)
+        : null;
+
     final optimistic = ChatMessage(
       id: tempId,
       roomId: _currentRoomId ?? '',
       senderId: _myUserId,
       senderRole: ChatConfig.roleClient,
       content: event.content,
+      replyToId: event.replyToId,
+      replyPreview: replyPreview,
       createdAt: DateTime.now(),
       isLocal: true,
     );
 
-    // Emit first — message appears on the next frame, no async delay.
-    emit(state.copyWith(messages: _sorted([optimistic, ...state.messages])));
-    _ws.send(event.content);
-    // Cache in the background — fire and forget.
+    emit(state.copyWith(
+      messages: _sorted([optimistic, ...state.messages]),
+      clearReply: true,
+    ));
+    _ws.send(event.content, replyToId: event.replyToId);
     _cacheMessage(optimistic).catchError((_) {});
+  }
+
+  Future<void> _onImagePicked(
+    ChatRoomImagePicked event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    if (!_ws.isConnected) {
+      emit(state.copyWith(
+          errorMessage: 'Not connected — please wait or retry.'));
+      return;
+    }
+
+    emit(state.copyWith(isUploadingImage: true, clearReply: true));
+
+    try {
+      final imageUrl = await _uploadImage(File(event.filePath));
+
+      final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+      final replyPreview = event.replyToId != null
+          ? _buildReplyPreview(event.replyToId!)
+          : null;
+
+      final optimistic = ChatMessage(
+        id: tempId,
+        roomId: _currentRoomId ?? '',
+        senderId: _myUserId,
+        senderRole: ChatConfig.roleClient,
+        imageUrl: imageUrl,
+        replyToId: event.replyToId,
+        replyPreview: replyPreview,
+        createdAt: DateTime.now(),
+        isLocal: true,
+      );
+
+      emit(state.copyWith(
+        isUploadingImage: false,
+        messages: _sorted([optimistic, ...state.messages]),
+      ));
+      _ws.send(null, imageUrl: imageUrl, replyToId: event.replyToId);
+      _cacheMessage(optimistic).catchError((_) {});
+    } catch (e) {
+      emit(state.copyWith(
+        isUploadingImage: false,
+        errorMessage: 'Failed to upload image.',
+      ));
+    }
+  }
+
+  void _onReplySet(ChatRoomReplySet event, Emitter<ChatRoomState> emit) {
+    emit(state.copyWith(
+      replyingTo: event.message,
+      clearReply: event.message == null,
+    ));
+  }
+
+  void _onLikeToggled(
+      ChatRoomLikeToggled event, Emitter<ChatRoomState> emit) {
+    if (!_ws.isConnected) return;
+    if (state.isEventLiked) {
+      _ws.sendUnlike(event.eventId);
+    } else {
+      _ws.sendLike(event.eventId);
+    }
+  }
+
+  void _onLikeUpdateReceived(
+      _LikeUpdateReceived event, Emitter<ChatRoomState> emit) {
+    emit(state.copyWith(
+      eventLikes: event.update.likes,
+      isEventLiked: event.update.liked,
+    ));
   }
 
   void _onReceived(
@@ -256,20 +337,18 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   ) {
     final msg = event.message;
 
-    // Remove matching optimistic message.
+    // Remove matching optimistic placeholder.
     final updated = state.messages
-        .where((m) => !(m.isLocal && m.content == msg.content))
+        .where((m) => !(m.isLocal &&
+            m.content == msg.content &&
+            m.imageUrl == msg.imageUrl))
         .toList();
 
-    // Avoid duplicates.
     if (updated.any((m) => m.id == msg.id)) return;
 
     emit(state.copyWith(messages: _sorted([msg, ...updated])));
-
-    // Persist confirmed message and clean up the optimistic placeholder.
     _cacheMessage(msg).catchError((_) {});
 
-    // Mark incoming message as read immediately (user is in the room).
     if (_currentRoomId != null) {
       _markAsRead(_currentRoomId!).then((_) {
         _bgService.onUnreadUpdate?.call();
@@ -305,19 +384,19 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
   void _onLeft(ChatRoomLeft event, Emitter<ChatRoomState> emit) {
     _reconnectTimer?.cancel();
-    _wsSub?.cancel();
+    _wsMsgSub?.cancel();
+    _wsLikeSub?.cancel();
     _ws.disconnect();
     emit(state.copyWith(isConnected: false, isConnecting: false));
-    // Return the connection to the background service.
     if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
   }
 
   @override
   Future<void> close() {
     _reconnectTimer?.cancel();
-    _wsSub?.cancel();
+    _wsMsgSub?.cancel();
+    _wsLikeSub?.cancel();
     _ws.disconnect();
-    // Return the connection to the background service.
     if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
     return super.close();
   }
@@ -329,5 +408,20 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     final unique = messages.where((m) => seen.add(m.id)).toList();
     unique.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return unique;
+  }
+
+  /// Build a ReplyPreview from a known message id in the current list.
+  ReplyPreview? _buildReplyPreview(String messageId) {
+    try {
+      final msg = state.messages.firstWhere((m) => m.id == messageId);
+      return ReplyPreview(
+        id: msg.id,
+        senderName: msg.senderName.isNotEmpty ? msg.senderName : msg.senderRole,
+        content: msg.content.isNotEmpty ? msg.content : null,
+        imageUrl: msg.imageUrl,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 }

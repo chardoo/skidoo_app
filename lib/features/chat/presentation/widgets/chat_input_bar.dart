@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/models/chat/chat_message.dart';
 
 class ChatInputBar extends StatelessWidget {
   const ChatInputBar({
@@ -8,63 +10,199 @@ class ChatInputBar extends StatelessWidget {
     required this.controller,
     required this.onSend,
     required this.ext,
+    this.replyingTo,
+    this.onClearReply,
+    this.onImagePicked,
+    this.isUploadingImage = false,
   });
 
   final TextEditingController controller;
   final VoidCallback onSend;
   final AppThemeExtension ext;
 
+  /// The message currently being replied to.
+  final ChatMessage? replyingTo;
+
+  /// Called when user taps the clear-reply button.
+  final VoidCallback? onClearReply;
+
+  /// Called with the local file path when user picks an image.
+  final void Function(String filePath)? onImagePicked;
+
+  /// Show a progress indicator while uploading.
+  final bool isUploadingImage;
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (picked != null) onImagePicked?.call(picked.path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Reply preview strip
+        if (replyingTo != null) _ReplyBar(message: replyingTo!, ext: ext, onClear: onClearReply),
+
+        Container(
+          padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 24.h),
+          decoration: BoxDecoration(
+            color: ext.cardSurface,
+            border: Border(
+              top: BorderSide(
+                  color: ext.searchHintColor.withValues(alpha: 0.15)),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Image picker button
+              GestureDetector(
+                onTap: isUploadingImage ? null : _pickImage,
+                child: Container(
+                  width: 40.w,
+                  height: 40.h,
+                  decoration: BoxDecoration(
+                    color: ext.searchFieldFill,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: isUploadingImage
+                      ? SizedBox(
+                          width: 18.w,
+                          height: 18.w,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: ext.accentGold),
+                        )
+                      : Icon(Icons.image_rounded,
+                          color: ext.searchHintColor, size: 20.sp),
+                ),
+              ),
+              SizedBox(width: 8.w),
+
+              // Text input
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+                  maxLines: 4,
+                  minLines: 1,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: replyingTo != null ? 'Reply…' : 'Type a message…',
+                    hintStyle: TextStyle(
+                        color: ext.searchHintColor, fontSize: 14.sp),
+                    filled: true,
+                    fillColor: ext.searchFieldFill,
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(22.r),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16.w, vertical: 10.h),
+                    isDense: true,
+                  ),
+                  onSubmitted: (_) => onSend(),
+                ),
+              ),
+              SizedBox(width: 8.w),
+
+              // Send button
+              GestureDetector(
+                onTap: onSend,
+                child: Container(
+                  width: 44.w,
+                  height: 44.h,
+                  decoration: BoxDecoration(
+                    color: ext.accentGold,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.send_rounded,
+                      color: Colors.white, size: 20.sp),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Reply preview bar above input ─────────────────────────────────────────────
+
+class _ReplyBar extends StatelessWidget {
+  const _ReplyBar({
+    required this.message,
+    required this.ext,
+    this.onClear,
+  });
+
+  final ChatMessage message;
+  final AppThemeExtension ext;
+  final VoidCallback? onClear;
+
+  String get _preview {
+    if (message.content.isNotEmpty) return message.content;
+    if (message.imageUrl != null) return '📷 Photo';
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 24.h),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: ext.cardSurface,
         border: Border(
-          top: BorderSide(
-              color: ext.searchHintColor.withValues(alpha: 0.15)),
+          top: BorderSide(color: ext.searchHintColor.withValues(alpha: 0.1)),
         ),
       ),
       child: Row(
         children: [
+          Container(
+            width: 3,
+            height: 32.h,
+            color: ext.accentGold,
+            margin: EdgeInsets.only(right: 8.w),
+          ),
           Expanded(
-            child: TextField(
-              controller: controller,
-              style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-              maxLines: 4,
-              minLines: 1,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                hintText: 'Type a message…',
-                hintStyle:
-                    TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-                filled: true,
-                fillColor: ext.searchFieldFill,
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(22.r),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  message.senderName.isNotEmpty
+                      ? message.senderName
+                      : message.senderRole,
+                  style: TextStyle(
+                    color: ext.accentGold,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16.w, vertical: 10.h),
-                isDense: true,
-              ),
-              onSubmitted: (_) => onSend(),
+                Text(
+                  _preview,
+                  style:
+                      TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
-          SizedBox(width: 8.w),
-          GestureDetector(
-            onTap: onSend,
-            child: Container(
-              width: 44.w,
-              height: 44.h,
-              decoration: BoxDecoration(
-                color: ext.accentGold,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: Icon(Icons.send_rounded,
-                  color: Colors.white, size: 20.sp),
-            ),
+          IconButton(
+            onPressed: onClear,
+            icon: Icon(Icons.close_rounded,
+                size: 18.sp, color: ext.searchHintColor),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
           ),
         ],
       ),

@@ -9,9 +9,10 @@ import 'package:sqflite/sqflite.dart';
 ///
 /// Schema version history:
 ///   v1 – initial: chat_rooms + chat_messages tables.
+///   v2 – added sender_name, image_url, reply_to_id, reply_preview columns.
 class ChatDatabase {
   static const _dbName = 'skidoo_chat.db';
-  static const _dbVersion = 1;
+  static const _dbVersion = 2;
 
   static Database? _db;
 
@@ -44,14 +45,18 @@ class ChatDatabase {
 
     await db.execute('''
       CREATE TABLE chat_messages (
-        id          TEXT PRIMARY KEY,
-        room_id     TEXT NOT NULL,
-        sender_id   TEXT NOT NULL,
-        sender_role TEXT NOT NULL,
-        content     TEXT NOT NULL,
-        created_at  TEXT NOT NULL,
-        is_read     INTEGER NOT NULL DEFAULT 0,
-        is_local    INTEGER NOT NULL DEFAULT 0
+        id            TEXT PRIMARY KEY,
+        room_id       TEXT NOT NULL,
+        sender_id     TEXT NOT NULL,
+        sender_name   TEXT NOT NULL DEFAULT '',
+        sender_role   TEXT NOT NULL,
+        content       TEXT NOT NULL DEFAULT '',
+        image_url     TEXT,
+        reply_to_id   TEXT,
+        reply_preview TEXT,
+        created_at    TEXT NOT NULL,
+        is_read       INTEGER NOT NULL DEFAULT 0,
+        is_local      INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
@@ -60,8 +65,15 @@ class ChatDatabase {
     );
   }
 
-  // Placeholder for future schema migrations.
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {}
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+          "ALTER TABLE chat_messages ADD COLUMN sender_name TEXT NOT NULL DEFAULT ''");
+      await db.execute('ALTER TABLE chat_messages ADD COLUMN image_url TEXT');
+      await db.execute('ALTER TABLE chat_messages ADD COLUMN reply_to_id TEXT');
+      await db.execute('ALTER TABLE chat_messages ADD COLUMN reply_preview TEXT');
+    }
+  }
 
   // ── Rooms ──────────────────────────────────────────────────────────────────
 
@@ -120,23 +132,32 @@ class ChatDatabase {
         await txn.rawInsert(
           '''
           INSERT INTO chat_messages
-            (id, room_id, sender_id, sender_role, content, created_at, is_read, is_local)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (id, room_id, sender_id, sender_name, sender_role, content,
+             image_url, reply_to_id, reply_preview, created_at, is_read, is_local)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
-            room_id    = excluded.room_id,
-            sender_id  = excluded.sender_id,
-            sender_role = excluded.sender_role,
-            content    = excluded.content,
-            created_at = excluded.created_at,
-            is_read    = MAX(is_read, excluded.is_read),
-            is_local   = excluded.is_local
+            room_id      = excluded.room_id,
+            sender_id    = excluded.sender_id,
+            sender_name  = excluded.sender_name,
+            sender_role  = excluded.sender_role,
+            content      = excluded.content,
+            image_url    = excluded.image_url,
+            reply_to_id  = excluded.reply_to_id,
+            reply_preview= excluded.reply_preview,
+            created_at   = excluded.created_at,
+            is_read      = MAX(is_read, excluded.is_read),
+            is_local     = excluded.is_local
           ''',
           [
             msg.id,
             msg.roomId,
             msg.senderId,
+            msg.senderName,
             msg.senderRole,
             msg.content,
+            msg.imageUrl,
+            msg.replyToId,
+            msg.replyPreview != null ? jsonEncode(msg.replyPreview!.toJson()) : null,
             msg.createdAt.toIso8601String(),
             msg.isRead ? 1 : 0,
             msg.isLocal ? 1 : 0,
@@ -281,21 +302,41 @@ class ChatDatabase {
         'id': msg.id,
         'room_id': msg.roomId,
         'sender_id': msg.senderId,
+        'sender_name': msg.senderName,
         'sender_role': msg.senderRole,
         'content': msg.content,
+        'image_url': msg.imageUrl,
+        'reply_to_id': msg.replyToId,
+        'reply_preview': msg.replyPreview != null
+            ? jsonEncode(msg.replyPreview!.toJson())
+            : null,
         'created_at': msg.createdAt.toIso8601String(),
         'is_read': msg.isRead ? 1 : 0,
         'is_local': msg.isLocal ? 1 : 0,
       };
 
-  ChatMessage _rowToMessage(Map<String, dynamic> row) => ChatMessage(
-        id: row['id'] as String,
-        roomId: row['room_id'] as String,
-        senderId: row['sender_id'] as String,
-        senderRole: row['sender_role'] as String,
-        content: row['content'] as String,
-        createdAt: DateTime.parse(row['created_at'] as String),
-        isRead: (row['is_read'] as int) == 1,
-        isLocal: (row['is_local'] as int) == 1,
-      );
+  ChatMessage _rowToMessage(Map<String, dynamic> row) {
+    ReplyPreview? preview;
+    final previewStr = row['reply_preview'] as String?;
+    if (previewStr != null) {
+      try {
+        preview = ReplyPreview.fromJson(
+            jsonDecode(previewStr) as Map<String, dynamic>);
+      } catch (_) {}
+    }
+    return ChatMessage(
+      id: row['id'] as String,
+      roomId: row['room_id'] as String,
+      senderId: row['sender_id'] as String,
+      senderName: row['sender_name'] as String? ?? '',
+      senderRole: row['sender_role'] as String,
+      content: row['content'] as String? ?? '',
+      imageUrl: row['image_url'] as String?,
+      replyToId: row['reply_to_id'] as String?,
+      replyPreview: preview,
+      createdAt: DateTime.parse(row['created_at'] as String),
+      isRead: (row['is_read'] as int) == 1,
+      isLocal: (row['is_local'] as int) == 1,
+    );
+  }
 }

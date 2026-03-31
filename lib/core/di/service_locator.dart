@@ -223,6 +223,8 @@ Future<void> setupServiceLocator() async {
       GetUnreadCountsUseCase(sl<ChatRepository>(), sl<AuthService>()));
   sl.registerSingleton<MarkRoomAsReadUseCase>(
       MarkRoomAsReadUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<UploadChatImageUseCase>(
+      UploadChatImageUseCase(sl<ChatRepository>()));
 
   // BLoCs (factories so each page gets a fresh instance)
   sl.registerFactory<ChatRoomsBloc>(() => ChatRoomsBloc(
@@ -238,6 +240,7 @@ Future<void> setupServiceLocator() async {
         getCachedMessages: sl<GetCachedMessagesUseCase>(),
         cacheMessage: sl<CacheMessageUseCase>(),
         markRoomAsRead: sl<MarkRoomAsReadUseCase>(),
+        uploadImage: sl<UploadChatImageUseCase>(),
         wsService: ChatWebSocketService(sl<AuthService>()),
         authService: sl<AuthService>(),
         bgService: sl<ChatBackgroundService>(),

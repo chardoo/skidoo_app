@@ -120,11 +120,12 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   String _myId = '';
   late final ChatRoomBloc _bloc;
 
-  /// IDs of messages already shown — used to detect genuinely new arrivals.
   final Set<String> _knownIds = {};
-
-  /// IDs currently playing their entrance animation.
   final Set<String> _animateIds = {};
+
+  bool get _isEventRoom =>
+      widget.room.type == RoomType.event ||
+      widget.room.type == RoomType.eventPrivate;
 
   @override
   void initState() {
@@ -155,11 +156,24 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     }
   }
 
-  void _send() {
+  void _send(String? replyToId) {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
-    _bloc.add(ChatRoomMessageSent(text));
+    _bloc.add(ChatRoomMessageSent(text, replyToId: replyToId));
     _inputCtrl.clear();
+  }
+
+  void _onImagePicked(String filePath, String? replyToId) {
+    _bloc.add(ChatRoomImagePicked(filePath, replyToId: replyToId));
+  }
+
+  void _onReply(ChatMessage msg) {
+    HapticFeedback.selectionClick();
+    _bloc.add(ChatRoomReplySet(msg));
+  }
+
+  void _clearReply() {
+    _bloc.add(const ChatRoomReplySet(null));
   }
 
   void _onUserTap(BuildContext context, ChatMessage msg) {
@@ -176,13 +190,12 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   }
 
   Future<void> _openDirectChat(BuildContext context, ChatMessage msg) async {
-    Navigator.of(context).pop(); // close sheet
-
+    Navigator.of(context).pop();
     try {
       final room = await sl<GetOrCreateDirectRoomUseCase>().call(
         recipientId: msg.senderId,
         recipientRole: msg.senderRole,
-        localDisplayName: msg.senderRole,
+        localDisplayName: msg.senderName.isNotEmpty ? msg.senderName : msg.senderRole,
       );
       if (!context.mounted) return;
       await Navigator.of(context).push(
@@ -199,8 +212,6 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     }
   }
 
-  /// Updates [_knownIds] and [_animateIds] from inside the BlocConsumer builder
-  /// so no extra [setState] is needed — one rebuild per state change instead of two.
   void _syncAnimationState(List<ChatMessage> messages, bool isLoadingHistory) {
     if (isLoadingHistory) return;
     final currentIds = messages.map((m) => m.id).toSet();
@@ -267,121 +278,201 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
             ),
           ],
         ),
+        actions: [
+          // Like button — only shown for event rooms that have an event_id
+          if (_isEventRoom && widget.room.eventId != null)
+            BlocBuilder<ChatRoomBloc, ChatRoomState>(
+              buildWhen: (p, c) =>
+                  p.eventLikes != c.eventLikes ||
+                  p.isEventLiked != c.isEventLiked,
+              builder: (_, state) {
+                return _LikeButton(
+                  likes: state.eventLikes,
+                  isLiked: state.isEventLiked,
+                  ext: ext,
+                  onTap: () =>
+                      _bloc.add(ChatRoomLikeToggled(widget.room.eventId!)),
+                );
+              },
+            ),
+        ],
       ),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
-          child: Column(
-        children: [
-          BlocBuilder<ChatRoomBloc, ChatRoomState>(
-            buildWhen: (p, c) => p.isSyncing != c.isSyncing,
-            builder: (_, state) => state.isSyncing
-                ? LinearProgressIndicator(
-                    minHeight: 2,
-                    backgroundColor: Colors.transparent,
-                    color: ext.accentGold.withValues(alpha: 0.6),
-                  )
-                : const SizedBox.shrink(),
+          child: BlocBuilder<ChatRoomBloc, ChatRoomState>(
+            buildWhen: (p, c) =>
+                p.replyingTo != c.replyingTo ||
+                p.isUploadingImage != c.isUploadingImage,
+            builder: (context, inputState) {
+              return Column(
+                children: [
+                  BlocBuilder<ChatRoomBloc, ChatRoomState>(
+                    buildWhen: (p, c) => p.isSyncing != c.isSyncing,
+                    builder: (_, state) => state.isSyncing
+                        ? LinearProgressIndicator(
+                            minHeight: 2,
+                            backgroundColor: Colors.transparent,
+                            color: ext.accentGold.withValues(alpha: 0.6),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                  Expanded(
+                    child: BlocConsumer<ChatRoomBloc, ChatRoomState>(
+                      listenWhen: (p, c) =>
+                          p.errorMessage != c.errorMessage ||
+                          p.messages != c.messages,
+                      listener: (context, state) {
+                        if (state.errorMessage != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(state.errorMessage!),
+                              backgroundColor: Colors.redAccent,
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                        if (!state.isLoadingHistory && _knownIds.isNotEmpty) {
+                          final newIds = state.messages
+                              .map((m) => m.id)
+                              .toSet()
+                              .difference(_knownIds);
+                          if (newIds.isNotEmpty &&
+                              !sl<NotificationPrefsService>().isMuted) {
+                            HapticFeedback.lightImpact();
+                          }
+                        }
+                      },
+                      buildWhen: (p, c) =>
+                          p.messages != c.messages ||
+                          p.isLoadingHistory != c.isLoadingHistory ||
+                          p.isLoadingMore != c.isLoadingMore,
+                      builder: (context, state) {
+                        _syncAnimationState(
+                            state.messages, state.isLoadingHistory);
+                        if (state.isLoadingHistory && state.messages.isEmpty) {
+                          return Center(
+                            child: CircularProgressIndicator(
+                                color: ext.accentGold),
+                          );
+                        }
+
+                        if (state.messages.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'No messages yet.\nSay hello!',
+                              style: TextStyle(
+                                  color: ext.searchHintColor, fontSize: 14.sp),
+                              textAlign: TextAlign.center,
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          controller: _scrollCtrl,
+                          reverse: true,
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          itemCount: state.messages.length +
+                              (state.isLoadingMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == state.messages.length) {
+                              return Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12.h),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                      color: ext.accentGold, strokeWidth: 2),
+                                ),
+                              );
+                            }
+                            final msg = state.messages[index];
+                            final isMe = msg.senderId == _myId;
+
+                            final bubble = MessageBubble(
+                              key: ValueKey(msg.id),
+                              message: msg,
+                              isMe: isMe,
+                              onUserTap: isMe
+                                  ? null
+                                  : () => _onUserTap(context, msg),
+                              onLongPress: () => _onReply(msg),
+                            );
+
+                            if (_animateIds.contains(msg.id)) {
+                              return MessageEntrance(
+                                key: ValueKey('anim_${msg.id}'),
+                                fromRight: isMe,
+                                child: bubble,
+                              );
+                            }
+                            return bubble;
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  ChatInputBar(
+                    controller: _inputCtrl,
+                    onSend: () => _send(inputState.replyingTo?.id),
+                    ext: ext,
+                    replyingTo: inputState.replyingTo,
+                    onClearReply: _clearReply,
+                    onImagePicked: (path) =>
+                        _onImagePicked(path, inputState.replyingTo?.id),
+                    isUploadingImage: inputState.isUploadingImage,
+                  ),
+                ],
+              );
+            },
           ),
-          Expanded(
-            child: BlocConsumer<ChatRoomBloc, ChatRoomState>(
-              listenWhen: (p, c) =>
-                  p.errorMessage != c.errorMessage ||
-                  p.messages != c.messages,
-              listener: (context, state) {
-                if (state.errorMessage != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.errorMessage!),
-                      backgroundColor: Colors.redAccent,
-                      duration: const Duration(seconds: 3),
-                    ),
-                  );
-                }
-                // Haptic for new messages — check before builder updates _knownIds.
-                if (!state.isLoadingHistory && _knownIds.isNotEmpty) {
-                  final newIds = state.messages
-                      .map((m) => m.id)
-                      .toSet()
-                      .difference(_knownIds);
-                  if (newIds.isNotEmpty &&
-                      !sl<NotificationPrefsService>().isMuted) {
-                    HapticFeedback.lightImpact();
-                  }
-                }
-              },
-              buildWhen: (p, c) =>
-                  p.messages != c.messages ||
-                  p.isLoadingHistory != c.isLoadingHistory ||
-                  p.isLoadingMore != c.isLoadingMore,
-              builder: (context, state) {
-                // Sync animation state inline — no setState, no extra rebuild.
-                _syncAnimationState(state.messages, state.isLoadingHistory);
-                if (state.isLoadingHistory && state.messages.isEmpty) {
-                  return Center(
-                    child: CircularProgressIndicator(color: ext.accentGold),
-                  );
-                }
+        ),
+      ),
+    );
+  }
+}
 
-                if (state.messages.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No messages yet.\nSay hello!',
-                      style: TextStyle(
-                          color: ext.searchHintColor, fontSize: 14.sp),
-                      textAlign: TextAlign.center,
-                    ),
-                  );
-                }
+// ── Like button ───────────────────────────────────────────────────────────────
 
-                return ListView.builder(
-                  controller: _scrollCtrl,
-                  reverse: true,
-                  padding: EdgeInsets.symmetric(vertical: 8.h),
-                  itemCount: state.messages.length +
-                      (state.isLoadingMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == state.messages.length) {
-                      return Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                        child: Center(
-                          child: CircularProgressIndicator(
-                              color: ext.accentGold, strokeWidth: 2),
-                        ),
-                      );
-                    }
-                    final msg = state.messages[index];
-                    final isMe = msg.senderId == _myId;
-                    if (_animateIds.contains(msg.id)) {
-                      return MessageEntrance(
-                        key: ValueKey(msg.id),
-                        fromRight: isMe,
-                        child: MessageBubble(
-                          message: msg,
-                          isMe: isMe,
-                          onUserTap: isMe
-                              ? null
-                              : () => _onUserTap(context, msg),
-                        ),
-                      );
-                    }
-                    return MessageBubble(
-                      key: ValueKey(msg.id),
-                      message: msg,
-                      isMe: isMe,
-                      onUserTap: isMe
-                          ? null
-                          : () => _onUserTap(context, msg),
-                    );
-                  },
-                );
-              },
+class _LikeButton extends StatelessWidget {
+  const _LikeButton({
+    required this.likes,
+    required this.isLiked,
+    required this.ext,
+    required this.onTap,
+  });
+
+  final int? likes;
+  final bool isLiked;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20.r),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+              color: isLiked ? Colors.redAccent : ext.searchHintColor,
+              size: 20.sp,
             ),
-          ),
-          ChatInputBar(controller: _inputCtrl, onSend: _send, ext: ext),
-        ],
-          ),
+            if (likes != null) ...[
+              SizedBox(width: 4.w),
+              Text(
+                '$likes',
+                style: TextStyle(
+                  color: isLiked ? Colors.redAccent : ext.searchHintColor,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -426,7 +517,6 @@ class _UserOptionsSheetState extends State<_UserOptionsSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle
           Center(
             child: Container(
               width: 36.w,
@@ -438,8 +528,6 @@ class _UserOptionsSheetState extends State<_UserOptionsSheet> {
               ),
             ),
           ),
-
-          // Avatar + name row
           Row(
             children: [
               CircleAvatar(
@@ -475,12 +563,9 @@ class _UserOptionsSheetState extends State<_UserOptionsSheet> {
               ),
             ],
           ),
-
           SizedBox(height: 20.h),
           Divider(color: ext.searchHintColor.withValues(alpha: 0.12)),
           SizedBox(height: 8.h),
-
-          // Direct message option
           _SheetOption(
             icon: Icons.chat_bubble_outline_rounded,
             label: 'Message directly',

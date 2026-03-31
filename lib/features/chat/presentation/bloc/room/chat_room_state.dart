@@ -8,7 +8,17 @@ class ChatRoomState extends Equatable {
   final bool isLoadingMore;
   final bool isSyncing;
   final bool hasReachedEnd;
+  final bool isUploadingImage;
   final String? errorMessage;
+
+  /// The message currently being replied to (null = no active reply).
+  final ChatMessage? replyingTo;
+
+  /// Like count for the event associated with this room (null for non-event rooms).
+  final int? eventLikes;
+
+  /// Whether the current user has liked the event.
+  final bool isEventLiked;
 
   const ChatRoomState({
     this.messages = const [],
@@ -18,7 +28,11 @@ class ChatRoomState extends Equatable {
     this.isLoadingMore = false,
     this.isSyncing = false,
     this.hasReachedEnd = false,
+    this.isUploadingImage = false,
     this.errorMessage,
+    this.replyingTo,
+    this.eventLikes,
+    this.isEventLiked = false,
   });
 
   ChatRoomState copyWith({
@@ -29,8 +43,13 @@ class ChatRoomState extends Equatable {
     bool? isLoadingMore,
     bool? isSyncing,
     bool? hasReachedEnd,
+    bool? isUploadingImage,
     String? errorMessage,
     bool clearError = false,
+    ChatMessage? replyingTo,
+    bool clearReply = false,
+    int? eventLikes,
+    bool? isEventLiked,
   }) =>
       ChatRoomState(
         messages: messages ?? this.messages,
@@ -40,7 +59,11 @@ class ChatRoomState extends Equatable {
         isLoadingMore: isLoadingMore ?? this.isLoadingMore,
         isSyncing: isSyncing ?? this.isSyncing,
         hasReachedEnd: hasReachedEnd ?? this.hasReachedEnd,
+        isUploadingImage: isUploadingImage ?? this.isUploadingImage,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+        replyingTo: clearReply ? null : (replyingTo ?? this.replyingTo),
+        eventLikes: eventLikes ?? this.eventLikes,
+        isEventLiked: isEventLiked ?? this.isEventLiked,
       );
 
   @override
@@ -52,6 +75,10 @@ class ChatRoomState extends Equatable {
         isLoadingMore,
         isSyncing,
         hasReachedEnd,
+        isUploadingImage,
         errorMessage,
+        replyingTo,
+        eventLikes,
+        isEventLiked,
       ];
 }

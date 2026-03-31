@@ -26,6 +26,7 @@ dependencies:
 
   # Camera & Image
   camera: ^0.10.5+5
+  image_picker: ^1.1.2
   image_cropper: ^5.0.0
   image_gallery_saver: ^2.0.3
   crop_your_image: ^0.7.5

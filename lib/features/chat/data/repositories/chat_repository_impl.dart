@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
@@ -153,6 +155,9 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Future<void> markRoomAsRead(String roomId) => _db.markAllAsRead(roomId);
+
+  @override
+  Future<String> uploadImage(File file) => _rest.uploadImage(file);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 

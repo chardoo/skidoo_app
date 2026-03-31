@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart' as dio_pkg;
 import 'package:skidoo_app/core/config/chat_config.dart';
@@ -48,6 +49,9 @@ abstract class ChatRestDataSource {
     String? beforeId,
     int limit = ChatConfig.messagePageSize,
   });
+
+  /// POST /chat/upload-image — uploads [file] and returns the Cloudinary URL.
+  Future<String> uploadImage(File file);
 }
 
 class ChatRestDataSourceImpl implements ChatRestDataSource {
@@ -153,6 +157,27 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
       return list
           .map((m) => ChatMessage.fromJson(m as Map<String, dynamic>))
           .toList();
+    });
+  }
+
+  @override
+  Future<String> uploadImage(File file) async {
+    return _wrap(() async {
+      final formData = dio_pkg.FormData.fromMap({
+        'file': await dio_pkg.MultipartFile.fromFile(
+          file.path,
+          filename: file.uri.pathSegments.last,
+        ),
+      });
+      final res = await _dio.post(
+        '/chat/upload-image',
+        data: formData,
+        options: dio_pkg.Options(
+          contentType: 'multipart/form-data',
+        ),
+      );
+      final data = res.data as Map<String, dynamic>;
+      return data['image_url'] as String;
     });
   }
 

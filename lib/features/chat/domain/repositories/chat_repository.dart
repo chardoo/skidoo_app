@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 
@@ -50,4 +52,7 @@ abstract class ChatRepository {
 
   /// Local-only: mark all messages in [roomId] as read.
   Future<void> markRoomAsRead(String roomId);
+
+  /// Upload an image file and return the hosted URL.
+  Future<String> uploadImage(File file);
 }

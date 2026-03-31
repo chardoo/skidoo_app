@@ -10,10 +10,30 @@ class ChatRoomJoined extends ChatRoomEvent {
   const ChatRoomJoined(this.roomId);
 }
 
-/// Send a message (optimistic).
+/// Send a text message (optimistic). Optionally threaded as a reply.
 class ChatRoomMessageSent extends ChatRoomEvent {
   final String content;
-  const ChatRoomMessageSent(this.content);
+  final String? replyToId;
+  const ChatRoomMessageSent(this.content, {this.replyToId});
+}
+
+/// Upload an image file and send it as a message.
+class ChatRoomImagePicked extends ChatRoomEvent {
+  final String filePath;
+  final String? replyToId;
+  const ChatRoomImagePicked(this.filePath, {this.replyToId});
+}
+
+/// Set (or clear) the message currently being replied to.
+class ChatRoomReplySet extends ChatRoomEvent {
+  final ChatMessage? message;
+  const ChatRoomReplySet(this.message);
+}
+
+/// Toggle like / unlike for the event associated with this room.
+class ChatRoomLikeToggled extends ChatRoomEvent {
+  final String eventId;
+  const ChatRoomLikeToggled(this.eventId);
 }
 
 /// A message arrived from the WebSocket.
@@ -51,4 +71,10 @@ class _WsDropped extends ChatRoomEvent {
 /// Reconnect attempts exhausted.
 class _WsGaveUp extends ChatRoomEvent {
   const _WsGaveUp();
+}
+
+/// Like update received from WebSocket.
+class _LikeUpdateReceived extends ChatRoomEvent {
+  final LikeUpdate update;
+  const _LikeUpdateReceived(this.update);
 }

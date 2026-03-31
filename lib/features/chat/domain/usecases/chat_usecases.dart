@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/features/chat/domain/repositories/chat_repository.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
@@ -125,4 +127,11 @@ class MarkRoomAsReadUseCase {
   MarkRoomAsReadUseCase(this._repo);
 
   Future<void> call(String roomId) => _repo.markRoomAsRead(roomId);
+}
+
+class UploadChatImageUseCase {
+  final ChatRepository _repo;
+  UploadChatImageUseCase(this._repo);
+
+  Future<String> call(File file) => _repo.uploadImage(file);
 }
