@@ -2,122 +2,126 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 
-class CardPhotoPreviewGrid extends StatelessWidget {
-  const CardPhotoPreviewGrid({
+/// Full-width swipeable photo carousel — Instagram / TikTok style.
+class PostPhotoCarousel extends StatelessWidget {
+  const PostPhotoCarousel({
     super.key,
     required this.pics,
-    required this.ext,
+    required this.pageController,
     required this.showBlur,
+    required this.onDoubleTap,
   });
 
   final List<EventPicture> pics;
-  final AppThemeExtension ext;
+  final PageController pageController;
   final bool showBlur;
+  final VoidCallback onDoubleTap;
 
   @override
   Widget build(BuildContext context) {
-    final totalExtra = pics.length > 3 ? pics.length - 3 : 0;
+    return PageView.builder(
+      controller: pageController,
+      itemCount: pics.length,
+      itemBuilder: (context, index) {
+        final pic = pics[index];
+        final isLastLocked = showBlur && index == 2 && pics.length > 3;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 5,
-          child: CardPhotoTile(url: pics[0].url),
-        ),
-        SizedBox(width: 2.w),
-        Expanded(
-          flex: 4,
-          child: Column(
+        return GestureDetector(
+          onDoubleTap: onDoubleTap,
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              Expanded(
-                child: pics.length > 1
-                    ? CardPhotoTile(url: pics[1].url)
-                    : CardEmptyTile(ext: ext),
+              // Photo
+              CachedNetworkImage(
+                imageUrl: pic.url,
+                fit: BoxFit.cover,
+                placeholder: (_, __) =>
+                    Container(color: const Color(0xFF111111)),
+                errorWidget: (_, __, ___) =>
+                    Container(color: const Color(0xFF111111)),
               ),
-              SizedBox(height: 2.h),
-              Expanded(
-                child: pics.length > 2
-                    ? CardPhotoTile(
-                        url: pics[2].url,
-                        blurOverlay: (showBlur && totalExtra > 0)
-                            ? '+$totalExtra'
-                            : null,
-                      )
-                    : CardEmptyTile(ext: ext),
+
+              // Lock overlay on last visible tile (unauthenticated)
+              if (isLastLocked) _LockedOverlay(remaining: pics.length - 3),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Locked overlay ────────────────────────────────────────────────────────────
+
+class _LockedOverlay extends StatelessWidget {
+  const _LockedOverlay({required this.remaining});
+  final int remaining;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.55),
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56.w,
+                height: 56.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.12),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+                ),
+                alignment: Alignment.center,
+                child: Icon(Icons.lock_rounded,
+                    color: Colors.white, size: 24.sp),
+              ),
+              SizedBox(height: 12.h),
+              Text(
+                '+$remaining more photos',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                'Sign in to unlock',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12.sp,
+                ),
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-}
-
-class CardPhotoTile extends StatelessWidget {
-  const CardPhotoTile({super.key, required this.url, this.blurOverlay});
-  final String url;
-  final String? blurOverlay;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
-            placeholder: (_, __) => Container(color: const Color(0xFF1E2230)),
-            errorWidget: (_, __, ___) =>
-                Container(color: const Color(0xFF1E2230)),
-          ),
-          if (blurOverlay != null) ...[
-            BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-              child: Container(color: Colors.black.withValues(alpha: 0.45)),
-            ),
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.lock_outline_rounded,
-                      color: Colors.white, size: 18.sp),
-                  SizedBox(height: 4.h),
-                  Text(
-                    blurOverlay!,
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  Text('more',
-                      style: TextStyle(
-                          color: Colors.white70, fontSize: 11.sp)),
-                ],
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }
 }
+
+// ── Gradient placeholder ──────────────────────────────────────────────────────
 
 class CardGradientPlaceholder extends StatelessWidget {
   const CardGradientPlaceholder({super.key, required this.name});
   final String name;
 
   static const _palette = [
-    [Color(0xFF3A5BA0), Color(0xFF1E3A6E)],
-    [Color(0xFF6B3A8F), Color(0xFF3D1F5A)],
-    [Color(0xFF2E7D4F), Color(0xFF1A4D30)],
-    [Color(0xFF8F4A3A), Color(0xFF5A2A1E)],
-    [Color(0xFF2E6B7D), Color(0xFF1A404D)],
-    [Color(0xFF7D3A6B), Color(0xFF4D1F40)],
+    [Color(0xFF1a1a2e), Color(0xFF16213e)],
+    [Color(0xFF0f3460), Color(0xFF533483)],
+    [Color(0xFF1a0533), Color(0xFF3d0066)],
+    [Color(0xFF001a2c), Color(0xFF003366)],
+    [Color(0xFF1a0000), Color(0xFF4d0000)],
+    [Color(0xFF002200), Color(0xFF004d00)],
   ];
 
   @override
@@ -135,9 +139,9 @@ class CardGradientPlaceholder extends StatelessWidget {
       child: Text(
         name.isNotEmpty ? name[0].toUpperCase() : '?',
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.3),
-          fontSize: 64.sp,
-          fontWeight: FontWeight.bold,
+          color: Colors.white.withValues(alpha: 0.08),
+          fontSize: 120.sp,
+          fontWeight: FontWeight.w900,
         ),
       ),
     );
@@ -145,10 +149,9 @@ class CardGradientPlaceholder extends StatelessWidget {
 }
 
 class CardEmptyTile extends StatelessWidget {
-  const CardEmptyTile({super.key, required this.ext});
-  final AppThemeExtension ext;
+  const CardEmptyTile({super.key});
 
   @override
   Widget build(BuildContext context) =>
-      Container(color: ext.searchFieldFill);
+      Container(color: const Color(0xFF111111));
 }

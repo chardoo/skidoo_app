@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 
@@ -10,56 +11,105 @@ class CardDescriptionText extends StatelessWidget {
     required this.ext,
     required this.expanded,
     required this.onToggle,
+    this.eventDate,
   });
 
   final EventDiscovery event;
   final AppThemeExtension ext;
   final bool expanded;
   final VoidCallback onToggle;
+  final String? eventDate;
 
-  String get _caption {
+  String get _hashtags {
     final name = event.eventName.toLowerCase().replaceAll(' ', '');
-    final photographer =
-        event.photographerName.toLowerCase().replaceAll(' ', '');
-    return '${event.eventName} captured by ${event.photographerName}  '
-        '#$name #$photographer #photography #event #moments';
+    final ph = event.photographerName.toLowerCase().replaceAll(' ', '');
+    return '#$name #$ph #photography #event #moments';
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 14.w),
-      child: GestureDetector(
-        onTap: onToggle,
-        child: RichText(
-          maxLines: expanded ? null : 2,
-          overflow: expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-          text: TextSpan(
-            style: TextStyle(fontSize: 13.sp, height: 1.4),
-            children: _buildSpans(context),
+      padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 4.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Photographer name + caption inline (Instagram style)
+          GestureDetector(
+            onTap: onToggle,
+            child: RichText(
+              maxLines: expanded ? null : 2,
+              overflow:
+                  expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+              text: TextSpan(
+                style: TextStyle(
+                    fontSize: 13.sp, height: 1.45, color: ext.greetingColor),
+                children: [
+                  // Bold photographer name as prefix
+                  TextSpan(
+                    text: '${event.photographerName}  ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: ext.greetingColor,
+                    ),
+                  ),
+                  // Caption text
+                  TextSpan(
+                    text: '${event.eventName} — stunning moments captured',
+                  ),
+                  const TextSpan(text: '  '),
+                  // Hashtags in gold
+                  ..._hashtagSpans(),
+                ],
+              ),
+            ),
           ),
-        ),
+
+          if (!expanded) ...[
+            SizedBox(height: 2.h),
+            GestureDetector(
+              onTap: onToggle,
+              child: Text(
+                'more',
+                style: TextStyle(
+                  color: ext.searchHintColor,
+                  fontSize: 13.sp,
+                ),
+              ),
+            ),
+          ],
+
+          // Date
+          if (eventDate != null && eventDate!.isNotEmpty) ...[
+            SizedBox(height: 6.h),
+            Text(
+              _formatDate(eventDate!),
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 11.sp,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  List<InlineSpan> _buildSpans(BuildContext context) {
-    final parts = _caption.split(' ');
-    final spans = <InlineSpan>[];
-    for (final word in parts) {
-      if (word.startsWith('#')) {
-        spans.add(TextSpan(
-          text: '$word ',
+  List<InlineSpan> _hashtagSpans() {
+    return _hashtags.split(' ').map((tag) => TextSpan(
+          text: '$tag ',
           style: TextStyle(
-              color: ext.accentGold, fontWeight: FontWeight.w500),
-        ));
-      } else {
-        spans.add(TextSpan(
-          text: '$word ',
-          style: TextStyle(color: ext.greetingColor),
-        ));
-      }
+            color: ext.accentGold,
+            fontWeight: FontWeight.w500,
+          ),
+        )).toList();
+  }
+
+  String _formatDate(String raw) {
+    try {
+      return DateFormat('MMMM d, y').format(DateTime.parse(raw));
+    } catch (_) {
+      return raw;
     }
-    return spans;
   }
 }

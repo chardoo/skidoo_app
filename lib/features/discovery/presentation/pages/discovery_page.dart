@@ -23,7 +23,7 @@ class DiscoveryPage extends StatelessWidget {
   }
 }
 
-// ── Stateful view — owns ScrollController + auto-scroll timer ─────────────────
+// ── Stateful view ─────────────────────────────────────────────────────────────
 
 class _DiscoveryView extends StatefulWidget {
   const _DiscoveryView();
@@ -50,7 +50,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   void _onScroll() {
     if (!_scrollCtrl.hasClients) return;
     final pos = _scrollCtrl.position;
-    if (pos.pixels >= pos.maxScrollExtent - 300) {
+    if (pos.pixels >= pos.maxScrollExtent - 400) {
       context.read<DiscoveryBloc>().add(const DiscoveryLoadMoreRequested());
     }
   }
@@ -73,7 +73,10 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _DiscoveryHeader(ext: ext),
+            // ── App bar ──────────────────────────────────────────────────
+            _FeedAppBar(ext: ext),
+
+            // ── Feed ─────────────────────────────────────────────────────
             Expanded(
               child: BlocBuilder<DiscoveryBloc, DiscoveryState>(
                 builder: (context, state) {
@@ -107,12 +110,14 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                   return ListView.builder(
                     controller: _scrollCtrl,
                     physics: const BouncingScrollPhysics(),
+                    // No padding — cards are edge-to-edge
+                    padding: EdgeInsets.zero,
                     itemCount:
                         state.events.length + (state.isLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {
                       if (index == state.events.length) {
                         return Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20.h),
+                          padding: EdgeInsets.symmetric(vertical: 24.h),
                           child: Center(
                             child: CircularProgressIndicator(
                                 color: ext.accentGold, strokeWidth: 2),
@@ -136,48 +141,115 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
+// ── Feed app bar ──────────────────────────────────────────────────────────────
 
-class _DiscoveryHeader extends StatelessWidget {
-  const _DiscoveryHeader({required this.ext});
+class _FeedAppBar extends StatelessWidget {
+  const _FeedAppBar({required this.ext});
   final AppThemeExtension ext;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 30.w,
-            height: 30.h,
-            decoration: BoxDecoration(
-              color: ext.logoBadgeBackground,
-              borderRadius: BorderRadius.circular(7.r),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'S',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 17.sp,
-              ),
-            ),
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: ext.homeBackground,
+        border: Border(
+          bottom: BorderSide(
+            color: ext.searchHintColor.withValues(alpha: 0.08),
+            width: 0.5,
           ),
-          SizedBox(width: 8.w),
-          Text(
-            'SKIDDO',
-            style: TextStyle(
-              color: ext.logoTextColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 20.sp,
-              letterSpacing: 2,
-            ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Logo
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 28.w,
+                height: 28.h,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      ext.accentGold,
+                      const Color(0xFFFF6B35),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(7.r),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'S',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16.sp,
+                  ),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Text(
+                'SKIDDO',
+                style: TextStyle(
+                  color: ext.logoTextColor,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 20.sp,
+                  letterSpacing: 3,
+                ),
+              ),
+            ],
+          ),
+
+          // Right actions
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _AppBarIcon(
+                icon: Icons.search_rounded,
+                ext: ext,
+                onTap: () {},
+              ),
+              SizedBox(width: 4.w),
+              _AppBarIcon(
+                icon: Icons.notifications_none_rounded,
+                ext: ext,
+                onTap: () {},
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AppBarIcon extends StatelessWidget {
+  const _AppBarIcon({
+    required this.icon,
+    required this.ext,
+    required this.onTap,
+  });
+  final IconData icon;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36.w,
+        height: 36.h,
+        decoration: BoxDecoration(
+          color: ext.searchFieldFill,
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, color: ext.greetingColor, size: 20.sp),
       ),
     );
   }
