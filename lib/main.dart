@@ -1,10 +1,8 @@
 import 'package:camera/camera.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:skidoo_app/app.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/firebase_options.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
 void main() async {
@@ -12,7 +10,6 @@ void main() async {
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await setupServiceLocator();
 
   final cameras = await availableCameras();

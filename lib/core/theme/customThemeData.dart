@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/material.dart';
 // ignore: depend_on_referenced_packages
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
 class Styles {
   static MaterialColor white = const MaterialColor(
@@ -155,6 +155,7 @@ class Styles {
             isDarkTheme ? Color.fromARGB(255, 10, 13, 17) : Colors.grey[50],
       ),
      
+      extensions: [isDarkTheme ? AppThemeExtension.dark : AppThemeExtension.light],
       scaffoldBackgroundColor:
           isDarkTheme ? Color.fromARGB(255, 10, 13, 17) : const Color(0xFFF2F2F7),
       colorScheme: ColorScheme(

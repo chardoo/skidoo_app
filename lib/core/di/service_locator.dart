@@ -1,6 +1,11 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:skidoo_app/API/DioClietService.dart';
+import 'package:skidoo_app/api/dio_client_service.dart';
+import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
+import 'package:skidoo_app/features/discovery/data/repositories/discovery_repository_impl.dart';
+import 'package:skidoo_app/features/discovery/domain/repositories/discovery_repository.dart';
+import 'package:skidoo_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
+import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:skidoo_app/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
@@ -16,12 +21,19 @@ import 'package:skidoo_app/features/cart/domain/usecases/complete_payment_usecas
 import 'package:skidoo_app/features/cart/domain/usecases/download_image_usecase.dart';
 import 'package:skidoo_app/features/cart/domain/usecases/pay_for_images_usecase.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
-import 'package:skidoo_app/features/chat/data/datasources/chat_remote_data_source.dart';
+
+// ── Chat feature imports ───────────────────────────────────────────────────────
+import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
+import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
+import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart';
+import 'package:skidoo_app/features/chat/data/local/chat_database.dart';
+import 'package:skidoo_app/features/chat/data/network/chat_api_client.dart';
 import 'package:skidoo_app/features/chat/data/repositories/chat_repository_impl.dart';
 import 'package:skidoo_app/features/chat/domain/repositories/chat_repository.dart';
-import 'package:skidoo_app/features/chat/domain/usecases/get_messages_usecase.dart';
-import 'package:skidoo_app/features/chat/domain/usecases/send_message_usecase.dart';
-import 'package:skidoo_app/features/chat/presentation/bloc/chat_bloc.dart';
+import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
+import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
+
 import 'package:skidoo_app/features/gallery/data/datasources/gallery_remote_data_source.dart';
 import 'package:skidoo_app/features/gallery/data/repositories/gallery_repository_impl.dart';
 import 'package:skidoo_app/features/gallery/domain/repositories/gallery_repository.dart';
@@ -36,6 +48,8 @@ import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/photographers/data/datasources/photographer_remote_data_source.dart';
 import 'package:skidoo_app/features/photographers/data/repositories/photographer_repository_impl.dart';
 import 'package:skidoo_app/features/photographers/domain/repositories/photographer_repository.dart';
+import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_events_usecase.dart';
+import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
 import 'package:skidoo_app/features/photographers/domain/usecases/get_photographers_usecase.dart';
 import 'package:skidoo_app/features/photographers/domain/usecases/search_photographers_usecase.dart';
 import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
@@ -45,6 +59,7 @@ import 'package:skidoo_app/features/user_profile/domain/repositories/user_profil
 import 'package:skidoo_app/features/user_profile/domain/usecases/get_profile_usecase.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/services/notification_prefs_service.dart';
 
 final sl = GetIt.instance;
 
@@ -56,6 +71,8 @@ Future<void> setupServiceLocator() async {
   // ── Core / Infrastructure ─────────────────────────────────────────────────
   sl.registerSingleton<Api>(Api());
   sl.registerSingleton<AuthService>(AuthService());
+  sl.registerSingleton<NotificationPrefsService>(
+      NotificationPrefsService(prefs));
 
   // ── Auth feature ──────────────────────────────────────────────────────────
   sl.registerSingleton<AuthRemoteDataSource>(
@@ -91,6 +108,18 @@ Future<void> setupServiceLocator() async {
         searchImagesUseCase: sl<SearchImagesUseCase>(),
       ));
 
+  // ── Discovery feature ─────────────────────────────────────────────────────
+  sl.registerSingleton<DiscoveryRemoteDataSource>(
+      DiscoveryRemoteDataSourceImpl(sl<Api>()));
+  sl.registerSingleton<DiscoveryRepository>(
+      DiscoveryRepositoryImpl(sl<DiscoveryRemoteDataSource>()));
+  sl.registerSingleton<GetRandomImagesUseCase>(
+      GetRandomImagesUseCase(sl<DiscoveryRepository>()));
+
+  sl.registerFactory<DiscoveryBloc>(() => DiscoveryBloc(
+        getRandomImagesUseCase: sl<GetRandomImagesUseCase>(),
+      ));
+
   // ── Gallery feature ───────────────────────────────────────────────────────
   sl.registerSingleton<GalleryRemoteDataSource>(
       GalleryRemoteDataSourceImpl(sl<Api>()));
@@ -114,7 +143,6 @@ Future<void> setupServiceLocator() async {
   sl.registerSingleton<DownloadImageUseCase>(
       DownloadImageUseCase(sl<CartRepository>()));
 
-  // Cart is a singleton bloc (shared across screens for persistent cart state)
   sl.registerSingleton<CartBloc>(CartBloc(
     payForImagesUseCase: sl<PayForImagesUseCase>(),
     completePaymentUseCase: sl<CompletePaymentUseCase>(),
@@ -130,6 +158,10 @@ Future<void> setupServiceLocator() async {
       GetPhotographersUseCase(sl<PhotographerRepository>()));
   sl.registerSingleton<SearchPhotographersUseCase>(
       SearchPhotographersUseCase(sl<PhotographerRepository>()));
+  sl.registerSingleton<GetPhotographerSamplesUseCase>(
+      GetPhotographerSamplesUseCase(sl<PhotographerRepository>()));
+  sl.registerSingleton<GetPhotographerEventsUseCase>(
+      GetPhotographerEventsUseCase(sl<PhotographerRepository>()));
 
   sl.registerFactory<PhotographerBloc>(() => PhotographerBloc(
         getPhotographersUseCase: sl<GetPhotographersUseCase>(),
@@ -149,25 +181,65 @@ Future<void> setupServiceLocator() async {
   sl.registerFactory<UserProfileBloc>(() => UserProfileBloc(
         getProfileUseCase: sl<GetProfileUseCase>(),
         logoutUseCase: sl<UserLogoutUseCase>(),
+        notificationPrefsService: sl<NotificationPrefsService>(),
       ));
 
   // ── Chat feature ──────────────────────────────────────────────────────────
-  sl.registerSingleton<ChatRemoteDataSource>(ChatRemoteDataSourceImpl());
-  sl.registerSingleton<ChatRepository>(
-      ChatRepositoryImpl(sl<ChatRemoteDataSource>()));
-  sl.registerSingleton<GetMessagesUseCase>(
-      GetMessagesUseCase(sl<ChatRepository>()));
-  sl.registerSingleton<GetMoreMessagesUseCase>(
-      GetMoreMessagesUseCase(sl<ChatRepository>()));
-  sl.registerSingleton<SendMessageUseCase>(
-      SendMessageUseCase(sl<ChatRepository>()));
-  sl.registerSingleton<UpdateMessageUseCase>(
-      UpdateMessageUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<ChatApiClient>(ChatApiClient(sl<AuthService>()));
+  sl.registerSingleton<ChatDatabase>(ChatDatabase());
+  sl.registerSingleton<ChatBackgroundService>(
+      ChatBackgroundService(sl<AuthService>(), sl<ChatDatabase>()));
 
-  sl.registerFactory<ChatBloc>(() => ChatBloc(
-        getMessagesUseCase: sl<GetMessagesUseCase>(),
-        getMoreMessagesUseCase: sl<GetMoreMessagesUseCase>(),
-        sendMessageUseCase: sl<SendMessageUseCase>(),
-        updateMessageUseCase: sl<UpdateMessageUseCase>(),
+  sl.registerSingleton<ChatRestDataSource>(
+      ChatRestDataSourceImpl(sl<ChatApiClient>()));
+  sl.registerSingleton<ChatRepository>(
+      ChatRepositoryImpl(sl<ChatRestDataSource>(), sl<ChatDatabase>()));
+
+  // Use cases
+  sl.registerSingleton<GetGlobalRoomUseCase>(
+      GetGlobalRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetEventRoomUseCase>(
+      GetEventRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetSampleRoomUseCase>(
+      GetSampleRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetOrCreateDirectRoomUseCase>(
+      GetOrCreateDirectRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<CreateEventPrivateRoomUseCase>(
+      CreateEventPrivateRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetMyRoomsUseCase>(
+      GetMyRoomsUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetCachedRoomsUseCase>(
+      GetCachedRoomsUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetRoomUseCase>(GetRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<InviteToRoomUseCase>(
+      InviteToRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetRoomMessagesUseCase>(
+      GetRoomMessagesUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetCachedMessagesUseCase>(
+      GetCachedMessagesUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<CacheMessageUseCase>(
+      CacheMessageUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetUnreadCountsUseCase>(
+      GetUnreadCountsUseCase(sl<ChatRepository>(), sl<AuthService>()));
+  sl.registerSingleton<MarkRoomAsReadUseCase>(
+      MarkRoomAsReadUseCase(sl<ChatRepository>()));
+
+  // BLoCs (factories so each page gets a fresh instance)
+  sl.registerFactory<ChatRoomsBloc>(() => ChatRoomsBloc(
+        getMyRooms: sl<GetMyRoomsUseCase>(),
+        getCachedRooms: sl<GetCachedRoomsUseCase>(),
+        getUnreadCounts: sl<GetUnreadCountsUseCase>(),
+        getRoomMessages: sl<GetRoomMessagesUseCase>(),
+        bgService: sl<ChatBackgroundService>(),
+      ));
+
+  sl.registerFactory<ChatRoomBloc>(() => ChatRoomBloc(
+        getRoomMessages: sl<GetRoomMessagesUseCase>(),
+        getCachedMessages: sl<GetCachedMessagesUseCase>(),
+        cacheMessage: sl<CacheMessageUseCase>(),
+        markRoomAsRead: sl<MarkRoomAsReadUseCase>(),
+        wsService: ChatWebSocketService(sl<AuthService>()),
+        authService: sl<AuthService>(),
+        bgService: sl<ChatBackgroundService>(),
       ));
 }

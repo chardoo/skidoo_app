@@ -7,6 +7,7 @@ import 'package:skidoo_app/core/theme/customThemeData.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 
 class MyApp extends StatelessWidget {
@@ -21,11 +22,14 @@ class MyApp extends StatelessWidget {
       value: sl<CartBloc>(),
       child: ScreenUtilInit(
         designSize: const Size(390, 844),
+        minTextAdapt: true,
+        splitScreenMode: true,
         builder: (context, child) => MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: Styles.themeData(true, context),
-          initialRoute: token.isEmpty ? LoginPage.routeName : HomePage.routeName,
+          initialRoute: token.isEmpty ? DiscoveryPage.routeName : HomePage.routeName,
           routes: {
+            DiscoveryPage.routeName: (_) => const DiscoveryPage(),
             LoginPage.routeName: (_) => const LoginPage(),
             SignUpPage.routeName: (_) =>
                 SignUpPage(camera: firstCamera ?? const CameraDescription(name: '', lensDirection: CameraLensDirection.front, sensorOrientation: 0)),
