@@ -20,12 +20,17 @@ class Event {
 
   //deserialization
   factory Event.fromMap(Map<String, dynamic> json) {
-    print(json);
+    // Photographer name can come under different field names.
+    final photographerName = json["userName"]
+        ?? (json["user"] as Map<String, dynamic>?)?["name"]
+        ?? json["photographerName"]
+        ?? json["photographer"]
+        ?? '';
     return Event(
-      json["id"],
-      json["eventName"],
-      json["eventDate"],
-      json["user"]["name"],
+      json["id"] as String? ?? '',
+      json["eventName"] as String? ?? '',
+      json["eventDate"] as String? ?? '',
+      photographerName as String,
     );
   }
   Map<String, dynamic> toJson() => {

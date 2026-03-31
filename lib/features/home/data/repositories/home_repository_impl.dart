@@ -22,16 +22,6 @@ class HomeRepositoryImpl implements HomeRepository {
   }
 
   @override
-  Future<List<Photo>> searchEventImages(
-      String eventId, String uniqueName) async {
-    try {
-      return await _remoteDataSource.searchEventImages(eventId, uniqueName);
-    } on NetworkException {
-      rethrow;
-    } on ServerException {
-      rethrow;
-    } catch (e) {
-      throw ServerException('Unexpected error searching images: $e');
-    }
-  }
+  Stream<Photo> streamEventImages(String eventId, String email) =>
+      _remoteDataSource.streamEventImages(eventId, email);
 }

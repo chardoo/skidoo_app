@@ -12,6 +12,7 @@
 
 class Photo {
   final String id;
+  final String eventId;
   final String eventName;
   final String imageId;
   final String url;
@@ -22,7 +23,8 @@ class Photo {
   final bool isPublic;
 
   Photo(this.id, this.eventName, this.imageId, this.url, this.userId,
-      this.price, this.eventDate, this.identification, this.isPublic);
+      this.price, this.eventDate, this.identification, this.isPublic,
+      {this.eventId = ''});
 
   //deserialization
   factory Photo.fromMap(Map<String, dynamic> json) {
@@ -41,18 +43,17 @@ class Photo {
   }
 
   factory Photo.fromMap2(Map<String, dynamic> json) {
-    print("hello how are  you doing the");
-    print(json['event']);
     return Photo(
       json["id"],
       json["event"]["eventName"],
       json["imageId"],
       json["url"],
-      json['event']["userId"],
-      int.parse(json["price"]),
-      json["event"]["eventDate"],
+      json['event']["userId"] ?? '',
+      int.tryParse(json["price"].toString()) ?? 0,
+      json["event"]["eventDate"] ?? '',
       json["identification"],
-      json['public']
+      json['public'] ?? false,
+      eventId: json["event"]["id"]?.toString() ?? '',
     );
   }
   Map<String, dynamic> toJson() => {

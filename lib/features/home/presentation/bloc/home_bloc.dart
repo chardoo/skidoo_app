@@ -63,14 +63,21 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       HomeImagesSearched event, Emitter<HomeState> emit) async {
     emit(state.copyWith(isLoadingImages: true, searchImages: [], clearError: true));
     try {
-      final uniqueName = await _authService.getUniqueName();
-      var images = await _searchImagesUseCase(
-          SearchImagesParams(eventId: event.eventId, uniqueName: uniqueName));
-      if (images.isEmpty) {
-        images = await _searchImagesUseCase(
-            SearchImagesParams(eventId: event.eventName, uniqueName: uniqueName));
-      }
-      emit(state.copyWith(isLoadingImages: false, searchImages: images));
+      final email = await _authService.getEmail();
+      await emit.forEach<Photo>(
+        _searchImagesUseCase(
+            SearchImagesParams(eventId: event.eventId, email: email)),
+        onData: (photo) => state.copyWith(
+          isLoadingImages: false,
+          searchImages: [...state.searchImages, photo],
+        ),
+        onError: (_, __) => state.copyWith(
+          isLoadingImages: false,
+          errorMessage: 'Failed to load images.',
+        ),
+      );
+      // Stream finished — make sure loading flag is cleared.
+      emit(state.copyWith(isLoadingImages: false));
     } on NetworkException catch (e) {
       emit(state.copyWith(isLoadingImages: false, errorMessage: e.message));
     } on ServerException catch (e) {

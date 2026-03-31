@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/event/Event.dart';
 
 class SearchItemWidget extends StatelessWidget {
@@ -23,41 +25,46 @@ class SearchItemWidget extends StatelessWidget {
       formattedDate = event.eventDate;
     }
 
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
     return Container(
-      margin: const EdgeInsets.only(right: 0, left: 0),
-      height: 55,
-      decoration: const BoxDecoration(
-        color: Color.fromARGB(255, 227, 225, 225),
-        borderRadius: BorderRadius.all(Radius.circular(20)),
+      margin: EdgeInsets.only(bottom: 8.h),
+      decoration: BoxDecoration(
+        color: ext.searchItemBackground,
+        borderRadius: BorderRadius.circular(14.r),
       ),
       child: ListTile(
-        leading: Text(
-          event.photographer,
-          style: const TextStyle(
-            color: Color.fromARGB(255, 33, 32, 32),
-            fontWeight: FontWeight.w900,
-            fontStyle: FontStyle.normal,
-            fontSize: 15,
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+        leading: CircleAvatar(
+          radius: 18.r,
+          backgroundColor: ext.accentGold,
+          child: Text(
+            event.photographer.isNotEmpty
+                ? event.photographer[0].toUpperCase()
+                : '?',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 14.sp,
+            ),
           ),
         ),
         title: Text(
           event.eventName,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(fontWeight: FontWeight.bold, color: Colors.black),
+          style: TextStyle(
+            color: ext.searchItemTextColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 14.sp,
+          ),
         ),
         subtitle: Text(
-          formattedDate,
+          '${event.photographer}  ·  $formattedDate',
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(
-                  fontWeight: FontWeight.normal,
-                  fontSize: 14,
-                  color: Colors.black),
+          style: TextStyle(
+            color: ext.searchHintColor,
+            fontSize: 12.sp,
+          ),
         ),
         onTap: onTap,
       ),
