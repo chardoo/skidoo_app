@@ -1,62 +1,89 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
-import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_tile_widget.dart';
+import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_card.dart';
+import 'package:skidoo_app/features/photographers/presentation/widgets/photographers_header.dart';
 
-class PhotographersPage extends StatelessWidget {
+class PhotographersPage extends StatefulWidget {
   const PhotographersPage({super.key});
 
   @override
+  State<PhotographersPage> createState() => _PhotographersPageState();
+}
+
+class _PhotographersPageState extends State<PhotographersPage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _progress;
+  late final TextEditingController _textCtrl;
+  bool _isSearchOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _progress = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+    _textCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _textCtrl.dispose();
+    super.dispose();
+  }
+
+  void _openSearch() {
+    setState(() => _isSearchOpen = true);
+    _ctrl.forward();
+  }
+
+  void _closeSearch() {
+    setState(() => _isSearchOpen = false);
+    _ctrl.reverse();
+    _textCtrl.clear();
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+    context.read<PhotographerBloc>().add(const PhotographersLoadRequested());
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        centerTitle: true,
-        title: const Text('Photographers'),
-      ),
-      body: Column(
+      backgroundColor: ext.homeBackground,
+      body: SafeArea(
+        child: Column(
         children: [
-          Container(
-            margin: const EdgeInsets.only(
-                top: 10, left: 20, right: 20, bottom: 20),
-            height: 40,
-            child: TextFormField(
-              decoration: InputDecoration(
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.close),
-                  color: const Color.fromARGB(255, 247, 245, 245),
-                  onPressed: () {
-                    context
-                        .read<PhotographerBloc>()
-                        .add(const PhotographersLoadRequested());
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(5.0),
-                ),
-                fillColor: const Color.fromARGB(255, 74, 73, 73),
-                filled: true,
-                labelText: 'Search',
-                labelStyle: const TextStyle(
-                  color: Color.fromARGB(255, 200, 198, 198),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              onChanged: (value) {
-                context
-                    .read<PhotographerBloc>()
-                    .add(PhotographersSearched(value));
-              },
-            ),
+          // ── Header ──────────────────────────────────────────────────
+          PhotographersHeader(
+            progress: _progress,
+            textCtrl: _textCtrl,
+            isSearchOpen: _isSearchOpen,
+            onSearchOpen: _openSearch,
+            onSearchClose: _closeSearch,
+            onSearchChanged: (q) {
+              context
+                  .read<PhotographerBloc>()
+                  .add(PhotographersSearched(q));
+            },
           ),
+
+          // ── List ─────────────────────────────────────────────────────
           Expanded(
             child: BlocBuilder<PhotographerBloc, PhotographerState>(
               builder: (context, state) {
                 if (state.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
+                  return Center(
+                    child: CircularProgressIndicator(color: ext.accentGold),
                   );
                 }
                 if (state.errorMessage != null) {
@@ -64,47 +91,66 @@ class PhotographersPage extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline,
-                            size: 60, color: Colors.red),
-                        const SizedBox(height: 8),
-                        Text(state.errorMessage!,
-                            style: const TextStyle(
-                                color:
-                                    Color.fromARGB(255, 221, 217, 217))),
+                        Icon(Icons.error_outline_rounded,
+                            size: 56.sp, color: Colors.redAccent),
+                        SizedBox(height: 8.h),
+                        Text(
+                          state.errorMessage!,
+                          style: TextStyle(
+                              color: ext.searchHintColor, fontSize: 14.sp),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 12.h),
                         TextButton(
                           onPressed: () => context
                               .read<PhotographerBloc>()
                               .add(const PhotographersLoadRequested()),
-                          child: const Text('Retry'),
+                          child: Text('Retry',
+                              style: TextStyle(color: ext.accentGold)),
                         ),
                       ],
                     ),
                   );
                 }
                 if (state.photographers.isEmpty) {
-                  return const Center(
-                    child: Text('No photographers found.',
-                        style: TextStyle(
-                            color:
-                                Color.fromARGB(255, 221, 217, 217))),
+                  return Center(
+                    child: Text(
+                      'No photographers found.',
+                      style: TextStyle(
+                          color: ext.searchHintColor, fontSize: 14.sp),
+                    ),
                   );
                 }
-                return Container(
-                  margin:
-                      const EdgeInsets.only(left: 16, right: 16),
-                  child: ListView.builder(
-                    scrollDirection: Axis.vertical,
-                    itemCount: state.photographers.length,
-                    itemBuilder: (context, index) {
-                      return PhotographerTileWidget(
-                          photographer: state.photographers[index]);
-                    },
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 900),
+                    child: ListView.builder(
+                      padding: EdgeInsets.only(top: 4.h, bottom: 24.h),
+                      itemCount: state.photographers.length,
+                      itemBuilder: (context, index) {
+                        final p = state.photographers[index];
+                        return PhotographerCard(
+                          photographer: p,
+                          onTap: () {
+                            final homeBloc = context.read<HomeBloc>();
+                            Navigator.of(context).push(MaterialPageRoute(
+                              builder: (_) => BlocProvider.value(
+                                value: homeBloc,
+                                child: PhotographerProfilePage(photographer: p),
+                              ),
+                            ));
+                          },
+                        );
+                      },
+                    ),
                   ),
                 );
               },
             ),
           ),
         ],
+        ),
       ),
     );
   }

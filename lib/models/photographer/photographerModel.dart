@@ -3,10 +3,17 @@ class PhotographerModel {
   String name = "";
   String email = "";
   String contact = "";
+  String? imageUrl;
+  double? rating;
 
-
-  PhotographerModel(this.id, this.email, this.name, this.contact,
-    );
+  PhotographerModel(
+    this.id,
+    this.email,
+    this.name,
+    this.contact, {
+    this.imageUrl,
+    this.rating,
+  });
 
   PhotographerModel.empty() {
     id = "";
@@ -22,6 +29,8 @@ class PhotographerModel {
       json["email"] as String,
       json["name"] as String,
       json["contact"] as String,
+      imageUrl: json["imageUrl"] as String?,
+      rating: (json["rating"] as num?)?.toDouble(),
     );
   }
 
@@ -32,6 +41,8 @@ class PhotographerModel {
       "email": email,
       "name": name,
       "contact": contact,
+      if (imageUrl != null) "imageUrl": imageUrl,
+      if (rating != null) "rating": rating,
     };
     return map;
   }
