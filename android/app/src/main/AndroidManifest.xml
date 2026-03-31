@@ -1,29 +1,63 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Network — API calls, Firebase, WebView payment gateway -->
+    <!-- ── Network ──────────────────────────────────────────────────────────── -->
+    <!-- HTTP/HTTPS API calls, WebSocket, Firebase, WebView payment gateway -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-    <!-- Camera — face capture during signup -->
+    <!-- ── Camera ───────────────────────────────────────────────────────────── -->
+    <!-- Face capture during signup, photo taking -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature android:name="android.hardware.camera" android:required="true" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
-    <!-- Storage — write downloaded photos (API <= 29) -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="29" />
-    <!-- Storage — read images (API <= 32) -->
+    <!-- ── Storage (legacy — API ≤ 29) ─────────────────────────────────────── -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <!-- Media images — read gallery (API >= 33) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
 
-    <!-- Downloads — lecle_downloads_path_provider -->
+    <!-- ── Media (API ≥ 33 — READ_EXTERNAL_STORAGE was split) ──────────────── -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+
+    <!-- ── Downloads ────────────────────────────────────────────────────────── -->
+    <!-- lecle_downloads_path_provider / image_gallery_saver -->
     <uses-permission android:name="android.permission.DOWNLOAD_WITHOUT_NOTIFICATION" />
+
+    <!-- ── Vibration ────────────────────────────────────────────────────────── -->
+    <!-- Haptic feedback on send / notifications -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- ── Notifications (API ≥ 33) ─────────────────────────────────────────── -->
+    <!-- Firebase Cloud Messaging push notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- ── Foreground service (required if FCM uses data-only messages) ──────── -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- ── Wake lock ────────────────────────────────────────────────────────── -->
+    <!-- Keeps the device awake during active WebSocket / upload operations -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- ── Biometrics / Fingerprint ─────────────────────────────────────────── -->
+    <!-- permission_handler can request biometric auth -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+
+    <!-- ── Flash / Torch ────────────────────────────────────────────────────── -->
+    <!-- Camera plugin may use flash -->
+    <uses-permission android:name="android.permission.FLASHLIGHT" />
 
     <application
         android:label="skidoo_app"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:requestLegacyExternalStorage="true"
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -33,10 +67,6 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
@@ -52,15 +82,32 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
-
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- url_launcher — open browser, mailto, tel links -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="http"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO"/>
+            <data android:scheme="mailto"/>
         </intent>
     </queries>
 </manifest>

@@ -1,5 +1,5 @@
-# google_ml_kit and camera require iOS 13+
-platform :ios, '13.0'
+# Uncomment this line to define a global platform for your project
+# platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -37,7 +37,30 @@ target 'Runner' do
 end
 
 post_install do |installer|
+  # Fix gRPC-Core and gRPC-C++ basic_seq.h: Apple Clang 15+ requires an explicit
+  # template argument list after the `template` keyword in dependent contexts.
+  ['gRPC-Core', 'gRPC-C++'].each do |pod_name|
+    basic_seq = File.join(__dir__, "Pods/#{pod_name}/src/core/lib/promise/detail/basic_seq.h")
+    if File.exist?(basic_seq)
+      content = File.read(basic_seq)
+      patched = content.gsub(
+        'Traits::template CallSeqFactory(',
+        'Traits::template CallSeqFactory<>('
+      )
+      File.write(basic_seq, patched) if patched != content
+    end
+  end
+
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    if target.name == 'BoringSSL-GRPC'
+      target.source_build_phase.files.each do |file|
+        if file.settings && file.settings['COMPILER_FLAGS']
+          flags = file.settings['COMPILER_FLAGS'].split
+          flags.reject! { |flag| flag == '-GCC_WARN_INHIBIT_ALL_WARNINGS' }
+          file.settings['COMPILER_FLAGS'] = flags.join(' ')
+        end
+      end
+    end
   end
 end

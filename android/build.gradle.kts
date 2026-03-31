@@ -5,6 +5,19 @@ allprojects {
     }
 }
 
+// Fix for older Flutter plugins (e.g. image_gallery_saver) that don't declare
+// a namespace in their build.gradle, which is required by AGP 8+.
+subprojects {
+    afterEvaluate {
+        (extensions.findByName("android") as? com.android.build.gradle.LibraryExtension)
+            ?.apply {
+                if (namespace == null) {
+                    namespace = group.toString()
+                }
+            }
+    }
+}
+
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
         .dir("../../build")
