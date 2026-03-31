@@ -13,3 +13,10 @@ class UserProfileLoadRequested extends UserProfileEvent {
 class UserLogoutRequested extends UserProfileEvent {
   const UserLogoutRequested();
 }
+
+class NotificationsMuteToggled extends UserProfileEvent {
+  final bool isMuted;
+  const NotificationsMuteToggled(this.isMuted);
+  @override
+  List<Object?> get props => [isMuted];
+}

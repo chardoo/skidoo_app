@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart' as dio;
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:skidoo_app/API/DioClietService.dart';
+import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
 
 abstract class CartRemoteDataSource {
@@ -22,7 +22,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       String email, String amount) async {
     try {
       final res = await _api.dio.post(
-        '/client/payForImages',
+        '/client/payments/initialize',
         data: jsonEncode({'email': email, 'amount': amount}),
       );
       if (res.data == null || res.data == false) {
@@ -44,7 +44,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       Map<String, dynamic> payload) async {
     try {
       final res = await _api.dio.post(
-        '/client/completePayment',
+        '/client/payments/complete',
         data: jsonEncode(payload),
       );
       if (res.statusCode == 200 && res.data != null) {

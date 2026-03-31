@@ -114,7 +114,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
               })
           .toList();
       final payload = {
-        'amount': state.totalAmount.toString(),
+        'amount': state.totalAmount,
         'referenceId': state.referenceId,
         'clientId': clientId,
         'PaidImage': paidImages,

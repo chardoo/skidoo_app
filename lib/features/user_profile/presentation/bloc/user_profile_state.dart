@@ -5,6 +5,7 @@ class UserProfileState extends Equatable {
   final String name;
   final String email;
   final bool isLoggedOut;
+  final bool isMuted;
   final String? errorMessage;
 
   const UserProfileState({
@@ -12,6 +13,7 @@ class UserProfileState extends Equatable {
     this.name = '',
     this.email = '',
     this.isLoggedOut = false,
+    this.isMuted = false,
     this.errorMessage,
   });
 
@@ -20,6 +22,7 @@ class UserProfileState extends Equatable {
     String? name,
     String? email,
     bool? isLoggedOut,
+    bool? isMuted,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -28,11 +31,12 @@ class UserProfileState extends Equatable {
       name: name ?? this.name,
       email: email ?? this.email,
       isLoggedOut: isLoggedOut ?? this.isLoggedOut,
+      isMuted: isMuted ?? this.isMuted,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 
   @override
   List<Object?> get props =>
-      [isLoading, name, email, isLoggedOut, errorMessage];
+      [isLoading, name, email, isLoggedOut, isMuted, errorMessage];
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:skidoo_app/core/utils/responsive.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/features/gallery/presentation/bloc/gallery_bloc.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_image_widget.dart';
@@ -76,21 +77,29 @@ class GalleryPage extends StatelessWidget {
                   ),
                 );
               }
-              return Padding(
-                padding:
-                    const EdgeInsets.only(left: 16, right: 16, top: 12),
-                child: MasonryGridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  itemCount: state.photos.length,
-                  itemBuilder: (context, index) {
-                    return BlocProvider.value(
-                      value: context.read<CartBloc>(),
-                      child: GalleryImageWidget(
-                          imageUrl: state.photos[index].url),
-                    );
-                  },
+              return Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1200),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => Padding(
+                      padding:
+                          const EdgeInsets.only(left: 16, right: 16, top: 12),
+                      child: MasonryGridView.count(
+                        crossAxisCount: responsiveColumnCount(constraints.maxWidth, minColWidth: 200),
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        itemCount: state.photos.length,
+                        itemBuilder: (context, index) {
+                          return BlocProvider.value(
+                            value: context.read<CartBloc>(),
+                            child: GalleryImageWidget(
+                                imageUrl: state.photos[index].url),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
                 ),
               );
             },

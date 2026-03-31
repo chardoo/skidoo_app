@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart' as dio;
-import 'package:skidoo_app/API/DioClietService.dart';
+import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
 import 'package:skidoo_app/models/photos/Photo.dart';
 
@@ -17,7 +17,7 @@ class GalleryRemoteDataSourceImpl implements GalleryRemoteDataSource {
   Future<List<Photo>> getUserGallery(String clientId) async {
     try {
       final res = await _api.dio.post(
-        '/client/clientDashboard',
+        '/client/dashboard',
         data: jsonEncode({'clientId': clientId}),
       );
       final body = res.data as List<dynamic>;

@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/usecases/usecase.dart';
 import 'package:skidoo_app/features/user_profile/domain/usecases/get_profile_usecase.dart';
+import 'package:skidoo_app/services/notification_prefs_service.dart';
 
 part 'user_profile_event.dart';
 part 'user_profile_state.dart';
@@ -10,15 +11,19 @@ part 'user_profile_state.dart';
 class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
   final GetProfileUseCase _getProfileUseCase;
   final UserLogoutUseCase _logoutUseCase;
+  final NotificationPrefsService _notifPrefs;
 
   UserProfileBloc({
     required GetProfileUseCase getProfileUseCase,
     required UserLogoutUseCase logoutUseCase,
+    required NotificationPrefsService notificationPrefsService,
   })  : _getProfileUseCase = getProfileUseCase,
         _logoutUseCase = logoutUseCase,
+        _notifPrefs = notificationPrefsService,
         super(const UserProfileState()) {
     on<UserProfileLoadRequested>(_onLoadRequested);
     on<UserLogoutRequested>(_onLogoutRequested);
+    on<NotificationsMuteToggled>(_onMuteToggled);
   }
 
   Future<void> _onLoadRequested(
@@ -30,6 +35,7 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
         isLoading: false,
         name: profile['name'] ?? '',
         email: profile['email'] ?? '',
+        isMuted: _notifPrefs.isMuted,
       ));
     } on CacheException catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.message));
@@ -49,5 +55,11 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
     } catch (e) {
       emit(state.copyWith(errorMessage: 'Logout failed. Please try again.'));
     }
+  }
+
+  Future<void> _onMuteToggled(
+      NotificationsMuteToggled event, Emitter<UserProfileState> emit) async {
+    await _notifPrefs.setMuted(event.isMuted);
+    emit(state.copyWith(isMuted: event.isMuted));
   }
 }

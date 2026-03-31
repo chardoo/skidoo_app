@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 
 class AccountPage extends StatelessWidget {
@@ -78,6 +79,8 @@ class _AccountView extends StatelessWidget {
                           fontSize: 14,
                         ),
                       ),
+                      const SizedBox(height: 32),
+                      _NotificationSettingsCard(isMuted: state.isMuted),
                       const Spacer(),
                       SizedBox(
                         width: double.infinity,
@@ -110,6 +113,73 @@ class _AccountView extends StatelessWidget {
                 ),
         );
       },
+    );
+  }
+}
+
+// ── Notifications settings card ───────────────────────────────────────────────
+
+class _NotificationSettingsCard extends StatelessWidget {
+  const _NotificationSettingsCard({required this.isMuted});
+
+  final bool isMuted;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>();
+    final cardColor = ext?.cardSurface ?? const Color(0xFF1E1E1E);
+    final labelColor = ext?.greetingColor ?? Colors.white;
+    final subColor = ext?.searchHintColor ?? Colors.grey;
+    final accentColor = ext?.accentGold ?? const Color(0xFFFFD700);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+            child: Text(
+              'Notifications',
+              style: TextStyle(
+                color: subColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          SwitchListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            activeThumbColor: accentColor,
+            activeTrackColor: accentColor.withValues(alpha: 0.4),
+            title: Text(
+              'Mute message sounds & vibration',
+              style: TextStyle(color: labelColor, fontSize: 14),
+            ),
+            subtitle: Text(
+              isMuted
+                  ? 'Messages arrive silently'
+                  : 'You\'ll feel a vibration for new messages',
+              style: TextStyle(color: subColor, fontSize: 12),
+            ),
+            secondary: Icon(
+              isMuted ? Icons.notifications_off_outlined : Icons.notifications_outlined,
+              color: isMuted ? subColor : accentColor,
+            ),
+            value: isMuted,
+            onChanged: (value) {
+              context
+                  .read<UserProfileBloc>()
+                  .add(NotificationsMuteToggled(value));
+            },
+          ),
+          const SizedBox(height: 4),
+        ],
+      ),
     );
   }
 }
