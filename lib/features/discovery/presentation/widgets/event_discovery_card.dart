@@ -8,6 +8,8 @@ import 'package:skidoo_app/features/discovery/presentation/widgets/card_interact
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_description_text.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_comment_sheet.dart';
+import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:skidoo_app/models/photographer/photographerModel.dart';
 
 class EventDiscoveryCard extends StatefulWidget {
   const EventDiscoveryCard({
@@ -95,7 +97,11 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── 1. Post header ─────────────────────────────────────────────
-          _PostHeader(event: widget.event, ext: ext),
+          _PostHeader(
+            event: widget.event,
+            ext: ext,
+            onPhotographerTap: () => _openPhotographerProfile(context),
+          ),
 
           // ── 2. Photo area ──────────────────────────────────────────────
           GestureDetector(
@@ -245,6 +251,20 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     );
   }
 
+  void _openPhotographerProfile(BuildContext context) {
+    final photographer = PhotographerModel(
+      widget.event.photographerId,
+      '',
+      widget.event.photographerName,
+      '',
+    );
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PhotographerProfilePage(photographer: photographer),
+      ),
+    );
+  }
+
   void _showCommentSheet(BuildContext context, AppThemeExtension ext) {
     showModalBottomSheet(
       context: context,
@@ -259,9 +279,14 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
 // ── Post header ───────────────────────────────────────────────────────────────
 
 class _PostHeader extends StatelessWidget {
-  const _PostHeader({required this.event, required this.ext});
+  const _PostHeader({
+    required this.event,
+    required this.ext,
+    this.onPhotographerTap,
+  });
   final EventDiscovery event;
   final AppThemeExtension ext;
+  final VoidCallback? onPhotographerTap;
 
   @override
   Widget build(BuildContext context) {
@@ -272,13 +297,19 @@ class _PostHeader extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       child: Row(
         children: [
-          // Story-ring avatar
-          _StoryRingAvatar(initial: initial, ext: ext),
+          // Story-ring avatar (tappable)
+          GestureDetector(
+            onTap: onPhotographerTap,
+            child: _StoryRingAvatar(initial: initial, ext: ext),
+          ),
           SizedBox(width: 10.w),
 
-          // Name + sub-label
+          // Name + sub-label (also tappable)
           Expanded(
-            child: Column(
+            child: GestureDetector(
+              onTap: onPhotographerTap,
+              behavior: HitTestBehavior.opaque,
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -309,6 +340,7 @@ class _PostHeader extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
             ),
           ),
 
