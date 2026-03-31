@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart' as dio;
-import 'package:http/http.dart' as http;
-import 'package:skidoo_app/API/DioClietService.dart';
+import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' as app_exceptions;
 import 'package:skidoo_app/models/Auth/LoginResponse.dart';
 
@@ -20,11 +19,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<LoginResponseObject> login(String email, String password) async {
+    print("hey login is here");
     try {
+      print(_api.dio.options.baseUrl);
       final res = await _api.dio.post(
         '/client/login',
         data: jsonEncode({'email': email, 'password': password}),
       );
+      print(res);
       if (res.statusCode == 200) {
         return LoginResponseObject.fromJson(res.data as Map<String, dynamic>);
       }
@@ -35,6 +37,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on app_exceptions.ServerException {
       rethrow;
     } catch (e) {
+      print(e);
       throw app_exceptions.ServerException('Unexpected login error: $e');
     }
   }
@@ -42,22 +45,19 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<void> register(Map<String, String> fields, File image) async {
     try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse(
-            'https://photoapp-backend-b71j.onrender.com/client/createClient'),
-      );
-      request.fields.addAll(fields);
-      request.files.add(http.MultipartFile(
-        'images',
-        image.readAsBytes().asStream(),
-        image.lengthSync(),
-        filename: image.path.split('/').last,
-      ));
-      final streamed = await request.send();
-      if (streamed.statusCode == 201) return;
+      final formData = dio.FormData.fromMap({
+        ...fields,
+        'files': await dio.MultipartFile.fromFile(
+          image.path,
+          filename: image.path.split('/').last,
+        ),
+      });
+      final res = await _api.dio.post('/client/create', data: formData);
+      if (res.statusCode == 201) return;
       throw app_exceptions.ServerException(
-          'Registration failed. Status: ${streamed.statusCode}');
+          'Registration failed. Status: ${res.statusCode}');
+    } on dio.DioException catch (err) {
+      throw _mapDioException(err);
     } on app_exceptions.ServerException {
       rethrow;
     } catch (e) {
@@ -69,7 +69,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<LoginResponseObject> confirmEmail(Map<String, dynamic> data) async {
     try {
       final res = await _api.dio.post(
-        '/client/confirmEmail',
+        '/client/confirm-email',
         data: jsonEncode(data),
       );
       if (res.statusCode == 200) {
@@ -89,7 +89,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<LoginResponseObject> verifyCode(Map<String, dynamic> data) async {
     try {
       final res = await _api.dio.post(
-        '/client/confirmEmail',
+        '/client/verify-code',
         data: jsonEncode(data),
       );
       if (res.statusCode == 200) {
