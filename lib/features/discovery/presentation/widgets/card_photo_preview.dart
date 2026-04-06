@@ -3,37 +3,79 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:video_player/video_player.dart';
 
-/// Full-width swipeable photo carousel — Instagram / TikTok style.
-class PostPhotoCarousel extends StatelessWidget {
+/// Full-width swipeable photo/video carousel — Instagram / TikTok style.
+class PostPhotoCarousel extends StatefulWidget {
   const PostPhotoCarousel({
     super.key,
     required this.pics,
     required this.pageController,
     required this.showBlur,
     required this.onDoubleTap,
+    required this.onTap,
+    this.scrollable = true,
   });
 
   final List<EventPicture> pics;
   final PageController pageController;
   final bool showBlur;
   final VoidCallback onDoubleTap;
+  final bool scrollable;
+  final VoidCallback onTap;
+
+  @override
+  State<PostPhotoCarousel> createState() => _PostPhotoCarouselState();
+}
+
+class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
+  /// Drives play/pause for all video slides in this carousel.
+  final _activeIndex = ValueNotifier<int>(0);
+
+  void _onPageChanged(int i) => _activeIndex.value = i;
+
+  @override
+  void dispose() {
+    _activeIndex.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return PageView.builder(
-      controller: pageController,
-      itemCount: pics.length,
+      controller: widget.pageController,
+      physics: widget.scrollable
+          ? const BouncingScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
+      itemCount: widget.pics.length,
+      onPageChanged: _onPageChanged,
       itemBuilder: (context, index) {
-        final pic = pics[index];
-        final isLastLocked = showBlur && index == 2 && pics.length > 3;
+        final pic = widget.pics[index];
+        final isLastLocked =
+            widget.showBlur && index == 2 && widget.pics.length > 3;
+
+        if (pic.isVideo) {
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              _SliderVideoItem(
+                url: pic.url,
+                index: index,
+                activeIndex: _activeIndex,
+                onTap: widget.onTap,
+              ),
+              if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
+              if (pic.owner) const _OwnerCornerRibbon(),
+            ],
+          );
+        }
 
         return GestureDetector(
-          onDoubleTap: onDoubleTap,
+          onTap: widget.onTap,
+          onDoubleTap: widget.onDoubleTap,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Photo
               CachedNetworkImage(
                 imageUrl: pic.url,
                 fit: BoxFit.cover,
@@ -42,13 +84,262 @@ class PostPhotoCarousel extends StatelessWidget {
                 errorWidget: (_, __, ___) =>
                     Container(color: const Color(0xFF111111)),
               ),
-
-              // Lock overlay on last visible tile (unauthenticated)
-              if (isLastLocked) _LockedOverlay(remaining: pics.length - 3),
+              if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
+              if (pic.owner) const _OwnerCornerRibbon(),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+// ── Inline video player for the feed carousel ─────────────────────────────────
+
+class _SliderVideoItem extends StatefulWidget {
+  const _SliderVideoItem({
+    required this.url,
+    required this.index,
+    required this.activeIndex,
+    required this.onTap,
+  });
+
+  final String url;
+  final int index;
+  final ValueNotifier<int> activeIndex;
+  /// Called when the user taps while video is not yet initialized, or when
+  /// the card's outer gesture (open EventPicturesPage) should fire.
+  final VoidCallback onTap;
+
+  @override
+  State<_SliderVideoItem> createState() => _SliderVideoItemState();
+}
+
+class _SliderVideoItemState extends State<_SliderVideoItem>
+    with WidgetsBindingObserver {
+  /// Shared mute state across all feed carousel videos (like Instagram).
+  static final _muted = ValueNotifier<bool>(true);
+
+  late final VideoPlayerController _ctrl;
+  bool _initialized = false;
+  bool _manuallyPaused = false;
+  /// Tracks whether this widget is on-screen (not hidden by IndexedStack /
+  /// Offstage). Updated via TickerMode which IndexedStack flips for hidden tabs.
+  bool _screenActive = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _ctrl = VideoPlayerController.networkUrl(
+      Uri.parse(widget.url),
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    )
+      ..setLooping(true)
+      ..initialize().then((_) {
+        if (!mounted) return;
+        _ctrl.setVolume(_muted.value ? 0.0 : 1.0);
+        setState(() => _initialized = true);
+        _syncPlayback();
+      });
+    widget.activeIndex.addListener(_syncPlayback);
+    _muted.addListener(_onMuteChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // TickerMode is disabled by IndexedStack / Offstage when the tab is hidden.
+    // Use it as a reliable "is my tab visible?" signal.
+    final active = TickerMode.of(context);
+    if (active != _screenActive) {
+      _screenActive = active;
+      _syncPlayback();
+    }
+  }
+
+  /// App lifecycle — pause when backgrounded, resume when foregrounded.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        if (_initialized && _ctrl.value.isPlaying) _ctrl.pause();
+      case AppLifecycleState.resumed:
+        _syncPlayback();
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.activeIndex.removeListener(_syncPlayback);
+    _muted.removeListener(_onMuteChanged);
+    _ctrl
+      ..pause()
+      ..dispose();
+    super.dispose();
+  }
+
+  bool get _isActive => widget.activeIndex.value == widget.index;
+
+  void _onMuteChanged() {
+    if (!_initialized) return;
+    _ctrl.setVolume(_muted.value ? 0.0 : 1.0);
+  }
+
+  void _syncPlayback() {
+    if (!_initialized) return;
+    if (_isActive && _screenActive && !_manuallyPaused) {
+      if (!_ctrl.value.isPlaying) _ctrl.play();
+    } else {
+      if (_ctrl.value.isPlaying) _ctrl.pause();
+      if (!_isActive) _manuallyPaused = false;
+    }
+  }
+
+  void _togglePlayback() {
+    if (!_initialized) {
+      widget.onTap();
+      return;
+    }
+    setState(() {
+      if (_ctrl.value.isPlaying) {
+        _ctrl.pause();
+        _manuallyPaused = true;
+      } else {
+        _ctrl.play();
+        _manuallyPaused = false;
+      }
+    });
+  }
+
+  void _toggleMute() => _muted.value = !_muted.value;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_initialized) {
+      return GestureDetector(
+        onTap: widget.onTap,
+        child: const ColoredBox(
+          color: Color(0xFF0A0A0A),
+          child: Center(
+            child: CircularProgressIndicator(
+                color: Colors.white30, strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    // The Stack has TWO levels:
+    //  1. ValueListenableBuilder<VideoPlayerValue> — rebuilds every frame for
+    //     the video, progress bar, and play/pause overlay.
+    //  2. Mute button — lives OUTSIDE that listener so its GestureDetector
+    //     is never destroyed mid-tap (which was silently eating all taps).
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // ── Per-frame video layer ─────────────────────────────────────────
+        ValueListenableBuilder<VideoPlayerValue>(
+          valueListenable: _ctrl,
+          builder: (context, value, _) {
+            final isPlaying = value.isPlaying;
+            final w = value.size.width > 0 ? value.size.width : 1.0;
+            final h = value.size.height > 0 ? value.size.height : 1.0;
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                GestureDetector(
+                  onTap: _togglePlayback,
+                  child: SizedBox.expand(
+                    child: FittedBox(
+                      fit: BoxFit.cover,
+                      clipBehavior: Clip.hardEdge,
+                      child: SizedBox(
+                        width: w,
+                        height: h,
+                        child: VideoPlayer(_ctrl),
+                      ),
+                    ),
+                  ),
+                ),
+                IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: isPlaying ? 0.0 : 1.0,
+                    duration: const Duration(milliseconds: 250),
+                    child: ColoredBox(
+                      color: Colors.black38,
+                      child: Center(
+                        child: Container(
+                          width: 64.w,
+                          height: 64.w,
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: Colors.white54, width: 1.5),
+                          ),
+                          child: Icon(Icons.play_arrow_rounded,
+                              color: Colors.white, size: 34.sp),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: IgnorePointer(
+                    child: VideoProgressIndicator(
+                      _ctrl,
+                      allowScrubbing: false,
+                      colors: const VideoProgressColors(
+                        playedColor: Color(0xFFF5A623),
+                        bufferedColor: Colors.white24,
+                        backgroundColor: Colors.white12,
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+
+        // ── Mute button — stable widget, never rebuilt by video frames ────
+        Positioned(
+          bottom: 10.h,
+          right: 10.w,
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _muted,
+            builder: (_, muted, __) => GestureDetector(
+              onTap: _toggleMute,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: 34.w,
+                height: 34.w,
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24, width: 1),
+                ),
+                child: Icon(
+                  muted
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
+                  color: Colors.white,
+                  size: 17.sp,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -154,4 +445,86 @@ class CardEmptyTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Container(color: const Color(0xFF111111));
+}
+
+// ── Owner viewfinder overlay ──────────────────────────────────────────────────
+// Camera SLR/DSLR viewfinder focus brackets — the classic L-shaped corner
+// markers every photographer recognises. Metaphor: the camera was pointed at
+// YOU. No social app uses this; it is purely photographic in origin.
+
+class _OwnerCornerRibbon extends StatelessWidget {
+  const _OwnerCornerRibbon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: CustomPaint(painter: _ViewfinderPainter()),
+      ),
+    );
+  }
+}
+
+class _ViewfinderPainter extends CustomPainter {
+  // Warm amber that reads clearly on both bright and dark images.
+  static const _color = Color(0xFFFFD166);
+  static const _stroke = 2.2;
+  // How far each bracket arm extends from the corner.
+  static const _arm = 22.0;
+  // Inset from the image edge so the brackets sit just inside.
+  static const _margin = 10.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = _color
+      ..strokeWidth = _stroke
+      ..strokeCap = StrokeCap.square
+      ..style = PaintingStyle.stroke;
+
+    final w = size.width;
+    final h = size.height;
+    const m = _margin;
+    const a = _arm;
+
+    // ── top-left ─────────────────────────────────────────────────────────────
+    canvas.drawLine(const Offset(m, m + a), const Offset(m, m), paint);        // vertical
+    canvas.drawLine(const Offset(m, m), const Offset(m + a, m), paint);        // horizontal
+
+    // ── top-right ────────────────────────────────────────────────────────────
+    canvas.drawLine(Offset(w - m - a, m), Offset(w - m, m), paint);
+    canvas.drawLine(Offset(w - m, m), Offset(w - m, m + a), paint);
+
+    // ── bottom-left ───────────────────────────────────────────────────────────
+    canvas.drawLine(Offset(m, h - m - a), Offset(m, h - m), paint);
+    canvas.drawLine(Offset(m, h - m), Offset(m + a, h - m), paint);
+
+    // ── bottom-right ──────────────────────────────────────────────────────────
+    canvas.drawLine(Offset(w - m - a, h - m), Offset(w - m, h - m), paint);
+    canvas.drawLine(Offset(w - m, h - m - a), Offset(w - m, h - m), paint);
+
+    // ── centre micro-dot (classic AF point) ──────────────────────────────────
+    final dotPaint = Paint()
+      ..color = _color.withValues(alpha: 0.55)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(w / 2, h / 2), 3.0, dotPaint);
+
+    // ── "YOU'RE IN FRAME" label — bottom centre, like a camera display readout
+    final tp = TextPainter(
+      text: const TextSpan(
+        text: "YOU'RE IN FRAME",
+        style: TextStyle(
+          color: _color,
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 2.0,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset((w - tp.width) / 2, h - m - tp.height - 6));
+  }
+
+  @override
+  bool shouldRepaint(_ViewfinderPainter old) => false;
 }

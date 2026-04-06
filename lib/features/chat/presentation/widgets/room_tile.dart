@@ -22,8 +22,9 @@ class RoomTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-        padding: EdgeInsets.all(12.w),
+        margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 14.h),
+        constraints: BoxConstraints(minHeight: 88.h),
         decoration: BoxDecoration(
           color: ext.cardSurface,
           borderRadius: BorderRadius.circular(14.r),

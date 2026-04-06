@@ -17,9 +17,9 @@ class AppNavbar extends StatelessWidget {
 
   static const _items = [
     _NavItem(label: 'Home', iconPath: IconsPath.home),
+    _NavItem(label: 'Messages', iconPath: null, icon: Icons.chat_bubble_outline_rounded),
     _NavItem(label: 'Gallery', iconPath: IconsPath.gallery),
     _NavItem(label: 'Photographers', iconPath: IconsPath.photographer),
-    _NavItem(label: 'Messages', iconPath: null, icon: Icons.chat_bubble_outline_rounded),
   ];
 
   @override
@@ -45,7 +45,7 @@ class AppNavbar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(_items.length, (index) {
               final selected = index == selectedIndex;
-              final badge = index == 3 ? messageUnreadCount : 0;
+              final badge = index == 1 ? messageUnreadCount : 0;
               return _NavBarButton(
                 item: _items[index],
                 selected: selected,

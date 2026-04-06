@@ -11,6 +11,7 @@ abstract class CartRemoteDataSource {
   Future<Map<String, dynamic>> initiatePayment(String email, String amount);
   Future<Map<String, dynamic>> completePayment(Map<String, dynamic> payload);
   Future<void> downloadImage(String url);
+  Future<void> saveImagesFree(List<Map<String, String>> items);
 }
 
 class CartRemoteDataSourceImpl implements CartRemoteDataSource {
@@ -56,6 +57,23 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       if (err.response == null) throw const app_ex.NetworkException();
       throw app_ex.ServerException(
           'Payment completion error: ${err.response?.statusCode}');
+    } catch (e) {
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
+    }
+  }
+
+  @override
+  Future<void> saveImagesFree(List<Map<String, String>> items) async {
+    try {
+      await _api.dio.post(
+        '/client/payments/free',
+        data: jsonEncode({'PaidImage': items}),
+      );
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      throw app_ex.ServerException(
+          'Free save failed: ${err.response?.statusCode}');
     } catch (e) {
       if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
       throw app_ex.ServerException('Unexpected error: $e');

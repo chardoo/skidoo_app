@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/theme_cubit.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 
 class AccountPage extends StatelessWidget {
@@ -22,6 +23,8 @@ class _AccountView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
     return BlocConsumer<UserProfileBloc, UserProfileState>(
       listener: (context, state) {
         if (state.isLoggedOut) {
@@ -36,10 +39,18 @@ class _AccountView extends StatelessWidget {
       },
       builder: (context, state) {
         return Scaffold(
+          backgroundColor: ext.homeBackground,
           appBar: AppBar(
             elevation: 0,
             centerTitle: true,
-            title: const Text('Account'),
+            backgroundColor: ext.homeBackground,
+            title: Text(
+              'Account',
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           body: state.isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -50,23 +61,23 @@ class _AccountView extends StatelessWidget {
                       const SizedBox(height: 24),
                       CircleAvatar(
                         radius: 48,
-                        backgroundColor:
-                            const Color.fromARGB(255, 80, 80, 80),
+                        backgroundColor: ext.avatarBackground,
                         child: Text(
                           state.name.isNotEmpty
                               ? state.name[0].toUpperCase()
                               : '?',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: ext.avatarForeground,
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
                       Text(
                         state.name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: ext.greetingColor,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
@@ -74,20 +85,24 @@ class _AccountView extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         state.email,
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 180, 178, 178),
+                        style: TextStyle(
+                          color: ext.searchHintColor,
                           fontSize: 14,
                         ),
                       ),
                       const SizedBox(height: 32),
-                      _NotificationSettingsCard(isMuted: state.isMuted),
+                      _ThemeToggleCard(ext: ext),
+                      const SizedBox(height: 12),
+                      _NotificationSettingsCard(
+                          isMuted: state.isMuted, ext: ext),
                       const Spacer(),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -117,24 +132,86 @@ class _AccountView extends StatelessWidget {
   }
 }
 
-// ── Notifications settings card ───────────────────────────────────────────────
+// ── Theme toggle card ─────────────────────────────────────────────────────────
 
-class _NotificationSettingsCard extends StatelessWidget {
-  const _NotificationSettingsCard({required this.isMuted});
+class _ThemeToggleCard extends StatelessWidget {
+  const _ThemeToggleCard({required this.ext});
 
-  final bool isMuted;
+  final AppThemeExtension ext;
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>();
-    final cardColor = ext?.cardSurface ?? const Color(0xFF1E1E1E);
-    final labelColor = ext?.greetingColor ?? Colors.white;
-    final subColor = ext?.searchHintColor ?? Colors.grey;
-    final accentColor = ext?.accentGold ?? const Color(0xFFFFD700);
+    return BlocBuilder<ThemeCubit, ThemeMode>(
+      bloc: sl<ThemeCubit>(),
+      builder: (context, themeMode) {
+        final isDark = themeMode == ThemeMode.dark;
+        return Container(
+          decoration: BoxDecoration(
+            color: ext.cardSurface,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                child: Text(
+                  'Appearance',
+                  style: TextStyle(
+                    color: ext.searchHintColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              SwitchListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16),
+                activeThumbColor: ext.accentGold,
+                activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
+                title: Text(
+                  'Dark Mode',
+                  style: TextStyle(
+                      color: ext.greetingColor, fontSize: 14),
+                ),
+                subtitle: Text(
+                  isDark ? 'Dark theme is on' : 'Light theme is on',
+                  style: TextStyle(
+                      color: ext.searchHintColor, fontSize: 12),
+                ),
+                secondary: Icon(
+                  isDark
+                      ? Icons.dark_mode_outlined
+                      : Icons.light_mode_outlined,
+                  color: isDark ? ext.accentGold : ext.searchHintColor,
+                ),
+                value: isDark,
+                onChanged: (_) => sl<ThemeCubit>().toggleTheme(),
+              ),
+              const SizedBox(height: 4),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
 
+// ── Notification settings card ────────────────────────────────────────────────
+
+class _NotificationSettingsCard extends StatelessWidget {
+  const _NotificationSettingsCard(
+      {required this.isMuted, required this.ext});
+
+  final bool isMuted;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: cardColor,
+        color: ext.cardSurface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -145,7 +222,7 @@ class _NotificationSettingsCard extends StatelessWidget {
             child: Text(
               'Notifications',
               style: TextStyle(
-                color: subColor,
+                color: ext.searchHintColor,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.8,
@@ -153,22 +230,25 @@ class _NotificationSettingsCard extends StatelessWidget {
             ),
           ),
           SwitchListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            activeThumbColor: accentColor,
-            activeTrackColor: accentColor.withValues(alpha: 0.4),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16),
+            activeThumbColor: ext.accentGold,
+            activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
             title: Text(
               'Mute message sounds & vibration',
-              style: TextStyle(color: labelColor, fontSize: 14),
+              style: TextStyle(color: ext.greetingColor, fontSize: 14),
             ),
             subtitle: Text(
               isMuted
                   ? 'Messages arrive silently'
                   : 'You\'ll feel a vibration for new messages',
-              style: TextStyle(color: subColor, fontSize: 12),
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12),
             ),
             secondary: Icon(
-              isMuted ? Icons.notifications_off_outlined : Icons.notifications_outlined,
-              color: isMuted ? subColor : accentColor,
+              isMuted
+                  ? Icons.notifications_off_outlined
+                  : Icons.notifications_outlined,
+              color: isMuted ? ext.searchHintColor : ext.accentGold,
             ),
             value: isMuted,
             onChanged: (value) {

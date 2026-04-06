@@ -1,8 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_description_text.dart';
@@ -17,12 +20,14 @@ class EventDiscoveryCard extends StatefulWidget {
     required this.event,
     required this.onTap,
     this.isAuthenticated = false,
+    this.isOwner = false,
     this.onCommentTap,
   });
 
   final EventDiscovery event;
   final VoidCallback onTap;
   final bool isAuthenticated;
+  final bool isOwner;
   final VoidCallback? onCommentTap;
 
   @override
@@ -34,47 +39,100 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   final _pageCtrl = PageController();
   int _currentPage = 0;
   bool _liked = false;
+  bool _disliked = false;
   bool _saved = false;
   int _likeCount = 0;
+  int _dislikeCount = 0;
   bool _descExpanded = false;
   bool _showHeartBurst = false;
+
+  late final AnimationController _heartCtrl;
+
+  // Stored so we can safely dispatch from dispose() without using context.
+  DiscoveryBloc? _discoveryBloc;
+
+  void _syncReactionFromEvent(EventDiscovery event) {
+    _liked = event.userReaction == 'like';
+    _disliked = event.userReaction == 'dislike';
+    _likeCount = event.likes;
+    _dislikeCount = event.dislikes;
+  }
 
   @override
   void initState() {
     super.initState();
+    _syncReactionFromEvent(widget.event);
+    _heartCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 750),
+    )..addStatusListener((s) {
+        if (s == AnimationStatus.completed && mounted) {
+          setState(() => _showHeartBurst = false);
+          _heartCtrl.reset();
+        }
+      });
     _pageCtrl.addListener(() {
       final page = _pageCtrl.page?.round() ?? 0;
       if (page != _currentPage && mounted) setState(() => _currentPage = page);
     });
+    // Notify the bloc that this card is now visible.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _discoveryBloc = context.read<DiscoveryBloc>();
+      _discoveryBloc?.add(DiscoveryEventVisible(widget.event.id));
+    });
   }
 
-  late final AnimationController _heartCtrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 750),
-  )..addStatusListener((s) {
-      if (s == AnimationStatus.completed && mounted) {
-        setState(() => _showHeartBurst = false);
-        _heartCtrl.reset();
-      }
-    });
+  @override
+  void didUpdateWidget(EventDiscoveryCard old) {
+    super.didUpdateWidget(old);
+    // Sync when server-confirmed reaction data arrives for this event.
+    if (old.event.id != widget.event.id ||
+        old.event.likes != widget.event.likes ||
+        old.event.dislikes != widget.event.dislikes ||
+        old.event.userReaction != widget.event.userReaction) {
+      setState(() => _syncReactionFromEvent(widget.event));
+    }
+  }
 
   @override
   void dispose() {
-    _pageCtrl.dispose();
+    // Notify the bloc that this card has left the viewport.
+    _discoveryBloc?.add(DiscoveryEventHidden(widget.event.id));
     _heartCtrl.dispose();
+    _pageCtrl.dispose();
     super.dispose();
   }
 
   void _handleDoubleTap() {
     HapticFeedback.lightImpact();
+    final wasLiked = _liked;
     setState(() {
       if (!_liked) {
         _liked = true;
         _likeCount++;
+        if (_disliked) {
+          _disliked = false;
+          _dislikeCount = (_dislikeCount - 1).clamp(0, 999999999);
+        }
       }
       _showHeartBurst = true;
     });
     _heartCtrl.forward(from: 0);
+    if (!wasLiked) {
+      context.read<DiscoveryBloc>().add(
+            DiscoveryReactionToggled(widget.event.id, isLike: true),
+          );
+    }
+  }
+
+  void handleTap() {
+     Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => EventPicturesPage(event:  widget.event)
+      ),
+    );
+    
   }
 
   int get _visibleCount {
@@ -100,6 +158,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           _PostHeader(
             event: widget.event,
             ext: ext,
+            isOwner: widget.isOwner,
             onPhotographerTap: () => _openPhotographerProfile(context),
           ),
 
@@ -118,9 +177,12 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                       : PostPhotoCarousel(
                           pics: pics.take(_visibleCount).toList(),
                           pageController: _pageCtrl,
-                          showBlur: !widget.isAuthenticated &&
-                              pics.length > 3,
-                          onDoubleTap: _handleDoubleTap,
+                          showBlur: !widget.isAuthenticated && pics.length > 3,
+                          onTap: handleTap,
+                          scrollable: widget.isAuthenticated,
+                          onDoubleTap: widget.isAuthenticated
+                              ? _handleDoubleTap
+                              : widget.onTap,
                         ),
 
                   // Top gradient (header area legibility)
@@ -201,13 +263,15 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               count: _visibleCount,
               current: _currentPage,
               ext: ext,
-              onPageChanged: (i) {
-                _pageCtrl.animateToPage(
-                  i,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              },
+              onPageChanged: widget.isAuthenticated
+                  ? (i) {
+                      _pageCtrl.animateToPage(
+                        i,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    }
+                  : (_) => widget.onTap(),
             ),
           ] else
             SizedBox(height: 10.h),
@@ -215,18 +279,52 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           // ── 4. Interaction bar ─────────────────────────────────────────
           CardInteractionBar(
             liked: _liked,
+            disliked: _disliked,
             saved: _saved,
             likeCount: _likeCount,
+            dislikeCount: _dislikeCount,
             commentCount: 0,
             ext: ext,
-            onLike: () => setState(() {
-              _liked = !_liked;
-              _likeCount += _liked ? 1 : -1;
-            }),
-            onComment: widget.onCommentTap ??
-                () => _showCommentSheet(context, ext),
-            onShare: () {},
-            onSave: () => setState(() => _saved = !_saved),
+            onLike: widget.isAuthenticated
+                ? () {
+                    setState(() {
+                      if (!_liked && _disliked) {
+                        _disliked = false;
+                        _dislikeCount =
+                            (_dislikeCount - 1).clamp(0, 999999999);
+                      }
+                      _liked = !_liked;
+                      _likeCount += _liked ? 1 : -1;
+                    });
+                    context.read<DiscoveryBloc>().add(
+                          DiscoveryReactionToggled(widget.event.id,
+                              isLike: true),
+                        );
+                  }
+                : widget.onTap,
+            onDislike: widget.isAuthenticated
+                ? () {
+                    setState(() {
+                      if (!_disliked && _liked) {
+                        _liked = false;
+                        _likeCount = (_likeCount - 1).clamp(0, 999999999);
+                      }
+                      _disliked = !_disliked;
+                      _dislikeCount += _disliked ? 1 : -1;
+                    });
+                    context.read<DiscoveryBloc>().add(
+                          DiscoveryReactionToggled(widget.event.id,
+                              isLike: false),
+                        );
+                  }
+                : widget.onTap,
+            onComment: widget.isAuthenticated
+                ? (widget.onCommentTap ?? () => _showCommentSheet(context, ext))
+                : widget.onTap,
+            onShare: widget.isAuthenticated ? () {} : widget.onTap,
+            onSave: widget.isAuthenticated
+                ? () => setState(() => _saved = !_saved)
+                : widget.onTap,
           ),
 
           // ── 5. Caption ─────────────────────────────────────────────────
@@ -234,8 +332,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             event: widget.event,
             ext: ext,
             expanded: _descExpanded,
-            onToggle: () =>
-                setState(() => _descExpanded = !_descExpanded),
+            onToggle: () => setState(() => _descExpanded = !_descExpanded),
           ),
 
           SizedBox(height: 14.h),
@@ -282,10 +379,12 @@ class _PostHeader extends StatelessWidget {
   const _PostHeader({
     required this.event,
     required this.ext,
+    this.isOwner = false,
     this.onPhotographerTap,
   });
   final EventDiscovery event;
   final AppThemeExtension ext;
+  final bool isOwner;
   final VoidCallback? onPhotographerTap;
 
   @override
@@ -297,10 +396,45 @@ class _PostHeader extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       child: Row(
         children: [
-          // Story-ring avatar (tappable)
+          // Story-ring avatar (tappable) — crown badge when owner
           GestureDetector(
             onTap: onPhotographerTap,
-            child: _StoryRingAvatar(initial: initial, ext: ext),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                _StoryRingAvatar(initial: initial, ext: ext),
+                if (isOwner)
+                  Positioned(
+                    bottom: -3,
+                    right: -3,
+                    child: Container(
+                      width: 18.w,
+                      height: 18.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [ext.accentGold, const Color(0xFFFF8C00)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        border: Border.all(color: ext.homeBackground, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: ext.accentGold.withValues(alpha: 0.5),
+                            blurRadius: 6,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.workspace_premium_rounded,
+                        color: Colors.white,
+                        size: 10.sp,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           SizedBox(width: 10.w),
 
@@ -310,37 +444,46 @@ class _PostHeader extends StatelessWidget {
               onTap: onPhotographerTap,
               behavior: HitTestBehavior.opaque,
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.1,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.photo_camera_rounded,
-                        size: 11.sp,
-                        color: ext.accentGold),
-                    SizedBox(width: 3.w),
-                    Text(
-                      'Photographer',
-                      style: TextStyle(
-                        color: ext.searchHintColor,
-                        fontSize: 11.sp,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            color: ext.greetingColor,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.1,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                      if (isOwner) ...[
+                        SizedBox(width: 6.w),
+                        _OwnerPill(ext: ext),
+                      ],
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Icon(Icons.photo_camera_rounded,
+                          size: 11.sp, color: ext.accentGold),
+                      SizedBox(width: 3.w),
+                      Text(
+                        'Photographer',
+                        style: TextStyle(
+                          color: ext.searchHintColor,
+                          fontSize: 11.sp,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -351,6 +494,52 @@ class _PostHeader extends StatelessWidget {
               padding: EdgeInsets.only(left: 8.w),
               child: Icon(Icons.more_horiz_rounded,
                   color: ext.greetingColor, size: 22.sp),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Owner pill badge ──────────────────────────────────────────────────────────
+
+class _OwnerPill extends StatelessWidget {
+  const _OwnerPill({required this.ext});
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            ext.accentGold.withValues(alpha: 0.18),
+            const Color(0xFFFF8C00).withValues(alpha: 0.12),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(
+          color: ext.accentGold.withValues(alpha: 0.45),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.workspace_premium_rounded,
+              size: 9.sp, color: ext.accentGold),
+          SizedBox(width: 3.w),
+          Text(
+            'Your post',
+            style: TextStyle(
+              color: ext.accentGold,
+              fontSize: 9.sp,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
             ),
           ),
         ],
@@ -419,8 +608,8 @@ class _PhotoCountBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(
-            color: Colors.white.withValues(alpha: 0.15), width: 0.8),
+        border:
+            Border.all(color: Colors.white.withValues(alpha: 0.15), width: 0.8),
       ),
       child: Text(
         '$current / $total',

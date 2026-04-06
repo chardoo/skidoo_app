@@ -1,3 +1,4 @@
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -25,132 +26,132 @@ class MessageBubble extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return GestureDetector(
-      onLongPress: onLongPress,
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 3.h, horizontal: 12.w),
-        child: Column(
-          crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            // Sender label (only for other people's messages)
-            if (!isMe)
-              Padding(
-                padding: EdgeInsets.only(left: 4.w, bottom: 2.h),
-                child: Text(
-                  message.senderName.isNotEmpty
-                      ? message.senderName
-                      : message.senderRole,
-                  style: TextStyle(
-                    color: ext.searchHintColor,
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+  onLongPress: onLongPress,
+  onHorizontalDragUpdate: (details) {
+    onLongPress?.call();
+  },
+  child: Padding(
+    padding: EdgeInsets.symmetric(vertical: 3.h, horizontal: 12.w),
+    child: Column(
+      crossAxisAlignment:
+          isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min, // Add this
+      children: [
+        // Sender label
+        if (!isMe)
+          Padding(
+            padding: EdgeInsets.only(left: 4.w, bottom: 2.h),
+            child: Text(
+              message.senderName.isNotEmpty
+                  ? message.senderName
+                  : message.senderRole,
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w500,
               ),
-
-            Row(
-              mainAxisAlignment:
-                  isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (!isMe) ...[
-                  _Avatar(
-                    senderId: message.senderId,
-                    ext: ext,
-                    onTap: onUserTap,
-                  ),
-                  SizedBox(width: 6.w),
-                ],
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.72,
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isMe ? ext.accentGold : ext.cardSurface,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(18.r),
-                        topRight: Radius.circular(18.r),
-                        bottomLeft: Radius.circular(isMe ? 18.r : 4.r),
-                        bottomRight: Radius.circular(isMe ? 4.r : 18.r),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    clipBehavior: Clip.hardEdge,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Reply preview strip
-                        if (message.replyPreview != null)
-                          _ReplyPreviewStrip(
-                            preview: message.replyPreview!,
-                            isMe: isMe,
-                            ext: ext,
-                          ),
-
-                        // Image
-                        if (message.imageUrl != null)
-                          _MessageImage(imageUrl: message.imageUrl!),
-
-                        // Text content + timestamp
-                        if (message.content.isNotEmpty || message.imageUrl == null)
-                          Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              14.w,
-                              message.replyPreview != null || message.imageUrl != null
-                                  ? 6.h
-                                  : 10.h,
-                              14.w,
-                              10.h,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (message.content.isNotEmpty)
-                                  Text(
-                                    message.content,
-                                    style: TextStyle(
-                                      color: isMe
-                                          ? Colors.white
-                                          : ext.greetingColor,
-                                      fontSize: 14.sp,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                SizedBox(height: 3.h),
-                                _Timestamp(message: message, isMe: isMe, ext: ext),
-                              ],
-                            ),
-                          )
-                        else
-                          // image-only: show timestamp overlaid or below
-                          Padding(
-                            padding:
-                                EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 6.h),
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: _Timestamp(
-                                  message: message, isMe: isMe, ext: ext),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
+            ),
+          ),
+        
+        Row(
+          mainAxisAlignment:
+              isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min, // Add this
+          children: [
+            if (!isMe) ...[
+              _Avatar(
+                senderId: message.senderId,
+                ext: ext,
+                onTap: onUserTap,
+              ),
+              SizedBox(width: 6.w),
+            ],
+            // No Flexible, no ConstrainedBox - just the Container
+            Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.72,
+              ),
+              decoration: BoxDecoration(
+                color: isMe ? ext.accentGold : ext.cardSurface,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(18.r),
+                  topRight: Radius.circular(18.r),
+                  bottomLeft: Radius.circular(isMe ? 18.r : 4.r),
+                  bottomRight: Radius.circular(isMe ? 4.r : 18.r),
                 ),
-              ],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.hardEdge,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, // CHANGE FROM 'stretch' TO 'start'
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Reply preview strip
+                  if (message.replyPreview != null)
+                    _ReplyPreviewStrip(
+                      preview: message.replyPreview!,
+                      isMe: isMe,
+                      ext: ext,
+                    ),
+                  // Image
+                  if (message.imageUrl != null)
+                    _MessageImage(imageUrl: message.imageUrl!),
+                  // Text content + timestamp
+                  if (message.content.isNotEmpty || message.imageUrl == null)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        14.w,
+                        message.replyPreview != null || message.imageUrl != null
+                            ? 6.h
+                            : 10.h,
+                        14.w,
+                        10.h,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (message.content.isNotEmpty)
+                            Text(
+                              message.content,
+                              style: TextStyle(
+                                color: isMe ? Colors.white : ext.greetingColor,
+                                fontSize: 14.sp,
+                                height: 1.4,
+                              ),
+                            ),
+                          SizedBox(height: 3.h),
+                          _Timestamp(message: message, isMe: isMe, ext: ext),
+                        ],
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 6.h),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: _Timestamp(message: message, isMe: isMe, ext: ext),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
-      ),
-    );
+      ],
+    ),
+  ),
+);
   }
+
+
 }
 
 // ── Reply preview strip ───────────────────────────────────────────────────────

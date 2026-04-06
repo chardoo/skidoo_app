@@ -114,6 +114,14 @@ class ChatWebSocketService {
   void sendUnlike(String eventId) =>
       _sendRaw({'type': 'unlike', 'event_id': eventId});
 
+  /// Send a dislike for an event.
+  void sendDislike(String eventId) =>
+      _sendRaw({'type': 'dislike', 'event_id': eventId});
+
+  /// Remove a dislike for an event.
+  void sendUndislike(String eventId) =>
+      _sendRaw({'type': 'undislike', 'event_id': eventId});
+
   void _sendRaw(Map<String, dynamic> data) {
     if (!_connected || _channel == null) return;
     try {

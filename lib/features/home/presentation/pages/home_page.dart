@@ -59,7 +59,7 @@ class _HomeViewState extends State<_HomeView> {
 
   void _changeTab(int index) {
     setState(() => _selectedTab = index);
-    if (index == 3) {
+    if (index == 1) {
       // Full reload so any newly created rooms appear immediately.
       context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
     }
@@ -80,9 +80,9 @@ class _HomeViewState extends State<_HomeView> {
         index: _selectedTab,
         children: const [
           HomeNavigationPage(),
+          ChatRoomsPage(),
           GalleryPage(),
           PhotographersPage(),
-          ChatRoomsPage(),
         ],
       ),
       bottomNavigationBar: BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
@@ -122,16 +122,6 @@ class _HomeViewState extends State<_HomeView> {
                   selectedIcon: Icon(Icons.home_rounded),
                   label: Text('Home'),
                 ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.photo_library_outlined),
-                  selectedIcon: Icon(Icons.photo_library_rounded),
-                  label: Text('Gallery'),
-                ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.camera_alt_outlined),
-                  selectedIcon: Icon(Icons.camera_alt_rounded),
-                  label: Text('Photographers'),
-                ),
                 NavigationRailDestination(
                   icon: Badge(
                     label: Text('$totalUnread'),
@@ -145,6 +135,16 @@ class _HomeViewState extends State<_HomeView> {
                   ),
                   label: const Text('Messages'),
                 ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.photo_library_outlined),
+                  selectedIcon: Icon(Icons.photo_library_rounded),
+                  label: Text('Gallery'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.camera_alt_outlined),
+                  selectedIcon: Icon(Icons.camera_alt_rounded),
+                  label: Text('Photographers'),
+                ),
               ],
             ),
           ),
@@ -154,9 +154,9 @@ class _HomeViewState extends State<_HomeView> {
               index: _selectedTab,
               children: const [
                 HomeNavigationPage(),
+                ChatRoomsPage(),
                 GalleryPage(),
                 PhotographersPage(),
-                ChatRoomsPage(),
               ],
             ),
           ),

@@ -7,22 +7,28 @@ class CardInteractionBar extends StatelessWidget {
   const CardInteractionBar({
     super.key,
     required this.liked,
+    required this.disliked,
     required this.saved,
     required this.likeCount,
+    required this.dislikeCount,
     required this.commentCount,
     required this.ext,
     required this.onLike,
+    required this.onDislike,
     required this.onComment,
     required this.onShare,
     required this.onSave,
   });
 
   final bool liked;
+  final bool disliked;
   final bool saved;
   final int likeCount;
+  final int dislikeCount;
   final int commentCount;
   final AppThemeExtension ext;
   final VoidCallback onLike;
+  final VoidCallback onDislike;
   final VoidCallback onComment;
   final VoidCallback onShare;
   final VoidCallback onSave;
@@ -66,6 +72,53 @@ class CardInteractionBar extends StatelessWidget {
                     _fmt(likeCount),
                     style: TextStyle(
                       color: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          SizedBox(width: 14.w),
+
+          // ── Dislike ──────────────────────────────────────────────────────
+          _AnimatedActionBtn(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onDislike();
+            },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  switchInCurve: Curves.elasticOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: anim,
+                    child: child,
+                  ),
+                  child: Icon(
+                    disliked
+                        ? Icons.thumb_down_rounded
+                        : Icons.thumb_down_outlined,
+                    key: ValueKey(disliked),
+                    color: disliked
+                        ? const Color(0xFF5B6EF5)
+                        : ext.greetingColor,
+                    size: 24.sp,
+                  ),
+                ),
+                if (dislikeCount > 0) ...[
+                  SizedBox(width: 5.w),
+                  Text(
+                    _fmt(dislikeCount),
+                    style: TextStyle(
+                      color: disliked
+                          ? const Color(0xFF5B6EF5)
+                          : ext.greetingColor,
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                     ),

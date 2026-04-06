@@ -46,4 +46,17 @@ class CartRepositoryImpl implements CartRepository {
       throw ServerException('Download error: $e');
     }
   }
+
+  @override
+  Future<void> saveImagesFree(List<Map<String, String>> items) async {
+    try {
+      await _remoteDataSource.saveImagesFree(items);
+    } on NetworkException {
+      rethrow;
+    } on ServerException {
+      rethrow;
+    } catch (e) {
+      throw ServerException('Free save error: $e');
+    }
+  }
 }

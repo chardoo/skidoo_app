@@ -55,6 +55,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<ChatRoomJoined>(_onJoined);
     on<ChatRoomMessageSent>(_onSent);
     on<ChatRoomImagePicked>(_onImagePicked);
+    on<ChatRoomImageCleared>(_onImageCleared);
     on<ChatRoomReplySet>(_onReplySet);
     on<ChatRoomLikeToggled>(_onLikeToggled);
     on<ChatRoomMessageReceived>(_onReceived);
@@ -122,7 +123,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       emit(state.copyWith(
         isLoadingHistory: false,
         isSyncing: false,
-        errorMessage: state.messages.isEmpty ? 'Could not load messages.' : null,
+        errorMessage:
+            state.messages.isEmpty ? 'Could not load messages.' : null,
       ));
     }
   }
@@ -185,7 +187,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         : DateTime.now().difference(_lastConnectedAt!);
     if (connectedFor == null || connectedFor.inSeconds < 3) {
       _reconnectAttempts++;
-      debugPrint('[ChatBloc] WS dropped immediately (attempt $_reconnectAttempts)');
+      debugPrint(
+          '[ChatBloc] WS dropped immediately (attempt $_reconnectAttempts)');
     } else {
       _reconnectAttempts = 1;
     }
@@ -225,43 +228,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   int _backoffSeconds(int attempt) =>
       attempt == 0 ? 2 : (2 << attempt).clamp(2, 30);
 
-  void _onSent(
+  Future<void> _onSent(
     ChatRoomMessageSent event,
-    Emitter<ChatRoomState> emit,
-  ) {
-    if (!_ws.isConnected) {
-      emit(state.copyWith(
-          errorMessage: 'Not connected — please wait or retry.'));
-      return;
-    }
-
-    final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
-    final replyPreview = event.replyToId != null
-        ? _buildReplyPreview(event.replyToId!)
-        : null;
-
-    final optimistic = ChatMessage(
-      id: tempId,
-      roomId: _currentRoomId ?? '',
-      senderId: _myUserId,
-      senderRole: ChatConfig.roleClient,
-      content: event.content,
-      replyToId: event.replyToId,
-      replyPreview: replyPreview,
-      createdAt: DateTime.now(),
-      isLocal: true,
-    );
-
-    emit(state.copyWith(
-      messages: _sorted([optimistic, ...state.messages]),
-      clearReply: true,
-    ));
-    _ws.send(event.content, replyToId: event.replyToId);
-    _cacheMessage(optimistic).catchError((_) {});
-  }
-
-  Future<void> _onImagePicked(
-    ChatRoomImagePicked event,
     Emitter<ChatRoomState> emit,
   ) async {
     if (!_ws.isConnected) {
@@ -270,22 +238,70 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       return;
     }
 
-    emit(state.copyWith(isUploadingImage: true, clearReply: true));
+    final content = event.content?.trim();
+    final pendingPath = state.pendingImagePath;
+    final hasText = content != null && content.isNotEmpty;
+    final hasImage = pendingPath != null;
 
-    try {
-      final imageUrl = await _uploadImage(File(event.filePath));
+    if (!hasText && !hasImage) return;
 
+    final replyPreview =
+        event.replyToId != null ? _buildReplyPreview(event.replyToId!) : null;
+
+    if (hasImage) {
+      // Clear the staged image immediately so the user can't double-send.
+      emit(state.copyWith(
+        isUploadingImage: true,
+        clearPendingImage: true,
+        clearReply: true,
+      ));
+
+      try {
+        final imageUrl = await _uploadImage(File(pendingPath));
+        final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+
+        final optimistic = ChatMessage(
+          id: tempId,
+          roomId: _currentRoomId ?? '',
+          senderId: _myUserId,
+          senderRole: ChatConfig.roleClient,
+          content: content ?? '',
+          imageUrl: imageUrl,
+          replyToId: event.replyToId,
+          replyPreview: replyPreview,
+          createdAt: DateTime.now(),
+          isLocal: true,
+        );
+
+        emit(state.copyWith(
+          isUploadingImage: false,
+          messages: _sorted([optimistic, ...state.messages]),
+        ));
+
+        _ws.send(
+          hasText ? content : null,
+          imageUrl: imageUrl,
+          replyToId: event.replyToId,
+        );
+        _cacheMessage(optimistic).catchError((_) {});
+      } catch (_) {
+        // Restore the pending image so the user can retry.
+        emit(state.copyWith(
+          isUploadingImage: false,
+          pendingImagePath: pendingPath,
+          errorMessage: 'Failed to upload image.',
+        ));
+      }
+    } else {
+      // Text-only message — stays synchronous.
       final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
-      final replyPreview = event.replyToId != null
-          ? _buildReplyPreview(event.replyToId!)
-          : null;
 
       final optimistic = ChatMessage(
         id: tempId,
         roomId: _currentRoomId ?? '',
         senderId: _myUserId,
         senderRole: ChatConfig.roleClient,
-        imageUrl: imageUrl,
+        content: content!,
         replyToId: event.replyToId,
         replyPreview: replyPreview,
         createdAt: DateTime.now(),
@@ -293,17 +309,27 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       );
 
       emit(state.copyWith(
-        isUploadingImage: false,
         messages: _sorted([optimistic, ...state.messages]),
+        clearReply: true,
       ));
-      _ws.send(null, imageUrl: imageUrl, replyToId: event.replyToId);
+      _ws.send(content, replyToId: event.replyToId);
       _cacheMessage(optimistic).catchError((_) {});
-    } catch (e) {
-      emit(state.copyWith(
-        isUploadingImage: false,
-        errorMessage: 'Failed to upload image.',
-      ));
     }
+  }
+
+  /// Stage the picked image — no upload yet.
+  void _onImagePicked(
+    ChatRoomImagePicked event,
+    Emitter<ChatRoomState> emit,
+  ) {
+    emit(state.copyWith(pendingImagePath: event.filePath));
+  }
+
+  void _onImageCleared(
+    ChatRoomImageCleared event,
+    Emitter<ChatRoomState> emit,
+  ) {
+    emit(state.copyWith(clearPendingImage: true));
   }
 
   void _onReplySet(ChatRoomReplySet event, Emitter<ChatRoomState> emit) {
@@ -313,8 +339,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     ));
   }
 
-  void _onLikeToggled(
-      ChatRoomLikeToggled event, Emitter<ChatRoomState> emit) {
+  void _onLikeToggled(ChatRoomLikeToggled event, Emitter<ChatRoomState> emit) {
     if (!_ws.isConnected) return;
     if (state.isEventLiked) {
       _ws.sendUnlike(event.eventId);
@@ -327,7 +352,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _LikeUpdateReceived event, Emitter<ChatRoomState> emit) {
     emit(state.copyWith(
       eventLikes: event.update.likes,
+      eventDislikes: event.update.dislikes,
       isEventLiked: event.update.liked,
+      isEventDisliked: event.update.disliked,
     ));
   }
 

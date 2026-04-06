@@ -156,15 +156,18 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     }
   }
 
-  void _send(String? replyToId) {
+  void _send(String? replyToId, {bool hasPendingImage = false}) {
     final text = _inputCtrl.text.trim();
-    if (text.isEmpty) return;
-    _bloc.add(ChatRoomMessageSent(text, replyToId: replyToId));
+    if (text.isEmpty && !hasPendingImage) return;
+    _bloc.add(ChatRoomMessageSent(
+      text.isEmpty ? null : text,
+      replyToId: replyToId,
+    ));
     _inputCtrl.clear();
   }
 
-  void _onImagePicked(String filePath, String? replyToId) {
-    _bloc.add(ChatRoomImagePicked(filePath, replyToId: replyToId));
+  void _onImagePicked(String filePath) {
+    _bloc.add(ChatRoomImagePicked(filePath));
   }
 
   void _onReply(ChatMessage msg) {
@@ -304,7 +307,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
           child: BlocBuilder<ChatRoomBloc, ChatRoomState>(
             buildWhen: (p, c) =>
                 p.replyingTo != c.replyingTo ||
-                p.isUploadingImage != c.isUploadingImage,
+                p.isUploadingImage != c.isUploadingImage ||
+                p.pendingImagePath != c.pendingImagePath,
             builder: (context, inputState) {
               return Column(
                 children: [
@@ -413,12 +417,16 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                   ),
                   ChatInputBar(
                     controller: _inputCtrl,
-                    onSend: () => _send(inputState.replyingTo?.id),
+                    onSend: () => _send(
+                      inputState.replyingTo?.id,
+                      hasPendingImage: inputState.pendingImagePath != null,
+                    ),
                     ext: ext,
                     replyingTo: inputState.replyingTo,
                     onClearReply: _clearReply,
-                    onImagePicked: (path) =>
-                        _onImagePicked(path, inputState.replyingTo?.id),
+                    onImagePicked: _onImagePicked,
+                    pendingImagePath: inputState.pendingImagePath,
+                    onClearImage: () => _bloc.add(const ChatRoomImageCleared()),
                     isUploadingImage: inputState.isUploadingImage,
                   ),
                 ],

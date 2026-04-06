@@ -26,58 +26,46 @@ class EventsFeed extends StatefulWidget {
 }
 
 class _EventsFeedState extends State<EventsFeed> {
-  final _scrollCtrl = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollCtrl.addListener(_onScroll);
-  }
-
-  @override
-  void dispose() {
-    _scrollCtrl.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (!_scrollCtrl.hasClients) return;
-    final pos = _scrollCtrl.position;
-    if (pos.pixels >= pos.maxScrollExtent - 300) {
-      widget.onLoadMore();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final state = widget.discoveryState;
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720),
-        child: ListView.builder(
-          controller: _scrollCtrl,
-          physics: const BouncingScrollPhysics(),
-          itemCount: state.events.length + (state.isLoadingMore ? 1 : 0),
-          itemBuilder: (context, index) {
-            if (index == state.events.length) {
-              return Padding(
-                padding: EdgeInsets.symmetric(vertical: 20.h),
-                child: Center(
-                  child: CircularProgressIndicator(
-                      color: ext.accentGold, strokeWidth: 2),
-                ),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollUpdateNotification) {
+          final metrics = notification.metrics;
+          if (metrics.pixels >= metrics.maxScrollExtent - 300) {
+            widget.onLoadMore();
+          }
+        }
+        return false;
+      },
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: ListView.builder(
+            physics: const BouncingScrollPhysics(),
+            itemCount: state.events.length + (state.isLoadingMore ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == state.events.length) {
+                return Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20.h),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        color: ext.accentGold, strokeWidth: 2),
+                  ),
+                );
+              }
+              return EventDiscoveryCard(
+                event: state.events[index],
+                isAuthenticated: true,
+                onTap: () => widget.onCardTap(state.events[index]),
+                onCommentTap: () => widget.onCommentTap(state.events[index]),
               );
-            }
-            return EventDiscoveryCard(
-              event: state.events[index],
-              isAuthenticated: true,
-              onTap: () => widget.onCardTap(state.events[index]),
-              onCommentTap: () => widget.onCommentTap(state.events[index]),
-            );
-          },
+            },
+          ),
         ),
       ),
     );

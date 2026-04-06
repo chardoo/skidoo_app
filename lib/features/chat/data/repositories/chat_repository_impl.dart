@@ -159,6 +159,10 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<String> uploadImage(File file) => _rest.uploadImage(file);
 
+  @override
+  Future<EventReaction> getEventReaction(String eventId, String userId) =>
+      _rest.getEventReaction(eventId, userId);
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   Future<ChatRoom> _fetchAndCacheRoom(

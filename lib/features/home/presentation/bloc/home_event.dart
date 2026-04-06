@@ -28,3 +28,11 @@ class HomeImagesSearched extends HomeEvent {
 class HomeSearchClosed extends HomeEvent {
   const HomeSearchClosed();
 }
+
+/// Save a list of search-result photos to the user's gallery for free.
+class HomeFreeImagesSaved extends HomeEvent {
+  final List<Photo> photos;
+  const HomeFreeImagesSaved(this.photos);
+  @override
+  List<Object?> get props => [photos];
+}

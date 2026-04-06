@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart' as dio;
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
@@ -46,16 +48,20 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   @override
   Stream<Photo> streamEventImages(String eventId, String email) async* {
+    final t0 = DateTime.now();
+    _dbg('REQUEST SENT  eventId=$eventId email=$email', t0, t0);
+
     late dio.Response<dio.ResponseBody> response;
     try {
       response = await _api.dio.post<dio.ResponseBody>(
         '/client/search-images',
-        data: {
-          'eventId': eventId,
-          'uiqueName': email, // API has this typo — missing 'n'
-          'isTrue': true,
-        },
-        options: dio.Options(responseType: dio.ResponseType.stream),
+        data: {'eventId': eventId, 'uiqueName': email, 'isTrue': true},
+        options: dio.Options(
+          responseType: dio.ResponseType.stream,
+          receiveTimeout: null,
+          sendTimeout: null,
+          headers: {'Accept': 'text/event-stream'},
+        ),
       );
     } on dio.DioException catch (err) {
       if (err.response == null) throw const app_ex.NetworkException();
@@ -63,52 +69,121 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
           'Image stream failed: ${err.response?.statusCode}');
     }
 
-    yield* _parsePhotoStream(response.data!.stream);
+    final tConnected = DateTime.now();
+    _dbg('CONNECTED  status=${response.statusCode}  '
+        'headers=${response.headers.map}', t0, tConnected);
+
+    yield* _parsePhotoStream(response.data!.stream, t0);
   }
 
-  /// Parses the SSE stream from the server.
-  ///
-  /// The server sends lines of the form:
-  ///   data: {"type":"match","category":"myImages","image":{...}}
-  ///   data: {"type":"done","total":2}
-  ///
-  /// Each line is parsed, and only `match` events with a valid `image` payload
-  /// are yielded. `done` events signal the end; the stream closes when the
-  /// server disconnects.
-  Stream<Photo> _parsePhotoStream(Stream<List<int>> byteStream) async* {
+  /// Parses the SSE byte stream.
+  /// Logs every chunk with a wall-clock timestamp so you can see whether
+  /// data truly trickles in or arrives in one burst.
+  Stream<Photo> _parsePhotoStream(
+      Stream<List<int>> byteStream, DateTime t0) async* {
     String buffer = '';
+    int chunkIndex = 0;
+    int photoIndex = 0;
+    DateTime? tFirstChunk;
+    DateTime? tFirstPhoto;
 
     await for (final bytes in byteStream) {
-      buffer += utf8.decode(bytes, allowMalformed: true);
+      final tChunk = DateTime.now();
+      tFirstChunk ??= tChunk;
+      chunkIndex++;
 
-      // Process every complete line in the buffer.
+      final text = utf8.decode(bytes, allowMalformed: true);
+      _dbg('CHUNK #$chunkIndex  ${bytes.length}B  '
+          '+${tChunk.difference(tFirstChunk).inMilliseconds}ms since first chunk\n'
+          '  raw: ${text.length > 200 ? '${text.substring(0, 200)}…' : text}',
+          t0, tChunk);
+
+      buffer += text;
+
+      // Extract every complete newline-terminated line from the buffer.
       while (true) {
-        final newlineIdx = buffer.indexOf('\n');
-        if (newlineIdx == -1) break;
+        final nl = buffer.indexOf('\n');
+        if (nl == -1) break;
+        final line = buffer.substring(0, nl).trim();
+        buffer = buffer.substring(nl + 1);
 
-        final line = buffer.substring(0, newlineIdx).trim();
-        buffer = buffer.substring(newlineIdx + 1);
+        if (line.isEmpty) continue; // blank SSE separator
 
-        // SSE data lines start with "data: "; skip everything else.
-        if (!line.startsWith('data: ')) continue;
+        if (!line.startsWith('data: ')) {
+          // Log non-data lines (event:, id:, comments, etc.)
+          _dbg('  NON-DATA line: $line', t0, DateTime.now());
+          continue;
+        }
 
         final jsonStr = line.substring(6); // strip 'data: '
+        Map<String, dynamic> envelope;
         try {
-          final envelope = jsonDecode(jsonStr) as Map<String, dynamic>;
-          final type = envelope['type'] as String?;
+          envelope = jsonDecode(jsonStr) as Map<String, dynamic>;
+        } catch (e) {
+          _dbg('  JSON PARSE ERROR: $e\n  raw: $jsonStr', t0, DateTime.now());
+          continue;
+        }
 
-          if (type == 'match') {
-            final image = envelope['image'] as Map<String, dynamic>?;
-            if (image != null) yield Photo.fromMap2(image);
+        final type = envelope['type'] as String?;
+        _dbg('  SSE type="$type"', t0, DateTime.now());
+
+        if (type == 'match') {
+          final image = envelope['image'] as Map<String, dynamic>?;
+          if (image != null) {
+            final tPhoto = DateTime.now();
+            tFirstPhoto ??= tPhoto;
+            photoIndex++;
+            _dbg('  >>> PHOTO #$photoIndex  id=${image['id']}  '
+                '+${tPhoto.difference(t0).inMilliseconds}ms since request',
+                t0, tPhoto);
+            yield Photo.fromMap2(image);
           }
-          // 'done' → stream ends naturally when the server closes the connection.
-        } catch (_) {
-          // Skip malformed lines.
+        } else if (type == 'match_batch') {
+          final images = envelope['images'] as List<dynamic>?;
+          if (images != null) {
+            for (final raw in images) {
+              final image = raw as Map<String, dynamic>;
+              final tPhoto = DateTime.now();
+              tFirstPhoto ??= tPhoto;
+              photoIndex++;
+              _dbg('  >>> PHOTO #$photoIndex (batch)  id=${image['id']}  '
+                  '+${tPhoto.difference(t0).inMilliseconds}ms since request',
+                  t0, tPhoto);
+              yield Photo.fromMap2(image);
+            }
+          }
+        } else if (type == 'progress') {
+          _dbg('  progress ${envelope['processed']}/${envelope['total']}',
+              t0, DateTime.now());
+        } else if (type == 'done') {
+          final chunkLag = tFirstChunk!.difference(t0).inMilliseconds;
+          final photoLag = tFirstPhoto?.difference(t0).inMilliseconds ?? -1;
+          _dbg('DONE  total=${envelope['total']}  '
+              'photos_yielded=$photoIndex  '
+              'first_chunk_lag=${chunkLag}ms  '
+              'first_photo_lag=${photoLag}ms',
+              t0, DateTime.now());
+        } else if (type == 'heartbeat') {
+          _dbg('  heartbeat', t0, DateTime.now());
         }
       }
     }
+
+    // Buffer might still hold a partial/complete line if server didn't end with \n
+    if (buffer.trim().isNotEmpty) {
+      _dbg('LEFTOVER BUFFER (no trailing newline):\n  $buffer', t0, DateTime.now());
+    }
+
+    _dbg('STREAM ENDED  total_chunks=$chunkIndex  total_photos=$photoIndex',
+        t0, DateTime.now());
   }
 
+  /// Structured timestamped logger.
+  /// Format: [SSE +<ms>ms] <message>
+  static void _dbg(String msg, DateTime t0, DateTime now) {
+    final elapsed = now.difference(t0).inMilliseconds;
+    debugPrint('[SSE +${elapsed}ms] $msg');
+  }
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   List<dynamic> _extractList(dynamic data) {

@@ -48,18 +48,7 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle
-            Center(
-              child: Container(
-                margin: EdgeInsets.only(top: 12.h, bottom: 16.h),
-                width: 40.w,
-                height: 4.h,
-                decoration: BoxDecoration(
-                  color: ext.searchHintColor,
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
-            ),
+            SizedBox(height: 16.h),
             Text(
               'Comments',
               style: TextStyle(

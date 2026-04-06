@@ -10,18 +10,23 @@ class ChatRoomJoined extends ChatRoomEvent {
   const ChatRoomJoined(this.roomId);
 }
 
-/// Send a text message (optimistic). Optionally threaded as a reply.
+/// Send the current input (text and/or staged image) as one message.
+/// [content] may be null/empty when sending an image-only message.
 class ChatRoomMessageSent extends ChatRoomEvent {
-  final String content;
+  final String? content;
   final String? replyToId;
   const ChatRoomMessageSent(this.content, {this.replyToId});
 }
 
-/// Upload an image file and send it as a message.
+/// Stage a picked image — does NOT upload yet; waits for the user to send.
 class ChatRoomImagePicked extends ChatRoomEvent {
   final String filePath;
-  final String? replyToId;
-  const ChatRoomImagePicked(this.filePath, {this.replyToId});
+  const ChatRoomImagePicked(this.filePath);
+}
+
+/// Remove the staged image without sending.
+class ChatRoomImageCleared extends ChatRoomEvent {
+  const ChatRoomImageCleared();
 }
 
 /// Set (or clear) the message currently being replied to.

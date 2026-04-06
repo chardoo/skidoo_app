@@ -7,6 +7,31 @@ import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/chat/data/network/chat_api_client.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
+import 'package:http_parser/http_parser.dart';
+/// Reaction state for an event (from GET /chat/events/{id}/reaction).
+class EventReaction {
+  final String? userReaction; // 'like', 'dislike', or null
+  final int likes;
+  final int dislikes;
+
+  const EventReaction({
+    this.userReaction,
+    required this.likes,
+    required this.dislikes,
+  });
+
+  factory EventReaction.empty() =>
+      const EventReaction(likes: 0, dislikes: 0);
+
+  factory EventReaction.fromJson(Map<String, dynamic> json) {
+    final reaction = json['reaction'] as String?;
+    return EventReaction(
+      userReaction: (reaction == null || reaction == 'none') ? null : reaction,
+      likes: (json['likes'] as num?)?.toInt() ?? 0,
+      dislikes: (json['dislikes'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
 
 abstract class ChatRestDataSource {
   /// GET /chat/rooms/global
@@ -52,6 +77,10 @@ abstract class ChatRestDataSource {
 
   /// POST /chat/upload-image — uploads [file] and returns the Cloudinary URL.
   Future<String> uploadImage(File file);
+
+  /// GET /chat/events/{eventId}/reaction?userId=<userId>
+  /// Returns the user's current reaction and aggregate counts.
+  Future<EventReaction> getEventReaction(String eventId, String userId);
 }
 
 class ChatRestDataSourceImpl implements ChatRestDataSource {
@@ -59,11 +88,8 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
 
   ChatRestDataSourceImpl(this._client);
 
-  dio_pkg.Dio get _dio => _client.dio;
-
   @override
-  Future<ChatRoom> getGlobalRoom() =>
-      _getRoom('/chat/rooms/global');
+  Future<ChatRoom> getGlobalRoom() => _getRoom('/chat/rooms/global');
 
   @override
   Future<ChatRoom> getEventRoom(String eventId) =>
@@ -79,7 +105,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
     required String recipientRole,
   }) async {
     return _wrap(() async {
-      final res = await _dio.post(
+      final res = await _client.dio.post(
         '/chat/rooms/direct',
         data: jsonEncode({
           'recipient_id': recipientId,
@@ -96,7 +122,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
     String? name,
   }) async {
     return _wrap(() async {
-      final res = await _dio.post(
+      final res = await _client.dio.post(
         '/chat/rooms/event-private',
         data: jsonEncode({
           'event_id': eventId,
@@ -110,7 +136,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   @override
   Future<List<ChatRoom>> getMyRooms() async {
     return _wrap(() async {
-      final res = await _dio.get('/chat/rooms');
+      final res = await _client.dio.get('/chat/rooms');
       final list = res.data as List<dynamic>;
       return list
           .map((r) => ChatRoom.fromJson(r as Map<String, dynamic>))
@@ -119,8 +145,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   }
 
   @override
-  Future<ChatRoom> getRoom(String roomId) =>
-      _getRoom('/chat/rooms/$roomId');
+  Future<ChatRoom> getRoom(String roomId) => _getRoom('/chat/rooms/$roomId');
 
   @override
   Future<void> inviteToRoom({
@@ -129,7 +154,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
     required String inviteeRole,
   }) async {
     await _wrap(() async {
-      await _dio.post(
+      await _client.dio.post(
         '/chat/rooms/$roomId/invite',
         queryParameters: {
           'invitee_id': inviteeId,
@@ -146,7 +171,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
     int limit = ChatConfig.messagePageSize,
   }) async {
     return _wrap(() async {
-      final res = await _dio.get(
+      final res = await _client.dio.get(
         '/chat/rooms/$roomId/messages',
         queryParameters: {
           'limit': limit,
@@ -163,21 +188,55 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   @override
   Future<String> uploadImage(File file) async {
     return _wrap(() async {
+      // Get file extension and determine content type
+      final extension = file.path.split('.').last.toLowerCase();
+      String contentType;
+      switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+        case 'gif':
+          contentType = 'image/gif';
+          break;
+        default:
+          throw Exception('Unsupported file type: $extension');
+      }
+
+      final multipartFile = await dio_pkg.MultipartFile.fromFile(
+        file.path,
+        filename: file.uri.pathSegments.last,
+         contentType: MediaType.parse(contentType)
+      );
+
       final formData = dio_pkg.FormData.fromMap({
-        'file': await dio_pkg.MultipartFile.fromFile(
-          file.path,
-          filename: file.uri.pathSegments.last,
-        ),
+        'file': multipartFile,
       });
-      final res = await _dio.post(
+
+      // Don't manually set contentType - let Dio handle it
+      final res = await _client.dio.post(
         '/chat/upload-image',
         data: formData,
-        options: dio_pkg.Options(
-          contentType: 'multipart/form-data',
-        ),
       );
+
       final data = res.data as Map<String, dynamic>;
-      return data['image_url'] as String;
+      return data['url'] as String; // Changed from 'image_url' to 'url'
+    });
+  }
+  @override
+  Future<EventReaction> getEventReaction(String eventId, String userId) async {
+    return _wrap(() async {
+      final res = await _client.dio.get(
+        '/chat/events/$eventId/reaction',
+        queryParameters: {'userId': userId},
+      );
+      return EventReaction.fromJson(res.data as Map<String, dynamic>);
     });
   }
 
@@ -185,7 +244,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
 
   Future<ChatRoom> _getRoom(String path) {
     return _wrap(() async {
-      final res = await _dio.get(path);
+      final res = await _client.dio.get(path);
       return ChatRoom.fromJson(res.data as Map<String, dynamic>);
     });
   }

@@ -57,26 +57,26 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
     return Scaffold(
       backgroundColor: ext.homeBackground,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            HomeHeaderWidget(
-              userName: userName,
-              userInitial: userName[0].toUpperCase(),
-              isSearchOpen: _isSearchOpen,
-              onSearchOpen: _openSearch,
-              onSearchClose: _closeSearch,
-              onSearchChanged: _onSearchChanged,
-              onAvatarTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AccountPage()),
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverToBoxAdapter(
+            child: SafeArea(
+              bottom: false,
+              child: HomeHeaderWidget(
+                userName: userName,
+                userInitial: userName[0].toUpperCase(),
+                isSearchOpen: _isSearchOpen,
+                onSearchOpen: _openSearch,
+                onSearchClose: _closeSearch,
+                onSearchChanged: _onSearchChanged,
+                onAvatarTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AccountPage()),
+                ),
               ),
             ),
-            Expanded(
-              child: _buildBody(context, ext, homeState, discoveryState),
-            ),
-          ],
-        ),
+          ),
+        ],
+        body: _buildBody(context, ext, homeState, discoveryState),
       ),
     );
   }
@@ -89,9 +89,14 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   ) {
     // ── Search mode ─────────────────────────────────────────────────────────
     if (_isSearchOpen && homeState.isLoadingEvents) {
-      return Center(
-        child: CircularProgressIndicator(color: ext.accentGold, strokeWidth: 2),
-      );
+      return CustomScrollView(slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: CircularProgressIndicator(color: ext.accentGold, strokeWidth: 2),
+          ),
+        ),
+      ]);
     }
 
     if (_isSearchOpen && homeState.events.isNotEmpty) {
@@ -116,26 +121,41 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     }
 
     if (_isSearchOpen && homeState.isSearching && homeState.events.isEmpty) {
-      return HomeEmptyState(
-        ext: ext,
-        icon: Icons.event_busy_outlined,
-        message: 'No events found',
-      );
+      return CustomScrollView(slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: HomeEmptyState(
+            ext: ext,
+            icon: Icons.event_busy_outlined,
+            message: 'No events found',
+          ),
+        ),
+      ]);
     }
 
     // ── Normal mode ──────────────────────────────────────────────────────────
     if (discoveryState.isLoading) {
-      return Center(
-        child: CircularProgressIndicator(color: ext.accentGold, strokeWidth: 2),
-      );
+      return CustomScrollView(slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: CircularProgressIndicator(color: ext.accentGold, strokeWidth: 2),
+          ),
+        ),
+      ]);
     }
 
     if (discoveryState.events.isEmpty) {
-      return HomeEmptyState(
-        ext: ext,
-        icon: Icons.photo_library_outlined,
-        message: 'No events yet',
-      );
+      return CustomScrollView(slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: HomeEmptyState(
+            ext: ext,
+            icon: Icons.photo_library_outlined,
+            message: 'No events yet',
+          ),
+        ),
+      ]);
     }
 
     return EventsFeed(

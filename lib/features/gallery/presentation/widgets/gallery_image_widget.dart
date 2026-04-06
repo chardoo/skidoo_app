@@ -1,48 +1,123 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/gallery/presentation/pages/gallery_fullscreen_page.dart';
+import 'package:skidoo_app/models/photos/Photo.dart';
 
 class GalleryImageWidget extends StatelessWidget {
-  final String imageUrl;
-  const GalleryImageWidget({super.key, required this.imageUrl});
+  final Photo photo;
+
+  const GalleryImageWidget({super.key, required this.photo});
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.network(
-            imageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              height: 150,
-              color: Colors.grey[300],
-              child: const Icon(Icons.broken_image),
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    return GestureDetector(
+      onTap: () => _openFullscreen(context),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12.r),
+          color: ext.cardSurface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-          ),
+          ],
         ),
-        Positioned(
-          top: 8,
-          right: 8,
-          child: GestureDetector(
-            onTap: () {
-              context.read<CartBloc>().add(CartImageDownloaded(imageUrl));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Downloading image...')),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(5),
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color.fromARGB(255, 242, 239, 239),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            // ── Image ─────────────────────────────────────────────────────
+            CachedNetworkImage(
+              imageUrl: photo.url,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              placeholder: (_, __) => Container(
+                height: 160.h,
+                color: ext.searchFieldFill,
+                child: Center(
+                  child: SizedBox(
+                    width: 20.w,
+                    height: 20.h,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: ext.accentGold,
+                    ),
+                  ),
+                ),
               ),
-              child: const Icon(Icons.download, color: Colors.black),
+              errorWidget: (_, __, ___) => Container(
+                height: 160.h,
+                color: ext.searchFieldFill,
+                child: Icon(
+                  Icons.broken_image_outlined,
+                  color: ext.searchHintColor,
+                  size: 32.sp,
+                ),
+              ),
             ),
-          ),
+
+            // ── Bottom gradient ────────────────────────────────────────────
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 48.h,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.55),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // ── Event name ─────────────────────────────────────────────────
+            if (photo.eventName.isNotEmpty)
+              Positioned(
+                bottom: 8.h,
+                left: 10.w,
+                right: 10.w,
+                child: Text(
+                  photo.eventName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                    shadows: const [
+                      Shadow(blurRadius: 4, color: Colors.black87),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  void _openFullscreen(BuildContext context) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black,
+        pageBuilder: (_, __, ___) => GalleryFullscreenPage(photo: photo),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 250),
+      ),
     );
   }
 }

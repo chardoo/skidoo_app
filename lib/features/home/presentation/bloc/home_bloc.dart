@@ -1,6 +1,8 @@
 import 'package:bloc/bloc.dart';
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
+import 'package:skidoo_app/features/cart/domain/usecases/save_images_free_usecase.dart';
 import 'package:skidoo_app/features/home/domain/usecases/search_events_usecase.dart';
 import 'package:skidoo_app/features/home/domain/usecases/search_images_usecase.dart';
 import 'package:skidoo_app/models/event/Event.dart';
@@ -14,19 +16,24 @@ part 'home_state.dart';
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final SearchEventsUseCase _searchEventsUseCase;
   final SearchImagesUseCase _searchImagesUseCase;
+  final SaveImagesForFreeUseCase _saveImagesFree;
   final AuthService _authService;
 
   HomeBloc({
     required SearchEventsUseCase searchEventsUseCase,
     required SearchImagesUseCase searchImagesUseCase,
+    required SaveImagesForFreeUseCase saveImagesFree,
   })  : _searchEventsUseCase = searchEventsUseCase,
         _searchImagesUseCase = searchImagesUseCase,
+        _saveImagesFree = saveImagesFree,
         _authService = sl<AuthService>(),
         super(const HomeState()) {
     on<HomeInitialized>(_onInitialized);
     on<HomeEventSearched>(_onEventSearched);
-    on<HomeImagesSearched>(_onImagesSearched);
+    // restartable: cancels the in-flight SSE stream when a new search starts.
+    on<HomeImagesSearched>(_onImagesSearched, transformer: restartable());
     on<HomeSearchClosed>(_onSearchClosed);
+    on<HomeFreeImagesSaved>(_onFreeImagesSaved);
   }
 
   Future<void> _onInitialized(
@@ -67,8 +74,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       await emit.forEach<Photo>(
         _searchImagesUseCase(
             SearchImagesParams(eventId: event.eventId, email: email)),
+        // Keep isLoadingImages=true so the "Finding more…" tail stays visible
+        // while the stream is still open. It is cleared after the loop ends.
         onData: (photo) => state.copyWith(
-          isLoadingImages: false,
           searchImages: [...state.searchImages, photo],
         ),
         onError: (_, __) => state.copyWith(
@@ -76,7 +84,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           errorMessage: 'Failed to load images.',
         ),
       );
-      // Stream finished — make sure loading flag is cleared.
+      // Stream finished — clear the loading flag now.
       emit(state.copyWith(isLoadingImages: false));
     } on NetworkException catch (e) {
       emit(state.copyWith(isLoadingImages: false, errorMessage: e.message));
@@ -90,5 +98,26 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
   void _onSearchClosed(HomeSearchClosed event, Emitter<HomeState> emit) {
     emit(state.copyWith(isSearching: false, events: [], searchImages: []));
+  }
+
+  Future<void> _onFreeImagesSaved(
+      HomeFreeImagesSaved event, Emitter<HomeState> emit) async {
+    if (event.photos.isEmpty) return;
+    emit(state.copyWith(
+        isSavingFree: true, clearError: true, clearSavedCount: true));
+    try {
+      final clientId = await _authService.getUserId();
+      await _saveImagesFree(event.photos, clientId: clientId);
+      emit(state.copyWith(
+          isSavingFree: false, savedFreeCount: event.photos.length));
+    } on NetworkException {
+      emit(state.copyWith(
+          isSavingFree: false, errorMessage: 'No internet connection.'));
+    } on ServerException catch (e) {
+      emit(state.copyWith(isSavingFree: false, errorMessage: e.message));
+    } catch (_) {
+      emit(state.copyWith(
+          isSavingFree: false, errorMessage: 'Failed to save images.'));
+    }
   }
 }

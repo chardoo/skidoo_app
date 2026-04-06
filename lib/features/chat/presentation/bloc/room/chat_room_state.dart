@@ -11,14 +11,23 @@ class ChatRoomState extends Equatable {
   final bool isUploadingImage;
   final String? errorMessage;
 
+  /// Local file path of a staged image waiting to be sent.
+  final String? pendingImagePath;
+
   /// The message currently being replied to (null = no active reply).
   final ChatMessage? replyingTo;
 
   /// Like count for the event associated with this room (null for non-event rooms).
   final int? eventLikes;
 
+  /// Dislike count for the event associated with this room.
+  final int? eventDislikes;
+
   /// Whether the current user has liked the event.
   final bool isEventLiked;
+
+  /// Whether the current user has disliked the event.
+  final bool isEventDisliked;
 
   const ChatRoomState({
     this.messages = const [],
@@ -30,9 +39,12 @@ class ChatRoomState extends Equatable {
     this.hasReachedEnd = false,
     this.isUploadingImage = false,
     this.errorMessage,
+    this.pendingImagePath,
     this.replyingTo,
     this.eventLikes,
+    this.eventDislikes,
     this.isEventLiked = false,
+    this.isEventDisliked = false,
   });
 
   ChatRoomState copyWith({
@@ -46,10 +58,14 @@ class ChatRoomState extends Equatable {
     bool? isUploadingImage,
     String? errorMessage,
     bool clearError = false,
+    String? pendingImagePath,
+    bool clearPendingImage = false,
     ChatMessage? replyingTo,
     bool clearReply = false,
     int? eventLikes,
+    int? eventDislikes,
     bool? isEventLiked,
+    bool? isEventDisliked,
   }) =>
       ChatRoomState(
         messages: messages ?? this.messages,
@@ -61,9 +77,12 @@ class ChatRoomState extends Equatable {
         hasReachedEnd: hasReachedEnd ?? this.hasReachedEnd,
         isUploadingImage: isUploadingImage ?? this.isUploadingImage,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+        pendingImagePath: clearPendingImage ? null : (pendingImagePath ?? this.pendingImagePath),
         replyingTo: clearReply ? null : (replyingTo ?? this.replyingTo),
         eventLikes: eventLikes ?? this.eventLikes,
+        eventDislikes: eventDislikes ?? this.eventDislikes,
         isEventLiked: isEventLiked ?? this.isEventLiked,
+        isEventDisliked: isEventDisliked ?? this.isEventDisliked,
       );
 
   @override
@@ -77,8 +96,11 @@ class ChatRoomState extends Equatable {
         hasReachedEnd,
         isUploadingImage,
         errorMessage,
+        pendingImagePath,
         replyingTo,
         eventLikes,
+        eventDislikes,
         isEventLiked,
+        isEventDisliked,
       ];
 }

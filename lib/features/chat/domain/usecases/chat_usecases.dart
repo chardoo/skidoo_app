@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:skidoo_app/core/config/chat_config.dart';
+import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
 import 'package:skidoo_app/features/chat/domain/repositories/chat_repository.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
@@ -134,4 +135,12 @@ class UploadChatImageUseCase {
   UploadChatImageUseCase(this._repo);
 
   Future<String> call(File file) => _repo.uploadImage(file);
+}
+
+class GetEventReactionUseCase {
+  final ChatRepository _repo;
+  GetEventReactionUseCase(this._repo);
+
+  Future<EventReaction> call(String eventId, String userId) =>
+      _repo.getEventReaction(eventId, userId);
 }

@@ -124,10 +124,12 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                           ),
                         );
                       }
+                      final ev = state.events[index];
                       return EventDiscoveryCard(
-                        event: state.events[index],
-                        onTap: () =>
-                            _onCardTap(context, state.events[index]),
+                        event: ev,
+                        onTap: () => _onCardTap(context, ev),
+                        isOwner: state.currentUserId != null &&
+                            state.currentUserId == ev.photographerId,
                       );
                     },
                   );

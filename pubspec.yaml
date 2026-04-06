@@ -19,6 +19,7 @@ dependencies:
   # State Management - BLoC
   flutter_bloc: ^8.1.3
   bloc: ^8.1.2
+  bloc_concurrency: ^0.2.4
   equatable: ^2.0.5
 
   # Dependency Injection
@@ -53,10 +54,14 @@ dependencies:
   url_launcher: ^6.3.1
   lecle_downloads_path_provider: ^0.0.2+8
   permission_handler: ^11.3.1
+  share_plus: ^10.0.0
 
   # Forms
   easy_autocomplete: ^1.6.0
   intl: ^0.18.1
+
+  # Video
+  video_player: ^2.9.1
 
   # Web
   webview_flutter: ^4.4.2

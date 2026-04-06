@@ -20,6 +20,7 @@ import 'package:skidoo_app/features/cart/domain/repositories/cart_repository.dar
 import 'package:skidoo_app/features/cart/domain/usecases/complete_payment_usecase.dart';
 import 'package:skidoo_app/features/cart/domain/usecases/download_image_usecase.dart';
 import 'package:skidoo_app/features/cart/domain/usecases/pay_for_images_usecase.dart';
+import 'package:skidoo_app/features/cart/domain/usecases/save_images_free_usecase.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 
 // ── Chat feature imports ───────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ import 'package:skidoo_app/features/user_profile/data/repositories/user_profile_
 import 'package:skidoo_app/features/user_profile/domain/repositories/user_profile_repository.dart';
 import 'package:skidoo_app/features/user_profile/domain/usecases/get_profile_usecase.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
+import 'package:skidoo_app/core/theme/theme_cubit.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/services/notification_prefs_service.dart';
 
@@ -73,6 +75,7 @@ Future<void> setupServiceLocator() async {
   sl.registerSingleton<AuthService>(AuthService());
   sl.registerSingleton<NotificationPrefsService>(
       NotificationPrefsService(prefs));
+  sl.registerSingleton<ThemeCubit>(ThemeCubit(prefs));
 
   // ── Auth feature ──────────────────────────────────────────────────────────
   sl.registerSingleton<AuthRemoteDataSource>(
@@ -106,6 +109,7 @@ Future<void> setupServiceLocator() async {
   sl.registerFactory<HomeBloc>(() => HomeBloc(
         searchEventsUseCase: sl<SearchEventsUseCase>(),
         searchImagesUseCase: sl<SearchImagesUseCase>(),
+        saveImagesFree: sl<SaveImagesForFreeUseCase>(),
       ));
 
   // ── Discovery feature ─────────────────────────────────────────────────────
@@ -118,6 +122,8 @@ Future<void> setupServiceLocator() async {
 
   sl.registerFactory<DiscoveryBloc>(() => DiscoveryBloc(
         getRandomImagesUseCase: sl<GetRandomImagesUseCase>(),
+        getEventReaction: sl<GetEventReactionUseCase>(),
+        getEventRoom: sl<GetEventRoomUseCase>(),
       ));
 
   // ── Gallery feature ───────────────────────────────────────────────────────
@@ -142,6 +148,8 @@ Future<void> setupServiceLocator() async {
       CompletePaymentUseCase(sl<CartRepository>()));
   sl.registerSingleton<DownloadImageUseCase>(
       DownloadImageUseCase(sl<CartRepository>()));
+  sl.registerSingleton<SaveImagesForFreeUseCase>(
+      SaveImagesForFreeUseCase(sl<CartRepository>()));
 
   sl.registerSingleton<CartBloc>(CartBloc(
     payForImagesUseCase: sl<PayForImagesUseCase>(),
@@ -225,6 +233,8 @@ Future<void> setupServiceLocator() async {
       MarkRoomAsReadUseCase(sl<ChatRepository>()));
   sl.registerSingleton<UploadChatImageUseCase>(
       UploadChatImageUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetEventReactionUseCase>(
+      GetEventReactionUseCase(sl<ChatRepository>()));
 
   // BLoCs (factories so each page gets a fresh instance)
   sl.registerFactory<ChatRoomsBloc>(() => ChatRoomsBloc(

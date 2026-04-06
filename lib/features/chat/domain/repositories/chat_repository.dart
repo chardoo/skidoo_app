@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 
@@ -55,4 +56,7 @@ abstract class ChatRepository {
 
   /// Upload an image file and return the hosted URL.
   Future<String> uploadImage(File file);
+
+  /// GET /chat/events/{eventId}/reaction — user's reaction + aggregate counts.
+  Future<EventReaction> getEventReaction(String eventId, String userId);
 }

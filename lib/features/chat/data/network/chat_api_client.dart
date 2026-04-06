@@ -10,8 +10,7 @@ import 'package:skidoo_app/services/auth_service.dart';
 class ChatApiClient {
   final Dio _dio;
 
-  ChatApiClient(AuthService authService)
-      : _dio = _buildDio(authService);
+  ChatApiClient(AuthService authService) : _dio = _buildDio(authService);
 
   Dio get dio => _dio;
 
@@ -43,6 +42,7 @@ class _ChatAuthInterceptor extends Interceptor {
       final token = await _authService.getToken();
       final userId = await _authService.getUserId();
       final email = await _authService.getEmail();
+      final name = await _authService.getName();
 
       if (token.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $token';
@@ -51,6 +51,7 @@ class _ChatAuthInterceptor extends Interceptor {
         options.headers['x-user-id'] = userId;
         options.headers['x-user-email'] = email;
         options.headers['x-user-role'] = ChatConfig.roleClient;
+        options.headers['x-user-name'] = name;
       }
     } catch (_) {
       // Proceed unauthenticated – server will return 401.

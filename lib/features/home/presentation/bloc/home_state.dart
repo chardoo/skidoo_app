@@ -7,6 +7,8 @@ class HomeState extends Equatable {
   final bool isSearching;
   final bool isLoadingEvents;
   final bool isLoadingImages;
+  final bool isSavingFree;
+  final int? savedFreeCount;   // set after a successful save; null otherwise
   final String? errorMessage;
 
   const HomeState({
@@ -16,6 +18,8 @@ class HomeState extends Equatable {
     this.isSearching = false,
     this.isLoadingEvents = false,
     this.isLoadingImages = false,
+    this.isSavingFree = false,
+    this.savedFreeCount,
     this.errorMessage,
   });
 
@@ -26,6 +30,9 @@ class HomeState extends Equatable {
     bool? isSearching,
     bool? isLoadingEvents,
     bool? isLoadingImages,
+    bool? isSavingFree,
+    int? savedFreeCount,
+    bool clearSavedCount = false,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -36,6 +43,9 @@ class HomeState extends Equatable {
       isSearching: isSearching ?? this.isSearching,
       isLoadingEvents: isLoadingEvents ?? this.isLoadingEvents,
       isLoadingImages: isLoadingImages ?? this.isLoadingImages,
+      isSavingFree: isSavingFree ?? this.isSavingFree,
+      savedFreeCount:
+          clearSavedCount ? null : (savedFreeCount ?? this.savedFreeCount),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -48,6 +58,8 @@ class HomeState extends Equatable {
         isSearching,
         isLoadingEvents,
         isLoadingImages,
+        isSavingFree,
+        savedFreeCount,
         errorMessage,
       ];
 }
