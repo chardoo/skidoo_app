@@ -7,7 +7,7 @@ import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
 import 'package:skidoo_app/models/event/Event.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
-
+import 'package:http/http.dart' as http;
 abstract class HomeRemoteDataSource {
   Future<List<Event>> searchEvents(String query);
 
@@ -48,33 +48,28 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   @override
   Stream<Photo> streamEventImages(String eventId, String email) async* {
-    final t0 = DateTime.now();
-    _dbg('REQUEST SENT  eventId=$eventId email=$email', t0, t0);
+  final uri = Uri.parse('${_api.dio.options.baseUrl}/client/search-images');
 
-    late dio.Response<dio.ResponseBody> response;
-    try {
-      response = await _api.dio.post<dio.ResponseBody>(
-        '/client/search-images',
-        data: {'eventId': eventId, 'uiqueName': email, 'isTrue': true},
-        options: dio.Options(
-          responseType: dio.ResponseType.stream,
-          receiveTimeout: null,
-          sendTimeout: null,
-          headers: {'Accept': 'text/event-stream'},
-        ),
-      );
-    } on dio.DioException catch (err) {
-      if (err.response == null) throw const app_ex.NetworkException();
-      throw app_ex.ServerException(
-          'Image stream failed: ${err.response?.statusCode}');
-    }
+  final request = http.Request('POST', uri)
+    ..headers.addAll({
+      'Accept': 'text/event-stream',
+      'Content-Type': 'application/json',
+    })
+    ..body = jsonEncode({
+      'eventId': eventId,
+      'uiqueName': email,
+      'isTrue': true,
+    });
 
-    final tConnected = DateTime.now();
-    _dbg('CONNECTED  status=${response.statusCode}  '
-        'headers=${response.headers.map}', t0, tConnected);
+  final response = await request.send();
 
-    yield* _parsePhotoStream(response.data!.stream, t0);
+  if (response.statusCode != 200) {
+    throw Exception('Stream failed: ${response.statusCode}');
   }
+
+  yield* _parsePhotoStream(response.stream, DateTime.now());
+}
+
 
   /// Parses the SSE byte stream.
   /// Logs every chunk with a wall-clock timestamp so you can see whether

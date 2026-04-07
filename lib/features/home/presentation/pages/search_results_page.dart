@@ -110,6 +110,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                 children: [
                   // ── Masonry grid ──────────────────────────────────────────
                   CustomScrollView(
+                    cacheExtent: 800,
                     slivers: [
                       // Saving overlay indicator
                       if (state.isSavingFree)
@@ -289,6 +290,8 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                 imageUrl: photo.url,
                 fit: BoxFit.cover,
                 width: double.infinity,
+                memCacheWidth: 600,
+                filterQuality: FilterQuality.medium,
                 placeholder: (_, __) => Container(
                   height: 150.h,
                   color: ext.searchFieldFill,

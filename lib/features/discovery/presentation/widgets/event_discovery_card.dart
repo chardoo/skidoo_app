@@ -22,6 +22,8 @@ class EventDiscoveryCard extends StatefulWidget {
     this.isAuthenticated = false,
     this.isOwner = false,
     this.onCommentTap,
+    this.cardIndex = 0,
+    this.activeCardIndex,
   });
 
   final EventDiscovery event;
@@ -29,6 +31,11 @@ class EventDiscoveryCard extends StatefulWidget {
   final bool isAuthenticated;
   final bool isOwner;
   final VoidCallback? onCommentTap;
+  /// Position of this card in the feed list.
+  final int cardIndex;
+  /// Shared notifier; its value is the currently active card index.
+  /// When null the card is treated as always active (e.g. discovery page).
+  final ValueNotifier<int>? activeCardIndex;
 
   @override
   State<EventDiscoveryCard> createState() => _EventDiscoveryCardState();
@@ -127,12 +134,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   }
 
   void handleTap() {
-     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => EventPicturesPage(event:  widget.event)
-      ),
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => EventPicturesPage(event: widget.event)),
     );
-    
   }
 
   int get _visibleCount {
@@ -183,6 +187,8 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                           onDoubleTap: widget.isAuthenticated
                               ? _handleDoubleTap
                               : widget.onTap,
+                          cardIndex: widget.cardIndex,
+                          activeCardIndex: widget.activeCardIndex,
                         ),
 
                   // Top gradient (header area legibility)
@@ -191,8 +197,8 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                     left: 0,
                     right: 0,
                     height: 80.h,
-                    child: DecoratedBox(
-                      decoration: const BoxDecoration(
+                    child: const DecoratedBox(
+                      decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
@@ -290,8 +296,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                     setState(() {
                       if (!_liked && _disliked) {
                         _disliked = false;
-                        _dislikeCount =
-                            (_dislikeCount - 1).clamp(0, 999999999);
+                        _dislikeCount = (_dislikeCount - 1).clamp(0, 999999999);
                       }
                       _liked = !_liked;
                       _likeCount += _liked ? 1 : -1;
@@ -417,7 +422,8 @@ class _PostHeader extends StatelessWidget {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        border: Border.all(color: ext.homeBackground, width: 1.5),
+                        border:
+                            Border.all(color: ext.homeBackground, width: 1.5),
                         boxShadow: [
                           BoxShadow(
                             color: ext.accentGold.withValues(alpha: 0.5),
@@ -474,7 +480,7 @@ class _PostHeader extends StatelessWidget {
                           size: 11.sp, color: ext.accentGold),
                       SizedBox(width: 3.w),
                       Text(
-                        'Photographer',
+                        'Creator',
                         style: TextStyle(
                           color: ext.searchHintColor,
                           fontSize: 11.sp,

@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/components/media/media_action_buttons.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/pictures_fullscreen_viewer.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
@@ -170,6 +171,8 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
                   itemHeight: itemH,
                   activeIndex: _activeIndex,
                   onTap: () => _openFullscreen(i),
+                  eventName: widget.event.eventName,
+                  photographerName: widget.event.photographerName,
                 );
               },
             ),
@@ -187,6 +190,8 @@ class _MediaCard extends StatelessWidget {
     required this.itemHeight,
     required this.activeIndex,
     required this.onTap,
+    required this.eventName,
+    required this.photographerName,
   });
 
   final EventPicture picture;
@@ -194,24 +199,49 @@ class _MediaCard extends StatelessWidget {
   final double itemHeight;
   final ValueNotifier<int> activeIndex;
   final VoidCallback onTap;
+  final String eventName;
+  final String photographerName;
 
   @override
   Widget build(BuildContext context) {
+    // Bottom offset for the action sidebar: video items already have controls
+    // at the bottom ~90px, so lift the sidebar above them.
+    final sidebarBottom = picture.isVideo ? 100.h : 24.h;
+
     return SizedBox(
       width: double.infinity,
       height: itemHeight,
-      child: picture.isVideo
-          ? _VideoItem(
-              url: picture.url,
-              index: index,
-              height: itemHeight,
-              activeIndex: activeIndex,
-              onTap: onTap,
-            )
-          : GestureDetector(
-              onTap: onTap,
-              child: _PhotoItem(url: picture.url, height: itemHeight),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // ── Photo or video ────────────────────────────────────────────────
+          picture.isVideo
+              ? _VideoItem(
+                  url: picture.url,
+                  index: index,
+                  height: itemHeight,
+                  activeIndex: activeIndex,
+                  onTap: onTap,
+                )
+              : GestureDetector(
+                  onTap: onTap,
+                  child: _PhotoItem(url: picture.url, height: itemHeight),
+                ),
+
+          // ── TikTok-style action sidebar ───────────────────────────────────
+          Positioned(
+            right: 10.w,
+            bottom: sidebarBottom,
+            child: MediaActionButtons(
+              imageId: picture.id,
+              imageUrl: picture.url,
+              eventName: eventName,
+              photographerName: photographerName,
+              axis: Axis.vertical,
             ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -279,10 +309,9 @@ class _VideoItemState extends State<_VideoItem> {
   @override
   void initState() {
     super.initState();
-    _ctrl = VideoPlayerController.networkUrl(
-      Uri.parse(widget.url),
-      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-    )
+    // Use default (no VideoPlayerOptions) so iOS uses the .playback audio
+    // session category, which plays sound regardless of the ringer switch.
+    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
       ..setLooping(true)
       ..initialize().then((_) {
         if (!mounted) return;

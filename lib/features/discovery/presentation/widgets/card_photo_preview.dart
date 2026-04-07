@@ -15,6 +15,8 @@ class PostPhotoCarousel extends StatefulWidget {
     required this.onDoubleTap,
     required this.onTap,
     this.scrollable = true,
+    this.cardIndex = 0,
+    this.activeCardIndex,
   });
 
   final List<EventPicture> pics;
@@ -23,6 +25,10 @@ class PostPhotoCarousel extends StatefulWidget {
   final VoidCallback onDoubleTap;
   final bool scrollable;
   final VoidCallback onTap;
+  /// Which position this card occupies in the feed.
+  final int cardIndex;
+  /// Feed-level notifier for which card should be playing. Null = always play.
+  final ValueNotifier<int>? activeCardIndex;
 
   @override
   State<PostPhotoCarousel> createState() => _PostPhotoCarouselState();
@@ -63,6 +69,8 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                 index: index,
                 activeIndex: _activeIndex,
                 onTap: widget.onTap,
+                cardIndex: widget.cardIndex,
+                activeCardIndex: widget.activeCardIndex,
               ),
               if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
               if (pic.owner) const _OwnerCornerRibbon(),
@@ -102,6 +110,8 @@ class _SliderVideoItem extends StatefulWidget {
     required this.index,
     required this.activeIndex,
     required this.onTap,
+    this.cardIndex = 0,
+    this.activeCardIndex,
   });
 
   final String url;
@@ -110,6 +120,8 @@ class _SliderVideoItem extends StatefulWidget {
   /// Called when the user taps while video is not yet initialized, or when
   /// the card's outer gesture (open EventPicturesPage) should fire.
   final VoidCallback onTap;
+  final int cardIndex;
+  final ValueNotifier<int>? activeCardIndex;
 
   @override
   State<_SliderVideoItem> createState() => _SliderVideoItemState();
@@ -131,10 +143,10 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _ctrl = VideoPlayerController.networkUrl(
-      Uri.parse(widget.url),
-      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-    )
+    // Do NOT pass VideoPlayerOptions(mixWithOthers: true) — that forces the
+    // iOS audio session into the .ambient category which is silenced by the
+    // ringer switch. The default .playback category plays regardless.
+    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
       ..setLooping(true)
       ..initialize().then((_) {
         if (!mounted) return;
@@ -143,6 +155,7 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
         _syncPlayback();
       });
     widget.activeIndex.addListener(_syncPlayback);
+    widget.activeCardIndex?.addListener(_syncPlayback);
     _muted.addListener(_onMuteChanged);
   }
 
@@ -151,7 +164,7 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
     super.didChangeDependencies();
     // TickerMode is disabled by IndexedStack / Offstage when the tab is hidden.
     // Use it as a reliable "is my tab visible?" signal.
-    final active = TickerMode.of(context);
+    final active = TickerMode.valuesOf(context).enabled;
     if (active != _screenActive) {
       _screenActive = active;
       _syncPlayback();
@@ -177,6 +190,7 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.activeIndex.removeListener(_syncPlayback);
+    widget.activeCardIndex?.removeListener(_syncPlayback);
     _muted.removeListener(_onMuteChanged);
     _ctrl
       ..pause()
@@ -184,7 +198,14 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
     super.dispose();
   }
 
+  /// True when this slide is the active page within the carousel.
   bool get _isActive => widget.activeIndex.value == widget.index;
+
+  /// True when this card is the one centred in the feed, or when no feed
+  /// controller is provided (legacy/standalone use).
+  bool get _isCardActive =>
+      widget.activeCardIndex == null ||
+      widget.activeCardIndex!.value == widget.cardIndex;
 
   void _onMuteChanged() {
     if (!_initialized) return;
@@ -193,7 +214,7 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
 
   void _syncPlayback() {
     if (!_initialized) return;
-    if (_isActive && _screenActive && !_manuallyPaused) {
+    if (_isActive && _isCardActive && _screenActive && !_manuallyPaused) {
       if (!_ctrl.value.isPlaying) _ctrl.play();
     } else {
       if (_ctrl.value.isPlaying) _ctrl.pause();

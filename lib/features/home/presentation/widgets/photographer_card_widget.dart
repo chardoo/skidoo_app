@@ -34,6 +34,8 @@ class PhotographerCardWidget extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: photographer.imageUrl!,
                       fit: BoxFit.cover,
+                      memCacheWidth: 600,
+                      filterQuality: FilterQuality.medium,
                       placeholder: (_, __) =>
                           _GradientPlaceholder(name: photographer.name),
                       errorWidget: (_, __, ___) =>
@@ -138,7 +140,7 @@ class _GradientPlaceholder extends StatelessWidget {
       child: Text(
         initial,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.35),
+          color: Colors.white.withValues(alpha: 0.35),
           fontSize: 56.sp,
           fontWeight: FontWeight.bold,
         ),

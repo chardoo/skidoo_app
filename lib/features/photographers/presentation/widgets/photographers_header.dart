@@ -46,7 +46,7 @@ class PhotographersHeader extends StatelessWidget {
                     child: Row(
                       children: [
                         Text(
-                          'Photographers',
+                          'Creators',
                           style: TextStyle(
                             color: ext.greetingColor,
                             fontWeight: FontWeight.bold,
@@ -138,7 +138,7 @@ class PhotographersSearchField extends StatelessWidget {
             autofocus: true,
             style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
             decoration: InputDecoration(
-              hintText: 'Search photographers...',
+              hintText: 'Search creators...',
               hintStyle:
                   TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
               border: InputBorder.none,

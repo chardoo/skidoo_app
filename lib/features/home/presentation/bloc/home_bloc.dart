@@ -71,19 +71,17 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     emit(state.copyWith(isLoadingImages: true, searchImages: [], clearError: true));
     try {
       final email = await _authService.getEmail();
-      await emit.forEach<Photo>(
-        _searchImagesUseCase(
-            SearchImagesParams(eventId: event.eventId, email: email)),
-        // Keep isLoadingImages=true so the "Finding more…" tail stays visible
-        // while the stream is still open. It is cleared after the loop ends.
-        onData: (photo) => state.copyWith(
-          searchImages: [...state.searchImages, photo],
-        ),
-        onError: (_, __) => state.copyWith(
-          isLoadingImages: false,
-          errorMessage: 'Failed to load images.',
-        ),
-      );
+      final stream = _searchImagesUseCase(
+          SearchImagesParams(eventId: event.eventId, email: email));
+      await for (final photo in stream) {
+        if (emit.isDone) return;
+        // Emit each photo immediately so the grid renders it as it arrives.
+        emit(state.copyWith(searchImages: [...state.searchImages, photo]));
+        // Yield to the platform event queue so Flutter can render the new
+        // photo before the next one is processed from the stream.
+        await Future.delayed(Duration.zero);
+        if (emit.isDone) return;
+      }
       // Stream finished — clear the loading flag now.
       emit(state.copyWith(isLoadingImages: false));
     } on NetworkException catch (e) {

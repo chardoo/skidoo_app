@@ -19,7 +19,7 @@ class AppNavbar extends StatelessWidget {
     _NavItem(label: 'Home', iconPath: IconsPath.home),
     _NavItem(label: 'Messages', iconPath: null, icon: Icons.chat_bubble_outline_rounded),
     _NavItem(label: 'Gallery', iconPath: IconsPath.gallery),
-    _NavItem(label: 'Photographers', iconPath: IconsPath.photographer),
+    _NavItem(label: 'Creators', iconPath: IconsPath.photographer),
   ];
 
   @override

@@ -147,6 +147,9 @@ class GalleryPage extends StatelessWidget {
                       crossAxisCount: _columnCount(context),
                       mainAxisSpacing: 10.h,
                       crossAxisSpacing: 10.w,
+                      cacheExtent: 800,
+                      addAutomaticKeepAlives: false,
+                      addRepaintBoundaries: true,
                       itemCount: state.photos.length,
                       itemBuilder: (context, index) {
                         return BlocProvider.value(

@@ -36,9 +36,13 @@ import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.d
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 
 import 'package:skidoo_app/features/gallery/data/datasources/gallery_remote_data_source.dart';
+import 'package:skidoo_app/features/gallery/data/datasources/overlay_remote_data_source.dart';
 import 'package:skidoo_app/features/gallery/data/repositories/gallery_repository_impl.dart';
+import 'package:skidoo_app/features/gallery/data/repositories/overlay_repository_impl.dart';
 import 'package:skidoo_app/features/gallery/domain/repositories/gallery_repository.dart';
+import 'package:skidoo_app/features/gallery/domain/repositories/overlay_repository.dart';
 import 'package:skidoo_app/features/gallery/domain/usecases/get_gallery_usecase.dart';
+import 'package:skidoo_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
 import 'package:skidoo_app/features/gallery/presentation/bloc/gallery_bloc.dart';
 import 'package:skidoo_app/features/home/data/datasources/home_remote_data_source.dart';
 import 'package:skidoo_app/features/home/data/repositories/home_repository_impl.dart';
@@ -136,6 +140,14 @@ Future<void> setupServiceLocator() async {
 
   sl.registerFactory<GalleryBloc>(
       () => GalleryBloc(getGalleryUseCase: sl<GetGalleryUseCase>()));
+
+  // Overlay (shared across gallery + event pictures)
+  sl.registerSingleton<OverlayRemoteDataSource>(
+      OverlayRemoteDataSourceImpl(sl<Api>()));
+  sl.registerSingleton<OverlayRepository>(
+      OverlayRepositoryImpl(sl<OverlayRemoteDataSource>()));
+  sl.registerSingleton<GetOverlayImageUseCase>(
+      GetOverlayImageUseCase(sl<OverlayRepository>()));
 
   // ── Cart feature ──────────────────────────────────────────────────────────
   sl.registerSingleton<CartRemoteDataSource>(

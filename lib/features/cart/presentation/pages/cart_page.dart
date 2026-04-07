@@ -107,6 +107,9 @@ class _CartView extends StatelessWidget {
                       crossAxisCount: 2,
                       mainAxisSpacing: 8,
                       crossAxisSpacing: 8,
+                      cacheExtent: 800,
+                      addAutomaticKeepAlives: false,
+                      addRepaintBoundaries: true,
                       itemCount: state.items.length,
                       itemBuilder: (context, index) {
                         return CartItemWidget(photo: state.items[index]);

@@ -143,7 +143,7 @@ class _HomeViewState extends State<_HomeView> {
                 const NavigationRailDestination(
                   icon: Icon(Icons.camera_alt_outlined),
                   selectedIcon: Icon(Icons.camera_alt_rounded),
-                  label: Text('Photographers'),
+                  label: Text('Creators'),
                 ),
               ],
             ),

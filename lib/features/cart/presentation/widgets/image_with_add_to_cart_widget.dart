@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -10,74 +11,90 @@ class ImageWithAddToCartWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.network(
-            photo.url,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10.r),
+      child: Stack(
+        children: [
+          // ── Image ───────────────────────────────────────────────────────
+          CachedNetworkImage(
+            imageUrl: photo.url,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              height: 150,
-              color: Colors.grey[300],
-              child: const Icon(Icons.broken_image),
+            width: double.infinity,
+            placeholder: (_, __) => Container(
+              height: 150.h,
+              color: const Color(0xFF1A1A1A),
+              child: const Center(
+                child: CircularProgressIndicator(
+                    color: Colors.white30, strokeWidth: 2),
+              ),
+            ),
+            errorWidget: (_, __, ___) => Container(
+              height: 150.h,
+              color: const Color(0xFF1A1A1A),
+              child: const Icon(Icons.broken_image_outlined,
+                  color: Colors.white38, size: 40),
             ),
           ),
-        ),
-        Align(
-          alignment: Alignment.topRight,
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(5),
-                color: Colors.black,
-                height: 40.h,
-                width: 40.h,
-                child: Text(
-                  'GhC ${photo.price}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 10.h,
-                    color: Theme.of(context).primaryColor,
-                  ),
+
+          // ── Price badge ─────────────────────────────────────────────────
+          Positioned(
+            top: 8.h,
+            right: 8.w,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(6.r),
+              ),
+              child: Text(
+                'GhC ${photo.price}',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: 155.h),
-              Container(
-                padding: const EdgeInsets.all(5),
-                color: Colors.black,
-                height: 40.h,
-                width: 40.h,
-                child: photo.price == 0
-                    ? GestureDetector(
-                        onTap: () {
-                          context
-                              .read<CartBloc>()
-                              .add(CartImageDownloaded(photo.url));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Downloading...')),
-                          );
-                        },
-                        child: const Icon(Icons.download, size: 20),
-                      )
-                    : GestureDetector(
-                        onTap: () {
-                          context
-                              .read<CartBloc>()
-                              .add(CartItemAdded(photo));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Added to cart')),
-                          );
-                        },
-                        child: const Icon(Icons.shopping_cart, size: 20),
-                      ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+
+          // ── Cart / download button ──────────────────────────────────────
+          Positioned(
+            bottom: 8.h,
+            right: 8.w,
+            child: GestureDetector(
+              onTap: () {
+                if (photo.price == 0) {
+                  context.read<CartBloc>().add(CartImageDownloaded(photo.url));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Downloading…')),
+                  );
+                } else {
+                  context.read<CartBloc>().add(CartItemAdded(photo));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Added to cart')),
+                  );
+                }
+              },
+              child: Container(
+                width: 36.w,
+                height: 36.w,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24, width: 1),
+                ),
+                child: Icon(
+                  photo.price == 0
+                      ? Icons.download_rounded
+                      : Icons.shopping_cart_rounded,
+                  color: Colors.white,
+                  size: 18.sp,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

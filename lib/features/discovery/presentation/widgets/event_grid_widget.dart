@@ -23,6 +23,9 @@ class EventGridWidget extends StatelessWidget {
       mainAxisSpacing: 12.h,
       crossAxisSpacing: 12.w,
       padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 24.h),
+      cacheExtent: 800,
+      addAutomaticKeepAlives: false,
+      addRepaintBoundaries: true,
       itemCount: photos.length,
       itemBuilder: (context, index) {
         final height = _heights[index % _heights.length].h;
