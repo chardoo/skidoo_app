@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
@@ -54,60 +55,29 @@ class _ChatRoomsView extends StatelessWidget {
       ),
       body: BlocBuilder<ChatRoomsBloc, ChatRoomsState>(
         builder: (context, state) {
-          if (state.isLoading) {
-            return Center(
-              child: CircularProgressIndicator(color: ext.accentGold),
-            );
-          }
+          if (state.isLoading) return const AppLoadingIndicator();
 
           if (state.errorMessage != null && state.rooms.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.chat_bubble_outline_rounded,
-                      size: 56.sp, color: ext.searchHintColor),
-                  SizedBox(height: 12.h),
-                  Text(
-                    state.errorMessage!,
-                    style: TextStyle(
-                        color: ext.searchHintColor, fontSize: 14.sp),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 12.h),
-                  TextButton(
-                    onPressed: () => context
-                        .read<ChatRoomsBloc>()
-                        .add(const ChatRoomsLoadRequested()),
-                    child: Text('Retry',
-                        style: TextStyle(color: ext.accentGold)),
-                  ),
-                ],
-              ),
+            return AppErrorView(
+              message: state.errorMessage!,
+              icon: Icons.chat_bubble_outline_rounded,
+              onRetry: () => context
+                  .read<ChatRoomsBloc>()
+                  .add(const ChatRoomsLoadRequested()),
             );
           }
 
+          final noConversationsAction = TextButton(
+            onPressed: () => _openGlobalChat(context),
+            child: Text('Join Global Chat',
+                style: TextStyle(color: ext.accentGold)),
+          );
+
           if (state.rooms.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.chat_bubble_outline_rounded,
-                      size: 56.sp, color: ext.searchHintColor),
-                  SizedBox(height: 12.h),
-                  Text(
-                    'No conversations yet.',
-                    style: TextStyle(
-                        color: ext.searchHintColor, fontSize: 14.sp),
-                  ),
-                  SizedBox(height: 8.h),
-                  TextButton(
-                    onPressed: () => _openGlobalChat(context),
-                    child: Text('Join Global Chat',
-                        style: TextStyle(color: ext.accentGold)),
-                  ),
-                ],
-              ),
+            return AppEmptyState(
+              icon: Icons.chat_bubble_outline_rounded,
+              message: 'No conversations yet.',
+              action: noConversationsAction,
             );
           }
 
@@ -117,26 +87,10 @@ class _ChatRoomsView extends StatelessWidget {
               .toList();
 
           if (filtered.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.chat_bubble_outline_rounded,
-                      size: 56.sp, color: ext.searchHintColor),
-                  SizedBox(height: 12.h),
-                  Text(
-                    'No conversations yet.',
-                    style: TextStyle(
-                        color: ext.searchHintColor, fontSize: 14.sp),
-                  ),
-                  SizedBox(height: 8.h),
-                  TextButton(
-                    onPressed: () => _openGlobalChat(context),
-                    child: Text('Join Global Chat',
-                        style: TextStyle(color: ext.accentGold)),
-                  ),
-                ],
-              ),
+            return AppEmptyState(
+              icon: Icons.chat_bubble_outline_rounded,
+              message: 'No conversations yet.',
+              action: noConversationsAction,
             );
           }
 

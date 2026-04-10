@@ -4,6 +4,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
+import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/events_feed.dart';
@@ -89,12 +90,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   ) {
     // ── Search mode ─────────────────────────────────────────────────────────
     if (_isSearchOpen && homeState.isLoadingEvents) {
-      return CustomScrollView(slivers: [
+      return const CustomScrollView(slivers: [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: Center(
-            child: CircularProgressIndicator(color: ext.accentGold, strokeWidth: 2),
-          ),
+          child: AppLoadingIndicator(),
         ),
       ]);
     }
@@ -135,12 +134,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
     // ── Normal mode ──────────────────────────────────────────────────────────
     if (discoveryState.isLoading) {
-      return CustomScrollView(slivers: [
+      return const CustomScrollView(slivers: [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: Center(
-            child: CircularProgressIndicator(color: ext.accentGold, strokeWidth: 2),
-          ),
+          child: AppLoadingIndicator(),
         ),
       ]);
     }

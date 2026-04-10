@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/features/gallery/presentation/bloc/gallery_bloc.dart';
@@ -71,69 +72,22 @@ class GalleryPage extends StatelessWidget {
           ],
           body: BlocBuilder<GalleryBloc, GalleryState>(
             builder: (context, state) {
-              if (state.isLoading) {
-                return Center(
-                  child: CircularProgressIndicator(
-                    color: ext.accentGold,
-                    strokeWidth: 2,
-                  ),
-                );
-              }
+              if (state.isLoading) return const AppLoadingIndicator();
 
               if (state.errorMessage != null) {
-                return Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 32.w),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.cloud_off_rounded,
-                            size: 56.sp, color: ext.searchHintColor),
-                        SizedBox(height: 16.h),
-                        Text(
-                          state.errorMessage!,
-                          style: TextStyle(
-                              color: ext.searchHintColor, fontSize: 14.sp),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 20.h),
-                        TextButton(
-                          onPressed: () => context
-                              .read<GalleryBloc>()
-                              .add(const GalleryLoadRequested()),
-                          child: Text('Retry',
-                              style: TextStyle(color: ext.accentGold)),
-                        ),
-                      ],
-                    ),
-                  ),
+                return AppErrorView(
+                  message: state.errorMessage!,
+                  icon: Icons.cloud_off_rounded,
+                  onRetry: () => context
+                      .read<GalleryBloc>()
+                      .add(const GalleryLoadRequested()),
                 );
               }
 
               if (state.photos.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.photo_library_outlined,
-                          size: 64.sp, color: ext.searchHintColor),
-                      SizedBox(height: 16.h),
-                      Text(
-                        'Your gallery is empty',
-                        style: TextStyle(
-                          color: ext.greetingColor,
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 6.h),
-                      Text(
-                        'Photos from your events will appear here',
-                        style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 13.sp),
-                      ),
-                    ],
-                  ),
+                return const AppEmptyState(
+                  icon: Icons.photo_library_outlined,
+                  message: 'Your gallery is empty\nPhotos from your events will appear here',
                 );
               }
 

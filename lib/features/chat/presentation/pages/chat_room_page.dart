@@ -3,6 +3,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
@@ -206,12 +207,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not open chat: $e'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      AppSnackBar.error(context, 'Could not open chat: $e');
     }
   }
 
@@ -329,13 +325,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                           p.messages != c.messages,
                       listener: (context, state) {
                         if (state.errorMessage != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(state.errorMessage!),
-                              backgroundColor: Colors.redAccent,
-                              duration: const Duration(seconds: 3),
-                            ),
-                          );
+                          AppSnackBar.error(context, state.errorMessage!);
                         }
                         if (!state.isLoadingHistory && _knownIds.isNotEmpty) {
                           final newIds = state.messages

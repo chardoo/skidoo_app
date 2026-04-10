@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
@@ -81,44 +82,19 @@ class _PhotographersPageState extends State<PhotographersPage>
           Expanded(
             child: BlocBuilder<PhotographerBloc, PhotographerState>(
               builder: (context, state) {
-                if (state.isLoading) {
-                  return Center(
-                    child: CircularProgressIndicator(color: ext.accentGold),
-                  );
-                }
+                if (state.isLoading) return const AppLoadingIndicator();
                 if (state.errorMessage != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline_rounded,
-                            size: 56.sp, color: Colors.redAccent),
-                        SizedBox(height: 8.h),
-                        Text(
-                          state.errorMessage!,
-                          style: TextStyle(
-                              color: ext.searchHintColor, fontSize: 14.sp),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 12.h),
-                        TextButton(
-                          onPressed: () => context
-                              .read<PhotographerBloc>()
-                              .add(const PhotographersLoadRequested()),
-                          child: Text('Retry',
-                              style: TextStyle(color: ext.accentGold)),
-                        ),
-                      ],
-                    ),
+                  return AppErrorView(
+                    message: state.errorMessage!,
+                    onRetry: () => context
+                        .read<PhotographerBloc>()
+                        .add(const PhotographersLoadRequested()),
                   );
                 }
                 if (state.photographers.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No photographers found.',
-                      style: TextStyle(
-                          color: ext.searchHintColor, fontSize: 14.sp),
-                    ),
+                  return const AppEmptyState(
+                    icon: Icons.person_search_rounded,
+                    message: 'No photographers found.',
                   );
                 }
                 return Align(

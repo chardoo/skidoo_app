@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/event_discovery_card.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
@@ -84,7 +84,6 @@ class _EventsFeedState extends State<EventsFeed> {
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final state = widget.discoveryState;
 
     return NotificationListener<ScrollNotification>(
@@ -115,10 +114,7 @@ class _EventsFeedState extends State<EventsFeed> {
               if (index == state.events.length) {
                 return Padding(
                   padding: EdgeInsets.symmetric(vertical: 20.h),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                        color: ext.accentGold, strokeWidth: 2),
-                  ),
+                  child: const AppLoadingIndicator(),
                 );
               }
               final event = state.events[index];

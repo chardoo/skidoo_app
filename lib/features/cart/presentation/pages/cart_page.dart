@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:skidoo_app/core/common/customButtom.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/features/cart/presentation/pages/checkout_page.dart';
@@ -39,40 +40,21 @@ class _CartView extends StatelessWidget {
           );
         }
         if (state.status == CartStatus.paymentSuccess) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text(state.successMessage ?? 'Payment successful!'),
-              backgroundColor: Colors.green,
-            ));
+          AppSnackBar.success(
+              context, state.successMessage ?? 'Payment successful!');
           Navigator.of(context)
               .pushNamedAndRemoveUntil('/home', (_) => false);
         }
         if (state.status == CartStatus.paymentFailure &&
             state.errorMessage != null) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text(state.errorMessage!),
-              backgroundColor: Colors.red,
-            ));
+          AppSnackBar.error(context, state.errorMessage!);
         }
         if (state.status == CartStatus.downloadSuccess) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(const SnackBar(
-              content: Text('Image downloaded successfully.'),
-              backgroundColor: Colors.green,
-            ));
+          AppSnackBar.success(context, 'Image downloaded successfully.');
         }
         if (state.status == CartStatus.downloadFailure &&
             state.errorMessage != null) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text(state.errorMessage!),
-              backgroundColor: Colors.red,
-            ));
+          AppSnackBar.error(context, state.errorMessage!);
         }
       },
       builder: (context, state) {

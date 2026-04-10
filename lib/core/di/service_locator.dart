@@ -1,6 +1,9 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
+import 'package:skidoo_app/features/photo_comments/data/photo_comment_remote_data_source.dart';
+import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
+import 'package:skidoo_app/features/photo_comments/presentation/bloc/photo_comment_bloc.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
 import 'package:skidoo_app/features/discovery/data/repositories/discovery_repository_impl.dart';
 import 'package:skidoo_app/features/discovery/domain/repositories/discovery_repository.dart';
@@ -220,6 +223,8 @@ Future<void> setupServiceLocator() async {
       GetGlobalRoomUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetEventRoomUseCase>(
       GetEventRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetPhotoRoomUseCase>(
+      GetPhotoRoomUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetSampleRoomUseCase>(
       GetSampleRoomUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetOrCreateDirectRoomUseCase>(
@@ -267,4 +272,12 @@ Future<void> setupServiceLocator() async {
         authService: sl<AuthService>(),
         bgService: sl<ChatBackgroundService>(),
       ));
+
+  // ── Photo Comments feature ────────────────────────────────────────────────
+  sl.registerSingleton<PhotoCommentRemoteDataSource>(
+      PhotoCommentRemoteDataSourceImpl(sl<Api>()));
+  sl.registerFactory<PhotoCommentBloc>(
+      () => PhotoCommentBloc(sl<PhotoCommentRemoteDataSource>(), sl<AuthService>()));
+  sl.registerSingleton<PictureLikeService>(
+      PictureLikeService(sl<GetPhotoRoomUseCase>(), sl<AuthService>()));
 }
