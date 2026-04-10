@@ -3,10 +3,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/components/media/media_action_buttons.dart';
+import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/pictures_fullscreen_viewer.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 import 'package:video_player/video_player.dart';
+
+// ── Flat entry: one picture + its parent event metadata ──────────────────────
+
+class _PicEntry {
+  const _PicEntry({
+    required this.picture,
+    required this.eventName,
+    required this.photographerName,
+  });
+
+  final EventPicture picture;
+  final String eventName;
+  final String photographerName;
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 class EventPicturesPage extends StatefulWidget {
   const EventPicturesPage({super.key, required this.event});
@@ -24,35 +43,99 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
   /// -1 = no video should play (fullscreen viewer is open).
   final _activeIndex = ValueNotifier<int>(0);
 
-  /// One GlobalKey per item — only items in cache extent have a live context.
+  /// Flat list of all pictures across all loaded events.
+  late final List<_PicEntry> _entries;
+
+  /// One GlobalKey per entry — only items in cache extent have a live context.
   late final List<GlobalKey> _itemKeys;
 
   bool _fullscreenOpen = false;
+  bool _isLoadingMore = false;
+
+  // Track item height so scroll-to-end threshold is correct.
+  double _itemH = 0;
 
   @override
   void initState() {
     super.initState();
-    _itemKeys = List.generate(
-      widget.event.pictures.length,
-      (_) => GlobalKey(),
-    );
-    _scrollCtrl.addListener(_scheduleActiveUpdate);
-    // Seed the first active item once layout is done.
+    _entries = widget.event.pictures
+        .map((p) => _PicEntry(
+              picture: p,
+              eventName: widget.event.eventName,
+              photographerName: widget.event.photographerName,
+            ))
+        .toList();
+    _itemKeys = List.generate(_entries.length, (_) => GlobalKey());
+    _scrollCtrl.addListener(_onScroll);
     SchedulerBinding.instance
         .addPostFrameCallback((_) => _updateActiveItem());
   }
 
   @override
   void dispose() {
-    _scrollCtrl.removeListener(_scheduleActiveUpdate);
+    _scrollCtrl.removeListener(_onScroll);
     _scrollCtrl.dispose();
     _activeIndex.dispose();
     super.dispose();
   }
 
-  void _scheduleActiveUpdate() {
+  void _onScroll() {
     SchedulerBinding.instance
         .addPostFrameCallback((_) => _updateActiveItem());
+    _maybeLoadMore();
+  }
+
+  void _maybeLoadMore() {
+    if (_isLoadingMore) return;
+    if (!_scrollCtrl.hasClients) return;
+    final maxExt = _scrollCtrl.position.maxScrollExtent;
+    final threshold = _itemH > 0 ? _itemH * 2.5 : 600;
+    if (_scrollCtrl.position.pixels >= maxExt - threshold) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore) return;
+    setState(() => _isLoadingMore = true);
+
+    try {
+      String? userId;
+      try {
+        userId = await sl<AuthService>().getUserId();
+      } catch (_) {}
+
+      final events = await sl<GetRandomImagesUseCase>().call(
+        take: 5,
+        userId: userId,
+      );
+
+      if (!mounted) return;
+
+      final newEntries = <_PicEntry>[];
+      for (final event in events) {
+        for (final pic in event.pictures) {
+          newEntries.add(_PicEntry(
+            picture: pic,
+            eventName: event.eventName,
+            photographerName: event.photographerName,
+          ));
+        }
+      }
+
+      if (newEntries.isEmpty) {
+        setState(() => _isLoadingMore = false);
+        return;
+      }
+
+      setState(() {
+        _entries.addAll(newEntries);
+        _itemKeys.addAll(List.generate(newEntries.length, (_) => GlobalKey()));
+        _isLoadingMore = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingMore = false);
+    }
   }
 
   /// O(visible items) — iterates only items currently built by ListView.
@@ -61,12 +144,12 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
     final screenH = MediaQuery.sizeOf(context).height;
     final screenCenterY = screenH / 2;
 
-    int best = _activeIndex.value;
+    int best = _activeIndex.value.clamp(0, _entries.length - 1);
     double bestDist = double.infinity;
 
     for (int i = 0; i < _itemKeys.length; i++) {
       final ctx = _itemKeys[i].currentContext;
-      if (ctx == null) continue; // not built yet → skip
+      if (ctx == null) continue;
       final box = ctx.findRenderObject() as RenderBox?;
       if (box == null || !box.attached) continue;
       final top = box.localToGlobal(Offset.zero).dy;
@@ -83,32 +166,40 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
 
   void _openFullscreen(int initialIndex) {
     _fullscreenOpen = true;
-    _activeIndex.value = -1; // pause all videos
+    _activeIndex.value = -1;
+
+    // Build the pictures list for the fullscreen viewer scoped to the
+    // current event segment so tapping fullscreen stays in context.
+    final entry = _entries[initialIndex];
+    final segmentPics = _entries
+        .where((e) => e.eventName == entry.eventName)
+        .map((e) => e.picture)
+        .toList();
+    final segmentIndex =
+        segmentPics.indexWhere((p) => p.id == entry.picture.id);
 
     Navigator.of(context)
         .push(PageRouteBuilder(
           opaque: false,
           barrierColor: Colors.black,
           pageBuilder: (_, __, ___) => PicturesFullscreenViewer(
-            pictures: widget.event.pictures,
-            initialIndex: initialIndex,
+            pictures: segmentPics,
+            initialIndex: segmentIndex < 0 ? 0 : segmentIndex,
           ),
         ))
         .then((_) {
       _fullscreenOpen = false;
-      _updateActiveItem(); // resume the correct video
+      _updateActiveItem();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final pics = widget.event.pictures;
     final screenW = MediaQuery.sizeOf(context).width;
-    // 4:5 portrait card — same ratio as the discovery feed, fits naturally.
-    final itemH = screenW * (5 / 4);
-    // Cache one item above and below the viewport in memory.
-    final cacheExtent = itemH * 0.8;
+    // Full-bleed cards — no horizontal margin.
+    _itemH = screenW * (5 / 4);
+    final cacheExtent = _itemH * 0.8;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -121,58 +212,114 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
               color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.event.eventName,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 15.sp,
+        title: ValueListenableBuilder<int>(
+          valueListenable: _activeIndex,
+          builder: (_, idx, __) {
+            final safeIdx = idx < 0 || idx >= _entries.length ? 0 : idx;
+            final entry = _entries[safeIdx];
+            return AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.15),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                      parent: animation, curve: Curves.easeOut)),
+                  child: child,
+                ),
               ),
-            ),
-            Text(
-              'by ${widget.event.photographerName}',
-              style: TextStyle(color: Colors.white60, fontSize: 11.sp),
-            ),
-          ],
+              child: Column(
+                key: ValueKey(entry.eventName),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.eventName,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15.sp,
+                    ),
+                  ),
+                  Text(
+                    'by ${entry.photographerName}',
+                    style:
+                        TextStyle(color: Colors.white60, fontSize: 11.sp),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
         actions: [
-          Padding(
-            padding: EdgeInsets.only(right: 14.w),
-            child: Center(
-              child: Text(
-                '${pics.length} items',
-                style: TextStyle(color: Colors.white60, fontSize: 12.sp),
-              ),
-            ),
+          ValueListenableBuilder<int>(
+            valueListenable: _activeIndex,
+            builder: (_, idx, __) {
+              final safeIdx = idx < 0 || idx >= _entries.length ? 0 : idx;
+              // Count pictures in the same event segment as the active item.
+              final eventName = _entries[safeIdx].eventName;
+              final count = _entries
+                  .where((e) => e.eventName == eventName)
+                  .length;
+              return Padding(
+                padding: EdgeInsets.only(right: 14.w),
+                child: Center(
+                  child: Text(
+                    '$count items',
+                    style:
+                        TextStyle(color: Colors.white60, fontSize: 12.sp),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
-      body: pics.isEmpty
+      body: _entries.isEmpty
           ? Center(
               child: Text(
                 'No media available',
-                style: TextStyle(
-                    color: ext.searchHintColor, fontSize: 15.sp),
+                style:
+                    TextStyle(color: ext.searchHintColor, fontSize: 15.sp),
               ),
             )
           : ListView.builder(
               controller: _scrollCtrl,
               cacheExtent: cacheExtent,
-              itemCount: pics.length,
+              padding: EdgeInsets.zero,
+              itemCount: _entries.length + (_isLoadingMore ? 1 : 0),
               itemBuilder: (context, i) {
-                final pic = pics[i];
-                return _MediaCard(
-                  key: _itemKeys[i],
-                  picture: pic,
-                  index: i,
-                  itemHeight: itemH,
-                  activeIndex: _activeIndex,
-                  onTap: () => _openFullscreen(i),
-                  eventName: widget.event.eventName,
-                  photographerName: widget.event.photographerName,
+                // Subtle loading indicator appended after the last real item.
+                if (i == _entries.length) {
+                  return SizedBox(
+                    height: 80.h,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white24,
+                        strokeWidth: 1.5,
+                      ),
+                    ),
+                  );
+                }
+
+                final entry = _entries[i];
+                final isLast = i == _entries.length - 1;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _MediaCard(
+                      key: _itemKeys[i],
+                      picture: entry.picture,
+                      index: i,
+                      itemHeight: _itemH,
+                      activeIndex: _activeIndex,
+                      onTap: () => _openFullscreen(i),
+                      eventName: entry.eventName,
+                      photographerName: entry.photographerName,
+                    ),
+                    if (!isLast) const _CardSeparator(),
+                  ],
                 );
               },
             ),
@@ -204,43 +351,45 @@ class _MediaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Bottom offset for the action sidebar: video items already have controls
-    // at the bottom ~90px, so lift the sidebar above them.
     final sidebarBottom = picture.isVideo ? 100.h : 24.h;
 
     return SizedBox(
       width: double.infinity,
       height: itemHeight,
       child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // ── Photo or video ────────────────────────────────────────────────
-          picture.isVideo
-              ? _VideoItem(
-                  url: picture.url,
-                  index: index,
-                  height: itemHeight,
-                  activeIndex: activeIndex,
-                  onTap: onTap,
-                )
-              : GestureDetector(
-                  onTap: onTap,
-                  child: _PhotoItem(url: picture.url, height: itemHeight),
-                ),
+          fit: StackFit.expand,
+          children: [
+            // ── Photo or video ──────────────────────────────────────────────
+            picture.isVideo
+                ? _VideoItem(
+                    url: picture.url,
+                    index: index,
+                    height: itemHeight,
+                    activeIndex: activeIndex,
+                    onTap: onTap,
+                  )
+                : GestureDetector(
+                    onTap: onTap,
+                    child: _PhotoItem(url: picture.url, height: itemHeight),
+                  ),
 
-          // ── TikTok-style action sidebar ───────────────────────────────────
-          Positioned(
-            right: 10.w,
-            bottom: sidebarBottom,
-            child: MediaActionButtons(
-              imageId: picture.id,
-              imageUrl: picture.url,
-              eventName: eventName,
-              photographerName: photographerName,
-              axis: Axis.vertical,
+            // ── TikTok-style action sidebar ─────────────────────────────────
+            Positioned(
+              right: 10.w,
+              bottom: sidebarBottom,
+              child: MediaActionButtons(
+                imageId: picture.imageId,
+                pictureId: picture.id,
+                imageUrl: picture.url,
+                eventName: eventName,
+                photographerName: photographerName,
+                initialLikeCount: picture.likeCount,
+                initialCommentCount: picture.commentCount,
+                initiallyLiked: picture.isLikedByUser,
+                axis: Axis.vertical,
+              ),
             ),
-          ),
-        ],
+          ],
       ),
     );
   }
@@ -256,11 +405,15 @@ class _PhotoItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CachedNetworkImage(
+    return ColoredBox(
+      color: const Color(0xFF0A0A0A),
+      child: CachedNetworkImage(
       imageUrl: url,
       width: double.infinity,
       height: height,
-      fit: BoxFit.cover,
+      fit: BoxFit.contain,
+      memCacheWidth: 800,
+      filterQuality: FilterQuality.medium,
       placeholder: (_, __) => const ColoredBox(
         color: Color(0xFF111111),
         child: Center(
@@ -275,6 +428,7 @@ class _PhotoItem extends StatelessWidget {
               color: Colors.white24, size: 40),
         ),
       ),
+    ),
     );
   }
 }
@@ -294,7 +448,7 @@ class _VideoItem extends StatefulWidget {
   final int index;
   final double height;
   final ValueNotifier<int> activeIndex;
-  final VoidCallback onTap; // opens fullscreen
+  final VoidCallback onTap;
 
   @override
   State<_VideoItem> createState() => _VideoItemState();
@@ -309,8 +463,6 @@ class _VideoItemState extends State<_VideoItem> {
   @override
   void initState() {
     super.initState();
-    // Use default (no VideoPlayerOptions) so iOS uses the .playback audio
-    // session category, which plays sound regardless of the ringer switch.
     _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
       ..setLooping(true)
       ..initialize().then((_) {
@@ -391,18 +543,13 @@ class _VideoItemState extends State<_VideoItem> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ── Video (cover fill, no stretch) ────────────────────────────
+              // ── Video (fully contained, nothing cropped) ──────────────────
               GestureDetector(
                 onTap: _togglePlayback,
-                child: SizedBox.expand(
-                  child: FittedBox(
-                    fit: BoxFit.cover,
-                    clipBehavior: Clip.hardEdge,
-                    child: SizedBox(
-                      width: w,
-                      height: h,
-                      child: VideoPlayer(_ctrl),
-                    ),
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: w / h,
+                    child: VideoPlayer(_ctrl),
                   ),
                 ),
               ),
@@ -518,7 +665,6 @@ class _VideoItemState extends State<_VideoItem> {
                                 color: Colors.white70,
                                 fontSize: 10.sp),
                           ),
-                          // ── Mute/unmute ───────────────────────────────────
                           GestureDetector(
                             onTap: _toggleMute,
                             behavior: HitTestBehavior.opaque,
@@ -563,5 +709,33 @@ class _VideoItemState extends State<_VideoItem> {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$m:$s';
+  }
+}
+
+// ── Branded card separator ─────────────────────────────────────────────────────
+
+class _CardSeparator extends StatelessWidget {
+  const _CardSeparator();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final pillColor = isDark
+        ? Colors.white.withValues(alpha: 0.25)
+        : Colors.black.withValues(alpha: 0.18);
+
+    return SizedBox(
+      height: 28.h,
+      child: Center(
+        child: Container(
+          width: 40.w,
+          height: 4.h,
+          decoration: BoxDecoration(
+            color: pillColor,
+            borderRadius: BorderRadius.circular(100),
+          ),
+        ),
+      ),
+    );
   }
 }

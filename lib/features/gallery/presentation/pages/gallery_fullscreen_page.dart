@@ -197,7 +197,8 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
 
                       // ── Like / Save / Share ───────────────────────────────
                       MediaActionButtons(
-                        imageId: widget.photo.id,
+                        imageId: widget.photo.imageId,
+                        pictureId: widget.photo.id,
                         imageUrl: widget.photo.url,
                         eventName: widget.photo.eventName,
                         photographerName: '',

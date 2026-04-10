@@ -9,12 +9,20 @@ import 'package:share_plus/share_plus.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/features/gallery/data/datasources/overlay_remote_data_source.dart';
 import 'package:skidoo_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
+import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
+import 'package:skidoo_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
 
-/// Reusable **Like / Download / Share** action buttons for any media item.
+/// Reusable **Like / Download / Share / Comment** action buttons for any media item.
 ///
 /// [axis] controls layout:
 ///   • [Axis.vertical]   → TikTok-style sidebar (event pictures page).
 ///   • [Axis.horizontal] → flat row with dividers  (fullscreen page).
+///
+/// Provide [pictureId] (defaults to [imageId]) to show the Comment button.
+///
+/// [onLikeToggled] is called with the new liked state after an optimistic UI
+/// update.  The callback is responsible for syncing the like to the server
+/// (e.g. via a photo-room WebSocket).  When omitted the update is local-only.
 class MediaActionButtons extends StatefulWidget {
   const MediaActionButtons({
     super.key,
@@ -25,7 +33,12 @@ class MediaActionButtons extends StatefulWidget {
     this.axis = Axis.vertical,
     this.buttonSize,
     this.iconSize,
-  });
+    this.initialLikeCount = 0,
+    this.initialCommentCount = 0,
+    this.initiallyLiked = false,
+    this.onLikeToggled,
+    String? pictureId,
+  }) : pictureId = pictureId ?? imageId;
 
   final String imageId;
   final String imageUrl;
@@ -34,15 +47,42 @@ class MediaActionButtons extends StatefulWidget {
   final Axis axis;
   final double? buttonSize;
   final double? iconSize;
+  final int initialLikeCount;
+  final int initialCommentCount;
+  final bool initiallyLiked;
+
+  /// Called after the optimistic like/unlike update with the new [liked] value.
+  /// The callback owns server-sync responsibility.
+  final void Function(bool liked)? onLikeToggled;
+
+  /// The picture ID used for comments and likes. Defaults to [imageId].
+  final String pictureId;
 
   @override
   State<MediaActionButtons> createState() => _MediaActionButtonsState();
 }
 
 class _MediaActionButtonsState extends State<MediaActionButtons> {
-  bool _liked = false;
+  late bool _liked;
+  late int _likeCount;
+  late int _commentCount;
   bool _downloading = false;
   bool _sharing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _liked = widget.initiallyLiked;
+    _likeCount = widget.initialLikeCount;
+    _commentCount = widget.initialCommentCount;
+  }
+
+  static String _fmt(int n) {
+    if (n <= 0) return '';
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(n >= 10000 ? 0 : 1)}K';
+    return '$n';
+  }
 
   double get _btnSize =>
       widget.buttonSize ??
@@ -115,7 +155,17 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
 
   void _toggleLike() {
     HapticFeedback.lightImpact();
-    setState(() => _liked = !_liked);
+    final nowLiked = !_liked;
+    setState(() {
+      _liked = nowLiked;
+      _likeCount = (_likeCount + (nowLiked ? 1 : -1)).clamp(0, 999999999);
+    });
+    if (widget.onLikeToggled != null) {
+      widget.onLikeToggled!(nowLiked);
+    } else if (widget.pictureId.isNotEmpty) {
+      // Default: fire-and-forget via ephemeral photo-room WS.
+      sl<PictureLikeService>().toggleLike(widget.pictureId, liked: nowLiked);
+    }
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -125,7 +175,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
     final btns = <Widget>[
       _MediaBtn(
         icon: _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-        label: 'Like',
+        label: _fmt(_likeCount),
         color: _liked ? const Color(0xFFFF3B5C) : Colors.white,
         size: _btnSize,
         iconSize: _icnSize,
@@ -134,7 +184,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
       ),
       _MediaBtn(
         icon: Icons.download_rounded,
-        label: 'Download',
+        label: '',
         color: const Color(0xFFF5A623),
         size: _btnSize,
         iconSize: _icnSize,
@@ -143,12 +193,25 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
       ),
       _MediaBtn(
         icon: Icons.ios_share_rounded,
-        label: 'Share',
+        label: '',
         color: Colors.white.withValues(alpha: 0.9),
         size: _btnSize,
         iconSize: _icnSize,
         busy: _sharing,
         onTap: () => _handleAction(isDownload: false),
+      ),
+      _MediaBtn(
+        icon: Icons.chat_bubble_outline_rounded,
+        label: _fmt(_commentCount),
+        color: Colors.white.withValues(alpha: 0.9),
+        size: _btnSize,
+        iconSize: _icnSize,
+        busy: false,
+        onTap: () => PhotoCommentSheet.show(
+          context,
+          pictureId: widget.pictureId,
+          imageUrl: widget.imageUrl,
+        ),
       ),
     ];
 
@@ -170,7 +233,15 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
     );
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: [btns[0], divider, btns[1], divider, btns[2]],
+      children: [
+        btns[0],
+        divider,
+        btns[1],
+        divider,
+        btns[2],
+        divider,
+        btns[3],
+      ],
     );
   }
 
