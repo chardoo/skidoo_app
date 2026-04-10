@@ -47,9 +47,11 @@ enum RoomType {
     }
   }
 
-  /// True for rooms that represent personal conversations shown in the inbox.
+  /// True for rooms shown in the Messages inbox.
   bool get isConversation =>
-      this == RoomType.direct || this == RoomType.eventPrivate;
+      this == RoomType.global ||
+      this == RoomType.direct ||
+      this == RoomType.eventPrivate;
 }
 
 class ChatParticipant {
