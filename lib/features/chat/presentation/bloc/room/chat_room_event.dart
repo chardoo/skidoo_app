@@ -47,6 +47,13 @@ class ChatRoomPictureLikeToggled extends ChatRoomEvent {
   const ChatRoomPictureLikeToggled(this.pictureId);
 }
 
+/// Stage a remote image URL to be sent automatically once the WS connects.
+/// Used by the in-app share flow (gallery → DM room).
+class ChatRoomUrlStaged extends ChatRoomEvent {
+  final String imageUrl;
+  const ChatRoomUrlStaged(this.imageUrl);
+}
+
 /// A message arrived from the WebSocket.
 class ChatRoomMessageReceived extends ChatRoomEvent {
   final ChatMessage message;

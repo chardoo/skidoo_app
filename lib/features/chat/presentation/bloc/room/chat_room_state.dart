@@ -35,6 +35,9 @@ class ChatRoomState extends Equatable {
   /// Whether the current user has liked the picture.
   final bool isPictureLiked;
 
+  /// A remote image URL queued to be sent as a message once the WS connects.
+  final String? pendingShareUrl;
+
   const ChatRoomState({
     this.messages = const [],
     this.isConnected = false,
@@ -53,6 +56,7 @@ class ChatRoomState extends Equatable {
     this.isEventDisliked = false,
     this.pictureLikes,
     this.isPictureLiked = false,
+    this.pendingShareUrl,
   });
 
   ChatRoomState copyWith({
@@ -76,6 +80,8 @@ class ChatRoomState extends Equatable {
     bool? isEventDisliked,
     int? pictureLikes,
     bool? isPictureLiked,
+    String? pendingShareUrl,
+    bool clearPendingShareUrl = false,
   }) =>
       ChatRoomState(
         messages: messages ?? this.messages,
@@ -95,6 +101,7 @@ class ChatRoomState extends Equatable {
         isEventDisliked: isEventDisliked ?? this.isEventDisliked,
         pictureLikes: pictureLikes ?? this.pictureLikes,
         isPictureLiked: isPictureLiked ?? this.isPictureLiked,
+        pendingShareUrl: clearPendingShareUrl ? null : (pendingShareUrl ?? this.pendingShareUrl),
       );
 
   @override
@@ -116,5 +123,6 @@ class ChatRoomState extends Equatable {
         isEventDisliked,
         pictureLikes,
         isPictureLiked,
+        pendingShareUrl,
       ];
 }

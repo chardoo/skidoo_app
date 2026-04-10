@@ -60,6 +60,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<ChatRoomReplySet>(_onReplySet);
     on<ChatRoomLikeToggled>(_onLikeToggled);
     on<ChatRoomPictureLikeToggled>(_onPictureLikeToggled);
+    on<ChatRoomUrlStaged>(_onUrlStaged);
     on<ChatRoomMessageReceived>(_onReceived);
     on<ChatRoomLoadMoreRequested>(_onLoadMore);
     on<ChatRoomLeft>(_onLeft);
@@ -180,6 +181,48 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       isConnecting: false,
       clearError: true,
     ));
+    // Auto-send a share URL that was staged before the WS was ready.
+    final shareUrl = state.pendingShareUrl;
+    if (shareUrl != null) {
+      emit(state.copyWith(clearPendingShareUrl: true));
+      _ws.send(null, imageUrl: shareUrl);
+      final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+      final optimistic = ChatMessage(
+        id: tempId,
+        roomId: _currentRoomId ?? '',
+        senderId: _myUserId,
+        senderRole: ChatConfig.roleClient,
+        content: '',
+        imageUrl: shareUrl,
+        createdAt: DateTime.now(),
+        isLocal: true,
+      );
+      emit(state.copyWith(messages: _sorted([optimistic, ...state.messages])));
+      _cacheMessage(optimistic).catchError((_) {});
+    }
+  }
+
+  void _onUrlStaged(ChatRoomUrlStaged event, Emitter<ChatRoomState> emit) {
+    if (_ws.isConnected) {
+      // WS already up — send immediately.
+      _ws.send(null, imageUrl: event.imageUrl);
+      final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+      final optimistic = ChatMessage(
+        id: tempId,
+        roomId: _currentRoomId ?? '',
+        senderId: _myUserId,
+        senderRole: ChatConfig.roleClient,
+        content: '',
+        imageUrl: event.imageUrl,
+        createdAt: DateTime.now(),
+        isLocal: true,
+      );
+      emit(state.copyWith(messages: _sorted([optimistic, ...state.messages])));
+      _cacheMessage(optimistic).catchError((_) {});
+    } else {
+      // WS not ready yet — queue it; _onWsConnected will send it.
+      emit(state.copyWith(pendingShareUrl: event.imageUrl));
+    }
   }
 
   void _onWsFailed(_WsFailed event, Emitter<ChatRoomState> emit) {
