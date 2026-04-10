@@ -289,7 +289,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             saved: _saved,
             likeCount: _likeCount,
             dislikeCount: _dislikeCount,
-            commentCount: 0,
+            commentCount: widget.event.commentCount,
             ext: ext,
             onLike: widget.isAuthenticated
                 ? () {

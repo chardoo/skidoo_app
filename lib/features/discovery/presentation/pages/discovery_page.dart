@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/login_bottom_sheet.dart';
@@ -80,17 +81,12 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
             Expanded(
               child: BlocBuilder<DiscoveryBloc, DiscoveryState>(
                 builder: (context, state) {
-                  if (state.isLoading) {
-                    return Center(
-                      child: CircularProgressIndicator(
-                          color: ext.accentGold, strokeWidth: 2),
-                    );
-                  }
+                  if (state.isLoading) return const AppLoadingIndicator();
 
                   if (state.errorMessage != null && state.events.isEmpty) {
-                    return _ErrorView(
-                      ext: ext,
+                    return AppErrorView(
                       message: state.errorMessage!,
+                      icon: Icons.cloud_off_outlined,
                       onRetry: () => context
                           .read<DiscoveryBloc>()
                           .add(const DiscoveryLoadRequested()),
@@ -98,12 +94,9 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                   }
 
                   if (state.events.isEmpty) {
-                    return Center(
-                      child: Text(
-                        'No events yet',
-                        style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 15.sp),
-                      ),
+                    return const AppEmptyState(
+                      icon: Icons.photo_library_outlined,
+                      message: 'No events yet',
                     );
                   }
 
@@ -118,10 +111,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                       if (index == state.events.length) {
                         return Padding(
                           padding: EdgeInsets.symmetric(vertical: 24.h),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                                color: ext.accentGold, strokeWidth: 2),
-                          ),
+                          child: const AppLoadingIndicator(),
                         );
                       }
                       final ev = state.events[index];
@@ -257,35 +247,3 @@ class _AppBarIcon extends StatelessWidget {
   }
 }
 
-// ── Error view ────────────────────────────────────────────────────────────────
-
-class _ErrorView extends StatelessWidget {
-  const _ErrorView(
-      {required this.ext, required this.message, required this.onRetry});
-  final AppThemeExtension ext;
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.cloud_off_outlined,
-              size: 56.sp, color: ext.searchHintColor),
-          SizedBox(height: 12.h),
-          Text(message,
-              style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-              textAlign: TextAlign.center),
-          SizedBox(height: 16.h),
-          TextButton(
-            onPressed: onRetry,
-            child: Text('Retry',
-                style: TextStyle(color: ext.accentGold, fontSize: 14.sp)),
-          ),
-        ],
-      ),
-    );
-  }
-}
