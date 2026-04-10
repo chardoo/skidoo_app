@@ -6,9 +6,10 @@ class EventPicture {
   final String imageId;
   final int price;
   final MediaType mediaType;
-
-  /// True when this picture belongs to (features) the currently logged-in user.
   final bool owner;
+  final int likeCount;
+  final int commentCount;
+  final bool isLikedByUser;
 
   const EventPicture({
     required this.id,
@@ -17,12 +18,18 @@ class EventPicture {
     required this.price,
     this.mediaType = MediaType.photo,
     this.owner = false,
+    this.likeCount = 0,
+    this.commentCount = 0,
+    this.isLikedByUser = false,
   });
 
   bool get isVideo => mediaType == MediaType.video;
 
   factory EventPicture.fromMap(Map<String, dynamic> json) {
     final typeRaw = json['mediaType']?.toString().toLowerCase() ?? 'photo';
+    // Support both camelCase and snake_case keys the server may return.
+    int parseInt(String a, String b) =>
+        (json[a] as num?)?.toInt() ?? (json[b] as num?)?.toInt() ?? 0;
     return EventPicture(
       id: json['id']?.toString() ?? '',
       url: json['url']?.toString() ?? '',
@@ -30,6 +37,9 @@ class EventPicture {
       price: (json['price'] as num?)?.toInt() ?? 0,
       mediaType: typeRaw == 'video' ? MediaType.video : MediaType.photo,
       owner: json['owner'] == true,
+      likeCount: parseInt('likeCount', 'like_count'),
+      commentCount: parseInt('commentCount', 'comment_count'),
+      isLikedByUser: json['isLikedByUser'] == true || json['is_liked_by_user'] == true,
     );
   }
 }
@@ -42,6 +52,7 @@ class EventDiscovery {
   final List<EventPicture> pictures;
   final int likes;
   final int dislikes;
+  final int commentCount;
 
   /// The authenticated user's current reaction: 'like', 'dislike', or null.
   final String? userReaction;
@@ -54,12 +65,14 @@ class EventDiscovery {
     required this.pictures,
     this.likes = 0,
     this.dislikes = 0,
+    this.commentCount = 0,
     this.userReaction,
   });
 
   EventDiscovery copyWith({
     int? likes,
     int? dislikes,
+    int? commentCount,
     String? userReaction,
     bool clearReaction = false,
   }) {
@@ -71,6 +84,7 @@ class EventDiscovery {
       pictures: pictures,
       likes: likes ?? this.likes,
       dislikes: dislikes ?? this.dislikes,
+      commentCount: commentCount ?? this.commentCount,
       userReaction:
           clearReaction ? null : (userReaction ?? this.userReaction),
     );
@@ -94,6 +108,8 @@ class EventDiscovery {
       pictures: pics,
       likes: (event['likes'] as num?)?.toInt() ?? 0,
       dislikes: (event['dislikes'] as num?)?.toInt() ?? 0,
+      commentCount: (event['commentCount'] as num?)?.toInt() ??
+          (event['comment_count'] as num?)?.toInt() ?? 0,
     );
   }
 }

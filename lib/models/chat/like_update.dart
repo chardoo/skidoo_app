@@ -1,3 +1,26 @@
+/// Broadcast received when a user likes/unlikes a picture in a photo room.
+class PictureLikeUpdate {
+  final String pictureId;
+  final int likes;
+  final bool liked;
+  final bool echo;
+
+  const PictureLikeUpdate({
+    required this.pictureId,
+    required this.likes,
+    required this.liked,
+    this.echo = false,
+  });
+
+  factory PictureLikeUpdate.fromJson(Map<String, dynamic> json) =>
+      PictureLikeUpdate(
+        pictureId: json['picture_id']?.toString() ?? '',
+        likes: (json['likes'] as num?)?.toInt() ?? 0,
+        liked: json['liked'] == true,
+        echo: json['echo'] == true,
+      );
+}
+
 class LikeUpdate {
   final String eventId;
   final int likes;
