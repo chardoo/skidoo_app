@@ -41,6 +41,12 @@ class ChatRoomLikeToggled extends ChatRoomEvent {
   const ChatRoomLikeToggled(this.eventId);
 }
 
+/// Toggle like / unlike for the picture in a photo room.
+class ChatRoomPictureLikeToggled extends ChatRoomEvent {
+  final String pictureId;
+  const ChatRoomPictureLikeToggled(this.pictureId);
+}
+
 /// A message arrived from the WebSocket.
 class ChatRoomMessageReceived extends ChatRoomEvent {
   final ChatMessage message;
@@ -82,4 +88,10 @@ class _WsGaveUp extends ChatRoomEvent {
 class _LikeUpdateReceived extends ChatRoomEvent {
   final LikeUpdate update;
   const _LikeUpdateReceived(this.update);
+}
+
+/// Picture like update received from WebSocket.
+class _PictureLikeUpdateReceived extends ChatRoomEvent {
+  final PictureLikeUpdate update;
+  const _PictureLikeUpdateReceived(this.update);
 }

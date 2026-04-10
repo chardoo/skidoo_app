@@ -29,6 +29,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   String _myUserId = '';
   StreamSubscription<ChatMessage>? _wsMsgSub;
   StreamSubscription<LikeUpdate>? _wsLikeSub;
+  StreamSubscription<PictureLikeUpdate>? _wsPicLikeSub;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
   DateTime? _lastConnectedAt;
@@ -58,6 +59,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<ChatRoomImageCleared>(_onImageCleared);
     on<ChatRoomReplySet>(_onReplySet);
     on<ChatRoomLikeToggled>(_onLikeToggled);
+    on<ChatRoomPictureLikeToggled>(_onPictureLikeToggled);
     on<ChatRoomMessageReceived>(_onReceived);
     on<ChatRoomLoadMoreRequested>(_onLoadMore);
     on<ChatRoomLeft>(_onLeft);
@@ -66,6 +68,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_WsDropped>(_onWsDropped);
     on<_WsGaveUp>(_onWsGaveUp);
     on<_LikeUpdateReceived>(_onLikeUpdateReceived);
+    on<_PictureLikeUpdateReceived>(_onPictureLikeUpdateReceived);
   }
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -133,6 +136,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     debugPrint('[ChatBloc] _connectWsInBackground called for room: $roomId');
     _wsMsgSub?.cancel();
     _wsLikeSub?.cancel();
+    _wsPicLikeSub?.cancel();
     _ws.connect(roomId).then((_) {
       if (isClosed) return;
 
@@ -151,6 +155,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _wsLikeSub = _ws.likeUpdates.listen(
         (update) {
           if (!isClosed) add(_LikeUpdateReceived(update));
+        },
+      );
+
+      _wsPicLikeSub = _ws.pictureLikeUpdates.listen(
+        (update) {
+          if (!isClosed) add(_PictureLikeUpdateReceived(update));
         },
       );
 
@@ -358,6 +368,30 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     ));
   }
 
+  void _onPictureLikeToggled(
+      ChatRoomPictureLikeToggled event, Emitter<ChatRoomState> emit) {
+    if (!_ws.isConnected) return;
+    if (state.isPictureLiked) {
+      _ws.sendPictureUnlike(event.pictureId);
+    } else {
+      _ws.sendPictureLike(event.pictureId);
+    }
+    // Optimistic update — WS echo will confirm the real value.
+    final wasLiked = state.isPictureLiked;
+    emit(state.copyWith(
+      isPictureLiked: !wasLiked,
+      pictureLikes: (state.pictureLikes ?? 0) + (wasLiked ? -1 : 1),
+    ));
+  }
+
+  void _onPictureLikeUpdateReceived(
+      _PictureLikeUpdateReceived event, Emitter<ChatRoomState> emit) {
+    emit(state.copyWith(
+      pictureLikes: event.update.likes,
+      isPictureLiked: event.update.liked,
+    ));
+  }
+
   void _onReceived(
     ChatRoomMessageReceived event,
     Emitter<ChatRoomState> emit,
@@ -413,6 +447,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _reconnectTimer?.cancel();
     _wsMsgSub?.cancel();
     _wsLikeSub?.cancel();
+    _wsPicLikeSub?.cancel();
     _ws.disconnect();
     emit(state.copyWith(isConnected: false, isConnecting: false));
     if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
@@ -423,6 +458,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _reconnectTimer?.cancel();
     _wsMsgSub?.cancel();
     _wsLikeSub?.cancel();
+    _wsPicLikeSub?.cancel();
     _ws.disconnect();
     if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
     return super.close();

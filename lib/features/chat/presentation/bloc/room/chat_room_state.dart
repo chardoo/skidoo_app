@@ -29,6 +29,12 @@ class ChatRoomState extends Equatable {
   /// Whether the current user has disliked the event.
   final bool isEventDisliked;
 
+  /// Like count for the picture in a photo room (null for non-photo rooms).
+  final int? pictureLikes;
+
+  /// Whether the current user has liked the picture.
+  final bool isPictureLiked;
+
   const ChatRoomState({
     this.messages = const [],
     this.isConnected = false,
@@ -45,6 +51,8 @@ class ChatRoomState extends Equatable {
     this.eventDislikes,
     this.isEventLiked = false,
     this.isEventDisliked = false,
+    this.pictureLikes,
+    this.isPictureLiked = false,
   });
 
   ChatRoomState copyWith({
@@ -66,6 +74,8 @@ class ChatRoomState extends Equatable {
     int? eventDislikes,
     bool? isEventLiked,
     bool? isEventDisliked,
+    int? pictureLikes,
+    bool? isPictureLiked,
   }) =>
       ChatRoomState(
         messages: messages ?? this.messages,
@@ -83,6 +93,8 @@ class ChatRoomState extends Equatable {
         eventDislikes: eventDislikes ?? this.eventDislikes,
         isEventLiked: isEventLiked ?? this.isEventLiked,
         isEventDisliked: isEventDisliked ?? this.isEventDisliked,
+        pictureLikes: pictureLikes ?? this.pictureLikes,
+        isPictureLiked: isPictureLiked ?? this.isPictureLiked,
       );
 
   @override
@@ -102,5 +114,7 @@ class ChatRoomState extends Equatable {
         eventDislikes,
         isEventLiked,
         isEventDisliked,
+        pictureLikes,
+        isPictureLiked,
       ];
 }
