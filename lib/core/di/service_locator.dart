@@ -29,6 +29,7 @@ import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 // ── Chat feature imports ───────────────────────────────────────────────────────
 import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
+import 'package:skidoo_app/features/chat/data/datasources/user_search_data_source.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart';
 import 'package:skidoo_app/features/chat/data/local/chat_database.dart';
 import 'package:skidoo_app/features/chat/data/network/chat_api_client.dart';
@@ -215,6 +216,8 @@ Future<void> setupServiceLocator() async {
 
   sl.registerSingleton<ChatRestDataSource>(
       ChatRestDataSourceImpl(sl<ChatApiClient>()));
+  sl.registerSingleton<UserSearchDataSource>(
+      UserSearchDataSource(sl<Api>()));
   sl.registerSingleton<ChatRepository>(
       ChatRepositoryImpl(sl<ChatRestDataSource>(), sl<ChatDatabase>()));
 

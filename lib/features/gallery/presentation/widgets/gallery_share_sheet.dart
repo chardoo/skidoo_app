@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/chat/data/datasources/user_search_data_source.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
-import 'package:skidoo_app/features/photographers/data/datasources/photographer_remote_data_source.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:skidoo_app/models/chat/shareable_user.dart';
 
-/// Bottom sheet that lets the user search for a photographer and share a
-/// photo to their DM room.
+/// Bottom sheet that lets the user search any app user (client or photographer)
+/// and share a photo to their DM room.
 class GalleryShareSheet {
   static void show(
     BuildContext context, {
@@ -45,16 +45,10 @@ class _ShareSheetContent extends StatefulWidget {
 
 class _ShareSheetContentState extends State<_ShareSheetContent> {
   final _searchCtrl = TextEditingController();
-  List<PhotographerModel> _results = [];
+  List<ShareableUser> _results = [];
   bool _loading = false;
   String? _error;
   String? _sendingTo;
-
-  @override
-  void initState() {
-    super.initState();
-    _search('');
-  }
 
   @override
   void dispose() {
@@ -63,29 +57,30 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
   }
 
   Future<void> _search(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() { _results = []; _error = null; _loading = false; });
+      return;
+    }
     setState(() { _loading = true; _error = null; });
     try {
-      final ds = sl<PhotographerRemoteDataSource>();
-      final results = query.isEmpty
-          ? await ds.getPhotographers()
-          : await ds.searchPhotographers(query);
+      final results = await sl<UserSearchDataSource>().search(query.trim());
       if (mounted) setState(() { _results = results; _loading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
   }
 
-  Future<void> _sendTo(PhotographerModel photographer) async {
+  Future<void> _sendTo(ShareableUser user) async {
     if (_sendingTo != null) return;
-    setState(() => _sendingTo = photographer.id);
+    setState(() => _sendingTo = user.id);
     try {
       final room = await sl<GetOrCreateDirectRoomUseCase>().call(
-        recipientId: photographer.id,
-        recipientRole: 'photographer',
-        localDisplayName: photographer.name,
+        recipientId: user.id,
+        recipientRole: user.role,
+        localDisplayName: user.name,
       );
       if (!mounted) return;
-      Navigator.of(context).pop(); // close the share sheet
+      Navigator.of(context).pop();
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => ChatRoomPage(room: room, shareUrl: widget.imageUrl),
@@ -131,7 +126,7 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
           Padding(
             padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
             child: Text(
-              'Share to…',
+              'Send to…',
               style: TextStyle(
                 color: ext.greetingColor,
                 fontWeight: FontWeight.bold,
@@ -145,12 +140,24 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
             padding: EdgeInsets.symmetric(horizontal: 16.w),
             child: TextField(
               controller: _searchCtrl,
+              autofocus: true,
               style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
               decoration: InputDecoration(
-                hintText: 'Search photographers…',
+                hintText: 'Search by name…',
                 hintStyle: TextStyle(color: ext.searchHintColor),
                 prefixIcon: Icon(Icons.search_rounded,
                     color: ext.searchHintColor, size: 20.sp),
+                suffixIcon: _loading
+                    ? Padding(
+                        padding: EdgeInsets.all(12.r),
+                        child: SizedBox(
+                          width: 16.w,
+                          height: 16.w,
+                          child: CircularProgressIndicator(
+                              color: ext.accentGold, strokeWidth: 2),
+                        ),
+                      )
+                    : null,
                 filled: true,
                 fillColor: ext.searchFieldFill,
                 border: OutlineInputBorder(
@@ -161,72 +168,102 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                     EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
                 isDense: true,
               ),
-              onChanged: (q) => _search(q.trim()),
+              onChanged: (q) => _search(q),
             ),
           ),
 
           SizedBox(height: 8.h),
-
           Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.12)),
 
           // Results
           Expanded(
-            child: _loading
+            child: _error != null
                 ? Center(
-                    child: CircularProgressIndicator(color: ext.accentGold,
-                        strokeWidth: 2))
-                : _error != null
+                    child: Text(_error!,
+                        style: TextStyle(
+                            color: ext.searchHintColor, fontSize: 13.sp),
+                        textAlign: TextAlign.center))
+                : _results.isEmpty && !_loading
                     ? Center(
-                        child: Text(_error!,
-                            style: TextStyle(
-                                color: ext.searchHintColor, fontSize: 13.sp),
-                            textAlign: TextAlign.center))
-                    : _results.isEmpty
-                        ? Center(
-                            child: Text('No photographers found.',
+                        child: Text(
+                          _searchCtrl.text.isEmpty
+                              ? 'Type a name to search'
+                              : 'No users found.',
+                          style: TextStyle(
+                              color: ext.searchHintColor, fontSize: 13.sp),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.symmetric(vertical: 8.h),
+                        itemCount: _results.length,
+                        itemBuilder: (_, i) {
+                          final u = _results[i];
+                          final isSending = _sendingTo == u.id;
+                          return ListTile(
+                            leading: CircleAvatar(
+                              radius: 22.r,
+                              backgroundColor:
+                                  ext.accentGold.withValues(alpha: 0.15),
+                              backgroundImage: u.imageUrl != null
+                                  ? NetworkImage(u.imageUrl!)
+                                  : null,
+                              child: u.imageUrl == null
+                                  ? Icon(Icons.person_rounded,
+                                      color: ext.accentGold, size: 20.sp)
+                                  : null,
+                            ),
+                            title: Text(u.name,
                                 style: TextStyle(
-                                    color: ext.searchHintColor, fontSize: 13.sp)))
-                        : ListView.builder(
-                            padding: EdgeInsets.symmetric(vertical: 8.h),
-                            itemCount: _results.length,
-                            itemBuilder: (_, i) {
-                              final p = _results[i];
-                              final isSending = _sendingTo == p.id;
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  radius: 22.r,
-                                  backgroundColor:
-                                      ext.accentGold.withValues(alpha: 0.15),
-                                  backgroundImage: p.imageUrl != null
-                                      ? NetworkImage(p.imageUrl!)
-                                      : null,
-                                  child: p.imageUrl == null
-                                      ? Icon(Icons.person_rounded,
-                                          color: ext.accentGold, size: 20.sp)
-                                      : null,
+                                    color: ext.greetingColor,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14.sp)),
+                            subtitle: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 6.w, vertical: 2.h),
+                                  decoration: BoxDecoration(
+                                    color: (u.role == 'photographer'
+                                            ? ext.accentGold
+                                            : Colors.blueAccent)
+                                        .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4.r),
+                                  ),
+                                  child: Text(
+                                    u.role == 'photographer'
+                                        ? 'Photographer'
+                                        : 'User',
+                                    style: TextStyle(
+                                      color: u.role == 'photographer'
+                                          ? ext.accentGold
+                                          : Colors.blueAccent,
+                                      fontSize: 10.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
-                                title: Text(p.name,
-                                    style: TextStyle(
-                                        color: ext.greetingColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14.sp)),
-                                subtitle: Text(p.email,
-                                    style: TextStyle(
-                                        color: ext.searchHintColor,
-                                        fontSize: 11.sp)),
-                                trailing: isSending
-                                    ? SizedBox(
-                                        width: 22.w,
-                                        height: 22.w,
-                                        child: CircularProgressIndicator(
-                                            color: ext.accentGold,
-                                            strokeWidth: 2))
-                                    : Icon(Icons.send_rounded,
-                                        color: ext.accentGold, size: 20.sp),
-                                onTap: isSending ? null : () => _sendTo(p),
-                              );
-                            },
-                          ),
+                                SizedBox(width: 6.w),
+                                Expanded(
+                                  child: Text(u.email,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                          color: ext.searchHintColor,
+                                          fontSize: 11.sp)),
+                                ),
+                              ],
+                            ),
+                            trailing: isSending
+                                ? SizedBox(
+                                    width: 22.w,
+                                    height: 22.w,
+                                    child: CircularProgressIndicator(
+                                        color: ext.accentGold, strokeWidth: 2))
+                                : Icon(Icons.send_rounded,
+                                    color: ext.accentGold, size: 20.sp),
+                            onTap: isSending ? null : () => _sendTo(u),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
