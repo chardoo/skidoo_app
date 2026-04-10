@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
-import 'package:skidoo_app/components/media/media_action_buttons.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
+import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class GalleryFullscreenPage extends StatefulWidget {
   final Photo photo;
@@ -21,6 +24,7 @@ class GalleryFullscreenPage extends StatefulWidget {
 class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
   bool _barsVisible = true;
   bool _isDownloading = false;
+  bool _isSharing = false;
   final TransformationController _transformCtrl = TransformationController();
 
   @override
@@ -57,6 +61,29 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
       if (mounted) _snack('Download failed — try again');
     } finally {
       if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
+  /// Downloads the branded overlay and shares it externally (OS share sheet).
+  Future<void> _shareExternal() async {
+    if (_isSharing) return;
+    setState(() => _isSharing = true);
+    try {
+      final result = await sl<GetOverlayImageUseCase>()(
+        widget.photo.id,
+        '',
+      );
+      final tmp = await getTemporaryDirectory();
+      final file = File('${tmp.path}/share_${widget.photo.imageId}.jpg');
+      await file.writeAsBytes(result.bytes);
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'image/jpeg')],
+        text: widget.photo.eventName.isNotEmpty ? widget.photo.eventName : null,
+      );
+    } catch (_) {
+      if (mounted) _snack('Share failed — try again');
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
     }
   }
 
@@ -195,14 +222,33 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                         margin: EdgeInsets.symmetric(horizontal: 4.w),
                       ),
 
-                      // ── Like / Save / Share ───────────────────────────────
-                      MediaActionButtons(
-                        imageId: widget.photo.imageId,
-                        pictureId: widget.photo.id,
-                        imageUrl: widget.photo.url,
-                        eventName: widget.photo.eventName,
-                        photographerName: '',
-                        axis: Axis.horizontal,
+                      // ── External share ────────────────────────────────────
+                      _FullscreenActionBtn(
+                        icon: _isSharing
+                            ? Icons.hourglass_top_rounded
+                            : Icons.ios_share_rounded,
+                        label: 'Share',
+                        accentColor: Colors.white,
+                        onTap: _shareExternal,
+                      ),
+
+                      Container(
+                        width: 1,
+                        height: 36.h,
+                        color: Colors.white24,
+                        margin: EdgeInsets.symmetric(horizontal: 4.w),
+                      ),
+
+                      // ── Internal share (DM) ───────────────────────────────
+                      _FullscreenActionBtn(
+                        icon: Icons.send_rounded,
+                        label: 'Send',
+                        accentColor: ext.accentGold,
+                        onTap: () => GalleryShareSheet.show(
+                          context,
+                          imageUrl: widget.photo.url,
+                          photoLabel: widget.photo.eventName,
+                        ),
                       ),
                     ],
                   ),
