@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/models/chat/like_update.dart';
+import 'package:skidoo_app/models/chat/like_update.dart' show LikeUpdate, PictureLikeUpdate;
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -15,6 +15,7 @@ class ChatWebSocketService {
   WebSocketChannel? _channel;
   StreamController<ChatMessage>? _msgController;
   StreamController<LikeUpdate>? _likeController;
+  StreamController<PictureLikeUpdate>? _picLikeController;
   StreamSubscription? _sub;
 
   /// Emits chat messages received from the server.
@@ -24,6 +25,10 @@ class ChatWebSocketService {
   /// Emits like/unlike updates for events in this room.
   Stream<LikeUpdate> get likeUpdates =>
       _likeController?.stream ?? const Stream.empty();
+
+  /// Emits like/unlike updates for the picture in a photo room.
+  Stream<PictureLikeUpdate> get pictureLikeUpdates =>
+      _picLikeController?.stream ?? const Stream.empty();
 
   bool _connected = false;
   bool get isConnected => _connected;
@@ -45,6 +50,7 @@ class ChatWebSocketService {
     _channel = WebSocketChannel.connect(uri);
     _msgController = StreamController<ChatMessage>.broadcast();
     _likeController = StreamController<LikeUpdate>.broadcast();
+    _picLikeController = StreamController<PictureLikeUpdate>.broadcast();
 
     try {
       await _channel!.ready.timeout(
@@ -70,6 +76,8 @@ class ChatWebSocketService {
           final type = json['type'] as String?;
           if (type == 'like_update') {
             _likeController?.add(LikeUpdate.fromJson(json));
+          } else if (type == 'picture_like_update') {
+            _picLikeController?.add(PictureLikeUpdate.fromJson(json));
           } else {
             _msgController?.add(ChatMessage.fromJson(json));
           }
@@ -82,6 +90,7 @@ class ChatWebSocketService {
         _connected = false;
         _msgController?.close();
         _likeController?.close();
+        _picLikeController?.close();
       },
       onDone: () {
         debugPrint(
@@ -92,6 +101,7 @@ class ChatWebSocketService {
         _connected = false;
         _msgController?.close();
         _likeController?.close();
+        _picLikeController?.close();
       },
     );
   }
@@ -122,6 +132,14 @@ class ChatWebSocketService {
   void sendUndislike(String eventId) =>
       _sendRaw({'type': 'undislike', 'event_id': eventId});
 
+  /// Send a like for a picture.
+  void sendPictureLike(String pictureId) =>
+      _sendRaw({'type': 'picture_like', 'picture_id': pictureId});
+
+  /// Remove a like for a picture.
+  void sendPictureUnlike(String pictureId) =>
+      _sendRaw({'type': 'picture_unlike', 'picture_id': pictureId});
+
   void _sendRaw(Map<String, dynamic> data) {
     if (!_connected || _channel == null) return;
     try {
@@ -137,9 +155,11 @@ class ChatWebSocketService {
     _channel?.sink.close();
     _msgController?.close();
     _likeController?.close();
+    _picLikeController?.close();
     _channel = null;
     _msgController = null;
     _likeController = null;
+    _picLikeController = null;
     _connected = false;
   }
 }

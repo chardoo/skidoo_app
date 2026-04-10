@@ -25,6 +25,10 @@ class ChatRepositoryImpl implements ChatRepository {
       _fetchAndCacheRoom(() => _rest.getEventRoom(eventId));
 
   @override
+  Future<ChatRoom> getPhotoRoom(String pictureId) =>
+      _fetchAndCacheRoom(() => _rest.getPhotoRoom(pictureId));
+
+  @override
   Future<ChatRoom> getSampleRoom(String sampleId) =>
       _fetchAndCacheRoom(() => _rest.getSampleRoom(sampleId));
 

@@ -19,6 +19,12 @@ class GetEventRoomUseCase {
   Future<ChatRoom> call(String eventId) => _repo.getEventRoom(eventId);
 }
 
+class GetPhotoRoomUseCase {
+  final ChatRepository _repo;
+  GetPhotoRoomUseCase(this._repo);
+  Future<ChatRoom> call(String pictureId) => _repo.getPhotoRoom(pictureId);
+}
+
 class GetSampleRoomUseCase {
   final ChatRepository _repo;
   GetSampleRoomUseCase(this._repo);

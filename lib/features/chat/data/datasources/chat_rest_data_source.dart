@@ -39,6 +39,7 @@ abstract class ChatRestDataSource {
 
   /// GET /chat/rooms/event/{event_id}
   Future<ChatRoom> getEventRoom(String eventId);
+  Future<ChatRoom> getPhotoRoom(String pictureId);
 
   /// GET /chat/rooms/sample/{sample_id}
   Future<ChatRoom> getSampleRoom(String sampleId);
@@ -94,6 +95,10 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   @override
   Future<ChatRoom> getEventRoom(String eventId) =>
       _getRoom('/chat/rooms/event/$eventId');
+
+  @override
+  Future<ChatRoom> getPhotoRoom(String pictureId) =>
+      _getRoom('/chat/rooms/photo/$pictureId');
 
   @override
   Future<ChatRoom> getSampleRoom(String sampleId) =>

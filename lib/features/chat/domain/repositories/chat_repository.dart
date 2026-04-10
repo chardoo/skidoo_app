@@ -9,6 +9,7 @@ abstract class ChatRepository {
 
   Future<ChatRoom> getGlobalRoom();
   Future<ChatRoom> getEventRoom(String eventId);
+  Future<ChatRoom> getPhotoRoom(String pictureId);
   Future<ChatRoom> getSampleRoom(String sampleId);
 
   Future<ChatRoom> getOrCreateDirectRoom({
