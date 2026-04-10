@@ -18,13 +18,20 @@ import 'package:skidoo_app/services/notification_prefs_service.dart';
 /// Displays the messages for [room].
 /// Use the [ChatRoomPage.global] constructor to join the global chat room.
 class ChatRoomPage extends StatelessWidget {
-  const ChatRoomPage({super.key, required this.room}) : _globalMode = false;
+  const ChatRoomPage({super.key, required this.room, this.shareUrl})
+      : _globalMode = false;
 
   const ChatRoomPage.global({super.key})
       : room = null,
+        shareUrl = null,
         _globalMode = true;
 
   final ChatRoom? room;
+
+  /// When non-null, this image URL is sent as a message as soon as the
+  /// WebSocket connects — used by the in-app gallery share flow.
+  final String? shareUrl;
+
   final bool _globalMode;
 
   @override
@@ -33,7 +40,7 @@ class ChatRoomPage extends StatelessWidget {
       create: (_) => sl<ChatRoomBloc>(),
       child: _globalMode
           ? const _GlobalRoomInitializer()
-          : _ChatRoomView(room: room!),
+          : _ChatRoomView(room: room!, shareUrl: shareUrl),
     );
   }
 }
@@ -108,8 +115,9 @@ class _GlobalRoomInitializerState extends State<_GlobalRoomInitializer> {
 // ── Main room view ────────────────────────────────────────────────────────────
 
 class _ChatRoomView extends StatefulWidget {
-  const _ChatRoomView({required this.room});
+  const _ChatRoomView({required this.room, this.shareUrl});
   final ChatRoom room;
+  final String? shareUrl;
 
   @override
   State<_ChatRoomView> createState() => _ChatRoomViewState();
@@ -133,6 +141,9 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     super.initState();
     _bloc = context.read<ChatRoomBloc>();
     _bloc.add(ChatRoomJoined(widget.room.id));
+    if (widget.shareUrl != null) {
+      _bloc.add(ChatRoomUrlStaged(widget.shareUrl!));
+    }
     _scrollCtrl.addListener(_onScroll);
     _loadMyId();
   }
