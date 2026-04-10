@@ -101,6 +101,8 @@ class RoomTile extends StatelessWidget {
         return 'Event discussion';
       case RoomType.eventPrivate:
         return 'Private event room';
+      case RoomType.photo:
+        return 'Photo comments';
       case RoomType.sample:
         return 'Sample image chat';
       case RoomType.unknown:
@@ -135,6 +137,10 @@ class _RoomIcon extends StatelessWidget {
       case RoomType.eventPrivate:
         icon = Icons.lock_rounded;
         bg = Colors.deepPurple;
+        break;
+      case RoomType.photo:
+        icon = Icons.camera_alt_rounded;
+        bg = Colors.pinkAccent;
         break;
       case RoomType.sample:
         icon = Icons.photo_rounded;
