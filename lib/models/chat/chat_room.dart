@@ -5,6 +5,7 @@ enum RoomType {
   direct,
   event,
   eventPrivate,
+  photo,
   sample,
   unknown;
 
@@ -18,6 +19,8 @@ enum RoomType {
         return RoomType.event;
       case 'event_private':
         return RoomType.eventPrivate;
+      case 'photo':
+        return RoomType.photo;
       case 'sample':
         return RoomType.sample;
       default:
@@ -35,12 +38,18 @@ enum RoomType {
         return 'event';
       case RoomType.eventPrivate:
         return 'event_private';
+      case RoomType.photo:
+        return 'photo';
       case RoomType.sample:
         return 'sample';
       case RoomType.unknown:
         return 'unknown';
     }
   }
+
+  /// True for rooms that represent personal conversations shown in the inbox.
+  bool get isConversation =>
+      this == RoomType.direct || this == RoomType.eventPrivate;
 }
 
 class ChatParticipant {
@@ -98,6 +107,8 @@ class ChatRoom {
         return 'Event Chat';
       case RoomType.eventPrivate:
         return 'Private Chat';
+      case RoomType.photo:
+        return 'Photo Comments';
       case RoomType.sample:
         return 'Sample Chat';
       case RoomType.unknown:

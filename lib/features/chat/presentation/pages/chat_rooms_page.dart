@@ -6,7 +6,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/room_tile.dart';
-import 'package:skidoo_app/models/chat/chat_room.dart' show ChatRoom, RoomType;
+import 'package:skidoo_app/models/chat/chat_room.dart' show ChatRoom;
 
 class ChatRoomsPage extends StatelessWidget {
   const ChatRoomsPage({super.key});
@@ -81,9 +81,9 @@ class _ChatRoomsView extends StatelessWidget {
             );
           }
 
-          // Exclude public event discussion rooms — only personal conversations shown here.
+          // Only show personal conversations (direct messages and private event rooms).
           final filtered = state.rooms
-              .where((r) => r.type != RoomType.event)
+              .where((r) => r.type.isConversation)
               .toList();
 
           if (filtered.isEmpty) {
