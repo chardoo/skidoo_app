@@ -22,9 +22,19 @@ class Photo {
   late String? identification;
   final bool isPublic;
 
+  /// Denormalized counts from the server response (zero extra queries).
+  final int likeCount;
+  final int commentCount;
+
+  /// Whether the currently logged-in user has liked this photo.
+  final bool isLikedByUser;
+
   Photo(this.id, this.eventName, this.imageId, this.url, this.userId,
       this.price, this.eventDate, this.identification, this.isPublic,
-      {this.eventId = ''});
+      {this.eventId = '',
+      this.likeCount = 0,
+      this.commentCount = 0,
+      this.isLikedByUser = false});
 
   //deserialization
   factory Photo.fromMap(Map<String, dynamic> json) {
@@ -54,6 +64,9 @@ class Photo {
       json["identification"],
       json['public'] ?? false,
       eventId: json["event"]["id"]?.toString() ?? '',
+      likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
+      commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
+      isLikedByUser: json['isLikedByUser'] as bool? ?? false,
     );
   }
   Map<String, dynamic> toJson() => {

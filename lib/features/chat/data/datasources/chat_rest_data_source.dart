@@ -33,6 +33,27 @@ class EventReaction {
   }
 }
 
+/// Like state for a picture (from GET/POST /chat/pictures/{id}/like).
+class PictureReaction {
+  final bool isLiked;
+  final int likes;
+
+  const PictureReaction({required this.isLiked, required this.likes});
+
+  factory PictureReaction.empty() =>
+      const PictureReaction(isLiked: false, likes: 0);
+
+  factory PictureReaction.fromJson(Map<String, dynamic> json) {
+    // Supports { liked: bool, likes: N } and { reaction: 'like'|'none', likes: N }
+    final reaction = json['reaction'] as String? ?? json['userReaction'] as String?;
+    final liked = json['liked'] as bool? ?? (reaction == 'like');
+    return PictureReaction(
+      isLiked: liked,
+      likes: (json['likes'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
 abstract class ChatRestDataSource {
   /// GET /chat/rooms/global
   Future<ChatRoom> getGlobalRoom();
@@ -82,6 +103,12 @@ abstract class ChatRestDataSource {
   /// GET /chat/events/{eventId}/reaction?userId=<userId>
   /// Returns the user's current reaction and aggregate counts.
   Future<EventReaction> getEventReaction(String eventId, String userId);
+
+  /// GET /chat/pictures/{pictureId}/like — returns current like state.
+  Future<PictureReaction> getPictureLike(String pictureId);
+
+  /// POST /chat/pictures/{pictureId}/like — toggles like, returns updated state.
+  Future<PictureReaction> togglePictureLike(String pictureId);
 }
 
 class ChatRestDataSourceImpl implements ChatRestDataSource {
@@ -242,6 +269,22 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         queryParameters: {'userId': userId},
       );
       return EventReaction.fromJson(res.data as Map<String, dynamic>);
+    });
+  }
+
+  @override
+  Future<PictureReaction> getPictureLike(String pictureId) async {
+    return _wrap(() async {
+      final res = await _client.dio.get('/chat/pictures/$pictureId/like');
+      return PictureReaction.fromJson(res.data as Map<String, dynamic>);
+    });
+  }
+
+  @override
+  Future<PictureReaction> togglePictureLike(String pictureId) async {
+    return _wrap(() async {
+      final res = await _client.dio.post('/chat/pictures/$pictureId/like');
+      return PictureReaction.fromJson(res.data as Map<String, dynamic>);
     });
   }
 

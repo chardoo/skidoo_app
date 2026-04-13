@@ -2,15 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/components/media/media_action_buttons.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 
 class GalleryFullscreenPage extends StatefulWidget {
   final Photo photo;
@@ -23,8 +18,6 @@ class GalleryFullscreenPage extends StatefulWidget {
 
 class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
   bool _barsVisible = true;
-  bool _isDownloading = false;
-  bool _isSharing = false;
   final TransformationController _transformCtrl = TransformationController();
 
   @override
@@ -41,61 +34,6 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
   }
 
   void _toggleBars() => setState(() => _barsVisible = !_barsVisible);
-
-  /// Downloads the branded overlay image to the device photo library.
-  Future<void> _download() async {
-    if (_isDownloading) return;
-    setState(() => _isDownloading = true);
-    try {
-      final result = await sl<GetOverlayImageUseCase>()(
-        widget.photo.id,
-        '', // Photo model does not carry photographerName
-      );
-      await ImageGallerySaver.saveImage(
-        result.bytes,
-        quality: 95,
-        name: 'photo_${widget.photo.imageId}',
-      );
-      if (mounted) _snack('Saved to your gallery');
-    } catch (_) {
-      if (mounted) _snack('Download failed — try again');
-    } finally {
-      if (mounted) setState(() => _isDownloading = false);
-    }
-  }
-
-  /// Downloads the branded overlay and shares it externally (OS share sheet).
-  Future<void> _shareExternal() async {
-    if (_isSharing) return;
-    setState(() => _isSharing = true);
-    try {
-      final result = await sl<GetOverlayImageUseCase>()(
-        widget.photo.id,
-        '',
-      );
-      final tmp = await getTemporaryDirectory();
-      final file = File('${tmp.path}/share_${widget.photo.imageId}.jpg');
-      await file.writeAsBytes(result.bytes);
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'image/jpeg')],
-        text: widget.photo.eventName.isNotEmpty ? widget.photo.eventName : null,
-      );
-    } catch (_) {
-      if (mounted) _snack('Share failed — try again');
-    } finally {
-      if (mounted) setState(() => _isSharing = false);
-    }
-  }
-
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: Colors.black87,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      margin: EdgeInsets.only(bottom: 80.h, left: 24.w, right: 24.w),
-    ));
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -202,108 +140,21 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                 child: Padding(
                   padding: EdgeInsets.symmetric(
                       horizontal: 24.w, vertical: 20.h),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      // ── Download ──────────────────────────────────────────
-                      _FullscreenActionBtn(
-                        icon: _isDownloading
-                            ? Icons.hourglass_top_rounded
-                            : Icons.download_rounded,
-                        label: 'Download',
-                        accentColor: ext.accentGold,
-                        onTap: _download,
-                      ),
-
-                      Container(
-                        width: 1,
-                        height: 36.h,
-                        color: Colors.white24,
-                        margin: EdgeInsets.symmetric(horizontal: 4.w),
-                      ),
-
-                      // ── External share ────────────────────────────────────
-                      _FullscreenActionBtn(
-                        icon: _isSharing
-                            ? Icons.hourglass_top_rounded
-                            : Icons.ios_share_rounded,
-                        label: 'Share',
-                        accentColor: Colors.white,
-                        onTap: _shareExternal,
-                      ),
-
-                      Container(
-                        width: 1,
-                        height: 36.h,
-                        color: Colors.white24,
-                        margin: EdgeInsets.symmetric(horizontal: 4.w),
-                      ),
-
-                      // ── Internal share (DM) ───────────────────────────────
-                      _FullscreenActionBtn(
-                        icon: Icons.send_rounded,
-                        label: 'Send',
-                        accentColor: ext.accentGold,
-                        onTap: () => GalleryShareSheet.show(
-                          context,
-                          imageUrl: widget.photo.url,
-                          photoLabel: widget.photo.eventName,
-                        ),
-                      ),
-                    ],
+                  child: MediaActionButtons(
+                    imageId: widget.photo.id,
+                    imageUrl: widget.photo.url,
+                    eventName: widget.photo.eventName,
+                    axis: Axis.horizontal,
+                    showLike: false,
+                    showComment: false,
+                    onSend: () => GalleryShareSheet.show(
+                      context,
+                      imageUrl: widget.photo.url,
+                      photoLabel: widget.photo.eventName,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Fullscreen-specific action button (Download) ──────────────────────────────
-
-class _FullscreenActionBtn extends StatelessWidget {
-  const _FullscreenActionBtn({
-    required this.icon,
-    required this.label,
-    required this.accentColor,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color accentColor;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 52.w,
-            height: 52.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.12),
-              border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2), width: 1),
-            ),
-            child: Icon(icon, color: accentColor, size: 22.sp),
-          ),
-          SizedBox(height: 6.h),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.3,
             ),
           ),
         ],

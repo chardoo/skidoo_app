@@ -164,6 +164,7 @@ class _FullscreenVideo extends StatefulWidget {
 class _FullscreenVideoState extends State<_FullscreenVideo> {
   late final VideoPlayerController _ctrl;
   bool _initialized = false;
+  bool _muted = false;
 
   @override
   void initState() {
@@ -172,9 +173,17 @@ class _FullscreenVideoState extends State<_FullscreenVideo> {
       ..setLooping(true)
       ..initialize().then((_) {
         if (!mounted) return;
+        _ctrl.setVolume(_muted ? 0.0 : 1.0);
         setState(() => _initialized = true);
         if (widget.isActive) _ctrl.play();
       });
+  }
+
+  void _toggleMute() {
+    setState(() {
+      _muted = !_muted;
+      _ctrl.setVolume(_muted ? 0.0 : 1.0);
+    });
   }
 
   @override
@@ -242,6 +251,31 @@ class _FullscreenVideoState extends State<_FullscreenVideo> {
                   child: Icon(Icons.play_arrow_rounded,
                       color: Colors.white, size: 34.sp),
                 ),
+
+              // Mute toggle — top right.
+              Positioned(
+                top: 80.h,
+                right: 16.w,
+                child: GestureDetector(
+                  onTap: _toggleMute,
+                  child: Container(
+                    width: 38.w,
+                    height: 38.w,
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24, width: 1),
+                    ),
+                    child: Icon(
+                      _muted
+                          ? Icons.volume_off_rounded
+                          : Icons.volume_up_rounded,
+                      color: Colors.white,
+                      size: 18.sp,
+                    ),
+                  ),
+                ),
+              ),
 
               // Progress bar at the bottom.
               Positioned(

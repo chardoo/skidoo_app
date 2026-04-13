@@ -38,6 +38,10 @@ class ChatRoomState extends Equatable {
   /// A remote image URL queued to be sent as a message once the WS connects.
   final String? pendingShareUrl;
 
+  /// The authenticated user's ID — set synchronously in [ChatRoomJoined] so
+  /// the UI never has to async-load it separately.
+  final String myUserId;
+
   const ChatRoomState({
     this.messages = const [],
     this.isConnected = false,
@@ -57,6 +61,7 @@ class ChatRoomState extends Equatable {
     this.pictureLikes,
     this.isPictureLiked = false,
     this.pendingShareUrl,
+    this.myUserId = '',
   });
 
   ChatRoomState copyWith({
@@ -82,6 +87,7 @@ class ChatRoomState extends Equatable {
     bool? isPictureLiked,
     String? pendingShareUrl,
     bool clearPendingShareUrl = false,
+    String? myUserId,
   }) =>
       ChatRoomState(
         messages: messages ?? this.messages,
@@ -102,6 +108,7 @@ class ChatRoomState extends Equatable {
         pictureLikes: pictureLikes ?? this.pictureLikes,
         isPictureLiked: isPictureLiked ?? this.isPictureLiked,
         pendingShareUrl: clearPendingShareUrl ? null : (pendingShareUrl ?? this.pendingShareUrl),
+        myUserId: myUserId ?? this.myUserId,
       );
 
   @override
@@ -124,5 +131,6 @@ class ChatRoomState extends Equatable {
         pictureLikes,
         isPictureLiked,
         pendingShareUrl,
+        myUserId,
       ];
 }

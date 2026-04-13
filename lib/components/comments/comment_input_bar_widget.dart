@@ -71,7 +71,7 @@ class CommentInputBarWidget extends StatelessWidget {
 
         // ── Text input ───────────────────────────────────────────────────────
         Container(
-          padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 20.h),
+          padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 10.h),
           decoration: BoxDecoration(
             color: ext.cardSurface,
             border: Border(

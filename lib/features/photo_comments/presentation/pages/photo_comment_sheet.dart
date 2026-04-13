@@ -6,13 +6,17 @@ import 'package:skidoo_app/components/comments/comment_row_data.dart';
 import 'package:skidoo_app/components/comments/comment_sheet_shell.dart';
 import 'package:skidoo_app/components/comments/threaded_comment_widget.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
+import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/time_formatter.dart';
-import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart' show GetPhotoRoomUseCase;
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
+import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
+import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 
 /// Bottom sheet showing real-time comments for a photo, backed by a photo room WebSocket.
 class PhotoCommentSheet {
@@ -49,6 +53,7 @@ class _PhotoCommentSheetContentState
     extends State<_PhotoCommentSheetContent> {
   bool _loading = true;
   String? _error;
+  String _myId = '';
 
   final _inputCtrl = TextEditingController();
   final _focusNode = FocusNode();
@@ -64,6 +69,12 @@ class _PhotoCommentSheetContentState
     _bloc = context.read<ChatRoomBloc>();
     _scrollCtrl.addListener(_onScroll);
     _loadRoom();
+    _loadMyId();
+  }
+
+  Future<void> _loadMyId() async {
+    final id = await sl<AuthService>().getUserId();
+    if (mounted) setState(() => _myId = id);
   }
 
   Future<void> _loadRoom() async {
@@ -128,6 +139,17 @@ class _PhotoCommentSheetContentState
     return r.isEmpty ? 'User' : r[0].toUpperCase() + r.substring(1);
   }
 
+  void _openProfile(ChatMessage msg) {
+    final name = msg.senderName.isNotEmpty ? msg.senderName : 'Creator';
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PhotographerProfilePage(
+          photographer: PhotographerModel(msg.senderId, '', name, ''),
+        ),
+      ),
+    );
+  }
+
   // ── Thread building (same as EventCommentPage) ────────────────────────────
 
   ({List<ChatMessage> topLevel, Map<String, List<ChatMessage>> repliesMap})
@@ -183,10 +205,10 @@ class _PhotoCommentSheetContentState
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return CommentSheetShell(
+      title: 'Comments',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.15)),
 
           Expanded(
             child: _loading

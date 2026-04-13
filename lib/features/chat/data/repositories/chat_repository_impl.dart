@@ -38,11 +38,25 @@ class ChatRepositoryImpl implements ChatRepository {
     required String recipientRole,
     String? localDisplayName,
   }) async {
+    // 1. Check local cache first — avoids duplicate room creation entirely.
+    final cached = await _db.getDirectRoomWithUser(recipientId);
+    if (cached != null) {
+      if ((cached.name == null || cached.name!.isEmpty) &&
+          localDisplayName != null &&
+          localDisplayName.isNotEmpty) {
+        final named = cached.copyWith(name: localDisplayName);
+        await _db.upsertRoom(named);
+        return named;
+      }
+      return cached;
+    }
+
+    // 2. Not in cache — call the API (server-side get-or-create).
     final room = await _fetchAndCacheRoom(() => _rest.getOrCreateDirectRoom(
           recipientId: recipientId,
           recipientRole: recipientRole,
         ));
-    // If the API returned no name and we have a local display name, save it.
+    // Apply local display name if the server returned none.
     if ((room.name == null || room.name!.isEmpty) &&
         localDisplayName != null &&
         localDisplayName.isNotEmpty) {
@@ -166,6 +180,14 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<EventReaction> getEventReaction(String eventId, String userId) =>
       _rest.getEventReaction(eventId, userId);
+
+  @override
+  Future<PictureReaction> getPictureLike(String pictureId) =>
+      _rest.getPictureLike(pictureId);
+
+  @override
+  Future<PictureReaction> togglePictureLike(String pictureId) =>
+      _rest.togglePictureLike(pictureId);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 

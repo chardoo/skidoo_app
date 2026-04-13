@@ -60,4 +60,10 @@ abstract class ChatRepository {
 
   /// GET /chat/events/{eventId}/reaction — user's reaction + aggregate counts.
   Future<EventReaction> getEventReaction(String eventId, String userId);
+
+  /// GET /chat/pictures/{pictureId}/like — current like state.
+  Future<PictureReaction> getPictureLike(String pictureId);
+
+  /// POST /chat/pictures/{pictureId}/like — toggle like, returns updated state.
+  Future<PictureReaction> togglePictureLike(String pictureId);
 }

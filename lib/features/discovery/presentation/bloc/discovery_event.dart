@@ -45,6 +45,14 @@ class DiscoveryEventHidden extends DiscoveryEvent {
   List<Object?> get props => [eventId];
 }
 
+/// User chose to permanently hide an event from their feed.
+class DiscoveryEventHideRequested extends DiscoveryEvent {
+  final String eventId;
+  const DiscoveryEventHideRequested(this.eventId);
+  @override
+  List<Object?> get props => [eventId];
+}
+
 /// Internal — fired when a like_update arrives on a persistent WS session.
 class _DiscoveryLikeUpdateReceived extends DiscoveryEvent {
   final LikeUpdate update;
@@ -60,4 +68,12 @@ class _DiscoveryReactionsPatchReceived extends DiscoveryEvent {
   const _DiscoveryReactionsPatchReceived(this.enriched);
   @override
   List<Object?> get props => [enriched];
+}
+
+/// Internal — restores persisted hidden IDs from SharedPreferences on startup.
+class _DiscoveryHiddenIdsLoaded extends DiscoveryEvent {
+  final Set<String> ids;
+  const _DiscoveryHiddenIdsLoaded(this.ids);
+  @override
+  List<Object?> get props => [ids];
 }

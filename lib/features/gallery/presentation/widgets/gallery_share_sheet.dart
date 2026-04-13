@@ -45,28 +45,75 @@ class _ShareSheetContent extends StatefulWidget {
 
 class _ShareSheetContentState extends State<_ShareSheetContent> {
   final _searchCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+
   List<ShareableUser> _results = [];
   bool _loading = false;
+  bool _loadingMore = false;
+  bool _hasMore = false;
+  int _page = 1;
   String? _error;
   String? _sendingTo;
 
   @override
+  void initState() {
+    super.initState();
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  @override
   void dispose() {
     _searchCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_loadingMore || !_hasMore) return;
+    final pos = _scrollCtrl.position;
+    if (pos.pixels >= pos.maxScrollExtent - 120) {
+      _loadMore();
+    }
   }
 
   Future<void> _search(String query) async {
     if (query.trim().isEmpty) {
-      setState(() { _results = []; _error = null; _loading = false; });
+      setState(() { _results = []; _error = null; _loading = false; _hasMore = false; _page = 1; });
       return;
     }
-    setState(() { _loading = true; _error = null; });
+    setState(() { _loading = true; _error = null; _page = 1; });
     try {
-      final results = await sl<UserSearchDataSource>().search(query.trim());
-      if (mounted) setState(() { _results = results; _loading = false; });
+      final page = await sl<UserSearchDataSource>().search(query.trim(), page: 1);
+      if (mounted) {
+        setState(() {
+          _results = page.users;
+          _hasMore = page.hasMore;
+          _page = 1;
+          _loading = false;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    final query = _searchCtrl.text.trim();
+    if (query.isEmpty || _loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final next = _page + 1;
+      final page = await sl<UserSearchDataSource>().search(query, page: next);
+      if (mounted) {
+        setState(() {
+          _results = [..._results, ...page.users];
+          _hasMore = page.hasMore;
+          _page = next;
+          _loadingMore = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
@@ -194,9 +241,23 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                         ),
                       )
                     : ListView.builder(
+                        controller: _scrollCtrl,
                         padding: EdgeInsets.symmetric(vertical: 8.h),
-                        itemCount: _results.length,
+                        itemCount: _results.length + (_loadingMore ? 1 : 0),
                         itemBuilder: (_, i) {
+                          if (i == _results.length) {
+                            return Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16.h),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 20.w,
+                                  height: 20.w,
+                                  child: CircularProgressIndicator(
+                                      color: ext.accentGold, strokeWidth: 2),
+                                ),
+                              ),
+                            );
+                          }
                           final u = _results[i];
                           final isSending = _sendingTo == u.id;
                           return ListTile(
@@ -231,7 +292,7 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                                   ),
                                   child: Text(
                                     u.role == 'photographer'
-                                        ? 'Photographer'
+                                        ? 'Creator'
                                         : 'User',
                                     style: TextStyle(
                                       color: u.role == 'photographer'

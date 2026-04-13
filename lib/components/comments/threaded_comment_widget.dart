@@ -40,7 +40,7 @@ class ThreadedCommentWidget extends StatelessWidget {
     final hasReplies = replyCount > 0;
 
     return Padding(
-      padding: EdgeInsets.only(bottom: 16.h),
+      padding: EdgeInsets.only(bottom: 10.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -50,7 +50,7 @@ class ThreadedCommentWidget extends StatelessWidget {
           // ── View / hide replies toggle ─────────────────────────────────────
           if (hasReplies)
             Padding(
-              padding: EdgeInsets.only(left: 44.w, bottom: 6.h),
+              padding: EdgeInsets.only(left: 44.w, bottom: 4.h),
               child: GestureDetector(
                 onTap: onToggleReplies,
                 behavior: HitTestBehavior.opaque,

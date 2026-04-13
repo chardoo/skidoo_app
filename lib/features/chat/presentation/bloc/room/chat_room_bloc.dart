@@ -97,12 +97,14 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         messages: _sorted(cached),
         isConnecting: true,
         isSyncing: true,
+        myUserId: _myUserId,
       ));
     } else {
-      emit(const ChatRoomState(
+      emit(ChatRoomState(
         isLoadingHistory: true,
         isConnecting: true,
         isSyncing: true,
+        myUserId: _myUserId,
       ));
     }
 

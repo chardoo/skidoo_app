@@ -21,7 +21,7 @@ class PhotographerCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+        margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
         decoration: BoxDecoration(
           color: ext.cardSurface,
           borderRadius: BorderRadius.circular(16.r),
@@ -41,7 +41,7 @@ class PhotographerCard extends StatelessWidget {
             // Gold left accent bar
             Container(
               width: 4.w,
-              height: 88.h,
+              height: 68.h,
               decoration: BoxDecoration(
                 color: ext.accentGold,
                 borderRadius: BorderRadius.only(
@@ -61,7 +61,7 @@ class PhotographerCard extends StatelessWidget {
             // Info
             Expanded(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 14.h),
+                padding: EdgeInsets.symmetric(vertical: 8.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -160,8 +160,8 @@ class _PhotographerAvatar extends StatelessWidget {
         borderRadius: BorderRadius.circular(28.r),
         child: CachedNetworkImage(
           imageUrl: photographer.imageUrl!,
-          width: 56.w,
-          height: 56.h,
+          width: 46.w,
+          height: 46.h,
           fit: BoxFit.cover,
           placeholder: (_, __) => _InitialsAvatar(
               initial: initial, ext: ext),
@@ -182,8 +182,8 @@ class _InitialsAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 56.w,
-      height: 56.h,
+      width: 46.w,
+      height: 46.h,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(

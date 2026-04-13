@@ -6,6 +6,7 @@ class DiscoveryState extends Equatable {
   final bool isLoadingMore;
   final String? errorMessage;
   final String? currentUserId;
+  final Set<String> hiddenEventIds;
 
   const DiscoveryState({
     this.events = const [],
@@ -13,6 +14,7 @@ class DiscoveryState extends Equatable {
     this.isLoadingMore = false,
     this.errorMessage,
     this.currentUserId,
+    this.hiddenEventIds = const {},
   });
 
   DiscoveryState copyWith({
@@ -22,6 +24,7 @@ class DiscoveryState extends Equatable {
     String? errorMessage,
     bool clearError = false,
     String? currentUserId,
+    Set<String>? hiddenEventIds,
   }) {
     return DiscoveryState(
       events: events ?? this.events,
@@ -29,9 +32,10 @@ class DiscoveryState extends Equatable {
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       currentUserId: currentUserId ?? this.currentUserId,
+      hiddenEventIds: hiddenEventIds ?? this.hiddenEventIds,
     );
   }
 
   @override
-  List<Object?> get props => [events, isLoading, isLoadingMore, errorMessage, currentUserId];
+  List<Object?> get props => [events, isLoading, isLoadingMore, errorMessage, currentUserId, hiddenEventIds];
 }

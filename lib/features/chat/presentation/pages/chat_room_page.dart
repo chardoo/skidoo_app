@@ -12,7 +12,6 @@ import 'package:skidoo_app/features/chat/presentation/widgets/message_bubble.dar
 import 'package:skidoo_app/features/chat/presentation/widgets/message_entrance.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
-import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/services/notification_prefs_service.dart';
 
 /// Displays the messages for [room].
@@ -126,7 +125,6 @@ class _ChatRoomView extends StatefulWidget {
 class _ChatRoomViewState extends State<_ChatRoomView> {
   final _inputCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
-  String _myId = '';
   late final ChatRoomBloc _bloc;
 
   final Set<String> _knownIds = {};
@@ -145,12 +143,6 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       _bloc.add(ChatRoomUrlStaged(widget.shareUrl!));
     }
     _scrollCtrl.addListener(_onScroll);
-    _loadMyId();
-  }
-
-  Future<void> _loadMyId() async {
-    final id = await sl<AuthService>().getUserId();
-    if (mounted) setState(() => _myId = id);
   }
 
   @override
@@ -192,7 +184,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   }
 
   void _onUserTap(BuildContext context, ChatMessage msg) {
-    if (msg.senderId == _myId) return;
+    if (msg.senderId == _bloc.state.myUserId) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -352,7 +344,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                       buildWhen: (p, c) =>
                           p.messages != c.messages ||
                           p.isLoadingHistory != c.isLoadingHistory ||
-                          p.isLoadingMore != c.isLoadingMore,
+                          p.isLoadingMore != c.isLoadingMore ||
+                          p.myUserId != c.myUserId,
                       builder: (context, state) {
                         _syncAnimationState(
                             state.messages, state.isLoadingHistory);
@@ -391,7 +384,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                               );
                             }
                             final msg = state.messages[index];
-                            final isMe = msg.senderId == _myId;
+                            final isMe = msg.senderId == state.myUserId;
 
                             final bubble = MessageBubble(
                               key: ValueKey(msg.id),

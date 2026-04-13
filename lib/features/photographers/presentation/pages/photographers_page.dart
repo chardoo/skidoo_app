@@ -94,7 +94,7 @@ class _PhotographersPageState extends State<PhotographersPage>
                 if (state.photographers.isEmpty) {
                   return const AppEmptyState(
                     icon: Icons.person_search_rounded,
-                    message: 'No photographers found.',
+                    message: 'No creators found.',
                   );
                 }
                 return Align(

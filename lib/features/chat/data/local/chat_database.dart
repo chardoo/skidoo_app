@@ -113,6 +113,21 @@ class ChatDatabase {
     return _rowToRoom(rows.first);
   }
 
+  /// Returns a cached direct room that includes [recipientId] as a participant,
+  /// or null if none is found. Used to avoid duplicate room creation.
+  Future<ChatRoom?> getDirectRoomWithUser(String recipientId) async {
+    final db = await _database;
+    final rows = await db.query(
+      'chat_rooms',
+      where: "type = 'direct'",
+    );
+    for (final row in rows) {
+      final room = _rowToRoom(row);
+      if (room.participants.any((p) => p.userId == recipientId)) return room;
+    }
+    return null;
+  }
+
   // ── Messages ───────────────────────────────────────────────────────────────
 
   Future<void> upsertMessages(List<ChatMessage> messages) async {
@@ -120,11 +135,12 @@ class ChatDatabase {
     final db = await _database;
     await db.transaction((txn) async {
       for (final msg in messages) {
-        // Remove any optimistic placeholder for this content.
+        // Remove any optimistic placeholder for this content + image combination.
+        // The IS operator handles NULL correctly in SQLite.
         await txn.delete(
           'chat_messages',
-          where: 'room_id = ? AND is_local = 1 AND content = ?',
-          whereArgs: [msg.roomId, msg.content],
+          where: 'room_id = ? AND is_local = 1 AND content = ? AND image_url IS ?',
+          whereArgs: [msg.roomId, msg.content, msg.imageUrl],
         );
         // Preserve is_read=1 when re-fetching from server.
         // The server does not return read status, so we must not let a
@@ -173,10 +189,12 @@ class ChatDatabase {
     final db = await _database;
     await db.transaction((txn) async {
       // Delete the matching optimistic placeholder if present.
+      // Match on content + image_url so image-only messages don't accidentally
+      // wipe unrelated local placeholders (SQLite IS handles NULL correctly).
       await txn.delete(
         'chat_messages',
-        where: 'room_id = ? AND is_local = 1 AND content = ?',
-        whereArgs: [message.roomId, message.content],
+        where: 'room_id = ? AND is_local = 1 AND content = ? AND image_url IS ?',
+        whereArgs: [message.roomId, message.content, message.imageUrl],
       );
       await txn.insert(
         'chat_messages',

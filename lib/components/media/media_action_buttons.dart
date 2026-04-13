@@ -36,7 +36,11 @@ class MediaActionButtons extends StatefulWidget {
     this.initialLikeCount = 0,
     this.initialCommentCount = 0,
     this.initiallyLiked = false,
+    this.showLike = true,
+    this.showDownload = true,
+    this.showComment = true,
     this.onLikeToggled,
+    this.onSend,
     String? pictureId,
   }) : pictureId = pictureId ?? imageId;
 
@@ -51,9 +55,24 @@ class MediaActionButtons extends StatefulWidget {
   final int initialCommentCount;
   final bool initiallyLiked;
 
+  /// Whether to show the like button. Set to false in contexts where
+  /// liking is not applicable (e.g. the personal gallery fullscreen view).
+  final bool showLike;
+
+  /// Whether to show the download button. Only shown in the gallery.
+  final bool showDownload;
+
+  /// Whether to show the Comment button. Set to false when comment
+  /// interaction is not applicable (e.g. the personal gallery fullscreen view).
+  final bool showComment;
+
   /// Called after the optimistic like/unlike update with the new [liked] value.
   /// The callback owns server-sync responsibility.
   final void Function(bool liked)? onLikeToggled;
+
+  /// When provided, shows a Send button for in-app DM sharing.
+  /// Independent of [showComment] — both can appear at the same time.
+  final VoidCallback? onSend;
 
   /// The picture ID used for comments and likes. Defaults to [imageId].
   final String pictureId;
@@ -118,27 +137,34 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
           '${dir.path}/overlay_${widget.imageId}.${result.fileExtension}';
       await File(filePath).writeAsBytes(result.bytes, flush: true);
 
-      // Dismiss the overlay before opening the share sheet.
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (!mounted) return;
+      // Dismiss the loading overlay and reset button state before handing
+      // off to the OS — the share sheet opening is feedback enough.
+      Navigator.of(context, rootNavigator: true).pop();
+      setState(() { _downloading = false; _sharing = false; });
 
       final subject = widget.eventName.isNotEmpty ? widget.eventName : 'Photo';
       final text = widget.eventName.isNotEmpty
           ? 'Check out ${widget.eventName}!'
           : 'Check out this photo!';
 
-      if (!mounted) return;
       await Share.shareXFiles(
         [XFile(filePath, mimeType: result.contentType)],
         subject: subject,
         text: text,
       );
+
+      // Delete the temp file once the OS share sheet is dismissed so the
+      // branded image is never left on the device outside the app.
+      try {
+        await File(filePath).delete();
+      } catch (_) {}
     } catch (e) {
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
+        setState(() { _downloading = false; _sharing = false; });
         _snack('Could not prepare file: $e');
       }
-    } finally {
-      if (mounted) setState(() { _downloading = false; _sharing = false; });
     }
   }
 
@@ -163,8 +189,15 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
     if (widget.onLikeToggled != null) {
       widget.onLikeToggled!(nowLiked);
     } else if (widget.pictureId.isNotEmpty) {
-      // Default: fire-and-forget via ephemeral photo-room WS.
-      sl<PictureLikeService>().toggleLike(widget.pictureId, liked: nowLiked);
+      // Default: hit REST endpoint; reconcile count from server response.
+      sl<PictureLikeService>().toggleLike(widget.pictureId).then((r) {
+        if (mounted) {
+          setState(() {
+            _liked = r.isLiked;
+            _likeCount = r.likes;
+          });
+        }
+      });
     }
   }
 
@@ -173,24 +206,26 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
   @override
   Widget build(BuildContext context) {
     final btns = <Widget>[
-      _MediaBtn(
-        icon: _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-        label: _fmt(_likeCount),
-        color: _liked ? const Color(0xFFFF3B5C) : Colors.white,
-        size: _btnSize,
-        iconSize: _icnSize,
-        busy: false,
-        onTap: _toggleLike,
-      ),
-      _MediaBtn(
-        icon: Icons.download_rounded,
-        label: '',
-        color: const Color(0xFFF5A623),
-        size: _btnSize,
-        iconSize: _icnSize,
-        busy: _downloading,
-        onTap: () => _handleAction(isDownload: true),
-      ),
+      if (widget.showLike)
+        _MediaBtn(
+          icon: _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          label: _fmt(_likeCount),
+          color: _liked ? const Color(0xFFFF3B5C) : Colors.white,
+          size: _btnSize,
+          iconSize: _icnSize,
+          busy: false,
+          onTap: _toggleLike,
+        ),
+      if (widget.showDownload)
+        _MediaBtn(
+          icon: Icons.download_rounded,
+          label: '',
+          color: const Color(0xFFF5A623),
+          size: _btnSize,
+          iconSize: _icnSize,
+          busy: _downloading,
+          onTap: () => _handleAction(isDownload: true),
+        ),
       _MediaBtn(
         icon: Icons.ios_share_rounded,
         label: '',
@@ -200,19 +235,30 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
         busy: _sharing,
         onTap: () => _handleAction(isDownload: false),
       ),
-      _MediaBtn(
-        icon: Icons.chat_bubble_outline_rounded,
-        label: _fmt(_commentCount),
-        color: Colors.white.withValues(alpha: 0.9),
-        size: _btnSize,
-        iconSize: _icnSize,
-        busy: false,
-        onTap: () => PhotoCommentSheet.show(
-          context,
-          pictureId: widget.pictureId,
-          imageUrl: widget.imageUrl,
+      if (widget.onSend != null)
+        _MediaBtn(
+          icon: Icons.send_rounded,
+          label: '',
+          color: Colors.white.withValues(alpha: 0.9),
+          size: _btnSize,
+          iconSize: _icnSize,
+          busy: false,
+          onTap: widget.onSend!,
         ),
-      ),
+      if (widget.showComment)
+        _MediaBtn(
+          icon: Icons.chat_bubble_outline_rounded,
+          label: _fmt(_commentCount),
+          color: Colors.white.withValues(alpha: 0.9),
+          size: _btnSize,
+          iconSize: _icnSize,
+          busy: false,
+          onTap: () => PhotoCommentSheet.show(
+            context,
+            pictureId: widget.pictureId,
+            imageUrl: widget.imageUrl,
+          ),
+        ),
     ];
 
     if (widget.axis == Axis.vertical) {
@@ -225,23 +271,21 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
       );
     }
 
+    // Horizontal mode: each button gets equal space via Expanded so the row
+    // fills its parent width evenly regardless of button count.
     final divider = Container(
       width: 1,
       height: 32.h,
       color: Colors.white24,
-      margin: EdgeInsets.symmetric(horizontal: 10.w),
     );
+    final withDividers = <Widget>[];
+    for (var i = 0; i < btns.length; i++) {
+      withDividers.add(Expanded(child: Center(child: btns[i])));
+      if (i < btns.length - 1) withDividers.add(divider);
+    }
     return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        btns[0],
-        divider,
-        btns[1],
-        divider,
-        btns[2],
-        divider,
-        btns[3],
-      ],
+      mainAxisSize: MainAxisSize.max,
+      children: withDividers,
     );
   }
 
@@ -368,7 +412,7 @@ class _ProcessingOverlayState extends State<_ProcessingOverlay>
                     SizedBox(height: 6.h),
 
                     Text(
-                      'Adding photographer branding',
+                      'Adding creator branding',
                       style: TextStyle(
                         color: Colors.white38,
                         fontSize: 11.sp,

@@ -22,13 +22,14 @@ class CommentItemWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final avatarColor = data.isMe ? ext.accentGold : Colors.blueAccent;
-    final avatarSize = isReply ? 26.w : 34.w;
+    // Instagram: 32dp top-level / 24dp replies. We match with screenutil.
+    final avatarSize = isReply ? 28.w : 36.w;
     final canChat = data.onUserTap != null;
 
     return GestureDetector(
       onLongPress: data.onLongPress,
       child: Padding(
-        padding: EdgeInsets.only(bottom: isReply ? 10.h : 4.h),
+        padding: EdgeInsets.only(bottom: isReply ? 4.h : 6.h),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -58,7 +59,7 @@ class CommentItemWidget extends StatelessWidget {
                       style: TextStyle(
                         color: avatarColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: isReply ? 10.sp : 13.sp,
+                        fontSize: isReply ? 11.sp : 13.sp,
                       ),
                     ),
                   ),
@@ -104,7 +105,7 @@ class CommentItemWidget extends StatelessWidget {
                                     ? ext.accentGold
                                     : ext.greetingColor),
                             fontWeight: FontWeight.w700,
-                            fontSize: isReply ? 11.sp : 12.sp,
+                            fontSize: 13.sp,
                             decoration: canChat
                                 ? TextDecoration.underline
                                 : TextDecoration.none,
@@ -118,7 +119,7 @@ class CommentItemWidget extends StatelessWidget {
                         data.timeLabel,
                         style: TextStyle(
                             color: ext.searchHintColor,
-                            fontSize: isReply ? 10.sp : 11.sp),
+                            fontSize: 11.sp),
                       ),
                       if (data.isPending) ...[
                         SizedBox(width: 4.w),
@@ -127,24 +128,23 @@ class CommentItemWidget extends StatelessWidget {
                       ],
                     ],
                   ),
-                  SizedBox(height: 3.h),
+                  SizedBox(height: 1.h),
 
                   // Content
                   Text(
                     data.content,
                     style: TextStyle(
                         color: ext.greetingColor,
-                        fontSize: isReply ? 13.sp : 14.sp,
-                        height: 1.4),
+                        fontSize: 13.sp,
+                        height: 1.3),
                   ),
-                  SizedBox(height: 2.h),
 
                   // Reply button
                   if (data.onReply != null)
                     GestureDetector(
                       onTap: data.onReply,
                       child: Padding(
-                        padding: EdgeInsets.only(top: 2.h),
+                        padding: EdgeInsets.only(top: 3.h),
                         child: Text(
                           'Reply',
                           style: TextStyle(

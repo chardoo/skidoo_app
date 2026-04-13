@@ -2,12 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
-/// Shared bottom-sheet container: keyboard-avoiding, rounded top, drag handle.
-/// Wraps any comment section content.
+/// Shared bottom-sheet container: keyboard-avoiding, rounded top, drag handle,
+/// and an optional title + subtitle header row (Instagram / TikTok style).
 class CommentSheetShell extends StatelessWidget {
-  const CommentSheetShell({super.key, required this.child});
+  const CommentSheetShell({
+    super.key,
+    required this.child,
+    this.title,
+    this.subtitle,
+  });
 
   final Widget child;
+
+  /// Primary header text shown below the drag handle (e.g. "Comments").
+  final String? title;
+
+  /// Secondary header text shown below [title] in a muted style
+  /// (e.g. "by Photographer Name").
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -26,12 +38,12 @@ class CommentSheetShell extends StatelessWidget {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Drag handle
+            // ── Drag handle ─────────────────────────────────────────────────
             Center(
               child: Container(
-                margin: EdgeInsets.only(top: 10.h, bottom: 14.h),
+                margin: EdgeInsets.only(top: 10.h, bottom: title != null ? 10.h : 14.h),
                 width: 40.w,
                 height: 4.h,
                 decoration: BoxDecoration(
@@ -40,6 +52,38 @@ class CommentSheetShell extends StatelessWidget {
                 ),
               ),
             ),
+
+            // ── Header title + subtitle ──────────────────────────────────────
+            if (title != null) ...[
+              Padding(
+                padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, subtitle != null ? 2.h : 10.h),
+                child: Text(
+                  title!,
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16.sp,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (subtitle != null)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
+                  child: Text(
+                    subtitle!,
+                    style: TextStyle(
+                      color: ext.searchHintColor,
+                      fontSize: 12.sp,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.15)),
+            ],
+
             Expanded(child: child),
           ],
         ),

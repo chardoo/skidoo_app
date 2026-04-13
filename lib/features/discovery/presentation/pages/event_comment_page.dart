@@ -10,11 +10,13 @@ import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/time_formatter.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/core/config/chat_config.dart';
+import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart' show GetEventRoomUseCase;
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
-import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
+import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:skidoo_app/models/photographer/photographerModel.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
 /// Opens a bottom sheet showing an image slider + real-time event comments.
@@ -128,23 +130,15 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
     return r.isEmpty ? 'User' : r[0].toUpperCase() + r.substring(1);
   }
 
-  Future<void> _openDm(ChatMessage msg) async {
-    try {
-      final room = await sl<GetOrCreateDirectRoomUseCase>().call(
-        recipientId: msg.senderId,
-        recipientRole: msg.senderRole,
-        localDisplayName:
-            msg.senderName.isNotEmpty ? msg.senderName : msg.senderRole,
-      );
-      if (!mounted) return;
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Could not open chat: $e'),
-          backgroundColor: Colors.redAccent));
-    }
+  void _openProfile(ChatMessage msg) {
+    final name = msg.senderName.isNotEmpty ? msg.senderName : 'Creator';
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PhotographerProfilePage(
+          photographer: PhotographerModel(msg.senderId, '', name, ''),
+        ),
+      ),
+    );
   }
 
   // ── Thread building ──────────────────────────────────────────────────────────
@@ -196,7 +190,10 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
       isPending: msg.isLocal,
       replyCount: replies?.length ?? 0,
       onReply: () => onReply(msg),
-      onUserTap: msg.senderId == _myId ? null : () => _openDm(msg),
+      onUserTap: (msg.senderId == _myId ||
+              msg.senderRole != ChatConfig.rolePhotographer)
+          ? null
+          : () => _openProfile(msg),
     );
   }
 
@@ -207,36 +204,11 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return CommentSheetShell(
+      title: widget.event.eventName,
+      subtitle: 'by ${widget.event.photographerName}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Event header ────────────────────────────────────────────────────
-          Padding(
-            padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.event.eventName,
-                  style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15.sp),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  'by ${widget.event.photographerName}',
-                  style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 11.sp),
-                ),
-              ],
-            ),
-          ),
-
-          Divider(
-              height: 1,
-              color: ext.searchHintColor.withValues(alpha: 0.15)),
 
           // ── Comments ────────────────────────────────────────────────────────
           Expanded(

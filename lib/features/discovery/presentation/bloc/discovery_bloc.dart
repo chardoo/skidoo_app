@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
@@ -50,14 +51,26 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     on<DiscoveryReactionToggled>(_onReactionToggled);
     on<DiscoveryEventVisible>(_onEventVisible);
     on<DiscoveryEventHidden>(_onEventHidden);
+    on<DiscoveryEventHideRequested>(_onHideRequested);
     on<_DiscoveryLikeUpdateReceived>(_onReactionUpdated);
     on<_DiscoveryReactionsPatchReceived>(_onReactionsPatchReceived);
+    on<_DiscoveryHiddenIdsLoaded>(_onHiddenIdsLoaded);
 
     // Load current user ID once so we can identify own updates later.
     _authService.getUserId().then((id) {
       if (id.isNotEmpty) _currentUserId = id;
     });
+
+    // Restore previously-hidden event IDs from local storage.
+    SharedPreferences.getInstance().then((prefs) {
+      final ids = prefs.getStringList(_hiddenIdsKey) ?? [];
+      if (ids.isNotEmpty && !isClosed) {
+        add(_DiscoveryHiddenIdsLoaded(ids.toSet()));
+      }
+    });
   }
+
+  static const _hiddenIdsKey = 'discovery_hidden_event_ids';
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -366,6 +379,29 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
         emit(state.copyWith(events: reverted));
       }
     }
+  }
+
+  // ── Hide event ────────────────────────────────────────────────────────────
+
+  Future<void> _onHideRequested(
+    DiscoveryEventHideRequested event,
+    Emitter<DiscoveryState> emit,
+  ) async {
+    final updated = {...state.hiddenEventIds, event.eventId};
+    final filtered = state.events.where((e) => !updated.contains(e.id)).toList();
+    emit(state.copyWith(hiddenEventIds: updated, events: filtered));
+
+    // Persist asynchronously.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_hiddenIdsKey, updated.toList());
+  }
+
+  void _onHiddenIdsLoaded(
+    _DiscoveryHiddenIdsLoaded event,
+    Emitter<DiscoveryState> emit,
+  ) {
+    final filtered = state.events.where((e) => !event.ids.contains(e.id)).toList();
+    emit(state.copyWith(hiddenEventIds: event.ids, events: filtered));
   }
 
   // ── Cleanup ───────────────────────────────────────────────────────────────

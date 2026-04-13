@@ -129,8 +129,8 @@ class _SliderVideoItem extends StatefulWidget {
 
 class _SliderVideoItemState extends State<_SliderVideoItem>
     with WidgetsBindingObserver {
-  /// Shared mute state across all feed carousel videos (like Instagram).
-  static final _muted = ValueNotifier<bool>(true);
+  /// Shared mute state across all feed carousel videos — starts unmuted on feed.
+  static final _muted = ValueNotifier<bool>(false);
 
   late final VideoPlayerController _ctrl;
   bool _initialized = false;
@@ -524,16 +524,10 @@ class _ViewfinderPainter extends CustomPainter {
     canvas.drawLine(Offset(w - m - a, h - m), Offset(w - m, h - m), paint);
     canvas.drawLine(Offset(w - m, h - m - a), Offset(w - m, h - m), paint);
 
-    // ── centre micro-dot (classic AF point) ──────────────────────────────────
-    final dotPaint = Paint()
-      ..color = _color.withValues(alpha: 0.55)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(w / 2, h / 2), 3.0, dotPaint);
-
-    // ── "YOU'RE IN FRAME" label — bottom centre, like a camera display readout
+    // ── "YOU ARE IN THIS FRAME" label — top centre, above the brackets ──────
     final tp = TextPainter(
       text: const TextSpan(
-        text: "YOU'RE IN FRAME",
+        text: "YOU ARE IN THIS FRAME",
         style: TextStyle(
           color: _color,
           fontSize: 9,
@@ -543,7 +537,7 @@ class _ViewfinderPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset((w - tp.width) / 2, h - m - tp.height - 6));
+    tp.paint(canvas, Offset((w - tp.width) / 2, m + 6));
   }
 
   @override

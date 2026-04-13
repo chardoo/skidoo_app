@@ -282,5 +282,5 @@ Future<void> setupServiceLocator() async {
   sl.registerFactory<PhotoCommentBloc>(
       () => PhotoCommentBloc(sl<PhotoCommentRemoteDataSource>(), sl<AuthService>()));
   sl.registerSingleton<PictureLikeService>(
-      PictureLikeService(sl<GetPhotoRoomUseCase>(), sl<AuthService>()));
+      PictureLikeService(sl<ChatRestDataSource>()));
 }

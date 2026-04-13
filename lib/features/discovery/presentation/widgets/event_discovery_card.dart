@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:dio/dio.dart' as dio;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,6 +12,9 @@ import 'package:skidoo_app/features/discovery/presentation/widgets/card_interact
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_description_text.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_comment_sheet.dart';
+import 'package:skidoo_app/api/dio_client_service.dart';
+import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
 
@@ -24,6 +28,7 @@ class EventDiscoveryCard extends StatefulWidget {
     this.onCommentTap,
     this.cardIndex = 0,
     this.activeCardIndex,
+    this.onHide,
   });
 
   final EventDiscovery event;
@@ -36,6 +41,8 @@ class EventDiscoveryCard extends StatefulWidget {
   /// Shared notifier; its value is the currently active card index.
   /// When null the card is treated as always active (e.g. discovery page).
   final ValueNotifier<int>? activeCardIndex;
+  /// Called when the user hides this event from their feed.
+  final VoidCallback? onHide;
 
   @override
   State<EventDiscoveryCard> createState() => _EventDiscoveryCardState();
@@ -164,6 +171,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             ext: ext,
             isOwner: widget.isOwner,
             onPhotographerTap: () => _openPhotographerProfile(context),
+            onHide: widget.onHide,
           ),
 
           // ── 2. Photo area ──────────────────────────────────────────────
@@ -326,7 +334,18 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             onComment: widget.isAuthenticated
                 ? (widget.onCommentTap ?? () => _showCommentSheet(context, ext))
                 : widget.onTap,
-            onShare: widget.isAuthenticated ? () {} : widget.onTap,
+            onShare: widget.isAuthenticated
+                ? () {
+                    final pics = widget.event.pictures;
+                    if (pics.isEmpty) return;
+                    final url = pics[_currentPage.clamp(0, pics.length - 1)].url;
+                    GalleryShareSheet.show(
+                      context,
+                      imageUrl: url,
+                      photoLabel: widget.event.eventName,
+                    );
+                  }
+                : widget.onTap,
             onSave: widget.isAuthenticated
                 ? () => setState(() => _saved = !_saved)
                 : widget.onTap,
@@ -386,11 +405,25 @@ class _PostHeader extends StatelessWidget {
     required this.ext,
     this.isOwner = false,
     this.onPhotographerTap,
+    this.onHide,
   });
   final EventDiscovery event;
   final AppThemeExtension ext;
   final bool isOwner;
   final VoidCallback? onPhotographerTap;
+  final VoidCallback? onHide;
+
+  void _showMoreOptions(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EventMoreOptionsSheet(
+        ext: ext,
+        eventId: event.id,
+        onHide: onHide,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -495,7 +528,7 @@ class _PostHeader extends StatelessWidget {
 
           // More options
           GestureDetector(
-            onTap: () {},
+            onTap: () => _showMoreOptions(context),
             child: Padding(
               padding: EdgeInsets.only(left: 8.w),
               child: Icon(Icons.more_horiz_rounded,
@@ -736,6 +769,285 @@ class _PageDots extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+// ── Event "more options" bottom sheet ─────────────────────────────────────────
+
+/// Maps the backend enum values → display labels.
+const _reportReasons = <String, String>{
+  'inappropriate_content': 'Inappropriate content',
+  'spam': 'Spam',
+  'harassment': 'Harassment',
+  'copyright': 'Copyright violation',
+  'other': 'Other',
+};
+
+class _EventMoreOptionsSheet extends StatelessWidget {
+  const _EventMoreOptionsSheet({
+    required this.ext,
+    required this.eventId,
+    this.onHide,
+  });
+  final AppThemeExtension ext;
+  final String eventId;
+  final VoidCallback? onHide;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.homeBackground,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              margin: EdgeInsets.symmetric(vertical: 12.h),
+              width: 36.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: ext.searchHintColor.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+
+            // Hide option
+            ListTile(
+              leading: Container(
+                width: 40.w,
+                height: 40.w,
+                decoration: BoxDecoration(
+                  color: ext.searchFieldFill,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.visibility_off_outlined,
+                    color: ext.greetingColor, size: 20.sp),
+              ),
+              title: Text(
+                'Hide event',
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15.sp,
+                ),
+              ),
+              subtitle: Text(
+                "You won't see this event again",
+                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                onHide?.call();
+              },
+            ),
+
+            Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
+
+            // Report option — opens the reason picker sheet
+            ListTile(
+              leading: Container(
+                width: 40.w,
+                height: 40.w,
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.flag_outlined,
+                    color: Colors.redAccent, size: 20.sp),
+              ),
+              title: Text(
+                'Report event',
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15.sp,
+                ),
+              ),
+              subtitle: Text(
+                'Inappropriate, misleading or harmful content',
+                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+              ),
+              trailing: Icon(Icons.chevron_right_rounded,
+                  color: ext.searchHintColor, size: 20.sp),
+              onTap: () {
+                Navigator.of(context).pop();
+                showModalBottomSheet<void>(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  isScrollControlled: true,
+                  builder: (_) => _ReportReasonSheet(
+                    ext: ext,
+                    eventId: eventId,
+                  ),
+                );
+              },
+            ),
+
+            SizedBox(height: 8.h),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Report reason picker ──────────────────────────────────────────────────────
+
+class _ReportReasonSheet extends StatefulWidget {
+  const _ReportReasonSheet({required this.ext, required this.eventId});
+  final AppThemeExtension ext;
+  final String eventId;
+
+  @override
+  State<_ReportReasonSheet> createState() => _ReportReasonSheetState();
+}
+
+class _ReportReasonSheetState extends State<_ReportReasonSheet> {
+  String? _selected;
+  bool _submitting = false;
+
+  Future<void> _submit() async {
+    if (_selected == null || _submitting) return;
+    setState(() => _submitting = true);
+    try {
+      await sl<Api>().dio.post(
+        '/client/reports',
+        data: {
+          'assetType': 'event',
+          'assetId': widget.eventId,
+          'reason': _selected,
+        },
+      );
+    } on dio.DioException catch (_) {
+      // Best-effort — don't block the user on a network error.
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Report submitted. Thank you for your feedback.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = widget.ext;
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.homeBackground,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              margin: EdgeInsets.symmetric(vertical: 12.h),
+              width: 36.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: ext.searchHintColor.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+
+            Padding(
+              padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 12.h),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        color: ext.greetingColor, size: 18.sp),
+                  ),
+                  SizedBox(width: 12.w),
+                  Text(
+                    'Why are you reporting this?',
+                    style: TextStyle(
+                      color: ext.greetingColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
+
+            ..._reportReasons.entries.map((entry) {
+              final selected = _selected == entry.key;
+              return ListTile(
+                title: Text(
+                  entry.value,
+                  style: TextStyle(
+                    color: selected ? Colors.redAccent : ext.greetingColor,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 14.sp,
+                  ),
+                ),
+                trailing: selected
+                    ? Icon(Icons.check_circle_rounded,
+                        color: Colors.redAccent, size: 20.sp)
+                    : Icon(Icons.radio_button_unchecked_rounded,
+                        color: ext.searchHintColor, size: 20.sp),
+                onTap: () => setState(() => _selected = entry.key),
+              );
+            }),
+
+            SizedBox(height: 12.h),
+
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _selected == null || _submitting ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    disabledBackgroundColor:
+                        Colors.redAccent.withValues(alpha: 0.3),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: _submitting
+                      ? SizedBox(
+                          width: 18.w,
+                          height: 18.w,
+                          child: const CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : Text(
+                          'Submit Report',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15.sp,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+
+            SizedBox(height: 16.h),
+          ],
+        ),
+      ),
     );
   }
 }
