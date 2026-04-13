@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,6 +17,7 @@ class ChatInputBar extends StatelessWidget {
     this.onClearReply,
     this.onImagePicked,
     this.pendingImagePath,
+    this.pendingShareUrl,
     this.onClearImage,
     this.isUploadingImage = false,
   });
@@ -31,8 +33,11 @@ class ChatInputBar extends StatelessWidget {
   /// Called with the local file path when user picks an image.
   final void Function(String filePath)? onImagePicked;
 
-  /// Path of the staged image waiting to be sent (not yet uploaded).
+  /// Path of the staged local image waiting to be uploaded and sent.
   final String? pendingImagePath;
+
+  /// Remote URL of a staged image (e.g. from gallery share) waiting to be sent.
+  final String? pendingShareUrl;
 
   /// Called when user taps the ✕ on the staged image preview.
   final VoidCallback? onClearImage;
@@ -51,18 +56,25 @@ class ChatInputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasStaged = pendingImagePath != null;
+    final hasStaged = pendingImagePath != null || pendingShareUrl != null;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         // ── Staged image preview ────────────────────────────────────────────
-        if (hasStaged) _StagedImagePreview(
-          filePath: pendingImagePath!,
-          isUploading: isUploadingImage,
-          ext: ext,
-          onClear: onClearImage,
-        ),
+        if (pendingImagePath != null)
+          _StagedImagePreview(
+            filePath: pendingImagePath!,
+            isUploading: isUploadingImage,
+            ext: ext,
+            onClear: onClearImage,
+          )
+        else if (pendingShareUrl != null)
+          _StagedNetworkImagePreview(
+            imageUrl: pendingShareUrl!,
+            ext: ext,
+            onClear: onClearImage,
+          ),
 
         // ── Reply preview strip ─────────────────────────────────────────────
         if (replyingTo != null)
@@ -242,6 +254,82 @@ class _StagedImagePreview extends StatelessWidget {
                     size: 16.sp, color: ext.searchHintColor),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Staged network image preview (shared gallery URL) ─────────────────────────
+
+class _StagedNetworkImagePreview extends StatelessWidget {
+  const _StagedNetworkImagePreview({
+    required this.imageUrl,
+    required this.ext,
+    this.onClear,
+  });
+
+  final String imageUrl;
+  final AppThemeExtension ext;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 4.h),
+      color: ext.cardSurface,
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8.r),
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
+              width: 64.w,
+              height: 64.w,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(
+                width: 64.w,
+                height: 64.w,
+                color: Colors.black12,
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 18.w,
+                  height: 18.w,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: ext.accentGold),
+                ),
+              ),
+              errorWidget: (_, __, ___) => Container(
+                width: 64.w,
+                height: 64.w,
+                color: Colors.black12,
+                alignment: Alignment.center,
+                child: Icon(Icons.broken_image_rounded,
+                    color: Colors.white54, size: 24.sp),
+              ),
+            ),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              'Image ready — add a caption or send',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+            ),
+          ),
+          GestureDetector(
+            onTap: onClear,
+            child: Container(
+              width: 28.w,
+              height: 28.w,
+              decoration: BoxDecoration(
+                color: ext.searchFieldFill,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(Icons.close_rounded,
+                  size: 16.sp, color: ext.searchHintColor),
+            ),
+          ),
         ],
       ),
     );

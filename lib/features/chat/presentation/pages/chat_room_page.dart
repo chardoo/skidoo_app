@@ -138,10 +138,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   void initState() {
     super.initState();
     _bloc = context.read<ChatRoomBloc>();
-    _bloc.add(ChatRoomJoined(widget.room.id));
-    if (widget.shareUrl != null) {
-      _bloc.add(ChatRoomUrlStaged(widget.shareUrl!));
-    }
+    _bloc.add(ChatRoomJoined(widget.room.id, shareUrl: widget.shareUrl));
     _scrollCtrl.addListener(_onScroll);
   }
 
@@ -307,7 +304,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
             buildWhen: (p, c) =>
                 p.replyingTo != c.replyingTo ||
                 p.isUploadingImage != c.isUploadingImage ||
-                p.pendingImagePath != c.pendingImagePath,
+                p.pendingImagePath != c.pendingImagePath ||
+                p.pendingShareUrl != c.pendingShareUrl,
             builder: (context, inputState) {
               return Column(
                 children: [
@@ -413,13 +411,15 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                     controller: _inputCtrl,
                     onSend: () => _send(
                       inputState.replyingTo?.id,
-                      hasPendingImage: inputState.pendingImagePath != null,
+                      hasPendingImage: inputState.pendingImagePath != null ||
+                          inputState.pendingShareUrl != null,
                     ),
                     ext: ext,
                     replyingTo: inputState.replyingTo,
                     onClearReply: _clearReply,
                     onImagePicked: _onImagePicked,
                     pendingImagePath: inputState.pendingImagePath,
+                    pendingShareUrl: inputState.pendingShareUrl,
                     onClearImage: () => _bloc.add(const ChatRoomImageCleared()),
                     isUploadingImage: inputState.isUploadingImage,
                   ),

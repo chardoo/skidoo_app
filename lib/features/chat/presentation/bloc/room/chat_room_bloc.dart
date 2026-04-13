@@ -92,12 +92,15 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       cached = await _getCachedMessages(event.roomId);
     } catch (_) {}
 
+    // Stage the share URL immediately so it appears in the input bar as soon
+    // as the page opens — the user decides when (and whether) to send it.
     if (cached.isNotEmpty) {
       emit(ChatRoomState(
         messages: _sorted(cached),
         isConnecting: true,
         isSyncing: true,
         myUserId: _myUserId,
+        pendingShareUrl: event.shareUrl,
       ));
     } else {
       emit(ChatRoomState(
@@ -105,6 +108,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         isConnecting: true,
         isSyncing: true,
         myUserId: _myUserId,
+        pendingShareUrl: event.shareUrl,
       ));
     }
 
@@ -124,6 +128,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         isLoadingHistory: false,
         isSyncing: false,
         clearError: true,
+        // pendingShareUrl is preserved via copyWith (not cleared here)
       ));
     } catch (e) {
       emit(state.copyWith(
@@ -183,46 +188,31 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       isConnecting: false,
       clearError: true,
     ));
-    // Auto-send a share URL that was staged before the WS was ready.
-    final shareUrl = state.pendingShareUrl;
-    if (shareUrl != null) {
-      emit(state.copyWith(clearPendingShareUrl: true));
-      _ws.send(null, imageUrl: shareUrl);
-      final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
-      final optimistic = ChatMessage(
-        id: tempId,
-        roomId: _currentRoomId ?? '',
-        senderId: _myUserId,
-        senderRole: ChatConfig.roleClient,
-        content: '',
-        imageUrl: shareUrl,
-        createdAt: DateTime.now(),
-        isLocal: true,
-      );
-      emit(state.copyWith(messages: _sorted([optimistic, ...state.messages])));
-      _cacheMessage(optimistic).catchError((_) {});
-    }
   }
 
   void _onUrlStaged(ChatRoomUrlStaged event, Emitter<ChatRoomState> emit) {
+    // Always add the optimistic message immediately so the user sees it right
+    // away regardless of WS state. The actual send happens now (if connected)
+    // or in _onWsConnected (if still connecting).
+    final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+    final optimistic = ChatMessage(
+      id: tempId,
+      roomId: _currentRoomId ?? '',
+      senderId: _myUserId,
+      senderRole: ChatConfig.roleClient,
+      content: '',
+      imageUrl: event.imageUrl,
+      createdAt: DateTime.now(),
+      isLocal: true,
+    );
+    emit(state.copyWith(messages: _sorted([optimistic, ...state.messages])));
+    _cacheMessage(optimistic).catchError((_) {});
+
     if (_ws.isConnected) {
       // WS already up — send immediately.
       _ws.send(null, imageUrl: event.imageUrl);
-      final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
-      final optimistic = ChatMessage(
-        id: tempId,
-        roomId: _currentRoomId ?? '',
-        senderId: _myUserId,
-        senderRole: ChatConfig.roleClient,
-        content: '',
-        imageUrl: event.imageUrl,
-        createdAt: DateTime.now(),
-        isLocal: true,
-      );
-      emit(state.copyWith(messages: _sorted([optimistic, ...state.messages])));
-      _cacheMessage(optimistic).catchError((_) {});
     } else {
-      // WS not ready yet — queue it; _onWsConnected will send it.
+      // WS not ready yet — store URL; _onWsConnected will send it.
       emit(state.copyWith(pendingShareUrl: event.imageUrl));
     }
   }
@@ -295,15 +285,43 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     final content = event.content?.trim();
     final pendingPath = state.pendingImagePath;
+    final pendingUrl = state.pendingShareUrl;
     final hasText = content != null && content.isNotEmpty;
-    final hasImage = pendingPath != null;
+    final hasLocalImage = pendingPath != null;
+    final hasUrlImage = pendingUrl != null;
 
-    if (!hasText && !hasImage) return;
+    if (!hasText && !hasLocalImage && !hasUrlImage) return;
 
     final replyPreview =
         event.replyToId != null ? _buildReplyPreview(event.replyToId!) : null;
 
-    if (hasImage) {
+    // Shared gallery URL — already uploaded, send directly without re-uploading.
+    if (hasUrlImage && !hasLocalImage) {
+      final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+      final optimistic = ChatMessage(
+        id: tempId,
+        roomId: _currentRoomId ?? '',
+        senderId: _myUserId,
+        senderRole: ChatConfig.roleClient,
+        content: content ?? '',
+        imageUrl: pendingUrl,
+        replyToId: event.replyToId,
+        replyPreview: replyPreview,
+        createdAt: DateTime.now(),
+        isLocal: true,
+      );
+      emit(state.copyWith(
+        messages: _sorted([optimistic, ...state.messages]),
+        clearPendingShareUrl: true,
+        clearReply: true,
+      ));
+      _ws.send(hasText ? content : null,
+          imageUrl: pendingUrl, replyToId: event.replyToId);
+      _cacheMessage(optimistic).catchError((_) {});
+      return;
+    }
+
+    if (hasLocalImage) {
       // Clear the staged image immediately so the user can't double-send.
       emit(state.copyWith(
         isUploadingImage: true,
@@ -384,7 +402,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     ChatRoomImageCleared event,
     Emitter<ChatRoomState> emit,
   ) {
-    emit(state.copyWith(clearPendingImage: true));
+    emit(state.copyWith(clearPendingImage: true, clearPendingShareUrl: true));
   }
 
   void _onReplySet(ChatRoomReplySet event, Emitter<ChatRoomState> emit) {

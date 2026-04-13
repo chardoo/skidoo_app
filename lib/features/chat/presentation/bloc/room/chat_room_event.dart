@@ -5,9 +5,12 @@ abstract class ChatRoomEvent {
 }
 
 /// Join a room: loads cache, connects WS, fetches history.
+/// If [shareUrl] is provided the image is shown immediately as an optimistic
+/// message and sent over the WS as soon as the connection is ready.
 class ChatRoomJoined extends ChatRoomEvent {
   final String roomId;
-  const ChatRoomJoined(this.roomId);
+  final String? shareUrl;
+  const ChatRoomJoined(this.roomId, {this.shareUrl});
 }
 
 /// Send the current input (text and/or staged image) as one message.
