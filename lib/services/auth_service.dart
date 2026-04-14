@@ -1,30 +1,88 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+/// Stores all user session data in the OS-level secure enclave:
+///  • iOS  → Keychain (inaccessible to other apps and backups by default)
+///  • Android → EncryptedSharedPreferences backed by the Keystore
+///
+/// Nothing sensitive is written to SharedPreferences.
 class AuthService {
-  SharedPreferences get _prefs => sl<SharedPreferences>();
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock,
+    ),
+  );
 
-  Future<bool> setToken(String token) => _prefs.setString('access_token', token);
+  // ── Storage keys ────────────────────────────────────────────────────────────
+  static const _kToken = 'auth.access_token';
+  static const _kExpiration = 'auth.token_expiration';
+  static const _kUniqueName = 'auth.unique_name';
+  static const _kEmail = 'auth.email';
+  static const _kId = 'auth.user_id';
+  static const _kName = 'auth.user_name';
 
-  Future<String> getToken() async => _prefs.getString('access_token') ?? '';
+  // ── Token ────────────────────────────────────────────────────────────────────
+  Future<void> setToken(String token) =>
+      _storage.write(key: _kToken, value: token);
 
-  Future<void> removeToken() => _prefs.clear();
+  Future<String> getToken() async =>
+      await _storage.read(key: _kToken) ?? '';
 
-  Future<bool> setUniqueName(String uniqueName) =>
-      _prefs.setString('unique_name', uniqueName);
+  // ── Expiration ───────────────────────────────────────────────────────────────
+  /// Stores the ISO-8601 expiration string returned by the server.
+  Future<void> setExpiration(String iso) =>
+      _storage.write(key: _kExpiration, value: iso);
+
+  Future<String> getExpiration() async =>
+      await _storage.read(key: _kExpiration) ?? '';
+
+  /// Returns true when a token exists but its expiration date has already
+  /// passed.  If no expiration was stored the token is treated as valid.
+  Future<bool> isTokenExpired() async {
+    final token = await getToken();
+    if (token.isEmpty) return true;
+    final exp = await getExpiration();
+    if (exp.isEmpty) return false;
+    try {
+      return DateTime.now().isAfter(DateTime.parse(exp));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ── Profile fields ───────────────────────────────────────────────────────────
+  Future<void> setUniqueName(String v) =>
+      _storage.write(key: _kUniqueName, value: v);
 
   Future<String> getUniqueName() async =>
-      _prefs.getString('unique_name') ?? '';
+      await _storage.read(key: _kUniqueName) ?? '';
 
-  Future<bool> setEmail(String email) => _prefs.setString('email', email);
+  Future<void> setEmail(String v) =>
+      _storage.write(key: _kEmail, value: v);
 
-  Future<String> getEmail() async => _prefs.getString('email') ?? '';
+  Future<String> getEmail() async =>
+      await _storage.read(key: _kEmail) ?? '';
 
-  Future<bool> setId(String id) => _prefs.setString('id', id);
+  Future<void> setId(String v) =>
+      _storage.write(key: _kId, value: v);
 
-  Future<String> getUserId() async => _prefs.getString('id') ?? '';
+  Future<String> getUserId() async =>
+      await _storage.read(key: _kId) ?? '';
 
-  Future<bool> setName(String name) => _prefs.setString('name', name);
+  Future<void> setName(String v) =>
+      _storage.write(key: _kName, value: v);
 
-  Future<String> getName() async => _prefs.getString('name') ?? '';
+  Future<String> getName() async =>
+      await _storage.read(key: _kName) ?? '';
+
+  // ── Session teardown ─────────────────────────────────────────────────────────
+  /// Deletes every auth key individually so non-auth preferences are untouched.
+  Future<void> removeToken() => Future.wait([
+        _storage.delete(key: _kToken),
+        _storage.delete(key: _kExpiration),
+        _storage.delete(key: _kUniqueName),
+        _storage.delete(key: _kEmail),
+        _storage.delete(key: _kId),
+        _storage.delete(key: _kName),
+      ]);
 }
