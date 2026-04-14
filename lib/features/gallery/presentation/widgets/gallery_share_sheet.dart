@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
@@ -78,12 +80,23 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
 
   Future<void> _search(String query) async {
     if (query.trim().isEmpty) {
-      setState(() { _results = []; _error = null; _loading = false; _hasMore = false; _page = 1; });
+      setState(() {
+        _results = [];
+        _error = null;
+        _loading = false;
+        _hasMore = false;
+        _page = 1;
+      });
       return;
     }
-    setState(() { _loading = true; _error = null; _page = 1; });
+    setState(() {
+      _loading = true;
+      _error = null;
+      _page = 1;
+    });
     try {
-      final page = await sl<UserSearchDataSource>().search(query.trim(), page: 1);
+      final page =
+          await sl<UserSearchDataSource>().search(query.trim(), page: 1);
       if (mounted) {
         setState(() {
           _results = page.users;
@@ -93,7 +106,11 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
     }
   }
 
@@ -128,6 +145,9 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
       );
       if (!mounted) return;
       Navigator.of(context).pop();
+      print('hey sharing ');
+      print(room);
+      print(widget.imageUrl);
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => ChatRoomPage(room: room, shareUrl: widget.imageUrl),
@@ -220,7 +240,8 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
           ),
 
           SizedBox(height: 8.h),
-          Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.12)),
+          Divider(
+              height: 1, color: ext.searchHintColor.withValues(alpha: 0.12)),
 
           // Results
           Expanded(

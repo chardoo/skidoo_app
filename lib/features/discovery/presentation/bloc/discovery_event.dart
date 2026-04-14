@@ -45,12 +45,26 @@ class DiscoveryEventHidden extends DiscoveryEvent {
   List<Object?> get props => [eventId];
 }
 
-/// User chose to permanently hide an event from their feed.
+/// User chose to hide an event — collapses the card and shows an undo window.
 class DiscoveryEventHideRequested extends DiscoveryEvent {
   final String eventId;
   const DiscoveryEventHideRequested(this.eventId);
   @override
   List<Object?> get props => [eventId];
+}
+
+/// Commits a pending hide: removes from list and persists to local storage.
+/// Fired when the undo window closes without the user tapping Undo.
+class DiscoveryEventHideCommitted extends DiscoveryEvent {
+  final String eventId;
+  const DiscoveryEventHideCommitted(this.eventId);
+  @override
+  List<Object?> get props => [eventId];
+}
+
+/// Cancels a pending hide and restores the card.
+class DiscoveryEventHideUndone extends DiscoveryEvent {
+  const DiscoveryEventHideUndone();
 }
 
 /// Internal — fired when a like_update arrives on a persistent WS session.

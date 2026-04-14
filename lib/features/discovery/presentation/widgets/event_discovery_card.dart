@@ -15,6 +15,7 @@ import 'package:skidoo_app/features/discovery/presentation/widgets/card_comment_
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
+import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
 
@@ -141,6 +142,10 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   }
 
   void handleTap() {
+    if (!widget.isAuthenticated) {
+      widget.onTap();
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => EventPicturesPage(event: widget.event)),
     );
@@ -157,8 +162,13 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     final pics = widget.event.pictures;
     final size = MediaQuery.sizeOf(context);
 
-    // Portrait ratio 4:5 — same as Instagram portrait posts
-    final photoH = size.width * (5 / 4);
+    // Height varies by media type: videos taller than images.
+    final currentPic =
+        pics.isNotEmpty && _currentPage < pics.length ? pics[_currentPage] : null;
+    final isCurrentVideo = currentPic?.isVideo ?? false;
+    final videoH = (size.width * 1.5).clamp(520.0, 580.0);
+    final imageH = (size.width * 0.75).clamp(240.0, 320.0);
+    final mediaH = isCurrentVideo ? videoH : imageH;
 
     return Container(
       color: ext.homeBackground,
@@ -170,16 +180,20 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             event: widget.event,
             ext: ext,
             isOwner: widget.isOwner,
+            isAuthenticated: widget.isAuthenticated,
             onPhotographerTap: () => _openPhotographerProfile(context),
             onHide: widget.onHide,
+            onLoginRequired: widget.onTap,
           ),
 
           // ── 2. Photo area ──────────────────────────────────────────────
           GestureDetector(
             onTap: widget.isAuthenticated ? null : widget.onTap,
-            child: SizedBox(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeInOut,
               width: double.infinity,
-              height: photoH.clamp(360.0, 520.0),
+              height: mediaH,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -379,9 +393,20 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       widget.event.photographerName,
       '',
     );
+    // HomeBloc may not be in the tree on the unauthenticated discovery page.
+    HomeBloc? homeBloc;
+    try {
+      homeBloc = context.read<HomeBloc>();
+    } catch (_) {}
+
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PhotographerProfilePage(photographer: photographer),
+        builder: (_) => homeBloc != null
+            ? BlocProvider.value(
+                value: homeBloc,
+                child: PhotographerProfilePage(photographer: photographer),
+              )
+            : PhotographerProfilePage(photographer: photographer),
       ),
     );
   }
@@ -404,16 +429,24 @@ class _PostHeader extends StatelessWidget {
     required this.event,
     required this.ext,
     this.isOwner = false,
+    this.isAuthenticated = false,
     this.onPhotographerTap,
     this.onHide,
+    this.onLoginRequired,
   });
   final EventDiscovery event;
   final AppThemeExtension ext;
   final bool isOwner;
+  final bool isAuthenticated;
   final VoidCallback? onPhotographerTap;
   final VoidCallback? onHide;
+  final VoidCallback? onLoginRequired;
 
   void _showMoreOptions(BuildContext context) {
+    if (!isAuthenticated) {
+      onLoginRequired?.call();
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,

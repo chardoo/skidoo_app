@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
@@ -48,6 +49,46 @@ class _EventsFeedState extends State<EventsFeed> {
   void dispose() {
     _activeCardIndex.dispose();
     super.dispose();
+  }
+
+  void _onHide(String eventId) {
+    // If the card being hidden is currently playing a video, pause it first.
+    final idx = widget.discoveryState.events.indexWhere((e) => e.id == eventId);
+    if (idx != -1 && _activeCardIndex.value == idx) {
+      _activeCardIndex.value = -1;
+    }
+
+    final bloc = context.read<DiscoveryBloc>();
+    bloc.add(DiscoveryEventHideRequested(eventId));
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            backgroundColor: const Color(0xFF2C2C2E),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            content: const Text(
+              'Content hidden',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+            action: SnackBarAction(
+              label: 'Undo',
+              textColor: const Color(0xFFF5A623),
+              onPressed: () => bloc.add(const DiscoveryEventHideUndone()),
+            ),
+          ),
+        )
+        .closed
+        .then((reason) {
+      if (reason != SnackBarClosedReason.action && !bloc.isClosed) {
+        bloc.add(DiscoveryEventHideCommitted(eventId));
+      }
+    });
   }
 
   /// Find the card whose centre is closest to the viewport centre and mark it
@@ -118,14 +159,27 @@ class _EventsFeedState extends State<EventsFeed> {
                 );
               }
               final event = state.events[index];
-              return EventDiscoveryCard(
-                key: _keyFor(event.id),
-                event: event,
-                cardIndex: index,
-                activeCardIndex: _activeCardIndex,
-                isAuthenticated: true,
-                onTap: () => widget.onCardTap(event),
-                onCommentTap: () => widget.onCommentTap(event),
+              final isPending = state.pendingHideEventId == event.id;
+              return ClipRect(
+                child: AnimatedAlign(
+                  duration: const Duration(milliseconds: 380),
+                  curve: Curves.easeInOut,
+                  alignment: Alignment.topCenter,
+                  heightFactor: isPending ? 0.0 : 1.0,
+                  child: IgnorePointer(
+                    ignoring: isPending,
+                    child: EventDiscoveryCard(
+                      key: _keyFor(event.id),
+                      event: event,
+                      cardIndex: index,
+                      activeCardIndex: _activeCardIndex,
+                      isAuthenticated: true,
+                      onTap: () => widget.onCardTap(event),
+                      onCommentTap: () => widget.onCommentTap(event),
+                      onHide: () => _onHide(event.id),
+                    ),
+                  ),
+                ),
               );
             },
           ),

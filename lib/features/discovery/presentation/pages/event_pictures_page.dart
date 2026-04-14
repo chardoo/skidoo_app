@@ -307,7 +307,8 @@ class _FeedCardState extends State<_FeedCard> {
           right: 10.w,
           bottom: sidebarBottom,
           child: MediaActionButtons(
-            imageId: pic.id,
+            imageId: pic.imageId,
+            pictureId: pic.id,
             imageUrl: pic.url,
             eventName: eventName,
             photographerName: photographerName,
@@ -594,6 +595,7 @@ class _VideoBackgroundState extends State<_VideoBackground> {
   late final VideoPlayerController _ctrl;
   bool _initialized = false;
   bool _manualPause = false;
+  bool _muted = false;
 
   bool get _isActive => widget.activeIndex.value == widget.index;
 
@@ -604,6 +606,7 @@ class _VideoBackgroundState extends State<_VideoBackground> {
       ..setLooping(true)
       ..initialize().then((_) {
         if (!mounted) return;
+        _ctrl.setVolume(1.0);
         setState(() => _initialized = true);
         _syncPlayback();
       });
@@ -639,6 +642,13 @@ class _VideoBackgroundState extends State<_VideoBackground> {
         _ctrl.play();
         _manualPause = false;
       }
+    });
+  }
+
+  void _toggleMute() {
+    setState(() {
+      _muted = !_muted;
+      _ctrl.setVolume(_muted ? 0.0 : 1.0);
     });
   }
 
@@ -698,6 +708,34 @@ class _VideoBackgroundState extends State<_VideoBackground> {
                         color: Colors.white, size: 34.sp),
                   ),
                 ),
+
+              // Mute / unmute button — top right, below the status bar.
+              Positioned(
+                top: MediaQuery.paddingOf(context).top + 10.h,
+                right: 14.w,
+                child: GestureDetector(
+                  onTap: _toggleMute,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    width: 36.w,
+                    height: 36.w,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          width: 1),
+                    ),
+                    child: Icon(
+                      _muted
+                          ? Icons.volume_off_rounded
+                          : Icons.volume_up_rounded,
+                      color: Colors.white,
+                      size: 16.sp,
+                    ),
+                  ),
+                ),
+              ),
 
               // Thin progress bar pinned to bottom of video.
               Positioned(

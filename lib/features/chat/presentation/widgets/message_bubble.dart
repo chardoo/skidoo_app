@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
+import 'package:video_player/video_player.dart';
 
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
@@ -26,132 +27,138 @@ class MessageBubble extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return GestureDetector(
-  onLongPress: onLongPress,
-  onHorizontalDragUpdate: (details) {
-    onLongPress?.call();
-  },
-  child: Padding(
-    padding: EdgeInsets.symmetric(vertical: 3.h, horizontal: 12.w),
-    child: Column(
-      crossAxisAlignment:
-          isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min, // Add this
-      children: [
-        // Sender label
-        if (!isMe)
-          Padding(
-            padding: EdgeInsets.only(left: 4.w, bottom: 2.h),
-            child: Text(
-              message.senderName.isNotEmpty
-                  ? message.senderName
-                  : message.senderRole,
-              style: TextStyle(
-                color: ext.searchHintColor,
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        
-        Row(
-          mainAxisAlignment:
-              isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min, // Add this
+      onLongPress: onLongPress,
+      onHorizontalDragUpdate: (details) {
+        onLongPress?.call();
+      },
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 3.h, horizontal: 12.w),
+        child: Column(
+          crossAxisAlignment:
+              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (!isMe) ...[
-              _Avatar(
-                senderId: message.senderId,
-                ext: ext,
-                onTap: onUserTap,
-              ),
-              SizedBox(width: 6.w),
-            ],
-            // No Flexible, no ConstrainedBox - just the Container
-            Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.72,
-              ),
-              decoration: BoxDecoration(
-                color: isMe ? ext.accentGold : ext.cardSurface,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(18.r),
-                  topRight: Radius.circular(18.r),
-                  bottomLeft: Radius.circular(isMe ? 18.r : 4.r),
-                  bottomRight: Radius.circular(isMe ? 4.r : 18.r),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+            // Sender label
+            if (!isMe)
+              Padding(
+                padding: EdgeInsets.only(left: 4.w, bottom: 2.h),
+                child: Text(
+                  message.senderName.isNotEmpty
+                      ? message.senderName
+                      : message.senderRole,
+                  style: TextStyle(
+                    color: ext.searchHintColor,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
+                ),
               ),
-              clipBehavior: Clip.hardEdge,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, // CHANGE FROM 'stretch' TO 'start'
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Reply preview strip
-                  if (message.replyPreview != null)
-                    _ReplyPreviewStrip(
-                      preview: message.replyPreview!,
-                      isMe: isMe,
-                      ext: ext,
-                    ),
-                  // Image
-                  if (message.imageUrl != null)
-                    _MessageImage(imageUrl: message.imageUrl!),
-                  // Text content + timestamp
-                  if (message.content.isNotEmpty || message.imageUrl == null)
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        14.w,
-                        message.replyPreview != null || message.imageUrl != null
-                            ? 6.h
-                            : 10.h,
-                        14.w,
-                        10.h,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (message.content.isNotEmpty)
-                            Text(
-                              message.content,
-                              style: TextStyle(
-                                color: isMe ? Colors.white : ext.greetingColor,
-                                fontSize: 14.sp,
-                                height: 1.4,
-                              ),
-                            ),
-                          SizedBox(height: 3.h),
-                          _Timestamp(message: message, isMe: isMe, ext: ext),
-                        ],
-                      ),
-                    )
-                  else
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 6.h),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: _Timestamp(message: message, isMe: isMe, ext: ext),
-                      ),
-                    ),
+
+            Row(
+              mainAxisAlignment:
+                  isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isMe) ...[
+                  _Avatar(
+                    senderId: message.senderId,
+                    ext: ext,
+                    onTap: onUserTap,
+                  ),
+                  SizedBox(width: 6.w),
                 ],
-              ),
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.72,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isMe ? ext.accentGold : ext.cardSurface,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(18.r),
+                      topRight: Radius.circular(18.r),
+                      bottomLeft: Radius.circular(isMe ? 18.r : 4.r),
+                      bottomRight: Radius.circular(isMe ? 4.r : 18.r),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.hardEdge,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Reply preview strip
+                      if (message.replyPreview != null)
+                        _ReplyPreviewStrip(
+                          preview: message.replyPreview!,
+                          isMe: isMe,
+                          ext: ext,
+                        ),
+                      // Media (image or video)
+                      if (message.imageUrl != null)
+                        message.isVideo
+                            ? _MessageVideo(videoUrl: message.imageUrl!)
+                            : _MessageImage(imageUrl: message.imageUrl!),
+                      // Text content + timestamp
+                      if (message.content.isNotEmpty ||
+                          message.imageUrl == null)
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            14.w,
+                            message.replyPreview != null ||
+                                    message.imageUrl != null
+                                ? 6.h
+                                : 10.h,
+                            14.w,
+                            10.h,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (message.content.isNotEmpty)
+                                Text(
+                                  message.content,
+                                  style: TextStyle(
+                                    color: isMe
+                                        ? Colors.white
+                                        : ext.greetingColor,
+                                    fontSize: 14.sp,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              SizedBox(height: 3.h),
+                              _Timestamp(
+                                  message: message, isMe: isMe, ext: ext),
+                            ],
+                          ),
+                        )
+                      else
+                        Padding(
+                          padding:
+                              EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 6.h),
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: _Timestamp(
+                                message: message, isMe: isMe, ext: ext),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-      ],
-    ),
-  ),
-);
+      ),
+    );
   }
-
-
 }
 
 // ── Reply preview strip ───────────────────────────────────────────────────────
@@ -215,12 +222,16 @@ class _ReplyPreviewStrip extends StatelessWidget {
                 else if (preview.imageUrl != null)
                   Row(
                     children: [
-                      Icon(Icons.image_rounded,
-                          size: 12.sp,
-                          color: isMe ? Colors.white70 : ext.searchHintColor),
+                      Icon(
+                        preview.isVideo
+                            ? Icons.videocam_rounded
+                            : Icons.image_rounded,
+                        size: 12.sp,
+                        color: isMe ? Colors.white70 : ext.searchHintColor,
+                      ),
                       SizedBox(width: 4.w),
                       Text(
-                        'Photo',
+                        preview.isVideo ? 'Video' : 'Photo',
                         style: TextStyle(
                           color: isMe ? Colors.white70 : ext.searchHintColor,
                           fontSize: 11.sp,
@@ -231,7 +242,7 @@ class _ReplyPreviewStrip extends StatelessWidget {
               ],
             ),
           ),
-          if (preview.imageUrl != null)
+          if (preview.imageUrl != null && !preview.isVideo)
             ClipRRect(
               borderRadius: BorderRadius.circular(4.r),
               child: CachedNetworkImage(
@@ -239,6 +250,18 @@ class _ReplyPreviewStrip extends StatelessWidget {
                 width: 36.w,
                 height: 36.w,
                 fit: BoxFit.cover,
+              ),
+            )
+          else if (preview.imageUrl != null && preview.isVideo)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4.r),
+              child: Container(
+                width: 36.w,
+                height: 36.w,
+                color: Colors.black54,
+                alignment: Alignment.center,
+                child: Icon(Icons.play_circle_fill_rounded,
+                    color: Colors.white70, size: 20.sp),
               ),
             ),
         ],
@@ -267,6 +290,150 @@ class _MessageImage extends StatelessWidget {
         height: 80.h,
         color: Colors.black12,
         child: const Icon(Icons.broken_image_rounded, color: Colors.white54),
+      ),
+    );
+  }
+}
+
+// ── Video attachment ──────────────────────────────────────────────────────────
+
+class _MessageVideo extends StatefulWidget {
+  const _MessageVideo({required this.videoUrl});
+  final String videoUrl;
+
+  @override
+  State<_MessageVideo> createState() => _MessageVideoState();
+}
+
+class _MessageVideoState extends State<_MessageVideo> {
+  late VideoPlayerController _ctrl;
+  bool _initialized = false;
+  bool _muted = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
+      ..setLooping(true)
+      ..setVolume(0) // start muted
+      ..initialize().then((_) {
+        if (mounted) setState(() => _initialized = true);
+      });
+  }
+
+  @override
+  void dispose() {
+    _ctrl
+      ..pause()
+      ..dispose();
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    setState(() {
+      if (_ctrl.value.isPlaying) {
+        _ctrl.pause();
+      } else {
+        _ctrl.play();
+      }
+    });
+  }
+
+  void _toggleMute() {
+    setState(() {
+      _muted = !_muted;
+      _ctrl.setVolume(_muted ? 0 : 1);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Show a fixed-height loading placeholder while initializing.
+    if (!_initialized) {
+      return Container(
+        height: 200.h,
+        color: Colors.black,
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(
+            strokeWidth: 2, color: Colors.white54),
+      );
+    }
+
+    final aspect = _ctrl.value.aspectRatio;
+
+    return GestureDetector(
+      onTap: _togglePlay,
+      child: AspectRatio(
+        aspectRatio: aspect,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            VideoPlayer(_ctrl),
+
+            // Dark scrim + play/pause icon overlay
+            ValueListenableBuilder<VideoPlayerValue>(
+              valueListenable: _ctrl,
+              builder: (_, value, __) {
+                final playing = value.isPlaying;
+                return AnimatedOpacity(
+                  opacity: playing ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.play_circle_fill_rounded,
+                      color: Colors.white,
+                      size: 48.sp,
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // Mute toggle — top-right corner
+            Positioned(
+              top: 8.h,
+              right: 8.w,
+              child: GestureDetector(
+                onTap: _toggleMute,
+                child: Container(
+                  width: 30.w,
+                  height: 30.w,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    _muted
+                        ? Icons.volume_off_rounded
+                        : Icons.volume_up_rounded,
+                    color: Colors.white,
+                    size: 16.sp,
+                  ),
+                ),
+              ),
+            ),
+
+            // Progress bar — bottom edge
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: VideoProgressIndicator(
+                _ctrl,
+                allowScrubbing: true,
+                colors: const VideoProgressColors(
+                  playedColor: Colors.white,
+                  bufferedColor: Colors.white24,
+                  backgroundColor: Colors.transparent,
+                ),
+                padding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -25,10 +25,25 @@ class HomeNavigationPage extends StatefulWidget {
 class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool _isSearchOpen = false;
 
-  void _openSearch() => setState(() => _isSearchOpen = true);
+  /// Whether the header is currently visible. Toggled by scroll direction.
+  bool _headerVisible = true;
+
+  /// The scroll offset captured on the previous notification, used to compute
+  /// delta and decide whether the user is scrolling up or down.
+  double _lastScrollOffset = 0;
+
+  void _openSearch() {
+    setState(() {
+      _isSearchOpen = true;
+      _headerVisible = true;
+    });
+  }
 
   void _closeSearch() {
-    setState(() => _isSearchOpen = false);
+    setState(() {
+      _isSearchOpen = false;
+      _headerVisible = true;
+    });
     context.read<HomeBloc>().add(const HomeSearchClosed());
   }
 
@@ -38,14 +53,44 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
   void _openEventImages(BuildContext context, EventDiscovery event) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => EventPicturesPage(event: event),
-      ),
+      MaterialPageRoute(builder: (_) => EventPicturesPage(event: event)),
     );
   }
 
   void _openEventComments(BuildContext context, EventDiscovery event) {
     EventCommentPage.show(context, event);
+  }
+
+  Future<void> _onRefresh() {
+    final bloc = context.read<DiscoveryBloc>();
+    bloc.add(const DiscoveryLoadRequested());
+    // Await until the bloc leaves its loading state (or 10 s timeout).
+    return bloc.stream
+        .firstWhere((s) => !s.isLoading)
+        .timeout(const Duration(seconds: 10), onTimeout: () => bloc.state);
+  }
+
+  /// Returns false so notifications continue to bubble up the tree.
+  bool _onScrollNotification(ScrollNotification notification) {
+    // Never auto-hide the header while the search bar is open.
+    if (_isSearchOpen) return false;
+
+    if (notification is ScrollUpdateNotification) {
+      final current = notification.metrics.pixels;
+      final delta = current - _lastScrollOffset;
+      _lastScrollOffset = current;
+
+      if (delta > 8 && _headerVisible) {
+        // Scrolling down past threshold → hide header.
+        setState(() => _headerVisible = false);
+      } else if (delta < 0 && !_headerVisible) {
+        // Any upward movement → show header immediately.
+        setState(() => _headerVisible = true);
+      }
+    } else if (notification is ScrollEndNotification) {
+      _lastScrollOffset = notification.metrics.pixels;
+    }
+    return false;
   }
 
   @override
@@ -58,26 +103,45 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
     return Scaffold(
       backgroundColor: ext.homeBackground,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverToBoxAdapter(
-            child: SafeArea(
-              bottom: false,
-              child: HomeHeaderWidget(
-                userName: userName,
-                userInitial: userName[0].toUpperCase(),
-                isSearchOpen: _isSearchOpen,
-                onSearchOpen: _openSearch,
-                onSearchClose: _closeSearch,
-                onSearchChanged: _onSearchChanged,
-                onAvatarTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AccountPage()),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // ── Header — collapses on scroll-down, snaps back on any scroll-up ─
+            ClipRect(
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                alignment: Alignment.topCenter,
+                heightFactor: _headerVisible ? 1.0 : 0.0,
+                child: HomeHeaderWidget(
+                  userName: userName,
+                  userInitial: userName[0].toUpperCase(),
+                  isSearchOpen: _isSearchOpen,
+                  onSearchOpen: _openSearch,
+                  onSearchClose: _closeSearch,
+                  onSearchChanged: _onSearchChanged,
+                  onAvatarTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AccountPage()),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
-        body: _buildBody(context, ext, homeState, discoveryState),
+
+            // ── Body ─────────────────────────────────────────────────────────
+            Expanded(
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _onScrollNotification,
+                child: RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  color: ext.accentGold,
+                  backgroundColor: ext.homeBackground,
+                  child: _buildBody(context, ext, homeState, discoveryState),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -88,13 +152,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     HomeState homeState,
     DiscoveryState discoveryState,
   ) {
-    // ── Search mode ─────────────────────────────────────────────────────────
+    // ── Search mode ──────────────────────────────────────────────────────────
     if (_isSearchOpen && homeState.isLoadingEvents) {
       return const CustomScrollView(slivers: [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: AppLoadingIndicator(),
-        ),
+        SliverFillRemaining(hasScrollBody: false, child: AppLoadingIndicator()),
       ]);
     }
 
@@ -135,10 +196,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     // ── Normal mode ──────────────────────────────────────────────────────────
     if (discoveryState.isLoading) {
       return const CustomScrollView(slivers: [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: AppLoadingIndicator(),
-        ),
+        SliverFillRemaining(hasScrollBody: false, child: AppLoadingIndicator()),
       ]);
     }
 
@@ -159,10 +217,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       discoveryState: discoveryState,
       onCardTap: (event) => _openEventImages(context, event),
       onCommentTap: (event) => _openEventComments(context, event),
-      onLoadMore: () => context
-          .read<DiscoveryBloc>()
-          .add(const DiscoveryLoadMoreRequested()),
+      onLoadMore: () =>
+          context.read<DiscoveryBloc>().add(const DiscoveryLoadMoreRequested()),
     );
   }
 }
-

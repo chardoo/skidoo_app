@@ -3,12 +3,14 @@ class ReplyPreview {
   final String senderName;
   final String? content;
   final String? imageUrl;
+  final bool isVideo;
 
   const ReplyPreview({
     required this.id,
     required this.senderName,
     this.content,
     this.imageUrl,
+    this.isVideo = false,
   });
 
   factory ReplyPreview.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class ReplyPreview {
       senderName: json['sender_name'] as String,
       content: json['content'] as String?,
       imageUrl: json['image_url'] as String?,
+      isVideo: (json['is_video'] as bool?) ?? false,
     );
   }
 
@@ -25,6 +28,7 @@ class ReplyPreview {
         'sender_name': senderName,
         'content': content,
         'image_url': imageUrl,
+        'is_video': isVideo,
       };
 }
 
@@ -36,6 +40,7 @@ class ChatMessage {
   final String senderRole;
   final String content;
   final String? imageUrl;
+  final bool isVideo;
   final String? replyToId;
   final ReplyPreview? replyPreview;
   final DateTime createdAt;
@@ -52,6 +57,7 @@ class ChatMessage {
     required this.senderRole,
     this.content = '',
     this.imageUrl,
+    this.isVideo = false,
     this.replyToId,
     this.replyPreview,
     required this.createdAt,
@@ -66,6 +72,11 @@ class ChatMessage {
       preview = ReplyPreview.fromJson(previewRaw);
     }
 
+    final imageUrl = json['image_url'] as String?;
+    // Detect video by explicit flag or by URL extension as fallback.
+    final isVideoFlag = (json['is_video'] as bool?) ?? false;
+    final isVideoByExt = imageUrl != null && _isVideoUrl(imageUrl);
+
     return ChatMessage(
       id: json['id'] as String,
       roomId: json['room_id'] as String,
@@ -73,12 +84,22 @@ class ChatMessage {
       senderName: json['sender_name'] as String? ?? '',
       senderRole: json['sender_role'] as String,
       content: json['content'] as String? ?? '',
-      imageUrl: json['image_url'] as String?,
+      imageUrl: imageUrl,
+      isVideo: isVideoFlag || isVideoByExt,
       replyToId: json['reply_to_id'] as String?,
       replyPreview: preview,
       createdAt: DateTime.parse(json['created_at'] as String),
       isRead: (json['is_read'] as bool?) ?? false,
     );
+  }
+
+  static bool _isVideoUrl(String url) {
+    final lower = url.toLowerCase().split('?').first;
+    return lower.endsWith('.mp4') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.avi') ||
+        lower.endsWith('.mkv') ||
+        lower.endsWith('.webm');
   }
 
   Map<String, dynamic> toJson() => {
@@ -89,6 +110,7 @@ class ChatMessage {
         'sender_role': senderRole,
         'content': content,
         'image_url': imageUrl,
+        'is_video': isVideo,
         'reply_to_id': replyToId,
         'reply_preview': replyPreview?.toJson(),
         'created_at': createdAt.toIso8601String(),
@@ -102,6 +124,7 @@ class ChatMessage {
     bool? isRead,
     bool? isLocal,
     String? imageUrl,
+    bool? isVideo,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -111,6 +134,7 @@ class ChatMessage {
       senderRole: senderRole,
       content: content,
       imageUrl: imageUrl ?? this.imageUrl,
+      isVideo: isVideo ?? this.isVideo,
       replyToId: replyToId,
       replyPreview: replyPreview,
       createdAt: createdAt,

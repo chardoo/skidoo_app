@@ -21,10 +21,11 @@ class ChatRoomMessageSent extends ChatRoomEvent {
   const ChatRoomMessageSent(this.content, {this.replyToId});
 }
 
-/// Stage a picked image — does NOT upload yet; waits for the user to send.
+/// Stage a picked image or video — does NOT upload yet; waits for the user to send.
 class ChatRoomImagePicked extends ChatRoomEvent {
   final String filePath;
-  const ChatRoomImagePicked(this.filePath);
+  final bool isVideo;
+  const ChatRoomImagePicked(this.filePath, {this.isVideo = false});
 }
 
 /// Remove the staged image without sending.

@@ -52,6 +52,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     on<DiscoveryEventVisible>(_onEventVisible);
     on<DiscoveryEventHidden>(_onEventHidden);
     on<DiscoveryEventHideRequested>(_onHideRequested);
+    on<DiscoveryEventHideCommitted>(_onHideCommitted);
+    on<DiscoveryEventHideUndone>(_onHideUndone);
     on<_DiscoveryLikeUpdateReceived>(_onReactionUpdated);
     on<_DiscoveryReactionsPatchReceived>(_onReactionsPatchReceived);
     on<_DiscoveryHiddenIdsLoaded>(_onHiddenIdsLoaded);
@@ -383,17 +385,55 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
   // ── Hide event ────────────────────────────────────────────────────────────
 
-  Future<void> _onHideRequested(
+  /// Step 1 — user taps hide. Collapses the card; undo is still available.
+  void _onHideRequested(
     DiscoveryEventHideRequested event,
     Emitter<DiscoveryState> emit,
-  ) async {
-    final updated = {...state.hiddenEventIds, event.eventId};
-    final filtered = state.events.where((e) => !updated.contains(e.id)).toList();
-    emit(state.copyWith(hiddenEventIds: updated, events: filtered));
+  ) {
+    // If a different event was already pending, commit it before starting a new one.
+    if (state.pendingHideEventId != null &&
+        state.pendingHideEventId != event.eventId) {
+      final prevId = state.pendingHideEventId!;
+      final committed = {...state.hiddenEventIds, prevId};
+      final filtered =
+          state.events.where((e) => !committed.contains(e.id)).toList();
+      emit(state.copyWith(
+        hiddenEventIds: committed,
+        events: filtered,
+        clearPendingHide: true,
+      ));
+      SharedPreferences.getInstance().then(
+        (p) => p.setStringList(_hiddenIdsKey, committed.toList()),
+      );
+    }
+    emit(state.copyWith(pendingHideEventId: event.eventId));
+  }
 
-    // Persist asynchronously.
+  /// Step 2a — undo window expired or user scrolled away. Remove + persist.
+  Future<void> _onHideCommitted(
+    DiscoveryEventHideCommitted event,
+    Emitter<DiscoveryState> emit,
+  ) async {
+    // Guard: only commit if this event is still the pending one.
+    if (state.pendingHideEventId != event.eventId) return;
+    final updated = {...state.hiddenEventIds, event.eventId};
+    final filtered =
+        state.events.where((e) => !updated.contains(e.id)).toList();
+    emit(state.copyWith(
+      hiddenEventIds: updated,
+      events: filtered,
+      clearPendingHide: true,
+    ));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_hiddenIdsKey, updated.toList());
+  }
+
+  /// Step 2b — user tapped Undo. Restore the card.
+  void _onHideUndone(
+    DiscoveryEventHideUndone event,
+    Emitter<DiscoveryState> emit,
+  ) {
+    emit(state.copyWith(clearPendingHide: true));
   }
 
   void _onHiddenIdsLoaded(

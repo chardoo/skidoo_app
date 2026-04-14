@@ -11,8 +11,11 @@ class ChatRoomState extends Equatable {
   final bool isUploadingImage;
   final String? errorMessage;
 
-  /// Local file path of a staged image waiting to be sent.
+  /// Local file path of a staged image/video waiting to be sent.
   final String? pendingImagePath;
+
+  /// True when the staged pending file is a video (not a still image).
+  final bool pendingIsVideo;
 
   /// The message currently being replied to (null = no active reply).
   final ChatMessage? replyingTo;
@@ -53,6 +56,7 @@ class ChatRoomState extends Equatable {
     this.isUploadingImage = false,
     this.errorMessage,
     this.pendingImagePath,
+    this.pendingIsVideo = false,
     this.replyingTo,
     this.eventLikes,
     this.eventDislikes,
@@ -76,6 +80,7 @@ class ChatRoomState extends Equatable {
     String? errorMessage,
     bool clearError = false,
     String? pendingImagePath,
+    bool? pendingIsVideo,
     bool clearPendingImage = false,
     ChatMessage? replyingTo,
     bool clearReply = false,
@@ -100,6 +105,7 @@ class ChatRoomState extends Equatable {
         isUploadingImage: isUploadingImage ?? this.isUploadingImage,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
         pendingImagePath: clearPendingImage ? null : (pendingImagePath ?? this.pendingImagePath),
+        pendingIsVideo: clearPendingImage ? false : (pendingIsVideo ?? this.pendingIsVideo),
         replyingTo: clearReply ? null : (replyingTo ?? this.replyingTo),
         eventLikes: eventLikes ?? this.eventLikes,
         eventDislikes: eventDislikes ?? this.eventDislikes,
@@ -123,6 +129,7 @@ class ChatRoomState extends Equatable {
         isUploadingImage,
         errorMessage,
         pendingImagePath,
+        pendingIsVideo,
         replyingTo,
         eventLikes,
         eventDislikes,

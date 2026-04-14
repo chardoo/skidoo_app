@@ -76,8 +76,7 @@ class PhotographerCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 4.h),
-                    _RatingRow(rating: photographer.rating, ext: ext),
-                    SizedBox(height: 5.h),
+                
                     if (photographer.contact.isNotEmpty)
                       Row(
                         children: [

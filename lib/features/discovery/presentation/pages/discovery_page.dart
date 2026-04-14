@@ -64,6 +64,47 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
     );
   }
 
+  void _onHide(String eventId) {
+    // Capture the bloc before any async gap so the closure stays valid
+    // even if the widget is later unmounted.
+    final bloc = context.read<DiscoveryBloc>();
+
+    // Mark card as pending-hide → collapses immediately via AnimatedAlign.
+    bloc.add(DiscoveryEventHideRequested(eventId));
+
+    // Dismiss any in-flight snackbar so only one undo prompt shows at a time.
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            backgroundColor: const Color(0xFF2C2C2E),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            content: const Text(
+              'Content hidden',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+            action: SnackBarAction(
+              label: 'Undo',
+              textColor: const Color(0xFFF5A623),
+              onPressed: () => bloc.add(const DiscoveryEventHideUndone()),
+            ),
+          ),
+        )
+        .closed
+        .then((reason) {
+      // Snackbar dismissed without Undo → commit (remove from list + persist).
+      if (reason != SnackBarClosedReason.action && !bloc.isClosed) {
+        bloc.add(DiscoveryEventHideCommitted(eventId));
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
@@ -115,14 +156,29 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                         );
                       }
                       final ev = state.events[index];
-                      return EventDiscoveryCard(
-                        event: ev,
-                        onTap: () => _onCardTap(context, ev),
-                        isOwner: state.currentUserId != null &&
-                            state.currentUserId == ev.photographerId,
-                        onHide: () => context
-                            .read<DiscoveryBloc>()
-                            .add(DiscoveryEventHideRequested(ev.id)),
+                      final isPending = state.pendingHideEventId == ev.id;
+                      // AnimatedAlign + heightFactor is the most reliable
+                      // way to collapse a ListView item smoothly. The card
+                      // stays in the tree (no child-swap reconciliation
+                      // issues); only the rendered height animates to 0.
+                      return ClipRect(
+                        key: ValueKey(ev.id),
+                        child: AnimatedAlign(
+                          duration: const Duration(milliseconds: 380),
+                          curve: Curves.easeInOut,
+                          alignment: Alignment.topCenter,
+                          heightFactor: isPending ? 0.0 : 1.0,
+                          child: IgnorePointer(
+                            ignoring: isPending,
+                            child: EventDiscoveryCard(
+                              event: ev,
+                              onTap: () => _onCardTap(context, ev),
+                              isOwner: state.currentUserId != null &&
+                                  state.currentUserId == ev.photographerId,
+                              onHide: () => _onHide(ev.id),
+                            ),
+                          ),
+                        ),
                       );
                     },
                   );

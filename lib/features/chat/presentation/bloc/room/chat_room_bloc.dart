@@ -285,6 +285,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     final content = event.content?.trim();
     final pendingPath = state.pendingImagePath;
+    final pendingIsVideo = state.pendingIsVideo;
     final pendingUrl = state.pendingShareUrl;
     final hasText = content != null && content.isNotEmpty;
     final hasLocalImage = pendingPath != null;
@@ -340,6 +341,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           senderRole: ChatConfig.roleClient,
           content: content ?? '',
           imageUrl: imageUrl,
+          isVideo: pendingIsVideo,
           replyToId: event.replyToId,
           replyPreview: replyPreview,
           createdAt: DateTime.now(),
@@ -358,11 +360,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         );
         _cacheMessage(optimistic).catchError((_) {});
       } catch (_) {
-        // Restore the pending image so the user can retry.
+        // Restore the pending media so the user can retry.
         emit(state.copyWith(
           isUploadingImage: false,
           pendingImagePath: pendingPath,
-          errorMessage: 'Failed to upload image.',
+          pendingIsVideo: pendingIsVideo,
+          errorMessage: pendingIsVideo ? 'Failed to upload video.' : 'Failed to upload image.',
         ));
       }
     } else {
@@ -390,12 +393,15 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
   }
 
-  /// Stage the picked image — no upload yet.
+  /// Stage the picked image/video — no upload yet.
   void _onImagePicked(
     ChatRoomImagePicked event,
     Emitter<ChatRoomState> emit,
   ) {
-    emit(state.copyWith(pendingImagePath: event.filePath));
+    emit(state.copyWith(
+      pendingImagePath: event.filePath,
+      pendingIsVideo: event.isVideo,
+    ));
   }
 
   void _onImageCleared(

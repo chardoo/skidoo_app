@@ -237,6 +237,21 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         case 'gif':
           contentType = 'image/gif';
           break;
+        case 'mp4':
+          contentType = 'video/mp4';
+          break;
+        case 'mov':
+          contentType = 'video/quicktime';
+          break;
+        case 'avi':
+          contentType = 'video/x-msvideo';
+          break;
+        case 'mkv':
+          contentType = 'video/x-matroska';
+          break;
+        case 'webm':
+          contentType = 'video/webm';
+          break;
         default:
           throw Exception('Unsupported file type: $extension');
       }

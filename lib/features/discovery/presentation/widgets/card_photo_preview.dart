@@ -84,13 +84,38 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CachedNetworkImage(
-                imageUrl: pic.url,
-                fit: BoxFit.cover,
-                placeholder: (_, __) =>
-                    Container(color: const Color(0xFF111111)),
-                errorWidget: (_, __, ___) =>
-                    Container(color: const Color(0xFF111111)),
+              // ── Blurred background so no black bars appear ────────────
+              ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: CachedNetworkImage(
+                  imageUrl: pic.url,
+                  fit: BoxFit.cover,
+                  filterQuality: FilterQuality.low,
+                  placeholder: (_, __) =>
+                      const ColoredBox(color: Color(0xFF111111)),
+                  errorWidget: (_, __, ___) =>
+                      const ColoredBox(color: Color(0xFF111111)),
+                ),
+              ),
+              // Dim the blur layer so it doesn't compete with the main image
+              const ColoredBox(color: Color(0x55000000)),
+              // ── Sharp full image — never cropped ─────────────────────
+              ColorFiltered(
+                colorFilter: const ColorFilter.matrix(<double>[
+                  1.18, -0.06, -0.06, 0, 18,
+                  -0.05,  1.16, -0.05, 0, 18,
+                  -0.05, -0.05,  1.20, 0, 18,
+                  0,     0,     0,     1, 0,
+                ]),
+                child: CachedNetworkImage(
+                  imageUrl: pic.url,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.medium,
+                  placeholder: (_, __) =>
+                      const SizedBox.shrink(),
+                  errorWidget: (_, __, ___) =>
+                      const ColoredBox(color: Color(0xFF111111)),
+                ),
               ),
               if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
               if (pic.owner) const _OwnerCornerRibbon(),
@@ -275,14 +300,24 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
               children: [
                 GestureDetector(
                   onTap: _togglePlayback,
-                  child: SizedBox.expand(
-                    child: FittedBox(
-                      fit: BoxFit.cover,
-                      clipBehavior: Clip.hardEdge,
-                      child: SizedBox(
-                        width: w,
-                        height: h,
-                        child: VideoPlayer(_ctrl),
+                  child: ColoredBox(
+                    color: const Color(0xFF0A0A0A),
+                    child: SizedBox.expand(
+                      child: ColorFiltered(
+                        colorFilter: const ColorFilter.matrix(<double>[
+                          1.18, -0.06, -0.06, 0, 18,
+                          -0.05,  1.16, -0.05, 0, 18,
+                          -0.05, -0.05,  1.20, 0, 18,
+                          0,     0,     0,     1, 0,
+                        ]),
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: SizedBox(
+                            width: w,
+                            height: h,
+                            child: VideoPlayer(_ctrl),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -340,7 +375,7 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
             valueListenable: _muted,
             builder: (_, muted, __) => GestureDetector(
               onTap: _toggleMute,
-              behavior: HitTestBehavior.opaque,
+                behavior: HitTestBehavior.translucent,
               child: Container(
                 width: 34.w,
                 height: 34.w,

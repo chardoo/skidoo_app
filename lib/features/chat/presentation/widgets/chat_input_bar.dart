@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
+import 'package:video_player/video_player.dart';
 
 class ChatInputBar extends StatelessWidget {
   const ChatInputBar({
@@ -17,6 +18,7 @@ class ChatInputBar extends StatelessWidget {
     this.onClearReply,
     this.onImagePicked,
     this.pendingImagePath,
+    this.pendingIsVideo = false,
     this.pendingShareUrl,
     this.onClearImage,
     this.isUploadingImage = false,
@@ -26,23 +28,24 @@ class ChatInputBar extends StatelessWidget {
   final VoidCallback onSend;
   final AppThemeExtension ext;
 
-  /// The message currently being replied to.
   final ChatMessage? replyingTo;
   final VoidCallback? onClearReply;
 
-  /// Called with the local file path when user picks an image.
-  final void Function(String filePath)? onImagePicked;
+  /// Called with the local file path and whether it is a video.
+  final void Function(String filePath, {bool isVideo})? onImagePicked;
 
-  /// Path of the staged local image waiting to be uploaded and sent.
+  /// Path of the staged local image/video waiting to be uploaded and sent.
   final String? pendingImagePath;
+
+  /// True when the staged file is a video.
+  final bool pendingIsVideo;
 
   /// Remote URL of a staged image (e.g. from gallery share) waiting to be sent.
   final String? pendingShareUrl;
 
-  /// Called when user taps the ✕ on the staged image preview.
   final VoidCallback? onClearImage;
 
-  /// True only while the image is being uploaded (after send is tapped).
+  /// True only while the media is being uploaded (after send is tapped).
   final bool isUploadingImage;
 
   Future<void> _pickImage() async {
@@ -51,7 +54,31 @@ class ChatInputBar extends StatelessWidget {
       source: ImageSource.gallery,
       imageQuality: 85,
     );
-    if (picked != null) onImagePicked?.call(picked.path);
+    if (picked != null) onImagePicked?.call(picked.path, isVideo: false);
+  }
+
+  Future<void> _pickVideo() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickVideo(source: ImageSource.gallery);
+    if (picked != null) onImagePicked?.call(picked.path, isVideo: true);
+  }
+
+  void _showMediaPicker(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MediaPickerSheet(
+        ext: ext,
+        onPickImage: () {
+          Navigator.of(context).pop();
+          _pickImage();
+        },
+        onPickVideo: () {
+          Navigator.of(context).pop();
+          _pickVideo();
+        },
+      ),
+    );
   }
 
   @override
@@ -61,14 +88,21 @@ class ChatInputBar extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Staged image preview ────────────────────────────────────────────
+        // ── Staged media preview ────────────────────────────────────────────
         if (pendingImagePath != null)
-          _StagedImagePreview(
-            filePath: pendingImagePath!,
-            isUploading: isUploadingImage,
-            ext: ext,
-            onClear: onClearImage,
-          )
+          pendingIsVideo
+              ? _StagedVideoPreview(
+                  filePath: pendingImagePath!,
+                  isUploading: isUploadingImage,
+                  ext: ext,
+                  onClear: onClearImage,
+                )
+              : _StagedImagePreview(
+                  filePath: pendingImagePath!,
+                  isUploading: isUploadingImage,
+                  ext: ext,
+                  onClear: onClearImage,
+                )
         else if (pendingShareUrl != null)
           _StagedNetworkImagePreview(
             imageUrl: pendingShareUrl!,
@@ -93,9 +127,11 @@ class ChatInputBar extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // Image picker — disabled while uploading
+              // Media picker — disabled while uploading or already staged
               GestureDetector(
-                onTap: (isUploadingImage || hasStaged) ? null : _pickImage,
+                onTap: (isUploadingImage || hasStaged)
+                    ? null
+                    : () => _showMediaPicker(context),
                 child: Container(
                   width: 40.w,
                   height: 40.h,
@@ -105,7 +141,7 @@ class ChatInputBar extends StatelessWidget {
                   ),
                   alignment: Alignment.center,
                   child: Icon(
-                    Icons.image_rounded,
+                    Icons.attach_file_rounded,
                     color: (isUploadingImage || hasStaged)
                         ? ext.searchHintColor.withValues(alpha: 0.4)
                         : ext.searchHintColor,
@@ -179,6 +215,59 @@ class ChatInputBar extends StatelessWidget {
   }
 }
 
+// ── Media picker sheet ────────────────────────────────────────────────────────
+
+class _MediaPickerSheet extends StatelessWidget {
+  const _MediaPickerSheet({
+    required this.ext,
+    required this.onPickImage,
+    required this.onPickVideo,
+  });
+
+  final AppThemeExtension ext;
+  final VoidCallback onPickImage;
+  final VoidCallback onPickVideo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.fromLTRB(12.w, 0, 12.w, 24.h),
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(height: 8.h),
+          Container(
+            width: 36.w,
+            height: 4.h,
+            decoration: BoxDecoration(
+              color: ext.searchHintColor.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2.r),
+            ),
+          ),
+          SizedBox(height: 8.h),
+          ListTile(
+            leading: Icon(Icons.image_rounded, color: ext.accentGold),
+            title: Text('Photo',
+                style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
+            onTap: onPickImage,
+          ),
+          ListTile(
+            leading: Icon(Icons.videocam_rounded, color: ext.accentGold),
+            title: Text('Video',
+                style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
+            onTap: onPickVideo,
+          ),
+          SizedBox(height: 8.h),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Staged image preview ──────────────────────────────────────────────────────
 
 class _StagedImagePreview extends StatelessWidget {
@@ -201,7 +290,6 @@ class _StagedImagePreview extends StatelessWidget {
       color: ext.cardSurface,
       child: Row(
         children: [
-          // Thumbnail
           ClipRRect(
             borderRadius: BorderRadius.circular(8.r),
             child: Stack(
@@ -230,15 +318,12 @@ class _StagedImagePreview extends StatelessWidget {
             ),
           ),
           SizedBox(width: 10.w),
-
           Expanded(
             child: Text(
               isUploading ? 'Uploading…' : 'Image ready — add a caption or send',
               style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
           ),
-
-          // Remove button (hidden while uploading)
           if (!isUploading)
             GestureDetector(
               onTap: onClear,
@@ -252,6 +337,121 @@ class _StagedImagePreview extends StatelessWidget {
                 alignment: Alignment.center,
                 child: Icon(Icons.close_rounded,
                     size: 16.sp, color: ext.searchHintColor),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Staged video preview ──────────────────────────────────────────────────────
+
+class _StagedVideoPreview extends StatefulWidget {
+  const _StagedVideoPreview({
+    required this.filePath,
+    required this.isUploading,
+    required this.ext,
+    this.onClear,
+  });
+
+  final String filePath;
+  final bool isUploading;
+  final AppThemeExtension ext;
+  final VoidCallback? onClear;
+
+  @override
+  State<_StagedVideoPreview> createState() => _StagedVideoPreviewState();
+}
+
+class _StagedVideoPreviewState extends State<_StagedVideoPreview> {
+  late VideoPlayerController _ctrl;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = VideoPlayerController.file(File(widget.filePath))
+      ..initialize().then((_) {
+        if (mounted) setState(() => _initialized = true);
+      });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 4.h),
+      color: widget.ext.cardSurface,
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8.r),
+            child: SizedBox(
+              width: 64.w,
+              height: 64.w,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (_initialized)
+                    FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: _ctrl.value.size.width,
+                        height: _ctrl.value.size.height,
+                        child: VideoPlayer(_ctrl),
+                      ),
+                    )
+                  else
+                    Container(color: Colors.black),
+                  Container(color: Colors.black.withValues(alpha: 0.35)),
+                  const Center(
+                    child: Icon(Icons.play_circle_fill_rounded,
+                        color: Colors.white70, size: 28),
+                  ),
+                  if (widget.isUploading)
+                    Container(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      alignment: Alignment.center,
+                      child: SizedBox(
+                        width: 22.w,
+                        height: 22.w,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5, color: widget.ext.accentGold),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              widget.isUploading
+                  ? 'Uploading video…'
+                  : 'Video ready — add a caption or send',
+              style:
+                  TextStyle(color: widget.ext.searchHintColor, fontSize: 12.sp),
+            ),
+          ),
+          if (!widget.isUploading)
+            GestureDetector(
+              onTap: widget.onClear,
+              child: Container(
+                width: 28.w,
+                height: 28.w,
+                decoration: BoxDecoration(
+                  color: widget.ext.searchFieldFill,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Icon(Icons.close_rounded,
+                    size: 16.sp, color: widget.ext.searchHintColor),
               ),
             ),
         ],
@@ -351,7 +551,9 @@ class _ReplyBar extends StatelessWidget {
 
   String get _preview {
     if (message.content.isNotEmpty) return message.content;
-    if (message.imageUrl != null) return '📷 Photo';
+    if (message.imageUrl != null) {
+      return message.isVideo ? '🎬 Video' : '📷 Photo';
+    }
     return '';
   }
 

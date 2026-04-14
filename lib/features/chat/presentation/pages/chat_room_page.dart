@@ -167,8 +167,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     _inputCtrl.clear();
   }
 
-  void _onImagePicked(String filePath) {
-    _bloc.add(ChatRoomImagePicked(filePath));
+  void _onImagePicked(String filePath, {bool isVideo = false}) {
+    _bloc.add(ChatRoomImagePicked(filePath, isVideo: isVideo));
   }
 
   void _onReply(ChatMessage msg) {
@@ -419,6 +419,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                     onClearReply: _clearReply,
                     onImagePicked: _onImagePicked,
                     pendingImagePath: inputState.pendingImagePath,
+                    pendingIsVideo: inputState.pendingIsVideo,
                     pendingShareUrl: inputState.pendingShareUrl,
                     onClearImage: () => _bloc.add(const ChatRoomImageCleared()),
                     isUploadingImage: inputState.isUploadingImage,
