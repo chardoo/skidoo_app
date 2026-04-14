@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MaxLengthEnforcement;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -158,6 +159,20 @@ class ChatInputBar extends StatelessWidget {
                   style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                   maxLines: 4,
                   minLines: 1,
+                  maxLength: 1000,
+                  maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                  buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
+                      currentLength >= 900
+                          ? Text(
+                              '$currentLength/$maxLength',
+                              style: TextStyle(
+                                fontSize: 10.sp,
+                                color: currentLength >= 1000
+                                    ? Colors.red
+                                    : ext.searchHintColor,
+                              ),
+                            )
+                          : null,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
                     hintText: hasStaged
