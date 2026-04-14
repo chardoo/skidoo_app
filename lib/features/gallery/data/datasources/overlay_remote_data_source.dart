@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart' as dio;
+import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
 
@@ -38,11 +39,13 @@ class OverlayRemoteDataSourceImpl implements OverlayRemoteDataSource {
   @override
   Future<OverlayResult> getOverlayImage(
       String imageId, String photographerName) async {
+    final endpoint = '/photographer/images/$imageId/overlay';
+    debugPrint('[OVERLAY] POST $endpoint  photographerName="$photographerName"');
     try {
       // Use jsonEncode explicitly — when responseType is bytes Dio may not
       // auto-encode the Map, leading to a malformed request body.
       final res = await _api.dio.post<dynamic>(
-        '/photographer/images/$imageId/overlay',
+        endpoint,
         data: jsonEncode({'enabled': true, 'photographerName': photographerName}),
         options: dio.Options(
           responseType: dio.ResponseType.bytes,
@@ -50,6 +53,7 @@ class OverlayRemoteDataSourceImpl implements OverlayRemoteDataSource {
           contentType: 'application/json',
         ),
       );
+      debugPrint('[OVERLAY] Response status=${res.statusCode} contentType=${res.headers.value('content-type')} dataType=${res.data?.runtimeType}');
 
       // Dio returns Uint8List for ResponseType.bytes — handle both cases
       // defensively so a runtime type mismatch never produces an empty buffer.
@@ -73,6 +77,8 @@ class OverlayRemoteDataSourceImpl implements OverlayRemoteDataSource {
 
       return OverlayResult(bytes: bytes, contentType: contentType);
     } on dio.DioException catch (err) {
+      debugPrint('[OVERLAY] DioException status=${err.response?.statusCode} message=${err.message}');
+      debugPrint('[OVERLAY] Response body=${err.response?.data}');
       if (err.response == null) throw const app_ex.NetworkException();
       throw app_ex.ServerException(
           'Overlay failed (${err.response?.statusCode}): ${err.message}');
