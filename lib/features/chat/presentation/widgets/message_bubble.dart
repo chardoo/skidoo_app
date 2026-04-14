@@ -6,6 +6,18 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:video_player/video_player.dart';
 
+/// Returns true when [url] points to a video, using both explicit path
+/// patterns (Cloudinary /video/upload/) and file extensions as fallback.
+bool _isVideoUrl(String url) {
+  final lower = url.toLowerCase().split('?').first;
+  if (lower.contains('/video/upload/')) return true;
+  return lower.endsWith('.mp4') ||
+      lower.endsWith('.mov') ||
+      lower.endsWith('.avi') ||
+      lower.endsWith('.mkv') ||
+      lower.endsWith('.webm');
+}
+
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
     super.key,
@@ -102,7 +114,7 @@ class MessageBubble extends StatelessWidget {
                         ),
                       // Media (image or video)
                       if (message.imageUrl != null)
-                        message.isVideo
+                        _isVideoUrl(message.imageUrl!)
                             ? _MessageVideo(videoUrl: message.imageUrl!)
                             : _MessageImage(imageUrl: message.imageUrl!),
                       // Text content + timestamp
@@ -223,7 +235,7 @@ class _ReplyPreviewStrip extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        preview.isVideo
+                        (preview.isVideo || (preview.imageUrl != null && _isVideoUrl(preview.imageUrl!)))
                             ? Icons.videocam_rounded
                             : Icons.image_rounded,
                         size: 12.sp,
@@ -242,7 +254,7 @@ class _ReplyPreviewStrip extends StatelessWidget {
               ],
             ),
           ),
-          if (preview.imageUrl != null && !preview.isVideo)
+          if (preview.imageUrl != null && !(preview.isVideo || _isVideoUrl(preview.imageUrl!)))
             ClipRRect(
               borderRadius: BorderRadius.circular(4.r),
               child: CachedNetworkImage(
@@ -252,7 +264,7 @@ class _ReplyPreviewStrip extends StatelessWidget {
                 fit: BoxFit.cover,
               ),
             )
-          else if (preview.imageUrl != null && preview.isVideo)
+          else if (preview.imageUrl != null && (preview.isVideo || _isVideoUrl(preview.imageUrl!)))
             ClipRRect(
               borderRadius: BorderRadius.circular(4.r),
               child: Container(
@@ -315,9 +327,11 @@ class _MessageVideoState extends State<_MessageVideo> {
     super.initState();
     _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
       ..setLooping(true)
-      ..setVolume(0) // start muted
+      ..setVolume(0)
       ..initialize().then((_) {
         if (mounted) setState(() => _initialized = true);
+      }).catchError((Object e) {
+        debugPrint('[VIDEO] init error for ${widget.videoUrl}: $e');
       });
   }
 
