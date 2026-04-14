@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
@@ -14,7 +13,6 @@ class Api {
     final dio = Dio(BaseOptions(
       validateStatus: (status) => status != null && status <= 399,
       baseUrl: 'https://photoapp-backend-ka5m.onrender.com/api',
-      
       receiveTimeout: const Duration(seconds: 60),
       connectTimeout: const Duration(seconds: 60),
       sendTimeout: const Duration(seconds: 60),
@@ -34,19 +32,17 @@ class AppInterceptors extends Interceptor {
       RequestOptions options, RequestInterceptorHandler handler) async {
     options.headers['Content-Type'] = 'application/json';
     try {
-      final token = await sl<AuthService>().getToken();
-      if (token.isNotEmpty) {
+      final authService = sl<AuthService>();
+      final token = await authService.getToken();
+      final expired = await authService.isTokenExpired();
+      // Only attach token when it exists and has not expired.
+      if (token.isNotEmpty && !expired) {
         options.headers['Authorization'] = 'Bearer $token';
       }
     } catch (_) {
-      // proceed without token if service locator not ready
+      // Proceed without token if service locator is not ready yet.
     }
     handler.next(options);
-  }
-
-  @override
-  void onResponse(Response response, ResponseInterceptorHandler handler) {
-    super.onResponse(response, handler);
   }
 
   @override
