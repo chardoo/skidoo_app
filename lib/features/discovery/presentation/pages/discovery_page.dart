@@ -37,6 +37,9 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   final _scrollCtrl = ScrollController();
   final _activeCardIndex = ValueNotifier<int>(0);
   final _cardKeys = <String, GlobalKey>{};
+  // Guard: only one _updateActiveCard per frame, no matter how many
+  // ScrollUpdateNotifications fire between frames.
+  bool _activeCardUpdateScheduled = false;
 
   GlobalKey _keyFor(String id) =>
       _cardKeys.putIfAbsent(id, () => GlobalKey());
@@ -60,6 +63,16 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
     if (pos.pixels >= pos.maxScrollExtent - 400) {
       context.read<DiscoveryBloc>().add(const DiscoveryLoadMoreRequested());
     }
+  }
+
+  /// Schedule exactly one active-card update per frame.
+  void _scheduleActiveCardUpdate(List<EventDiscovery> events) {
+    if (_activeCardUpdateScheduled) return;
+    _activeCardUpdateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _activeCardUpdateScheduled = false;
+      _updateActiveCard(events);
+    });
   }
 
   /// Mark the card whose centre is closest to the viewport centre as active.
@@ -181,14 +194,19 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                     onNotification: (notification) {
                       if (notification is ScrollUpdateNotification ||
                           notification is ScrollEndNotification) {
-                        WidgetsBinding.instance.addPostFrameCallback(
-                            (_) => _updateActiveCard(state.events));
+                        _scheduleActiveCardUpdate(state.events);
                       }
                       return false;
                     },
                     child: ListView.builder(
                       controller: _scrollCtrl,
-                      physics: const BouncingScrollPhysics(),
+                      // AlwaysScrollableScrollPhysics ensures the list stays
+                      // smoothly bounceable even when content is shorter than
+                      // the viewport (e.g. only 3–4 cards returned).
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      cacheExtent: 800,
                       // No padding — cards are edge-to-edge
                       padding: EdgeInsets.zero,
                       itemCount:
