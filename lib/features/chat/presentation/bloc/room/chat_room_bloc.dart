@@ -465,7 +465,19 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     ChatRoomMessageReceived event,
     Emitter<ChatRoomState> emit,
   ) {
-    final msg = event.message;
+    var msg = event.message;
+
+    // Find the optimistic placeholder this message is confirming (if any).
+    final optimistic = state.messages.where((m) =>
+        m.isLocal &&
+        m.content == msg.content &&
+        m.imageUrl == msg.imageUrl).firstOrNull;
+
+    // If the server didn't echo is_video, inherit the flag from the optimistic
+    // message so the cached version stays correct across sessions.
+    if (optimistic != null && optimistic.isVideo && !msg.isVideo) {
+      msg = msg.copyWith(isVideo: true);
+    }
 
     // Remove matching optimistic placeholder.
     final updated = state.messages
