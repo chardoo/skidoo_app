@@ -15,7 +15,17 @@ class MyApp extends StatelessWidget {
   final String token;
   final CameraDescription? firstCamera;
 
-  const MyApp({super.key, required this.token, this.firstCamera});
+  /// True when [FlutterJailbreakDetection] flagged the device as rooted /
+  /// jailbroken.  The app will show a non-bypassable security warning before
+  /// allowing further use.
+  final bool isDeviceCompromised;
+
+  const MyApp({
+    super.key,
+    required this.token,
+    this.firstCamera,
+    this.isDeviceCompromised = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +48,9 @@ class MyApp extends StatelessWidget {
                 ? DiscoveryPage.routeName
                 : HomePage.routeName,
             routes: {
-              DiscoveryPage.routeName: (_) => const DiscoveryPage(),
+              DiscoveryPage.routeName: (_) => isDeviceCompromised
+                  ? const _SecurityWarningPage()
+                  : const DiscoveryPage(),
               LoginPage.routeName: (_) => const LoginPage(),
               SignUpPage.routeName: (_) => SignUpPage(
                     camera: firstCamera ??
@@ -48,8 +60,88 @@ class MyApp extends StatelessWidget {
                           sensorOrientation: 0,
                         ),
                   ),
-              HomePage.routeName: (_) => const HomePage(),
+              HomePage.routeName: (_) => isDeviceCompromised
+                  ? const _SecurityWarningPage()
+                  : const HomePage(),
             },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Security warning page ─────────────────────────────────────────────────────
+
+/// Shown when jailbreak / root is detected.  The user must acknowledge the
+/// risk before proceeding — this keeps usage intentional and auditable.
+class _SecurityWarningPage extends StatelessWidget {
+  const _SecurityWarningPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D0D),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.shield_outlined,
+                color: Color(0xFFF5A623),
+                size: 72,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Security Warning',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'This device appears to be jailbroken or rooted.\n\n'
+                'Running Skidoo on a compromised device exposes your account, '
+                'messages, and payment data to elevated risk. We strongly '
+                'recommend using a secure, unmodified device.',
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: 14,
+                  height: 1.6,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFF5A623),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () {
+                    // User acknowledges the risk — navigate into the app.
+                    Navigator.of(context).pushReplacementNamed(
+                      DiscoveryPage.routeName,
+                    );
+                  },
+                  child: const Text(
+                    'I understand, continue anyway',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
