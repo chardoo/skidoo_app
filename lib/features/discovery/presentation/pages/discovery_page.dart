@@ -35,6 +35,11 @@ class _DiscoveryView extends StatefulWidget {
 
 class _DiscoveryViewState extends State<_DiscoveryView> {
   final _scrollCtrl = ScrollController();
+  final _activeCardIndex = ValueNotifier<int>(0);
+  final _cardKeys = <String, GlobalKey>{};
+
+  GlobalKey _keyFor(String id) =>
+      _cardKeys.putIfAbsent(id, () => GlobalKey());
 
   @override
   void initState() {
@@ -45,6 +50,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   @override
   void dispose() {
     _scrollCtrl.dispose();
+    _activeCardIndex.dispose();
     super.dispose();
   }
 
@@ -53,6 +59,36 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
     final pos = _scrollCtrl.position;
     if (pos.pixels >= pos.maxScrollExtent - 400) {
       context.read<DiscoveryBloc>().add(const DiscoveryLoadMoreRequested());
+    }
+  }
+
+  /// Mark the card whose centre is closest to the viewport centre as active.
+  void _updateActiveCard(List<EventDiscovery> events) {
+    if (!mounted) return;
+    final screenH = MediaQuery.sizeOf(context).height;
+    final viewportMid = screenH / 2;
+
+    int? bestIdx;
+    double bestDist = double.infinity;
+
+    for (int i = 0; i < events.length; i++) {
+      final key = _cardKeys[events[i].id];
+      if (key == null) continue;
+      final ctx = key.currentContext;
+      if (ctx == null) continue;
+      final box = ctx.findRenderObject() as RenderBox?;
+      if (box == null || !box.attached) continue;
+      final pos = box.localToGlobal(Offset.zero);
+      final cardCenter = pos.dy + box.size.height / 2;
+      final dist = (cardCenter - viewportMid).abs();
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = i;
+      }
+    }
+
+    if (bestIdx != null && bestIdx != _activeCardIndex.value) {
+      _activeCardIndex.value = bestIdx;
     }
   }
 
@@ -141,46 +177,58 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                     );
                   }
 
-                  return ListView.builder(
-                    controller: _scrollCtrl,
-                    physics: const BouncingScrollPhysics(),
-                    // No padding — cards are edge-to-edge
-                    padding: EdgeInsets.zero,
-                    itemCount:
-                        state.events.length + (state.isLoadingMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == state.events.length) {
-                        return Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24.h),
-                          child: const AppLoadingIndicator(),
-                        );
+                  return NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      if (notification is ScrollUpdateNotification ||
+                          notification is ScrollEndNotification) {
+                        WidgetsBinding.instance.addPostFrameCallback(
+                            (_) => _updateActiveCard(state.events));
                       }
-                      final ev = state.events[index];
-                      final isPending = state.pendingHideEventId == ev.id;
-                      // AnimatedAlign + heightFactor is the most reliable
-                      // way to collapse a ListView item smoothly. The card
-                      // stays in the tree (no child-swap reconciliation
-                      // issues); only the rendered height animates to 0.
-                      return ClipRect(
-                        key: ValueKey(ev.id),
-                        child: AnimatedAlign(
-                          duration: const Duration(milliseconds: 380),
-                          curve: Curves.easeInOut,
-                          alignment: Alignment.topCenter,
-                          heightFactor: isPending ? 0.0 : 1.0,
-                          child: IgnorePointer(
-                            ignoring: isPending,
-                            child: EventDiscoveryCard(
-                              event: ev,
-                              onTap: () => _onCardTap(context, ev),
-                              isOwner: state.currentUserId != null &&
-                                  state.currentUserId == ev.photographerId,
-                              onHide: () => _onHide(ev.id),
+                      return false;
+                    },
+                    child: ListView.builder(
+                      controller: _scrollCtrl,
+                      physics: const BouncingScrollPhysics(),
+                      // No padding — cards are edge-to-edge
+                      padding: EdgeInsets.zero,
+                      itemCount:
+                          state.events.length + (state.isLoadingMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == state.events.length) {
+                          return Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24.h),
+                            child: const AppLoadingIndicator(),
+                          );
+                        }
+                        final ev = state.events[index];
+                        final isPending = state.pendingHideEventId == ev.id;
+                        // AnimatedAlign + heightFactor is the most reliable
+                        // way to collapse a ListView item smoothly. The card
+                        // stays in the tree (no child-swap reconciliation
+                        // issues); only the rendered height animates to 0.
+                        return ClipRect(
+                          child: AnimatedAlign(
+                            duration: const Duration(milliseconds: 380),
+                            curve: Curves.easeInOut,
+                            alignment: Alignment.topCenter,
+                            heightFactor: isPending ? 0.0 : 1.0,
+                            child: IgnorePointer(
+                              ignoring: isPending,
+                              child: EventDiscoveryCard(
+                                key: _keyFor(ev.id),
+                                event: ev,
+                                cardIndex: index,
+                                activeCardIndex: _activeCardIndex,
+                                onTap: () => _onCardTap(context, ev),
+                                isOwner: state.currentUserId != null &&
+                                    state.currentUserId == ev.photographerId,
+                                onHide: () => _onHide(ev.id),
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   );
                 },
               ),
