@@ -88,6 +88,9 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
   bool _downloading = false;
   bool _sharing = false;
 
+  final _downloadKey = GlobalKey();
+  final _shareKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -123,19 +126,40 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
       }
     });
 
+    // Capture the button's screen rect BEFORE any await so iOS knows where
+    // to anchor the share popover (required by share_plus on iPhone/iPad).
+    final key = isDownload ? _downloadKey : _shareKey;
+    final box = key.currentContext?.findRenderObject() as RenderBox?;
+    final shareOrigin = box != null && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+
+    debugPrint('[SHARE] ── _handleAction start ──────────────────────');
+    debugPrint('[SHARE] isDownload=$isDownload  shareOrigin=$shareOrigin');
+    debugPrint('[SHARE] widget.imageId="${widget.imageId}"');
+    debugPrint('[SHARE] widget.pictureId="${widget.pictureId}"');
+    debugPrint('[SHARE] widget.photographerName="${widget.photographerName}"');
+    debugPrint('[SHARE] widget.eventName="${widget.eventName}"');
+
     // Show the classy loading overlay.
     _showLoadingOverlay(isDownload: isDownload);
 
     try {
+      debugPrint('[SHARE] Calling GetOverlayImageUseCase with imageId="${widget.imageId}"');
       final OverlayResult result = await sl<GetOverlayImageUseCase>()(
         widget.imageId,
         widget.photographerName,
       );
 
+      debugPrint('[SHARE] Overlay API success — contentType="${result.contentType}" bytes=${result.bytes.length} ext="${result.fileExtension}"');
+
       final dir = await getTemporaryDirectory();
-      final filePath =
-          '${dir.path}/overlay_${widget.imageId}.${result.fileExtension}';
+      // Sanitise imageId: strip any path separators so the temp filename is valid.
+      final safeId = widget.imageId.replaceAll('/', '_').replaceAll('\\', '_');
+      final filePath = '${dir.path}/overlay_$safeId.${result.fileExtension}';
+      debugPrint('[SHARE] Writing temp file to "$filePath"');
       await File(filePath).writeAsBytes(result.bytes, flush: true);
+      debugPrint('[SHARE] Temp file written — exists=${await File(filePath).exists()} size=${await File(filePath).length()}');
 
       if (!mounted) return;
       // Dismiss the loading overlay and reset button state before handing
@@ -148,18 +172,24 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
           ? 'Check out ${widget.eventName}!'
           : 'Check out this photo!';
 
+      debugPrint('[SHARE] Calling Share.shareXFiles — subject="$subject" mimeType="${result.contentType}" origin=$shareOrigin');
       await Share.shareXFiles(
         [XFile(filePath, mimeType: result.contentType)],
         subject: subject,
         text: text,
+        sharePositionOrigin: shareOrigin,
       );
+      debugPrint('[SHARE] Share sheet dismissed');
 
       // Delete the temp file once the OS share sheet is dismissed so the
       // branded image is never left on the device outside the app.
       try {
         await File(filePath).delete();
+        debugPrint('[SHARE] Temp file deleted');
       } catch (_) {}
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[SHARE] ERROR: $e');
+      debugPrint('[SHARE] Stack: $st');
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
         setState(() { _downloading = false; _sharing = false; });
@@ -218,6 +248,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
         ),
       if (widget.showDownload)
         _MediaBtn(
+          key: _downloadKey,
           icon: Icons.download_rounded,
           label: '',
           color: const Color(0xFFF5A623),
@@ -227,6 +258,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
           onTap: () => _handleAction(isDownload: true),
         ),
       _MediaBtn(
+        key: _shareKey,
         icon: Icons.ios_share_rounded,
         label: '',
         color: Colors.white.withValues(alpha: 0.9),
@@ -434,6 +466,7 @@ class _ProcessingOverlayState extends State<_ProcessingOverlay>
 
 class _MediaBtn extends StatefulWidget {
   const _MediaBtn({
+    super.key,
     required this.icon,
     required this.label,
     required this.color,
