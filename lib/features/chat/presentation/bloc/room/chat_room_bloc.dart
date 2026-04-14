@@ -9,8 +9,11 @@ import 'package:skidoo_app/features/chat/data/datasources/chat_background_servic
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
+import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/models/chat/like_update.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/services/e2ee_service.dart';
+import 'package:skidoo_app/features/chat/data/datasources/chat_key_datasource.dart';
 
 part 'chat_room_event.dart';
 part 'chat_room_state.dart';
@@ -24,9 +27,17 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   final ChatWebSocketService _ws;
   final AuthService _authService;
   final ChatBackgroundService _bgService;
+  final E2eeService _e2ee;
+  final ChatKeyDataSource _keyDs;
 
   String? _currentRoomId;
   String _myUserId = '';
+
+  // E2EE state
+  bool _isDirectRoom = false;
+  String? _recipientId;        // other party's userId in a DM room
+  bool _keysPublished = false; // whether we've published our bundle this session
+
   StreamSubscription<ChatMessage>? _wsMsgSub;
   StreamSubscription<LikeUpdate>? _wsLikeSub;
   StreamSubscription<PictureLikeUpdate>? _wsPicLikeSub;
@@ -44,6 +55,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     required ChatWebSocketService wsService,
     required AuthService authService,
     required ChatBackgroundService bgService,
+    required E2eeService e2eeService,
+    required ChatKeyDataSource keyDataSource,
   })  : _getMessages = getRoomMessages,
         _getCachedMessages = getCachedMessages,
         _cacheMessage = cacheMessage,
@@ -52,6 +65,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         _ws = wsService,
         _authService = authService,
         _bgService = bgService,
+        _e2ee = e2eeService,
+        _keyDs = keyDataSource,
         super(const ChatRoomState()) {
     on<ChatRoomJoined>(_onJoined);
     on<ChatRoomMessageSent>(_onSent);
@@ -85,6 +100,31 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     if (_myUserId.isEmpty) {
       _myUserId = await _authService.getUserId();
+    }
+
+    // Initialise E2EE for direct rooms.
+    if (event.room != null && event.room!.type == RoomType.direct) {
+      _isDirectRoom = true;
+      _recipientId = event.room!.participants
+          .where((p) => p.userId != _myUserId)
+          .map((p) => p.userId)
+          .firstOrNull;
+
+      // Generate and publish key bundle once — only if keys don't exist yet.
+      if (!_keysPublished) {
+        try {
+          if (!await _e2ee.hasKeys()) {
+            final bundle = await _e2ee.generateKeys();
+            await _keyDs.publishBundle(bundle);
+          }
+          _keysPublished = true;
+        } catch (e) {
+          debugPrint('[E2EE] Failed to publish key bundle: $e');
+        }
+      }
+    } else {
+      _isDirectRoom = false;
+      _recipientId = null;
     }
 
     List<ChatMessage> cached = [];
@@ -369,7 +409,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         ));
       }
     } else {
-      // Text-only message — stays synchronous.
+      // Text-only message.
       final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
 
       final optimistic = ChatMessage(
@@ -388,7 +428,39 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         messages: _sorted([optimistic, ...state.messages]),
         clearReply: true,
       ));
-      _ws.send(content, replyToId: event.replyToId);
+
+      // Encrypt the message for direct (DM) rooms.
+      if (_isDirectRoom && _recipientId != null) {
+        try {
+          // Reuse cached session key if available; otherwise perform X3DH.
+          var sessionKey = await _e2ee.loadSessionKey(_currentRoomId!);
+          String? ephemeralKey;
+          String? myIdentityKey;
+          if (sessionKey == null) {
+            final recipientBundle = await _keyDs.fetchBundle(_recipientId!);
+            final session = await _e2ee.createSendingSession(recipientBundle);
+            sessionKey = session.sessionKey;
+            ephemeralKey = session.ephemeralPublicKey;
+            // Include our identity key so the receiver can complete X3DH.
+            myIdentityKey = await _e2ee.identityPublicKey();
+            await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
+          }
+          final encrypted = await _e2ee.encrypt(sessionKey, content);
+          _ws.sendEncrypted(
+            ciphertext: encrypted.ciphertext,
+            iv: encrypted.iv,
+            ephemeralKey: ephemeralKey ?? '',
+            senderIdentityKey: myIdentityKey,
+            replyToId: event.replyToId,
+          );
+        } catch (e) {
+          debugPrint('[E2EE] Encrypt failed, sending plaintext: $e');
+          _ws.send(content, replyToId: event.replyToId);
+        }
+      } else {
+        _ws.send(content, replyToId: event.replyToId);
+      }
+
       _cacheMessage(optimistic).catchError((_) {});
     }
   }
@@ -461,11 +533,48 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     ));
   }
 
-  void _onReceived(
+  Future<void> _onReceived(
     ChatRoomMessageReceived event,
     Emitter<ChatRoomState> emit,
-  ) {
+  ) async {
     var msg = event.message;
+
+    // Decrypt E2EE messages in direct rooms.
+    if (msg.isEncrypted &&
+        msg.ciphertext != null &&
+        msg.iv != null &&
+        _currentRoomId != null) {
+      try {
+        Uint8List? sessionKey;
+        // First message after X3DH carries the sender's ephemeral key and
+        // identity key — use them to derive the shared session key.
+        if (msg.ephemeralKey != null &&
+            msg.ephemeralKey!.isNotEmpty &&
+            msg.senderIdentityKey != null &&
+            msg.senderIdentityKey!.isNotEmpty) {
+          // Cache the sender's identity key for future reference.
+          await _e2ee.storeIdentityKey(msg.senderId, msg.senderIdentityKey!);
+          sessionKey = await _e2ee.deriveReceivingKey(
+            senderIdentityKey: msg.senderIdentityKey!,
+            senderEphemeralKey: msg.ephemeralKey!,
+            consumedOtpkId: null,
+          );
+          // Cache it so subsequent messages can reuse the key.
+          await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
+        } else {
+          sessionKey = await _e2ee.loadSessionKey(_currentRoomId!);
+        }
+        if (sessionKey != null) {
+          final plaintext =
+              await _e2ee.decrypt(sessionKey, msg.ciphertext!, msg.iv!);
+          msg = msg.copyWith(content: plaintext, isEncrypted: false);
+        }
+      } catch (e) {
+        debugPrint('[E2EE] Decrypt failed for msg ${msg.id}: $e');
+        // Show the message as-is with an indicator rather than crashing.
+        msg = msg.copyWith(content: '🔒 (encrypted message)', isEncrypted: false);
+      }
+    }
 
     // Find the optimistic placeholder this message is confirming (if any).
     final optimistic = state.messages.where((m) =>

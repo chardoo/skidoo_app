@@ -20,3 +20,10 @@ class NotificationsMuteToggled extends UserProfileEvent {
   @override
   List<Object?> get props => [isMuted];
 }
+
+class PublicImagesToggled extends UserProfileEvent {
+  final bool alwaysPublic;
+  const PublicImagesToggled(this.alwaysPublic);
+  @override
+  List<Object?> get props => [alwaysPublic];
+}

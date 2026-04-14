@@ -91,3 +91,20 @@ class _DiscoveryHiddenIdsLoaded extends DiscoveryEvent {
   @override
   List<Object?> get props => [ids];
 }
+
+/// User tapped the bookmark button on an event card.
+class DiscoveryEventSaveToggled extends DiscoveryEvent {
+  final String eventId;
+  const DiscoveryEventSaveToggled(this.eventId);
+  @override
+  List<Object?> get props => [eventId];
+}
+
+/// Internal — fires when the initial saved-items list is loaded from the server.
+class _DiscoverySavedItemsLoaded extends DiscoveryEvent {
+  /// Map of eventId → savedItemRecordId, for all currently saved events.
+  final Map<String, String> recordIds;
+  const _DiscoverySavedItemsLoaded(this.recordIds);
+  @override
+  List<Object?> get props => [recordIds];
+}

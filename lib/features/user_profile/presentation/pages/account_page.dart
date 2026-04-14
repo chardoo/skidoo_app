@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
+import 'package:skidoo_app/features/discovery/presentation/pages/saved_items_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 
 class AccountPage extends StatelessWidget {
@@ -95,6 +96,9 @@ class _AccountView extends StatelessWidget {
                       const SizedBox(height: 12),
                       _NotificationSettingsCard(
                           isMuted: state.isMuted, ext: ext),
+                      const SizedBox(height: 12),
+                      _PublicationSettingsCard(
+                          alwaysPublic: state.alwaysPublicImages, ext: ext),
                       const Spacer(),
                       SizedBox(
                         width: double.infinity,
@@ -194,6 +198,90 @@ class _ThemeToggleCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ── Publication settings card ─────────────────────────────────────────────────
+
+class _PublicationSettingsCard extends StatelessWidget {
+  const _PublicationSettingsCard(
+      {required this.alwaysPublic, required this.ext});
+
+  final bool alwaysPublic;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+            child: Text(
+              'Publication',
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          SwitchListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            activeThumbColor: ext.accentGold,
+            activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
+            title: Text(
+              'Always add public images',
+              style: TextStyle(color: ext.greetingColor, fontSize: 14),
+            ),
+            subtitle: Text(
+              alwaysPublic
+                  ? 'New uploads are public by default'
+                  : 'New uploads are private by default',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12),
+            ),
+            secondary: Icon(
+              Icons.public_rounded,
+              color: alwaysPublic ? ext.accentGold : ext.searchHintColor,
+            ),
+            value: alwaysPublic,
+            onChanged: (value) {
+              context
+                  .read<UserProfileBloc>()
+                  .add(PublicImagesToggled(value));
+            },
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            leading: Icon(Icons.bookmark_rounded, color: ext.accentGold),
+            title: Text(
+              'Saved items',
+              style: TextStyle(
+                  color: ext.greetingColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500),
+            ),
+            subtitle: Text(
+              'View your bookmarked events',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12),
+            ),
+            trailing: Icon(Icons.chevron_right_rounded,
+                color: ext.searchHintColor, size: 20),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SavedItemsPage()),
+            ),
+          ),
+          const SizedBox(height: 4),
+        ],
+      ),
     );
   }
 }

@@ -49,6 +49,23 @@ class ChatMessage {
   /// True for messages added optimistically before server confirms.
   final bool isLocal;
 
+  // ── E2EE fields (present when server forwards an encrypted message) ─────────
+  /// True when [ciphertext] / [iv] / [ephemeralKey] carry the actual payload.
+  final bool isEncrypted;
+
+  /// Base64url AES-GCM ciphertext (with appended 16-byte MAC).
+  final String? ciphertext;
+
+  /// Base64url 12-byte AES-GCM nonce.
+  final String? iv;
+
+  /// Base64url X25519 ephemeral public key used in the X3DH key exchange.
+  final String? ephemeralKey;
+
+  /// Base64url X25519 identity public key of the sender (present on the first
+  /// encrypted message in a session so the receiver can complete X3DH).
+  final String? senderIdentityKey;
+
   const ChatMessage({
     required this.id,
     required this.roomId,
@@ -63,6 +80,11 @@ class ChatMessage {
     required this.createdAt,
     this.isRead = false,
     this.isLocal = false,
+    this.isEncrypted = false,
+    this.ciphertext,
+    this.iv,
+    this.ephemeralKey,
+    this.senderIdentityKey,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -73,8 +95,9 @@ class ChatMessage {
     }
 
     final imageUrl = json['image_url'] as String?;
-    // Detect video by explicit flag or by URL extension as fallback.
-    final isVideoFlag = (json['is_video'] as bool?) ?? false;
+    // is_video may be a bool (JSON) or int 0/1 (SQLite cache) — handle both.
+    final rawIsVideo = json['is_video'];
+    final isVideoFlag = rawIsVideo == true || rawIsVideo == 1;
     final isVideoByExt = imageUrl != null && _isVideoUrl(imageUrl);
 
     return ChatMessage(
@@ -90,11 +113,18 @@ class ChatMessage {
       replyPreview: preview,
       createdAt: DateTime.parse(json['created_at'] as String),
       isRead: (json['is_read'] as bool?) ?? false,
+      isEncrypted: (json['is_encrypted'] as bool?) ?? false,
+      ciphertext: json['ciphertext'] as String?,
+      iv: json['iv'] as String?,
+      ephemeralKey: json['ephemeral_key'] as String?,
+      senderIdentityKey: json['sender_identity_key'] as String?,
     );
   }
 
   static bool _isVideoUrl(String url) {
     final lower = url.toLowerCase().split('?').first;
+    // Cloudinary video URLs always contain /video/upload/ in the path.
+    if (lower.contains('/video/upload/')) return true;
     return lower.endsWith('.mp4') ||
         lower.endsWith('.mov') ||
         lower.endsWith('.avi') ||
@@ -116,6 +146,11 @@ class ChatMessage {
         'created_at': createdAt.toIso8601String(),
         'is_read': isRead ? 1 : 0,
         'is_local': isLocal ? 1 : 0,
+        'is_encrypted': isEncrypted ? 1 : 0,
+        'ciphertext': ciphertext,
+        'iv': iv,
+        'ephemeral_key': ephemeralKey,
+        'sender_identity_key': senderIdentityKey,
       };
 
   ChatMessage copyWith({
@@ -125,6 +160,8 @@ class ChatMessage {
     bool? isLocal,
     String? imageUrl,
     bool? isVideo,
+    String? content,
+    bool? isEncrypted,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -132,7 +169,7 @@ class ChatMessage {
       senderId: senderId,
       senderName: senderName ?? this.senderName,
       senderRole: senderRole,
-      content: content,
+      content: content ?? this.content,
       imageUrl: imageUrl ?? this.imageUrl,
       isVideo: isVideo ?? this.isVideo,
       replyToId: replyToId,
@@ -140,6 +177,10 @@ class ChatMessage {
       createdAt: createdAt,
       isRead: isRead ?? this.isRead,
       isLocal: isLocal ?? this.isLocal,
+      isEncrypted: isEncrypted ?? this.isEncrypted,
+      ciphertext: ciphertext,
+      iv: iv,
+      ephemeralKey: ephemeralKey,
     );
   }
 }

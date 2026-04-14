@@ -14,6 +14,7 @@ import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_pr
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_comment_sheet.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
@@ -55,7 +56,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   int _currentPage = 0;
   bool _liked = false;
   bool _disliked = false;
-  bool _saved = false;
   int _likeCount = 0;
   int _dislikeCount = 0;
   bool _descExpanded = false;
@@ -71,6 +71,18 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     _disliked = event.userReaction == 'dislike';
     _likeCount = event.likes;
     _dislikeCount = event.dislikes;
+  }
+
+  bool _isSaved(BuildContext context) {
+    try {
+      return context
+          .read<DiscoveryBloc>()
+          .state
+          .savedEventIds
+          .contains(widget.event.id);
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
@@ -305,64 +317,74 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             SizedBox(height: 10.h),
 
           // ── 4. Interaction bar ─────────────────────────────────────────
-          CardInteractionBar(
-            liked: _liked,
-            disliked: _disliked,
-            saved: _saved,
-            likeCount: _likeCount,
-            dislikeCount: _dislikeCount,
-            commentCount: widget.event.commentCount,
-            ext: ext,
-            onLike: widget.isAuthenticated
-                ? () {
-                    setState(() {
-                      if (!_liked && _disliked) {
-                        _disliked = false;
-                        _dislikeCount = (_dislikeCount - 1).clamp(0, 999999999);
-                      }
-                      _liked = !_liked;
-                      _likeCount += _liked ? 1 : -1;
-                    });
-                    context.read<DiscoveryBloc>().add(
-                          DiscoveryReactionToggled(widget.event.id,
-                              isLike: true),
-                        );
-                  }
-                : widget.onTap,
-            onDislike: widget.isAuthenticated
-                ? () {
-                    setState(() {
-                      if (!_disliked && _liked) {
-                        _liked = false;
-                        _likeCount = (_likeCount - 1).clamp(0, 999999999);
-                      }
-                      _disliked = !_disliked;
-                      _dislikeCount += _disliked ? 1 : -1;
-                    });
-                    context.read<DiscoveryBloc>().add(
-                          DiscoveryReactionToggled(widget.event.id,
-                              isLike: false),
-                        );
-                  }
-                : widget.onTap,
-            onComment: widget.isAuthenticated
-                ? (widget.onCommentTap ?? () => _showCommentSheet(context, ext))
-                : widget.onTap,
-            onShare: widget.isAuthenticated
-                ? () {
-                    final pics = widget.event.pictures;
-                    if (pics.isEmpty) return;
-                    final url = pics[_currentPage.clamp(0, pics.length - 1)].url;
-                    GalleryShareSheet.show(
-                      context,
-                      imageUrl: url,
-                      photoLabel: widget.event.eventName,
-                    );
-                  }
-                : widget.onTap,
-            onSave: widget.isAuthenticated
-                ? () => setState(() => _saved = !_saved)
-                : widget.onTap,
+          BlocBuilder<DiscoveryBloc, DiscoveryState>(
+            buildWhen: (prev, next) =>
+                prev.savedEventIds != next.savedEventIds,
+            builder: (context, _) => CardInteractionBar(
+              liked: _liked,
+              disliked: _disliked,
+              saved: _isSaved(context),
+              likeCount: _likeCount,
+              dislikeCount: _dislikeCount,
+              commentCount: widget.event.commentCount,
+              ext: ext,
+              onLike: widget.isAuthenticated
+                  ? () {
+                      setState(() {
+                        if (!_liked && _disliked) {
+                          _disliked = false;
+                          _dislikeCount =
+                              (_dislikeCount - 1).clamp(0, 999999999);
+                        }
+                        _liked = !_liked;
+                        _likeCount += _liked ? 1 : -1;
+                      });
+                      context.read<DiscoveryBloc>().add(
+                            DiscoveryReactionToggled(widget.event.id,
+                                isLike: true),
+                          );
+                    }
+                  : widget.onTap,
+              onDislike: widget.isAuthenticated
+                  ? () {
+                      setState(() {
+                        if (!_disliked && _liked) {
+                          _liked = false;
+                          _likeCount =
+                              (_likeCount - 1).clamp(0, 999999999);
+                        }
+                        _disliked = !_disliked;
+                        _dislikeCount += _disliked ? 1 : -1;
+                      });
+                      context.read<DiscoveryBloc>().add(
+                            DiscoveryReactionToggled(widget.event.id,
+                                isLike: false),
+                          );
+                    }
+                  : widget.onTap,
+              onComment: widget.isAuthenticated
+                  ? (widget.onCommentTap ??
+                      () => _showCommentSheet(context, ext))
+                  : widget.onTap,
+              onShare: widget.isAuthenticated
+                  ? () {
+                      final pics = widget.event.pictures;
+                      if (pics.isEmpty) return;
+                      final url =
+                          pics[_currentPage.clamp(0, pics.length - 1)].url;
+                      GalleryShareSheet.show(
+                        context,
+                        imageUrl: url,
+                        photoLabel: widget.event.eventName,
+                      );
+                    }
+                  : widget.onTap,
+              onSave: widget.isAuthenticated
+                  ? () => context.read<DiscoveryBloc>().add(
+                        DiscoveryEventSaveToggled(widget.event.id),
+                      )
+                  : widget.onTap,
+            ),
           ),
 
           // ── 5. Caption ─────────────────────────────────────────────────
@@ -949,8 +971,10 @@ class _ReportReasonSheetState extends State<_ReportReasonSheet> {
     if (_selected == null || _submitting) return;
     setState(() => _submitting = true);
     try {
+      final authService = sl<AuthService>();
+      final userId = await authService.getUserId();
       await sl<Api>().dio.post(
-        '/client/reports',
+        '/client/$userId/report',
         data: {
           'assetType': 'event',
           'assetId': widget.eventId,

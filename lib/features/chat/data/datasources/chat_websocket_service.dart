@@ -6,9 +6,14 @@ import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/like_update.dart' show LikeUpdate, PictureLikeUpdate;
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// Manages the WebSocket connection to the chat service for a single room.
+///
+/// The auth token is passed in the HTTP `Authorization` header during the
+/// WebSocket upgrade handshake — NOT in the URL query string, which is visible
+/// in server logs and reverse-proxy access logs.
 class ChatWebSocketService {
   final AuthService _authService;
 
@@ -39,29 +44,34 @@ class ChatWebSocketService {
     disconnect(); // Close any previous connection first.
 
     final token = await _authService.getToken();
-    debugPrint('[WS] token present: ${token.isNotEmpty}, length: ${token.length}');
 
     final wsBase = ChatConfig.wsBaseUrl
         .replaceFirst('https://', 'wss://')
         .replaceFirst('http://', 'ws://');
-    final uri = Uri.parse('$wsBase/chat/ws/$roomId?token=$token');
-    debugPrint('[WS] Connecting to: $uri');
 
-    _channel = WebSocketChannel.connect(uri);
+    // Token goes in the Authorization header, not the URL.
+    final uri = Uri.parse('$wsBase/chat/ws/$roomId');
+
     _msgController = StreamController<ChatMessage>.broadcast();
     _likeController = StreamController<LikeUpdate>.broadcast();
     _picLikeController = StreamController<PictureLikeUpdate>.broadcast();
 
     try {
+      // IOWebSocketChannel.connect() passes headers during the HTTP upgrade
+      // handshake and correctly handles wss:// URIs on iOS and Android.
+      // The token never appears in the URL or server access logs.
+      _channel = IOWebSocketChannel.connect(
+        uri,
+        headers: token.isNotEmpty
+            ? {'Authorization': 'Bearer $token'}
+            : const <String, Object>{},
+      );
       await _channel!.ready.timeout(
         const Duration(seconds: 15),
-        onTimeout: () {
-          debugPrint('[WS] Handshake timed out after 15 s');
-          throw TimeoutException('WebSocket handshake timed out');
-        },
+        onTimeout: () => throw TimeoutException('WebSocket handshake timed out'),
       );
     } catch (e) {
-      debugPrint('[WS] ready error: $e');
+      debugPrint('[WS] Connection failed for room $roomId: ${e.runtimeType}');
       disconnect();
       rethrow;
     }
@@ -86,7 +96,7 @@ class ChatWebSocketService {
         }
       },
       onError: (e) {
-        debugPrint('[WS] Stream error: $e');
+        debugPrint('[WS] Stream error: ${e.runtimeType}');
         _connected = false;
         _msgController?.close();
         _likeController?.close();
@@ -106,13 +116,34 @@ class ChatWebSocketService {
     );
   }
 
-  /// Send a text/image message. At least one of [content] or [imageUrl] must be non-null.
+  /// Send a plain-text or image message.
   void send(String? content, {String? imageUrl, String? replyToId}) {
     final payload = <String, dynamic>{};
     if (content != null && content.isNotEmpty) payload['content'] = content;
     if (imageUrl != null) payload['image_url'] = imageUrl;
     if (replyToId != null) payload['reply_to_id'] = replyToId;
     if (payload.isEmpty) return;
+    _sendRaw(payload);
+  }
+
+  /// Send an E2EE-encrypted message.
+  /// [ciphertext] and [iv] are base64url-encoded (ciphertext has MAC appended).
+  /// [ephemeralKey] is the X25519 public key used in the X3DH handshake.
+  void sendEncrypted({
+    required String ciphertext,
+    required String iv,
+    required String ephemeralKey,
+    String? senderIdentityKey,
+    String? replyToId,
+  }) {
+    final payload = <String, dynamic>{
+      'type': 'message',
+      'ciphertext': ciphertext,
+      'iv': iv,
+      'ephemeral_key': ephemeralKey,
+      if (senderIdentityKey != null) 'sender_identity_key': senderIdentityKey,
+      if (replyToId != null) 'reply_to_id': replyToId,
+    };
     _sendRaw(payload);
   }
 

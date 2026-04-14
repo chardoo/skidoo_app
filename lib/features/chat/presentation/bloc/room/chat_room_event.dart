@@ -7,10 +7,12 @@ abstract class ChatRoomEvent {
 /// Join a room: loads cache, connects WS, fetches history.
 /// If [shareUrl] is provided the image is shown immediately as an optimistic
 /// message and sent over the WS as soon as the connection is ready.
+/// [room] is used to determine room type and participants for E2EE.
 class ChatRoomJoined extends ChatRoomEvent {
   final String roomId;
   final String? shareUrl;
-  const ChatRoomJoined(this.roomId, {this.shareUrl});
+  final ChatRoom? room;
+  const ChatRoomJoined(this.roomId, {this.shareUrl, this.room});
 }
 
 /// Send the current input (text and/or staged image) as one message.

@@ -9,6 +9,10 @@ class DiscoveryState extends Equatable {
   final Set<String> hiddenEventIds;
   /// ID of the event currently pending hide (card collapsed, undo available).
   final String? pendingHideEventId;
+  /// IDs of events the current user has bookmarked.
+  final Set<String> savedEventIds;
+  /// Maps eventId → saved-item record ID (for DELETE by record ID).
+  final Map<String, String> savedItemRecordIds;
 
   const DiscoveryState({
     this.events = const [],
@@ -18,6 +22,8 @@ class DiscoveryState extends Equatable {
     this.currentUserId,
     this.hiddenEventIds = const {},
     this.pendingHideEventId,
+    this.savedEventIds = const {},
+    this.savedItemRecordIds = const {},
   });
 
   DiscoveryState copyWith({
@@ -30,6 +36,8 @@ class DiscoveryState extends Equatable {
     Set<String>? hiddenEventIds,
     String? pendingHideEventId,
     bool clearPendingHide = false,
+    Set<String>? savedEventIds,
+    Map<String, String>? savedItemRecordIds,
   }) {
     return DiscoveryState(
       events: events ?? this.events,
@@ -40,6 +48,8 @@ class DiscoveryState extends Equatable {
       hiddenEventIds: hiddenEventIds ?? this.hiddenEventIds,
       pendingHideEventId:
           clearPendingHide ? null : (pendingHideEventId ?? this.pendingHideEventId),
+      savedEventIds: savedEventIds ?? this.savedEventIds,
+      savedItemRecordIds: savedItemRecordIds ?? this.savedItemRecordIds,
     );
   }
 
@@ -52,5 +62,7 @@ class DiscoveryState extends Equatable {
         currentUserId,
         hiddenEventIds,
         pendingHideEventId,
+        savedEventIds,
+        savedItemRecordIds,
       ];
 }

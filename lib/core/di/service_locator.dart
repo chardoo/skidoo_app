@@ -1,6 +1,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
+import 'package:skidoo_app/features/chat/data/datasources/chat_key_datasource.dart';
+import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
 import 'package:skidoo_app/features/photo_comments/data/photo_comment_remote_data_source.dart';
 import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
 import 'package:skidoo_app/features/photo_comments/presentation/bloc/photo_comment_bloc.dart';
@@ -69,6 +71,7 @@ import 'package:skidoo_app/features/user_profile/domain/usecases/get_profile_use
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/services/e2ee_service.dart';
 import 'package:skidoo_app/services/notification_prefs_service.dart';
 
 final sl = GetIt.instance;
@@ -80,7 +83,30 @@ Future<void> setupServiceLocator() async {
 
   // ── Core / Infrastructure ─────────────────────────────────────────────────
   sl.registerSingleton<Api>(Api());
-  sl.registerSingleton<AuthService>(AuthService());
+
+  // ── One-time migration: SharedPreferences → FlutterSecureStorage ──────────
+  // Runs on the first launch after upgrading to the secure-storage build.
+  // If the old plaintext token exists in SharedPreferences and the new secure
+  // store is empty, we copy everything across then wipe SharedPreferences.
+  final authService = AuthService();
+  final legacyToken = prefs.getString('access_token') ?? '';
+  if (legacyToken.isNotEmpty && (await authService.getToken()).isEmpty) {
+    await Future.wait([
+      authService.setToken(legacyToken),
+      if ((prefs.getString('unique_name') ?? '').isNotEmpty)
+        authService.setUniqueName(prefs.getString('unique_name')!),
+      if ((prefs.getString('id') ?? '').isNotEmpty)
+        authService.setId(prefs.getString('id')!),
+      if ((prefs.getString('email') ?? '').isNotEmpty)
+        authService.setEmail(prefs.getString('email')!),
+      if ((prefs.getString('name') ?? '').isNotEmpty)
+        authService.setName(prefs.getString('name')!),
+    ]);
+    for (final key in ['access_token', 'unique_name', 'id', 'email', 'name']) {
+      await prefs.remove(key);
+    }
+  }
+  sl.registerSingleton<AuthService>(authService);
   sl.registerSingleton<NotificationPrefsService>(
       NotificationPrefsService(prefs));
   sl.registerSingleton<ThemeCubit>(ThemeCubit(prefs));
@@ -256,6 +282,14 @@ Future<void> setupServiceLocator() async {
   sl.registerSingleton<GetEventReactionUseCase>(
       GetEventReactionUseCase(sl<ChatRepository>()));
 
+  // E2EE services
+  sl.registerSingleton<E2eeService>(E2eeService());
+  sl.registerSingleton<ChatKeyDataSource>(ChatKeyDataSource(sl<Api>()));
+
+  // Saved items
+  sl.registerSingleton<ClientSavedDataSource>(
+      ClientSavedDataSource(sl<Api>(), sl<AuthService>()));
+
   // BLoCs (factories so each page gets a fresh instance)
   sl.registerFactory<ChatRoomsBloc>(() => ChatRoomsBloc(
         getMyRooms: sl<GetMyRoomsUseCase>(),
@@ -266,6 +300,8 @@ Future<void> setupServiceLocator() async {
       ));
 
   sl.registerFactory<ChatRoomBloc>(() => ChatRoomBloc(
+    keyDataSource: sl<ChatKeyDataSource>(),
+        e2eeService:  sl<E2eeService>(),
         getRoomMessages: sl<GetRoomMessagesUseCase>(),
         getCachedMessages: sl<GetCachedMessagesUseCase>(),
         cacheMessage: sl<CacheMessageUseCase>(),

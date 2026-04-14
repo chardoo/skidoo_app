@@ -9,6 +9,7 @@ import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
 import 'package:skidoo_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
 import 'package:skidoo_app/models/chat/like_update.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
@@ -27,6 +28,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   final GetEventReactionUseCase _getEventReaction;
   final GetEventRoomUseCase _getEventRoom;
   final AuthService _authService;
+  final ClientSavedDataSource _savedDs;
 
   // ── Per-event WebSocket sessions ──────────────────────────────────────────
   final Map<String, ChatWebSocketService> _activeSessions = {};
@@ -45,6 +47,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
         _getEventReaction = getEventReaction,
         _getEventRoom = getEventRoom,
         _authService = sl<AuthService>(),
+        _savedDs = sl<ClientSavedDataSource>(),
         super(const DiscoveryState()) {
     on<DiscoveryLoadRequested>(_onLoadRequested);
     on<DiscoveryLoadMoreRequested>(_onLoadMoreRequested);
@@ -57,6 +60,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     on<_DiscoveryLikeUpdateReceived>(_onReactionUpdated);
     on<_DiscoveryReactionsPatchReceived>(_onReactionsPatchReceived);
     on<_DiscoveryHiddenIdsLoaded>(_onHiddenIdsLoaded);
+    on<DiscoveryEventSaveToggled>(_onSaveToggled);
+    on<_DiscoverySavedItemsLoaded>(_onSavedItemsLoaded);
 
     // Load current user ID once so we can identify own updates later.
     _authService.getUserId().then((id) {
@@ -70,6 +75,9 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
         add(_DiscoveryHiddenIdsLoaded(ids.toSet()));
       }
     });
+
+    // Load saved event IDs from the server in the background.
+    _loadSavedItemsInBackground();
   }
 
   static const _hiddenIdsKey = 'discovery_hidden_event_ids';
@@ -442,6 +450,77 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   ) {
     final filtered = state.events.where((e) => !event.ids.contains(e.id)).toList();
     emit(state.copyWith(hiddenEventIds: event.ids, events: filtered));
+  }
+
+  // ── Save / unsave ─────────────────────────────────────────────────────────
+
+  void _loadSavedItemsInBackground() {
+    _savedDs.listSaved(assetType: 'event').then((items) {
+      if (isClosed) return;
+      final recordIds = <String, String>{
+        for (final i in items) i.assetId: i.savedItemId,
+      };
+      add(_DiscoverySavedItemsLoaded(recordIds));
+    }).catchError((_) {
+      // Silently ignore — saved indicators simply won't be pre-populated.
+    });
+  }
+
+  void _onSavedItemsLoaded(
+      _DiscoverySavedItemsLoaded event, Emitter<DiscoveryState> emit) {
+    emit(state.copyWith(
+      savedEventIds: event.recordIds.keys.toSet(),
+      savedItemRecordIds: event.recordIds,
+    ));
+  }
+
+  Future<void> _onSaveToggled(
+      DiscoveryEventSaveToggled event, Emitter<DiscoveryState> emit) async {
+    final isSaved = state.savedEventIds.contains(event.eventId);
+
+    // Optimistic update
+    final newSavedIds = Set<String>.from(state.savedEventIds);
+    final newRecordIds = Map<String, String>.from(state.savedItemRecordIds);
+    if (isSaved) {
+      newSavedIds.remove(event.eventId);
+      newRecordIds.remove(event.eventId);
+    } else {
+      newSavedIds.add(event.eventId);
+    }
+    emit(state.copyWith(
+        savedEventIds: newSavedIds, savedItemRecordIds: newRecordIds));
+
+    try {
+      if (isSaved) {
+        final recordId = state.savedItemRecordIds[event.eventId];
+        if (recordId != null && recordId.isNotEmpty) {
+          await _savedDs.unsaveById(recordId);
+        } else {
+          await _savedDs.unsaveByAsset(
+              assetType: 'event', assetId: event.eventId);
+        }
+      } else {
+        final saved = await _savedDs.saveItem(
+            assetType: 'event', assetId: event.eventId);
+        // Update record ID so unsave can use it later.
+        final updated = Map<String, String>.from(state.savedItemRecordIds);
+        updated[event.eventId] = saved.savedItemId;
+        emit(state.copyWith(savedItemRecordIds: updated));
+      }
+    } catch (e) {
+      debugPrint('[Discovery] Save toggle failed: $e');
+      // Revert optimistic update on failure.
+      final reverted = Set<String>.from(state.savedEventIds);
+      final revertedIds = Map<String, String>.from(state.savedItemRecordIds);
+      if (isSaved) {
+        reverted.add(event.eventId);
+      } else {
+        reverted.remove(event.eventId);
+        revertedIds.remove(event.eventId);
+      }
+      emit(state.copyWith(
+          savedEventIds: reverted, savedItemRecordIds: revertedIds));
+    }
   }
 
   // ── Cleanup ───────────────────────────────────────────────────────────────

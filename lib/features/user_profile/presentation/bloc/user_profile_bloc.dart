@@ -24,6 +24,7 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
     on<UserProfileLoadRequested>(_onLoadRequested);
     on<UserLogoutRequested>(_onLogoutRequested);
     on<NotificationsMuteToggled>(_onMuteToggled);
+    on<PublicImagesToggled>(_onPublicImagesToggled);
   }
 
   Future<void> _onLoadRequested(
@@ -36,6 +37,7 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
         name: profile['name'] ?? '',
         email: profile['email'] ?? '',
         isMuted: _notifPrefs.isMuted,
+        alwaysPublicImages: _notifPrefs.alwaysPublicImages,
       ));
     } on CacheException catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.message));
@@ -61,5 +63,11 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
       NotificationsMuteToggled event, Emitter<UserProfileState> emit) async {
     await _notifPrefs.setMuted(event.isMuted);
     emit(state.copyWith(isMuted: event.isMuted));
+  }
+
+  Future<void> _onPublicImagesToggled(
+      PublicImagesToggled event, Emitter<UserProfileState> emit) async {
+    await _notifPrefs.setAlwaysPublicImages(event.alwaysPublic);
+    emit(state.copyWith(alwaysPublicImages: event.alwaysPublic));
   }
 }

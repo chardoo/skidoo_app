@@ -2,6 +2,11 @@ PODS:
   - camera_avfoundation (0.0.1):
     - Flutter
   - Flutter (1.0.0)
+  - flutter_jailbreak_detection (1.0.0):
+    - Flutter
+    - IOSSecuritySuite
+  - flutter_secure_storage (6.0.0):
+    - Flutter
   - google_mlkit_barcode_scanning (0.10.0):
     - Flutter
     - google_mlkit_commons
@@ -144,6 +149,7 @@ PODS:
     - Flutter
   - image_picker_ios (0.0.1):
     - Flutter
+  - IOSSecuritySuite (2.2.0)
   - lecle_downloads_path_provider (0.0.1):
     - Flutter
   - MLImage (1.0.0-beta4)
@@ -279,6 +285,8 @@ PODS:
 DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - Flutter (from `Flutter`)
+  - flutter_jailbreak_detection (from `.symlinks/plugins/flutter_jailbreak_detection/ios`)
+  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - google_mlkit_barcode_scanning (from `.symlinks/plugins/google_mlkit_barcode_scanning/ios`)
   - google_mlkit_commons (from `.symlinks/plugins/google_mlkit_commons/ios`)
   - google_mlkit_digital_ink_recognition (from `.symlinks/plugins/google_mlkit_digital_ink_recognition/ios`)
@@ -314,6 +322,7 @@ SPEC REPOS:
     - GoogleUtilities
     - GoogleUtilitiesComponents
     - GTMSessionFetcher
+    - IOSSecuritySuite
     - MLImage
     - MLKitBarcodeScanning
     - MLKitCommon
@@ -351,6 +360,10 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/camera_avfoundation/ios"
   Flutter:
     :path: Flutter
+  flutter_jailbreak_detection:
+    :path: ".symlinks/plugins/flutter_jailbreak_detection/ios"
+  flutter_secure_storage:
+    :path: ".symlinks/plugins/flutter_secure_storage/ios"
   google_mlkit_barcode_scanning:
     :path: ".symlinks/plugins/google_mlkit_barcode_scanning/ios"
   google_mlkit_commons:
@@ -407,6 +420,8 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   camera_avfoundation: 7262a4e34c2e028f6aa5fb523ae74c9b74d3bd76
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_jailbreak_detection: a74360daaf5cbc80639959463b4b1395873c90b5
+  flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
   google_mlkit_barcode_scanning: 677dbd0a43df527f5a4055cdfc53cf86ff02c01e
   google_mlkit_commons: f27386da2a4d88eb7c56b4dd38dfcf61d9257d57
   google_mlkit_digital_ink_recognition: d93bc446ff1425036a843387ef37e137db42c14a
@@ -430,6 +445,7 @@ SPEC CHECKSUMS:
   image_cropper: 655b3ba703c9e15e3111e79151624d6154288774
   image_gallery_saver: 14711d79da40581063e8842a11acf1969d781ed7
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
+  IOSSecuritySuite: ba76f34cb367b9230934ac37904e26a40d033e3d
   lecle_downloads_path_provider: b8fc900fe43f42c88498a1f7e6d64f7c37eb9614
   MLImage: 7bb7c4264164ade9bf64f679b40fb29c8f33ee9b
   MLKitBarcodeScanning: 04e264482c5f3810cb89ebc134ef6b61e67db505
