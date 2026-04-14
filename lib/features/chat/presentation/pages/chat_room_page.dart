@@ -138,7 +138,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   void initState() {
     super.initState();
     _bloc = context.read<ChatRoomBloc>();
-    _bloc.add(ChatRoomJoined(widget.room.id, shareUrl: widget.shareUrl));
+    _bloc.add(ChatRoomJoined(widget.room.id, shareUrl: widget.shareUrl, room: widget.room));
     _scrollCtrl.addListener(_onScroll);
   }
 
