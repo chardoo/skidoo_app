@@ -55,79 +55,90 @@ class _AccountView extends StatelessWidget {
           ),
           body: state.isLoading
               ? const Center(child: CircularProgressIndicator())
-              : Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 24),
-                      CircleAvatar(
-                        radius: 48,
-                        backgroundColor: ext.avatarBackground,
-                        child: Text(
-                          state.name.isNotEmpty
-                              ? state.name[0].toUpperCase()
-                              : '?',
-                          style: TextStyle(
-                            color: ext.avatarForeground,
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+              : LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight - 48,
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        state.name,
-                        style: TextStyle(
-                          color: ext.greetingColor,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        state.email,
-                        style: TextStyle(
-                          color: ext.searchHintColor,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      _ThemeToggleCard(ext: ext),
-                      const SizedBox(height: 12),
-                      _NotificationSettingsCard(
-                          isMuted: state.isMuted, ext: ext),
-                      const SizedBox(height: 12),
-                      _PublicationSettingsCard(
-                          alwaysPublic: state.alwaysPublicImages, ext: ext),
-                      const Spacer(),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 24),
+                            CircleAvatar(
+                              radius: 48,
+                              backgroundColor: ext.avatarBackground,
+                              child: Text(
+                                state.name.isNotEmpty
+                                    ? state.name[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  color: ext.avatarForeground,
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                          ),
-                          onPressed: () {
-                            context
-                                .read<UserProfileBloc>()
-                                .add(const UserLogoutRequested());
-                          },
-                          child: const Text(
-                            'Logout',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                            const SizedBox(height: 20),
+                            Text(
+                              state.name,
+                              style: TextStyle(
+                                color: ext.greetingColor,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 6),
+                            Text(
+                              state.email,
+                              style: TextStyle(
+                                color: ext.searchHintColor,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            _ThemeToggleCard(ext: ext),
+                            const SizedBox(height: 12),
+                            _NotificationSettingsCard(
+                                isMuted: state.isMuted, ext: ext),
+                            const SizedBox(height: 12),
+                            _PublicationSettingsCard(
+                                alwaysPublic: state.alwaysPublicImages,
+                                ext: ext),
+                            const Spacer(),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  context
+                                      .read<UserProfileBloc>()
+                                      .add(const UserLogoutRequested());
+                                },
+                                child: const Text(
+                                  'Logout',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 32),
-                    ],
+                    ),
                   ),
                 ),
         );
