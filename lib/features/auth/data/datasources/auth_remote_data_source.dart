@@ -19,14 +19,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<LoginResponseObject> login(String email, String password) async {
-    print("hey login is here");
     try {
-      print(_api.dio.options.baseUrl);
       final res = await _api.dio.post(
         '/client/login',
         data: jsonEncode({'email': email, 'password': password}),
       );
-      print(res);
       if (res.statusCode == 200) {
         return LoginResponseObject.fromJson(res.data as Map<String, dynamic>);
       }
@@ -37,8 +34,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on app_exceptions.ServerException {
       rethrow;
     } catch (e) {
-      print(e);
-      throw app_exceptions.ServerException('Unexpected login error: $e');
+      throw const app_exceptions.ServerException('Unexpected login error.');
     }
   }
 
@@ -61,7 +57,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on app_exceptions.ServerException {
       rethrow;
     } catch (e) {
-      throw app_exceptions.NetworkException('Registration request failed: $e');
+      throw const app_exceptions.NetworkException('Registration request failed.');
     }
   }
 
@@ -75,13 +71,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (res.statusCode == 200) {
         return LoginResponseObject.fromJson(res.data as Map<String, dynamic>);
       }
-      throw app_exceptions.ServerException('Email confirmation failed.');
+      throw const app_exceptions.ServerException('Email confirmation failed.');
     } on dio.DioException catch (err) {
       throw _mapDioException(err);
     } on app_exceptions.ServerException {
       rethrow;
     } catch (e) {
-      throw app_exceptions.ServerException('Unexpected error: $e');
+      throw const app_exceptions.ServerException('Unexpected error.');
     }
   }
 
@@ -95,13 +91,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (res.statusCode == 200) {
         return LoginResponseObject.fromJson(res.data as Map<String, dynamic>);
       }
-      throw app_exceptions.ServerException('Code verification failed.');
+      throw const app_exceptions.ServerException('Code verification failed.');
     } on dio.DioException catch (err) {
       throw _mapDioException(err);
     } on app_exceptions.ServerException {
       rethrow;
     } catch (e) {
-      throw app_exceptions.ServerException('Unexpected error: $e');
+      throw const app_exceptions.ServerException('Unexpected error.');
     }
   }
 
