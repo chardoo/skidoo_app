@@ -53,6 +53,8 @@ class AuthRepositoryImpl implements AuthRepository {
         _authService.setId(user.id),
         _authService.setEmail(user.email),
         _authService.setName(user.name),
+        if (user.expiration.isNotEmpty)
+          _authService.setExpiration(user.expiration),
       ]);
     } catch (e) {
       throw CacheException('Failed to save session: $e');
