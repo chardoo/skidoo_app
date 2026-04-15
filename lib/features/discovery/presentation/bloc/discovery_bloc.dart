@@ -127,7 +127,12 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
         userId: userId,
       );
       // ✅ Show events immediately — don't wait for reactions.
-      emit(DiscoveryState(events: events, currentUserId: userId));
+      emit(DiscoveryState(
+        events: events,
+        currentUserId: userId,
+        // Fewer results than requested → no more pages to fetch.
+        hasMore: events.length >= _pageSize,
+      ));
       // Enrich reactions in background and patch state once ready.
       if (userId != null && events.isNotEmpty) {
         _enrichInBackground(events, userId);
@@ -145,7 +150,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
   Future<void> _onLoadMoreRequested(
       DiscoveryLoadMoreRequested event, Emitter<DiscoveryState> emit) async {
-    if (state.isLoadingMore) return;
+    if (state.isLoadingMore || !state.hasMore) return;
     emit(state.copyWith(isLoadingMore: true, clearError: true));
     try {
       final userId = await _getUserId();
@@ -157,6 +162,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       emit(state.copyWith(
         isLoadingMore: false,
         events: [...state.events, ...more],
+        // If this page is also short, we've reached the end.
+        hasMore: more.length >= _pageSize,
       ));
       // Patch reactions in background.
       if (userId != null && more.isNotEmpty) {

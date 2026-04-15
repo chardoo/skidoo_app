@@ -13,6 +13,8 @@ class DiscoveryState extends Equatable {
   final Set<String> savedEventIds;
   /// Maps eventId → saved-item record ID (for DELETE by record ID).
   final Map<String, String> savedItemRecordIds;
+  /// False once the API returns fewer items than the page size — no more pages.
+  final bool hasMore;
 
   const DiscoveryState({
     this.events = const [],
@@ -24,6 +26,7 @@ class DiscoveryState extends Equatable {
     this.pendingHideEventId,
     this.savedEventIds = const {},
     this.savedItemRecordIds = const {},
+    this.hasMore = true,
   });
 
   DiscoveryState copyWith({
@@ -38,6 +41,7 @@ class DiscoveryState extends Equatable {
     bool clearPendingHide = false,
     Set<String>? savedEventIds,
     Map<String, String>? savedItemRecordIds,
+    bool? hasMore,
   }) {
     return DiscoveryState(
       events: events ?? this.events,
@@ -50,6 +54,7 @@ class DiscoveryState extends Equatable {
           clearPendingHide ? null : (pendingHideEventId ?? this.pendingHideEventId),
       savedEventIds: savedEventIds ?? this.savedEventIds,
       savedItemRecordIds: savedItemRecordIds ?? this.savedItemRecordIds,
+      hasMore: hasMore ?? this.hasMore,
     );
   }
 
@@ -64,5 +69,6 @@ class DiscoveryState extends Equatable {
         pendingHideEventId,
         savedEventIds,
         savedItemRecordIds,
+        hasMore,
       ];
 }

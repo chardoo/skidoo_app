@@ -59,9 +59,11 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
 
   void _onScroll() {
     if (!_scrollCtrl.hasClients) return;
+    final bloc = context.read<DiscoveryBloc>();
+    if (!bloc.state.hasMore) return;
     final pos = _scrollCtrl.position;
     if (pos.pixels >= pos.maxScrollExtent - 400) {
-      context.read<DiscoveryBloc>().add(const DiscoveryLoadMoreRequested());
+      bloc.add(const DiscoveryLoadMoreRequested());
     }
   }
 
@@ -209,8 +211,8 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                       cacheExtent: 800,
                       // No padding — cards are edge-to-edge
                       padding: EdgeInsets.zero,
-                      itemCount:
-                          state.events.length + (state.isLoadingMore ? 1 : 0),
+                      itemCount: state.events.length +
+                          (state.isLoadingMore && state.hasMore ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (index == state.events.length) {
                           return Padding(
