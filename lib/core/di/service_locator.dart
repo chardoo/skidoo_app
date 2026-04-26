@@ -16,7 +16,10 @@ import 'package:skidoo_app/features/auth/data/repositories/auth_repository_impl.
 import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/get_token_usecase.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/login_usecase.dart';
+import 'package:skidoo_app/features/auth/domain/usecases/pending_interests_usecases.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/register_usecase.dart';
+import 'package:skidoo_app/features/auth/domain/usecases/update_profile_usecase.dart';
+import 'package:skidoo_app/features/auth/presentation/bloc/interests/interests_bloc.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/login/login_bloc.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/signup/signup_bloc.dart';
 import 'package:skidoo_app/features/cart/data/datasources/cart_remote_data_source.dart';
@@ -120,15 +123,38 @@ Future<void> setupServiceLocator() async {
       authService: sl<AuthService>(),
     ),
   );
-  sl.registerSingleton<LoginUseCase>(LoginUseCase(sl<AuthRepository>()));
+  sl.registerLazySingleton<LoginUseCase>(() => LoginUseCase(
+    sl<AuthRepository>(),
+    sl<AuthService>(),
+    sl<ChatDatabase>(),
+    sl<E2eeService>(),
+    sl<ChatKeyDataSource>(),
+  ));
   sl.registerSingleton<RegisterUseCase>(RegisterUseCase(sl<AuthRepository>()));
   sl.registerSingleton<GetTokenUseCase>(GetTokenUseCase(sl<AuthRepository>()));
   sl.registerSingleton<LogoutUseCase>(LogoutUseCase(sl<AuthRepository>()));
+  sl.registerSingleton<UpdateProfileUseCase>(
+      UpdateProfileUseCase(sl<AuthRepository>()));
+  sl.registerSingleton<SetPendingInterestsUseCase>(
+      SetPendingInterestsUseCase(sl<AuthRepository>()));
+  sl.registerSingleton<GetPendingInterestsUseCase>(
+      GetPendingInterestsUseCase(sl<AuthRepository>()));
+  sl.registerSingleton<ClearPendingInterestsUseCase>(
+      ClearPendingInterestsUseCase(sl<AuthRepository>()));
 
-  sl.registerFactory<LoginBloc>(
-      () => LoginBloc(loginUseCase: sl<LoginUseCase>()));
-  sl.registerFactory<SignUpBloc>(
-      () => SignUpBloc(registerUseCase: sl<RegisterUseCase>()));
+  sl.registerFactory<LoginBloc>(() => LoginBloc(
+        loginUseCase: sl<LoginUseCase>(),
+        getPendingInterests: sl<GetPendingInterestsUseCase>(),
+      ));
+  sl.registerFactory<SignUpBloc>(() => SignUpBloc(
+        registerUseCase: sl<RegisterUseCase>(),
+        setPendingInterests: sl<SetPendingInterestsUseCase>(),
+      ));
+  sl.registerFactory<InterestsBloc>(() => InterestsBloc(
+        updateProfileUseCase: sl<UpdateProfileUseCase>(),
+        clearPendingInterests: sl<ClearPendingInterestsUseCase>(),
+        authService: sl<AuthService>(),
+      ));
 
   // ── Home feature ──────────────────────────────────────────────────────────
   sl.registerSingleton<HomeRemoteDataSource>(
@@ -232,6 +258,9 @@ Future<void> setupServiceLocator() async {
         getProfileUseCase: sl<GetProfileUseCase>(),
         logoutUseCase: sl<UserLogoutUseCase>(),
         notificationPrefsService: sl<NotificationPrefsService>(),
+        updateProfileUseCase: sl<UpdateProfileUseCase>(),
+        profileRepository: sl<UserProfileRepository>(),
+        authService: sl<AuthService>(),
       ));
 
   // ── Chat feature ──────────────────────────────────────────────────────────

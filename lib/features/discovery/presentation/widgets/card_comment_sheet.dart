@@ -40,7 +40,7 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
       padding: EdgeInsets.only(bottom: bottom),
       child: Container(
         constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.75),
+            maxHeight: MediaQuery.of(context).size.height * 0.55),
         decoration: BoxDecoration(
           color: ext.homeBackground,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),

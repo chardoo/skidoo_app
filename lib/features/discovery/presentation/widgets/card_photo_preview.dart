@@ -73,7 +73,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                 activeCardIndex: widget.activeCardIndex,
               ),
               if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
-              if (pic.owner) const _OwnerCornerRibbon(),
+              // if (pic.owner) const _OwnerCornerRibbon(),
             ],
           );
         }
@@ -118,7 +118,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                 ),
               ),
               if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
-              if (pic.owner) const _OwnerCornerRibbon(),
+              // if (pic.owner) const _OwnerCornerRibbon(),
             ],
           ),
         );
@@ -508,73 +508,73 @@ class CardEmptyTile extends StatelessWidget {
 // markers every photographer recognises. Metaphor: the camera was pointed at
 // YOU. No social app uses this; it is purely photographic in origin.
 
-class _OwnerCornerRibbon extends StatelessWidget {
-  const _OwnerCornerRibbon();
+// class _OwnerCornerRibbon extends StatelessWidget {
+//   const _OwnerCornerRibbon();
 
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: CustomPaint(painter: _ViewfinderPainter()),
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Positioned.fill(
+//       child: IgnorePointer(
+//         child: CustomPaint(painter: _ViewfinderPainter()),
+//       ),
+//     );
+//   }
+// }
 
-class _ViewfinderPainter extends CustomPainter {
-  // Warm amber that reads clearly on both bright and dark images.
-  static const _color = Color(0xFFFFD166);
-  static const _stroke = 2.2;
-  // How far each bracket arm extends from the corner.
-  static const _arm = 22.0;
-  // Inset from the image edge so the brackets sit just inside.
-  static const _margin = 10.0;
+// class _ViewfinderPainter extends CustomPainter {
+//   // Warm amber that reads clearly on both bright and dark images.
+//   static const _color = Color(0xFFFFD166);
+//   static const _stroke = 2.2;
+//   // How far each bracket arm extends from the corner.
+//   static const _arm = 22.0;
+//   // Inset from the image edge so the brackets sit just inside.
+//   static const _margin = 10.0;
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = _color
-      ..strokeWidth = _stroke
-      ..strokeCap = StrokeCap.square
-      ..style = PaintingStyle.stroke;
+//   @override
+//   void paint(Canvas canvas, Size size) {
+//     final paint = Paint()
+//       ..color = _color
+//       ..strokeWidth = _stroke
+//       ..strokeCap = StrokeCap.square
+//       ..style = PaintingStyle.stroke;
 
-    final w = size.width;
-    final h = size.height;
-    const m = _margin;
-    const a = _arm;
+//     final w = size.width;
+//     final h = size.height;
+//     const m = _margin;
+//     const a = _arm;
 
-    // ── top-left ─────────────────────────────────────────────────────────────
-    canvas.drawLine(const Offset(m, m + a), const Offset(m, m), paint);        // vertical
-    canvas.drawLine(const Offset(m, m), const Offset(m + a, m), paint);        // horizontal
+//     // ── top-left ─────────────────────────────────────────────────────────────
+//     canvas.drawLine(const Offset(m, m + a), const Offset(m, m), paint);        // vertical
+//     canvas.drawLine(const Offset(m, m), const Offset(m + a, m), paint);        // horizontal
 
-    // ── top-right ────────────────────────────────────────────────────────────
-    canvas.drawLine(Offset(w - m - a, m), Offset(w - m, m), paint);
-    canvas.drawLine(Offset(w - m, m), Offset(w - m, m + a), paint);
+//     // ── top-right ────────────────────────────────────────────────────────────
+//     canvas.drawLine(Offset(w - m - a, m), Offset(w - m, m), paint);
+//     canvas.drawLine(Offset(w - m, m), Offset(w - m, m + a), paint);
 
-    // ── bottom-left ───────────────────────────────────────────────────────────
-    canvas.drawLine(Offset(m, h - m - a), Offset(m, h - m), paint);
-    canvas.drawLine(Offset(m, h - m), Offset(m + a, h - m), paint);
+//     // ── bottom-left ───────────────────────────────────────────────────────────
+//     canvas.drawLine(Offset(m, h - m - a), Offset(m, h - m), paint);
+//     canvas.drawLine(Offset(m, h - m), Offset(m + a, h - m), paint);
 
-    // ── bottom-right ──────────────────────────────────────────────────────────
-    canvas.drawLine(Offset(w - m - a, h - m), Offset(w - m, h - m), paint);
-    canvas.drawLine(Offset(w - m, h - m - a), Offset(w - m, h - m), paint);
+//     // ── bottom-right ──────────────────────────────────────────────────────────
+//     canvas.drawLine(Offset(w - m - a, h - m), Offset(w - m, h - m), paint);
+//     canvas.drawLine(Offset(w - m, h - m - a), Offset(w - m, h - m), paint);
 
-    // ── "YOU ARE IN THIS FRAME" label — top centre, above the brackets ──────
-    final tp = TextPainter(
-      text: const TextSpan(
-        text: "YOU ARE IN THIS FRAME",
-        style: TextStyle(
-          color: _color,
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 2.0,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset((w - tp.width) / 2, m + 6));
-  }
+//     // ── "YOU ARE IN THIS FRAME" label — top centre, above the brackets ──────
+//     final tp = TextPainter(
+//       text: const TextSpan(
+//         text: "YOU ARE IN THIS FRAME",
+//         style: TextStyle(
+//           color: _color,
+//           fontSize: 9,
+//           fontWeight: FontWeight.w700,
+//           letterSpacing: 2.0,
+//         ),
+//       ),
+//       textDirection: TextDirection.ltr,
+//     )..layout();
+//     tp.paint(canvas, Offset((w - tp.width) / 2, m + 6));
+//   }
 
-  @override
-  bool shouldRepaint(_ViewfinderPainter old) => false;
-}
+//   @override
+//   bool shouldRepaint(_ViewfinderPainter old) => false;
+// }
