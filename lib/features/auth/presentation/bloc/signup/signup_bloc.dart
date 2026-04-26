@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
+import 'package:skidoo_app/features/auth/domain/usecases/pending_interests_usecases.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/register_usecase.dart';
 
 part 'signup_event.dart';
@@ -10,9 +11,13 @@ part 'signup_state.dart';
 
 class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
   final RegisterUseCase _registerUseCase;
+  final SetPendingInterestsUseCase _setPendingInterests;
 
-  SignUpBloc({required RegisterUseCase registerUseCase})
-      : _registerUseCase = registerUseCase,
+  SignUpBloc({
+    required RegisterUseCase registerUseCase,
+    required SetPendingInterestsUseCase setPendingInterests,
+  })  : _registerUseCase = registerUseCase,
+        _setPendingInterests = setPendingInterests,
         super(const SignUpState()) {
     on<SignUpSubmitted>(_onSignUpSubmitted);
     on<SignUpFaceImageCaptured>(_onFaceImageCaptured);
@@ -36,6 +41,7 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
       };
       await _registerUseCase(
           RegisterParams(fields: fields, image: File(event.imagePath)));
+      await _setPendingInterests();
       emit(state.copyWith(isLoading: false, isSuccess: true));
     } on NetworkException catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.message));

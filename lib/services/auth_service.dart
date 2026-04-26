@@ -14,12 +14,19 @@ class AuthService {
   );
 
   // ── Storage keys ────────────────────────────────────────────────────────────
-  static const _kToken = 'auth.access_token';
-  static const _kExpiration = 'auth.token_expiration';
-  static const _kUniqueName = 'auth.unique_name';
-  static const _kEmail = 'auth.email';
-  static const _kId = 'auth.user_id';
-  static const _kName = 'auth.user_name';
+  static const _kToken              = 'auth.access_token';
+  static const _kExpiration         = 'auth.token_expiration';
+  static const _kUniqueName         = 'auth.unique_name';
+  static const _kEmail              = 'auth.email';
+  static const _kId                 = 'auth.user_id';
+  static const _kName               = 'auth.user_name';
+  static const _kPendingInterests   = 'auth.pending_interests';
+  static const _kContact            = 'auth.contact';
+  static const _kCountryCode        = 'auth.country_code';
+  static const _kLocale             = 'auth.locale';
+  static const _kPreferredLanguage  = 'auth.preferred_language';
+  static const _kTimezone           = 'auth.timezone';
+  static const _kInterestTags       = 'auth.interest_tags';
 
   // ── Token ────────────────────────────────────────────────────────────────────
   Future<void> setToken(String token) =>
@@ -75,6 +82,42 @@ class AuthService {
   Future<String> getName() async =>
       await _storage.read(key: _kName) ?? '';
 
+  // ── Extended profile fields ──────────────────────────────────────────────────
+  Future<void> setContact(String v) => _storage.write(key: _kContact, value: v);
+  Future<String> getContact() async => await _storage.read(key: _kContact) ?? '';
+
+  Future<void> setCountryCode(String v) => _storage.write(key: _kCountryCode, value: v);
+  Future<String> getCountryCode() async => await _storage.read(key: _kCountryCode) ?? '';
+
+  Future<void> setLocale(String v) => _storage.write(key: _kLocale, value: v);
+  Future<String> getLocale() async => await _storage.read(key: _kLocale) ?? '';
+
+  Future<void> setPreferredLanguage(String v) => _storage.write(key: _kPreferredLanguage, value: v);
+  Future<String> getPreferredLanguage() async => await _storage.read(key: _kPreferredLanguage) ?? '';
+
+  Future<void> setTimezone(String v) => _storage.write(key: _kTimezone, value: v);
+  Future<String> getTimezone() async => await _storage.read(key: _kTimezone) ?? '';
+
+  /// Stored as comma-separated string for simplicity.
+  Future<void> setInterestTags(List<String> tags) =>
+      _storage.write(key: _kInterestTags, value: tags.join(','));
+
+  Future<List<String>> getInterestTags() async {
+    final raw = await _storage.read(key: _kInterestTags) ?? '';
+    if (raw.isEmpty) return [];
+    return raw.split(',').where((s) => s.isNotEmpty).toList();
+  }
+
+  // ── Pending interests flag ───────────────────────────────────────────────────
+  Future<void> setPendingInterests() =>
+      _storage.write(key: _kPendingInterests, value: '1');
+
+  Future<bool> isPendingInterests() async =>
+      (await _storage.read(key: _kPendingInterests)) == '1';
+
+  Future<void> clearPendingInterests() =>
+      _storage.delete(key: _kPendingInterests);
+
   // ── Session teardown ─────────────────────────────────────────────────────────
   /// Deletes every auth key individually so non-auth preferences are untouched.
   Future<void> removeToken() => Future.wait([
@@ -84,5 +127,11 @@ class AuthService {
         _storage.delete(key: _kEmail),
         _storage.delete(key: _kId),
         _storage.delete(key: _kName),
+        _storage.delete(key: _kContact),
+        _storage.delete(key: _kCountryCode),
+        _storage.delete(key: _kLocale),
+        _storage.delete(key: _kPreferredLanguage),
+        _storage.delete(key: _kTimezone),
+        _storage.delete(key: _kInterestTags),
       ]);
 }

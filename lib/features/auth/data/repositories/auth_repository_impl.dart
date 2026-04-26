@@ -78,4 +78,26 @@ class AuthRepositoryImpl implements AuthRepository {
       throw CacheException('Failed to log out: $e');
     }
   }
+
+  @override
+  Future<void> updateProfile(String clientId, Map<String, dynamic> data) async {
+    try {
+      await _remoteDataSource.updateProfile(clientId, data);
+    } on ServerException {
+      rethrow;
+    } on NetworkException {
+      rethrow;
+    } catch (e) {
+      throw ServerException('Unexpected error during profile update: $e');
+    }
+  }
+
+  @override
+  Future<void> setPendingInterests() => _authService.setPendingInterests();
+
+  @override
+  Future<bool> isPendingInterests() => _authService.isPendingInterests();
+
+  @override
+  Future<void> clearPendingInterests() => _authService.clearPendingInterests();
 }

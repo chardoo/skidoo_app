@@ -7,9 +7,13 @@ class LoginResponseObject {
   String token = "";
   bool isValid = false;
   String expiration = "";
+  /// False when the server has no E2EE key bundle for this user yet.
+  /// The app must call POST /chat/keys/bundle before any DM can be encrypted.
+  bool keyBundlePublished = false;
 
   LoginResponseObject(this.id, this.email, this.name, this.role,
-      this.uniqueName, this.token, this.expiration, this.isValid);
+      this.uniqueName, this.token, this.expiration, this.isValid,
+      {this.keyBundlePublished = false});
 
   LoginResponseObject.empty() {
     id = "";
@@ -20,6 +24,7 @@ class LoginResponseObject {
     token = "";
     expiration = "";
     isValid = false;
+    keyBundlePublished = false;
   }
 
   //deserialization
@@ -33,6 +38,7 @@ class LoginResponseObject {
       json["token"] as String,
       json["expiration"] as String,
       json["isValid"] as bool,
+      keyBundlePublished: json["keyBundlePublished"] as bool? ?? false,
     );
   }
 

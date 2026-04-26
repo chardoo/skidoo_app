@@ -8,4 +8,8 @@ abstract class AuthRepository {
   Future<void> saveUserSession(LoginResponseObject user);
   Future<String> getToken();
   Future<void> logout();
+  Future<void> updateProfile(String clientId, Map<String, dynamic> data);
+  Future<void> setPendingInterests();
+  Future<bool> isPendingInterests();
+  Future<void> clearPendingInterests();
 }

@@ -2,15 +2,20 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/login_usecase.dart';
+import 'package:skidoo_app/features/auth/domain/usecases/pending_interests_usecases.dart';
 
 part 'login_event.dart';
 part 'login_state.dart';
 
 class LoginBloc extends Bloc<LoginEvent, LoginState> {
   final LoginUseCase _loginUseCase;
+  final GetPendingInterestsUseCase _getPendingInterests;
 
-  LoginBloc({required LoginUseCase loginUseCase})
-      : _loginUseCase = loginUseCase,
+  LoginBloc({
+    required LoginUseCase loginUseCase,
+    required GetPendingInterestsUseCase getPendingInterests,
+  })  : _loginUseCase = loginUseCase,
+        _getPendingInterests = getPendingInterests,
         super(const LoginState()) {
     on<LoginSubmitted>(_onLoginSubmitted);
     on<LoginPasswordVisibilityToggled>(_onPasswordToggled);
@@ -23,7 +28,9 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     try {
       await _loginUseCase(
           LoginParams(email: event.email, password: event.password));
-      emit(state.copyWith(isLoading: false, isSuccess: true));
+      final needsInterests = await _getPendingInterests();
+      emit(state.copyWith(
+          isLoading: false, isSuccess: true, needsInterests: needsInterests));
     } on NetworkException catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.message));
     } on UnauthorizedException {
