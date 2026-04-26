@@ -72,8 +72,13 @@ class RecipientKeyBundle {
   });
 
   factory RecipientKeyBundle.fromJson(Map<String, dynamic> json) {
-    final spk = json['signedPreKey'] as Map<String, dynamic>;
-    final otpk = json['oneTimePreKey'] as Map<String, dynamic>?;
+    final spk = json['signedPreKey'];
+    if (spk == null || spk is! Map<String, dynamic>) {
+      throw Exception('RecipientKeyBundle: missing or invalid signedPreKey');
+    }
+    final otpk = json['oneTimePreKey'] is Map<String, dynamic>
+        ? json['oneTimePreKey'] as Map<String, dynamic>
+        : null;
     return RecipientKeyBundle(
       identityKey: json['identityKey'] as String,
       signedPreKeyId: (spk['keyId'] as num).toInt(),
@@ -203,6 +208,29 @@ class E2eeService {
   Future<List<OtpkEntry>> generateOtpks(int count) =>
       _generateOtpkEntries(count);
 
+  /// Returns the publishable bundle for the current stored keys with an empty
+  /// [oneTimePreKeys] list (OTPKs are managed separately via [generateOtpks]).
+  /// Returns null if no key material exists yet.
+  Future<PublishableKeyBundle?> currentBundle() async {
+    final ikPub  = await _storage.read(key: _kIkPub);
+    final spkPub = await _storage.read(key: _kSpkPub);
+    final spkSig = await _storage.read(key: _kSpkSig);
+    final regId  = await _storage.read(key: _kRegId);
+    final spkId  = await _storage.read(key: _kSpkId);
+    if (ikPub == null || spkPub == null || spkSig == null ||
+        regId == null || spkId == null) {
+      return null;
+    }
+    return PublishableKeyBundle(
+      identityKey: ikPub,
+      registrationId: int.parse(regId),
+      signedPreKeyId: int.parse(spkId),
+      signedPreKey: spkPub,
+      signedPreKeySignature: spkSig,
+      oneTimePreKeys: [],
+    );
+  }
+
   // ── Sending: X3DH → session key ────────────────────────────────────────────
 
   /// Performs X3DH as the initiator with [bundle] to derive a 32-byte session key.
@@ -304,6 +332,9 @@ class E2eeService {
     return v != null ? _b64d(v) : null;
   }
 
+  Future<void> deleteSessionKey(String roomId) =>
+      _storage.delete(key: 'e2ee.session.$roomId');
+
   // ── Peer identity key cache ────────────────────────────────────────────────
 
   /// Caches [userId]'s identity public key locally so X3DH receive can use it.
@@ -312,6 +343,17 @@ class E2eeService {
 
   Future<String?> loadIdentityKey(String userId) =>
       _storage.read(key: 'e2ee.ik_peer.$userId');
+
+  /// Deletes every e2ee key from secure storage. Called when a different user
+  /// logs in so that session keys, identity keys, and OPKs are never reused
+  /// across accounts.
+  Future<void> clearAllKeys() async {
+    final all = await _storage.readAll();
+    await Future.wait([
+      for (final key in all.keys)
+        if (key.startsWith('e2ee.')) _storage.delete(key: key),
+    ]);
+  }
 
   // ── Encrypt / Decrypt ──────────────────────────────────────────────────────
 

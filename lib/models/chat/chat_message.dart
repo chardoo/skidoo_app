@@ -66,6 +66,10 @@ class ChatMessage {
   /// encrypted message in a session so the receiver can complete X3DH).
   final String? senderIdentityKey;
 
+  /// keyId of the one-time prekey consumed during X3DH (null if none used).
+  /// The receiver needs this to compute DH4 and derive the same session key.
+  final int? otpkId;
+
   const ChatMessage({
     required this.id,
     required this.roomId,
@@ -85,6 +89,7 @@ class ChatMessage {
     this.iv,
     this.ephemeralKey,
     this.senderIdentityKey,
+    this.otpkId,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -118,6 +123,7 @@ class ChatMessage {
       iv: json['iv'] as String?,
       ephemeralKey: json['ephemeral_key'] as String?,
       senderIdentityKey: json['sender_identity_key'] as String?,
+      otpkId: (json['otpk_id'] as num?)?.toInt(),
     );
   }
 
@@ -151,6 +157,7 @@ class ChatMessage {
         'iv': iv,
         'ephemeral_key': ephemeralKey,
         'sender_identity_key': senderIdentityKey,
+        'otpk_id': otpkId,
       };
 
   ChatMessage copyWith({
@@ -181,6 +188,8 @@ class ChatMessage {
       ciphertext: ciphertext,
       iv: iv,
       ephemeralKey: ephemeralKey,
+      senderIdentityKey: senderIdentityKey,
+      otpkId: otpkId,
     );
   }
 }

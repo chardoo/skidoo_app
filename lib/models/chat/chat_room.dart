@@ -87,6 +87,9 @@ class ChatRoom {
   final String? name;
   final DateTime createdAt;
   final List<ChatParticipant> participants;
+  /// Per-user E2EE bundle availability, keyed by userId.
+  /// Populated by POST /chat/rooms/direct and GET /chat/rooms/{id}.
+  final Map<String, bool> e2eStatus;
 
   const ChatRoom({
     required this.id,
@@ -95,6 +98,7 @@ class ChatRoom {
     this.name,
     required this.createdAt,
     this.participants = const [],
+    this.e2eStatus = const {},
   });
 
   /// Human-readable display name.
@@ -140,6 +144,11 @@ class ChatRoom {
         .map((p) => ChatParticipant.fromJson(p as Map<String, dynamic>))
         .toList();
 
+    final rawStatus = json['e2e_status'] as Map<String, dynamic>?;
+    final e2eStatus = rawStatus != null
+        ? rawStatus.map((k, v) => MapEntry(k, (v as bool?) ?? false))
+        : const <String, bool>{};
+
     return ChatRoom(
       id: json['id'] as String,
       type: RoomType.fromString(json['type'] as String?),
@@ -147,6 +156,7 @@ class ChatRoom {
       name: json['name'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       participants: participantsList,
+      e2eStatus: e2eStatus,
     );
   }
 

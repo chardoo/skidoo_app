@@ -45,6 +45,11 @@ class ChatRoomState extends Equatable {
   /// the UI never has to async-load it separately.
   final String myUserId;
 
+  /// True once a shared E2EE session key exists for this DM room (both
+  /// participants have published keys and X3DH has completed). Always false
+  /// for non-DM rooms.
+  final bool isE2EEReady;
+
   const ChatRoomState({
     this.messages = const [],
     this.isConnected = false,
@@ -66,6 +71,7 @@ class ChatRoomState extends Equatable {
     this.isPictureLiked = false,
     this.pendingShareUrl,
     this.myUserId = '',
+    this.isE2EEReady = false,
   });
 
   ChatRoomState copyWith({
@@ -93,6 +99,7 @@ class ChatRoomState extends Equatable {
     String? pendingShareUrl,
     bool clearPendingShareUrl = false,
     String? myUserId,
+    bool? isE2EEReady,
   }) =>
       ChatRoomState(
         messages: messages ?? this.messages,
@@ -115,6 +122,7 @@ class ChatRoomState extends Equatable {
         isPictureLiked: isPictureLiked ?? this.isPictureLiked,
         pendingShareUrl: clearPendingShareUrl ? null : (pendingShareUrl ?? this.pendingShareUrl),
         myUserId: myUserId ?? this.myUserId,
+        isE2EEReady: isE2EEReady ?? this.isE2EEReady,
       );
 
   @override
@@ -139,5 +147,6 @@ class ChatRoomState extends Equatable {
         isPictureLiked,
         pendingShareUrl,
         myUserId,
+        isE2EEReady,
       ];
 }

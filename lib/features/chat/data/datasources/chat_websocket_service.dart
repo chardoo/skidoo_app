@@ -9,6 +9,23 @@ import 'package:skidoo_app/services/auth_service.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+// ── E2EE key events emitted by the WebSocket ─────────────────────────────────
+
+/// Sent by the server when the current user joins a direct room.
+/// Contains every other participant's public key material.
+class WsKeyBundlesEvent {
+  final List<Map<String, dynamic>> bundles;
+  const WsKeyBundlesEvent(this.bundles);
+}
+
+/// Broadcast when a participant who previously had no E2EE keys publishes them.
+class WsParticipantKeyAvailable {
+  final String userId;
+  final String identityKey;
+  final Map<String, dynamic> signedPreKey;
+  const WsParticipantKeyAvailable(this.userId, this.identityKey, this.signedPreKey);
+}
+
 /// Manages the WebSocket connection to the chat service for a single room.
 ///
 /// The auth token is passed in the HTTP `Authorization` header during the
@@ -21,6 +38,8 @@ class ChatWebSocketService {
   StreamController<ChatMessage>? _msgController;
   StreamController<LikeUpdate>? _likeController;
   StreamController<PictureLikeUpdate>? _picLikeController;
+  StreamController<WsKeyBundlesEvent>? _keyBundlesController;
+  StreamController<WsParticipantKeyAvailable>? _participantKeyController;
   StreamSubscription? _sub;
 
   /// Emits chat messages received from the server.
@@ -34,6 +53,14 @@ class ChatWebSocketService {
   /// Emits like/unlike updates for the picture in a photo room.
   Stream<PictureLikeUpdate> get pictureLikeUpdates =>
       _picLikeController?.stream ?? const Stream.empty();
+
+  /// Emits participant key bundles sent by the server on DM room join.
+  Stream<WsKeyBundlesEvent> get keyBundleEvents =>
+      _keyBundlesController?.stream ?? const Stream.empty();
+
+  /// Emits when a participant publishes E2EE keys for the first time.
+  Stream<WsParticipantKeyAvailable> get participantKeyEvents =>
+      _participantKeyController?.stream ?? const Stream.empty();
 
   bool _connected = false;
   bool get isConnected => _connected;
@@ -55,6 +82,8 @@ class ChatWebSocketService {
     _msgController = StreamController<ChatMessage>.broadcast();
     _likeController = StreamController<LikeUpdate>.broadcast();
     _picLikeController = StreamController<PictureLikeUpdate>.broadcast();
+    _keyBundlesController = StreamController<WsKeyBundlesEvent>.broadcast();
+    _participantKeyController = StreamController<WsParticipantKeyAvailable>.broadcast();
 
     try {
       // IOWebSocketChannel.connect() passes headers during the HTTP upgrade
@@ -88,6 +117,22 @@ class ChatWebSocketService {
             _likeController?.add(LikeUpdate.fromJson(json));
           } else if (type == 'picture_like_update') {
             _picLikeController?.add(PictureLikeUpdate.fromJson(json));
+          } else if (type == 'key_bundles') {
+            final bundles = (json['bundles'] as List<dynamic>? ?? [])
+                .whereType<Map<String, dynamic>>()
+                .toList();
+            _keyBundlesController?.add(WsKeyBundlesEvent(bundles));
+          } else if (type == 'participant_key_available') {
+            final spk = json['signedPreKey'];
+            if (json['userId'] is String &&
+                json['identityKey'] is String &&
+                spk is Map<String, dynamic>) {
+              _participantKeyController?.add(WsParticipantKeyAvailable(
+                json['userId'] as String,
+                json['identityKey'] as String,
+                spk,
+              ));
+            }
           } else {
             _msgController?.add(ChatMessage.fromJson(json));
           }
@@ -101,6 +146,8 @@ class ChatWebSocketService {
         _msgController?.close();
         _likeController?.close();
         _picLikeController?.close();
+        _keyBundlesController?.close();
+        _participantKeyController?.close();
       },
       onDone: () {
         debugPrint(
@@ -112,6 +159,8 @@ class ChatWebSocketService {
         _msgController?.close();
         _likeController?.close();
         _picLikeController?.close();
+        _keyBundlesController?.close();
+        _participantKeyController?.close();
       },
     );
   }
@@ -128,20 +177,25 @@ class ChatWebSocketService {
 
   /// Send an E2EE-encrypted message.
   /// [ciphertext] and [iv] are base64url-encoded (ciphertext has MAC appended).
-  /// [ephemeralKey] is the X25519 public key used in the X3DH handshake.
+  /// [ephemeralKey], [senderIdentityKey], [otpkId] are only present on the
+  /// first message of a session (the X3DH handshake message) and omitted on
+  /// all subsequent messages.
   void sendEncrypted({
     required String ciphertext,
     required String iv,
-    required String ephemeralKey,
+    String? ephemeralKey,
     String? senderIdentityKey,
+    int? otpkId,
     String? replyToId,
   }) {
     final payload = <String, dynamic>{
       'type': 'message',
       'ciphertext': ciphertext,
       'iv': iv,
-      'ephemeral_key': ephemeralKey,
+      if (ephemeralKey != null && ephemeralKey.isNotEmpty)
+        'ephemeral_key': ephemeralKey,
       if (senderIdentityKey != null) 'sender_identity_key': senderIdentityKey,
+      if (otpkId != null) 'otpk_id': otpkId,
       if (replyToId != null) 'reply_to_id': replyToId,
     };
     _sendRaw(payload);
@@ -187,10 +241,14 @@ class ChatWebSocketService {
     _msgController?.close();
     _likeController?.close();
     _picLikeController?.close();
+    _keyBundlesController?.close();
+    _participantKeyController?.close();
     _channel = null;
     _msgController = null;
     _likeController = null;
     _picLikeController = null;
+    _keyBundlesController = null;
+    _participantKeyController = null;
     _connected = false;
   }
 }

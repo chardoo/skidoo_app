@@ -12,7 +12,7 @@ import 'package:sqflite/sqflite.dart';
 ///   v2 – added sender_name, image_url, reply_to_id, reply_preview columns.
 class ChatDatabase {
   static const _dbName = 'skidoo_chat.db';
-  static const _dbVersion = 2;
+  static const _dbVersion = 3;
 
   static Database? _db;
 
@@ -52,6 +52,7 @@ class ChatDatabase {
         sender_role   TEXT NOT NULL,
         content       TEXT NOT NULL DEFAULT '',
         image_url     TEXT,
+        is_video      INTEGER NOT NULL DEFAULT 0,
         reply_to_id   TEXT,
         reply_preview TEXT,
         created_at    TEXT NOT NULL,
@@ -72,6 +73,14 @@ class ChatDatabase {
       await db.execute('ALTER TABLE chat_messages ADD COLUMN image_url TEXT');
       await db.execute('ALTER TABLE chat_messages ADD COLUMN reply_to_id TEXT');
       await db.execute('ALTER TABLE chat_messages ADD COLUMN reply_preview TEXT');
+    }
+    if (oldVersion < 3) {
+      final cols = await db.rawQuery('PRAGMA table_info(chat_messages)');
+      final hasIsVideo = cols.any((c) => c['name'] == 'is_video');
+      if (!hasIsVideo) {
+        await db.execute(
+            'ALTER TABLE chat_messages ADD COLUMN is_video INTEGER NOT NULL DEFAULT 0');
+      }
     }
   }
 
@@ -149,8 +158,8 @@ class ChatDatabase {
           '''
           INSERT INTO chat_messages
             (id, room_id, sender_id, sender_name, sender_role, content,
-             image_url, reply_to_id, reply_preview, created_at, is_read, is_local)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             image_url, is_video, reply_to_id, reply_preview, created_at, is_read, is_local)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             room_id      = excluded.room_id,
             sender_id    = excluded.sender_id,
@@ -158,6 +167,7 @@ class ChatDatabase {
             sender_role  = excluded.sender_role,
             content      = excluded.content,
             image_url    = excluded.image_url,
+            is_video     = excluded.is_video,
             reply_to_id  = excluded.reply_to_id,
             reply_preview= excluded.reply_preview,
             created_at   = excluded.created_at,
@@ -172,6 +182,7 @@ class ChatDatabase {
             msg.senderRole,
             msg.content,
             msg.imageUrl,
+            msg.isVideo ? 1 : 0,
             msg.replyToId,
             msg.replyPreview != null ? jsonEncode(msg.replyPreview!.toJson()) : null,
             msg.createdAt.toIso8601String(),
@@ -289,6 +300,16 @@ class ChatDatabase {
     );
   }
 
+  /// Wipes all cached rooms and messages. Called when a different user logs in
+  /// so that one account's chat history never leaks into another's.
+  Future<void> clearAll() async {
+    final db = await _database;
+    await db.transaction((txn) async {
+      await txn.delete('chat_messages');
+      await txn.delete('chat_rooms');
+    });
+  }
+
   // ── Mappers ────────────────────────────────────────────────────────────────
 
   Map<String, dynamic> _roomToRow(ChatRoom room) => {
@@ -324,6 +345,7 @@ class ChatDatabase {
         'sender_role': msg.senderRole,
         'content': msg.content,
         'image_url': msg.imageUrl,
+        'is_video': msg.isVideo ? 1 : 0,
         'reply_to_id': msg.replyToId,
         'reply_preview': msg.replyPreview != null
             ? jsonEncode(msg.replyPreview!.toJson())
@@ -350,6 +372,7 @@ class ChatDatabase {
       senderRole: row['sender_role'] as String,
       content: row['content'] as String? ?? '',
       imageUrl: row['image_url'] as String?,
+      isVideo: (row['is_video'] as int?) == 1,
       replyToId: row['reply_to_id'] as String?,
       replyPreview: preview,
       createdAt: DateTime.parse(row['created_at'] as String),

@@ -108,3 +108,17 @@ class _PictureLikeUpdateReceived extends ChatRoomEvent {
   final PictureLikeUpdate update;
   const _PictureLikeUpdateReceived(this.update);
 }
+
+/// Server sent participant key bundles on DM room join.
+class _KeyBundlesReceived extends ChatRoomEvent {
+  final List<Map<String, dynamic>> bundles;
+  const _KeyBundlesReceived(this.bundles);
+}
+
+/// A participant who had no E2EE keys has just published them.
+class _ParticipantKeyAvailable extends ChatRoomEvent {
+  final String userId;
+  final String identityKey;
+  final Map<String, dynamic> signedPreKey;
+  const _ParticipantKeyAvailable(this.userId, this.identityKey, this.signedPreKey);
+}
