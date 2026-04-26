@@ -29,6 +29,28 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> getFullProfile() async {
+    try {
+      return await _localDataSource.getFullProfile();
+    } on CacheException {
+      rethrow;
+    } catch (e) {
+      throw CacheException('Failed to load profile: $e');
+    }
+  }
+
+  @override
+  Future<void> updateLocalProfile(Map<String, dynamic> data) async {
+    try {
+      await _localDataSource.updateLocalProfile(data);
+    } on CacheException {
+      rethrow;
+    } catch (e) {
+      throw CacheException('Failed to save profile: $e');
+    }
+  }
+
+  @override
   Future<void> logout() async {
     try {
       await _localDataSource.clearSession();
