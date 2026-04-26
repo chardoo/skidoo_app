@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/customThemeData.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
+import 'package:skidoo_app/features/auth/presentation/pages/interests_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
@@ -63,6 +64,7 @@ class MyApp extends StatelessWidget {
               HomePage.routeName: (_) => isDeviceCompromised
                   ? const _SecurityWarningPage()
                   : const HomePage(),
+              InterestsPage.routeName: (_) => const InterestsPage(),
             },
           ),
         ),
