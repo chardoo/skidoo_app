@@ -5,14 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/components/Screens/captureFace.dart';
-import 'package:skidoo_app/core/common/customButtom.dart';
-import 'package:skidoo_app/core/common/password_textfield.dart';
-import 'package:skidoo_app/core/common/textfield.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/signup/signup_bloc.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
-import 'package:skidoo_app/widgets/loader.dart';
+import 'package:skidoo_app/features/auth/presentation/widgets/auth_text_field.dart';
+
+// ── Design tokens ──────────────────────────────────────────────────────────────
+const _kOrange      = Color(0xFFFF8303);
+const _kOrangeDark  = Color(0xFFE66E00);
+const _kBg          = Color(0xFF0A0D11);
+const _kBgDeep      = Color(0xFF0F1525);
+const _kSubtext     = Color(0xFF9BA3B2);
+const _kError       = Color(0xFFFF4757);
 
 class SignUpPage extends StatelessWidget {
   static const routeName = '/signup';
@@ -36,13 +41,26 @@ class _SignUpView extends StatefulWidget {
   State<_SignUpView> createState() => _SignUpViewState();
 }
 
-class _SignUpViewState extends State<_SignUpView> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _contactController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _registerClicked = false;
+class _SignUpViewState extends State<_SignUpView>
+    with SingleTickerProviderStateMixin {
+  final _formKey                  = GlobalKey<FormState>();
+  final _emailController          = TextEditingController();
+  final _usernameController       = TextEditingController();
+  final _contactController        = TextEditingController();
+  final _passwordController       = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  late final AnimationController _fadeCtrl;
+  late final Animation<double>   _fadeAnim;
+  bool _submitAttempted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+    _fadeCtrl.forward();
+  }
 
   @override
   void dispose() {
@@ -50,12 +68,15 @@ class _SignUpViewState extends State<_SignUpView> {
     _usernameController.dispose();
     _contactController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _fadeCtrl.dispose();
     super.dispose();
   }
 
   void _submit(SignUpState state) {
-    setState(() => _registerClicked = true);
+    setState(() => _submitAttempted = true);
     if (_formKey.currentState?.validate() ?? false) {
+      if (state.imagePath.isEmpty) return;
       context.read<SignUpBloc>().add(SignUpSubmitted(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
@@ -66,15 +87,44 @@ class _SignUpViewState extends State<_SignUpView> {
     }
   }
 
+  Future<void> _openCamera(BuildContext context) async {
+    final cameras = await availableCameras();
+    if (!context.mounted) return;
+    if (cameras.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No camera available.')),
+      );
+      return;
+    }
+    final camera = cameras.length > 1 ? cameras[1] : cameras[0];
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TakePictureScreen(
+          camera: camera,
+          onImageCaptured: (path) {
+            context.read<SignUpBloc>().add(SignUpFaceImageCaptured(path));
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _kBg,
       body: BlocConsumer<SignUpBloc, SignUpState>(
         listener: (context, state) {
           if (state.isSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Registration successful!')),
-            );
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(
+                content: const Text('Account created! Please log in.'),
+                backgroundColor: Colors.green.shade700,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ));
             Navigator.of(context).pushReplacementNamed(LoginPage.routeName);
           }
           if (state.errorMessage != null && !state.isLoading) {
@@ -82,180 +132,417 @@ class _SignUpViewState extends State<_SignUpView> {
               ..hideCurrentSnackBar()
               ..showSnackBar(SnackBar(
                 content: Text(state.errorMessage!),
-                backgroundColor: Colors.red,
+                backgroundColor: Colors.red.shade800,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ));
           }
         },
         builder: (context, state) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: SingleChildScrollView(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      Text(
-                        "Let's get Started",
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(
-                                fontWeight: FontWeight.bold, fontSize: 24),
+          return Stack(
+            children: [
+              // ── Ambient gradient background ──────────────────────────────
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [_kBg, _kBgDeep],
+                  ),
+                ),
+              ),
+              // ── Radial orange glow ───────────────────────────────────────
+              Positioned(
+                top: -120,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    width: 320,
+                    height: 320,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          _kOrange.withValues(alpha: 0.15),
+                          Colors.transparent,
+                        ],
                       ),
-                      Text(
-                        'Create an account to get the best features',
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelSmall
-                            ?.copyWith(color: Colors.grey),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (state.imagePath.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        CircleAvatar(
-                          radius: 40,
-                          child: ClipOval(
-                            child: Image.file(
-                              File(state.imagePath),
-                              fit: BoxFit.cover,
-                              height: 150,
-                              width: 150,
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (state.errorMessage != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          state.errorMessage!,
-                          style: const TextStyle(
-                              color: Colors.red, fontSize: 14),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      MyTextField(
-                        controller: _emailController,
-                        validator: (v) => Validators.emailValidator(v),
-                        label: 'Email',
-                      ),
-                      const SizedBox(height: 20),
-                      MyTextField(
-                        controller: _usernameController,
-                        validator: (v) => Validators.nameValidator(v),
-                        label: 'Username',
-                      ),
-                      const SizedBox(height: 20),
-                      MyTextField(
-                        controller: _contactController,
-                        validator: (v) =>
-                            Validators.phoneNumberValidator(v),
-                        label: 'Phone Number',
-                      ),
-                      const SizedBox(height: 20),
-                      PasswordField(
-                        label: 'Password',
-                        pwdController: _passwordController,
-                        validator: (v) =>
-                            Validators.passwordValidator(v as String?),
-                      ),
-                      const SizedBox(height: 20),
-                      PasswordField(
-                        label: 'Confirm Password',
-                        pwdController: _passwordController,
-                        validator: (v) {
-                          if (v != _passwordController.text) {
-                            return 'Passwords do not match';
-                          }
-                          return Validators.passwordValidator(v as String?);
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      MaterialButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: () async {
-                          final cameras = await availableCameras();
-                          if (!context.mounted) return;
-                          if (cameras.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('No camera available.')),
-                            );
-                            return;
-                          }
-                          final camera =
-                              cameras.length > 1 ? cameras[1] : cameras[0];
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => TakePictureScreen(
-                                camera: camera,
-                                onImageCaptured: (path) {
-                                  context.read<SignUpBloc>().add(
-                                      SignUpFaceImageCaptured(path));
-                                },
+                    ),
+                  ),
+                ),
+              ),
+              // ── Content ──────────────────────────────────────────────────
+              SafeArea(
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(horizontal: 28.w),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 48.h),
+
+                          // ── Logo mark ──────────────────────────────────
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [_kOrange, _kOrangeDark],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                            ),
-                          );
-                        },
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                const Icon(Icons.camera,
-                                    color: Colors.white),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Register your face here',
-                                  style: TextStyle(color: Colors.white),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _kOrange.withValues(alpha: 0.35),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 6),
                                 ),
                               ],
                             ),
-                            if (_registerClicked && state.imagePath.isEmpty)
-                              const Text(
-                                'Face not captured',
-                                style: TextStyle(color: Colors.red),
-                              ),
-                          ],
+                            child: const Icon(
+                              Icons.photo_camera_rounded,
+                              color: Colors.white,
+                              size: 26,
+                            ),
+                          ),
+                          SizedBox(height: 28.h),
+
+                          // ── Heading ────────────────────────────────────
+                          Text(
+                            'Create account',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 30.sp,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.5,
+                              height: 1.1,
+                            ),
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            'Join and explore moments that matter',
+                            style: TextStyle(
+                              color: _kSubtext,
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                          SizedBox(height: 36.h),
+
+                          // ── Face capture ───────────────────────────────
+                          _FaceCaptureButton(
+                            imagePath: state.imagePath,
+                            showError: _submitAttempted && state.imagePath.isEmpty,
+                            onTap: () => _openCamera(context),
+                          ),
+                          SizedBox(height: 24.h),
+
+                          // ── Email ──────────────────────────────────────
+                          AuthTextField(
+                            controller: _emailController,
+                            label: 'Email address',
+                            prefixIcon: Icons.mail_outline_rounded,
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            validator: Validators.emailValidator,
+                          ),
+                          SizedBox(height: 14.h),
+
+                          // ── Username ───────────────────────────────────
+                          AuthTextField(
+                            controller: _usernameController,
+                            label: 'Username',
+                            prefixIcon: Icons.person_outline_rounded,
+                            textInputAction: TextInputAction.next,
+                            validator: Validators.nameValidator,
+                          ),
+                          SizedBox(height: 14.h),
+
+                          // ── Contact ────────────────────────────────────
+                          AuthTextField(
+                            controller: _contactController,
+                            label: 'Phone number',
+                            prefixIcon: Icons.phone_outlined,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            validator: Validators.phoneNumberValidator,
+                          ),
+                          SizedBox(height: 14.h),
+
+                          // ── Password ───────────────────────────────────
+                          AuthPasswordField(
+                            controller: _passwordController,
+                            label: 'Password',
+                            textInputAction: TextInputAction.next,
+                            validator: Validators.passwordValidator,
+                          ),
+                          SizedBox(height: 14.h),
+
+                          // ── Confirm password ───────────────────────────
+                          AuthPasswordField(
+                            controller: _confirmPasswordController,
+                            label: 'Confirm password',
+                            textInputAction: TextInputAction.done,
+                            validator: (v) {
+                              if (v != _passwordController.text) {
+                                return 'Passwords do not match';
+                              }
+                              return Validators.passwordValidator(v);
+                            },
+                          ),
+                          SizedBox(height: 32.h),
+
+                          // ── Sign up button ─────────────────────────────
+                          _GradientButton(
+                            label: 'Create Account',
+                            isLoading: state.isLoading,
+                            onTap: () => _submit(state),
+                          ),
+                          SizedBox(height: 28.h),
+
+                          // ── Sign in link ───────────────────────────────
+                          Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Already have an account?  ',
+                                  style: TextStyle(
+                                    color: _kSubtext,
+                                    fontSize: 14.sp,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => Navigator.of(context)
+                                      .pushReplacementNamed(LoginPage.routeName),
+                                  child: Text(
+                                    'Sign In',
+                                    style: TextStyle(
+                                      color: _kOrange,
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 40.h),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Face capture section ───────────────────────────────────────────────────────
+class _FaceCaptureButton extends StatelessWidget {
+  const _FaceCaptureButton({
+    required this.imagePath,
+    required this.showError,
+    required this.onTap,
+  });
+
+  final String imagePath;
+  final bool showError;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final captured = imagePath.isNotEmpty;
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF151821),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: showError
+                    ? _kError
+                    : captured
+                        ? _kOrange
+                        : const Color(0xFF252836),
+                width: captured || showError ? 1.5 : 1,
+              ),
+              boxShadow: captured
+                  ? [
+                      BoxShadow(
+                        color: _kOrange.withValues(alpha: 0.18),
+                        blurRadius: 16,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : [],
+            ),
+            child: Row(
+              children: [
+                // Avatar / placeholder
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF0F1525),
+                    border: Border.all(
+                      color: captured ? _kOrange : const Color(0xFF3A3F52),
+                      width: 2,
+                    ),
+                    boxShadow: captured
+                        ? [
+                            BoxShadow(
+                              color: _kOrange.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: captured
+                      ? ClipOval(
+                          child: Image.file(
+                            File(imagePath),
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.face_retouching_natural,
+                          color: Color(0xFF9BA3B2),
+                          size: 28,
+                        ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        captured ? 'Face captured' : 'Register your face',
+                        style: TextStyle(
+                          color: captured ? Colors.white : const Color(0xFF9BA3B2),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      state.isLoading
-                          ? const LoadingButton()
-                          : CustomButton(
-                              height: 50.h,
-                              width: double.infinity,
-                              ontap: () => _submit(state),
-                              label: 'Sign Up',
-                            ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Already have an account?',
-                            style: TextStyle(
-                                fontSize: 15, color: Colors.white),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context)
-                                .pushReplacementNamed(LoginPage.routeName),
-                            child: const Text(
-                              'Sign In',
-                              style: TextStyle(
-                                  fontSize: 15, color: Colors.white),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 3),
+                      Text(
+                        captured
+                            ? 'Tap to retake photo'
+                            : 'Tap to open camera',
+                        style: const TextStyle(
+                          color: Color(0xFF4A5568),
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
                 ),
+                Icon(
+                  captured
+                      ? Icons.check_circle_rounded
+                      : Icons.chevron_right_rounded,
+                  color: captured ? _kOrange : const Color(0xFF4A5568),
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+          if (showError) ...[
+            const SizedBox(height: 6),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Face photo is required',
+                style: TextStyle(
+                  color: _kError,
+                  fontSize: 11.5,
+                ),
               ),
             ),
-          );
-        },
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Gradient CTA button ────────────────────────────────────────────────────────
+class _GradientButton extends StatelessWidget {
+  const _GradientButton({
+    required this.label,
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: 56.h,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isLoading
+                ? [_kOrange.withValues(alpha: 0.5), _kOrangeDark.withValues(alpha: 0.5)]
+                : [_kOrange, _kOrangeDark],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: isLoading
+              ? []
+              : [
+                  BoxShadow(
+                    color: _kOrange.withValues(alpha: 0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+        ),
+        child: Center(
+          child: isLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+        ),
       ),
     );
   }
