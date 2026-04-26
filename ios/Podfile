@@ -57,6 +57,9 @@ post_install do |installer|
       config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
       # Raise minimum deployment target so older pods stop warning.
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      # GoogleMLKit 4.x ships no arm64 simulator slice; exclude arm64 so the
+      # simulator builds as x86_64 and Rosetta 2 handles it on Apple Silicon.
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
     end
     if target.name == 'BoringSSL-GRPC'
       target.source_build_phase.files.each do |file|
@@ -67,5 +70,15 @@ post_install do |installer|
         end
       end
     end
+  end
+
+  # Mirror the arm64 simulator exclusion on the Runner target so app and pods agree.
+  installer.aggregate_targets.each do |agg|
+    agg.user_project.targets.each do |t|
+      t.build_configurations.each do |config|
+        config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = '$(inherited) arm64'
+      end
+    end
+    agg.user_project.save
   end
 end
