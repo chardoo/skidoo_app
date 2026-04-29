@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart'
-    show ChatWebSocketService, WsKeyBundlesEvent, WsParticipantKeyAvailable;
+    show ChatWebSocketService, WsKeyBundlesEvent, WsKeyRotationEvent, WsParticipantKeyAvailable;
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
@@ -42,12 +42,18 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   // correct X3DH header without re-doing the handshake.
   String? _pendingEphemeralKey;
   int? _pendingOtpkId;
+  // SPK ID from the recipient bundle used in the proactive X3DH session.
+  int? _pendingBundleSpkId;
+  // Forces a fresh X3DH handshake on the first send after every room open.
+  // Reset to false by _onKeyBundlesReceived when keys are confirmed unchanged.
+  bool _needsRekey = false;
 
   StreamSubscription<ChatMessage>? _wsMsgSub;
   StreamSubscription<LikeUpdate>? _wsLikeSub;
   StreamSubscription<PictureLikeUpdate>? _wsPicLikeSub;
   StreamSubscription<WsKeyBundlesEvent>? _wsKeyBundlesSub;
   StreamSubscription<WsParticipantKeyAvailable>? _wsParticipantKeySub;
+  StreamSubscription<WsKeyRotationEvent>? _wsKeyRotationSub;
   Timer? _reconnectTimer;
   Timer? _otpkPollTimer;
   int _reconnectAttempts = 0;
@@ -97,6 +103,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_PictureLikeUpdateReceived>(_onPictureLikeUpdateReceived);
     on<_KeyBundlesReceived>(_onKeyBundlesReceived);
     on<_ParticipantKeyAvailable>(_onParticipantKeyAvailable);
+    on<_KeyRotationReceived>(_onKeyRotationReceived);
   }
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -144,6 +151,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _isDirectRoom = true;
       _pendingEphemeralKey = null;
       _pendingOtpkId = null;
+      _pendingBundleSpkId = null;
+      // Default to re-key; _onKeyBundlesReceived cancels this if keys match cache.
+      _needsRekey = true;
       _recipientId = event.room!.participants
           .where((p) => p.userId != _myUserId)
           .map((p) => p.userId)
@@ -165,8 +175,6 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _recipientId = null;
     }
 
-    _connectWsInBackground(event.roomId);
-
     try {
       final fresh = await _getMessages(event.roomId);
       await _markAsRead(event.roomId);
@@ -183,6 +191,18 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         clearError: true,
         // pendingShareUrl is preserved via copyWith (not cleared here)
       ));
+
+      // Scan REST history for X3DH headers BEFORE the WS connects.
+      // REST messages still carry is_encrypted=true and the full X3DH header.
+      // Processing them here stores the correct session key so that the guard
+      // in _onKeyBundlesReceived (loadSessionKey != null) skips
+      // _setupE2EESession — which would otherwise store a wrong proactive key.
+      // Previously-processed messages are cached as is_encrypted=false and are
+      // filtered out by knownIds, so their already-deleted OTPKs are never
+      // re-used for a second (wrong) derivation.
+      if (_isDirectRoom && _currentRoomId != null) {
+        await _deriveKeyFromHistory(emit);
+      }
     } catch (e) {
       emit(state.copyWith(
         isLoadingHistory: false,
@@ -190,6 +210,10 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         errorMessage:
             state.messages.isEmpty ? 'Could not load messages.' : null,
       ));
+    } finally {
+      // Connect WS only after history is fully processed: the stored session
+      // key is now correct, so _onKeyBundlesReceived will skip proactive setup.
+      _connectWsInBackground(event.roomId);
     }
   }
 
@@ -200,6 +224,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsPicLikeSub?.cancel();
     _wsKeyBundlesSub?.cancel();
     _wsParticipantKeySub?.cancel();
+    _wsKeyRotationSub?.cancel();
     _ws.connect(roomId).then((_) {
       if (isClosed) return;
 
@@ -238,6 +263,16 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           if (!isClosed) {
             add(_ParticipantKeyAvailable(
                 event.userId, event.identityKey, event.signedPreKey));
+          }
+        },
+      );
+
+      _wsKeyRotationSub = _ws.keyRotationEvents.listen(
+        (event) {
+          if (!isClosed) {
+            add(_KeyRotationReceived(
+                event.userId, event.identityKey, event.signedPreKey,
+                registrationId: event.registrationId));
           }
         },
       );
@@ -460,15 +495,48 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       ));
 
       // Encrypt the message for direct (DM) rooms.
-      debugPrint('[E2EE] send — isDirectRoom: $_isDirectRoom, recipientId: $_recipientId');
+      debugPrint('[E2EE] send — isDirectRoom: $_isDirectRoom, recipientId: $_recipientId, needsRekey: $_needsRekey');
       if (_isDirectRoom && _recipientId != null) {
         try {
-          // Reuse cached session key if available; otherwise perform X3DH.
           var sessionKey = await _e2ee.loadSessionKey(_currentRoomId!);
           String? ephemeralKey;
           String? myIdentityKey;
           int? otpkId;
-          if (sessionKey == null) {
+          int? bundleSpkId; // SPK ID from recipient bundle used in X3DH
+
+          if (_needsRekey) {
+            // Establish a fresh X3DH session. _needsRekey is true when keys
+            // changed (detected by _onKeyBundlesReceived) or when no WS
+            // key_bundles event has arrived yet (safe default from _onJoined).
+            _needsRekey = false;
+            debugPrint('[E2EE] Re-key: fetching bundle for fresh X3DH');
+            final bundle = await _keyDs.fetchBundle(_recipientId!);
+            if (bundle != null) {
+              final session = await _e2ee.createSendingSession(bundle);
+              sessionKey = session.sessionKey;
+              await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
+              await _e2ee.storeCachedBundle(
+                _recipientId!,
+                identityKey: bundle.identityKey,
+                signedPreKeyId: bundle.signedPreKeyId,
+              );
+              ephemeralKey = session.ephemeralPublicKey;
+              otpkId = session.otpkId;
+              bundleSpkId = bundle.signedPreKeyId;
+              myIdentityKey = await _e2ee.identityPublicKey();
+              _pendingEphemeralKey = null;
+              _pendingOtpkId = null;
+              _pendingBundleSpkId = null;
+              debugPrint('[E2EE] Re-key complete (otpkId: $otpkId)');
+            } else if (sessionKey == null) {
+              debugPrint('[E2EE] Re-key: no bundle and no key — sending plaintext');
+              _ws.send(content, replyToId: event.replyToId);
+              _cacheMessage(optimistic).catchError((_) {});
+              return;
+            } else {
+              debugPrint('[E2EE] Re-key: no bundle — reusing existing key (degraded)');
+            }
+          } else if (sessionKey == null) {
             debugPrint('[E2EE] No session key — fetching recipient bundle for $_recipientId');
             final recipientBundle = await _keyDs.fetchBundle(_recipientId!);
             if (recipientBundle == null) {
@@ -482,29 +550,39 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             sessionKey = session.sessionKey;
             ephemeralKey = session.ephemeralPublicKey;
             otpkId = session.otpkId;
+            bundleSpkId = recipientBundle.signedPreKeyId;
             myIdentityKey = await _e2ee.identityPublicKey();
             await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
+            await _e2ee.storeCachedBundle(
+              _recipientId!,
+              identityKey: recipientBundle.identityKey,
+              signedPreKeyId: recipientBundle.signedPreKeyId,
+            );
             debugPrint('[E2EE] Session established (otpkId: $otpkId)');
           } else if (_pendingEphemeralKey != null) {
             // Session was pre-established by _setupE2EESession — use its
             // X3DH header for the first encrypted message, then clear it.
             ephemeralKey = _pendingEphemeralKey;
             otpkId = _pendingOtpkId;
+            bundleSpkId = _pendingBundleSpkId;
             myIdentityKey = await _e2ee.identityPublicKey();
             _pendingEphemeralKey = null;
             _pendingOtpkId = null;
+            _pendingBundleSpkId = null;
             debugPrint('[E2EE] Using pre-established session (proactive X3DH)');
           } else {
             debugPrint('[E2EE] Reusing cached session key');
           }
+          final keyHex = sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
           final encrypted = await _e2ee.encrypt(sessionKey, content);
-          debugPrint('[E2EE] Encrypted OK (session: ${ephemeralKey != null ? "new X3DH" : "cached"}) — sending over WS');
+          debugPrint('[E2EE] Encrypted OK (session: ${ephemeralKey != null ? "new X3DH" : "cached"}, keyPrefix=$keyHex) — sending over WS');
           _ws.sendEncrypted(
             ciphertext: encrypted.ciphertext,
             iv: encrypted.iv,
             ephemeralKey: ephemeralKey,
             senderIdentityKey: myIdentityKey,
             otpkId: otpkId,
+            senderSpkId: bundleSpkId,
             replyToId: event.replyToId,
           );
         } catch (e) {
@@ -602,8 +680,20 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         msg.content.isNotEmpty &&
         msg.iv != null &&
         _currentRoomId != null) {
+      // Stale sender key — identity key no longer matches the server's current
+      // bundle for this sender. Decline to decrypt: the message may have been
+      // sent by an old/compromised key. Delete our session and rekey on next
+      // send so both sides re-synchronise.
+      if (msg.stale == true) {
+        await _e2ee.deleteSessionKey(_currentRoomId!);
+        _needsRekey = true;
+        debugPrint('[E2EE] stale flag set for msg ${msg.id} — session cleared, rekey on next send');
+        msg = msg.copyWith(content: '', isEncrypted: false);
+      } else {
       try {
         Uint8List? sessionKey;
+        bool alreadyDecrypted = false;
+
         // First message after X3DH carries the sender's ephemeral key and
         // identity key — use them to derive the shared session key.
         // IMPORTANT: skip X3DH for echoes of our own messages. The server
@@ -616,32 +706,87 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             msg.senderIdentityKey != null &&
             msg.senderIdentityKey!.isNotEmpty &&
             msg.senderId != _myUserId) {
+          // First message of a new X3DH session from the other party.
+          // senderSpkId tells us which of our SPKs the sender used; if it
+          // differs from our current SPK, try the prev SPK first.
           await _e2ee.storeIdentityKey(msg.senderId, msg.senderIdentityKey!);
-          sessionKey = await _e2ee.deriveReceivingKey(
+          final mySpkId = await _e2ee.currentSpkId();
+          final tryPrevFirst = msg.senderSpkId != null &&
+              mySpkId != null &&
+              msg.senderSpkId != mySpkId;
+          final x3dhResult = await _deriveAndDecryptX3DH(
             senderIdentityKey: msg.senderIdentityKey!,
             senderEphemeralKey: msg.ephemeralKey!,
-            consumedOtpkId: msg.otpkId,
+            otpkId: msg.otpkId,
+            ciphertext: msg.content,
+            iv: msg.iv!,
+            tryPrevSpkFirst: tryPrevFirst,
           );
-          await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
-          debugPrint('[E2EE] Receiver: derived session key via X3DH (otpkId: ${msg.otpkId})');
+          if (x3dhResult != null) {
+            sessionKey = x3dhResult.$1;
+            await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
+            // CRITICAL: clear any pending proactive X3DH state.
+            // If we had run proactive setup, _pendingEphemeralKey was set to an
+            // ephemeral key that is associated with _our_ proactive session key
+            // (K_proactive_ours), NOT with the session key we just derived from
+            // the other side (K_derived). If we sent a message with
+            // _pendingEphemeralKey as the header while encrypting with K_derived,
+            // the receiver would derive K_proactive_ours from that header and
+            // fail to decrypt. Clearing here ensures the first send after this
+            // uses no header and just re-uses K_derived.
+            _pendingEphemeralKey = null;
+            _pendingOtpkId = null;
+            debugPrint('[E2EE] Receiver: session key derived via X3DH (otpkId: ${msg.otpkId}), proactive state cleared');
+            msg = msg.copyWith(content: x3dhResult.$2, isEncrypted: false);
+            alreadyDecrypted = true;
+            // Re-decrypt any encrypted messages already in state (from REST
+            // history) that arrived before the session key was established.
+            await _redecryptEncryptedMessages(emit, sessionKey);
+          } else {
+            debugPrint('[E2EE] X3DH receive failed (both SPKs) for msg ${msg.id}');
+            msg = msg.copyWith(content: '', isEncrypted: false);
+            alreadyDecrypted = true;
+          }
         } else {
           // Own echo or subsequent message — reuse the stored session key.
           sessionKey = await _e2ee.loadSessionKey(_currentRoomId!);
-          debugPrint('[E2EE] Receiver: reusing cached session key (own echo or cont. msg)');
+          final isOwnEcho = msg.senderId == _myUserId;
+          final hasEphKey = msg.ephemeralKey != null && msg.ephemeralKey!.isNotEmpty;
+          debugPrint('[E2EE] Receiver: reusing stored session key'
+              ' | isOwnEcho=$isOwnEcho'
+              ' | hasEphKey=$hasEphKey'
+              ' | keyLoaded=${sessionKey != null}'
+              ' | keyBytes=${sessionKey != null ? sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, "0")).join() : "null"}'
+              ' | msgId=${msg.id}');
         }
-        if (sessionKey != null) {
-          // Content field carries the base64url ciphertext when is_encrypted=true.
-          final plaintext = await _e2ee.decrypt(sessionKey, msg.content, msg.iv!);
-          debugPrint('[E2EE] Decrypted OK: "${plaintext.length > 30 ? plaintext.substring(0, 30) : plaintext}..."');
-          msg = msg.copyWith(content: plaintext, isEncrypted: false);
-        } else {
-          debugPrint('[E2EE] No session key available — showing empty message');
-          msg = msg.copyWith(content: '', isEncrypted: false);
+
+        if (!alreadyDecrypted) {
+          if (sessionKey != null) {
+            final plaintext = await _e2ee.decrypt(sessionKey, msg.content, msg.iv!);
+            debugPrint('[E2EE] Decrypted OK: "${plaintext.length > 30 ? plaintext.substring(0, 30) : plaintext}..."');
+            msg = msg.copyWith(content: plaintext, isEncrypted: false);
+          } else {
+            debugPrint('[E2EE] No session key yet — cannot decrypt msg ${msg.id}');
+            msg = msg.copyWith(content: '', isEncrypted: false);
+          }
         }
       } catch (e) {
         debugPrint('[E2EE] Decrypt failed for msg ${msg.id}: $e');
+        // MAC error on an ongoing message (no X3DH header, not our own echo)
+        // means the stored session key doesn't match the sender's. Wipe it and
+        // schedule a rekey so the next outbound message carries a fresh X3DH
+        // header — the sender derives the new session key from that header and
+        // both sides re-synchronise automatically.
+        final isOngoing = msg.ephemeralKey == null || msg.ephemeralKey!.isEmpty;
+        final isFromOther = msg.senderId != _myUserId;
+        if (isOngoing && isFromOther && _currentRoomId != null) {
+          await _e2ee.deleteSessionKey(_currentRoomId!);
+          _needsRekey = true;
+          debugPrint('[E2EE] MAC error on ongoing message — session cleared, rekey on next send');
+        }
         msg = msg.copyWith(content: '', isEncrypted: false);
       }
+      } // end else (not stale)
     }
 
     // Find the optimistic placeholder this message is confirming (if any).
@@ -675,6 +820,161 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
   }
 
+  /// Derives the session key and decrypts the first X3DH message from the
+  /// other party, with a fallback to the archived previous SPK for messages
+  /// that were sent during a rotation window.
+  ///
+  /// The OTPK private key is NOT deleted until the correct SPK is confirmed
+  /// (via successful AES-GCM decryption), so both attempts have access to DH4.
+  ///
+  /// Returns a (sessionKey, plaintext) record on success, or null on failure.
+  Future<(Uint8List, String)?> _deriveAndDecryptX3DH({
+    required String senderIdentityKey,
+    required String senderEphemeralKey,
+    int? otpkId,
+    required String ciphertext,
+    required String iv,
+    bool tryPrevSpkFirst = false,
+  }) async {
+    // Never delete the OTPK until the correct SPK is confirmed — both
+    // attempts need access to DH4. Delete explicitly after success.
+
+    if (!tryPrevSpkFirst) {
+      // Standard path: try the current SPK first.
+      try {
+        final key = await _e2ee.deriveReceivingKey(
+          senderIdentityKey: senderIdentityKey,
+          senderEphemeralKey: senderEphemeralKey,
+          consumedOtpkId: otpkId,
+          deleteConsumedOtpk: false,
+        );
+        final plain = await _e2ee.decrypt(key, ciphertext, iv);
+        if (otpkId != null) await _e2ee.deleteOtpk(otpkId);
+        return (key, plain);
+      } catch (_) {}
+    }
+
+    // Try the archived previous SPK (sender's senderSpkId hint, or current failed).
+    try {
+      final key = await _e2ee.deriveReceivingKey(
+        senderIdentityKey: senderIdentityKey,
+        senderEphemeralKey: senderEphemeralKey,
+        consumedOtpkId: otpkId,
+        usePrevSPK: true,
+        deleteConsumedOtpk: false,
+      );
+      final plain = await _e2ee.decrypt(key, ciphertext, iv);
+      if (otpkId != null) await _e2ee.deleteOtpk(otpkId);
+      debugPrint('[E2EE] Decrypted using previous SPK (rotation window fallback)');
+      return (key, plain);
+    } catch (_) {}
+
+    if (tryPrevSpkFirst) {
+      // Prev SPK hinted but failed — fall back to the current SPK.
+      try {
+        final key = await _e2ee.deriveReceivingKey(
+          senderIdentityKey: senderIdentityKey,
+          senderEphemeralKey: senderEphemeralKey,
+          consumedOtpkId: otpkId,
+          deleteConsumedOtpk: false,
+        );
+        final plain = await _e2ee.decrypt(key, ciphertext, iv);
+        if (otpkId != null) await _e2ee.deleteOtpk(otpkId);
+        return (key, plain);
+      } catch (e) {
+        debugPrint('[E2EE] _deriveAndDecryptX3DH: all SPK attempts failed — $e');
+        return null;
+      }
+    }
+
+    debugPrint('[E2EE] _deriveAndDecryptX3DH: both SPKs failed');
+    return null;
+  }
+
+  /// After the session key is established for the first time, go through
+  /// any encrypted messages already in state (typically from the REST history
+  /// fetch that runs in _onJoined before the WS connects) and decrypt them.
+  Future<void> _redecryptEncryptedMessages(
+    Emitter<ChatRoomState> emit,
+    Uint8List sessionKey,
+  ) async {
+    final toDecrypt = state.messages
+        .where((m) => m.isEncrypted && m.content.isNotEmpty && m.iv != null)
+        .toList();
+    if (toDecrypt.isEmpty) return;
+    debugPrint('[E2EE] Re-decrypting ${toDecrypt.length} historical message(s)');
+
+    final decryptedMap = <String, ChatMessage>{};
+    for (final m in toDecrypt) {
+      try {
+        final plaintext = await _e2ee.decrypt(sessionKey, m.content, m.iv!);
+        final updated = m.copyWith(content: plaintext, isEncrypted: false);
+        decryptedMap[m.id] = updated;
+        _cacheMessage(updated).catchError((_) {});
+      } catch (e) {
+        debugPrint('[E2EE] Re-decrypt failed for ${m.id}: $e');
+        decryptedMap[m.id] = m.copyWith(content: '', isEncrypted: false);
+      }
+    }
+
+    final updatedMessages = state.messages
+        .map((m) => decryptedMap[m.id] ?? m)
+        .toList();
+    emit(state.copyWith(messages: _sorted(updatedMessages)));
+  }
+
+  /// Scans already-loaded history for an X3DH opener from the other party
+  /// and, if found, derives and stores the session key before the WebSocket
+  /// connects. This ensures [_onKeyBundlesReceived] finds an existing session
+  /// key and skips the proactive X3DH setup (which would store a mismatched
+  /// key), and re-decrypts any historically-encrypted messages in state.
+  Future<void> _deriveKeyFromHistory(Emitter<ChatRoomState> emit) async {
+    // Skip if a session key already exists. Re-deriving would attempt to use
+    // the OTPK private key, which is single-use and deleted after the first
+    // derivation. A second pass silently omits DH4 (the catch in
+    // deriveReceivingKey swallows the missing-key error) and produces a
+    // mismatched key that overwrites the correct stored key.
+    if (await _e2ee.loadSessionKey(_currentRoomId!) != null) return;
+
+    // Messages are sorted newest-first; the first match is the most recent
+    // X3DH opener, which establishes the current session.
+    final opener = state.messages
+        .where((m) =>
+            m.isEncrypted &&
+            m.ephemeralKey != null &&
+            m.ephemeralKey!.isNotEmpty &&
+            m.senderIdentityKey != null &&
+            m.senderIdentityKey!.isNotEmpty &&
+            m.senderId != _myUserId)
+        .firstOrNull;
+    if (opener == null) return;
+
+    debugPrint('[E2EE] _deriveKeyFromHistory: found X3DH opener ${opener.id} (otpkId: ${opener.otpkId})');
+    try {
+      await _e2ee.storeIdentityKey(opener.senderId, opener.senderIdentityKey!);
+      final x3dhResult = await _deriveAndDecryptX3DH(
+        senderIdentityKey: opener.senderIdentityKey!,
+        senderEphemeralKey: opener.ephemeralKey!,
+        otpkId: opener.otpkId,
+        ciphertext: opener.content,
+        iv: opener.iv!,
+      );
+      if (x3dhResult == null) {
+        debugPrint('[E2EE] _deriveKeyFromHistory: X3DH failed for opener ${opener.id}');
+        return;
+      }
+      final sessionKey = x3dhResult.$1;
+      await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
+      _pendingEphemeralKey = null;
+      _pendingOtpkId = null;
+      final kHex = sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      debugPrint('[E2EE] _deriveKeyFromHistory: session key stored (keyPrefix=$kHex), proactive state cleared');
+      await _redecryptEncryptedMessages(emit, sessionKey);
+    } catch (e) {
+      debugPrint('[E2EE] _deriveKeyFromHistory failed: $e');
+    }
+  }
+
   Future<void> _onLoadMore(
     ChatRoomLoadMoreRequested event,
     Emitter<ChatRoomState> emit,
@@ -701,20 +1001,22 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
   }
 
-  /// Server sent key bundles for all DM participants on room join.
-  /// The WS payload carries IK + SPK inline — build the bundle from it
-  /// directly and run X3DH without any REST call. OTPK (DH4) is optional
-  /// per the X3DH spec; we skip it here and accept slightly weaker forward
-  /// secrecy for the proactive session setup.
+  /// Phase 6 — Session invalidation on room join.
+  ///
+  /// The server pushes participant bundles the moment the WS connects. We
+  /// compare the incoming fingerprint ({identityKey, signedPreKeyId}) against
+  /// what we cached from the last successful X3DH. If anything changed the
+  /// recipient reinstalled or rotated their SPK — delete our session key so
+  /// the next send runs a fresh X3DH. If nothing changed, cancel the
+  /// precautionary rekey scheduled by _onJoined and reuse the stored key.
+  ///
+  /// The WS also carries OTPK data inline, so proactive X3DH (when no session
+  /// key exists) runs without an extra REST call.
   Future<void> _onKeyBundlesReceived(
     _KeyBundlesReceived event,
     Emitter<ChatRoomState> emit,
   ) async {
     if (!_isDirectRoom || _recipientId == null || _currentRoomId == null) return;
-    if (await _e2ee.loadSessionKey(_currentRoomId!) != null) {
-      emit(state.copyWith(isE2EEReady: true));
-      return;
-    }
 
     final recipientData = event.bundles
         .where((b) => b['userId'] == _recipientId)
@@ -724,12 +1026,43 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     final bundle = _bundleFromWsData(recipientData);
     if (bundle == null) return;
 
-    debugPrint('[E2EE] key_bundles: building session from WS payload (no OTPK)');
-    await _setupE2EESession(emit, bundle: bundle);
+    // Phase 6: compare against cached bundle fingerprint.
+    final cached = await _e2ee.loadCachedBundle(_recipientId!);
+    final keysChanged = cached == null ||
+        cached['ik'] != bundle.identityKey ||
+        (cached['spkId'] as int) != bundle.signedPreKeyId;
+
+    if (keysChanged) {
+      // Recipient rotated or reinstalled — invalidate the session.
+      await _e2ee.deleteSessionKey(_currentRoomId!);
+      await _e2ee.storeCachedBundle(
+        _recipientId!,
+        identityKey: bundle.identityKey,
+        signedPreKeyId: bundle.signedPreKeyId,
+      );
+      debugPrint('[E2EE] key_bundles: keys changed for $_recipientId — session invalidated, fresh X3DH on next send');
+      // _needsRekey remains true from _onJoined; fresh X3DH runs on first send.
+      return;
+    }
+
+    // Keys unchanged — cancel the precautionary rekey.
+    _needsRekey = false;
+
+    if (await _e2ee.loadSessionKey(_currentRoomId!) == null) {
+      debugPrint('[E2EE] key_bundles: keys unchanged, no session — proactive X3DH');
+      await _setupE2EESession(emit, bundle: bundle);
+    } else {
+      emit(state.copyWith(isE2EEReady: true));
+    }
   }
 
-  /// A participant who previously had no E2EE keys just published them.
-  /// Same approach — use the inline IK + SPK from the WS event.
+  /// A participant published (or re-published) their E2EE keys.
+  /// Apply the same invalidation logic as [_onKeyBundlesReceived]: compare
+  /// against the cached bundle fingerprint. If keys changed, any active
+  /// session on THIS device is invalid — the other party's key material
+  /// changed and they can no longer decrypt messages encrypted with the old
+  /// key. Setting [_needsRekey] forces a fresh X3DH with header on the next
+  /// send, which is the only way to re-synchronise the session.
   Future<void> _onParticipantKeyAvailable(
     _ParticipantKeyAvailable event,
     Emitter<ChatRoomState> emit,
@@ -740,8 +1073,54 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         event.userId != _recipientId) {
       return;
     }
-    if (await _e2ee.loadSessionKey(_currentRoomId!) != null) {
+
+    final bundle = _bundleFromWsData({
+      'identityKey': event.identityKey,
+      'signedPreKey': event.signedPreKey,
+    });
+    if (bundle == null) return;
+
+    final cached = await _e2ee.loadCachedBundle(_recipientId!);
+    final keysChanged = cached == null ||
+        cached['ik'] != bundle.identityKey ||
+        (cached['spkId'] as int) != bundle.signedPreKeyId;
+
+    if (keysChanged) {
+      await _e2ee.deleteSessionKey(_currentRoomId!);
+      await _e2ee.storeCachedBundle(
+        _recipientId!,
+        identityKey: bundle.identityKey,
+        signedPreKeyId: bundle.signedPreKeyId,
+      );
+      _needsRekey = true;
+      debugPrint('[E2EE] participant_key_available: keys changed for ${event.userId} — session invalidated, fresh X3DH on next send');
+      return;
+    }
+
+    // Keys unchanged — run proactive X3DH only if no session exists and no
+    // rekey is already scheduled. Checking _pendingEphemeralKey guards against
+    // concurrent duplicate events both attempting X3DH at the same time.
+    if (_needsRekey ||
+        _pendingEphemeralKey != null ||
+        await _e2ee.loadSessionKey(_currentRoomId!) != null) {
       emit(state.copyWith(isE2EEReady: true));
+      return;
+    }
+
+    debugPrint('[E2EE] participant_key_available: building proactive session (no OTPK)');
+    await _setupE2EESession(emit, bundle: bundle);
+  }
+
+  /// A participant rotated their key bundle (server broadcast via key_rotation).
+  /// Identical invalidation logic to [_onParticipantKeyAvailable].
+  Future<void> _onKeyRotationReceived(
+    _KeyRotationReceived event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    if (!_isDirectRoom ||
+        _recipientId == null ||
+        _currentRoomId == null ||
+        event.userId != _recipientId) {
       return;
     }
 
@@ -751,7 +1130,31 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     });
     if (bundle == null) return;
 
-    debugPrint('[E2EE] participant_key_available: building session from WS payload (no OTPK)');
+    final cached = await _e2ee.loadCachedBundle(_recipientId!);
+    final keysChanged = cached == null ||
+        cached['ik'] != bundle.identityKey ||
+        (cached['spkId'] as int) != bundle.signedPreKeyId;
+
+    if (keysChanged) {
+      await _e2ee.deleteSessionKey(_currentRoomId!);
+      await _e2ee.storeCachedBundle(
+        _recipientId!,
+        identityKey: bundle.identityKey,
+        signedPreKeyId: bundle.signedPreKeyId,
+      );
+      _needsRekey = true;
+      debugPrint('[E2EE] key_rotation: keys changed for ${event.userId} — session invalidated, fresh X3DH on next send');
+      return;
+    }
+
+    if (_needsRekey ||
+        _pendingEphemeralKey != null ||
+        await _e2ee.loadSessionKey(_currentRoomId!) != null) {
+      emit(state.copyWith(isE2EEReady: true));
+      return;
+    }
+
+    debugPrint('[E2EE] key_rotation: building proactive session (no OTPK)');
     await _setupE2EESession(emit, bundle: bundle);
   }
 
@@ -771,6 +1174,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         signedPreKeySignature: spkRaw['signature'] as String? ?? '',
         oneTimePreKeyId: (otpk?['keyId'] as num?)?.toInt(),
         oneTimePreKey: otpk?['publicKey'] as String?,
+        registrationId: (data['registrationId'] as num?)?.toInt(),
       );
     } catch (_) {
       return null;
@@ -778,7 +1182,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   }
 
   /// Runs X3DH with [bundle] (or falls back to a REST fetch if omitted),
-  /// stores the session key, and caches the X3DH header for the first message.
+  /// stores the session key, caches the bundle fingerprint for Phase 6,
+  /// and saves the X3DH header for the first outgoing message.
   Future<void> _setupE2EESession(
     Emitter<ChatRoomState> emit, {
     RecipientKeyBundle? bundle,
@@ -788,9 +1193,16 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       if (resolvedBundle == null) return;
       final session = await _e2ee.createSendingSession(resolvedBundle);
       await _e2ee.storeSessionKey(_currentRoomId!, session.sessionKey);
+      await _e2ee.storeCachedBundle(
+        _recipientId!,
+        identityKey: resolvedBundle.identityKey,
+        signedPreKeyId: resolvedBundle.signedPreKeyId,
+      );
       _pendingEphemeralKey = session.ephemeralPublicKey;
       _pendingOtpkId = session.otpkId;
-      debugPrint('[E2EE] Session pre-established (otpkId: ${session.otpkId})');
+      _pendingBundleSpkId = resolvedBundle.signedPreKeyId;
+      final kHex = session.sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      debugPrint('[E2EE] Session pre-established (otpkId: ${session.otpkId}, keyPrefix=$kHex)');
       emit(state.copyWith(isE2EEReady: true));
     } catch (e) {
       debugPrint('[E2EE] Proactive session setup failed: $e');
@@ -812,6 +1224,13 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         _keysPublished = true;
         debugPrint('[E2EE] Bundle published OK (${bundle.oneTimePreKeys.length} OTPKs)');
         _replenishOtpksIfNeeded().catchError((_) {});
+
+        // SPK rotation — check while already in the background.
+        if (await _e2ee.needsSPKRotation()) {
+          final rotated = await _e2ee.rotateSPK();
+          await _keyDs.publishBundle(rotated);
+          debugPrint('[E2EE] SPK rotated in background');
+        }
       } catch (e) {
         debugPrint('[E2EE] Failed to publish bundle: $e');
       }
@@ -840,6 +1259,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsPicLikeSub?.cancel();
     _wsKeyBundlesSub?.cancel();
     _wsParticipantKeySub?.cancel();
+    _wsKeyRotationSub?.cancel();
     _ws.disconnect();
     emit(state.copyWith(isConnected: false, isConnecting: false));
     if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
@@ -854,6 +1274,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsPicLikeSub?.cancel();
     _wsKeyBundlesSub?.cancel();
     _wsParticipantKeySub?.cancel();
+    _wsKeyRotationSub?.cancel();
     _ws.disconnect();
     if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
     return super.close();

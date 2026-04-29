@@ -61,6 +61,7 @@ class RecipientKeyBundle {
   final String signedPreKeySignature;
   final int? oneTimePreKeyId;
   final String? oneTimePreKey;
+  final int? registrationId;
 
   const RecipientKeyBundle({
     required this.identityKey,
@@ -69,6 +70,7 @@ class RecipientKeyBundle {
     required this.signedPreKeySignature,
     this.oneTimePreKeyId,
     this.oneTimePreKey,
+    this.registrationId,
   });
 
   factory RecipientKeyBundle.fromJson(Map<String, dynamic> json) {
@@ -86,6 +88,7 @@ class RecipientKeyBundle {
       signedPreKeySignature: spk['signature'] as String,
       oneTimePreKeyId: (otpk?['keyId'] as num?)?.toInt(),
       oneTimePreKey: otpk?['publicKey'] as String?,
+      registrationId: (json['registrationId'] as num?)?.toInt(),
     );
   }
 }
@@ -116,31 +119,39 @@ class EncryptedPayload {
 /// X3DH key exchange + AES-256-GCM message encryption.
 ///
 /// Key storage layout in FlutterSecureStorage:
-///   e2ee.ik.priv          — X25519 identity key private (32 bytes, base64url)
-///   e2ee.ik.pub           — X25519 identity key public  (32 bytes, base64url)
-///   e2ee.spk.priv         — X25519 signed prekey private
-///   e2ee.spk.pub          — X25519 signed prekey public
-///   e2ee.spk.sig          — HMAC-SHA256 signature of SPK pub
-///   e2ee.reg_id           — registration ID (integer string)
-///   e2ee.spk_id           — signed prekey ID (integer string)
-///   e2ee.otpk.<id>.priv   — one-time prekey private (deleted after use)
-///   e2ee.session.<roomId> — AES-256 session key for a room (base64url)
-///   e2ee.ik_peer.<userId> — cached peer identity key (base64url)
+///   e2ee.ik.priv              — X25519 identity key private (32 bytes, base64url)
+///   e2ee.ik.pub               — X25519 identity key public  (32 bytes, base64url)
+///   e2ee.spk.priv             — X25519 signed prekey private (current)
+///   e2ee.spk.pub              — X25519 signed prekey public  (current)
+///   e2ee.spk.sig              — HMAC-SHA256 signature of SPK pub
+///   e2ee.spk.prev.priv        — previous SPK private (kept for one rotation window)
+///   e2ee.spk.prev.id          — previous SPK ID
+///   e2ee.spk_created_at       — ISO-8601 timestamp of current SPK creation
+///   e2ee.reg_id               — registration ID (integer string)
+///   e2ee.spk_id               — signed prekey ID (integer string)
+///   e2ee.otpk.<id>.priv       — one-time prekey private (deleted after use)
+///   e2ee.session.<roomId>     — AES-256 session key for a room (base64url)
+///   e2ee.ik_peer.<userId>     — cached peer identity key (base64url)
+///   e2ee.cached_bundle.<uid>  — {ik, spkId} for Phase 6 invalidation
 class E2eeService {
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 
-  static const _kIkPriv   = 'e2ee.ik.priv';
-  static const _kIkPub    = 'e2ee.ik.pub';
-  static const _kSpkPriv  = 'e2ee.spk.priv';
-  static const _kSpkPub   = 'e2ee.spk.pub';
-  static const _kSpkSig   = 'e2ee.spk.sig';
-  static const _kRegId    = 'e2ee.reg_id';
-  static const _kSpkId    = 'e2ee.spk_id';
+  static const _kIkPriv      = 'e2ee.ik.priv';
+  static const _kIkPub       = 'e2ee.ik.pub';
+  static const _kSpkPriv     = 'e2ee.spk.priv';
+  static const _kSpkPub      = 'e2ee.spk.pub';
+  static const _kSpkSig      = 'e2ee.spk.sig';
+  static const _kRegId       = 'e2ee.reg_id';
+  static const _kSpkId       = 'e2ee.spk_id';
+  static const _kSpkCreatedAt = 'e2ee.spk_created_at';
+  static const _kSpkPrevPriv  = 'e2ee.spk.prev.priv';
+  static const _kSpkPrevId    = 'e2ee.spk.prev.id';
 
   static const int _initialOtpkCount = 100;
+  static const Duration _spkRotationPeriod = Duration(days: 7);
 
   final _x25519 = X25519();
   final _aesGcm = AesGcm.with256bits();
@@ -183,13 +194,14 @@ class E2eeService {
     final spkId          = rng.nextInt(0x7FFFFFFF);
 
     await Future.wait([
-      _storage.write(key: _kIkPriv,  value: _b64e(ikPriv)),
-      _storage.write(key: _kIkPub,   value: _b64e(ikPub.bytes)),
-      _storage.write(key: _kSpkPriv, value: _b64e(spkPriv)),
-      _storage.write(key: _kSpkPub,  value: _b64e(spkPub.bytes)),
-      _storage.write(key: _kSpkSig,  value: _b64e(spkSig)),
-      _storage.write(key: _kRegId,   value: registrationId.toString()),
-      _storage.write(key: _kSpkId,   value: spkId.toString()),
+      _storage.write(key: _kIkPriv,      value: _b64e(ikPriv)),
+      _storage.write(key: _kIkPub,       value: _b64e(ikPub.bytes)),
+      _storage.write(key: _kSpkPriv,     value: _b64e(spkPriv)),
+      _storage.write(key: _kSpkPub,      value: _b64e(spkPub.bytes)),
+      _storage.write(key: _kSpkSig,      value: _b64e(spkSig)),
+      _storage.write(key: _kRegId,       value: registrationId.toString()),
+      _storage.write(key: _kSpkId,       value: spkId.toString()),
+      _storage.write(key: _kSpkCreatedAt, value: DateTime.now().toIso8601String()),
     ]);
 
     final otpks = await _generateOtpkEntries(_initialOtpkCount);
@@ -231,6 +243,65 @@ class E2eeService {
     );
   }
 
+  // ── SPK rotation ────────────────────────────────────────────────────────────
+
+  /// Returns true when the current SPK is older than [_spkRotationPeriod].
+  /// Initialises the creation timestamp to now (without rotating) if it is
+  /// missing — this handles devices that upgraded before rotation was added.
+  Future<bool> needsSPKRotation() async {
+    var v = await _storage.read(key: _kSpkCreatedAt);
+    if (v == null) {
+      if (await hasKeys()) {
+        // First run after upgrade: stamp now so rotation triggers in 7 days.
+        await _storage.write(
+            key: _kSpkCreatedAt, value: DateTime.now().toIso8601String());
+      }
+      return false;
+    }
+    return DateTime.now().difference(DateTime.parse(v)) >= _spkRotationPeriod;
+  }
+
+  /// Generates a new SPK, archives the old one as "prev" (kept for one
+  /// rotation window to decrypt in-flight first messages), and returns the
+  /// new [PublishableKeyBundle] (empty OTPKs — top up separately).
+  Future<PublishableKeyBundle> rotateSPK() async {
+    // Archive current SPK so in-flight X3DH messages can still be decrypted.
+    final curPriv = await _storage.read(key: _kSpkPriv);
+    final curId   = await _storage.read(key: _kSpkId);
+    if (curPriv != null && curId != null) {
+      await Future.wait([
+        _storage.write(key: _kSpkPrevPriv, value: curPriv),
+        _storage.write(key: _kSpkPrevId,   value: curId),
+      ]);
+    }
+
+    final spkPair = await _x25519.newKeyPair();
+    final spkPub  = await spkPair.extractPublicKey();
+    final spkPriv = await spkPair.extractPrivateKeyBytes();
+    final ikPriv  = await _readPrivKey(_kIkPriv);
+    final spkSig  = await _signSpk(ikPrivBytes: ikPriv, spkPubBytes: spkPub.bytes);
+    final newSpkId = Random.secure().nextInt(0x7FFFFFFF);
+
+    await Future.wait([
+      _storage.write(key: _kSpkPriv,      value: _b64e(spkPriv)),
+      _storage.write(key: _kSpkPub,       value: _b64e(spkPub.bytes)),
+      _storage.write(key: _kSpkSig,       value: _b64e(spkSig)),
+      _storage.write(key: _kSpkId,        value: newSpkId.toString()),
+      _storage.write(key: _kSpkCreatedAt, value: DateTime.now().toIso8601String()),
+    ]);
+
+    final ikPub = (await _storage.read(key: _kIkPub))!;
+    final regId = (await _storage.read(key: _kRegId))!;
+    return PublishableKeyBundle(
+      identityKey: ikPub,
+      registrationId: int.parse(regId),
+      signedPreKeyId: newSpkId,
+      signedPreKey: _b64e(spkPub.bytes),
+      signedPreKeySignature: _b64e(spkSig),
+      oneTimePreKeys: [],
+    );
+  }
+
   // ── Sending: X3DH → session key ────────────────────────────────────────────
 
   /// Performs X3DH as the initiator with [bundle] to derive a 32-byte session key.
@@ -240,7 +311,7 @@ class E2eeService {
   ///   DH3 = X25519(ephemeral_private,      recipient.signedPreKey)
   ///   DH4 = X25519(ephemeral_private,      recipient.oneTimePreKey)  // if present
   ///
-  ///   master_secret = HKDF(DH1||DH2||DH3||DH4, salt=32×0x00, info="PhotoApp X3DH v1")
+  ///   master_secret = HKDF(DH1||DH2||DH3||DH4, salt=32×0x00, info="chat-e2e")
   Future<SendingSession> createSendingSession(RecipientKeyBundle bundle) async {
     final ikAPriv = await _readPrivKey(_kIkPriv);
 
@@ -285,13 +356,28 @@ class E2eeService {
   /// [senderIdentityKey] — IK_A public key (base64url), from the WS message.
   /// [senderEphemeralKey] — EK_A public key (base64url), from the WS message.
   /// [consumedOtpkId]    — keyId of the OPK consumed (null if none).
+  /// [usePrevSPK]        — use the archived previous SPK (for SPK rotation fallback).
+  /// [deleteConsumedOtpk] — delete the OTPK private key after deriving DH4.
+  ///                        Pass false when test-decrypting before committing.
   Future<Uint8List> deriveReceivingKey({
     required String senderIdentityKey,
     required String senderEphemeralKey,
     int? consumedOtpkId,
+    bool usePrevSPK = false,
+    bool deleteConsumedOtpk = true,
   }) async {
-    final spkBPriv = await _readPrivKey(_kSpkPriv);
-    final ikBPriv  = await _readPrivKey(_kIkPriv);
+    final Uint8List spkBPriv;
+    if (usePrevSPK) {
+      final v = await _storage.read(key: _kSpkPrevPriv);
+      if (v == null || v.isEmpty) {
+        throw Exception('E2EE: no previous SPK available for fallback');
+      }
+      spkBPriv = _b64d(v);
+    } else {
+      spkBPriv = await _readPrivKey(_kSpkPriv);
+    }
+
+    final ikBPriv = await _readPrivKey(_kIkPriv);
 
     final ikAPub = _toPub(senderIdentityKey);
     final ekAPub = _toPub(senderEphemeralKey);
@@ -306,8 +392,9 @@ class E2eeService {
       try {
         final otpkPriv = await _readPrivKey(storageKey);
         dh4 = await _dh(otpkPriv, ekAPub);    // OPK_B × EK_A
-        // Single-use: delete the private key after consuming.
-        await _storage.delete(key: storageKey);
+        if (deleteConsumedOtpk) {
+          await _storage.delete(key: storageKey);
+        }
       } catch (_) {
         // OPK already consumed or not found — proceed without DH4.
       }
@@ -316,11 +403,22 @@ class E2eeService {
     return _x3dhDerive(dh1, dh2, dh3, dh4);
   }
 
+  /// Explicitly deletes a one-time prekey private key from secure storage.
+  /// Call this after confirming that a session key derived with that OTPK is correct.
+  Future<void> deleteOtpk(int keyId) =>
+      _storage.delete(key: 'e2ee.otpk.$keyId.priv');
+
   // ── Our own identity public key ────────────────────────────────────────────
 
   /// Returns our X25519 identity public key (base64url), or null if not yet generated.
   Future<String?> identityPublicKey() =>
       _storage.read(key: _kIkPub);
+
+  /// Returns the current SPK ID, or null if no keys have been generated.
+  Future<int?> currentSpkId() async {
+    final v = await _storage.read(key: _kSpkId);
+    return v != null ? int.tryParse(v) : null;
+  }
 
   // ── Session key storage ────────────────────────────────────────────────────
 
@@ -337,12 +435,31 @@ class E2eeService {
 
   // ── Peer identity key cache ────────────────────────────────────────────────
 
-  /// Caches [userId]'s identity public key locally so X3DH receive can use it.
   Future<void> storeIdentityKey(String userId, String ikPub) =>
       _storage.write(key: 'e2ee.ik_peer.$userId', value: ikPub);
 
   Future<String?> loadIdentityKey(String userId) =>
       _storage.read(key: 'e2ee.ik_peer.$userId');
+
+  // ── Phase 6: cached bundle fingerprint (for session invalidation) ──────────
+
+  /// Stores {identityKey, signedPreKeyId} for [userId] so that future room
+  /// opens can detect if the recipient rotated or reinstalled their keys.
+  Future<void> storeCachedBundle(
+    String userId, {
+    required String identityKey,
+    required int signedPreKeyId,
+  }) async {
+    final v = jsonEncode({'ik': identityKey, 'spkId': signedPreKeyId});
+    await _storage.write(key: 'e2ee.cached_bundle.$userId', value: v);
+  }
+
+  /// Returns null if no cached bundle exists for [userId].
+  Future<Map<String, dynamic>?> loadCachedBundle(String userId) async {
+    final v = await _storage.read(key: 'e2ee.cached_bundle.$userId');
+    if (v == null) return null;
+    return jsonDecode(v) as Map<String, dynamic>;
+  }
 
   /// Deletes every e2ee key from secure storage. Called when a different user
   /// logs in so that session keys, identity keys, and OPKs are never reused
@@ -418,7 +535,7 @@ class E2eeService {
   /// HKDF derivation per spec:
   ///   IKM  = DH1 || DH2 || DH3 [ || DH4 ]
   ///   salt = 32 zero bytes
-  ///   info = "PhotoApp X3DH v1"
+  ///   info = "chat-e2e"
   Future<Uint8List> _x3dhDerive(
     Uint8List dh1, Uint8List dh2, Uint8List dh3, Uint8List? dh4) async {
     final ikm = Uint8List.fromList([
@@ -427,8 +544,8 @@ class E2eeService {
     ]);
     final out = await _hkdf.deriveKey(
       secretKey: SecretKey(ikm),
-      nonce: Uint8List(32),                     // 32 zero bytes (salt)
-      info: utf8.encode('PhotoApp X3DH v1'),    // per spec
+      nonce: Uint8List(32),             // 32 zero bytes (salt)
+      info: utf8.encode('chat-e2e'),    // per spec
     );
     return Uint8List.fromList(await out.extractBytes());
   }

@@ -122,3 +122,13 @@ class _ParticipantKeyAvailable extends ChatRoomEvent {
   final Map<String, dynamic> signedPreKey;
   const _ParticipantKeyAvailable(this.userId, this.identityKey, this.signedPreKey);
 }
+
+/// A participant rotated their key bundle (key_rotation WS broadcast).
+class _KeyRotationReceived extends ChatRoomEvent {
+  final String userId;
+  final int? registrationId;
+  final String identityKey;
+  final Map<String, dynamic> signedPreKey;
+  const _KeyRotationReceived(
+      this.userId, this.identityKey, this.signedPreKey, {this.registrationId});
+}

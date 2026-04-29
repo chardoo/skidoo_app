@@ -50,11 +50,8 @@ class ChatMessage {
   final bool isLocal;
 
   // ── E2EE fields (present when server forwards an encrypted message) ─────────
-  /// True when [ciphertext] / [iv] / [ephemeralKey] carry the actual payload.
+  /// True when the server stored ciphertext in [content] instead of plaintext.
   final bool isEncrypted;
-
-  /// Base64url AES-GCM ciphertext (with appended 16-byte MAC).
-  final String? ciphertext;
 
   /// Base64url 12-byte AES-GCM nonce.
   final String? iv;
@@ -69,6 +66,18 @@ class ChatMessage {
   /// keyId of the one-time prekey consumed during X3DH (null if none used).
   /// The receiver needs this to compute DH4 and derive the same session key.
   final int? otpkId;
+
+  /// keyId of the recipient's signed prekey the sender fetched from the bundle
+  /// when running X3DH. Only present on the first message of a session.
+  /// If this differs from the receiver's current SPK ID, the sender used an
+  /// older SPK (rotation window) — the receiver should try the previous SPK.
+  final int? senderSpkId;
+
+  /// Server-set staleness flag — only present when [ephemeralKey] is non-null.
+  ///   true  → sender's identity key doesn't match their current bundle
+  ///   false → match, credentials are current
+  ///   null  → ongoing session (no sender_identity_key in this message)
+  final bool? stale;
 
   const ChatMessage({
     required this.id,
@@ -85,11 +94,12 @@ class ChatMessage {
     this.isRead = false,
     this.isLocal = false,
     this.isEncrypted = false,
-    this.ciphertext,
     this.iv,
     this.ephemeralKey,
     this.senderIdentityKey,
     this.otpkId,
+    this.senderSpkId,
+    this.stale,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -119,11 +129,12 @@ class ChatMessage {
       createdAt: DateTime.parse(json['created_at'] as String),
       isRead: (json['is_read'] as bool?) ?? false,
       isEncrypted: (json['is_encrypted'] as bool?) ?? false,
-      ciphertext: json['ciphertext'] as String?,
       iv: json['iv'] as String?,
       ephemeralKey: json['ephemeral_key'] as String?,
       senderIdentityKey: json['sender_identity_key'] as String?,
       otpkId: (json['otpk_id'] as num?)?.toInt(),
+      senderSpkId: (json['spk_id'] as num?)?.toInt(),
+      stale: json['stale'] as bool?,
     );
   }
 
@@ -153,11 +164,12 @@ class ChatMessage {
         'is_read': isRead ? 1 : 0,
         'is_local': isLocal ? 1 : 0,
         'is_encrypted': isEncrypted ? 1 : 0,
-        'ciphertext': ciphertext,
         'iv': iv,
         'ephemeral_key': ephemeralKey,
         'sender_identity_key': senderIdentityKey,
         'otpk_id': otpkId,
+        'spk_id': senderSpkId,
+        'stale': stale,
       };
 
   ChatMessage copyWith({
@@ -185,11 +197,12 @@ class ChatMessage {
       isRead: isRead ?? this.isRead,
       isLocal: isLocal ?? this.isLocal,
       isEncrypted: isEncrypted ?? this.isEncrypted,
-      ciphertext: ciphertext,
       iv: iv,
       ephemeralKey: ephemeralKey,
       senderIdentityKey: senderIdentityKey,
       otpkId: otpkId,
+      senderSpkId: senderSpkId,
+      stale: stale,
     );
   }
 }
