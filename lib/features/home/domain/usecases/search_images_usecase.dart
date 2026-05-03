@@ -7,13 +7,22 @@ class SearchImagesUseCase {
   SearchImagesUseCase(this._repository);
 
   Stream<Photo> call(SearchImagesParams params) =>
-      _repository.streamEventImages(params.eventId, params.email);
+      _repository.streamEventImages(
+        params.eventId,
+        params.email,
+        params.alwaysPublicImages,
+      );
 }
 
 class SearchImagesParams extends Equatable {
   final String eventId;
   final String email;
-  const SearchImagesParams({required this.eventId, required this.email});
+  final bool alwaysPublicImages;
+  const SearchImagesParams({
+    required this.eventId,
+    required this.email,
+    this.alwaysPublicImages = false,
+  });
   @override
-  List<Object?> get props => [eventId, email];
+  List<Object?> get props => [eventId, email, alwaysPublicImages];
 }

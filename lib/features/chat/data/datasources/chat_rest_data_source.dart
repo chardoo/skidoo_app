@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart' as dio_pkg;
+import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/chat/data/network/chat_api_client.dart';
@@ -90,6 +91,43 @@ abstract class ChatRestDataSource {
     required String inviteeRole,
   });
 
+  /// PUT /chat/rooms/{room_id}/messages/{message_id} — edit a message's content.
+  Future<void> editMessage({
+    required String roomId,
+    required String messageId,
+    required String content,
+  });
+
+  /// DELETE /chat/rooms/{room_id}/messages/{message_id} — delete a message.
+  Future<void> deleteMessage({
+    required String roomId,
+    required String messageId,
+  });
+
+  /// POST /chat/rooms/group — create a group room with optional initial invitees.
+  Future<ChatRoom> createGroupRoom({
+    required String name,
+    List<String>? inviteeIds,
+  });
+
+  /// POST /chat/rooms/{room_id}/join — accept a pending invite.
+  Future<void> acceptRoomInvite(String roomId);
+
+  /// DELETE /chat/rooms/{room_id}/invite — decline or leave a pending invite.
+  Future<void> declineRoomInvite(String roomId);
+
+  /// POST /chat/rooms/{room_id}/admins/{user_id} — grant admin to an active member.
+  Future<void> grantAdmin(String roomId, String userId);
+
+  /// DELETE /chat/rooms/{room_id}/admins/{user_id} — revoke admin (blocked if last admin).
+  Future<void> revokeAdmin(String roomId, String userId);
+
+  /// PATCH /chat/rooms/{room_id}/settings — update room-level settings.
+  Future<void> updateRoomSettings(String roomId, {required bool adminOnly});
+
+  /// DELETE /chat/rooms/{room_id}/participants/{user_id} — kick a non-admin participant.
+  Future<void> kickParticipant(String roomId, String userId);
+
   /// GET /chat/rooms/{room_id}/messages?before_id=&limit=
   Future<List<ChatMessage>> getMessages(
     String roomId, {
@@ -109,6 +147,29 @@ abstract class ChatRestDataSource {
 
   /// POST /chat/pictures/{pictureId}/like — toggles like, returns updated state.
   Future<PictureReaction> togglePictureLike(String pictureId);
+
+  // ── Privacy features ───────────────────────────────────────────────────────
+
+  /// GET /chat/features — returns active feature names list.
+  Future<Map<String, bool>> getFeatures();
+
+  /// POST /chat/features/anonymous_comments
+  Future<void> enableAnonymousMode();
+
+  /// DELETE /chat/features/anonymous_comments
+  Future<void> disableAnonymousMode();
+
+  /// POST /chat/features/hide_profile
+  Future<void> enableHideProfile();
+
+  /// DELETE /chat/features/hide_profile
+  Future<void> disableHideProfile();
+
+  /// POST /blocks/{userId}
+  Future<void> blockUser(String userId);
+
+  /// DELETE /blocks/{userId}
+  Future<void> unblockUser(String userId);
 }
 
 class ChatRestDataSourceImpl implements ChatRestDataSource {
@@ -197,6 +258,89 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   }
 
   @override
+  Future<void> editMessage({
+    required String roomId,
+    required String messageId,
+    required String content,
+  }) async {
+    await _wrap(() => _client.dio.put(
+          '/chat/rooms/$roomId/messages/$messageId',
+          data: jsonEncode({'content': content}),
+        ));
+  }
+
+  @override
+  Future<void> deleteMessage({
+    required String roomId,
+    required String messageId,
+  }) async {
+    await _wrap(
+        () => _client.dio.delete('/chat/rooms/$roomId/messages/$messageId'));
+  }
+
+  @override
+  Future<ChatRoom> createGroupRoom({
+    required String name,
+    List<String>? inviteeIds,
+  }) async {
+    debugPrint('[ChatREST] POST /chat/rooms/group name="$name" invitees=$inviteeIds');
+    return _wrap(() async {
+      final res = await _client.dio.post(
+        '/chat/rooms/group',
+        data: jsonEncode({
+          'name': name,
+          if (inviteeIds != null && inviteeIds.isNotEmpty)
+            'invitee_ids': inviteeIds,
+        }),
+      );
+      final room = ChatRoom.fromJson(res.data as Map<String, dynamic>);
+      debugPrint('[ChatREST] group created — id=${room.id} participants=${room.participants.length}');
+      return room;
+    });
+  }
+
+  @override
+  Future<void> acceptRoomInvite(String roomId) async {
+    debugPrint('[ChatREST] POST /chat/rooms/$roomId/join');
+    await _wrap(() => _client.dio.post('/chat/rooms/$roomId/join'));
+    debugPrint('[ChatREST] invite accepted — roomId=$roomId');
+  }
+
+  @override
+  Future<void> declineRoomInvite(String roomId) async {
+    debugPrint('[ChatREST] DELETE /chat/rooms/$roomId/invite');
+    await _wrap(() => _client.dio.delete('/chat/rooms/$roomId/invite'));
+    debugPrint('[ChatREST] invite declined — roomId=$roomId');
+  }
+
+  @override
+  Future<void> grantAdmin(String roomId, String userId) async {
+    debugPrint('[ChatREST] POST /chat/rooms/$roomId/admins/$userId');
+    await _wrap(() => _client.dio.post('/chat/rooms/$roomId/admins/$userId'));
+  }
+
+  @override
+  Future<void> revokeAdmin(String roomId, String userId) async {
+    debugPrint('[ChatREST] DELETE /chat/rooms/$roomId/admins/$userId');
+    await _wrap(() => _client.dio.delete('/chat/rooms/$roomId/admins/$userId'));
+  }
+
+  @override
+  Future<void> updateRoomSettings(String roomId, {required bool adminOnly}) async {
+    debugPrint('[ChatREST] PATCH /chat/rooms/$roomId/settings adminOnly=$adminOnly');
+    await _wrap(() => _client.dio.patch(
+          '/chat/rooms/$roomId/settings',
+          data: jsonEncode({'admin_only': adminOnly}),
+        ));
+  }
+
+  @override
+  Future<void> kickParticipant(String roomId, String userId) async {
+    debugPrint('[ChatREST] DELETE /chat/rooms/$roomId/participants/$userId');
+    await _wrap(() => _client.dio.delete('/chat/rooms/$roomId/participants/$userId'));
+  }
+
+  @override
   Future<List<ChatMessage>> getMessages(
     String roomId, {
     String? beforeId,
@@ -266,10 +410,16 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         'file': multipartFile,
       });
 
-      // Don't manually set contentType - let Dio handle it
+      final isVideo = contentType.startsWith('video/');
+      final uploadTimeout =
+          Duration(minutes: isVideo ? 3 : 1);
       final res = await _client.dio.post(
         '/chat/upload-image',
         data: formData,
+        options: dio_pkg.Options(
+          sendTimeout: uploadTimeout,
+          receiveTimeout: uploadTimeout,
+        ),
       );
 
       final data = res.data as Map<String, dynamic>;
@@ -302,6 +452,46 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
       return PictureReaction.fromJson(res.data as Map<String, dynamic>);
     });
   }
+
+  // ── Privacy features ──────────────────────────────────────────────────────
+
+  @override
+  Future<Map<String, bool>> getFeatures() => _wrap(() async {
+        final res = await _client.dio.get('/chat/features');
+        final data = res.data as Map<String, dynamic>;
+        // Response: { "features": ["hide_profile", "anonymous_comments"] }
+        final active = (data['features'] as List<dynamic>? ?? [])
+            .map((f) => f.toString())
+            .toSet();
+        return {
+          'anonymous_comments': active.contains('anonymous_comments'),
+          'hide_profile': active.contains('hide_profile'),
+        };
+      });
+
+  @override
+  Future<void> enableAnonymousMode() =>
+      _wrap(() => _client.dio.post('/chat/features/anonymous_comments'));
+
+  @override
+  Future<void> disableAnonymousMode() =>
+      _wrap(() => _client.dio.delete('/chat/features/anonymous_comments'));
+
+  @override
+  Future<void> enableHideProfile() =>
+      _wrap(() => _client.dio.post('/chat/features/hide_profile'));
+
+  @override
+  Future<void> disableHideProfile() =>
+      _wrap(() => _client.dio.delete('/chat/features/hide_profile'));
+
+  @override
+  Future<void> blockUser(String userId) =>
+      _wrap(() => _client.dio.post('/blocks/$userId'));
+
+  @override
+  Future<void> unblockUser(String userId) =>
+      _wrap(() => _client.dio.delete('/blocks/$userId'));
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 

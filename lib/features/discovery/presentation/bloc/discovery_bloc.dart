@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
+import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
@@ -33,10 +34,12 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   // ── Per-event WebSocket sessions ──────────────────────────────────────────
   final Map<String, ChatWebSocketService> _activeSessions = {};
   final Map<String, StreamSubscription<LikeUpdate>> _likeSubscriptions = {};
+  final Map<String, StreamSubscription> _inviteSubscriptions = {};
   final Map<String, Timer> _disconnectTimers = {};
   // Guards against duplicate concurrent connect attempts for the same event.
   final Set<String> _connecting = {};
 
+  late final ChatBackgroundService _bgService;
   String? _currentUserId;
 
   DiscoveryBloc({
@@ -49,6 +52,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
         _authService = sl<AuthService>(),
         _savedDs = sl<ClientSavedDataSource>(),
         super(const DiscoveryState()) {
+    _bgService = sl<ChatBackgroundService>();
     on<DiscoveryLoadRequested>(_onLoadRequested);
     on<DiscoveryLoadMoreRequested>(_onLoadMoreRequested);
     on<DiscoveryReactionToggled>(_onReactionToggled);
@@ -220,7 +224,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       if (isClosed) return;
 
       final ws = ChatWebSocketService(_authService);
-      await ws.connect(room.id);
+      await ws.connectToRoom(room.id);
       if (isClosed) {
         ws.disconnect();
         return;
@@ -234,6 +238,13 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       });
       _likeSubscriptions[id]?.cancel();
       _likeSubscriptions[id] = sub;
+
+      // Forward group invites to the persistent relay so ChatRoomsBloc sees
+      // them regardless of which WS instance the server delivers them through.
+      _inviteSubscriptions[id]?.cancel();
+      _inviteSubscriptions[id] = ws.groupInviteEvents.listen((event) {
+        _bgService.reportGroupInvite(event.room);
+      });
     } catch (_) {
       // Network/auth failure — silently skip; no WS for this card.
     } finally {
@@ -255,6 +266,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   void _tearDownSession(String eventId) {
     _likeSubscriptions[eventId]?.cancel();
     _likeSubscriptions.remove(eventId);
+    _inviteSubscriptions[eventId]?.cancel();
+    _inviteSubscriptions.remove(eventId);
     _activeSessions[eventId]?.disconnect();
     _activeSessions.remove(eventId);
     _disconnectTimers.remove(eventId);
@@ -345,7 +358,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       if (useTemp) {
         final room = await _getEventRoom(event.eventId);
         ws = ChatWebSocketService(_authService);
-        await ws.connect(room.id);
+        await ws.connectToRoom(room.id);
       } else {
         ws = existingWs;
       }

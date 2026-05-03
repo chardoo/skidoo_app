@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
+import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/saved_items_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 
@@ -130,6 +131,12 @@ class _AccountView extends StatelessWidget {
                             _PublicationSettingsCard(
                                 alwaysPublic: state.alwaysPublicImages,
                                 ext: ext),
+                            const SizedBox(height: 12),
+                            _PrivacySettingsCard(
+                              anonymousMode: state.anonymousMode,
+                              hideProfile: state.hideProfile,
+                              ext: ext,
+                            ),
                             const Spacer(),
                             const SizedBox(height: 24),
                             SizedBox(
@@ -668,9 +675,106 @@ class _PublicationSettingsCard extends StatelessWidget {
             ),
             trailing: Icon(Icons.chevron_right_rounded,
                 color: ext.searchHintColor, size: 20),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SavedItemsPage()),
+            onTap: () {
+              final discoveryBloc = context.read<DiscoveryBloc>();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider.value(
+                    value: discoveryBloc,
+                    child: const SavedItemsPage(),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Privacy settings card ─────────────────────────────────────────────────────
+
+class _PrivacySettingsCard extends StatelessWidget {
+  const _PrivacySettingsCard({
+    required this.anonymousMode,
+    required this.hideProfile,
+    required this.ext,
+  });
+
+  final bool anonymousMode;
+  final bool hideProfile;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+            child: Text(
+              'Privacy',
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
             ),
+          ),
+          SwitchListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            activeThumbColor: ext.accentGold,
+            activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
+            title: Text(
+              'Anonymous comments',
+              style: TextStyle(color: ext.greetingColor, fontSize: 14),
+            ),
+            subtitle: Text(
+              anonymousMode
+                  ? 'Your name appears as "Anonymous"'
+                  : 'Your name is shown on comments',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12),
+            ),
+            secondary: Icon(
+              Icons.person_off_outlined,
+              color: anonymousMode ? ext.accentGold : ext.searchHintColor,
+            ),
+            value: anonymousMode,
+            onChanged: (value) {
+              context.read<UserProfileBloc>().add(AnonymousModeToggled(value));
+            },
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          SwitchListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            activeThumbColor: ext.accentGold,
+            activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
+            title: Text(
+              'Hide profile',
+              style: TextStyle(color: ext.greetingColor, fontSize: 14),
+            ),
+            subtitle: Text(
+              hideProfile
+                  ? 'Others cannot start new conversations with you'
+                  : 'Anyone can start a conversation with you',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12),
+            ),
+            secondary: Icon(
+              Icons.visibility_off_outlined,
+              color: hideProfile ? ext.accentGold : ext.searchHintColor,
+            ),
+            value: hideProfile,
+            onChanged: (value) {
+              context.read<UserProfileBloc>().add(HideProfileToggled(value));
+            },
           ),
           const SizedBox(height: 4),
         ],

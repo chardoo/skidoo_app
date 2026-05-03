@@ -9,81 +9,97 @@ class RoomTile extends StatelessWidget {
     required this.room,
     required this.onTap,
     this.unreadCount = 0,
+    this.lastMessageAt,
   });
 
   final ChatRoom room;
   final VoidCallback onTap;
   final int unreadCount;
+  final DateTime? lastMessageAt;
 
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final hasUnread = unreadCount > 0;
 
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 12.h),
-        constraints: BoxConstraints(minHeight: 50.h),
-        decoration: BoxDecoration(
-          color: ext.cardSurface,
-          borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(color: ext.accentGold.withValues(alpha: 0.12)),
-        ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
         child: Row(
           children: [
-            _RoomIcon(type: room.type, ext: ext),
+            _RoomAvatar(type: room.type, ext: ext),
             SizedBox(width: 12.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    room.displayName,
-                    style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: unreadCount > 0
-                          ? FontWeight.bold
-                          : FontWeight.w600,
-                      fontSize: 14.sp,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          room.displayName,
+                          style: TextStyle(
+                            color: ext.greetingColor,
+                            fontWeight:
+                                hasUnread ? FontWeight.bold : FontWeight.w600,
+                            fontSize: 15.sp,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (lastMessageAt != null)
+                        Text(
+                          _formatTime(lastMessageAt!),
+                          style: TextStyle(
+                            color: hasUnread
+                                ? ext.accentGold
+                                : ext.searchHintColor,
+                            fontSize: 11.sp,
+                            fontWeight: hasUnread
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                        ),
+                    ],
                   ),
-                  SizedBox(height: 2.h),
-                  Text(
-                    _subtitle(room),
-                    style: TextStyle(
-                      color: ext.searchHintColor,
-                      fontSize: 11.sp,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  SizedBox(height: 3.h),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _subtitle(room),
+                          style: TextStyle(
+                            color: ext.searchHintColor,
+                            fontSize: 13.sp,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (hasUnread)
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 6.w, vertical: 2.h),
+                          decoration: BoxDecoration(
+                            color: ext.accentGold,
+                            borderRadius: BorderRadius.circular(20.r),
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : '$unreadCount',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
             ),
-            if (unreadCount > 0)
-              Container(
-                margin: EdgeInsets.only(right: 6.w),
-                padding:
-                    EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: ext.accentGold,
-                  borderRadius: BorderRadius.circular(20.r),
-                ),
-                child: Text(
-                  unreadCount > 99 ? '99+' : '$unreadCount',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              )
-            else
-              Icon(Icons.chevron_right_rounded,
-                  color: ext.accentGold, size: 18.sp),
           ],
         ),
       ),
@@ -95,8 +111,7 @@ class RoomTile extends StatelessWidget {
       case RoomType.global:
         return 'Everyone';
       case RoomType.direct:
-        final count = room.participants.length;
-        return count > 0 ? '$count participants' : '1-on-1 chat';
+        return 'Direct message';
       case RoomType.event:
         return 'Event discussion';
       case RoomType.eventPrivate:
@@ -105,62 +120,74 @@ class RoomTile extends StatelessWidget {
         return 'Photo comments';
       case RoomType.sample:
         return 'Sample image chat';
+      case RoomType.group:
+        final count = room.participants.where((p) => !p.isPending).length;
+        return count > 1 ? '$count members' : 'Group chat';
       case RoomType.unknown:
         return 'Chat room';
     }
   }
+
+  String _formatTime(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final msgDay = DateTime(dt.year, dt.month, dt.day);
+    final diff = today.difference(msgDay).inDays;
+
+    if (diff == 0) {
+      final h = dt.hour;
+      final m = dt.minute.toString().padLeft(2, '0');
+      final period = h >= 12 ? 'PM' : 'AM';
+      final hour = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+      return '$hour:$m $period';
+    } else if (diff == 1) {
+      return 'Yesterday';
+    } else if (diff < 7) {
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      return days[dt.weekday - 1];
+    } else {
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      return '${months[dt.month - 1]} ${dt.day}';
+    }
+  }
 }
 
-class _RoomIcon extends StatelessWidget {
-  const _RoomIcon({required this.type, required this.ext});
+class _RoomAvatar extends StatelessWidget {
+  const _RoomAvatar({required this.type, required this.ext});
   final RoomType type;
   final AppThemeExtension ext;
 
   @override
   Widget build(BuildContext context) {
-    IconData icon;
-    Color bg;
+    final (icon, color) = _iconAndColor(ext);
+    return CircleAvatar(
+      radius: 26.r,
+      backgroundColor: color.withValues(alpha: 0.18),
+      child: Icon(icon, color: color, size: 22.sp),
+    );
+  }
 
+  (IconData, Color) _iconAndColor(AppThemeExtension ext) {
     switch (type) {
       case RoomType.global:
-        icon = Icons.public_rounded;
-        bg = ext.accentGold;
-        break;
+        return (Icons.public_rounded, ext.accentGold);
       case RoomType.direct:
-        icon = Icons.person_rounded;
-        bg = Colors.blueAccent;
-        break;
+        return (Icons.person_rounded, Colors.blueAccent);
       case RoomType.event:
-        icon = Icons.event_rounded;
-        bg = Colors.green;
-        break;
+        return (Icons.event_rounded, Colors.green);
       case RoomType.eventPrivate:
-        icon = Icons.lock_rounded;
-        bg = Colors.deepPurple;
-        break;
+        return (Icons.lock_rounded, Colors.deepPurple);
       case RoomType.photo:
-        icon = Icons.camera_alt_rounded;
-        bg = Colors.pinkAccent;
-        break;
+        return (Icons.camera_alt_rounded, Colors.pinkAccent);
       case RoomType.sample:
-        icon = Icons.photo_rounded;
-        bg = Colors.teal;
-        break;
+        return (Icons.photo_rounded, Colors.teal);
+      case RoomType.group:
+        return (Icons.group_rounded, Colors.orange);
       case RoomType.unknown:
-        icon = Icons.chat_bubble_rounded;
-        bg = ext.searchHintColor;
-        break;
+        return (Icons.chat_bubble_rounded, ext.searchHintColor);
     }
-
-    return Container(
-      width: 42.w,
-      height: 42.h,
-      decoration: BoxDecoration(
-        color: bg.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      alignment: Alignment.center,
-      child: Icon(icon, color: bg, size: 20.sp),
-    );
   }
 }

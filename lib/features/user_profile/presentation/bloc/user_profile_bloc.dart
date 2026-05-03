@@ -3,6 +3,8 @@ import 'package:equatable/equatable.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' show CacheException, ServerException;
 import 'package:skidoo_app/core/usecases/usecase.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/update_profile_usecase.dart';
+import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart'
+    show GetFeaturesUseCase, SetAnonymousModeUseCase, SetHideProfileUseCase;
 import 'package:skidoo_app/features/user_profile/domain/repositories/user_profile_repository.dart';
 import 'package:skidoo_app/features/user_profile/domain/usecases/get_profile_usecase.dart';
 import 'package:skidoo_app/services/auth_service.dart';
@@ -18,6 +20,9 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
   final UpdateProfileUseCase _updateProfileUseCase;
   final UserProfileRepository _profileRepository;
   final AuthService _authService;
+  final GetFeaturesUseCase _getFeatures;
+  final SetAnonymousModeUseCase _setAnonymousMode;
+  final SetHideProfileUseCase _setHideProfile;
 
   UserProfileBloc({
     required GetProfileUseCase getProfileUseCase,
@@ -26,17 +31,25 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
     required UpdateProfileUseCase updateProfileUseCase,
     required UserProfileRepository profileRepository,
     required AuthService authService,
+    required GetFeaturesUseCase getFeatures,
+    required SetAnonymousModeUseCase setAnonymousMode,
+    required SetHideProfileUseCase setHideProfile,
   })  : _getProfileUseCase = getProfileUseCase,
         _logoutUseCase = logoutUseCase,
         _notifPrefs = notificationPrefsService,
         _updateProfileUseCase = updateProfileUseCase,
         _profileRepository = profileRepository,
         _authService = authService,
+        _getFeatures = getFeatures,
+        _setAnonymousMode = setAnonymousMode,
+        _setHideProfile = setHideProfile,
         super(const UserProfileState()) {
     on<UserProfileLoadRequested>(_onLoadRequested);
     on<UserLogoutRequested>(_onLogoutRequested);
     on<NotificationsMuteToggled>(_onMuteToggled);
     on<PublicImagesToggled>(_onPublicImagesToggled);
+    on<AnonymousModeToggled>(_onAnonymousModeToggled);
+    on<HideProfileToggled>(_onHideProfileToggled);
     on<ProfileUpdateSubmitted>(_onProfileUpdateSubmitted);
   }
 
@@ -44,7 +57,12 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
       UserProfileLoadRequested event, Emitter<UserProfileState> emit) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
-      final profile = await _getProfileUseCase(const NoParams());
+      final results = await Future.wait([
+        _getProfileUseCase(const NoParams()),
+        _getFeatures().catchError((_) => <String, bool>{}),
+      ]);
+      final profile = results[0] as Map<dynamic, dynamic>;
+      final features = results[1] as Map<String, bool>;
       emit(state.copyWith(
         isLoading: false,
         name: profile['name'] as String? ?? '',
@@ -59,6 +77,8 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
             (profile['interestTags'] as List?) ?? []),
         isMuted: _notifPrefs.isMuted,
         alwaysPublicImages: _notifPrefs.alwaysPublicImages,
+        anonymousMode: features['anonymous_comments'] ?? state.anonymousMode,
+        hideProfile: features['hide_profile'] ?? state.hideProfile,
       ));
     } on CacheException catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.message));
@@ -90,6 +110,28 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
       PublicImagesToggled event, Emitter<UserProfileState> emit) async {
     await _notifPrefs.setAlwaysPublicImages(event.alwaysPublic);
     emit(state.copyWith(alwaysPublicImages: event.alwaysPublic));
+  }
+
+  Future<void> _onAnonymousModeToggled(
+      AnonymousModeToggled event, Emitter<UserProfileState> emit) async {
+    emit(state.copyWith(anonymousMode: event.value));
+    try {
+      await _setAnonymousMode(event.value);
+    } catch (_) {
+      emit(state.copyWith(anonymousMode: !event.value,
+          errorMessage: 'Could not update anonymous mode.'));
+    }
+  }
+
+  Future<void> _onHideProfileToggled(
+      HideProfileToggled event, Emitter<UserProfileState> emit) async {
+    emit(state.copyWith(hideProfile: event.value));
+    try {
+      await _setHideProfile(event.value);
+    } catch (_) {
+      emit(state.copyWith(hideProfile: !event.value,
+          errorMessage: 'Could not update hide profile.'));
+    }
   }
 
   Future<void> _onProfileUpdateSubmitted(

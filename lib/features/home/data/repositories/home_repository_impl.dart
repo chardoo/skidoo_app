@@ -22,6 +22,6 @@ class HomeRepositoryImpl implements HomeRepository {
   }
 
   @override
-  Stream<Photo> streamEventImages(String eventId, String email) =>
-      _remoteDataSource.streamEventImages(eventId, email);
+  Stream<Photo> streamEventImages(String eventId, String email, bool alwaysPublicImages) =>
+      _remoteDataSource.streamEventImages(eventId, email, alwaysPublicImages);
 }

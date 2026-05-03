@@ -7,6 +7,7 @@ enum RoomType {
   eventPrivate,
   photo,
   sample,
+  group,
   unknown;
 
   static RoomType fromString(String? value) {
@@ -23,6 +24,8 @@ enum RoomType {
         return RoomType.photo;
       case 'sample':
         return RoomType.sample;
+      case 'group':
+        return RoomType.group;
       default:
         return RoomType.unknown;
     }
@@ -42,6 +45,8 @@ enum RoomType {
         return 'photo';
       case RoomType.sample:
         return 'sample';
+      case RoomType.group:
+        return 'group';
       case RoomType.unknown:
         return 'unknown';
     }
@@ -51,7 +56,8 @@ enum RoomType {
   bool get isConversation =>
       this == RoomType.global ||
       this == RoomType.direct ||
-      this == RoomType.eventPrivate;
+      this == RoomType.eventPrivate ||
+      this == RoomType.group;
 }
 
 class ChatParticipant {
@@ -59,17 +65,44 @@ class ChatParticipant {
   final String userRole;
   final DateTime joinedAt;
 
+  /// 'active' for joined members, 'pending' for users who have been invited
+  /// but haven't yet accepted.
+  final String status;
+
+  /// Display name, if provided by the server.
+  final String? userName;
+
+  /// True when this participant has admin privileges in a group room.
+  final bool isAdmin;
+
   const ChatParticipant({
     required this.userId,
     required this.userRole,
     required this.joinedAt,
+    this.status = 'active',
+    this.userName,
+    this.isAdmin = false,
   });
+
+  bool get isPending => status == 'pending';
+
+  /// Best-effort display label: userName → role → userId.
+  String get displayName {
+    if (userName != null && userName!.isNotEmpty) return userName!;
+    if (userRole.isNotEmpty) {
+      return userRole[0].toUpperCase() + userRole.substring(1);
+    }
+    return userId;
+  }
 
   factory ChatParticipant.fromJson(Map<String, dynamic> json) {
     return ChatParticipant(
       userId: json['user_id'] as String,
       userRole: json['user_role'] as String,
       joinedAt: DateTime.parse(json['joined_at'] as String),
+      status: (json['status'] as String?) ?? 'active',
+      userName: json['user_name'] as String?,
+      isAdmin: (json['is_admin'] as bool?) ?? false,
     );
   }
 
@@ -77,7 +110,27 @@ class ChatParticipant {
         'user_id': userId,
         'user_role': userRole,
         'joined_at': joinedAt.toIso8601String(),
+        'status': status,
+        if (userName != null) 'user_name': userName,
+        'is_admin': isAdmin,
       };
+
+  ChatParticipant copyWith({
+    String? userId,
+    String? userRole,
+    DateTime? joinedAt,
+    String? status,
+    String? userName,
+    bool? isAdmin,
+  }) =>
+      ChatParticipant(
+        userId: userId ?? this.userId,
+        userRole: userRole ?? this.userRole,
+        joinedAt: joinedAt ?? this.joinedAt,
+        status: status ?? this.status,
+        userName: userName ?? this.userName,
+        isAdmin: isAdmin ?? this.isAdmin,
+      );
 }
 
 class ChatRoom {
@@ -91,6 +144,9 @@ class ChatRoom {
   /// Populated by POST /chat/rooms/direct and GET /chat/rooms/{id}.
   final Map<String, bool> e2eStatus;
 
+  /// When true, only admins can send messages. Group rooms only.
+  final bool adminOnly;
+
   const ChatRoom({
     required this.id,
     required this.type,
@@ -99,6 +155,7 @@ class ChatRoom {
     required this.createdAt,
     this.participants = const [],
     this.e2eStatus = const {},
+    this.adminOnly = false,
   });
 
   /// Human-readable display name.
@@ -117,10 +174,16 @@ class ChatRoom {
         return 'Photo Comments';
       case RoomType.sample:
         return 'Sample Chat';
+      case RoomType.group:
+        return 'Group';
       case RoomType.unknown:
         return 'Chat';
     }
   }
+
+  /// True if [userId] has a pending invite to this room.
+  bool hasPendingInvite(String userId) =>
+      participants.any((p) => p.userId == userId && p.isPending);
 
   ChatRoom copyWith({
     String? id,
@@ -129,6 +192,8 @@ class ChatRoom {
     String? name,
     DateTime? createdAt,
     List<ChatParticipant>? participants,
+    Map<String, bool>? e2eStatus,
+    bool? adminOnly,
   }) =>
       ChatRoom(
         id: id ?? this.id,
@@ -137,6 +202,8 @@ class ChatRoom {
         name: name ?? this.name,
         createdAt: createdAt ?? this.createdAt,
         participants: participants ?? this.participants,
+        e2eStatus: e2eStatus ?? this.e2eStatus,
+        adminOnly: adminOnly ?? this.adminOnly,
       );
 
   factory ChatRoom.fromJson(Map<String, dynamic> json) {
@@ -157,6 +224,7 @@ class ChatRoom {
       createdAt: DateTime.parse(json['created_at'] as String),
       participants: participantsList,
       e2eStatus: e2eStatus,
+      adminOnly: (json['admin_only'] as bool?) ?? false,
     );
   }
 
@@ -166,6 +234,7 @@ class ChatRoom {
         'event_id': eventId,
         'name': name,
         'created_at': createdAt.toIso8601String(),
+        'admin_only': adminOnly,
         'participants': jsonEncode(participants.map((p) => p.toJson()).toList()),
       };
 }

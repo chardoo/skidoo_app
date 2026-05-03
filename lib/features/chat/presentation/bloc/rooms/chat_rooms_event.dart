@@ -12,3 +12,19 @@ class ChatRoomsLoadRequested extends ChatRoomsEvent {
 class ChatRoomsRefreshUnread extends ChatRoomsEvent {
   const ChatRoomsRefreshUnread();
 }
+
+class ChatRoomsAcceptInvite extends ChatRoomsEvent {
+  const ChatRoomsAcceptInvite(this.roomId);
+  final String roomId;
+}
+
+class ChatRoomsDeclineInvite extends ChatRoomsEvent {
+  const ChatRoomsDeclineInvite(this.roomId);
+  final String roomId;
+}
+
+/// Server pushed a new group invite to the current user via WS.
+class ChatRoomsGroupInviteReceived extends ChatRoomsEvent {
+  const ChatRoomsGroupInviteReceived(this.room);
+  final ChatRoom room;
+}

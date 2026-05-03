@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
+import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
+import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
+import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 
 class SavedItemsPage extends StatefulWidget {
   static const routeName = '/saved-items';
@@ -14,7 +19,10 @@ class SavedItemsPage extends StatefulWidget {
 
 class _SavedItemsPageState extends State<SavedItemsPage> {
   final _ds = sl<ClientSavedDataSource>();
+  final _remoteDs = sl<DiscoveryRemoteDataSource>();
   List<SavedItem>? _items;
+  /// eventId → resolved event name (populated after load).
+  final Map<String, String> _resolvedNames = {};
   String? _error;
   bool _loading = true;
 
@@ -28,14 +36,133 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _resolvedNames.clear();
     });
     try {
       final items = await _ds.listSaved();
-      if (mounted) setState(() { _items = items; _loading = false; });
+      if (!mounted) return;
+      setState(() { _items = items; _loading = false; });
+      // Resolve event names in background — no spinner needed.
+      _resolveEventNames(items);
     } catch (_) {
       if (mounted) {
         setState(() { _error = 'Could not load saved items.'; _loading = false; });
       }
+    }
+  }
+
+  /// Populate [_resolvedNames] for every event-type saved item.
+  /// Tries DiscoveryBloc first (zero network cost), then fetches from
+  /// the backend for any whose name is still unknown.
+  Future<void> _resolveEventNames(List<SavedItem> items) async {
+    final eventItems = items
+        .where((i) => i.assetType.toLowerCase() == 'event')
+        .toList();
+    if (eventItems.isEmpty) return;
+
+    // 1 — Synchronous lookup in DiscoveryBloc state.
+    final missing = <SavedItem>[];
+    try {
+      final knownEvents = context.read<DiscoveryBloc>().state.events;
+      for (final item in eventItems) {
+        final ev = knownEvents.where((e) => e.id == item.assetId).firstOrNull;
+        if (ev != null && ev.eventName.isNotEmpty) {
+          _resolvedNames[item.assetId] = ev.eventName;
+        } else {
+          missing.add(item);
+        }
+      }
+    } catch (_) {
+      missing.addAll(eventItems);
+    }
+
+    if (missing.isEmpty) {
+      if (mounted) setState(() {});
+      return;
+    }
+
+    // 2 — Flush DiscoveryBloc hits to UI immediately.
+    if (mounted) setState(() {});
+
+    // 3 — Fetch remaining names from backend in parallel.
+    await Future.wait(missing.map((item) async {
+      try {
+        final ev = await _remoteDs.getEventById(item.assetId);
+        if (ev.eventName.isNotEmpty) {
+          _resolvedNames[item.assetId] = ev.eventName;
+        }
+      } catch (_) {
+        // Leave this item without a resolved name — the fallback shows.
+      }
+    }));
+
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _openEvent(SavedItem item) async {
+    debugPrint('[SavedItems] tap assetType="${item.assetType}" assetId="${item.assetId}" title="${item.title}"');
+    // Only handle event assets.
+    if (item.assetType.toLowerCase() != 'event') {
+      debugPrint('[SavedItems] skipping — assetType is not event');
+      return;
+    }
+    final eventId = item.assetId;
+
+    // Check if the event is already loaded in DiscoveryBloc state.
+    EventDiscovery? event;
+    try {
+      final discoveryState = context.read<DiscoveryBloc>().state;
+      event = discoveryState.events.where((e) => e.id == eventId).firstOrNull;
+      debugPrint('[SavedItems] DiscoveryBloc lookup eventId=$eventId → found=${event != null} name=${event?.eventName}');
+    } catch (e) {
+      debugPrint('[SavedItems] DiscoveryBloc not accessible: $e');
+    }
+
+    if (event == null) {
+      // Fetch from backend.
+      if (!mounted) return;
+      setState(() => _loading = true);
+      try {
+        event = await sl<DiscoveryRemoteDataSource>().getEventById(eventId);
+        debugPrint('[SavedItems] fetched eventId=$eventId name=${event.eventName} pics=${event.pictures.length}');
+      } catch (e) {
+        debugPrint('[SavedItems] fetch failed: $e');
+        if (mounted) {
+          setState(() => _loading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not load event details.')),
+          );
+        }
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+
+    // If the fetched event has no name, patch from already-resolved names.
+    if (event.eventName.isEmpty) {
+      final fallback = _resolvedNames[item.assetId] ?? item.title;
+      if (fallback != null && fallback.isNotEmpty) {
+        event = EventDiscovery(
+          id: event.id,
+          eventName: fallback,
+          photographerName: event.photographerName,
+          photographerId: event.photographerId,
+          pictures: event.pictures,
+          likes: event.likes,
+          dislikes: event.dislikes,
+          commentCount: event.commentCount,
+          userReaction: event.userReaction,
+        );
+      }
+    }
+
+    if (mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EventPicturesPage(event: event!),
+        ),
+      );
     }
   }
 
@@ -171,11 +298,18 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
           thickness: 0.5,
           color: ext.searchHintColor.withValues(alpha: 0.1),
         ),
-        itemBuilder: (_, i) => _SavedItemTile(
-          item: items[i],
-          ext: ext,
-          onUnsave: () => _unsave(items[i]),
-        ),
+        itemBuilder: (_, i) {
+          final item = items[i];
+          final resolvedName =
+              _resolvedNames[item.assetId] ?? item.title;
+          return _SavedItemTile(
+            item: item,
+            ext: ext,
+            resolvedName: resolvedName,
+            onTap: () => _openEvent(item),
+            onUnsave: () => _unsave(item),
+          );
+        },
       ),
     );
   }
@@ -187,15 +321,21 @@ class _SavedItemTile extends StatelessWidget {
   const _SavedItemTile({
     required this.item,
     required this.ext,
+    this.resolvedName,
+    required this.onTap,
     required this.onUnsave,
   });
   final SavedItem item;
   final AppThemeExtension ext;
+  final String? resolvedName;
+  final VoidCallback onTap;
   final VoidCallback onUnsave;
 
   @override
   Widget build(BuildContext context) {
+    final displayName = resolvedName ?? item.title ?? 'Saved Event';
     return ListTile(
+      onTap: onTap,
       contentPadding:
           EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
       leading: ClipRRect(
@@ -211,7 +351,7 @@ class _SavedItemTile extends StatelessWidget {
             : _thumb(ext),
       ),
       title: Text(
-        item.title ?? item.assetType,
+        displayName,
         style: TextStyle(
           color: ext.greetingColor,
           fontWeight: FontWeight.w600,
@@ -221,7 +361,7 @@ class _SavedItemTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        item.assetType,
+        'Event',
         style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
       ),
       trailing: IconButton(

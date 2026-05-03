@@ -76,6 +76,19 @@ class ChatRoomLeft extends ChatRoomEvent {
   const ChatRoomLeft();
 }
 
+/// User confirmed an edit from the edit dialog.
+class ChatRoomMessageEditRequested extends ChatRoomEvent {
+  final String messageId;
+  final String newContent;
+  const ChatRoomMessageEditRequested(this.messageId, this.newContent);
+}
+
+/// User confirmed deletion from the confirm dialog.
+class ChatRoomMessageDeleteRequested extends ChatRoomEvent {
+  final String messageId;
+  const ChatRoomMessageDeleteRequested(this.messageId);
+}
+
 // ── Internal events (dispatched by the bloc itself) ───────────────────────────
 
 class _WsConnected extends ChatRoomEvent {
@@ -87,9 +100,12 @@ class _WsFailed extends ChatRoomEvent {
   const _WsFailed(this.error);
 }
 
-/// WS dropped unexpectedly (not from the user leaving) — triggers reconnect.
+/// WS dropped unexpectedly (not from the user leaving).
+/// [fatal] is true when the server sent a close code that means retrying
+/// will never succeed (e.g. 4001 bad token, 4003 not a participant).
 class _WsDropped extends ChatRoomEvent {
-  const _WsDropped();
+  final bool fatal;
+  const _WsDropped({this.fatal = false});
 }
 
 /// Reconnect attempts exhausted.
@@ -107,6 +123,20 @@ class _LikeUpdateReceived extends ChatRoomEvent {
 class _PictureLikeUpdateReceived extends ChatRoomEvent {
   final PictureLikeUpdate update;
   const _PictureLikeUpdateReceived(this.update);
+}
+
+/// WS broadcast: a message was edited.
+class _MessageEdited extends ChatRoomEvent {
+  final String messageId;
+  final String content;
+  final DateTime updatedAt;
+  const _MessageEdited(this.messageId, this.content, this.updatedAt);
+}
+
+/// WS broadcast: a message was deleted.
+class _MessageDeleted extends ChatRoomEvent {
+  final String messageId;
+  const _MessageDeleted(this.messageId);
 }
 
 /// Server sent participant key bundles on DM room join.
@@ -131,4 +161,63 @@ class _KeyRotationReceived extends ChatRoomEvent {
   final Map<String, dynamic> signedPreKey;
   const _KeyRotationReceived(
       this.userId, this.identityKey, this.signedPreKey, {this.registrationId});
+}
+
+/// A new member accepted their invite and joined the room.
+class _WsUserJoined extends ChatRoomEvent {
+  final String userId;
+  final String userName;
+  const _WsUserJoined(this.userId, this.userName);
+}
+
+// ── Group admin actions (dispatched by the UI) ────────────────────────────────
+
+/// Grant admin rights to a participant.
+class ChatRoomGrantAdminRequested extends ChatRoomEvent {
+  final String userId;
+  const ChatRoomGrantAdminRequested(this.userId);
+}
+
+/// Revoke admin rights from a participant.
+class ChatRoomRevokeAdminRequested extends ChatRoomEvent {
+  final String userId;
+  const ChatRoomRevokeAdminRequested(this.userId);
+}
+
+/// Toggle the "only admins can send" setting.
+class ChatRoomUpdateSettingsRequested extends ChatRoomEvent {
+  final bool adminOnly;
+  const ChatRoomUpdateSettingsRequested(this.adminOnly);
+}
+
+/// Kick a participant from the group.
+class ChatRoomKickRequested extends ChatRoomEvent {
+  final String userId;
+  const ChatRoomKickRequested(this.userId);
+}
+
+// ── WS admin broadcast events (dispatched by the bloc internally) ─────────────
+
+class _AdminGranted extends ChatRoomEvent {
+  final String userId;
+  final String grantedBy;
+  const _AdminGranted(this.userId, this.grantedBy);
+}
+
+class _AdminRevoked extends ChatRoomEvent {
+  final String userId;
+  final String revokedBy;
+  const _AdminRevoked(this.userId, this.revokedBy);
+}
+
+class _RoomSettingsUpdated extends ChatRoomEvent {
+  final bool adminOnly;
+  final String updatedBy;
+  const _RoomSettingsUpdated(this.adminOnly, this.updatedBy);
+}
+
+class _ParticipantRemoved extends ChatRoomEvent {
+  final String userId;
+  final String removedBy;
+  const _ParticipantRemoved(this.userId, this.removedBy);
 }

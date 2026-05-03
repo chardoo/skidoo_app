@@ -79,6 +79,11 @@ class ChatMessage {
   ///   null  → ongoing session (no sender_identity_key in this message)
   final bool? stale;
 
+  /// Set when the message has been edited. Null on original send.
+  final DateTime? updatedAt;
+
+  bool get isEdited => updatedAt != null;
+
   const ChatMessage({
     required this.id,
     required this.roomId,
@@ -100,6 +105,7 @@ class ChatMessage {
     this.otpkId,
     this.senderSpkId,
     this.stale,
+    this.updatedAt,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -133,8 +139,11 @@ class ChatMessage {
       ephemeralKey: json['ephemeral_key'] as String?,
       senderIdentityKey: json['sender_identity_key'] as String?,
       otpkId: (json['otpk_id'] as num?)?.toInt(),
-      senderSpkId: (json['spk_id'] as num?)?.toInt(),
+      senderSpkId: ((json['sender_spk_id'] ?? json['spk_id']) as num?)?.toInt(),
       stale: json['stale'] as bool?,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
     );
   }
 
@@ -170,6 +179,7 @@ class ChatMessage {
         'otpk_id': otpkId,
         'spk_id': senderSpkId,
         'stale': stale,
+        'updated_at': updatedAt?.toIso8601String(),
       };
 
   ChatMessage copyWith({
@@ -181,6 +191,8 @@ class ChatMessage {
     bool? isVideo,
     String? content,
     bool? isEncrypted,
+    DateTime? updatedAt,
+    bool clearUpdatedAt = false,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -203,6 +215,7 @@ class ChatMessage {
       otpkId: otpkId,
       senderSpkId: senderSpkId,
       stale: stale,
+      updatedAt: clearUpdatedAt ? null : (updatedAt ?? this.updatedAt),
     );
   }
 }

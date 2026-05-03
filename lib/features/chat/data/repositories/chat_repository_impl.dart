@@ -125,6 +125,30 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<void> editMessage({
+    required String roomId,
+    required String messageId,
+    required String content,
+  }) =>
+      _rest.editMessage(roomId: roomId, messageId: messageId, content: content);
+
+  @override
+  Future<void> deleteMessage({
+    required String roomId,
+    required String messageId,
+  }) =>
+      _rest.deleteMessage(roomId: roomId, messageId: messageId);
+
+  @override
+  Future<void> updateCachedMessage(
+          String messageId, String content, DateTime updatedAt) =>
+      _db.updateMessageContent(messageId, content, updatedAt);
+
+  @override
+  Future<void> deleteCachedMessage(String messageId) =>
+      _db.deleteMessage(messageId);
+
+  @override
   Future<void> inviteToRoom({
     required String roomId,
     required String inviteeId,
@@ -135,6 +159,40 @@ class ChatRepositoryImpl implements ChatRepository {
         inviteeId: inviteeId,
         inviteeRole: inviteeRole,
       );
+
+  @override
+  Future<ChatRoom> createGroupRoom({
+    required String name,
+    List<String>? inviteeIds,
+  }) =>
+      _fetchAndCacheRoom(
+          () => _rest.createGroupRoom(name: name, inviteeIds: inviteeIds));
+
+  @override
+  Future<void> acceptRoomInvite(String roomId) =>
+      _rest.acceptRoomInvite(roomId);
+
+  @override
+  Future<void> declineRoomInvite(String roomId) async {
+    await _rest.declineRoomInvite(roomId);
+    await _db.deleteRoom(roomId);
+  }
+
+  @override
+  Future<void> grantAdmin(String roomId, String userId) =>
+      _rest.grantAdmin(roomId, userId);
+
+  @override
+  Future<void> revokeAdmin(String roomId, String userId) =>
+      _rest.revokeAdmin(roomId, userId);
+
+  @override
+  Future<void> updateRoomSettings(String roomId, {required bool adminOnly}) =>
+      _rest.updateRoomSettings(roomId, adminOnly: adminOnly);
+
+  @override
+  Future<void> kickParticipant(String roomId, String userId) =>
+      _rest.kickParticipant(roomId, userId);
 
   // ── Messages ───────────────────────────────────────────────────────────────
 
@@ -165,11 +223,15 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Future<void> cacheMessage(ChatMessage message) =>
-      _db.insertMessage(message);
+      _db.upsertMessages([message]);
 
   @override
   Future<Map<String, int>> getUnreadCounts(String currentUserId) =>
       _db.getUnreadCounts(currentUserId);
+
+  @override
+  Future<Map<String, DateTime>> getLastMessageTimes() =>
+      _db.getLastMessageTimes();
 
   @override
   Future<void> markRoomAsRead(String roomId) => _db.markAllAsRead(roomId);
@@ -188,6 +250,29 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<PictureReaction> togglePictureLike(String pictureId) =>
       _rest.togglePictureLike(pictureId);
+
+  // ── Privacy features ───────────────────────────────────────────────────────
+
+  @override
+  Future<Map<String, bool>> getFeatures() => _rest.getFeatures();
+
+  @override
+  Future<void> enableAnonymousMode() => _rest.enableAnonymousMode();
+
+  @override
+  Future<void> disableAnonymousMode() => _rest.disableAnonymousMode();
+
+  @override
+  Future<void> enableHideProfile() => _rest.enableHideProfile();
+
+  @override
+  Future<void> disableHideProfile() => _rest.disableHideProfile();
+
+  @override
+  Future<void> blockUser(String userId) => _rest.blockUser(userId);
+
+  @override
+  Future<void> unblockUser(String userId) => _rest.unblockUser(userId);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 

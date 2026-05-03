@@ -96,13 +96,22 @@ class EventDiscovery {
         json['event'] is Map<String, dynamic>
             ? json['event'] as Map<String, dynamic>
             : json;
-    final user = (event['user'] as Map<String, dynamic>?) ?? {};
-    final pics = (event['pictures'] as List<dynamic>? ?? [])
+    // User/photographer can be nested under 'user' or 'photographer'.
+    final user = (event['user'] as Map<String, dynamic>?) ??
+        (event['photographer'] as Map<String, dynamic>?) ??
+        {};
+    // Pictures can be under 'pictures' or 'images'.
+    final rawPics = (event['pictures'] as List<dynamic>?) ??
+        (event['images'] as List<dynamic>?) ??
+        [];
+    final pics = rawPics
         .map((p) => EventPicture.fromMap(p as Map<String, dynamic>))
         .toList();
     return EventDiscovery(
       id: event['id']?.toString() ?? '',
-      eventName: event['eventName']?.toString() ?? '',
+      // Event name can be 'eventName' or 'name'.
+      eventName: event['eventName']?.toString() ??
+          event['name']?.toString() ?? '',
       photographerName: user['name']?.toString() ?? '',
       photographerId: user['id']?.toString() ?? '',
       pictures: pics,

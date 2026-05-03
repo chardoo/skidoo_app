@@ -40,7 +40,10 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
     // Server says this user has no bundle yet (new install, key wipe, or
     // account on a different device). Publish immediately so every DM is
     // encrypted from the very first message — not just after opening a DM.
-    if (!user.keyBundlePublished || !await _e2ee.hasKeys()) {
+    if (user.keyBundlePublished && await _e2ee.hasKeys()) {
+      // Bundle already exists on both server and device — nothing to publish.
+      _e2ee.markBundlePublished();
+    } else {
       try {
         final PublishableKeyBundle bundle;
         if (!await _e2ee.hasKeys()) {
@@ -55,6 +58,7 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
           final otpks = await _e2ee.generateOtpks(100);
           await _keyDs.topUpPrekeys(otpks);
         }
+        _e2ee.markBundlePublished();
         debugPrint(
             '[E2EE] Published bundle on login (${bundle.oneTimePreKeys.length} OTPKs in bundle)');
       } catch (e) {

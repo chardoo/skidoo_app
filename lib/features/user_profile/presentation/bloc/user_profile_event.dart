@@ -28,6 +28,20 @@ class PublicImagesToggled extends UserProfileEvent {
   List<Object?> get props => [alwaysPublic];
 }
 
+class AnonymousModeToggled extends UserProfileEvent {
+  final bool value;
+  const AnonymousModeToggled(this.value);
+  @override
+  List<Object?> get props => [value];
+}
+
+class HideProfileToggled extends UserProfileEvent {
+  final bool value;
+  const HideProfileToggled(this.value);
+  @override
+  List<Object?> get props => [value];
+}
+
 class ProfileUpdateSubmitted extends UserProfileEvent {
   final String name;
   final String uniqueName;

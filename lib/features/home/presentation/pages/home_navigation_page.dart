@@ -101,19 +101,21 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     final userState = context.watch<UserProfileBloc>().state;
     final userName = userState.name.isNotEmpty ? userState.name : 'User';
 
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return Scaffold(
       backgroundColor: ext.homeBackground,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            // ── Header — collapses on scroll-down, snaps back on any scroll-up ─
-            ClipRect(
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                alignment: Alignment.topCenter,
-                heightFactor: _headerVisible ? 1.0 : 0.0,
+      body: Column(
+        children: [
+          // ── Header — collapses on scroll-down, snaps back on any scroll-up ─
+          ClipRect(
+            child: AnimatedAlign(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              alignment: Alignment.topCenter,
+              heightFactor: _headerVisible ? 1.0 : 0.0,
+              child: Padding(
+                padding: EdgeInsets.only(top: topPadding),
                 child: HomeHeaderWidget(
                   userName: userName,
                   userInitial: userName[0].toUpperCase(),
@@ -121,27 +123,35 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                   onSearchOpen: _openSearch,
                   onSearchClose: _closeSearch,
                   onSearchChanged: _onSearchChanged,
-                  onAvatarTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AccountPage()),
-                  ),
+                  onAvatarTap: () {
+                    final discoveryBloc = context.read<DiscoveryBloc>();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider.value(
+                          value: discoveryBloc,
+                          child: const AccountPage(),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
+          ),
 
-            // ── Body ─────────────────────────────────────────────────────────
-            Expanded(
-              child: NotificationListener<ScrollNotification>(
-                onNotification: _onScrollNotification,
-                child: RefreshIndicator(
-                  onRefresh: _onRefresh,
-                  color: ext.accentGold,
-                  backgroundColor: ext.homeBackground,
-                  child: _buildBody(context, ext, homeState, discoveryState),
-                ),
+          // ── Body ─────────────────────────────────────────────────────────
+          Expanded(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onScrollNotification,
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                color: ext.accentGold,
+                backgroundColor: ext.homeBackground,
+                child: _buildBody(context, ext, homeState, discoveryState),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

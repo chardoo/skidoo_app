@@ -67,8 +67,8 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
   Future<List<PhotographerSample>> getSamples(String photographerId) async {
     try {
       final res = await _api.dio.post(
-        '/photographer/samples',
-        data: jsonEncode({'photographerId': photographerId}),
+        '/api/photographer/samples',
+        data: jsonEncode({'userId': photographerId}),
       );
       final body = res.data as List<dynamic>;
       return body

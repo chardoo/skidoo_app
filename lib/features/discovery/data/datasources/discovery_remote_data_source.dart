@@ -9,6 +9,9 @@ abstract class DiscoveryRemoteDataSource {
     required int take,
     String? userId,
   });
+
+  /// GET /photographer/events/{eventId}/images
+  Future<EventDiscovery> getEventById(String eventId);
 }
 
 class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
@@ -50,6 +53,24 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
           'Failed to load events: ${err.response?.statusCode}');
     } catch (e, st) {
       debugPrint('[Discovery] Unexpected error: $e\n$st');
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
+    }
+  }
+
+  @override
+  Future<EventDiscovery> getEventById(String eventId) async {
+    try {
+      final res = await _api.dio.get('/photographer/events/$eventId/images');
+      final data = res.data as Map<String, dynamic>;
+      debugPrint('[Discovery] getEventById raw keys: ${data.keys.toList()}');
+      debugPrint('[Discovery] getEventById raw: $data');
+      return EventDiscovery.fromMap(data);
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      throw app_ex.ServerException(
+          'Failed to load event: ${err.response?.statusCode}');
+    } catch (e) {
       if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
       throw app_ex.ServerException('Unexpected error: $e');
     }

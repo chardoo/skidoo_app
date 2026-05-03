@@ -89,6 +89,95 @@ class InviteToRoomUseCase {
       );
 }
 
+class EditMessageUseCase {
+  final ChatRepository _repo;
+  EditMessageUseCase(this._repo);
+
+  Future<void> call({
+    required String roomId,
+    required String messageId,
+    required String content,
+  }) =>
+      _repo.editMessage(roomId: roomId, messageId: messageId, content: content);
+}
+
+class DeleteMessageUseCase {
+  final ChatRepository _repo;
+  DeleteMessageUseCase(this._repo);
+
+  Future<void> call({
+    required String roomId,
+    required String messageId,
+  }) =>
+      _repo.deleteMessage(roomId: roomId, messageId: messageId);
+}
+
+class UpdateCachedMessageUseCase {
+  final ChatRepository _repo;
+  UpdateCachedMessageUseCase(this._repo);
+
+  Future<void> call(String messageId, String content, DateTime updatedAt) =>
+      _repo.updateCachedMessage(messageId, content, updatedAt);
+}
+
+class DeleteCachedMessageUseCase {
+  final ChatRepository _repo;
+  DeleteCachedMessageUseCase(this._repo);
+
+  Future<void> call(String messageId) => _repo.deleteCachedMessage(messageId);
+}
+
+class CreateGroupRoomUseCase {
+  final ChatRepository _repo;
+  CreateGroupRoomUseCase(this._repo);
+
+  Future<ChatRoom> call({
+    required String name,
+    List<String>? inviteeIds,
+  }) =>
+      _repo.createGroupRoom(name: name, inviteeIds: inviteeIds);
+}
+
+class AcceptRoomInviteUseCase {
+  final ChatRepository _repo;
+  AcceptRoomInviteUseCase(this._repo);
+  Future<void> call(String roomId) => _repo.acceptRoomInvite(roomId);
+}
+
+class DeclineRoomInviteUseCase {
+  final ChatRepository _repo;
+  DeclineRoomInviteUseCase(this._repo);
+  Future<void> call(String roomId) => _repo.declineRoomInvite(roomId);
+}
+
+class GrantAdminUseCase {
+  final ChatRepository _repo;
+  GrantAdminUseCase(this._repo);
+  Future<void> call(String roomId, String userId) =>
+      _repo.grantAdmin(roomId, userId);
+}
+
+class RevokeAdminUseCase {
+  final ChatRepository _repo;
+  RevokeAdminUseCase(this._repo);
+  Future<void> call(String roomId, String userId) =>
+      _repo.revokeAdmin(roomId, userId);
+}
+
+class UpdateRoomSettingsUseCase {
+  final ChatRepository _repo;
+  UpdateRoomSettingsUseCase(this._repo);
+  Future<void> call(String roomId, {required bool adminOnly}) =>
+      _repo.updateRoomSettings(roomId, adminOnly: adminOnly);
+}
+
+class KickParticipantUseCase {
+  final ChatRepository _repo;
+  KickParticipantUseCase(this._repo);
+  Future<void> call(String roomId, String userId) =>
+      _repo.kickParticipant(roomId, userId);
+}
+
 class GetRoomMessagesUseCase {
   final ChatRepository _repo;
   GetRoomMessagesUseCase(this._repo);
@@ -129,6 +218,12 @@ class GetUnreadCountsUseCase {
   }
 }
 
+class GetLastMessageTimesUseCase {
+  final ChatRepository _repo;
+  GetLastMessageTimesUseCase(this._repo);
+  Future<Map<String, DateTime>> call() => _repo.getLastMessageTimes();
+}
+
 class MarkRoomAsReadUseCase {
   final ChatRepository _repo;
   MarkRoomAsReadUseCase(this._repo);
@@ -149,4 +244,38 @@ class GetEventReactionUseCase {
 
   Future<EventReaction> call(String eventId, String userId) =>
       _repo.getEventReaction(eventId, userId);
+}
+
+// ── Privacy features ──────────────────────────────────────────────────────────
+
+class GetFeaturesUseCase {
+  final ChatRepository _repo;
+  GetFeaturesUseCase(this._repo);
+  Future<Map<String, bool>> call() => _repo.getFeatures();
+}
+
+class SetAnonymousModeUseCase {
+  final ChatRepository _repo;
+  SetAnonymousModeUseCase(this._repo);
+  Future<void> call(bool enable) =>
+      enable ? _repo.enableAnonymousMode() : _repo.disableAnonymousMode();
+}
+
+class SetHideProfileUseCase {
+  final ChatRepository _repo;
+  SetHideProfileUseCase(this._repo);
+  Future<void> call(bool enable) =>
+      enable ? _repo.enableHideProfile() : _repo.disableHideProfile();
+}
+
+class BlockUserUseCase {
+  final ChatRepository _repo;
+  BlockUserUseCase(this._repo);
+  Future<void> call(String userId) => _repo.blockUser(userId);
+}
+
+class UnblockUserUseCase {
+  final ChatRepository _repo;
+  UnblockUserUseCase(this._repo);
+  Future<void> call(String userId) => _repo.unblockUser(userId);
 }

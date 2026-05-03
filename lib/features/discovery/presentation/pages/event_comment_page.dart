@@ -79,7 +79,7 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
       final room = await sl<GetEventRoomUseCase>().call(widget.event.id);
       if (mounted) {
         setState(() => _loading = false);
-        _bloc.add(ChatRoomJoined(room.id));
+        _bloc.add(ChatRoomJoined(room.id, room: room));
       }
     } catch (e) {
       if (mounted) {

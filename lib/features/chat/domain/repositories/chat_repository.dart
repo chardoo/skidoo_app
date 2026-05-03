@@ -27,11 +27,46 @@ abstract class ChatRepository {
   Future<List<ChatRoom>> getCachedRooms();
   Future<ChatRoom> getRoom(String roomId);
 
+  Future<void> editMessage({
+    required String roomId,
+    required String messageId,
+    required String content,
+  });
+
+  Future<void> deleteMessage({
+    required String roomId,
+    required String messageId,
+  });
+
+  /// Local-only: update content + updatedAt for an edited message.
+  Future<void> updateCachedMessage(
+      String messageId, String content, DateTime updatedAt);
+
+  /// Local-only: remove a deleted message from cache.
+  Future<void> deleteCachedMessage(String messageId);
+
   Future<void> inviteToRoom({
     required String roomId,
     required String inviteeId,
     required String inviteeRole,
   });
+
+  Future<ChatRoom> createGroupRoom({
+    required String name,
+    List<String>? inviteeIds,
+  });
+
+  Future<void> acceptRoomInvite(String roomId);
+
+  Future<void> declineRoomInvite(String roomId);
+
+  Future<void> grantAdmin(String roomId, String userId);
+
+  Future<void> revokeAdmin(String roomId, String userId);
+
+  Future<void> updateRoomSettings(String roomId, {required bool adminOnly});
+
+  Future<void> kickParticipant(String roomId, String userId);
 
   // ── Messages (REST / cache) ────────────────────────────────────────────────
 
@@ -52,6 +87,9 @@ abstract class ChatRepository {
   /// Local-only: count of unread messages per room (excludes own messages).
   Future<Map<String, int>> getUnreadCounts(String currentUserId);
 
+  /// Local-only: timestamp of the most recent message per room.
+  Future<Map<String, DateTime>> getLastMessageTimes();
+
   /// Local-only: mark all messages in [roomId] as read.
   Future<void> markRoomAsRead(String roomId);
 
@@ -66,4 +104,14 @@ abstract class ChatRepository {
 
   /// POST /chat/pictures/{pictureId}/like — toggle like, returns updated state.
   Future<PictureReaction> togglePictureLike(String pictureId);
+
+  // ── Privacy features ───────────────────────────────────────────────────────
+
+  Future<Map<String, bool>> getFeatures();
+  Future<void> enableAnonymousMode();
+  Future<void> disableAnonymousMode();
+  Future<void> enableHideProfile();
+  Future<void> disableHideProfile();
+  Future<void> blockUser(String userId);
+  Future<void> unblockUser(String userId);
 }

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart' as dio;
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:saver_gallery/saver_gallery.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
@@ -93,7 +93,13 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
             'Download failed: ${response.statusCode}');
       }
       final bytes = Uint8List.fromList(response.data as List<int>);
-      await ImageGallerySaver.saveImage(bytes);
+      await SaverGallery.saveImage(
+        bytes,
+        quality: 100,
+        fileName: 'skidoo_${DateTime.now().millisecondsSinceEpoch}',
+        androidRelativePath: 'Pictures',
+        skipIfExists: false,
+      );
     } on dio.DioException catch (err) {
       if (err.response == null) throw const app_ex.NetworkException();
       throw app_ex.ServerException(

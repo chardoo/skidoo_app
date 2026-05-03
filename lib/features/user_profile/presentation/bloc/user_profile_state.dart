@@ -16,6 +16,8 @@ class UserProfileState extends Equatable {
   final bool isLoggedOut;
   final bool isMuted;
   final bool alwaysPublicImages;
+  final bool anonymousMode;
+  final bool hideProfile;
   final String? errorMessage;
   final String? updateErrorMessage;
 
@@ -35,6 +37,8 @@ class UserProfileState extends Equatable {
     this.isLoggedOut = false,
     this.isMuted = false,
     this.alwaysPublicImages = false,
+    this.anonymousMode = false,
+    this.hideProfile = false,
     this.errorMessage,
     this.updateErrorMessage,
   });
@@ -55,6 +59,8 @@ class UserProfileState extends Equatable {
     bool? isLoggedOut,
     bool? isMuted,
     bool? alwaysPublicImages,
+    bool? anonymousMode,
+    bool? hideProfile,
     String? errorMessage,
     String? updateErrorMessage,
     bool clearError = false,
@@ -77,6 +83,8 @@ class UserProfileState extends Equatable {
       isLoggedOut: isLoggedOut ?? this.isLoggedOut,
       isMuted: isMuted ?? this.isMuted,
       alwaysPublicImages: alwaysPublicImages ?? this.alwaysPublicImages,
+      anonymousMode: anonymousMode ?? this.anonymousMode,
+      hideProfile: hideProfile ?? this.hideProfile,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       updateErrorMessage: clearUpdateError ? null : (updateErrorMessage ?? this.updateErrorMessage),
     );
@@ -99,6 +107,8 @@ class UserProfileState extends Equatable {
         isLoggedOut,
         isMuted,
         alwaysPublicImages,
+        anonymousMode,
+        hideProfile,
         errorMessage,
         updateErrorMessage,
       ];

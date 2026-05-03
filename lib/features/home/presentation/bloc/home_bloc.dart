@@ -8,6 +8,7 @@ import 'package:skidoo_app/features/home/domain/usecases/search_images_usecase.d
 import 'package:skidoo_app/models/event/Event.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/services/notification_prefs_service.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 
 part 'home_event.dart';
@@ -18,6 +19,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final SearchImagesUseCase _searchImagesUseCase;
   final SaveImagesForFreeUseCase _saveImagesFree;
   final AuthService _authService;
+  final NotificationPrefsService _notifPrefs;
 
   HomeBloc({
     required SearchEventsUseCase searchEventsUseCase,
@@ -27,6 +29,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         _searchImagesUseCase = searchImagesUseCase,
         _saveImagesFree = saveImagesFree,
         _authService = sl<AuthService>(),
+        _notifPrefs = sl<NotificationPrefsService>(),
         super(const HomeState()) {
     on<HomeInitialized>(_onInitialized);
     on<HomeEventSearched>(_onEventSearched);
@@ -71,8 +74,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     emit(state.copyWith(isLoadingImages: true, searchImages: [], clearError: true));
     try {
       final email = await _authService.getEmail();
-      final stream = _searchImagesUseCase(
-          SearchImagesParams(eventId: event.eventId, email: email));
+      final stream = _searchImagesUseCase(SearchImagesParams(
+        eventId: event.eventId,
+        email: email,
+        alwaysPublicImages: _notifPrefs.alwaysPublicImages,
+      ));
       await for (final photo in stream) {
         if (emit.isDone) return;
         // Emit each photo immediately so the grid renders it as it arrives.

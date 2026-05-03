@@ -50,6 +50,17 @@ class ChatRoomState extends Equatable {
   /// for non-DM rooms.
   final bool isE2EEReady;
 
+  /// Transient notice shown when a user joins the room (e.g. "Bob joined").
+  /// Cleared immediately after being shown.
+  final String? systemNotice;
+
+  /// The current room with up-to-date participants and settings.
+  /// Updated reactively as WS admin/settings events arrive.
+  final ChatRoom? room;
+
+  /// True when the current user has admin rights in this group room.
+  final bool amIAdmin;
+
   const ChatRoomState({
     this.messages = const [],
     this.isConnected = false,
@@ -72,6 +83,9 @@ class ChatRoomState extends Equatable {
     this.pendingShareUrl,
     this.myUserId = '',
     this.isE2EEReady = false,
+    this.systemNotice,
+    this.room,
+    this.amIAdmin = false,
   });
 
   ChatRoomState copyWith({
@@ -100,6 +114,10 @@ class ChatRoomState extends Equatable {
     bool clearPendingShareUrl = false,
     String? myUserId,
     bool? isE2EEReady,
+    String? systemNotice,
+    bool clearSystemNotice = false,
+    ChatRoom? room,
+    bool? amIAdmin,
   }) =>
       ChatRoomState(
         messages: messages ?? this.messages,
@@ -123,6 +141,9 @@ class ChatRoomState extends Equatable {
         pendingShareUrl: clearPendingShareUrl ? null : (pendingShareUrl ?? this.pendingShareUrl),
         myUserId: myUserId ?? this.myUserId,
         isE2EEReady: isE2EEReady ?? this.isE2EEReady,
+        systemNotice: clearSystemNotice ? null : (systemNotice ?? this.systemNotice),
+        room: room ?? this.room,
+        amIAdmin: amIAdmin ?? this.amIAdmin,
       );
 
   @override
@@ -148,5 +169,8 @@ class ChatRoomState extends Equatable {
         pendingShareUrl,
         myUserId,
         isE2EEReady,
+        systemNotice,
+        room,
+        amIAdmin,
       ];
 }

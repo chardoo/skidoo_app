@@ -261,13 +261,20 @@ Future<void> setupServiceLocator() async {
         updateProfileUseCase: sl<UpdateProfileUseCase>(),
         profileRepository: sl<UserProfileRepository>(),
         authService: sl<AuthService>(),
+        getFeatures: sl<GetFeaturesUseCase>(),
+        setAnonymousMode: sl<SetAnonymousModeUseCase>(),
+        setHideProfile: sl<SetHideProfileUseCase>(),
       ));
 
   // ── Chat feature ──────────────────────────────────────────────────────────
   sl.registerSingleton<ChatApiClient>(ChatApiClient(sl<AuthService>()));
   sl.registerSingleton<ChatDatabase>(ChatDatabase());
+  sl.registerSingleton<ChatWebSocketService>(ChatWebSocketService(sl<AuthService>()));
+  // E2eeService must be registered before ChatBackgroundService (decrypt-on-arrival).
+  sl.registerSingleton<E2eeService>(E2eeService());
   sl.registerSingleton<ChatBackgroundService>(
-      ChatBackgroundService(sl<AuthService>(), sl<ChatDatabase>()));
+      ChatBackgroundService(sl<ChatDatabase>(), sl<ChatWebSocketService>(),
+          sl<E2eeService>(), sl<AuthService>()));
 
   sl.registerSingleton<ChatRestDataSource>(
       ChatRestDataSourceImpl(sl<ChatApiClient>()));
@@ -296,6 +303,28 @@ Future<void> setupServiceLocator() async {
   sl.registerSingleton<GetRoomUseCase>(GetRoomUseCase(sl<ChatRepository>()));
   sl.registerSingleton<InviteToRoomUseCase>(
       InviteToRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<EditMessageUseCase>(
+      EditMessageUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<DeleteMessageUseCase>(
+      DeleteMessageUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<UpdateCachedMessageUseCase>(
+      UpdateCachedMessageUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<DeleteCachedMessageUseCase>(
+      DeleteCachedMessageUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<CreateGroupRoomUseCase>(
+      CreateGroupRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<AcceptRoomInviteUseCase>(
+      AcceptRoomInviteUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<DeclineRoomInviteUseCase>(
+      DeclineRoomInviteUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GrantAdminUseCase>(
+      GrantAdminUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<RevokeAdminUseCase>(
+      RevokeAdminUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<UpdateRoomSettingsUseCase>(
+      UpdateRoomSettingsUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<KickParticipantUseCase>(
+      KickParticipantUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetRoomMessagesUseCase>(
       GetRoomMessagesUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetCachedMessagesUseCase>(
@@ -304,15 +333,25 @@ Future<void> setupServiceLocator() async {
       CacheMessageUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetUnreadCountsUseCase>(
       GetUnreadCountsUseCase(sl<ChatRepository>(), sl<AuthService>()));
+  sl.registerSingleton<GetLastMessageTimesUseCase>(
+      GetLastMessageTimesUseCase(sl<ChatRepository>()));
   sl.registerSingleton<MarkRoomAsReadUseCase>(
       MarkRoomAsReadUseCase(sl<ChatRepository>()));
   sl.registerSingleton<UploadChatImageUseCase>(
       UploadChatImageUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetEventReactionUseCase>(
       GetEventReactionUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetFeaturesUseCase>(
+      GetFeaturesUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<SetAnonymousModeUseCase>(
+      SetAnonymousModeUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<SetHideProfileUseCase>(
+      SetHideProfileUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<BlockUserUseCase>(
+      BlockUserUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<UnblockUserUseCase>(
+      UnblockUserUseCase(sl<ChatRepository>()));
 
-  // E2EE services
-  sl.registerSingleton<E2eeService>(E2eeService());
   sl.registerSingleton<ChatKeyDataSource>(ChatKeyDataSource(sl<Api>()));
 
   // Saved items
@@ -324,19 +363,31 @@ Future<void> setupServiceLocator() async {
         getMyRooms: sl<GetMyRoomsUseCase>(),
         getCachedRooms: sl<GetCachedRoomsUseCase>(),
         getUnreadCounts: sl<GetUnreadCountsUseCase>(),
+        getLastMessageTimes: sl<GetLastMessageTimesUseCase>(),
         getRoomMessages: sl<GetRoomMessagesUseCase>(),
+        acceptInvite: sl<AcceptRoomInviteUseCase>(),
+        declineInvite: sl<DeclineRoomInviteUseCase>(),
         bgService: sl<ChatBackgroundService>(),
+        authService: sl<AuthService>(),
       ));
 
   sl.registerFactory<ChatRoomBloc>(() => ChatRoomBloc(
-    keyDataSource: sl<ChatKeyDataSource>(),
-        e2eeService:  sl<E2eeService>(),
+        keyDataSource: sl<ChatKeyDataSource>(),
+        e2eeService: sl<E2eeService>(),
         getRoomMessages: sl<GetRoomMessagesUseCase>(),
+        getRoom: sl<GetRoomUseCase>(),
         getCachedMessages: sl<GetCachedMessagesUseCase>(),
         cacheMessage: sl<CacheMessageUseCase>(),
         markRoomAsRead: sl<MarkRoomAsReadUseCase>(),
         uploadImage: sl<UploadChatImageUseCase>(),
-        wsService: ChatWebSocketService(sl<AuthService>()),
+        editMessage: sl<EditMessageUseCase>(),
+        deleteMessage: sl<DeleteMessageUseCase>(),
+        updateCachedMessage: sl<UpdateCachedMessageUseCase>(),
+        deleteCachedMessage: sl<DeleteCachedMessageUseCase>(),
+        grantAdmin: sl<GrantAdminUseCase>(),
+        revokeAdmin: sl<RevokeAdminUseCase>(),
+        updateRoomSettings: sl<UpdateRoomSettingsUseCase>(),
+        kickParticipant: sl<KickParticipantUseCase>(),
         authService: sl<AuthService>(),
         bgService: sl<ChatBackgroundService>(),
       ));

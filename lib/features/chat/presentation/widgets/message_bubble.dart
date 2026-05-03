@@ -118,7 +118,8 @@ class MessageBubble extends StatelessWidget {
                             ? _MessageVideo(videoUrl: message.imageUrl!)
                             : _MessageImage(imageUrl: message.imageUrl!),
                       // Text content + timestamp
-                      if (message.content.isNotEmpty ||
+                      if (message.isEncrypted ||
+                          message.content.isNotEmpty ||
                           message.imageUrl == null)
                         Padding(
                           padding: EdgeInsets.fromLTRB(
@@ -134,7 +135,31 @@ class MessageBubble extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (message.content.isNotEmpty)
+                              if (message.isEncrypted)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.lock_outline,
+                                      size: 13.sp,
+                                      color: isMe
+                                          ? Colors.white70
+                                          : ext.searchHintColor,
+                                    ),
+                                    SizedBox(width: 4.w),
+                                    Text(
+                                      'Encrypted message',
+                                      style: TextStyle(
+                                        color: isMe
+                                            ? Colors.white70
+                                            : ext.searchHintColor,
+                                        fontSize: 13.sp,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else if (message.content.isNotEmpty)
                                 Text(
                                   message.content,
                                   style: TextStyle(
@@ -481,6 +506,17 @@ class _Timestamp extends StatelessWidget {
             fontSize: 9.sp,
           ),
         ),
+        if (message.isEdited) ...[
+          SizedBox(width: 4.w),
+          Text(
+            'edited',
+            style: TextStyle(
+              color: isMe ? Colors.white54 : ext.searchHintColor,
+              fontSize: 9.sp,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
         if (isMe) ...[
           SizedBox(width: 3.w),
           Icon(

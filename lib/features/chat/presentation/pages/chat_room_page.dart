@@ -3,10 +3,13 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
+import 'package:skidoo_app/features/chat/presentation/pages/group_info_page.dart';
+import 'package:skidoo_app/features/chat/presentation/pages/invite_to_group_page.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/chat_input_bar.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/message_entrance.dart';
@@ -176,6 +179,114 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     _bloc.add(ChatRoomReplySet(msg));
   }
 
+  void _onMessageOptions(BuildContext context, ChatMessage msg, bool isMe) {
+    HapticFeedback.selectionClick();
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final canEdit = isMe && !msg.isEncrypted && msg.imageUrl == null;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MessageOptionsSheet(
+        ext: ext,
+        canEdit: canEdit,
+        canDelete: isMe,
+        onReply: () {
+          Navigator.pop(context);
+          _onReply(msg);
+        },
+        onEdit: canEdit
+            ? () {
+                Navigator.pop(context);
+                _showEditDialog(context, msg);
+              }
+            : null,
+        onDelete: isMe
+            ? () {
+                Navigator.pop(context);
+                _showDeleteDialog(context, msg);
+              }
+            : null,
+      ),
+    );
+  }
+
+  Future<void> _showEditDialog(BuildContext context, ChatMessage msg) async {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final ctrl = TextEditingController(text: msg.content);
+
+    final newContent = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: ext.cardSurface,
+        title: Text('Edit message',
+            style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          maxLines: null,
+          style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+          decoration: InputDecoration(
+            hintText: 'Edit your message…',
+            hintStyle: TextStyle(color: ext.searchHintColor),
+            border: InputBorder.none,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child:
+                Text('Cancel', style: TextStyle(color: ext.searchHintColor)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            child: Text('Save',
+                style: TextStyle(
+                    color: ext.accentGold, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+
+    if (newContent != null &&
+        newContent.isNotEmpty &&
+        newContent != msg.content &&
+        context.mounted) {
+      _bloc.add(ChatRoomMessageEditRequested(msg.id, newContent));
+    }
+  }
+
+  Future<void> _showDeleteDialog(BuildContext context, ChatMessage msg) async {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: ext.cardSurface,
+        title: Text('Delete message',
+            style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
+        content: Text('This message will be deleted for everyone.',
+            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child:
+                Text('Cancel', style: TextStyle(color: ext.searchHintColor)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete',
+                style: TextStyle(
+                    color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      _bloc.add(ChatRoomMessageDeleteRequested(msg.id));
+    }
+  }
+
   void _clearReply() {
     _bloc.add(const ChatRoomReplySet(null));
   }
@@ -189,6 +300,28 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
         senderId: msg.senderId,
         senderRole: msg.senderRole,
         onDirectChat: () => _openDirectChat(context, msg),
+      ),
+    );
+  }
+
+  Future<void> _openInvitePage(BuildContext context) async {
+    final count = await Navigator.of(context).push<int>(
+      MaterialPageRoute(
+        builder: (_) => InviteToGroupPage(room: widget.room),
+      ),
+    );
+    if (!context.mounted || count == null) return;
+    final label = count == 1 ? '1 person invited' : '$count people invited';
+    AppSnackBar.success(context, label);
+  }
+
+  void _openGroupInfo(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: _bloc,
+          child: const GroupInfoPage(),
+        ),
       ),
     );
   }
@@ -207,7 +340,11 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       );
     } catch (e) {
       if (!context.mounted) return;
-      AppSnackBar.error(context, 'Could not open chat: $e');
+      final isBlocked = e is ServerException && e.message.contains('400');
+      AppSnackBar.error(
+        context,
+        isBlocked ? 'This user is not accepting messages.' : 'Could not open chat: $e',
+      );
     }
   }
 
@@ -241,34 +378,41 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
               color: ext.greetingColor, size: 18.sp),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Column(
+        title: GestureDetector(
+          onTap: widget.room.type == RoomType.group
+              ? () => _openGroupInfo(context)
+              : null,
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.room.displayName,
-              style: TextStyle(
-                color: ext.greetingColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 16.sp,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.room.displayName,
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16.sp,
+                  ),
+                ),
+                if (widget.room.type == RoomType.group) ...[
+                  SizedBox(width: 4.w),
+                  Icon(Icons.keyboard_arrow_right_rounded,
+                      color: ext.searchHintColor, size: 16.sp),
+                ],
+              ],
             ),
             BlocBuilder<ChatRoomBloc, ChatRoomState>(
               buildWhen: (p, c) =>
                   p.isConnected != c.isConnected ||
                   p.isConnecting != c.isConnecting,
               builder: (_, state) {
-                final String label;
-                final Color color;
-                if (state.isConnected) {
-                  label = 'Connected';
-                  color = Colors.greenAccent;
-                } else if (state.isConnecting) {
-                  label = 'Connecting…';
-                  color = Colors.orangeAccent;
-                } else {
-                  label = 'Disconnected';
-                  color = Colors.redAccent;
-                }
+                if (state.isConnected) return const SizedBox.shrink();
+                final label =
+                    state.isConnecting ? 'Connecting…' : 'Disconnected';
+                final color =
+                    state.isConnecting ? Colors.orangeAccent : Colors.redAccent;
                 return Text(
                   label,
                   style: TextStyle(color: color, fontSize: 10.sp),
@@ -276,8 +420,17 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
               },
             ),
           ],
+          ),
         ),
         actions: [
+          // Invite button — only shown for group rooms
+          if (widget.room.type == RoomType.group)
+            IconButton(
+              icon: Icon(Icons.person_add_outlined,
+                  color: ext.greetingColor, size: 20.sp),
+              tooltip: 'Add people',
+              onPressed: () => _openInvitePage(context),
+            ),
           // Like button — only shown for event rooms that have an event_id
           if (_isEventRoom && widget.room.eventId != null)
             BlocBuilder<ChatRoomBloc, ChatRoomState>(
@@ -319,14 +472,38 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                           )
                         : const SizedBox.shrink(),
                   ),
+                  if (widget.room.type == RoomType.direct)
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 6.h),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.lock_rounded,
+                              size: 11.sp,
+                              color: ext.searchHintColor.withValues(alpha: 0.6)),
+                          SizedBox(width: 4.w),
+                          Text(
+                            'End-to-end encrypted',
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              color: ext.searchHintColor.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   Expanded(
                     child: BlocConsumer<ChatRoomBloc, ChatRoomState>(
                       listenWhen: (p, c) =>
                           p.errorMessage != c.errorMessage ||
-                          p.messages != c.messages,
+                          p.messages != c.messages ||
+                          (c.systemNotice != null && p.systemNotice != c.systemNotice),
                       listener: (context, state) {
                         if (state.errorMessage != null) {
                           AppSnackBar.error(context, state.errorMessage!);
+                        }
+                        if (state.systemNotice != null) {
+                          AppSnackBar.info(context, state.systemNotice!);
                         }
                         if (!state.isLoadingHistory && _knownIds.isNotEmpty) {
                           final newIds = state.messages
@@ -391,7 +568,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                               onUserTap: isMe
                                   ? null
                                   : () => _onUserTap(context, msg),
-                              onLongPress: () => _onReply(msg),
+                              onLongPress: () =>
+                                  _onMessageOptions(context, msg, isMe),
                             );
 
                             if (_animateIds.contains(msg.id)) {
@@ -407,22 +585,69 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                       },
                     ),
                   ),
-                  ChatInputBar(
-                    controller: _inputCtrl,
-                    onSend: () => _send(
-                      inputState.replyingTo?.id,
-                      hasPendingImage: inputState.pendingImagePath != null ||
-                          inputState.pendingShareUrl != null,
-                    ),
-                    ext: ext,
-                    replyingTo: inputState.replyingTo,
-                    onClearReply: _clearReply,
-                    onImagePicked: _onImagePicked,
-                    pendingImagePath: inputState.pendingImagePath,
-                    pendingIsVideo: inputState.pendingIsVideo,
-                    pendingShareUrl: inputState.pendingShareUrl,
-                    onClearImage: () => _bloc.add(const ChatRoomImageCleared()),
-                    isUploadingImage: inputState.isUploadingImage,
+                  BlocBuilder<ChatRoomBloc, ChatRoomState>(
+                    buildWhen: (p, c) =>
+                        p.room?.adminOnly != c.room?.adminOnly ||
+                        p.amIAdmin != c.amIAdmin ||
+                        p.isConnected != c.isConnected,
+                    builder: (context, adminState) {
+                      final isAdminOnly =
+                          adminState.room?.adminOnly == true;
+                      final canSend =
+                          adminState.amIAdmin || !isAdminOnly;
+
+                      if (!canSend) {
+                        return Container(
+                          padding: EdgeInsets.symmetric(
+                              vertical: 16.h, horizontal: 20.w),
+                          decoration: BoxDecoration(
+                            color: ext.cardSurface,
+                            border: Border(
+                              top: BorderSide(
+                                  color: ext.searchHintColor
+                                      .withValues(alpha: 0.15)),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.lock_rounded,
+                                  size: 14.sp,
+                                  color: ext.searchHintColor),
+                              SizedBox(width: 8.w),
+                              Text(
+                                'Only admins can send messages',
+                                style: TextStyle(
+                                  color: ext.searchHintColor,
+                                  fontSize: 13.sp,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return ChatInputBar(
+                        controller: _inputCtrl,
+                        onSend: () => _send(
+                          inputState.replyingTo?.id,
+                          hasPendingImage:
+                              inputState.pendingImagePath != null ||
+                                  inputState.pendingShareUrl != null,
+                        ),
+                        ext: ext,
+                        replyingTo: inputState.replyingTo,
+                        onClearReply: _clearReply,
+                        onImagePicked: _onImagePicked,
+                        pendingImagePath: inputState.pendingImagePath,
+                        pendingIsVideo: inputState.pendingIsVideo,
+                        pendingShareUrl: inputState.pendingShareUrl,
+                        onClearImage: () =>
+                            _bloc.add(const ChatRoomImageCleared()),
+                        isUploadingImage: inputState.isUploadingImage,
+                      );
+                    },
                   ),
                 ],
               );
@@ -638,6 +863,73 @@ class _SheetOption extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Message options sheet (reply / edit / delete) ─────────────────────────────
+
+class _MessageOptionsSheet extends StatelessWidget {
+  const _MessageOptionsSheet({
+    required this.ext,
+    required this.canEdit,
+    required this.canDelete,
+    required this.onReply,
+    this.onEdit,
+    this.onDelete,
+  });
+
+  final AppThemeExtension ext;
+  final bool canEdit;
+  final bool canDelete;
+  final VoidCallback onReply;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 36.h),
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(
+            child: Container(
+              width: 36.w,
+              height: 4.h,
+              margin: EdgeInsets.only(bottom: 18.h),
+              decoration: BoxDecoration(
+                color: ext.searchHintColor.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+          ),
+          _SheetOption(
+            icon: Icons.reply_rounded,
+            label: 'Reply',
+            accentColor: ext.accentGold,
+            onTap: onReply,
+          ),
+          if (canEdit)
+            _SheetOption(
+              icon: Icons.edit_rounded,
+              label: 'Edit',
+              accentColor: Colors.blueAccent,
+              onTap: onEdit!,
+            ),
+          if (canDelete)
+            _SheetOption(
+              icon: Icons.delete_outline_rounded,
+              label: 'Delete',
+              accentColor: Colors.redAccent,
+              onTap: onDelete!,
+            ),
+        ],
       ),
     );
   }

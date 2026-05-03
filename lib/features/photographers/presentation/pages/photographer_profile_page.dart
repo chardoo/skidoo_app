@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
@@ -16,6 +17,7 @@ import 'package:skidoo_app/features/photographers/presentation/widgets/profile_h
 import 'package:skidoo_app/features/photographers/presentation/widgets/profile_info_row.dart';
 import 'package:skidoo_app/features/photographers/presentation/widgets/profile_rating_row.dart';
 import 'package:skidoo_app/features/photographers/presentation/widgets/profile_sample_tile.dart';
+import 'package:skidoo_app/core/utils/auth_guard.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/models/photographer/photographer_event.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
@@ -35,6 +37,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   late final Future<List<PhotographerSample>> _samplesFuture;
+  bool _isBlocked = false;
 
   @override
   void initState() {
@@ -66,9 +69,11 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open chat: $e')),
-        );
+        final msg = e is ServerException && e.message.contains('400')
+            ? "This user isn't accepting new conversations."
+            : 'Could not open chat: $e';
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
       }
       return;
     }
@@ -141,7 +146,10 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                     width: double.infinity,
                     height: 50.h,
                     child: ElevatedButton.icon(
-                      onPressed: () => _openDirectChat(context),
+                      onPressed: () => requireAuth(
+                        context,
+                        action: () => _openDirectChat(context),
+                      ),
                       icon: Icon(Icons.chat_bubble_outline_rounded,
                           size: 18.sp),
                       label: Text(

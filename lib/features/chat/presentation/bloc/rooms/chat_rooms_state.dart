@@ -3,6 +3,9 @@ part of 'chat_rooms_bloc.dart';
 class ChatRoomsState extends Equatable {
   final List<ChatRoom> rooms;
 
+  /// Rooms where the current user has a pending invite (shown at the top).
+  final List<ChatRoom> pendingInvites;
+
   /// True only when there are no cached rooms yet (first ever load).
   final bool isLoading;
 
@@ -12,33 +15,49 @@ class ChatRoomsState extends Equatable {
   /// Unread message count per room id.
   final Map<String, int> unreadCounts;
 
+  /// Timestamp of the most recent message per room id (for sorting).
+  final Map<String, DateTime> lastMessageAt;
+
   final String? errorMessage;
 
   const ChatRoomsState({
     this.rooms = const [],
+    this.pendingInvites = const [],
     this.isLoading = false,
     this.isSyncing = false,
     this.unreadCounts = const {},
+    this.lastMessageAt = const {},
     this.errorMessage,
   });
 
   ChatRoomsState copyWith({
     List<ChatRoom>? rooms,
+    List<ChatRoom>? pendingInvites,
     bool? isLoading,
     bool? isSyncing,
     Map<String, int>? unreadCounts,
+    Map<String, DateTime>? lastMessageAt,
     String? errorMessage,
     bool clearError = false,
   }) =>
       ChatRoomsState(
         rooms: rooms ?? this.rooms,
+        pendingInvites: pendingInvites ?? this.pendingInvites,
         isLoading: isLoading ?? this.isLoading,
         isSyncing: isSyncing ?? this.isSyncing,
         unreadCounts: unreadCounts ?? this.unreadCounts,
+        lastMessageAt: lastMessageAt ?? this.lastMessageAt,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       );
 
   @override
-  List<Object?> get props =>
-      [rooms, isLoading, isSyncing, unreadCounts, errorMessage];
+  List<Object?> get props => [
+        rooms,
+        pendingInvites,
+        isLoading,
+        isSyncing,
+        unreadCounts,
+        lastMessageAt,
+        errorMessage,
+      ];
 }

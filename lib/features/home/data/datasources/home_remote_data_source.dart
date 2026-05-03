@@ -14,7 +14,7 @@ abstract class HomeRemoteDataSource {
   /// Streams [Photo] objects as chunks arrive from the server.
   /// The endpoint sends a JSON array in chunked transfer encoding;
   /// each complete `{…}` object is yielded as soon as it is received.
-  Stream<Photo> streamEventImages(String eventId, String email);
+  Stream<Photo> streamEventImages(String eventId, String email, bool alwaysPublicImages);
 }
 
 class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
@@ -47,7 +47,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   // ── Stream event images ───────────────────────────────────────────────────
 
   @override
-  Stream<Photo> streamEventImages(String eventId, String email) async* {
+  Stream<Photo> streamEventImages(String eventId, String email, bool alwaysPublicImages) async* {
   final uri = Uri.parse('${_api.dio.options.baseUrl}/client/search-images');
 
   final request = http.Request('POST', uri)
@@ -58,7 +58,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
     ..body = jsonEncode({
       'eventId': eventId,
       'uiqueName': email,
-      'isTrue': true,
+      'isTrue': alwaysPublicImages,
     });
 
   final response = await request.send();

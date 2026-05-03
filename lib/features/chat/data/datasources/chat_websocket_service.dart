@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
+import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/models/chat/like_update.dart' show LikeUpdate, PictureLikeUpdate;
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:web_socket_channel/io.dart';
@@ -44,18 +45,123 @@ class WsKeyRotationEvent {
       this.userId, this.identityKey, this.signedPreKey, {this.registrationId});
 }
 
+/// Broadcast when a message is edited by its sender.
+class WsMessageEditedEvent {
+  final String id;
+  final String roomId;
+  final String content;
+  final DateTime updatedAt;
+  final String senderId;
+  const WsMessageEditedEvent({
+    required this.id,
+    required this.roomId,
+    required this.content,
+    required this.updatedAt,
+    required this.senderId,
+  });
+}
+
+/// Broadcast when a message is deleted by its sender.
+class WsMessageDeletedEvent {
+  final String id;
+  final String roomId;
+  final String senderId;
+  const WsMessageDeletedEvent({
+    required this.id,
+    required this.roomId,
+    required this.senderId,
+  });
+}
+
+/// Server push on the personal user channel when the current user is invited
+/// to a group by another user.
+class WsGroupInviteEvent {
+  final ChatRoom room;
+  final String invitedBy;
+  final String invitedByName;
+  const WsGroupInviteEvent({
+    required this.room,
+    required this.invitedBy,
+    required this.invitedByName,
+  });
+}
+
+/// Broadcast when an admin grants admin rights to another active member.
+class WsAdminGrantedEvent {
+  final String roomId;
+  final String userId;
+  final String grantedBy;
+  const WsAdminGrantedEvent({
+    required this.roomId,
+    required this.userId,
+    required this.grantedBy,
+  });
+}
+
+/// Broadcast when an admin revokes another member's admin rights.
+class WsAdminRevokedEvent {
+  final String roomId;
+  final String userId;
+  final String revokedBy;
+  const WsAdminRevokedEvent({
+    required this.roomId,
+    required this.userId,
+    required this.revokedBy,
+  });
+}
+
+/// Broadcast when an admin changes room-level settings (e.g. admin_only mode).
+class WsRoomSettingsUpdatedEvent {
+  final String roomId;
+  final bool adminOnly;
+  final String updatedBy;
+  const WsRoomSettingsUpdatedEvent({
+    required this.roomId,
+    required this.adminOnly,
+    required this.updatedBy,
+  });
+}
+
+/// Broadcast when an admin kicks a participant from the group.
+/// The kicked user's WS is closed server-side with code 4003.
+class WsParticipantRemovedEvent {
+  final String roomId;
+  final String userId;
+  final String removedBy;
+  const WsParticipantRemovedEvent({
+    required this.roomId,
+    required this.userId,
+    required this.removedBy,
+  });
+}
+
+/// Broadcast to all active room members when a pending invitee accepts
+/// and joins the group.
+class WsUserJoinedEvent {
+  final String roomId;
+  final String userId;
+  final String userName;
+  final String userRole;
+  const WsUserJoinedEvent({
+    required this.roomId,
+    required this.userId,
+    required this.userName,
+    required this.userRole,
+  });
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 /// Manages the WebSocket connection to the global chat endpoint.
 ///
 /// Protocol (new global endpoint):
-///   • Connect to /chat/ws — one connection for all rooms.
+///   • Connect to /chat/ws/me?token=<jwt> — one connection for all rooms.
 ///   • Server immediately sends { "type": "connected", "userId": "...", "rooms": [...] }.
 ///   • Send { "type": "subscribe_room", "room_id": "..." } to start receiving a room's events.
 ///   • Every outbound event includes "room_id" (added automatically by [_sendRaw]).
 ///
-/// The auth token is sent in the HTTP Authorization header during the upgrade
-/// handshake — not in the URL, which would appear in server access logs.
+/// The auth token is passed as a query parameter so the server can authenticate
+/// the upgrade request. Fatal close codes (4001/4003/4400) must not be retried.
 class ChatWebSocketService {
   final AuthService _authService;
 
@@ -69,6 +175,14 @@ class ChatWebSocketService {
   StreamController<WsKeyBundlesEvent>? _keyBundlesController;
   StreamController<WsParticipantKeyAvailable>? _participantKeyController;
   StreamController<WsKeyRotationEvent>? _keyRotationController;
+  StreamController<WsMessageEditedEvent>? _msgEditedController;
+  StreamController<WsMessageDeletedEvent>? _msgDeletedController;
+  StreamController<WsGroupInviteEvent>? _groupInviteController;
+  StreamController<WsUserJoinedEvent>? _userJoinedController;
+  StreamController<WsAdminGrantedEvent>? _adminGrantedController;
+  StreamController<WsAdminRevokedEvent>? _adminRevokedController;
+  StreamController<WsRoomSettingsUpdatedEvent>? _roomSettingsController;
+  StreamController<WsParticipantRemovedEvent>? _participantRemovedController;
   StreamSubscription? _sub;
 
   /// Emits the initial server handshake (userId + room list).
@@ -99,26 +213,120 @@ class ChatWebSocketService {
   Stream<WsKeyRotationEvent> get keyRotationEvents =>
       _keyRotationController?.stream ?? const Stream.empty();
 
+  /// Emits when a message is edited by its sender.
+  Stream<WsMessageEditedEvent> get messageEditedEvents =>
+      _msgEditedController?.stream ?? const Stream.empty();
+
+  /// Emits when a message is deleted by its sender.
+  Stream<WsMessageDeletedEvent> get messageDeletedEvents =>
+      _msgDeletedController?.stream ?? const Stream.empty();
+
+  /// Emits when the current user receives a group invite (personal channel push).
+  Stream<WsGroupInviteEvent> get groupInviteEvents =>
+      _groupInviteController?.stream ?? const Stream.empty();
+
+  /// Emits when a user joins a room (broadcast to active members).
+  Stream<WsUserJoinedEvent> get userJoinedEvents =>
+      _userJoinedController?.stream ?? const Stream.empty();
+
+  /// Emits when a member is granted admin rights.
+  Stream<WsAdminGrantedEvent> get adminGrantedEvents =>
+      _adminGrantedController?.stream ?? const Stream.empty();
+
+  /// Emits when a member's admin rights are revoked.
+  Stream<WsAdminRevokedEvent> get adminRevokedEvents =>
+      _adminRevokedController?.stream ?? const Stream.empty();
+
+  /// Emits when room settings change (e.g. admin_only toggled).
+  Stream<WsRoomSettingsUpdatedEvent> get roomSettingsEvents =>
+      _roomSettingsController?.stream ?? const Stream.empty();
+
+  /// Emits when a participant is kicked from the group.
+  Stream<WsParticipantRemovedEvent> get participantRemovedEvents =>
+      _participantRemovedController?.stream ?? const Stream.empty();
+
   bool _connected = false;
   bool get isConnected => _connected;
 
+  /// True when the last close was caused by a fatal server code (4001/4003/4400).
+  /// Callers should not retry when this is true.
+  bool _fatalClose = false;
+  bool get hadFatalClose => _fatalClose;
+
+  // Distinguishes the shared singleton from per-room event WS instances in logs.
+  static int _instanceCounter = 0;
+  final int _instanceId = ++_instanceCounter;
+
   ChatWebSocketService(this._authService);
 
-  /// Connect to the global WebSocket endpoint and subscribe to [roomId].
-  Future<void> connect(String roomId) async {
-    disconnect(); // Close any previous connection first.
+  /// Returns true for close codes that indicate a permanent failure.
+  /// The client must NOT reconnect automatically on these — re-auth or a
+  /// bug fix is required.
+  static bool isFatalCloseCode(int? code) {
+    if (code == null) return false;
+    return const {
+      4001, // invalid / expired token — re-auth required
+      4003, // caller is not a participant of any requested room
+      4400, // wrong endpoint — client-side bug
+    }.contains(code);
+  }
 
+  /// Connect to the unified WebSocket endpoint (`/chat/ws/me`).
+  ///
+  /// The JWT is passed as a query parameter (`?token=…`) so the server can
+  /// authenticate the upgrade request without requiring a custom header
+  /// (some proxies strip non-standard headers).
+  /// Connect to the unified WebSocket endpoint (`/chat/ws/me`).
+  ///
+  /// If [roomId] is provided, sends an initial `subscribe_room` message after
+  /// the handshake. Omit it (or pass null) to connect without subscribing to
+  /// any room — useful when the user has no rooms yet but still needs to
+  /// receive user-level push events (e.g. group_invite).
+  Future<void> connect([String? roomId]) async {
+    disconnect();
     _roomId = roomId;
-
-    final token = await _authService.getToken();
+    _fatalClose = false;
 
     final wsBase = ChatConfig.wsBaseUrl
         .replaceFirst('https://', 'wss://')
         .replaceFirst('http://', 'ws://');
+    final token = await _authService.getToken();
+    final uri = Uri.parse('$wsBase/chat/ws/me').replace(
+      queryParameters: token.isNotEmpty ? {'token': token} : null,
+    );
 
-    // Global endpoint — room is joined via subscribe_room, not the URL.
-    final uri = Uri.parse('$wsBase/chat/ws');
+    await _doConnect(uri);
+    if (roomId != null) {
+      debugPrint('[WS#$_instanceId] Connected — subscribing to room $roomId');
+      _sendRaw({'type': 'subscribe_room', 'room_id': roomId});
+    } else {
+      debugPrint('[WS#$_instanceId] Connected (no initial room subscription) — shared/user WS');
+    }
+  }
 
+  /// Connect to a per-room WebSocket endpoint (`/chat/ws/{roomId}`).
+  ///
+  /// Used for event comment sessions. The server auto-joins the user on
+  /// connection — no `subscribe_room` message is needed. Connection
+  /// lifecycle is per-page: open on enter, close on leave.
+  Future<void> connectToRoom(String roomId) async {
+    disconnect();
+    _roomId = roomId;
+    _fatalClose = false;
+
+    final wsBase = ChatConfig.wsBaseUrl
+        .replaceFirst('https://', 'wss://')
+        .replaceFirst('http://', 'ws://');
+    final token = await _authService.getToken();
+    final uri = Uri.parse('$wsBase/chat/ws/$roomId').replace(
+      queryParameters: token.isNotEmpty ? {'token': token} : null,
+    );
+
+    await _doConnect(uri);
+    debugPrint('[WS#$_instanceId] Per-room connected — room $roomId (event WS)');
+  }
+
+  Future<void> _doConnect(Uri uri) async {
     _connectedController = StreamController<WsConnectedEvent>.broadcast();
     _msgController = StreamController<ChatMessage>.broadcast();
     _likeController = StreamController<LikeUpdate>.broadcast();
@@ -126,14 +334,17 @@ class ChatWebSocketService {
     _keyBundlesController = StreamController<WsKeyBundlesEvent>.broadcast();
     _participantKeyController = StreamController<WsParticipantKeyAvailable>.broadcast();
     _keyRotationController = StreamController<WsKeyRotationEvent>.broadcast();
+    _msgEditedController = StreamController<WsMessageEditedEvent>.broadcast();
+    _msgDeletedController = StreamController<WsMessageDeletedEvent>.broadcast();
+    _groupInviteController = StreamController<WsGroupInviteEvent>.broadcast();
+    _userJoinedController = StreamController<WsUserJoinedEvent>.broadcast();
+    _adminGrantedController = StreamController<WsAdminGrantedEvent>.broadcast();
+    _adminRevokedController = StreamController<WsAdminRevokedEvent>.broadcast();
+    _roomSettingsController = StreamController<WsRoomSettingsUpdatedEvent>.broadcast();
+    _participantRemovedController = StreamController<WsParticipantRemovedEvent>.broadcast();
 
     try {
-      _channel = IOWebSocketChannel.connect(
-        uri,
-        headers: token.isNotEmpty
-            ? {'Authorization': 'Bearer $token'}
-            : const <String, Object>{},
-      );
+      _channel = IOWebSocketChannel.connect(uri);
       await _channel!.ready.timeout(
         const Duration(seconds: 15),
         onTimeout: () => throw TimeoutException('WebSocket handshake timed out'),
@@ -144,17 +355,14 @@ class ChatWebSocketService {
       rethrow;
     }
 
-    debugPrint('[WS] Connected (global endpoint) — subscribing to room $roomId');
     _connected = true;
-
-    // Tell the server which room we want events for.
-    _sendRaw({'type': 'subscribe_room', 'room_id': roomId});
 
     _sub = _channel!.stream.listen(
       (raw) {
         try {
           final json = jsonDecode(raw as String) as Map<String, dynamic>;
           final type = json['type'] as String?;
+          debugPrint('[WS#$_instanceId] frame received: type=$type roomId=${json['room_id']} id=${json['id']}');
           if (type == 'connected') {
             final userId = json['userId'] as String? ?? '';
             final rooms = (json['rooms'] as List<dynamic>? ?? [])
@@ -193,38 +401,106 @@ class ChatWebSocketService {
                 registrationId: (json['registrationId'] as num?)?.toInt(),
               ));
             }
+          } else if (type == 'message_edited') {
+            final updatedStr = json['updated_at'] as String?;
+            if (json['id'] is String &&
+                json['room_id'] is String &&
+                json['content'] is String &&
+                updatedStr != null) {
+              _msgEditedController?.add(WsMessageEditedEvent(
+                id: json['id'] as String,
+                roomId: json['room_id'] as String,
+                content: json['content'] as String,
+                updatedAt: DateTime.parse(updatedStr),
+                senderId: json['sender_id'] as String? ?? '',
+              ));
+            }
+          } else if (type == 'message_deleted') {
+            if (json['id'] is String && json['room_id'] is String) {
+              _msgDeletedController?.add(WsMessageDeletedEvent(
+                id: json['id'] as String,
+                roomId: json['room_id'] as String,
+                senderId: json['sender_id'] as String? ?? '',
+              ));
+            }
+          } else if (type == 'group_invite') {
+            final roomData = json['room'];
+            debugPrint('[WS#$_instanceId] group_invite received — roomData is ${roomData?.runtimeType} controllerNull=${_groupInviteController == null} hasListener=${_groupInviteController?.hasListener}');
+            if (roomData is Map<String, dynamic>) {
+              _groupInviteController?.add(WsGroupInviteEvent(
+                room: ChatRoom.fromJson(roomData),
+                invitedBy: json['invited_by'] as String? ?? '',
+                invitedByName: json['invited_by_name'] as String? ?? '',
+              ));
+              debugPrint('[WS#$_instanceId] group_invite dispatched to controller — hasListener=${_groupInviteController?.hasListener}');
+            } else {
+              debugPrint('[WS] group_invite DROPPED — roomData is not a Map (got ${roomData?.runtimeType})');
+            }
+          } else if (type == 'user_joined') {
+            if (json['room_id'] is String && json['user_id'] is String) {
+              _userJoinedController?.add(WsUserJoinedEvent(
+                roomId: json['room_id'] as String,
+                userId: json['user_id'] as String,
+                userName: json['user_name'] as String? ?? '',
+                userRole: json['user_role'] as String? ?? '',
+              ));
+            }
+          } else if (type == 'admin_granted') {
+            if (json['room_id'] is String && json['user_id'] is String) {
+              _adminGrantedController?.add(WsAdminGrantedEvent(
+                roomId: json['room_id'] as String,
+                userId: json['user_id'] as String,
+                grantedBy: json['granted_by'] as String? ?? '',
+              ));
+            }
+          } else if (type == 'admin_revoked') {
+            if (json['room_id'] is String && json['user_id'] is String) {
+              _adminRevokedController?.add(WsAdminRevokedEvent(
+                roomId: json['room_id'] as String,
+                userId: json['user_id'] as String,
+                revokedBy: json['revoked_by'] as String? ?? '',
+              ));
+            }
+          } else if (type == 'room_settings_updated') {
+            if (json['room_id'] is String) {
+              _roomSettingsController?.add(WsRoomSettingsUpdatedEvent(
+                roomId: json['room_id'] as String,
+                adminOnly: (json['admin_only'] as bool?) ?? false,
+                updatedBy: json['updated_by'] as String? ?? '',
+              ));
+            }
+          } else if (type == 'participant_removed') {
+            if (json['room_id'] is String && json['user_id'] is String) {
+              _participantRemovedController?.add(WsParticipantRemovedEvent(
+                roomId: json['room_id'] as String,
+                userId: json['user_id'] as String,
+                removedBy: json['removed_by'] as String? ?? '',
+              ));
+            }
           } else {
+            debugPrint('[WS] routing as ChatMessage: type=$type id=${json['id']} roomId=${json['room_id']} senderId=${json['sender_id']} isEncrypted=${json['is_encrypted']} contentLen=${json['content']?.toString().length}');
             _msgController?.add(ChatMessage.fromJson(json));
           }
-        } catch (_) {
-          // Ignore malformed frames.
+        } catch (e) {
+          final rawStr = raw is String ? raw : raw.toString();
+          debugPrint('[WS] frame parse error: $e  raw=${rawStr.length > 200 ? rawStr.substring(0, 200) : rawStr}');
         }
       },
       onError: (e) {
         debugPrint('[WS] Stream error: ${e.runtimeType}');
         _connected = false;
-        _connectedController?.close();
-        _msgController?.close();
-        _likeController?.close();
-        _picLikeController?.close();
-        _keyBundlesController?.close();
-        _participantKeyController?.close();
-        _keyRotationController?.close();
+        _closeControllers();
       },
       onDone: () {
-        debugPrint(
-          '[WS] Stream closed for room $_roomId — '
-          'closeCode: ${_channel?.closeCode}, '
-          'closeReason: ${_channel?.closeReason}',
-        );
+        final code = _channel?.closeCode;
+        final reason = _channel?.closeReason ?? '';
+        debugPrint('[WS] Stream closed — code: $code, reason: $reason');
+        _fatalClose = isFatalCloseCode(code);
+        if (_fatalClose) {
+          debugPrint('[WS] Fatal close ($code) — will not reconnect');
+        }
         _connected = false;
-        _connectedController?.close();
-        _msgController?.close();
-        _likeController?.close();
-        _picLikeController?.close();
-        _keyBundlesController?.close();
-        _participantKeyController?.close();
-        _keyRotationController?.close();
+        _closeControllers();
       },
     );
   }
@@ -237,12 +513,16 @@ class ChatWebSocketService {
     _sendRaw({'type': 'subscribe_room', 'room_id': roomId});
   }
 
-  /// Send a plain-text or image message.
-  void send(String? content, {String? imageUrl, String? replyToId}) {
+  /// Send a plain-text or image/video message.
+  void send(String? content, {String? imageUrl, bool isVideo = false, String? replyToId, String? roomId}) {
     final payload = <String, dynamic>{'type': 'message'};
     if (content != null && content.isNotEmpty) payload['content'] = content;
-    if (imageUrl != null) payload['image_url'] = imageUrl;
+    if (imageUrl != null) {
+      payload['image_url'] = imageUrl;
+      if (isVideo) payload['is_video'] = true;
+    }
     if (replyToId != null) payload['reply_to_id'] = replyToId;
+    if (roomId != null) payload['room_id'] = roomId;
     if (payload.length == 1) return; // only 'type', nothing to send
     _sendRaw(payload);
   }
@@ -255,49 +535,55 @@ class ChatWebSocketService {
   void sendEncrypted({
     required String ciphertext,
     required String iv,
+    String? imageUrl,
+    bool isVideo = false,
     String? ephemeralKey,
     String? senderIdentityKey,
     int? otpkId,
     int? senderSpkId,
     String? replyToId,
+    String? roomId,
   }) {
     final payload = <String, dynamic>{
       'type': 'message',
       'ciphertext': ciphertext,
       'iv': iv,
+      if (imageUrl != null) 'image_url': imageUrl,
+      if (imageUrl != null && isVideo) 'is_video': true,
       if (ephemeralKey != null && ephemeralKey.isNotEmpty)
         'ephemeral_key': ephemeralKey,
       if (senderIdentityKey != null) 'sender_identity_key': senderIdentityKey,
       if (otpkId != null) 'otpk_id': otpkId,
       if (senderSpkId != null) 'spk_id': senderSpkId,
       if (replyToId != null) 'reply_to_id': replyToId,
+      if (roomId != null) 'room_id': roomId,
     };
     _sendRaw(payload);
   }
 
   /// Send a like for an event.
-  void sendLike(String eventId) =>
-      _sendRaw({'type': 'like', 'event_id': eventId});
+  void sendLike(String eventId, {String? roomId}) =>
+      _sendRaw({'type': 'like', 'event_id': eventId, if (roomId != null) 'room_id': roomId});
 
   /// Remove a like for an event.
-  void sendUnlike(String eventId) =>
-      _sendRaw({'type': 'unlike', 'event_id': eventId});
+  void sendUnlike(String eventId, {String? roomId}) =>
+      _sendRaw({'type': 'unlike', 'event_id': eventId, if (roomId != null) 'room_id': roomId});
 
   /// Send a dislike for an event.
-  void sendDislike(String eventId) =>
-      _sendRaw({'type': 'dislike', 'event_id': eventId});
+  void sendDislike(String eventId, {String? roomId}) =>
+      _sendRaw({'type': 'dislike', 'event_id': eventId, if (roomId != null) 'room_id': roomId});
 
   /// Remove a dislike for an event.
-  void sendUndislike(String eventId) =>
-      _sendRaw({'type': 'undislike', 'event_id': eventId});
+  void sendUndislike(String eventId, {String? roomId}) =>
+      _sendRaw({'type': 'undislike', 'event_id': eventId, if (roomId != null) 'room_id': roomId});
 
   /// Send a like for a picture.
-  void sendPictureLike(String pictureId) =>
-      _sendRaw({'type': 'picture_like', 'picture_id': pictureId});
+  void sendPictureLike(String pictureId, {String? roomId}) =>
+      _sendRaw({'type': 'picture_like', 'picture_id': pictureId, if (roomId != null) 'room_id': roomId});
 
   /// Remove a like for a picture.
-  void sendPictureUnlike(String pictureId) =>
-      _sendRaw({'type': 'picture_unlike', 'picture_id': pictureId});
+  void sendPictureUnlike(String pictureId, {String? roomId}) =>
+      _sendRaw({'type': 'picture_unlike', 'picture_id': pictureId, if (roomId != null) 'room_id': roomId});
 
   void _sendRaw(Map<String, dynamic> data) {
     if (!_connected || _channel == null) return;
@@ -312,10 +598,7 @@ class ChatWebSocketService {
     }
   }
 
-  /// Gracefully close the connection.
-  void disconnect() {
-    _sub?.cancel();
-    _channel?.sink.close();
+  void _closeControllers() {
     _connectedController?.close();
     _msgController?.close();
     _likeController?.close();
@@ -323,8 +606,14 @@ class ChatWebSocketService {
     _keyBundlesController?.close();
     _participantKeyController?.close();
     _keyRotationController?.close();
-    _channel = null;
-    _roomId = null;
+    _msgEditedController?.close();
+    _msgDeletedController?.close();
+    _groupInviteController?.close();
+    _userJoinedController?.close();
+    _adminGrantedController?.close();
+    _adminRevokedController?.close();
+    _roomSettingsController?.close();
+    _participantRemovedController?.close();
     _connectedController = null;
     _msgController = null;
     _likeController = null;
@@ -332,6 +621,23 @@ class ChatWebSocketService {
     _keyBundlesController = null;
     _participantKeyController = null;
     _keyRotationController = null;
+    _msgEditedController = null;
+    _msgDeletedController = null;
+    _groupInviteController = null;
+    _userJoinedController = null;
+    _adminGrantedController = null;
+    _adminRevokedController = null;
+    _roomSettingsController = null;
+    _participantRemovedController = null;
+  }
+
+  /// Gracefully close the connection.
+  void disconnect() {
+    _sub?.cancel();
+    _channel?.sink.close();
+    _closeControllers();
+    _channel = null;
+    _roomId = null;
     _connected = false;
   }
 }

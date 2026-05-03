@@ -56,13 +56,38 @@ class _HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<_HomeView> {
   int _selectedTab = 0;
+  bool _navBarVisible = true;
+  double _lastScrollOffset = 0;
 
   void _changeTab(int index) {
-    setState(() => _selectedTab = index);
+    setState(() {
+      _selectedTab = index;
+      _navBarVisible = true;
+    });
     if (index == 1) {
       // Full reload so any newly created rooms appear immediately.
       context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
     }
+  }
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    // Only auto-hide the nav bar on the home tab.
+    if (_selectedTab != 0) return false;
+
+    if (notification is ScrollUpdateNotification) {
+      final current = notification.metrics.pixels;
+      final delta = current - _lastScrollOffset;
+      _lastScrollOffset = current;
+
+      if (delta > 8 && _navBarVisible) {
+        setState(() => _navBarVisible = false);
+      } else if (delta < 0 && !_navBarVisible) {
+        setState(() => _navBarVisible = true);
+      }
+    } else if (notification is ScrollEndNotification) {
+      _lastScrollOffset = notification.metrics.pixels;
+    }
+    return false;
   }
 
   @override
@@ -74,24 +99,35 @@ class _HomeViewState extends State<_HomeView> {
   }
 
   Widget _buildPhoneLayout(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: IndexedStack(
-        index: _selectedTab,
-        children: const [
-          HomeNavigationPage(),
-          ChatRoomsPage(),
-          GalleryPage(),
-          PhotographersPage(),
-        ],
-      ),
-      bottomNavigationBar: BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
-        selector: (state) =>
-            state.unreadCounts.values.fold(0, (sum, c) => sum + c),
-        builder: (context, totalUnread) => AppNavbar(
-          selectedIndex: _selectedTab,
-          onchange: _changeTab,
-          messageUnreadCount: totalUnread,
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onScrollNotification,
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        body: IndexedStack(
+          index: _selectedTab,
+          children: const [
+            HomeNavigationPage(),
+            ChatRoomsPage(),
+            GalleryPage(),
+            PhotographersPage(),
+          ],
+        ),
+        bottomNavigationBar: ClipRect(
+          child: AnimatedAlign(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            heightFactor: _navBarVisible ? 1.0 : 0.0,
+            child: BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
+              selector: (state) =>
+                  state.unreadCounts.values.fold(0, (sum, c) => sum + c),
+              builder: (context, totalUnread) => AppNavbar(
+                selectedIndex: _selectedTab,
+                onchange: _changeTab,
+                messageUnreadCount: totalUnread,
+              ),
+            ),
+          ),
         ),
       ),
     );

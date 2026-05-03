@@ -139,6 +139,14 @@ class E2eeService {
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 
+  // Tracks whether the key bundle has been published to the server this app
+  // session. Lives on the singleton so factory-registered blocs all share the
+  // same value — prevents the ChatRoomBloc from re-publishing on every DM open.
+  bool _bundlePublished = false;
+  bool get bundlePublished => _bundlePublished;
+  void markBundlePublished() => _bundlePublished = true;
+  void resetBundlePublished() => _bundlePublished = false;
+
   static const _kIkPriv      = 'e2ee.ik.priv';
   static const _kIkPub       = 'e2ee.ik.pub';
   static const _kSpkPriv     = 'e2ee.spk.priv';
@@ -465,6 +473,7 @@ class E2eeService {
   /// logs in so that session keys, identity keys, and OPKs are never reused
   /// across accounts.
   Future<void> clearAllKeys() async {
+    _bundlePublished = false;
     final all = await _storage.readAll();
     await Future.wait([
       for (final key in all.keys)

@@ -12,7 +12,7 @@ import 'package:sqflite/sqflite.dart';
 ///   v2 – added sender_name, image_url, reply_to_id, reply_preview columns.
 class ChatDatabase {
   static const _dbName = 'skidoo_chat.db';
-  static const _dbVersion = 3;
+  static const _dbVersion = 5;
 
   static Database? _db;
 
@@ -45,19 +45,26 @@ class ChatDatabase {
 
     await db.execute('''
       CREATE TABLE chat_messages (
-        id            TEXT PRIMARY KEY,
-        room_id       TEXT NOT NULL,
-        sender_id     TEXT NOT NULL,
-        sender_name   TEXT NOT NULL DEFAULT '',
-        sender_role   TEXT NOT NULL,
-        content       TEXT NOT NULL DEFAULT '',
-        image_url     TEXT,
-        is_video      INTEGER NOT NULL DEFAULT 0,
-        reply_to_id   TEXT,
-        reply_preview TEXT,
-        created_at    TEXT NOT NULL,
-        is_read       INTEGER NOT NULL DEFAULT 0,
-        is_local      INTEGER NOT NULL DEFAULT 0
+        id                  TEXT PRIMARY KEY,
+        room_id             TEXT NOT NULL,
+        sender_id           TEXT NOT NULL,
+        sender_name         TEXT NOT NULL DEFAULT '',
+        sender_role         TEXT NOT NULL,
+        content             TEXT NOT NULL DEFAULT '',
+        image_url           TEXT,
+        is_video            INTEGER NOT NULL DEFAULT 0,
+        reply_to_id         TEXT,
+        reply_preview       TEXT,
+        created_at          TEXT NOT NULL,
+        is_read             INTEGER NOT NULL DEFAULT 0,
+        is_local            INTEGER NOT NULL DEFAULT 0,
+        is_encrypted        INTEGER NOT NULL DEFAULT 0,
+        iv                  TEXT,
+        ephemeral_key       TEXT,
+        sender_identity_key TEXT,
+        otpk_id             INTEGER,
+        spk_id              INTEGER,
+        updated_at          TEXT
       )
     ''');
 
@@ -81,6 +88,18 @@ class ChatDatabase {
         await db.execute(
             'ALTER TABLE chat_messages ADD COLUMN is_video INTEGER NOT NULL DEFAULT 0');
       }
+    }
+    if (oldVersion < 4) {
+      await db.execute(
+          'ALTER TABLE chat_messages ADD COLUMN is_encrypted INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE chat_messages ADD COLUMN iv TEXT');
+      await db.execute('ALTER TABLE chat_messages ADD COLUMN ephemeral_key TEXT');
+      await db.execute('ALTER TABLE chat_messages ADD COLUMN sender_identity_key TEXT');
+      await db.execute('ALTER TABLE chat_messages ADD COLUMN otpk_id INTEGER');
+      await db.execute('ALTER TABLE chat_messages ADD COLUMN spk_id INTEGER');
+    }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE chat_messages ADD COLUMN updated_at TEXT');
     }
   }
 
@@ -158,21 +177,29 @@ class ChatDatabase {
           '''
           INSERT INTO chat_messages
             (id, room_id, sender_id, sender_name, sender_role, content,
-             image_url, is_video, reply_to_id, reply_preview, created_at, is_read, is_local)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             image_url, is_video, reply_to_id, reply_preview, created_at,
+             is_read, is_local, is_encrypted, iv, ephemeral_key,
+             sender_identity_key, otpk_id, spk_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             room_id      = excluded.room_id,
             sender_id    = excluded.sender_id,
             sender_name  = excluded.sender_name,
             sender_role  = excluded.sender_role,
-            content      = excluded.content,
             image_url    = excluded.image_url,
             is_video     = excluded.is_video,
             reply_to_id  = excluded.reply_to_id,
             reply_preview= excluded.reply_preview,
             created_at   = excluded.created_at,
             is_read      = MAX(is_read, excluded.is_read),
-            is_local     = excluded.is_local
+            is_local     = excluded.is_local,
+            content             = CASE WHEN is_encrypted = 0 THEN content ELSE excluded.content END,
+            is_encrypted        = CASE WHEN is_encrypted = 0 THEN 0 ELSE excluded.is_encrypted END,
+            iv                  = CASE WHEN is_encrypted = 0 THEN iv ELSE excluded.iv END,
+            ephemeral_key       = CASE WHEN is_encrypted = 0 THEN ephemeral_key ELSE excluded.ephemeral_key END,
+            sender_identity_key = CASE WHEN is_encrypted = 0 THEN sender_identity_key ELSE excluded.sender_identity_key END,
+            otpk_id             = CASE WHEN is_encrypted = 0 THEN otpk_id ELSE excluded.otpk_id END,
+            spk_id              = CASE WHEN is_encrypted = 0 THEN spk_id ELSE excluded.spk_id END
           ''',
           [
             msg.id,
@@ -188,6 +215,12 @@ class ChatDatabase {
             msg.createdAt.toIso8601String(),
             msg.isRead ? 1 : 0,
             msg.isLocal ? 1 : 0,
+            msg.isEncrypted ? 1 : 0,
+            msg.iv,
+            msg.ephemeralKey,
+            msg.senderIdentityKey,
+            msg.otpkId,
+            msg.senderSpkId,
           ],
         );
       }
@@ -256,6 +289,39 @@ class ChatDatabase {
   Future<void> deleteMessage(String id) async {
     final db = await _database;
     await db.delete('chat_messages', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> updateMessageContent(
+      String id, String content, DateTime updatedAt) async {
+    final db = await _database;
+    await db.update(
+      'chat_messages',
+      {'content': content, 'updated_at': updatedAt.toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> deleteRoom(String roomId) async {
+    final db = await _database;
+    await db.transaction((txn) async {
+      await txn.delete('chat_rooms', where: 'id = ?', whereArgs: [roomId]);
+      await txn
+          .delete('chat_messages', where: 'room_id = ?', whereArgs: [roomId]);
+    });
+  }
+
+  /// Returns the timestamp of the most recent confirmed (non-local) message
+  /// for every room that has at least one message in the cache.
+  Future<Map<String, DateTime>> getLastMessageTimes() async {
+    final db = await _database;
+    final rows = await db.rawQuery(
+      'SELECT room_id, MAX(created_at) AS last_at FROM chat_messages WHERE is_local = 0 GROUP BY room_id',
+    );
+    return {
+      for (final r in rows)
+        r['room_id'] as String: DateTime.parse(r['last_at'] as String),
+    };
   }
 
   /// Returns unread message counts per room, excluding the given user's own
@@ -353,6 +419,13 @@ class ChatDatabase {
         'created_at': msg.createdAt.toIso8601String(),
         'is_read': msg.isRead ? 1 : 0,
         'is_local': msg.isLocal ? 1 : 0,
+        'is_encrypted': msg.isEncrypted ? 1 : 0,
+        'iv': msg.iv,
+        'ephemeral_key': msg.ephemeralKey,
+        'sender_identity_key': msg.senderIdentityKey,
+        'otpk_id': msg.otpkId,
+        'spk_id': msg.senderSpkId,
+        'updated_at': msg.updatedAt?.toIso8601String(),
       };
 
   ChatMessage _rowToMessage(Map<String, dynamic> row) {
@@ -378,6 +451,15 @@ class ChatDatabase {
       createdAt: DateTime.parse(row['created_at'] as String),
       isRead: (row['is_read'] as int) == 1,
       isLocal: (row['is_local'] as int) == 1,
+      isEncrypted: (row['is_encrypted'] as int?) == 1,
+      iv: row['iv'] as String?,
+      ephemeralKey: row['ephemeral_key'] as String?,
+      senderIdentityKey: row['sender_identity_key'] as String?,
+      otpkId: row['otpk_id'] as int?,
+      senderSpkId: row['spk_id'] as int?,
+      updatedAt: row['updated_at'] != null
+          ? DateTime.tryParse(row['updated_at'] as String)
+          : null,
     );
   }
 }

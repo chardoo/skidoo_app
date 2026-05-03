@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
@@ -23,26 +24,36 @@ class SavedItem {
   });
 
   factory SavedItem.fromJson(Map<String, dynamic> json) {
+    debugPrint('[SavedItem] raw json keys: ${json.keys.toList()}');
+    debugPrint('[SavedItem] raw json: $json');
     final rawAsset = json['asset'];
     final Map<String, dynamic>? asset =
         rawAsset is Map<String, dynamic> ? rawAsset : null;
+    debugPrint('[SavedItem] asset keys: ${asset?.keys.toList()}');
     // The server may nest under 'event' or expose fields at the top level.
     final Map<String, dynamic>? event =
         asset?['event'] is Map<String, dynamic>
             ? asset!['event'] as Map<String, dynamic>
             : asset;
-    final pictures = event?['pictures'] as List<dynamic>?;
-    final String? thumb = pictures != null && pictures.isNotEmpty
-        ? (pictures.first as Map<String, dynamic>)['url']?.toString()
+    debugPrint('[SavedItem] event keys: ${event?.keys.toList()}');
+    // Pictures can be under 'pictures' or 'images'.
+    final rawPics = (event?['pictures'] as List<dynamic>?) ??
+        (event?['images'] as List<dynamic>?);
+    final String? thumb = rawPics != null && rawPics.isNotEmpty
+        ? (rawPics.first as Map<String, dynamic>)['url']?.toString()
         : asset?['url']?.toString();
+
+    final title = event?['eventName']?.toString() ??
+        event?['name']?.toString() ??
+        asset?['name']?.toString();
+    final assetId = json['assetId']?.toString() ?? '';
+    debugPrint('[SavedItem] assetId=$assetId title=$title');
 
     return SavedItem(
       savedItemId: json['id']?.toString() ?? '',
       assetType: json['assetType']?.toString() ?? '',
-      assetId: json['assetId']?.toString() ?? '',
-      title: event?['eventName']?.toString() ??
-          event?['name']?.toString() ??
-          asset?['name']?.toString(),
+      assetId: assetId,
+      title: title,
       thumbnailUrl: thumb,
     );
   }

@@ -7,7 +7,10 @@ import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart'
-    show ChatWebSocketService, WsKeyBundlesEvent, WsKeyRotationEvent, WsParticipantKeyAvailable;
+    show ChatWebSocketService, WsAdminGrantedEvent, WsAdminRevokedEvent,
+        WsKeyBundlesEvent, WsKeyRotationEvent, WsMessageDeletedEvent,
+        WsMessageEditedEvent, WsParticipantKeyAvailable,
+        WsParticipantRemovedEvent, WsRoomSettingsUpdatedEvent, WsUserJoinedEvent;
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
@@ -21,15 +24,32 @@ part 'chat_room_state.dart';
 
 class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   final GetRoomMessagesUseCase _getMessages;
+  final GetRoomUseCase _getRoom;
   final GetCachedMessagesUseCase _getCachedMessages;
   final CacheMessageUseCase _cacheMessage;
   final MarkRoomAsReadUseCase _markAsRead;
   final UploadChatImageUseCase _uploadImage;
-  final ChatWebSocketService _ws;
+  final EditMessageUseCase _editMessage;
+  final DeleteMessageUseCase _deleteMessage;
+  final UpdateCachedMessageUseCase _updateCachedMessage;
+  final DeleteCachedMessageUseCase _deleteCachedMessage;
+  final GrantAdminUseCase _grantAdmin;
+  final RevokeAdminUseCase _revokeAdmin;
+  final UpdateRoomSettingsUseCase _updateRoomSettings;
+  final KickParticipantUseCase _kickParticipant;
   final AuthService _authService;
   final ChatBackgroundService _bgService;
   final E2eeService _e2ee;
   final ChatKeyDataSource _keyDs;
+
+  // Per-room WS for event comment sessions — owned by this bloc instance.
+  // null for all other room types, which use the shared singleton below.
+  ChatWebSocketService? _eventRoomWs;
+  bool _isEventRoom = false;
+
+  // For event rooms: use the dedicated per-room connection.
+  // For all other rooms: use the shared singleton owned by ChatBackgroundService.
+  ChatWebSocketService get _ws => _eventRoomWs ?? _bgService.sharedWs;
 
   String? _currentRoomId;
   String _myUserId = '';
@@ -37,9 +57,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   // E2EE state
   bool _isDirectRoom = false;
   String? _recipientId;          // other party's userId in a DM room
-  bool _keysPublished = false;   // whether we've published our bundle this session
-  // Stored after proactive X3DH so the first encrypted message carries the
-  // correct X3DH header without re-doing the handshake.
+  // Proactive X3DH session held in memory only — never written to secure
+  // storage until the first outgoing message actually uses it.
+  // Writing it to storage would cause incoming messages (encrypted by the
+  // other party with THEIR session key) to fail decryption with a MAC error.
+  Uint8List? _proactiveSessionKey;
   String? _pendingEphemeralKey;
   int? _pendingOtpkId;
   // SPK ID from the recipient bundle used in the proactive X3DH session.
@@ -54,31 +76,52 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   StreamSubscription<WsKeyBundlesEvent>? _wsKeyBundlesSub;
   StreamSubscription<WsParticipantKeyAvailable>? _wsParticipantKeySub;
   StreamSubscription<WsKeyRotationEvent>? _wsKeyRotationSub;
-  Timer? _reconnectTimer;
+  StreamSubscription<WsMessageEditedEvent>? _wsEditSub;
+  StreamSubscription<WsMessageDeletedEvent>? _wsDeleteSub;
+  StreamSubscription<WsUserJoinedEvent>? _wsUserJoinedSub;
+  StreamSubscription<WsAdminGrantedEvent>? _wsAdminGrantedSub;
+  StreamSubscription<WsAdminRevokedEvent>? _wsAdminRevokedSub;
+  StreamSubscription<WsRoomSettingsUpdatedEvent>? _wsRoomSettingsSub;
+  StreamSubscription<WsParticipantRemovedEvent>? _wsParticipantRemovedSub;
+  // Waits for ChatBackgroundService to signal the WS is (re)connected.
+  StreamSubscription<bool>? _wsConnectionSub;
   Timer? _otpkPollTimer;
-  int _reconnectAttempts = 0;
   static const int _otpkReplenishThreshold = 10;
   static const int _otpkReplenishBatchSize = 100;
-  DateTime? _lastConnectedAt;
-  static const int _maxReconnectAttempts = 5;
 
   ChatRoomBloc({
     required GetRoomMessagesUseCase getRoomMessages,
+    required GetRoomUseCase getRoom,
     required GetCachedMessagesUseCase getCachedMessages,
     required CacheMessageUseCase cacheMessage,
     required MarkRoomAsReadUseCase markRoomAsRead,
     required UploadChatImageUseCase uploadImage,
-    required ChatWebSocketService wsService,
+    required EditMessageUseCase editMessage,
+    required DeleteMessageUseCase deleteMessage,
+    required UpdateCachedMessageUseCase updateCachedMessage,
+    required DeleteCachedMessageUseCase deleteCachedMessage,
+    required GrantAdminUseCase grantAdmin,
+    required RevokeAdminUseCase revokeAdmin,
+    required UpdateRoomSettingsUseCase updateRoomSettings,
+    required KickParticipantUseCase kickParticipant,
     required AuthService authService,
     required ChatBackgroundService bgService,
     required E2eeService e2eeService,
     required ChatKeyDataSource keyDataSource,
   })  : _getMessages = getRoomMessages,
+        _getRoom = getRoom,
         _getCachedMessages = getCachedMessages,
         _cacheMessage = cacheMessage,
         _markAsRead = markRoomAsRead,
         _uploadImage = uploadImage,
-        _ws = wsService,
+        _editMessage = editMessage,
+        _deleteMessage = deleteMessage,
+        _updateCachedMessage = updateCachedMessage,
+        _deleteCachedMessage = deleteCachedMessage,
+        _grantAdmin = grantAdmin,
+        _revokeAdmin = revokeAdmin,
+        _updateRoomSettings = updateRoomSettings,
+        _kickParticipant = kickParticipant,
         _authService = authService,
         _bgService = bgService,
         _e2ee = e2eeService,
@@ -104,6 +147,19 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_KeyBundlesReceived>(_onKeyBundlesReceived);
     on<_ParticipantKeyAvailable>(_onParticipantKeyAvailable);
     on<_KeyRotationReceived>(_onKeyRotationReceived);
+    on<ChatRoomMessageEditRequested>(_onMessageEditRequested);
+    on<ChatRoomMessageDeleteRequested>(_onMessageDeleteRequested);
+    on<_MessageEdited>(_onMessageEdited);
+    on<_MessageDeleted>(_onMessageDeleted);
+    on<_WsUserJoined>(_onWsUserJoined);
+    on<ChatRoomGrantAdminRequested>(_onGrantAdminRequested);
+    on<ChatRoomRevokeAdminRequested>(_onRevokeAdminRequested);
+    on<ChatRoomUpdateSettingsRequested>(_onUpdateSettingsRequested);
+    on<ChatRoomKickRequested>(_onKickRequested);
+    on<_AdminGranted>(_onAdminGranted);
+    on<_AdminRevoked>(_onAdminRevoked);
+    on<_RoomSettingsUpdated>(_onRoomSettingsUpdated);
+    on<_ParticipantRemoved>(_onParticipantRemoved);
   }
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -113,10 +169,30 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     Emitter<ChatRoomState> emit,
   ) async {
     _currentRoomId = event.roomId;
-    _reconnectAttempts = 0;
-    _bgService.pause(event.roomId);
 
-    final isDm = event.room?.type == RoomType.direct;
+    final roomType = event.room?.type;
+    final isDm = roomType == RoomType.direct;
+    _isEventRoom = roomType == RoomType.event || roomType == RoomType.eventPrivate;
+
+    if (_isEventRoom) {
+      // Event comment rooms use a dedicated per-room WS — the background
+      // service never subscribes to them, so no pause/resume needed.
+      _eventRoomWs = ChatWebSocketService(_authService);
+    } else {
+      _bgService.pause(event.roomId);
+    }
+
+    // For non-DM shared-WS rooms (global, group, photo…): attach WS listeners
+    // NOW, before the REST history fetch. Messages and admin events that arrive
+    // during the network round-trips are queued in the BLoC event queue and
+    // processed after _onJoined completes — nothing is dropped.
+    //
+    // DM rooms must wait until after _deriveKeyFromHistory establishes the
+    // session key; otherwise messages received before E2EE is ready are
+    // decrypted with a null key → blank content → permanent loss.
+    if (!isDm && !_isEventRoom) {
+      _connectWsInBackground(event.roomId);
+    }
 
     // Load userId and cached messages in parallel (both are fast local reads).
     // We deliberately do NOT wipe the session key here — the receiver must keep
@@ -134,21 +210,37 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     _myUserId = userId;
 
+    final amIAdmin = event.room?.participants
+            .any((p) => p.userId == _myUserId && p.isAdmin) ??
+        false;
+
     // ── Emit cached messages IMMEDIATELY ──────────────────────────────────────
     // The user sees existing messages before the WS connects or any network
     // call completes. This is the first and most important state transition.
+    //
+    // For non-event rooms (DM, global, group, photo) the shared WS is owned by
+    // ChatBackgroundService and is almost always already connected — there is no
+    // separate connection phase. Reflect that reality immediately so the AppBar
+    // never shows a spurious "Connecting…" label for rooms that are already live.
+    // Event rooms always need their own per-room WS connection, so they start in
+    // the connecting state.
+    final bool wsAlreadyConnected = !_isEventRoom && _ws.isConnected;
     emit(ChatRoomState(
       messages: cached.isNotEmpty ? _sorted(cached) : const [],
       isLoadingHistory: cached.isEmpty,
-      isConnecting: true,
+      isConnecting: !wsAlreadyConnected,
+      isConnected: wsAlreadyConnected,
       isSyncing: true,
       myUserId: _myUserId,
       pendingShareUrl: event.shareUrl,
+      room: event.room,
+      amIAdmin: amIAdmin,
     ));
 
     // ── E2EE setup (DM only) — runs after the emit, never blocks it ───────────
     if (isDm) {
       _isDirectRoom = true;
+      _proactiveSessionKey = null;
       _pendingEphemeralKey = null;
       _pendingOtpkId = null;
       _pendingBundleSpkId = null;
@@ -160,8 +252,10 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           .firstOrNull;
       debugPrint('[E2EE] DM — recipientId: $_recipientId');
 
-      // Publish bundle in the background — never await, never block the UI.
-      if (!_keysPublished) {
+      // Publish bundle in the background only if login hasn't already done so.
+      // _e2ee.bundlePublished is a singleton flag set by LoginUseCase, so it
+      // persists across all ChatRoomBloc factory instances in the same session.
+      if (!_e2ee.bundlePublished) {
         _publishBundleInBackground();
       }
 
@@ -176,7 +270,15 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
 
     try {
-      final fresh = await _getMessages(event.roomId);
+      // Fetch messages and fresh room data (for up-to-date adminOnly /
+      // participants) in parallel — both are network calls, so running them
+      // concurrently saves one full round-trip.
+      final msgFuture = _getMessages(event.roomId);
+      final roomFuture =
+          _getRoom(event.roomId).then<ChatRoom?>((r) => r).catchError((_) => null);
+      final fresh = await msgFuture;
+      final freshRoom = await roomFuture;
+
       await _markAsRead(event.roomId);
       _bgService.onUnreadUpdate?.call();
 
@@ -184,11 +286,21 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       final incoming = fresh.where((m) => !knownIds.contains(m.id)).toList();
       final merged = _sorted([...state.messages, ...incoming]);
 
+      // Prefer the server's fresh room data over the potentially-stale object
+      // passed at navigation time. This ensures adminOnly and participant list
+      // are always current when entering any room.
+      final updatedRoom = freshRoom ?? state.room;
+      final updatedAmIAdmin = updatedRoom?.participants
+              .any((p) => p.userId == _myUserId && p.isAdmin) ??
+          state.amIAdmin;
+
       emit(state.copyWith(
         messages: merged,
         isLoadingHistory: false,
         isSyncing: false,
         clearError: true,
+        room: updatedRoom,
+        amIAdmin: updatedAmIAdmin,
         // pendingShareUrl is preserved via copyWith (not cleared here)
       ));
 
@@ -211,83 +323,213 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             state.messages.isEmpty ? 'Could not load messages.' : null,
       ));
     } finally {
-      // Connect WS only after history is fully processed: the stored session
-      // key is now correct, so _onKeyBundlesReceived will skip proactive setup.
-      _connectWsInBackground(event.roomId);
+      // DM: must wait until after _deriveKeyFromHistory stores the session key;
+      // otherwise _onKeyBundlesReceived finds no stored key and runs proactive
+      // X3DH, overwriting the correct key with a mismatched one.
+      // Event rooms: per-room WS is instantiated here (no prior setup).
+      // Non-DM/non-event rooms already attached listeners before the REST fetch
+      // (line above); calling _connectWsInBackground again would cancel those
+      // listeners and briefly leave the room with no active subscription.
+      if (_isDirectRoom || _isEventRoom) {
+        _connectWsInBackground(event.roomId);
+      }
     }
   }
 
   void _connectWsInBackground(String roomId) {
-    debugPrint('[ChatBloc] _connectWsInBackground called for room: $roomId');
+    debugPrint('[ChatBloc] _connectWsInBackground for room: $roomId isEventRoom: $_isEventRoom');
+    _cancelWsSubscriptions();
+    _wsConnectionSub?.cancel();
+    _wsConnectionSub = null;
+
+    if (_isEventRoom) {
+      _connectEventRoomWs(roomId);
+      return;
+    }
+
+    // Shared connection path — wait for ChatBackgroundService.
+    if (_ws.isConnected) {
+      // Explicitly subscribe so the server delivers messages for this room
+      // even if the background service hasn't subscribed it yet (e.g. photo
+      // rooms opened before connectAll runs, or rooms paused before subscription).
+      _ws.subscribeRoom(roomId);
+      _setupWsListeners(roomId);
+      if (!isClosed) add(const _WsConnected());
+      return;
+    }
+
+    _wsConnectionSub = _bgService.connectionEvents.listen((connected) {
+      if (!connected || isClosed) return;
+      _wsConnectionSub?.cancel();
+      _wsConnectionSub = null;
+      _ws.subscribeRoom(roomId);
+      _setupWsListeners(roomId);
+      if (!isClosed) add(const _WsConnected());
+    });
+  }
+
+  void _connectEventRoomWs(String roomId) {
+    Future(() async {
+      try {
+        await _eventRoomWs!.connectToRoom(roomId);
+        if (isClosed) return;
+        _setupWsListeners(roomId);
+        add(const _WsConnected());
+      } catch (e) {
+        if (isClosed) return;
+        debugPrint('[ChatBloc] event room WS connect failed: $e');
+        add(_WsFailed(e.toString()));
+      }
+    });
+  }
+
+  void _cancelWsSubscriptions() {
     _wsMsgSub?.cancel();
     _wsLikeSub?.cancel();
     _wsPicLikeSub?.cancel();
     _wsKeyBundlesSub?.cancel();
     _wsParticipantKeySub?.cancel();
     _wsKeyRotationSub?.cancel();
-    _ws.connect(roomId).then((_) {
-      if (isClosed) return;
+    _wsEditSub?.cancel();
+    _wsDeleteSub?.cancel();
+    _wsUserJoinedSub?.cancel();
+    _wsAdminGrantedSub?.cancel();
+    _wsAdminRevokedSub?.cancel();
+    _wsRoomSettingsSub?.cancel();
+    _wsParticipantRemovedSub?.cancel();
+    _wsMsgSub = null;
+    _wsLikeSub = null;
+    _wsPicLikeSub = null;
+    _wsKeyBundlesSub = null;
+    _wsParticipantKeySub = null;
+    _wsKeyRotationSub = null;
+    _wsEditSub = null;
+    _wsDeleteSub = null;
+    _wsUserJoinedSub = null;
+    _wsAdminGrantedSub = null;
+    _wsAdminRevokedSub = null;
+    _wsRoomSettingsSub = null;
+    _wsParticipantRemovedSub = null;
+  }
 
-      _wsMsgSub = _ws.messages.listen(
-        (msg) {
-          if (!isClosed) add(ChatRoomMessageReceived(msg));
-        },
-        onDone: () {
-          if (!isClosed) add(const _WsDropped());
-        },
-        onError: (_) {
-          if (!isClosed) add(const _WsDropped());
-        },
-      );
+  void _setupWsListeners(String roomId) {
+    _cancelWsSubscriptions();
 
-      _wsLikeSub = _ws.likeUpdates.listen(
-        (update) {
-          if (!isClosed) add(_LikeUpdateReceived(update));
-        },
-      );
+    _wsMsgSub = _ws.messages.listen(
+      (msg) {
+        debugPrint('[ChatBloc] _wsMsgSub RAW: id=${msg.id} roomId=${msg.roomId} senderId=${msg.senderId} isEncrypted=${msg.isEncrypted} contentLen=${msg.content.length}');
+        if (!isClosed && msg.roomId == roomId) {
+          debugPrint('[ChatBloc] _wsMsgSub ACCEPTED for room=$roomId — dispatching ChatRoomMessageReceived');
+          add(ChatRoomMessageReceived(msg));
+        } else if (!isClosed) {
+          debugPrint('[ChatBloc] _wsMsgSub FILTERED: msgRoomId=${msg.roomId} currentRoom=$roomId id=${msg.id}');
+        }
+      },
+      onDone: () {
+        if (!isClosed) add(_WsDropped(fatal: _ws.hadFatalClose));
+      },
+      onError: (_) {
+        if (!isClosed) add(const _WsDropped());
+      },
+    );
 
-      _wsPicLikeSub = _ws.pictureLikeUpdates.listen(
-        (update) {
-          if (!isClosed) add(_PictureLikeUpdateReceived(update));
-        },
-      );
+    _wsLikeSub = _ws.likeUpdates.listen(
+      (update) {
+        if (!isClosed) add(_LikeUpdateReceived(update));
+      },
+    );
 
-      _wsKeyBundlesSub = _ws.keyBundleEvents.listen(
-        (event) {
-          if (!isClosed) add(_KeyBundlesReceived(event.bundles));
-        },
-      );
+    _wsPicLikeSub = _ws.pictureLikeUpdates.listen(
+      (update) {
+        if (!isClosed) add(_PictureLikeUpdateReceived(update));
+      },
+    );
 
-      _wsParticipantKeySub = _ws.participantKeyEvents.listen(
-        (event) {
-          if (!isClosed) {
-            add(_ParticipantKeyAvailable(
-                event.userId, event.identityKey, event.signedPreKey));
-          }
-        },
-      );
+    _wsKeyBundlesSub = _ws.keyBundleEvents.listen(
+      (event) {
+        if (!isClosed) add(_KeyBundlesReceived(event.bundles));
+      },
+    );
 
-      _wsKeyRotationSub = _ws.keyRotationEvents.listen(
-        (event) {
-          if (!isClosed) {
-            add(_KeyRotationReceived(
-                event.userId, event.identityKey, event.signedPreKey,
-                registrationId: event.registrationId));
-          }
-        },
-      );
+    _wsParticipantKeySub = _ws.participantKeyEvents.listen(
+      (event) {
+        if (!isClosed) {
+          add(_ParticipantKeyAvailable(
+              event.userId, event.identityKey, event.signedPreKey));
+        }
+      },
+    );
 
-      debugPrint('[ChatBloc] WS connected successfully');
-      if (!isClosed) add(const _WsConnected());
-    }).catchError((e) {
-      debugPrint('[ChatBloc] WS connect error: $e');
-      if (!isClosed) add(_WsFailed(e.toString()));
-    });
+    _wsKeyRotationSub = _ws.keyRotationEvents.listen(
+      (event) {
+        if (!isClosed) {
+          add(_KeyRotationReceived(
+              event.userId, event.identityKey, event.signedPreKey,
+              registrationId: event.registrationId));
+        }
+      },
+    );
+
+    _wsEditSub = _ws.messageEditedEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_MessageEdited(event.id, event.content, event.updatedAt));
+        }
+      },
+    );
+
+    _wsDeleteSub = _ws.messageDeletedEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_MessageDeleted(event.id));
+        }
+      },
+    );
+
+    _wsUserJoinedSub = _ws.userJoinedEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_WsUserJoined(event.userId, event.userName));
+        }
+      },
+    );
+
+    _wsAdminGrantedSub = _ws.adminGrantedEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_AdminGranted(event.userId, event.grantedBy));
+        }
+      },
+    );
+
+    _wsAdminRevokedSub = _ws.adminRevokedEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_AdminRevoked(event.userId, event.revokedBy));
+        }
+      },
+    );
+
+    _wsRoomSettingsSub = _ws.roomSettingsEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_RoomSettingsUpdated(event.adminOnly, event.updatedBy));
+        }
+      },
+    );
+
+    _wsParticipantRemovedSub = _ws.participantRemovedEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_ParticipantRemoved(event.userId, event.removedBy));
+        }
+      },
+    );
+
+    debugPrint('[ChatBloc] WS listeners attached for room $roomId');
   }
 
   void _onWsConnected(_WsConnected event, Emitter<ChatRoomState> emit) {
-    _lastConnectedAt = DateTime.now();
-    _reconnectTimer?.cancel();
     emit(state.copyWith(
       isConnected: true,
       isConnecting: false,
@@ -315,7 +557,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     if (_ws.isConnected) {
       // WS already up — send immediately.
-      _ws.send(null, imageUrl: event.imageUrl);
+      _ws.send(null, imageUrl: event.imageUrl, roomId: _currentRoomId);
     } else {
       // WS not ready yet — store URL; _onWsConnected will send it.
       emit(state.copyWith(pendingShareUrl: event.imageUrl));
@@ -325,46 +567,25 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   void _onWsFailed(_WsFailed event, Emitter<ChatRoomState> emit) {
     emit(state.copyWith(
       isConnected: false,
-      isConnecting: false,
-      errorMessage: 'Chat connection failed. Messages may be delayed.',
+      isConnecting: true,
     ));
-    _scheduleReconnect();
+    if (_currentRoomId != null) _connectWsInBackground(_currentRoomId!);
   }
 
   void _onWsDropped(_WsDropped event, Emitter<ChatRoomState> emit) {
-    final connectedFor = _lastConnectedAt == null
-        ? null
-        : DateTime.now().difference(_lastConnectedAt!);
-    if (connectedFor == null || connectedFor.inSeconds < 3) {
-      _reconnectAttempts++;
-      debugPrint(
-          '[ChatBloc] WS dropped immediately (attempt $_reconnectAttempts)');
-    } else {
-      _reconnectAttempts = 1;
-    }
-    emit(state.copyWith(
-      isConnected: false,
-      isConnecting: _reconnectAttempts < _maxReconnectAttempts,
-    ));
-    _scheduleReconnect();
-  }
-
-  void _scheduleReconnect() {
-    if (_currentRoomId == null) return;
-    if (_reconnectAttempts >= _maxReconnectAttempts) {
-      if (!isClosed) add(const _WsGaveUp());
+    if (event.fatal) {
+      debugPrint('[ChatBloc] WS fatal close — will not reconnect');
+      emit(state.copyWith(
+        isConnected: false,
+        isConnecting: false,
+        errorMessage: 'Connection closed. Please restart the app.',
+      ));
       return;
     }
 
-    _reconnectTimer?.cancel();
-    final delay = Duration(seconds: _backoffSeconds(_reconnectAttempts));
-    _reconnectAttempts++;
-
-    _reconnectTimer = Timer(delay, () {
-      if (!isClosed && _currentRoomId != null) {
-        _connectWsInBackground(_currentRoomId!);
-      }
-    });
+    debugPrint('[ChatBloc] WS dropped — waiting for background service to reconnect');
+    emit(state.copyWith(isConnected: false, isConnecting: true));
+    if (_currentRoomId != null) _connectWsInBackground(_currentRoomId!);
   }
 
   void _onWsGaveUp(_WsGaveUp event, Emitter<ChatRoomState> emit) {
@@ -374,9 +595,6 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       errorMessage: 'Connection lost. Pull down to refresh.',
     ));
   }
-
-  int _backoffSeconds(int attempt) =>
-      attempt == 0 ? 2 : (2 << attempt).clamp(2, 30);
 
   Future<void> _onSent(
     ChatRoomMessageSent event,
@@ -421,8 +639,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         clearPendingShareUrl: true,
         clearReply: true,
       ));
-      _ws.send(hasText ? content : null,
-          imageUrl: pendingUrl, replyToId: event.replyToId);
+      await _encryptAndSend(
+        content: hasText ? content : null,
+        imageUrl: pendingUrl,
+        replyToId: event.replyToId,
+        emit: emit,
+      );
       _cacheMessage(optimistic).catchError((_) {});
       return;
     }
@@ -458,10 +680,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           messages: _sorted([optimistic, ...state.messages]),
         ));
 
-        _ws.send(
-          hasText ? content : null,
+        await _encryptAndSend(
+          content: hasText ? content : null,
           imageUrl: imageUrl,
+          isVideo: pendingIsVideo,
           replyToId: event.replyToId,
+          emit: emit,
         );
         _cacheMessage(optimistic).catchError((_) {});
       } catch (_) {
@@ -494,107 +718,128 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         clearReply: true,
       ));
 
-      // Encrypt the message for direct (DM) rooms.
-      debugPrint('[E2EE] send — isDirectRoom: $_isDirectRoom, recipientId: $_recipientId, needsRekey: $_needsRekey');
-      if (_isDirectRoom && _recipientId != null) {
-        try {
-          var sessionKey = await _e2ee.loadSessionKey(_currentRoomId!);
-          String? ephemeralKey;
-          String? myIdentityKey;
-          int? otpkId;
-          int? bundleSpkId; // SPK ID from recipient bundle used in X3DH
+      await _encryptAndSend(
+        content: content,
+        replyToId: event.replyToId,
+        emit: emit,
+      );
+      _cacheMessage(optimistic).catchError((_) {});
+    }
+  }
 
-          if (_needsRekey) {
-            // Establish a fresh X3DH session. _needsRekey is true when keys
-            // changed (detected by _onKeyBundlesReceived) or when no WS
-            // key_bundles event has arrived yet (safe default from _onJoined).
-            _needsRekey = false;
-            debugPrint('[E2EE] Re-key: fetching bundle for fresh X3DH');
-            final bundle = await _keyDs.fetchBundle(_recipientId!);
-            if (bundle != null) {
-              final session = await _e2ee.createSendingSession(bundle);
-              sessionKey = session.sessionKey;
-              await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
-              await _e2ee.storeCachedBundle(
-                _recipientId!,
-                identityKey: bundle.identityKey,
-                signedPreKeyId: bundle.signedPreKeyId,
-              );
-              ephemeralKey = session.ephemeralPublicKey;
-              otpkId = session.otpkId;
-              bundleSpkId = bundle.signedPreKeyId;
-              myIdentityKey = await _e2ee.identityPublicKey();
-              _pendingEphemeralKey = null;
-              _pendingOtpkId = null;
-              _pendingBundleSpkId = null;
-              debugPrint('[E2EE] Re-key complete (otpkId: $otpkId)');
-            } else if (sessionKey == null) {
-              debugPrint('[E2EE] Re-key: no bundle and no key — sending plaintext');
-              _ws.send(content, replyToId: event.replyToId);
-              _cacheMessage(optimistic).catchError((_) {});
-              return;
-            } else {
-              debugPrint('[E2EE] Re-key: no bundle — reusing existing key (degraded)');
-            }
-          } else if (sessionKey == null) {
-            debugPrint('[E2EE] No session key — fetching recipient bundle for $_recipientId');
-            final recipientBundle = await _keyDs.fetchBundle(_recipientId!);
-            if (recipientBundle == null) {
-              debugPrint('[E2EE] Recipient has no bundle — sending plaintext');
-              _ws.send(content, replyToId: event.replyToId);
-              _cacheMessage(optimistic).catchError((_) {});
-              return;
-            }
-            debugPrint('[E2EE] Got recipient bundle — running X3DH');
-            final session = await _e2ee.createSendingSession(recipientBundle);
-            sessionKey = session.sessionKey;
-            ephemeralKey = session.ephemeralPublicKey;
-            otpkId = session.otpkId;
-            bundleSpkId = recipientBundle.signedPreKeyId;
-            myIdentityKey = await _e2ee.identityPublicKey();
-            await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
-            await _e2ee.storeCachedBundle(
-              _recipientId!,
-              identityKey: recipientBundle.identityKey,
-              signedPreKeyId: recipientBundle.signedPreKeyId,
-            );
-            debugPrint('[E2EE] Session established (otpkId: $otpkId)');
-          } else if (_pendingEphemeralKey != null) {
-            // Session was pre-established by _setupE2EESession — use its
-            // X3DH header for the first encrypted message, then clear it.
-            ephemeralKey = _pendingEphemeralKey;
-            otpkId = _pendingOtpkId;
-            bundleSpkId = _pendingBundleSpkId;
-            myIdentityKey = await _e2ee.identityPublicKey();
-            _pendingEphemeralKey = null;
-            _pendingOtpkId = null;
-            _pendingBundleSpkId = null;
-            debugPrint('[E2EE] Using pre-established session (proactive X3DH)');
-          } else {
-            debugPrint('[E2EE] Reusing cached session key');
-          }
-          final keyHex = sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-          final encrypted = await _e2ee.encrypt(sessionKey, content);
-          debugPrint('[E2EE] Encrypted OK (session: ${ephemeralKey != null ? "new X3DH" : "cached"}, keyPrefix=$keyHex) — sending over WS');
-          _ws.sendEncrypted(
-            ciphertext: encrypted.ciphertext,
-            iv: encrypted.iv,
-            ephemeralKey: ephemeralKey,
-            senderIdentityKey: myIdentityKey,
-            otpkId: otpkId,
-            senderSpkId: bundleSpkId,
-            replyToId: event.replyToId,
+  /// Encrypts [content] (when non-empty) for DM rooms and sends over the WS.
+  /// [imageUrl], if provided, is included in the payload alongside the encrypted text.
+  /// Falls back to plaintext when not in a DM room or when no session key is available.
+  Future<void> _encryptAndSend({
+    String? content,
+    String? imageUrl,
+    bool isVideo = false,
+    String? replyToId,
+    required Emitter<ChatRoomState> emit,
+  }) async {
+    final hasText = content != null && content.isNotEmpty;
+
+    debugPrint('[E2EE] send — isDirectRoom: $_isDirectRoom, recipientId: $_recipientId, needsRekey: $_needsRekey');
+
+    if (!_isDirectRoom || _recipientId == null || !hasText) {
+      debugPrint('[E2EE] Not a DM, no recipient, or no text — sending plaintext');
+      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo, replyToId: replyToId, roomId: _currentRoomId);
+      return;
+    }
+
+    try {
+      var sessionKey = await _e2ee.loadSessionKey(_currentRoomId!);
+      String? ephemeralKey;
+      String? myIdentityKey;
+      int? otpkId;
+      int? bundleSpkId;
+
+      if (_needsRekey) {
+        _needsRekey = false;
+        debugPrint('[E2EE] Re-key: fetching bundle for fresh X3DH');
+        final bundle = await _keyDs.fetchBundle(_recipientId!);
+        if (bundle != null) {
+          final session = await _e2ee.createSendingSession(bundle);
+          sessionKey = session.sessionKey;
+          await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
+          await _e2ee.storeCachedBundle(
+            _recipientId!,
+            identityKey: bundle.identityKey,
+            signedPreKeyId: bundle.signedPreKeyId,
           );
-        } catch (e) {
-          debugPrint('[E2EE] Encrypt failed, sending plaintext: $e');
-          _ws.send(content, replyToId: event.replyToId);
+          ephemeralKey = session.ephemeralPublicKey;
+          otpkId = session.otpkId;
+          bundleSpkId = bundle.signedPreKeyId;
+          myIdentityKey = await _e2ee.identityPublicKey();
+          _pendingEphemeralKey = null;
+          _pendingOtpkId = null;
+          _pendingBundleSpkId = null;
+          _proactiveSessionKey = null;
+          debugPrint('[E2EE] Re-key complete (otpkId: $otpkId)');
+        } else if (sessionKey == null) {
+          debugPrint('[E2EE] Re-key: no bundle and no key — sending plaintext');
+          _ws.send(content, imageUrl: imageUrl, isVideo: isVideo, replyToId: replyToId, roomId: _currentRoomId);
+          return;
+        } else {
+          debugPrint('[E2EE] Re-key: no bundle — reusing existing key (degraded)');
         }
+      } else if (_pendingEphemeralKey != null) {
+        sessionKey = _proactiveSessionKey!;
+        await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
+        ephemeralKey = _pendingEphemeralKey;
+        otpkId = _pendingOtpkId;
+        bundleSpkId = _pendingBundleSpkId;
+        myIdentityKey = await _e2ee.identityPublicKey();
+        _pendingEphemeralKey = null;
+        _pendingOtpkId = null;
+        _pendingBundleSpkId = null;
+        _proactiveSessionKey = null;
+        debugPrint('[E2EE] Using pre-established session (proactive X3DH)');
+        await _redecryptEncryptedMessages(emit, sessionKey);
+      } else if (sessionKey == null) {
+        debugPrint('[E2EE] No session key — fetching recipient bundle for $_recipientId');
+        final recipientBundle = await _keyDs.fetchBundle(_recipientId!);
+        if (recipientBundle == null) {
+          debugPrint('[E2EE] Recipient has no bundle — sending plaintext');
+          _ws.send(content, imageUrl: imageUrl, isVideo: isVideo, replyToId: replyToId, roomId: _currentRoomId);
+          return;
+        }
+        debugPrint('[E2EE] Got recipient bundle — running X3DH');
+        final session = await _e2ee.createSendingSession(recipientBundle);
+        sessionKey = session.sessionKey;
+        ephemeralKey = session.ephemeralPublicKey;
+        otpkId = session.otpkId;
+        bundleSpkId = recipientBundle.signedPreKeyId;
+        myIdentityKey = await _e2ee.identityPublicKey();
+        await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
+        await _e2ee.storeCachedBundle(
+          _recipientId!,
+          identityKey: recipientBundle.identityKey,
+          signedPreKeyId: recipientBundle.signedPreKeyId,
+        );
+        debugPrint('[E2EE] Session established (otpkId: $otpkId)');
       } else {
-        debugPrint('[E2EE] Not a DM or no recipient — sending plaintext');
-        _ws.send(content, replyToId: event.replyToId);
+        debugPrint('[E2EE] Reusing cached session key');
       }
 
-      _cacheMessage(optimistic).catchError((_) {});
+      final keyHex = sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      final encrypted = await _e2ee.encrypt(sessionKey, content);
+      debugPrint('[E2EE] Encrypted OK (session: ${ephemeralKey != null ? "new X3DH" : "cached"}, keyPrefix=$keyHex) — sending over WS');
+      _ws.sendEncrypted(
+        ciphertext: encrypted.ciphertext,
+        iv: encrypted.iv,
+        imageUrl: imageUrl,
+        isVideo: isVideo,
+        ephemeralKey: ephemeralKey,
+        senderIdentityKey: myIdentityKey,
+        otpkId: otpkId,
+        senderSpkId: bundleSpkId,
+        replyToId: replyToId,
+        roomId: _currentRoomId,
+      );
+    } catch (e) {
+      debugPrint('[E2EE] Encrypt failed, sending plaintext: $e');
+      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo, replyToId: replyToId, roomId: _currentRoomId);
     }
   }
 
@@ -626,9 +871,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   void _onLikeToggled(ChatRoomLikeToggled event, Emitter<ChatRoomState> emit) {
     if (!_ws.isConnected) return;
     if (state.isEventLiked) {
-      _ws.sendUnlike(event.eventId);
+      _ws.sendUnlike(event.eventId, roomId: _currentRoomId);
     } else {
-      _ws.sendLike(event.eventId);
+      _ws.sendLike(event.eventId, roomId: _currentRoomId);
     }
   }
 
@@ -646,9 +891,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       ChatRoomPictureLikeToggled event, Emitter<ChatRoomState> emit) {
     if (!_ws.isConnected) return;
     if (state.isPictureLiked) {
-      _ws.sendPictureUnlike(event.pictureId);
+      _ws.sendPictureUnlike(event.pictureId, roomId: _currentRoomId);
     } else {
-      _ws.sendPictureLike(event.pictureId);
+      _ws.sendPictureLike(event.pictureId, roomId: _currentRoomId);
     }
     // Optimistic update — WS echo will confirm the real value.
     final wasLiked = state.isPictureLiked;
@@ -672,14 +917,34 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   ) async {
     var msg = event.message;
 
+    debugPrint('[ChatRoomBloc] _onReceived: msgId=${msg.id}'
+        ' roomId=${msg.roomId}'
+        ' senderId=${msg.senderId}'
+        ' isEncrypted=${msg.isEncrypted}'
+        ' isLocal=${msg.isLocal}'
+        ' contentLen=${msg.content.length}'
+        ' currentRoom=$_currentRoomId');
+
+    if (_isDirectRoom) {
+      debugPrint('[E2EE] onReceived: msgId=${msg.id}'
+          ' isEncrypted=${msg.isEncrypted}'
+          ' hasIv=${msg.iv != null}'
+          ' hasEphKey=${msg.ephemeralKey != null && msg.ephemeralKey!.isNotEmpty}'
+          ' senderId=${msg.senderId}'
+          ' myUserId=$_myUserId');
+    }
+
     // Decrypt E2EE messages — only in direct rooms, never in global/event/photo rooms.
     // The server stores the ciphertext in the `content` field when is_encrypted=true
     // (there is no separate `ciphertext` field in the forwarded/echoed message).
-    if (_isDirectRoom &&
-        msg.isEncrypted &&
-        msg.content.isNotEmpty &&
-        msg.iv != null &&
-        _currentRoomId != null) {
+    final shouldDecrypt = _isDirectRoom && msg.isEncrypted && msg.content.isNotEmpty && msg.iv != null && _currentRoomId != null;
+    debugPrint('[ChatRoomBloc] _onReceived decrypt-gate:'
+        ' isDirectRoom=$_isDirectRoom'
+        ' isEncrypted=${msg.isEncrypted}'
+        ' hasContent=${msg.content.isNotEmpty}'
+        ' hasIv=${msg.iv != null}'
+        ' → willDecrypt=$shouldDecrypt');
+    if (shouldDecrypt) {
       // Stale sender key — identity key no longer matches the server's current
       // bundle for this sender. Decline to decrypt: the message may have been
       // sent by an old/compromised key. Delete our session and rekey on next
@@ -736,6 +1001,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             // uses no header and just re-uses K_derived.
             _pendingEphemeralKey = null;
             _pendingOtpkId = null;
+            _proactiveSessionKey = null;
             debugPrint('[E2EE] Receiver: session key derived via X3DH (otpkId: ${msg.otpkId}), proactive state cleared');
             msg = msg.copyWith(content: x3dhResult.$2, isEncrypted: false);
             alreadyDecrypted = true;
@@ -772,17 +1038,22 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         }
       } catch (e) {
         debugPrint('[E2EE] Decrypt failed for msg ${msg.id}: $e');
-        // MAC error on an ongoing message (no X3DH header, not our own echo)
-        // means the stored session key doesn't match the sender's. Wipe it and
-        // schedule a rekey so the next outbound message carries a fresh X3DH
-        // header — the sender derives the new session key from that header and
-        // both sides re-synchronise automatically.
+        // MAC error on an ongoing message most likely means the sender used
+        // a key from a previous session that arrived in-flight while we were
+        // establishing a new one. Deleting the stored key here triggers
+        // proactive X3DH → which stores another mismatched key → more MAC
+        // errors → endless loop.
+        //
+        // Instead: keep the stored key (so subsequent messages from the other
+        // side that DO use the correct key can still decrypt), but set
+        // _needsRekey so the NEXT outbound message carries a fresh X3DH
+        // header. That forces both sides to converge on a new shared key
+        // without destroying the one that may still be valid.
         final isOngoing = msg.ephemeralKey == null || msg.ephemeralKey!.isEmpty;
         final isFromOther = msg.senderId != _myUserId;
-        if (isOngoing && isFromOther && _currentRoomId != null) {
-          await _e2ee.deleteSessionKey(_currentRoomId!);
+        if (isOngoing && isFromOther) {
           _needsRekey = true;
-          debugPrint('[E2EE] MAC error on ongoing message — session cleared, rekey on next send');
+          debugPrint('[E2EE] MAC error on ongoing message — scheduling rekey on next send (key kept)');
         }
         msg = msg.copyWith(content: '', isEncrypted: false);
       }
@@ -808,16 +1079,34 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             m.imageUrl == msg.imageUrl))
         .toList();
 
-    if (updated.any((m) => m.id == msg.id)) return;
+    final hasOptimistic = optimistic != null;
+    debugPrint('[ChatRoomBloc] _onReceived: optimistic match=$hasOptimistic'
+        ' (optimisticId=${optimistic?.id ?? "none"})'
+        ' stateBeforeSize=${state.messages.length}'
+        ' afterRemoveSize=${updated.length}');
 
-    emit(state.copyWith(messages: _sorted([msg, ...updated])));
-    _cacheMessage(msg).catchError((_) {});
-
-    if (_currentRoomId != null) {
-      _markAsRead(_currentRoomId!).then((_) {
-        _bgService.onUnreadUpdate?.call();
-      }).catchError((_) {});
+    if (updated.any((m) => m.id == msg.id)) {
+      debugPrint('[ChatRoomBloc] _onReceived: DUPLICATE — msgId=${msg.id} already in state, skipping insert+badge');
+      return;
     }
+
+    debugPrint('[ChatRoomBloc] _onReceived: emitting with msgId=${msg.id} hasOptimisticPlaceholder=$hasOptimistic finalListSize=${updated.length + 1}');
+    emit(state.copyWith(messages: _sorted([msg, ...updated])));
+
+    // Await the DB write so the sequence is: insert → mark-read → badge.
+    // A fire-and-forget here races with close() → _bgService.resume(), which
+    // unpauses the room so BgService can save new messages. If _markAsRead ran
+    // after resume(), it would mark those freshly-saved messages as read and
+    // permanently zero the unread badge.
+    final roomId = _currentRoomId;
+    await _cacheMessage(msg).catchError((_) {});
+    // Skip mark-read if the BLoC was closed while we were writing to the DB
+    // (i.e. the user navigated away). close() already called _bgService.resume;
+    // any message BgService saves between now and here must stay unread.
+    if (!isClosed && roomId != null) {
+      await _markAsRead(roomId).catchError((_) {});
+    }
+    _bgService.onUnreadUpdate?.call();
   }
 
   /// Derives the session key and decrypts the first X3DH message from the
@@ -929,12 +1218,22 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   /// key and skips the proactive X3DH setup (which would store a mismatched
   /// key), and re-decrypts any historically-encrypted messages in state.
   Future<void> _deriveKeyFromHistory(Emitter<ChatRoomState> emit) async {
-    // Skip if a session key already exists. Re-deriving would attempt to use
-    // the OTPK private key, which is single-use and deleted after the first
-    // derivation. A second pass silently omits DH4 (the catch in
-    // deriveReceivingKey swallows the missing-key error) and produces a
-    // mismatched key that overwrites the correct stored key.
-    if (await _e2ee.loadSessionKey(_currentRoomId!) != null) return;
+    // If a session key already exists, don't re-derive — the OTPK is
+    // single-use and was deleted after the first derivation, so a second pass
+    // would produce a wrong key. But DO decrypt any encrypted messages that
+    // just arrived from the REST history load and aren't yet in plaintext
+    // (e.g. messages received while the app was closed and not yet cached).
+    final existingKey = await _e2ee.loadSessionKey(_currentRoomId!);
+    final encryptedInHistory = state.messages.where((m) => m.isEncrypted).length;
+    final totalInHistory = state.messages.length;
+    if (existingKey != null) {
+      final kHex = existingKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      debugPrint('[E2EE] _deriveKeyFromHistory: stored key found (keyPrefix=$kHex) — re-decrypting $encryptedInHistory/$totalInHistory encrypted msg(s)');
+      await _redecryptEncryptedMessages(emit, existingKey);
+      return;
+    }
+
+    debugPrint('[E2EE] _deriveKeyFromHistory: no stored key — scanning $totalInHistory history msg(s), $encryptedInHistory encrypted');
 
     // Messages are sorted newest-first; the first match is the most recent
     // X3DH opener, which establishes the current session.
@@ -947,7 +1246,17 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             m.senderIdentityKey!.isNotEmpty &&
             m.senderId != _myUserId)
         .firstOrNull;
-    if (opener == null) return;
+    if (opener == null) {
+      // Log whether we skipped any openers from ourselves (we can't re-derive from those).
+      final ownOpeners = state.messages.where((m) =>
+          m.isEncrypted &&
+          m.ephemeralKey != null &&
+          m.ephemeralKey!.isNotEmpty &&
+          m.senderId == _myUserId).length;
+      debugPrint('[E2EE] _deriveKeyFromHistory: no opener from recipient found'
+          ' (own openers in history: $ownOpeners) — proactive X3DH will run');
+      return;
+    }
 
     debugPrint('[E2EE] _deriveKeyFromHistory: found X3DH opener ${opener.id} (otpkId: ${opener.otpkId})');
     try {
@@ -967,6 +1276,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
       _pendingEphemeralKey = null;
       _pendingOtpkId = null;
+      _proactiveSessionKey = null;
       final kHex = sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
       debugPrint('[E2EE] _deriveKeyFromHistory: session key stored (keyPrefix=$kHex), proactive state cleared');
       await _redecryptEncryptedMessages(emit, sessionKey);
@@ -1048,10 +1358,13 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // Keys unchanged — cancel the precautionary rekey.
     _needsRekey = false;
 
-    if (await _e2ee.loadSessionKey(_currentRoomId!) == null) {
+    final storedKey = await _e2ee.loadSessionKey(_currentRoomId!);
+    if (storedKey == null) {
       debugPrint('[E2EE] key_bundles: keys unchanged, no session — proactive X3DH');
       await _setupE2EESession(emit, bundle: bundle);
     } else {
+      final kHex = storedKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      debugPrint('[E2EE] key_bundles: keys unchanged, existing session reused (keyPrefix=$kHex)');
       emit(state.copyWith(isE2EEReady: true));
     }
   }
@@ -1192,7 +1505,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       final resolvedBundle = bundle ?? await _keyDs.fetchBundle(_recipientId!);
       if (resolvedBundle == null) return;
       final session = await _e2ee.createSendingSession(resolvedBundle);
-      await _e2ee.storeSessionKey(_currentRoomId!, session.sessionKey);
+      // Keep the proactive session key in memory ONLY — do NOT persist it.
+      // Persisting it would cause incoming messages (encrypted by the other
+      // party with their own session key) to fail decryption with a MAC error.
+      // The key is written to secure storage the moment we actually send with it.
+      _proactiveSessionKey = session.sessionKey;
       await _e2ee.storeCachedBundle(
         _recipientId!,
         identityKey: resolvedBundle.identityKey,
@@ -1202,7 +1519,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _pendingOtpkId = session.otpkId;
       _pendingBundleSpkId = resolvedBundle.signedPreKeyId;
       final kHex = session.sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-      debugPrint('[E2EE] Session pre-established (otpkId: ${session.otpkId}, keyPrefix=$kHex)');
+      debugPrint('[E2EE] Proactive session ready in memory (otpkId: ${session.otpkId}, keyPrefix=$kHex)');
       emit(state.copyWith(isE2EEReady: true));
     } catch (e) {
       debugPrint('[E2EE] Proactive session setup failed: $e');
@@ -1221,7 +1538,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           bundle = (await _e2ee.currentBundle())!;
         }
         await _keyDs.publishBundle(bundle);
-        _keysPublished = true;
+        _e2ee.markBundlePublished();
         debugPrint('[E2EE] Bundle published OK (${bundle.oneTimePreKeys.length} OTPKs)');
         _replenishOtpksIfNeeded().catchError((_) {});
 
@@ -1251,32 +1568,251 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
   }
 
+  // ── Edit / Delete handlers ────────────────────────────────────────────────
+
+  Future<void> _onMessageEditRequested(
+    ChatRoomMessageEditRequested event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+
+    // Optimistic: apply immediately.
+    final now = DateTime.now();
+    final updated = state.messages
+        .map((m) => m.id == event.messageId
+            ? m.copyWith(content: event.newContent, updatedAt: now)
+            : m)
+        .toList();
+    emit(state.copyWith(messages: updated));
+
+    try {
+      await _editMessage(
+          roomId: roomId,
+          messageId: event.messageId,
+          content: event.newContent);
+      // Persist edit to local cache (fire-and-forget).
+      _updateCachedMessage(event.messageId, event.newContent, now)
+          .catchError((_) {});
+    } catch (_) {
+      // Revert to original content on failure.
+      final reverted = state.messages
+          .map((m) => m.id == event.messageId
+              ? m.copyWith(clearUpdatedAt: true,
+                  content: state.messages
+                      .firstWhere((x) => x.id == event.messageId,
+                          orElse: () => m)
+                      .content)
+              : m)
+          .toList();
+      emit(state.copyWith(
+          messages: reverted, errorMessage: 'Could not edit message.'));
+    }
+  }
+
+  Future<void> _onMessageDeleteRequested(
+    ChatRoomMessageDeleteRequested event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+
+    // Optimistic: remove from list immediately.
+    emit(state.copyWith(
+      messages: state.messages.where((m) => m.id != event.messageId).toList(),
+    ));
+
+    try {
+      await _deleteMessage(roomId: roomId, messageId: event.messageId);
+      _deleteCachedMessage(event.messageId).catchError((_) {});
+    } catch (_) {
+      // Re-fetch messages to restore on failure.
+      emit(state.copyWith(errorMessage: 'Could not delete message.'));
+    }
+  }
+
+  void _onMessageEdited(_MessageEdited event, Emitter<ChatRoomState> emit) {
+    final updated = state.messages
+        .map((m) => m.id == event.messageId
+            ? m.copyWith(content: event.content, updatedAt: event.updatedAt)
+            : m)
+        .toList();
+    emit(state.copyWith(messages: updated));
+    _updateCachedMessage(event.messageId, event.content, event.updatedAt)
+        .catchError((_) {});
+  }
+
+  void _onMessageDeleted(_MessageDeleted event, Emitter<ChatRoomState> emit) {
+    emit(state.copyWith(
+      messages: state.messages.where((m) => m.id != event.messageId).toList(),
+    ));
+    _deleteCachedMessage(event.messageId).catchError((_) {});
+  }
+
+  void _onWsUserJoined(_WsUserJoined event, Emitter<ChatRoomState> emit) {
+    final name = event.userName.isNotEmpty ? event.userName : event.userId;
+    emit(state.copyWith(systemNotice: '$name joined the group'));
+  }
+
+  // ── Group admin handlers ───────────────────────────────────────────────────
+
+  Future<void> _onGrantAdminRequested(
+    ChatRoomGrantAdminRequested event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    try {
+      await _grantAdmin(roomId, event.userId);
+    } catch (_) {
+      emit(state.copyWith(errorMessage: 'Could not grant admin role.'));
+    }
+  }
+
+  Future<void> _onRevokeAdminRequested(
+    ChatRoomRevokeAdminRequested event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    try {
+      await _revokeAdmin(roomId, event.userId);
+    } catch (_) {
+      emit(state.copyWith(errorMessage: 'Could not revoke admin role.'));
+    }
+  }
+
+  Future<void> _onUpdateSettingsRequested(
+    ChatRoomUpdateSettingsRequested event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    // Optimistic update so the UI toggle feels instant.
+    final optimisticRoom = state.room?.copyWith(adminOnly: event.adminOnly);
+    emit(state.copyWith(room: optimisticRoom));
+    try {
+      await _updateRoomSettings(roomId, adminOnly: event.adminOnly);
+    } catch (_) {
+      // Revert on failure.
+      final revertedRoom = state.room?.copyWith(adminOnly: !event.adminOnly);
+      emit(state.copyWith(
+        room: revertedRoom,
+        errorMessage: 'Could not update room settings.',
+      ));
+    }
+  }
+
+  Future<void> _onKickRequested(
+    ChatRoomKickRequested event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    try {
+      await _kickParticipant(roomId, event.userId);
+    } catch (_) {
+      emit(state.copyWith(errorMessage: 'Could not remove participant.'));
+    }
+  }
+
+  void _onAdminGranted(_AdminGranted event, Emitter<ChatRoomState> emit) {
+    final updatedParticipants = state.room?.participants
+        .map((p) => p.userId == event.userId ? p.copyWith(isAdmin: true) : p)
+        .toList();
+    final updatedRoom = updatedParticipants != null
+        ? state.room!.copyWith(participants: updatedParticipants)
+        : state.room;
+    final nowIAmAdmin = event.userId == _myUserId ? true : state.amIAdmin;
+    final name = _participantName(event.userId);
+    emit(state.copyWith(
+      room: updatedRoom,
+      amIAdmin: nowIAmAdmin,
+      systemNotice: '$name is now a group admin',
+    ));
+  }
+
+  void _onAdminRevoked(_AdminRevoked event, Emitter<ChatRoomState> emit) {
+    final updatedParticipants = state.room?.participants
+        .map((p) => p.userId == event.userId ? p.copyWith(isAdmin: false) : p)
+        .toList();
+    final updatedRoom = updatedParticipants != null
+        ? state.room!.copyWith(participants: updatedParticipants)
+        : state.room;
+    final nowIAmAdmin = event.userId == _myUserId ? false : state.amIAdmin;
+    final name = _participantName(event.userId);
+    emit(state.copyWith(
+      room: updatedRoom,
+      amIAdmin: nowIAmAdmin,
+      systemNotice: '$name is no longer a group admin',
+    ));
+  }
+
+  void _onRoomSettingsUpdated(
+      _RoomSettingsUpdated event, Emitter<ChatRoomState> emit) {
+    final updatedRoom = state.room?.copyWith(adminOnly: event.adminOnly);
+    emit(state.copyWith(room: updatedRoom));
+  }
+
+  void _onParticipantRemoved(
+      _ParticipantRemoved event, Emitter<ChatRoomState> emit) {
+    if (event.userId == _myUserId) {
+      emit(state.copyWith(
+        systemNotice: 'You were removed from this group.',
+        isConnected: false,
+        isConnecting: false,
+      ));
+      return;
+    }
+    final name = _participantName(event.userId);
+    final updatedParticipants = state.room?.participants
+        .where((p) => p.userId != event.userId)
+        .toList();
+    final updatedRoom = updatedParticipants != null
+        ? state.room!.copyWith(participants: updatedParticipants)
+        : state.room;
+    emit(state.copyWith(
+      room: updatedRoom,
+      systemNotice: '$name was removed from the group.',
+    ));
+  }
+
+  /// Resolves a userId to its best available display name from the current
+  /// participant list. Falls back gracefully so UUIDs never surface in notices.
+  String _participantName(String userId) {
+    final p = state.room?.participants
+        .where((p) => p.userId == userId)
+        .firstOrNull;
+    return p?.displayName ?? 'A member';
+  }
+
   void _onLeft(ChatRoomLeft event, Emitter<ChatRoomState> emit) {
-    _reconnectTimer?.cancel();
     _otpkPollTimer?.cancel();
-    _wsMsgSub?.cancel();
-    _wsLikeSub?.cancel();
-    _wsPicLikeSub?.cancel();
-    _wsKeyBundlesSub?.cancel();
-    _wsParticipantKeySub?.cancel();
-    _wsKeyRotationSub?.cancel();
-    _ws.disconnect();
+    _wsConnectionSub?.cancel();
+    _wsConnectionSub = null;
+    _cancelWsSubscriptions();
     emit(state.copyWith(isConnected: false, isConnecting: false));
-    if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
+    if (_isEventRoom) {
+      _eventRoomWs?.disconnect();
+      _eventRoomWs = null;
+    } else {
+      // Do NOT disconnect the shared WS — it is owned by ChatBackgroundService.
+      if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
+    }
   }
 
   @override
   Future<void> close() {
-    _reconnectTimer?.cancel();
     _otpkPollTimer?.cancel();
-    _wsMsgSub?.cancel();
-    _wsLikeSub?.cancel();
-    _wsPicLikeSub?.cancel();
-    _wsKeyBundlesSub?.cancel();
-    _wsParticipantKeySub?.cancel();
-    _wsKeyRotationSub?.cancel();
-    _ws.disconnect();
-    if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
+    _wsConnectionSub?.cancel();
+    _cancelWsSubscriptions();
+    if (_isEventRoom) {
+      _eventRoomWs?.disconnect();
+      _eventRoomWs = null;
+    } else {
+      // Do NOT disconnect the shared WS — it is owned by ChatBackgroundService.
+      if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
+    }
     return super.close();
   }
 
