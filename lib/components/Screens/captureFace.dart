@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:skidoo_app/components/Screens/croptimage.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 
 class TakePictureScreen extends StatefulWidget {
   final CameraDescription camera;
@@ -138,9 +139,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
             });
           } catch (e) {
             if (mounted) setState(() => _captureInProgress = false);
-            messenger.showSnackBar(
-              SnackBar(content: Text('Camera error: $e')),
-            );
+            AppSnackBar.errorOnMessenger(messenger, 'Camera error: $e');
           }
         },
         child: const Icon(Icons.camera_alt),

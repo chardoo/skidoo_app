@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/common/customButtom.dart';
 import 'package:skidoo_app/core/common/textfield.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
@@ -25,7 +27,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Forgot Password'),
+        title: Text(AppLocalizations.of(context)!.forgotPasswordTitle),
         leading: BackButton(
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -38,7 +40,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Reset Password',
+                AppLocalizations.of(context)!.forgotPasswordResetTitle,
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge
@@ -46,7 +48,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Enter your email to receive a reset link',
+                AppLocalizations.of(context)!.forgotPasswordSubtitle,
                 style: Theme.of(context)
                     .textTheme
                     .labelSmall
@@ -56,7 +58,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
               MyTextField(
                 controller: _emailController,
                 validator: Validators.emailValidator,
-                label: 'Email',
+                label: AppLocalizations.of(context)!.forgotPasswordEmail,
               ),
               const SizedBox(height: 30),
               CustomButton(
@@ -64,13 +66,10 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                 width: double.infinity,
                 ontap: () {
                   if (_formKey.currentState?.validate() ?? false) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Reset link sent to your email.')),
-                    );
+                    AppSnackBar.success(context, AppLocalizations.of(context)!.forgotPasswordLinkSent);
                   }
                 },
-                label: 'Send Reset Link',
+                label: AppLocalizations.of(context)!.forgotPasswordSendLink,
               ),
             ],
           ),

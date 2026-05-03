@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/password_textfield.dart';
 import 'package:skidoo_app/core/common/textfield.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/login/login_bloc.dart';
@@ -79,12 +80,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
           widget.onLoginSuccess();
         }
         if (state.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.errorMessage!),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppSnackBar.error(context, state.errorMessage!);
         }
       },
       child: AnimatedPadding(

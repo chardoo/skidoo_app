@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/components/Screens/captureFace.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/signup/signup_bloc.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/auth_text_field.dart';
 
@@ -91,9 +93,7 @@ class _SignUpViewState extends State<_SignUpView>
     final cameras = await availableCameras();
     if (!context.mounted) return;
     if (cameras.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No camera available.')),
-      );
+      AppSnackBar.error(context, AppLocalizations.of(context)!.signupNoCameraAvailable);
       return;
     }
     final camera = cameras.length > 1 ? cameras[1] : cameras[0];
@@ -116,27 +116,11 @@ class _SignUpViewState extends State<_SignUpView>
       body: BlocConsumer<SignUpBloc, SignUpState>(
         listener: (context, state) {
           if (state.isSuccess) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(SnackBar(
-                content: const Text('Account created! Please log in.'),
-                backgroundColor: Colors.green.shade700,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ));
+            AppSnackBar.success(context, AppLocalizations.of(context)!.signupAccountCreated);
             Navigator.of(context).pushReplacementNamed(LoginPage.routeName);
           }
           if (state.errorMessage != null && !state.isLoading) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(SnackBar(
-                content: Text(state.errorMessage!),
-                backgroundColor: Colors.red.shade800,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ));
+            AppSnackBar.error(context, state.errorMessage!);
           }
         },
         builder: (context, state) {
@@ -177,9 +161,12 @@ class _SignUpViewState extends State<_SignUpView>
               SafeArea(
                 child: FadeTransition(
                   opacity: _fadeAnim,
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: 28.w),
-                    child: Form(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(horizontal: 28.w),
+                        child: Form(
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +202,7 @@ class _SignUpViewState extends State<_SignUpView>
 
                           // ── Heading ────────────────────────────────────
                           Text(
-                            'Create account',
+                            AppLocalizations.of(context)!.signupCreateAccount,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 30.sp,
@@ -226,7 +213,7 @@ class _SignUpViewState extends State<_SignUpView>
                           ),
                           SizedBox(height: 8.h),
                           Text(
-                            'Join and explore moments that matter',
+                            AppLocalizations.of(context)!.signupSubtitle,
                             style: TextStyle(
                               color: _kSubtext,
                               fontSize: 15.sp,
@@ -247,7 +234,7 @@ class _SignUpViewState extends State<_SignUpView>
                           // ── Email ──────────────────────────────────────
                           AuthTextField(
                             controller: _emailController,
-                            label: 'Email address',
+                            label: AppLocalizations.of(context)!.signupEmailAddress,
                             prefixIcon: Icons.mail_outline_rounded,
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
@@ -258,7 +245,7 @@ class _SignUpViewState extends State<_SignUpView>
                           // ── Username ───────────────────────────────────
                           AuthTextField(
                             controller: _usernameController,
-                            label: 'Username',
+                            label: AppLocalizations.of(context)!.signupUsername,
                             prefixIcon: Icons.person_outline_rounded,
                             textInputAction: TextInputAction.next,
                             validator: Validators.nameValidator,
@@ -268,7 +255,7 @@ class _SignUpViewState extends State<_SignUpView>
                           // ── Contact ────────────────────────────────────
                           AuthTextField(
                             controller: _contactController,
-                            label: 'Phone number',
+                            label: AppLocalizations.of(context)!.signupPhoneNumber,
                             prefixIcon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
                             textInputAction: TextInputAction.next,
@@ -279,7 +266,7 @@ class _SignUpViewState extends State<_SignUpView>
                           // ── Password ───────────────────────────────────
                           AuthPasswordField(
                             controller: _passwordController,
-                            label: 'Password',
+                            label: AppLocalizations.of(context)!.signupPassword,
                             textInputAction: TextInputAction.next,
                             validator: Validators.passwordValidator,
                           ),
@@ -288,11 +275,11 @@ class _SignUpViewState extends State<_SignUpView>
                           // ── Confirm password ───────────────────────────
                           AuthPasswordField(
                             controller: _confirmPasswordController,
-                            label: 'Confirm password',
+                            label: AppLocalizations.of(context)!.signupConfirmPassword,
                             textInputAction: TextInputAction.done,
                             validator: (v) {
                               if (v != _passwordController.text) {
-                                return 'Passwords do not match';
+                                return AppLocalizations.of(context)!.signupPasswordsDoNotMatch;
                               }
                               return Validators.passwordValidator(v);
                             },
@@ -301,7 +288,7 @@ class _SignUpViewState extends State<_SignUpView>
 
                           // ── Sign up button ─────────────────────────────
                           _GradientButton(
-                            label: 'Create Account',
+                            label: AppLocalizations.of(context)!.signupCreateAccountButton,
                             isLoading: state.isLoading,
                             onTap: () => _submit(state),
                           ),
@@ -313,7 +300,7 @@ class _SignUpViewState extends State<_SignUpView>
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  'Already have an account?  ',
+                                  AppLocalizations.of(context)!.signupAlreadyHaveAccount,
                                   style: TextStyle(
                                     color: _kSubtext,
                                     fontSize: 14.sp,
@@ -323,7 +310,7 @@ class _SignUpViewState extends State<_SignUpView>
                                   onTap: () => Navigator.of(context)
                                       .pushReplacementNamed(LoginPage.routeName),
                                   child: Text(
-                                    'Sign In',
+                                    AppLocalizations.of(context)!.signupSignIn,
                                     style: TextStyle(
                                       color: _kOrange,
                                       fontSize: 14.sp,
@@ -341,6 +328,8 @@ class _SignUpViewState extends State<_SignUpView>
                   ),
                 ),
               ),
+            ),
+          ),
             ],
           );
         },
@@ -435,7 +424,7 @@ class _FaceCaptureButton extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        captured ? 'Face captured' : 'Register your face',
+                        captured ? AppLocalizations.of(context)!.signupFaceCaptured : AppLocalizations.of(context)!.signupRegisterFace,
                         style: TextStyle(
                           color: captured ? Colors.white : const Color(0xFF9BA3B2),
                           fontSize: 14,
@@ -445,8 +434,8 @@ class _FaceCaptureButton extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         captured
-                            ? 'Tap to retake photo'
-                            : 'Tap to open camera',
+                            ? AppLocalizations.of(context)!.signupTapToRetake
+                            : AppLocalizations.of(context)!.signupTapToOpenCamera,
                         style: const TextStyle(
                           color: Color(0xFF4A5568),
                           fontSize: 12,
@@ -467,11 +456,11 @@ class _FaceCaptureButton extends StatelessWidget {
           ),
           if (showError) ...[
             const SizedBox(height: 6),
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Face photo is required',
-                style: TextStyle(
+                AppLocalizations.of(context)!.signupFaceRequired,
+                style: const TextStyle(
                   color: _kError,
                   fontSize: 11.5,
                 ),

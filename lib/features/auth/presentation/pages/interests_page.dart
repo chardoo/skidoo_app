@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/customButtom.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/interests/interests_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/widgets/loader.dart';
@@ -55,12 +57,7 @@ class _InterestsView extends StatelessWidget {
                 .pushReplacementNamed(HomePage.routeName);
           }
           if (state.errorMessage != null && !state.isLoading) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(SnackBar(
-                content: Text(state.errorMessage!),
-                backgroundColor: Colors.red,
-              ));
+            AppSnackBar.error(context, state.errorMessage!);
           }
         },
         builder: (context, state) {
@@ -72,7 +69,7 @@ class _InterestsView extends StatelessWidget {
                 children: [
                   const SizedBox(height: 16),
                   Text(
-                    'What interests you?',
+                    AppLocalizations.of(context)!.interestsTitle,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           fontSize: 24,
@@ -80,7 +77,7 @@ class _InterestsView extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Select topics to personalise your feed',
+                    AppLocalizations.of(context)!.interestsSubtitle,
                     style: Theme.of(context)
                         .textTheme
                         .labelSmall
@@ -142,15 +139,15 @@ class _InterestsView extends StatelessWidget {
                               : () => context
                                   .read<InterestsBloc>()
                                   .add(const InterestsSubmitted()),
-                          label: 'Continue',
+                          label: AppLocalizations.of(context)!.interestsContinue,
                         ),
                   const SizedBox(height: 8),
                   Center(
                     child: TextButton(
                       onPressed: () => Navigator.of(context)
                           .pushReplacementNamed(HomePage.routeName),
-                      child: const Text(
-                        'Skip for now',
+                      child: Text(
+                        AppLocalizations.of(context)!.interestsSkip,
                         style: TextStyle(color: Colors.grey),
                       ),
                     ),

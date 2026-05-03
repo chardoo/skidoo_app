@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
@@ -7,6 +8,7 @@ import 'package:skidoo_app/features/auth/presentation/bloc/login/login_bloc.dart
 import 'package:skidoo_app/features/auth/presentation/pages/forget_password_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/interests_page.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/auth_text_field.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
@@ -83,15 +85,7 @@ class _LoginViewState extends State<_LoginView>
             );
           }
           if (state.errorMessage != null && !state.isLoading) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(SnackBar(
-                content: Text(state.errorMessage!),
-                backgroundColor: Colors.red.shade800,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ));
+            AppSnackBar.error(context, state.errorMessage!);
           }
         },
         builder: (context, state) {
@@ -132,9 +126,12 @@ class _LoginViewState extends State<_LoginView>
               SafeArea(
                 child: FadeTransition(
                   opacity: _fadeAnim,
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: 28.w),
-                    child: Form(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(horizontal: 28.w),
+                        child: Form(
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,7 +167,7 @@ class _LoginViewState extends State<_LoginView>
 
                           // ── Heading ────────────────────────────────────
                           Text(
-                            'Welcome back',
+                            AppLocalizations.of(context)!.loginWelcomeBack,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 30.sp,
@@ -181,7 +178,7 @@ class _LoginViewState extends State<_LoginView>
                           ),
                           SizedBox(height: 8.h),
                           Text(
-                            'Sign in to your account',
+                            AppLocalizations.of(context)!.loginSignInToAccount,
                             style: TextStyle(
                               color: _kSubtext,
                               fontSize: 15.sp,
@@ -194,7 +191,7 @@ class _LoginViewState extends State<_LoginView>
                           // ── Email ──────────────────────────────────────
                           AuthTextField(
                             controller: _emailController,
-                            label: 'Email address',
+                            label: AppLocalizations.of(context)!.loginEmailAddress,
                             prefixIcon: Icons.mail_outline_rounded,
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
@@ -205,7 +202,7 @@ class _LoginViewState extends State<_LoginView>
                           // ── Password ───────────────────────────────────
                           AuthPasswordField(
                             controller: _passwordController,
-                            label: 'Password',
+                            label: AppLocalizations.of(context)!.loginPassword,
                             textInputAction: TextInputAction.done,
                             validator: (v) =>
                                 Validators.passwordValidator(v),
@@ -222,7 +219,7 @@ class _LoginViewState extends State<_LoginView>
                                         const ForgetPasswordPage()),
                               ),
                               child: Text(
-                                'Forgot password?',
+                                AppLocalizations.of(context)!.loginForgotPassword,
                                 style: TextStyle(
                                   color: _kOrange,
                                   fontSize: 13.sp,
@@ -235,7 +232,7 @@ class _LoginViewState extends State<_LoginView>
 
                           // ── Sign in button ─────────────────────────────
                           _GradientButton(
-                            label: 'Sign In',
+                            label: AppLocalizations.of(context)!.loginSignIn,
                             isLoading: state.isLoading,
                             onTap: _submit,
                           ),
@@ -247,7 +244,7 @@ class _LoginViewState extends State<_LoginView>
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  "Don't have an account?  ",
+                                  AppLocalizations.of(context)!.loginNoAccount,
                                   style: TextStyle(
                                     color: _kSubtext,
                                     fontSize: 14.sp,
@@ -257,7 +254,7 @@ class _LoginViewState extends State<_LoginView>
                                   onTap: () => Navigator.of(context)
                                       .pushReplacementNamed('/signup'),
                                   child: Text(
-                                    'Sign Up',
+                                    AppLocalizations.of(context)!.loginSignUp,
                                     style: TextStyle(
                                       color: _kOrange,
                                       fontSize: 14.sp,
@@ -275,6 +272,8 @@ class _LoginViewState extends State<_LoginView>
                   ),
                 ),
               ),
+            ),
+          ),
             ],
           );
         },
