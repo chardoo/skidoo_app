@@ -14,6 +14,7 @@ import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_pr
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_comment_sheet.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
@@ -988,12 +989,7 @@ class _ReportReasonSheetState extends State<_ReportReasonSheet> {
     }
     if (!mounted) return;
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Report submitted. Thank you for your feedback.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppSnackBar.success(context, 'Report submitted. Thank you for your feedback.');
   }
 
   @override

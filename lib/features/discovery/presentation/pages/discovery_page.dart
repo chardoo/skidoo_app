@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/utils/responsive.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/login_bottom_sheet.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/event_discovery_card.dart';
@@ -123,32 +126,12 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
     // Mark card as pending-hide → collapses immediately via AnimatedAlign.
     bloc.add(DiscoveryEventHideRequested(eventId));
 
-    // Dismiss any in-flight snackbar so only one undo prompt shows at a time.
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-          SnackBar(
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            backgroundColor: const Color(0xFF2C2C2E),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            content: const Text(
-              'Content hidden',
-              style: TextStyle(color: Colors.white, fontSize: 14),
-            ),
-            action: SnackBarAction(
-              label: 'Undo',
-              textColor: const Color(0xFFF5A623),
-              onPressed: () => bloc.add(const DiscoveryEventHideUndone()),
-            ),
-          ),
-        )
-        .closed
-        .then((reason) {
+    AppSnackBar.withAction(
+      context,
+      AppLocalizations.of(context)!.discoveryContentHidden,
+      actionLabel: AppLocalizations.of(context)!.discoveryUndo,
+      onAction: () => bloc.add(const DiscoveryEventHideUndone()),
+    ).then((reason) {
       // Snackbar dismissed without Undo → commit (remove from list + persist).
       if (reason != SnackBarClosedReason.action && !bloc.isClosed) {
         bloc.add(DiscoveryEventHideCommitted(eventId));
@@ -192,7 +175,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                     );
                   }
 
-                  return NotificationListener<ScrollNotification>(
+                  final feed = NotificationListener<ScrollNotification>(
                     onNotification: (notification) {
                       if (notification is ScrollUpdateNotification ||
                           notification is ScrollEndNotification) {
@@ -250,6 +233,17 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                       },
                     ),
                   );
+
+                  if (isTablet(context)) {
+                    return Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 680),
+                        child: feed,
+                      ),
+                    );
+                  }
+                  return feed;
                 },
               ),
             ),

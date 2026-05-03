@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
@@ -129,9 +131,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
         debugPrint('[SavedItems] fetch failed: $e');
         if (mounted) {
           setState(() => _loading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not load event details.')),
-          );
+          AppSnackBar.error(context, AppLocalizations.of(context)!.savedItemsCouldNotLoadEvent);
         }
         return;
       }
@@ -179,9 +179,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to remove item.')),
-      );
+      AppSnackBar.error(context, AppLocalizations.of(context)!.savedItemsFailedToRemove);
     }
   }
 
@@ -196,7 +194,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
         centerTitle: true,
         surfaceTintColor: Colors.transparent,
         title: Text(
-          'Saved',
+          AppLocalizations.of(context)!.savedItemsTitle,
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
