@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/create_group_page.dart';
@@ -30,7 +31,7 @@ class _ChatRoomsView extends StatelessWidget {
         elevation: 0,
         centerTitle: false,
         title: Text(
-          'Messages',
+          AppLocalizations.of(context)!.chatRoomsTitle,
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
@@ -42,7 +43,7 @@ class _ChatRoomsView extends StatelessWidget {
             icon: Icon(Icons.public_rounded,
                 color: ext.accentGold, size: 22.sp),
             onPressed: () => _openGlobalChat(context),
-            tooltip: 'Global Chat',
+            tooltip: AppLocalizations.of(context)!.chatRoomsGlobalChat,
           ),
           IconButton(
             icon: Icon(Icons.refresh_rounded,
@@ -56,7 +57,7 @@ class _ChatRoomsView extends StatelessWidget {
       floatingActionButton: FloatingActionButton(
         backgroundColor: ext.accentGold,
         foregroundColor: Colors.white,
-        tooltip: 'New Group',
+        tooltip: AppLocalizations.of(context)!.chatRoomsNewGroup,
         onPressed: () => _openCreateGroup(context),
         child: const Icon(Icons.group_add_rounded),
       ),
@@ -81,14 +82,14 @@ class _ChatRoomsView extends StatelessWidget {
 
           final noConversationsAction = TextButton(
             onPressed: () => _openGlobalChat(context),
-            child: Text('Join Global Chat',
+            child: Text(AppLocalizations.of(context)!.chatRoomsJoinGlobalChat,
                 style: TextStyle(color: ext.accentGold)),
           );
 
           if (filtered.isEmpty && state.pendingInvites.isEmpty) {
             return AppEmptyState(
               icon: Icons.chat_bubble_outline_rounded,
-              message: 'No conversations yet.',
+              message: AppLocalizations.of(context)!.chatRoomsNoConversations,
               action: noConversationsAction,
             );
           }
@@ -102,7 +103,7 @@ class _ChatRoomsView extends StatelessWidget {
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
+              constraints: const BoxConstraints(maxWidth: 680),
               child: Column(
                 children: [
                   if (state.isSyncing)
@@ -122,7 +123,7 @@ class _ChatRoomsView extends StatelessWidget {
                         children: [
                           // Pending invites appear above active rooms.
                           if (state.pendingInvites.isNotEmpty) ...[
-                            _SectionHeader(label: 'Pending Invites', ext: ext),
+                            _SectionHeader(label: AppLocalizations.of(context)!.chatRoomsPendingInvites, ext: ext),
                             ...state.pendingInvites.map((room) =>
                                 _PendingInviteTile(
                                   room: room,
@@ -137,7 +138,7 @@ class _ChatRoomsView extends StatelessWidget {
                             SizedBox(height: 8.h),
                           ],
                           if (sorted.isNotEmpty)
-                            _SectionHeader(label: 'Chats', ext: ext),
+                            _SectionHeader(label: AppLocalizations.of(context)!.chatRoomsChats, ext: ext),
                           ...sorted.map((room) => RoomTile(
                                 room: room,
                                 unreadCount:
@@ -257,7 +258,7 @@ class _PendingInviteTile extends StatelessWidget {
                 ),
                 SizedBox(height: 2.h),
                 Text(
-                  'You were invited to join',
+                  AppLocalizations.of(context)!.chatRoomsYouWereInvited,
                   style: TextStyle(
                       color: ext.searchHintColor, fontSize: 11.sp),
                 ),
@@ -266,13 +267,13 @@ class _PendingInviteTile extends StatelessWidget {
           ),
           SizedBox(width: 6.w),
           _ActionButton(
-            label: 'Join',
+            label: AppLocalizations.of(context)!.chatRoomsJoin,
             color: ext.accentGold,
             onTap: onAccept,
           ),
           SizedBox(width: 6.w),
           _ActionButton(
-            label: 'Decline',
+            label: AppLocalizations.of(context)!.chatRoomsDecline,
             color: ext.searchHintColor,
             onTap: onDecline,
           ),

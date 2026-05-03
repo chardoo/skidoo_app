@@ -6,6 +6,7 @@ import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/group_info_page.dart';
@@ -103,7 +104,7 @@ class _GlobalRoomInitializerState extends State<_GlobalRoomInitializer> {
                   setState(() { _loading = true; _error = null; });
                   _load();
                 },
-                child: Text('Retry', style: TextStyle(color: ext.accentGold)),
+                child: Text(AppLocalizations.of(context)!.photographerProfileRetry, style: TextStyle(color: ext.accentGold)),
               ),
             ],
           ),
@@ -183,10 +184,13 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     HapticFeedback.selectionClick();
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final canEdit = isMe && !msg.isEncrypted && msg.imageUrl == null;
+    final screenW = MediaQuery.of(context).size.width;
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      constraints: BoxConstraints(
+          maxWidth: screenW > 600 ? 480 : double.infinity),
       builder: (_) => _MessageOptionsSheet(
         ext: ext,
         canEdit: canEdit,
@@ -219,7 +223,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: ext.cardSurface,
-        title: Text('Edit message',
+        title: Text(AppLocalizations.of(context)!.chatRoomEditMessage,
             style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
         content: TextField(
           controller: ctrl,
@@ -227,7 +231,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
           maxLines: null,
           style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
           decoration: InputDecoration(
-            hintText: 'Edit your message…',
+            hintText: AppLocalizations.of(context)!.chatRoomEditYourMessage,
             hintStyle: TextStyle(color: ext.searchHintColor),
             border: InputBorder.none,
           ),
@@ -236,11 +240,11 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child:
-                Text('Cancel', style: TextStyle(color: ext.searchHintColor)),
+                Text(AppLocalizations.of(context)!.chatRoomCancel, style: TextStyle(color: ext.searchHintColor)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-            child: Text('Save',
+            child: Text(AppLocalizations.of(context)!.chatRoomSave,
                 style: TextStyle(
                     color: ext.accentGold, fontWeight: FontWeight.bold)),
           ),
@@ -263,19 +267,19 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: ext.cardSurface,
-        title: Text('Delete message',
+        title: Text(AppLocalizations.of(context)!.chatRoomDeleteMessage,
             style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
-        content: Text('This message will be deleted for everyone.',
+        content: Text(AppLocalizations.of(context)!.chatRoomDeleteForEveryone,
             style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child:
-                Text('Cancel', style: TextStyle(color: ext.searchHintColor)),
+                Text(AppLocalizations.of(context)!.chatRoomCancel, style: TextStyle(color: ext.searchHintColor)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete',
+            child: Text(AppLocalizations.of(context)!.chatRoomDelete,
                 style: TextStyle(
                     color: Colors.redAccent, fontWeight: FontWeight.bold)),
           ),
@@ -293,9 +297,12 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
 
   void _onUserTap(BuildContext context, ChatMessage msg) {
     if (msg.senderId == _bloc.state.myUserId) return;
+    final screenW = MediaQuery.of(context).size.width;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      constraints: BoxConstraints(
+          maxWidth: screenW > 600 ? 480 : double.infinity),
       builder: (_) => _UserOptionsSheet(
         senderId: msg.senderId,
         senderRole: msg.senderRole,
@@ -311,8 +318,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       ),
     );
     if (!context.mounted || count == null) return;
-    final label = count == 1 ? '1 person invited' : '$count people invited';
-    AppSnackBar.success(context, label);
+    AppSnackBar.success(context, AppLocalizations.of(context)!.chatRoomInvitedCount(count));
   }
 
   void _openGroupInfo(BuildContext context) {
@@ -343,7 +349,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       final isBlocked = e is ServerException && e.message.contains('400');
       AppSnackBar.error(
         context,
-        isBlocked ? 'This user is not accepting messages.' : 'Could not open chat: $e',
+        isBlocked ? AppLocalizations.of(context)!.chatRoomNotAcceptingMessages : AppLocalizations.of(context)!.chatRoomCouldNotOpenChat(e.toString()),
       );
     }
   }
@@ -410,7 +416,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
               builder: (_, state) {
                 if (state.isConnected) return const SizedBox.shrink();
                 final label =
-                    state.isConnecting ? 'Connecting…' : 'Disconnected';
+                    state.isConnecting ? AppLocalizations.of(context)!.chatRoomConnecting : AppLocalizations.of(context)!.chatRoomDisconnected;
                 final color =
                     state.isConnecting ? Colors.orangeAccent : Colors.redAccent;
                 return Text(
@@ -428,7 +434,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
             IconButton(
               icon: Icon(Icons.person_add_outlined,
                   color: ext.greetingColor, size: 20.sp),
-              tooltip: 'Add people',
+              tooltip: AppLocalizations.of(context)!.chatRoomAddPeople,
               onPressed: () => _openInvitePage(context),
             ),
           // Like button — only shown for event rooms that have an event_id
@@ -483,7 +489,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                               color: ext.searchHintColor.withValues(alpha: 0.6)),
                           SizedBox(width: 4.w),
                           Text(
-                            'End-to-end encrypted',
+                            AppLocalizations.of(context)!.chatRoomEndToEndEncrypted,
                             style: TextStyle(
                               fontSize: 11.sp,
                               color: ext.searchHintColor.withValues(alpha: 0.6),
@@ -534,7 +540,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                         if (state.messages.isEmpty) {
                           return Center(
                             child: Text(
-                              'No messages yet.\nSay hello!',
+                              AppLocalizations.of(context)!.chatRoomNoMessages,
                               style: TextStyle(
                                   color: ext.searchHintColor, fontSize: 14.sp),
                               textAlign: TextAlign.center,
@@ -617,7 +623,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                                   color: ext.searchHintColor),
                               SizedBox(width: 8.w),
                               Text(
-                                'Only admins can send messages',
+                                AppLocalizations.of(context)!.chatRoomOnlyAdminsCanSend,
                                 style: TextStyle(
                                   color: ext.searchHintColor,
                                   fontSize: 13.sp,
@@ -796,7 +802,7 @@ class _UserOptionsSheetState extends State<_UserOptionsSheet> {
           SizedBox(height: 8.h),
           _SheetOption(
             icon: Icons.chat_bubble_outline_rounded,
-            label: 'Message directly',
+            label: AppLocalizations.of(context)!.chatRoomMessageDirectly,
             accentColor: ext.accentGold,
             loading: _loading,
             onTap: () {
@@ -911,21 +917,21 @@ class _MessageOptionsSheet extends StatelessWidget {
           ),
           _SheetOption(
             icon: Icons.reply_rounded,
-            label: 'Reply',
+            label: AppLocalizations.of(context)!.chatRoomReply,
             accentColor: ext.accentGold,
             onTap: onReply,
           ),
           if (canEdit)
             _SheetOption(
               icon: Icons.edit_rounded,
-              label: 'Edit',
+              label: AppLocalizations.of(context)!.chatRoomEdit,
               accentColor: Colors.blueAccent,
               onTap: onEdit!,
             ),
           if (canDelete)
             _SheetOption(
               icon: Icons.delete_outline_rounded,
-              label: 'Delete',
+              label: AppLocalizations.of(context)!.chatRoomDelete,
               accentColor: Colors.redAccent,
               onTap: onDelete!,
             ),

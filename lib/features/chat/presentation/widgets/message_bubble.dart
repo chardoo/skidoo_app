@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
+import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
 import 'package:video_player/video_player.dart';
 
 /// Returns true when [url] points to a video, using both explicit path
@@ -342,14 +343,20 @@ class _MessageVideo extends StatefulWidget {
   State<_MessageVideo> createState() => _MessageVideoState();
 }
 
-class _MessageVideoState extends State<_MessageVideo> {
+class _MessageVideoState extends State<_MessageVideo>
+    with WidgetsBindingObserver {
   late VideoPlayerController _ctrl;
+  late final _pauseSub = VideoPauseNotifier.listen(() {
+    if (_initialized && _ctrl.value.isPlaying) _ctrl.pause();
+  });
   bool _initialized = false;
   bool _muted = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _pauseSub; // eagerly initialize the late field
     _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
       ..setLooping(true)
       ..setVolume(0)
@@ -361,7 +368,22 @@ class _MessageVideoState extends State<_MessageVideo> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_initialized) return;
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        if (_ctrl.value.isPlaying) _ctrl.pause();
+      default:
+        break;
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pauseSub.cancel();
     _ctrl
       ..pause()
       ..dispose();
