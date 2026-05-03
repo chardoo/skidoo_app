@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
@@ -227,7 +228,7 @@ class _SearchFieldContent extends StatelessWidget {
             autofocus: true,
             style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
             decoration: InputDecoration(
-              hintText: 'Search events...',
+              hintText: AppLocalizations.of(context)!.homeSearchEvents,
               hintStyle:
                   TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
               border: InputBorder.none,

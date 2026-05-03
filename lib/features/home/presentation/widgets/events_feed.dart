@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/event_discovery_card.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 
@@ -61,30 +63,12 @@ class _EventsFeedState extends State<EventsFeed> {
     final bloc = context.read<DiscoveryBloc>();
     bloc.add(DiscoveryEventHideRequested(eventId));
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-          SnackBar(
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            backgroundColor: const Color(0xFF2C2C2E),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            content: const Text(
-              'Content hidden',
-              style: TextStyle(color: Colors.white, fontSize: 14),
-            ),
-            action: SnackBarAction(
-              label: 'Undo',
-              textColor: const Color(0xFFF5A623),
-              onPressed: () => bloc.add(const DiscoveryEventHideUndone()),
-            ),
-          ),
-        )
-        .closed
-        .then((reason) {
+    AppSnackBar.withAction(
+      context,
+      AppLocalizations.of(context)!.discoveryContentHidden,
+      actionLabel: AppLocalizations.of(context)!.discoveryUndo,
+      onAction: () => bloc.add(const DiscoveryEventHideUndone()),
+    ).then((reason) {
       if (reason != SnackBarClosedReason.action && !bloc.isClosed) {
         bloc.add(DiscoveryEventHideCommitted(eventId));
       }

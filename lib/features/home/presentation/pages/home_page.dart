@@ -15,6 +15,8 @@ import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_rooms_page.dart';
 import 'package:skidoo_app/components/common/navbar.dart';
+import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 
 class HomePage extends StatelessWidget {
   static const routeName = '/home';
@@ -60,6 +62,7 @@ class _HomeViewState extends State<_HomeView> {
   double _lastScrollOffset = 0;
 
   void _changeTab(int index) {
+    VideoPauseNotifier.pauseAll();
     setState(() {
       _selectedTab = index;
       _navBarVisible = true;
@@ -147,16 +150,16 @@ class _HomeViewState extends State<_HomeView> {
               backgroundColor: ext.cardSurface,
               selectedIndex: _selectedTab,
               onDestinationSelected: _changeTab,
-              extended: false,
+              extended: MediaQuery.of(context).size.width >= 900,
               selectedIconTheme: IconThemeData(color: ext.accentGold),
               unselectedIconTheme: IconThemeData(color: ext.searchHintColor),
               selectedLabelTextStyle: TextStyle(color: ext.accentGold),
               unselectedLabelTextStyle: TextStyle(color: ext.searchHintColor),
               destinations: [
-                const NavigationRailDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: Text('Home'),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home_rounded),
+                  label: Text(AppLocalizations.of(context)!.navHome),
                 ),
                 NavigationRailDestination(
                   icon: Badge(
@@ -169,17 +172,17 @@ class _HomeViewState extends State<_HomeView> {
                     isLabelVisible: totalUnread > 0,
                     child: const Icon(Icons.chat_bubble_rounded),
                   ),
-                  label: const Text('Messages'),
+                  label: Text(AppLocalizations.of(context)!.navMessages),
                 ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.photo_library_outlined),
-                  selectedIcon: Icon(Icons.photo_library_rounded),
-                  label: Text('Gallery'),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.photo_library_outlined),
+                  selectedIcon: const Icon(Icons.photo_library_rounded),
+                  label: Text(AppLocalizations.of(context)!.navGallery),
                 ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.camera_alt_outlined),
-                  selectedIcon: Icon(Icons.camera_alt_rounded),
-                  label: Text('Creators'),
+                NavigationRailDestination(
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  selectedIcon: const Icon(Icons.camera_alt_rounded),
+                  label: Text(AppLocalizations.of(context)!.navCreators),
                 ),
               ],
             ),

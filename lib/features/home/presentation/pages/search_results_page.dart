@@ -2,10 +2,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/responsive.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 
@@ -77,7 +79,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         if (state.savedFreeCount != null) {
           _showSnack(
             context,
-            '${state.savedFreeCount} photo${state.savedFreeCount == 1 ? '' : 's'} saved to your gallery!',
+            AppLocalizations.of(context)!.searchResultsPhotosSaved(state.savedFreeCount!),
             isError: false,
           );
         } else if (state.errorMessage != null) {
@@ -93,12 +95,12 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
             builder: (context, state) {
               // ── Full-screen loading ───────────────────────────────────────
               if (state.isLoadingImages && state.searchImages.isEmpty) {
-                return _buildInitialLoader(ext);
+                return _buildInitialLoader(context, ext);
               }
 
               // ── Empty state ───────────────────────────────────────────────
               if (state.searchImages.isEmpty && !state.isLoadingImages) {
-                return _buildEmpty(ext);
+                return _buildEmpty(context, ext);
               }
 
               final photos = state.searchImages;
@@ -151,7 +153,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                                       color: ext.accentGold, strokeWidth: 2),
                                 ),
                                 SizedBox(width: 10.w),
-                                Text('Finding more…',
+                                Text(AppLocalizations.of(context)!.searchResultsFindingMore,
                                     style: TextStyle(
                                         color: ext.searchHintColor,
                                         fontSize: 13.sp)),
@@ -168,7 +170,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                       bottom: 0,
                       left: 0,
                       right: 0,
-                      child: _buildBottomBar(ext, photos, state.isSavingFree),
+                      child: _buildBottomBar(context, ext, photos, state.isSavingFree),
                     ),
                 ],
               );
@@ -191,7 +193,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
           onPressed: _exitSelectionMode,
         ),
         title: Text(
-          '${_selectedIds.length} selected',
+          AppLocalizations.of(ctx)!.searchResultsSelected(_selectedIds.length),
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
@@ -205,7 +207,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                   ? null
                   : () => _selectAll(state.searchImages),
               child: Text(
-                'Select All',
+                AppLocalizations.of(context)!.searchResultsSelectAll,
                 style: TextStyle(
                   color: ext.accentGold,
                   fontSize: 13.sp,
@@ -226,7 +228,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
           onPressed: () => Navigator.of(ctx).pop(),
           color: ext.greetingColor),
       title: Text(
-        'Search Results',
+        AppLocalizations.of(ctx)!.searchResultsTitle,
         style: TextStyle(
           color: ext.greetingColor,
           fontWeight: FontWeight.w700,
@@ -242,7 +244,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
               icon: Icon(Icons.check_circle_outline_rounded,
                   color: ext.accentGold, size: 18.sp),
               label: Text(
-                'Select',
+                AppLocalizations.of(context)!.searchResultsSelect,
                 style: TextStyle(
                     color: ext.accentGold,
                     fontSize: 13.sp,
@@ -365,7 +367,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   // ── Bottom bar ──────────────────────────────────────────────────────────────
 
   Widget _buildBottomBar(
-      AppThemeExtension ext, List<Photo> photos, bool isSaving) {
+      BuildContext context, AppThemeExtension ext, List<Photo> photos, bool isSaving) {
     if (photos.isEmpty) return const SizedBox.shrink();
 
     return Container(
@@ -394,7 +396,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                     Expanded(
                       child: _SaveButton(
                         label:
-                            'Save Selected (${_selectedIds.length})',
+                            AppLocalizations.of(context)!.searchResultsSaveSelected(_selectedIds.length),
                         icon: Icons.save_alt_rounded,
                         color: ext.accentGold,
                         textColor: Colors.black,
@@ -407,7 +409,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                     // Save All (secondary style)
                     Expanded(
                       child: _SaveButton(
-                        label: 'Save All (${photos.length})',
+                        label: AppLocalizations.of(context)!.searchResultsSaveAll(photos.length),
                         icon: Icons.download_for_offline_rounded,
                         color: ext.searchFieldFill,
                         textColor: ext.greetingColor,
@@ -425,7 +427,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                     // Save All — primary action when not in selection mode
                     Expanded(
                       child: _SaveButton(
-                        label: 'Save All Photos (${photos.length})',
+                        label: AppLocalizations.of(context)!.searchResultsSaveAllPhotos(photos.length),
                         icon: Icons.download_for_offline_rounded,
                         color: ext.accentGold,
                         textColor: Colors.black,
@@ -437,7 +439,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                     SizedBox(width: 10.w),
                     // Select Some — secondary
                     _SaveButton(
-                      label: 'Pick',
+                      label: AppLocalizations.of(context)!.searchResultsPick,
                       icon: Icons.checklist_rounded,
                       color: ext.searchFieldFill,
                       textColor: ext.greetingColor,
@@ -456,7 +458,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  Widget _buildInitialLoader(AppThemeExtension ext) {
+  Widget _buildInitialLoader(BuildContext context, AppThemeExtension ext) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -475,14 +477,14 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
           ),
           SizedBox(height: 20.h),
           Text(
-            'Scanning your photos…',
+            AppLocalizations.of(context)!.searchResultsScanningPhotos,
             style: TextStyle(
                 color: ext.greetingColor,
                 fontSize: 15.sp,
                 fontWeight: FontWeight.w600),
           ),
           SizedBox(height: 8.h),
-          Text('This may take a moment',
+          Text(AppLocalizations.of(context)!.searchResultsMayTakeAMoment,
               style:
                   TextStyle(color: ext.searchHintColor, fontSize: 12.sp)),
         ],
@@ -490,7 +492,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     );
   }
 
-  Widget _buildEmpty(AppThemeExtension ext) {
+  Widget _buildEmpty(BuildContext context, AppThemeExtension ext) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -498,7 +500,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
           Icon(Icons.image_search_outlined,
               size: 64.sp, color: ext.searchHintColor),
           SizedBox(height: 12.h),
-          Text('No photos found',
+          Text(AppLocalizations.of(context)!.searchResultsNoPhotos,
               style: TextStyle(color: ext.searchHintColor, fontSize: 15.sp)),
         ],
       ),
@@ -506,16 +508,12 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   }
 
   void _showSnack(BuildContext context, String msg, {required bool isError}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: isError ? Colors.red[800] : Colors.green[800],
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.r)),
-        margin: EdgeInsets.only(bottom: 80.h, left: 16.w, right: 16.w),
-      ),
-    );
+    final margin = EdgeInsets.only(bottom: 80.h, left: 16.w, right: 16.w);
+    if (isError) {
+      AppSnackBar.error(context, msg, margin: margin);
+    } else {
+      AppSnackBar.success(context, msg, margin: margin);
+    }
   }
 }
 

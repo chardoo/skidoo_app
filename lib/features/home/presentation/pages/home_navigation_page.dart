@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
@@ -197,7 +198,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
           child: HomeEmptyState(
             ext: ext,
             icon: Icons.event_busy_outlined,
-            message: 'No events found',
+            message: AppLocalizations.of(context)!.homeNoEventsFound,
           ),
         ),
       ]);
@@ -217,7 +218,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
           child: HomeEmptyState(
             ext: ext,
             icon: Icons.photo_library_outlined,
-            message: 'No events yet',
+            message: AppLocalizations.of(context)!.homeNoEventsYet,
           ),
         ),
       ]);
