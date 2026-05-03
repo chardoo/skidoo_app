@@ -1,6 +1,8 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/customThemeData.dart';
@@ -45,6 +47,16 @@ class MyApp extends StatelessWidget {
             theme: Styles.light,
             darkTheme: Styles.dark,
             themeMode: themeMode,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('en'),
+              Locale('de'),
+            ],
             initialRoute: token.isEmpty
                 ? DiscoveryPage.routeName
                 : HomePage.routeName,
@@ -96,9 +108,9 @@ class _SecurityWarningPage extends StatelessWidget {
                 size: 72,
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Security Warning',
-                style: TextStyle(
+              Text(
+                AppLocalizations.of(context)!.securityWarningTitle,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -107,12 +119,9 @@ class _SecurityWarningPage extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              const Text(
-                'This device appears to be jailbroken or rooted.\n\n'
-                'Running Skidoo on a compromised device exposes your account, '
-                'messages, and payment data to elevated risk. We strongly '
-                'recommend using a secure, unmodified device.',
-                style: TextStyle(
+              Text(
+                AppLocalizations.of(context)!.securityWarningBody,
+                style: const TextStyle(
                   color: Colors.white60,
                   fontSize: 14,
                   height: 1.6,
@@ -137,9 +146,9 @@ class _SecurityWarningPage extends StatelessWidget {
                       DiscoveryPage.routeName,
                     );
                   },
-                  child: const Text(
-                    'I understand, continue anyway',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  child: Text(
+                    AppLocalizations.of(context)!.securityWarningContinue,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
