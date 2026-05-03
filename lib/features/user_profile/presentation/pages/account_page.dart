@@ -9,6 +9,12 @@ import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.d
 import 'package:skidoo_app/features/discovery/presentation/pages/saved_items_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 
+String _resolveErrorMessage(String key, AppLocalizations l10n) => switch (key) {
+      'accountAnonymousModeUpdateFailed' => l10n.accountAnonymousModeUpdateFailed,
+      'accountHideProfileUpdateFailed' => l10n.accountHideProfileUpdateFailed,
+      _ => key,
+    };
+
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
 
@@ -30,19 +36,25 @@ class _AccountView extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return BlocConsumer<UserProfileBloc, UserProfileState>(
+      listenWhen: (previous, current) =>
+          current.isLoggedOut != previous.isLoggedOut ||
+          current.isUpdateSuccess != previous.isUpdateSuccess ||
+          current.updateErrorMessage != previous.updateErrorMessage ||
+          current.errorMessage != previous.errorMessage,
       listener: (context, state) {
+        final l10n = AppLocalizations.of(context)!;
         if (state.isLoggedOut) {
           Navigator.of(context)
               .pushNamedAndRemoveUntil('/login', (route) => false);
         }
         if (state.isUpdateSuccess) {
-          AppSnackBar.success(context, AppLocalizations.of(context)!.accountProfileUpdated);
+          AppSnackBar.success(context, l10n.accountProfileUpdated);
         }
         if (state.updateErrorMessage != null) {
           AppSnackBar.error(context, state.updateErrorMessage!);
         }
         if (state.errorMessage != null) {
-          AppSnackBar.error(context, state.errorMessage!);
+          AppSnackBar.error(context, _resolveErrorMessage(state.errorMessage!, l10n));
         }
       },
       builder: (context, state) {
@@ -122,6 +134,8 @@ class _AccountView extends StatelessWidget {
                             _PrivacySettingsCard(
                               anonymousMode: state.anonymousMode,
                               hideProfile: state.hideProfile,
+                              isAnonymousModeUpdating: state.isAnonymousModeUpdating,
+                              isHideProfileUpdating: state.isHideProfileUpdating,
                               ext: ext,
                             ),
                             const Spacer(),
@@ -691,11 +705,15 @@ class _PrivacySettingsCard extends StatelessWidget {
   const _PrivacySettingsCard({
     required this.anonymousMode,
     required this.hideProfile,
+    required this.isAnonymousModeUpdating,
+    required this.isHideProfileUpdating,
     required this.ext,
   });
 
   final bool anonymousMode;
   final bool hideProfile;
+  final bool isAnonymousModeUpdating;
+  final bool isHideProfileUpdating;
   final AppThemeExtension ext;
 
   @override
@@ -734,14 +752,25 @@ class _PrivacySettingsCard extends StatelessWidget {
                   : AppLocalizations.of(context)!.accountAnonymousModeOff,
               style: TextStyle(color: ext.searchHintColor, fontSize: 12),
             ),
-            secondary: Icon(
-              Icons.person_off_outlined,
-              color: anonymousMode ? ext.accentGold : ext.searchHintColor,
-            ),
+            secondary: isAnonymousModeUpdating
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        color: ext.accentGold, strokeWidth: 2),
+                  )
+                : Icon(
+                    Icons.person_off_outlined,
+                    color: anonymousMode ? ext.accentGold : ext.searchHintColor,
+                  ),
             value: anonymousMode,
-            onChanged: (value) {
-              context.read<UserProfileBloc>().add(AnonymousModeToggled(value));
-            },
+            onChanged: isAnonymousModeUpdating
+                ? null
+                : (value) {
+                    context
+                        .read<UserProfileBloc>()
+                        .add(AnonymousModeToggled(value));
+                  },
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
           SwitchListTile(
@@ -758,14 +787,25 @@ class _PrivacySettingsCard extends StatelessWidget {
                   : AppLocalizations.of(context)!.accountHideProfileOff,
               style: TextStyle(color: ext.searchHintColor, fontSize: 12),
             ),
-            secondary: Icon(
-              Icons.visibility_off_outlined,
-              color: hideProfile ? ext.accentGold : ext.searchHintColor,
-            ),
+            secondary: isHideProfileUpdating
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        color: ext.accentGold, strokeWidth: 2),
+                  )
+                : Icon(
+                    Icons.visibility_off_outlined,
+                    color: hideProfile ? ext.accentGold : ext.searchHintColor,
+                  ),
             value: hideProfile,
-            onChanged: (value) {
-              context.read<UserProfileBloc>().add(HideProfileToggled(value));
-            },
+            onChanged: isHideProfileUpdating
+                ? null
+                : (value) {
+                    context
+                        .read<UserProfileBloc>()
+                        .add(HideProfileToggled(value));
+                  },
           ),
           const SizedBox(height: 4),
         ],

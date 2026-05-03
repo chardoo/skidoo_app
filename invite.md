@@ -1,0 +1,2 @@
+I want a user to be able to create a rooms or group and invite peopple to join the other user should have a pending room on top of the list of the chats like pending group the user  should be able to  tap on it and deciede to join or leave that group or room. 
+so anybody at all should be able to create a group and invite  people the user should be able to search users and add them.

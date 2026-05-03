@@ -394,12 +394,15 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  widget.room.displayName,
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.sp,
+                BlocBuilder<ChatRoomBloc, ChatRoomState>(
+                  buildWhen: (p, c) => p.room?.name != c.room?.name,
+                  builder: (_, state) => Text(
+                    state.room?.displayName ?? widget.room.displayName,
+                    style: TextStyle(
+                      color: ext.greetingColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.sp,
+                    ),
                   ),
                 ),
                 if (widget.room.type == RoomType.group) ...[
@@ -503,8 +506,20 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                       listenWhen: (p, c) =>
                           p.errorMessage != c.errorMessage ||
                           p.messages != c.messages ||
+                          p.isDeleted != c.isDeleted ||
                           (c.systemNotice != null && p.systemNotice != c.systemNotice),
                       listener: (context, state) {
+                        if (state.isDeleted) {
+                          // First close any sub-pages (e.g. GroupInfoPage), then
+                          // pop ChatRoomPage itself.
+                          final thisRoute = ModalRoute.of(context);
+                          final nav = Navigator.of(context);
+                          if (thisRoute != null) {
+                            nav.popUntil((route) => route == thisRoute);
+                          }
+                          nav.pop();
+                          return;
+                        }
                         if (state.errorMessage != null) {
                           AppSnackBar.error(context, state.errorMessage!);
                         }

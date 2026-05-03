@@ -18,6 +18,8 @@ class UserProfileState extends Equatable {
   final bool alwaysPublicImages;
   final bool anonymousMode;
   final bool hideProfile;
+  final bool isAnonymousModeUpdating;
+  final bool isHideProfileUpdating;
   final String? errorMessage;
   final String? updateErrorMessage;
 
@@ -39,6 +41,8 @@ class UserProfileState extends Equatable {
     this.alwaysPublicImages = false,
     this.anonymousMode = false,
     this.hideProfile = false,
+    this.isAnonymousModeUpdating = false,
+    this.isHideProfileUpdating = false,
     this.errorMessage,
     this.updateErrorMessage,
   });
@@ -61,6 +65,8 @@ class UserProfileState extends Equatable {
     bool? alwaysPublicImages,
     bool? anonymousMode,
     bool? hideProfile,
+    bool? isAnonymousModeUpdating,
+    bool? isHideProfileUpdating,
     String? errorMessage,
     String? updateErrorMessage,
     bool clearError = false,
@@ -85,6 +91,8 @@ class UserProfileState extends Equatable {
       alwaysPublicImages: alwaysPublicImages ?? this.alwaysPublicImages,
       anonymousMode: anonymousMode ?? this.anonymousMode,
       hideProfile: hideProfile ?? this.hideProfile,
+      isAnonymousModeUpdating: isAnonymousModeUpdating ?? this.isAnonymousModeUpdating,
+      isHideProfileUpdating: isHideProfileUpdating ?? this.isHideProfileUpdating,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       updateErrorMessage: clearUpdateError ? null : (updateErrorMessage ?? this.updateErrorMessage),
     );
@@ -109,6 +117,8 @@ class UserProfileState extends Equatable {
         alwaysPublicImages,
         anonymousMode,
         hideProfile,
+        isAnonymousModeUpdating,
+        isHideProfileUpdating,
         errorMessage,
         updateErrorMessage,
       ];

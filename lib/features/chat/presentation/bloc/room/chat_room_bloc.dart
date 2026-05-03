@@ -5,12 +5,14 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
+import 'package:skidoo_app/core/error/exceptions.dart' show ServerException;
 import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart'
     show ChatWebSocketService, WsAdminGrantedEvent, WsAdminRevokedEvent,
         WsKeyBundlesEvent, WsKeyRotationEvent, WsMessageDeletedEvent,
         WsMessageEditedEvent, WsParticipantKeyAvailable,
-        WsParticipantRemovedEvent, WsRoomSettingsUpdatedEvent, WsUserJoinedEvent;
+        WsParticipantRemovedEvent, WsRoomDeletedEvent,
+        WsRoomSettingsUpdatedEvent, WsUserJoinedEvent;
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
@@ -37,6 +39,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   final RevokeAdminUseCase _revokeAdmin;
   final UpdateRoomSettingsUseCase _updateRoomSettings;
   final KickParticipantUseCase _kickParticipant;
+  final LeaveRoomUseCase _leaveRoom;
+  final DeleteRoomUseCase _deleteRoom;
+  final ClearRoomCacheUseCase _clearRoomCache;
   final AuthService _authService;
   final ChatBackgroundService _bgService;
   final E2eeService _e2ee;
@@ -83,6 +88,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   StreamSubscription<WsAdminRevokedEvent>? _wsAdminRevokedSub;
   StreamSubscription<WsRoomSettingsUpdatedEvent>? _wsRoomSettingsSub;
   StreamSubscription<WsParticipantRemovedEvent>? _wsParticipantRemovedSub;
+  StreamSubscription<WsRoomDeletedEvent>? _wsRoomDeletedSub;
   // Waits for ChatBackgroundService to signal the WS is (re)connected.
   StreamSubscription<bool>? _wsConnectionSub;
   Timer? _otpkPollTimer;
@@ -104,6 +110,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     required RevokeAdminUseCase revokeAdmin,
     required UpdateRoomSettingsUseCase updateRoomSettings,
     required KickParticipantUseCase kickParticipant,
+    required LeaveRoomUseCase leaveRoom,
+    required DeleteRoomUseCase deleteRoom,
+    required ClearRoomCacheUseCase clearRoomCache,
     required AuthService authService,
     required ChatBackgroundService bgService,
     required E2eeService e2eeService,
@@ -122,6 +131,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         _revokeAdmin = revokeAdmin,
         _updateRoomSettings = updateRoomSettings,
         _kickParticipant = kickParticipant,
+        _leaveRoom = leaveRoom,
+        _deleteRoom = deleteRoom,
+        _clearRoomCache = clearRoomCache,
         _authService = authService,
         _bgService = bgService,
         _e2ee = e2eeService,
@@ -160,6 +172,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_AdminRevoked>(_onAdminRevoked);
     on<_RoomSettingsUpdated>(_onRoomSettingsUpdated);
     on<_ParticipantRemoved>(_onParticipantRemoved);
+    on<ChatRoomLeaveGroupRequested>(_onLeaveGroupRequested);
+    on<ChatRoomDeleteRequested>(_onDeleteRequested);
+    on<_RoomDeleted>(_onRoomDeleted);
   }
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -397,6 +412,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsAdminRevokedSub?.cancel();
     _wsRoomSettingsSub?.cancel();
     _wsParticipantRemovedSub?.cancel();
+    _wsRoomDeletedSub?.cancel();
     _wsMsgSub = null;
     _wsLikeSub = null;
     _wsPicLikeSub = null;
@@ -410,6 +426,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsAdminRevokedSub = null;
     _wsRoomSettingsSub = null;
     _wsParticipantRemovedSub = null;
+    _wsRoomDeletedSub = null;
   }
 
   void _setupWsListeners(String roomId) {
@@ -513,7 +530,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsRoomSettingsSub = _ws.roomSettingsEvents.listen(
       (event) {
         if (!isClosed && event.roomId == roomId) {
-          add(_RoomSettingsUpdated(event.adminOnly, event.updatedBy));
+          add(_RoomSettingsUpdated(event.updatedBy,
+              adminOnly: event.adminOnly, name: event.name));
         }
       },
     );
@@ -522,6 +540,14 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       (event) {
         if (!isClosed && event.roomId == roomId) {
           add(_ParticipantRemoved(event.userId, event.removedBy));
+        }
+      },
+    );
+
+    _wsRoomDeletedSub = _ws.roomDeletedEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_RoomDeleted(event.deletedBy));
         }
       },
     );
@@ -1688,16 +1714,27 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   ) async {
     final roomId = _currentRoomId;
     if (roomId == null) return;
-    // Optimistic update so the UI toggle feels instant.
-    final optimisticRoom = state.room?.copyWith(adminOnly: event.adminOnly);
+
+    final prevRoom = state.room;
+
+    // Optimistic update so the toggle / rename feels instant.
+    ChatRoom? optimisticRoom = state.room;
+    if (optimisticRoom != null) {
+      if (event.adminOnly != null) {
+        optimisticRoom = optimisticRoom.copyWith(adminOnly: event.adminOnly!);
+      }
+      if (event.name != null) {
+        optimisticRoom = optimisticRoom.copyWith(name: event.name);
+      }
+    }
     emit(state.copyWith(room: optimisticRoom));
+
     try {
-      await _updateRoomSettings(roomId, adminOnly: event.adminOnly);
+      await _updateRoomSettings(roomId,
+          adminOnly: event.adminOnly, name: event.name);
     } catch (_) {
-      // Revert on failure.
-      final revertedRoom = state.room?.copyWith(adminOnly: !event.adminOnly);
       emit(state.copyWith(
-        room: revertedRoom,
+        room: prevRoom,
         errorMessage: 'Could not update room settings.',
       ));
     }
@@ -1714,6 +1751,55 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     } catch (_) {
       emit(state.copyWith(errorMessage: 'Could not remove participant.'));
     }
+  }
+
+  Future<void> _onLeaveGroupRequested(
+    ChatRoomLeaveGroupRequested event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    emit(state.copyWith(isLeaving: true, clearError: true));
+    try {
+      await _leaveRoom(roomId);
+      emit(state.copyWith(isLeaving: false, isDeleted: true));
+    } catch (_) {
+      emit(state.copyWith(isLeaving: false, errorMessage: 'Could not leave the group.'));
+    }
+  }
+
+  Future<void> _onDeleteRequested(
+    ChatRoomDeleteRequested event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    emit(state.copyWith(isDeleting: true, clearError: true));
+    try {
+      await _deleteRoom(roomId);
+      emit(state.copyWith(isDeleting: false, isDeleted: true));
+    } on ServerException catch (e) {
+      final code = _parseStatusCode(e.message);
+      final msg = code == 403
+          ? 'Only admins can delete this group.'
+          : code == 400
+              ? 'Remove all other admins before deleting.'
+              : 'Could not delete the group.';
+      emit(state.copyWith(isDeleting: false, errorMessage: msg));
+    } catch (_) {
+      emit(state.copyWith(
+          isDeleting: false, errorMessage: 'Could not delete the group.'));
+    }
+  }
+
+  void _onRoomDeleted(_RoomDeleted event, Emitter<ChatRoomState> emit) {
+    if (_currentRoomId != null) _clearRoomCache(_currentRoomId!).catchError((_) {});
+    emit(state.copyWith(isDeleted: true));
+  }
+
+  int? _parseStatusCode(String message) {
+    final match = RegExp(r'Chat API error (\d{3})').firstMatch(message);
+    return int.tryParse(match?.group(1) ?? '');
   }
 
   void _onAdminGranted(_AdminGranted event, Emitter<ChatRoomState> emit) {
@@ -1750,13 +1836,22 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
   void _onRoomSettingsUpdated(
       _RoomSettingsUpdated event, Emitter<ChatRoomState> emit) {
-    final updatedRoom = state.room?.copyWith(adminOnly: event.adminOnly);
+    ChatRoom? updatedRoom = state.room;
+    if (updatedRoom != null) {
+      if (event.adminOnly != null) {
+        updatedRoom = updatedRoom.copyWith(adminOnly: event.adminOnly!);
+      }
+      if (event.name != null) {
+        updatedRoom = updatedRoom.copyWith(name: event.name);
+      }
+    }
     emit(state.copyWith(room: updatedRoom));
   }
 
   void _onParticipantRemoved(
       _ParticipantRemoved event, Emitter<ChatRoomState> emit) {
     if (event.userId == _myUserId) {
+      if (_currentRoomId != null) _clearRoomCache(_currentRoomId!).catchError((_) {});
       emit(state.copyWith(
         systemNotice: 'You were removed from this group.',
         isConnected: false,

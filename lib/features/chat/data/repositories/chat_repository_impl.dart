@@ -187,12 +187,28 @@ class ChatRepositoryImpl implements ChatRepository {
       _rest.revokeAdmin(roomId, userId);
 
   @override
-  Future<void> updateRoomSettings(String roomId, {required bool adminOnly}) =>
-      _rest.updateRoomSettings(roomId, adminOnly: adminOnly);
+  Future<void> updateRoomSettings(String roomId, {bool? adminOnly, String? name}) =>
+      _rest.updateRoomSettings(roomId, adminOnly: adminOnly, name: name);
 
   @override
   Future<void> kickParticipant(String roomId, String userId) =>
       _rest.kickParticipant(roomId, userId);
+
+  @override
+  Future<bool> leaveRoom(String roomId) async {
+    final deleted = await _rest.leaveRoom(roomId);
+    await _db.deleteRoom(roomId);
+    return deleted;
+  }
+
+  @override
+  Future<void> deleteRoom(String roomId) async {
+    await _rest.deleteRoom(roomId);
+    await _db.deleteRoom(roomId);
+  }
+
+  @override
+  Future<void> clearRoomCache(String roomId) => _db.deleteRoom(roomId);
 
   // ── Messages ───────────────────────────────────────────────────────────────
 

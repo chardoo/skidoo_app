@@ -150,6 +150,8 @@
   "accountHideProfile": "Profil verbergen",
   "accountHideProfileOn": "Andere können keine neuen Gespräche mit Ihnen starten",
   "accountHideProfileOff": "Jeder kann ein Gespräch mit Ihnen starten",
+  "accountAnonymousModeUpdateFailed": "Anonymer Modus konnte nicht aktualisiert werden.",
+  "accountHideProfileUpdateFailed": "Profil ausblenden konnte nicht aktualisiert werden.",
   "accountNotifications": "Benachrichtigungen",
   "accountMuteNotifications": "Nachrichtenklänge & Vibration stummschalten",
   "accountMutedOn": "Nachrichten kommen lautlos an",

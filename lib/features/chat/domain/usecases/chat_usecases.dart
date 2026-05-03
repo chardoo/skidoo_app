@@ -167,8 +167,8 @@ class RevokeAdminUseCase {
 class UpdateRoomSettingsUseCase {
   final ChatRepository _repo;
   UpdateRoomSettingsUseCase(this._repo);
-  Future<void> call(String roomId, {required bool adminOnly}) =>
-      _repo.updateRoomSettings(roomId, adminOnly: adminOnly);
+  Future<void> call(String roomId, {bool? adminOnly, String? name}) =>
+      _repo.updateRoomSettings(roomId, adminOnly: adminOnly, name: name);
 }
 
 class KickParticipantUseCase {
@@ -176,6 +176,24 @@ class KickParticipantUseCase {
   KickParticipantUseCase(this._repo);
   Future<void> call(String roomId, String userId) =>
       _repo.kickParticipant(roomId, userId);
+}
+
+class LeaveRoomUseCase {
+  final ChatRepository _repo;
+  LeaveRoomUseCase(this._repo);
+  Future<bool> call(String roomId) => _repo.leaveRoom(roomId);
+}
+
+class ClearRoomCacheUseCase {
+  final ChatRepository _repo;
+  ClearRoomCacheUseCase(this._repo);
+  Future<void> call(String roomId) => _repo.clearRoomCache(roomId);
+}
+
+class DeleteRoomUseCase {
+  final ChatRepository _repo;
+  DeleteRoomUseCase(this._repo);
+  Future<void> call(String roomId) => _repo.deleteRoom(roomId);
 }
 
 class GetRoomMessagesUseCase {

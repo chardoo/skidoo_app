@@ -896,6 +896,18 @@ abstract class AppLocalizations {
   /// **'Anyone can start a conversation with you'**
   String get accountHideProfileOff;
 
+  /// No description provided for @accountAnonymousModeUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update anonymous mode.'**
+  String get accountAnonymousModeUpdateFailed;
+
+  /// No description provided for @accountHideProfileUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update hide profile.'**
+  String get accountHideProfileUpdateFailed;
+
   /// No description provided for @accountNotifications.
   ///
   /// In en, this message translates to:

@@ -85,6 +85,9 @@ class AppSnackBar {
   static void successOnMessenger(ScaffoldMessengerState messenger, String message) =>
       _showOnMessenger(messenger, message, backgroundColor: _kSuccess);
 
+  static void infoOnMessenger(ScaffoldMessengerState messenger, String message) =>
+      _showOnMessenger(messenger, message, backgroundColor: _kInfo);
+
   static void _show(
     BuildContext context,
     String message, {

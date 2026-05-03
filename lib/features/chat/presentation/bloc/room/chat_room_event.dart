@@ -184,10 +184,11 @@ class ChatRoomRevokeAdminRequested extends ChatRoomEvent {
   const ChatRoomRevokeAdminRequested(this.userId);
 }
 
-/// Toggle the "only admins can send" setting.
+/// Update group settings — pass whichever fields changed.
 class ChatRoomUpdateSettingsRequested extends ChatRoomEvent {
-  final bool adminOnly;
-  const ChatRoomUpdateSettingsRequested(this.adminOnly);
+  final bool? adminOnly;
+  final String? name;
+  const ChatRoomUpdateSettingsRequested({this.adminOnly, this.name});
 }
 
 /// Kick a participant from the group.
@@ -211,13 +212,30 @@ class _AdminRevoked extends ChatRoomEvent {
 }
 
 class _RoomSettingsUpdated extends ChatRoomEvent {
-  final bool adminOnly;
+  final bool? adminOnly;
+  final String? name;
   final String updatedBy;
-  const _RoomSettingsUpdated(this.adminOnly, this.updatedBy);
+  const _RoomSettingsUpdated(this.updatedBy, {this.adminOnly, this.name});
 }
 
 class _ParticipantRemoved extends ChatRoomEvent {
   final String userId;
   final String removedBy;
   const _ParticipantRemoved(this.userId, this.removedBy);
+}
+
+/// Current user requested to leave the room.
+class ChatRoomLeaveGroupRequested extends ChatRoomEvent {
+  const ChatRoomLeaveGroupRequested();
+}
+
+/// Admin requested permanent deletion of the room.
+class ChatRoomDeleteRequested extends ChatRoomEvent {
+  const ChatRoomDeleteRequested();
+}
+
+/// WS broadcast: room was deleted by an admin (received by all participants).
+class _RoomDeleted extends ChatRoomEvent {
+  final String deletedBy;
+  const _RoomDeleted(this.deletedBy);
 }

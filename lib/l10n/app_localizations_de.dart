@@ -454,6 +454,14 @@ class AppLocalizationsDe extends AppLocalizations {
       'Jeder kann ein Gespräch mit Ihnen starten';
 
   @override
+  String get accountAnonymousModeUpdateFailed =>
+      'Anonymer Modus konnte nicht aktualisiert werden.';
+
+  @override
+  String get accountHideProfileUpdateFailed =>
+      'Profil ausblenden konnte nicht aktualisiert werden.';
+
+  @override
   String get accountNotifications => 'Benachrichtigungen';
 
   @override

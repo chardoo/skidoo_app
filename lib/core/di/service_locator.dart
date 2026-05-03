@@ -325,6 +325,12 @@ Future<void> setupServiceLocator() async {
       UpdateRoomSettingsUseCase(sl<ChatRepository>()));
   sl.registerSingleton<KickParticipantUseCase>(
       KickParticipantUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<LeaveRoomUseCase>(
+      LeaveRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<DeleteRoomUseCase>(
+      DeleteRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<ClearRoomCacheUseCase>(
+      ClearRoomCacheUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetRoomMessagesUseCase>(
       GetRoomMessagesUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetCachedMessagesUseCase>(
@@ -388,6 +394,9 @@ Future<void> setupServiceLocator() async {
         revokeAdmin: sl<RevokeAdminUseCase>(),
         updateRoomSettings: sl<UpdateRoomSettingsUseCase>(),
         kickParticipant: sl<KickParticipantUseCase>(),
+        leaveRoom: sl<LeaveRoomUseCase>(),
+        deleteRoom: sl<DeleteRoomUseCase>(),
+        clearRoomCache: sl<ClearRoomCacheUseCase>(),
         authService: sl<AuthService>(),
         bgService: sl<ChatBackgroundService>(),
       ));

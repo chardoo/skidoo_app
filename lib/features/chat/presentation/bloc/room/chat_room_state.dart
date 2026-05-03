@@ -61,6 +61,16 @@ class ChatRoomState extends Equatable {
   /// True when the current user has admin rights in this group room.
   final bool amIAdmin;
 
+  /// True while the leave-room API call is in-flight.
+  final bool isLeaving;
+
+  /// True while the delete-room API call is in-flight.
+  final bool isDeleting;
+
+  /// True once the room has been permanently deleted (or a room_deleted WS event
+  /// was received). The UI should navigate away when this becomes true.
+  final bool isDeleted;
+
   const ChatRoomState({
     this.messages = const [],
     this.isConnected = false,
@@ -86,6 +96,9 @@ class ChatRoomState extends Equatable {
     this.systemNotice,
     this.room,
     this.amIAdmin = false,
+    this.isLeaving = false,
+    this.isDeleting = false,
+    this.isDeleted = false,
   });
 
   ChatRoomState copyWith({
@@ -118,6 +131,9 @@ class ChatRoomState extends Equatable {
     bool clearSystemNotice = false,
     ChatRoom? room,
     bool? amIAdmin,
+    bool? isLeaving,
+    bool? isDeleting,
+    bool? isDeleted,
   }) =>
       ChatRoomState(
         messages: messages ?? this.messages,
@@ -144,6 +160,9 @@ class ChatRoomState extends Equatable {
         systemNotice: clearSystemNotice ? null : (systemNotice ?? this.systemNotice),
         room: room ?? this.room,
         amIAdmin: amIAdmin ?? this.amIAdmin,
+        isLeaving: isLeaving ?? this.isLeaving,
+        isDeleting: isDeleting ?? this.isDeleting,
+        isDeleted: isDeleted ?? this.isDeleted,
       );
 
   @override
@@ -172,5 +191,8 @@ class ChatRoomState extends Equatable {
         systemNotice,
         room,
         amIAdmin,
+        isLeaving,
+        isDeleting,
+        isDeleted,
       ];
 }

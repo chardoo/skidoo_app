@@ -64,9 +64,21 @@ abstract class ChatRepository {
 
   Future<void> revokeAdmin(String roomId, String userId);
 
-  Future<void> updateRoomSettings(String roomId, {required bool adminOnly});
+  Future<void> updateRoomSettings(String roomId, {bool? adminOnly, String? name});
 
   Future<void> kickParticipant(String roomId, String userId);
+
+  /// DELETE /chat/rooms/{room_id}/leave — leave the room.
+  /// Returns true when the room was also deleted (sole-admin case).
+  Future<bool> leaveRoom(String roomId);
+
+  /// DELETE /chat/rooms/{room_id} — permanently delete a group room.
+  Future<void> deleteRoom(String roomId);
+
+  /// Local-only: remove a room and all its cached messages from the DB.
+  /// Called when a WS event signals the room is gone for the current user
+  /// (room_deleted broadcast, participant_removed for self).
+  Future<void> clearRoomCache(String roomId);
 
   // ── Messages (REST / cache) ────────────────────────────────────────────────
 

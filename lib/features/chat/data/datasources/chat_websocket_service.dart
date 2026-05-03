@@ -113,11 +113,13 @@ class WsAdminRevokedEvent {
 /// Broadcast when an admin changes room-level settings (e.g. admin_only mode).
 class WsRoomSettingsUpdatedEvent {
   final String roomId;
-  final bool adminOnly;
+  final bool? adminOnly;
+  final String? name;
   final String updatedBy;
   const WsRoomSettingsUpdatedEvent({
     required this.roomId,
-    required this.adminOnly,
+    this.adminOnly,
+    this.name,
     required this.updatedBy,
   });
 }
@@ -133,6 +135,20 @@ class WsParticipantRemovedEvent {
     required this.userId,
     required this.removedBy,
   });
+}
+
+/// Broadcast to all remaining members when a participant voluntarily leaves.
+class WsParticipantLeftEvent {
+  final String roomId;
+  final String userId;
+  const WsParticipantLeftEvent({required this.roomId, required this.userId});
+}
+
+/// Broadcast to all members when the room is permanently deleted by its sole admin.
+class WsRoomDeletedEvent {
+  final String roomId;
+  final String deletedBy;
+  const WsRoomDeletedEvent({required this.roomId, required this.deletedBy});
 }
 
 /// Broadcast to all active room members when a pending invitee accepts
@@ -183,6 +199,8 @@ class ChatWebSocketService {
   StreamController<WsAdminRevokedEvent>? _adminRevokedController;
   StreamController<WsRoomSettingsUpdatedEvent>? _roomSettingsController;
   StreamController<WsParticipantRemovedEvent>? _participantRemovedController;
+  StreamController<WsParticipantLeftEvent>? _participantLeftController;
+  StreamController<WsRoomDeletedEvent>? _roomDeletedController;
   StreamSubscription? _sub;
 
   /// Emits the initial server handshake (userId + room list).
@@ -244,6 +262,14 @@ class ChatWebSocketService {
   /// Emits when a participant is kicked from the group.
   Stream<WsParticipantRemovedEvent> get participantRemovedEvents =>
       _participantRemovedController?.stream ?? const Stream.empty();
+
+  /// Emits when a participant voluntarily leaves the room.
+  Stream<WsParticipantLeftEvent> get participantLeftEvents =>
+      _participantLeftController?.stream ?? const Stream.empty();
+
+  /// Emits when the room is permanently deleted.
+  Stream<WsRoomDeletedEvent> get roomDeletedEvents =>
+      _roomDeletedController?.stream ?? const Stream.empty();
 
   bool _connected = false;
   bool get isConnected => _connected;
@@ -342,6 +368,8 @@ class ChatWebSocketService {
     _adminRevokedController = StreamController<WsAdminRevokedEvent>.broadcast();
     _roomSettingsController = StreamController<WsRoomSettingsUpdatedEvent>.broadcast();
     _participantRemovedController = StreamController<WsParticipantRemovedEvent>.broadcast();
+    _participantLeftController = StreamController<WsParticipantLeftEvent>.broadcast();
+    _roomDeletedController = StreamController<WsRoomDeletedEvent>.broadcast();
 
     try {
       _channel = IOWebSocketChannel.connect(uri);
@@ -465,7 +493,8 @@ class ChatWebSocketService {
             if (json['room_id'] is String) {
               _roomSettingsController?.add(WsRoomSettingsUpdatedEvent(
                 roomId: json['room_id'] as String,
-                adminOnly: (json['admin_only'] as bool?) ?? false,
+                adminOnly: json['admin_only'] as bool?,
+                name: json['name'] as String?,
                 updatedBy: json['updated_by'] as String? ?? '',
               ));
             }
@@ -475,6 +504,20 @@ class ChatWebSocketService {
                 roomId: json['room_id'] as String,
                 userId: json['user_id'] as String,
                 removedBy: json['removed_by'] as String? ?? '',
+              ));
+            }
+          } else if (type == 'participant_left') {
+            if (json['room_id'] is String && json['user_id'] is String) {
+              _participantLeftController?.add(WsParticipantLeftEvent(
+                roomId: json['room_id'] as String,
+                userId: json['user_id'] as String,
+              ));
+            }
+          } else if (type == 'room_deleted') {
+            if (json['room_id'] is String) {
+              _roomDeletedController?.add(WsRoomDeletedEvent(
+                roomId: json['room_id'] as String,
+                deletedBy: json['deleted_by'] as String? ?? '',
               ));
             }
           } else {
@@ -614,6 +657,8 @@ class ChatWebSocketService {
     _adminRevokedController?.close();
     _roomSettingsController?.close();
     _participantRemovedController?.close();
+    _participantLeftController?.close();
+    _roomDeletedController?.close();
     _connectedController = null;
     _msgController = null;
     _likeController = null;
@@ -629,6 +674,8 @@ class ChatWebSocketService {
     _adminRevokedController = null;
     _roomSettingsController = null;
     _participantRemovedController = null;
+    _participantLeftController = null;
+    _roomDeletedController = null;
   }
 
   /// Gracefully close the connection.

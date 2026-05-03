@@ -446,6 +446,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Anyone can start a conversation with you';
 
   @override
+  String get accountAnonymousModeUpdateFailed =>
+      'Could not update anonymous mode.';
+
+  @override
+  String get accountHideProfileUpdateFailed => 'Could not update hide profile.';
+
+  @override
   String get accountNotifications => 'Notifications';
 
   @override

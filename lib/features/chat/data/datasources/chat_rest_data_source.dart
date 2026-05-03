@@ -123,10 +123,17 @@ abstract class ChatRestDataSource {
   Future<void> revokeAdmin(String roomId, String userId);
 
   /// PATCH /chat/rooms/{room_id}/settings — update room-level settings.
-  Future<void> updateRoomSettings(String roomId, {required bool adminOnly});
+  Future<void> updateRoomSettings(String roomId, {bool? adminOnly, String? name});
 
   /// DELETE /chat/rooms/{room_id}/participants/{user_id} — kick a non-admin participant.
   Future<void> kickParticipant(String roomId, String userId);
+
+  /// DELETE /chat/rooms/{room_id}/leave — leave the room.
+  /// Returns true when the room was also deleted (sole-admin case).
+  Future<bool> leaveRoom(String roomId);
+
+  /// DELETE /chat/rooms/{room_id} — permanently delete a group room (sole admin only).
+  Future<void> deleteRoom(String roomId);
 
   /// GET /chat/rooms/{room_id}/messages?before_id=&limit=
   Future<List<ChatMessage>> getMessages(
@@ -326,11 +333,15 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   }
 
   @override
-  Future<void> updateRoomSettings(String roomId, {required bool adminOnly}) async {
-    debugPrint('[ChatREST] PATCH /chat/rooms/$roomId/settings adminOnly=$adminOnly');
+  Future<void> updateRoomSettings(String roomId, {bool? adminOnly, String? name}) async {
+    final payload = <String, dynamic>{
+      if (adminOnly != null) 'admin_only': adminOnly,
+      if (name != null) 'name': name,
+    };
+    debugPrint('[ChatREST] PATCH /chat/rooms/$roomId/settings $payload');
     await _wrap(() => _client.dio.patch(
           '/chat/rooms/$roomId/settings',
-          data: jsonEncode({'admin_only': adminOnly}),
+          data: jsonEncode(payload),
         ));
   }
 
@@ -338,6 +349,22 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   Future<void> kickParticipant(String roomId, String userId) async {
     debugPrint('[ChatREST] DELETE /chat/rooms/$roomId/participants/$userId');
     await _wrap(() => _client.dio.delete('/chat/rooms/$roomId/participants/$userId'));
+  }
+
+  @override
+  Future<bool> leaveRoom(String roomId) async {
+    debugPrint('[ChatREST] DELETE /chat/rooms/$roomId/leave');
+    final res = await _wrap(() => _client.dio.delete('/chat/rooms/$roomId/leave'));
+    final deleted = res.data?['deleted'] == true;
+    debugPrint('[ChatREST] left room — roomId=$roomId deleted=$deleted');
+    return deleted;
+  }
+
+  @override
+  Future<void> deleteRoom(String roomId) async {
+    debugPrint('[ChatREST] DELETE /chat/rooms/$roomId');
+    await _wrap(() => _client.dio.delete('/chat/rooms/$roomId'));
+    debugPrint('[ChatREST] room deleted — roomId=$roomId');
   }
 
   @override

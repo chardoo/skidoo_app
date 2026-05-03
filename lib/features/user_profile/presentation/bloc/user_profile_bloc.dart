@@ -1,4 +1,5 @@
 import 'package:bloc/bloc.dart';
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' show CacheException, ServerException;
 import 'package:skidoo_app/core/usecases/usecase.dart';
@@ -48,8 +49,8 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
     on<UserLogoutRequested>(_onLogoutRequested);
     on<NotificationsMuteToggled>(_onMuteToggled);
     on<PublicImagesToggled>(_onPublicImagesToggled);
-    on<AnonymousModeToggled>(_onAnonymousModeToggled);
-    on<HideProfileToggled>(_onHideProfileToggled);
+    on<AnonymousModeToggled>(_onAnonymousModeToggled, transformer: droppable());
+    on<HideProfileToggled>(_onHideProfileToggled, transformer: droppable());
     on<ProfileUpdateSubmitted>(_onProfileUpdateSubmitted);
   }
 
@@ -114,23 +115,39 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
 
   Future<void> _onAnonymousModeToggled(
       AnonymousModeToggled event, Emitter<UserProfileState> emit) async {
-    emit(state.copyWith(anonymousMode: event.value));
+    emit(state.copyWith(
+      anonymousMode: event.value,
+      isAnonymousModeUpdating: true,
+      clearError: true,
+    ));
     try {
       await _setAnonymousMode(event.value);
+      emit(state.copyWith(isAnonymousModeUpdating: false));
     } catch (_) {
-      emit(state.copyWith(anonymousMode: !event.value,
-          errorMessage: 'Could not update anonymous mode.'));
+      emit(state.copyWith(
+        anonymousMode: !event.value,
+        isAnonymousModeUpdating: false,
+        errorMessage: 'accountAnonymousModeUpdateFailed',
+      ));
     }
   }
 
   Future<void> _onHideProfileToggled(
       HideProfileToggled event, Emitter<UserProfileState> emit) async {
-    emit(state.copyWith(hideProfile: event.value));
+    emit(state.copyWith(
+      hideProfile: event.value,
+      isHideProfileUpdating: true,
+      clearError: true,
+    ));
     try {
       await _setHideProfile(event.value);
+      emit(state.copyWith(isHideProfileUpdating: false));
     } catch (_) {
-      emit(state.copyWith(hideProfile: !event.value,
-          errorMessage: 'Could not update hide profile.'));
+      emit(state.copyWith(
+        hideProfile: !event.value,
+        isHideProfileUpdating: false,
+        errorMessage: 'accountHideProfileUpdateFailed',
+      ));
     }
   }
 
