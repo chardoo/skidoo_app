@@ -18,6 +18,8 @@ import 'package:skidoo_app/features/photographers/presentation/widgets/profile_i
 import 'package:skidoo_app/features/photographers/presentation/widgets/profile_rating_row.dart';
 import 'package:skidoo_app/features/photographers/presentation/widgets/profile_sample_tile.dart';
 import 'package:skidoo_app/core/utils/auth_guard.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/models/photographer/photographer_event.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
@@ -69,11 +71,13 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
       );
     } catch (e) {
       if (context.mounted) {
-        final msg = e is ServerException && e.message.contains('400')
-            ? "This user isn't accepting new conversations."
-            : 'Could not open chat: $e';
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(msg)));
+        final isBlocked = e is ServerException && e.message.contains('400');
+        AppSnackBar.error(
+          context,
+          isBlocked
+              ? AppLocalizations.of(context)!.photographerProfileNotAcceptingConversations
+              : AppLocalizations.of(context)!.photographerProfileCouldNotOpenChat(e.toString()),
+        );
       }
       return;
     }

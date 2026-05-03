@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class CheckoutPage extends StatefulWidget {
@@ -31,9 +33,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           onPageFinished: (_) {},
           onWebResourceError: (WebResourceError error) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Web error: ${error.description}')),
-              );
+              AppSnackBar.error(context, AppLocalizations.of(context)!.checkoutWebError(error.description));
             }
           },
           onNavigationRequest: (NavigationRequest request) {
@@ -58,7 +58,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pay for your images'),
+        title: Text(AppLocalizations.of(context)!.checkoutTitle),
         leading: BackButton(
           onPressed: () => Navigator.of(context).pop(),
         ),

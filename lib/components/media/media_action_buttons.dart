@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/gallery/data/datasources/overlay_remote_data_source.dart';
 import 'package:skidoo_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
 import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
@@ -322,14 +323,11 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: Colors.black87,
-      behavior: SnackBarBehavior.floating,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+    AppSnackBar.error(
+      context,
+      msg,
       margin: EdgeInsets.only(bottom: 80.h, left: 24.w, right: 24.w),
-    ));
+    );
   }
 }
 

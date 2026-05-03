@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/saved_items_page.dart';
@@ -34,31 +36,13 @@ class _AccountView extends StatelessWidget {
               .pushNamedAndRemoveUntil('/login', (route) => false);
         }
         if (state.isUpdateSuccess) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: const Text('Profile updated successfully'),
-              backgroundColor: Colors.green.shade700,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ));
+          AppSnackBar.success(context, AppLocalizations.of(context)!.accountProfileUpdated);
         }
         if (state.updateErrorMessage != null) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text(state.updateErrorMessage!),
-              backgroundColor: Colors.red.shade800,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ));
+          AppSnackBar.error(context, state.updateErrorMessage!);
         }
         if (state.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.errorMessage!)),
-          );
+          AppSnackBar.error(context, state.errorMessage!);
         }
       },
       builder: (context, state) {
@@ -69,7 +53,7 @@ class _AccountView extends StatelessWidget {
             centerTitle: true,
             backgroundColor: ext.homeBackground,
             title: Text(
-              'Account',
+              AppLocalizations.of(context)!.accountTitle,
               style: TextStyle(
                 color: ext.greetingColor,
                 fontWeight: FontWeight.w700,
@@ -79,14 +63,17 @@ class _AccountView extends StatelessWidget {
           body: state.isLoading
               ? const Center(child: CircularProgressIndicator())
               : LayoutBuilder(
-                  builder: (context, constraints) => SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
+                  builder: (context, constraints) => Center(
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight - 48,
-                      ),
-                      child: IntrinsicHeight(
-                        child: Column(
+                      constraints: const BoxConstraints(maxWidth: 540),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight - 48,
+                          ),
+                          child: IntrinsicHeight(
+                            child: Column(
                           children: [
                             const SizedBox(height: 24),
                             CircleAvatar(
@@ -155,9 +142,9 @@ class _AccountView extends StatelessWidget {
                                       .read<UserProfileBloc>()
                                       .add(const UserLogoutRequested());
                                 },
-                                child: const Text(
-                                  'Logout',
-                                  style: TextStyle(
+                                child: Text(
+                                  AppLocalizations.of(context)!.accountLogout,
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -172,6 +159,8 @@ class _AccountView extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
+            ),
         );
       },
     );
@@ -285,7 +274,7 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Edit Profile',
+                      AppLocalizations.of(context)!.accountEditProfile,
                       style: TextStyle(
                         color: ext.greetingColor,
                         fontSize: 14,
@@ -320,59 +309,59 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   const SizedBox(height: 16),
 
                   // ── Basic info section ─────────────────────────────────
-                  _SectionLabel('Basic info', ext),
+                  _SectionLabel(AppLocalizations.of(context)!.accountBasicInfo, ext),
                   const SizedBox(height: 10),
                   _ProfileField(
                       controller: _nameCtrl,
-                      label: 'Display name',
+                      label: AppLocalizations.of(context)!.accountDisplayName,
                       icon: Icons.person_outline_rounded,
                       ext: ext),
                   const SizedBox(height: 10),
                   _ProfileField(
                       controller: _usernameCtrl,
-                      label: 'Username',
+                      label: AppLocalizations.of(context)!.accountUsername,
                       icon: Icons.alternate_email_rounded,
                       ext: ext),
                   const SizedBox(height: 10),
                   _ProfileField(
                       controller: _contactCtrl,
-                      label: 'Phone number',
+                      label: AppLocalizations.of(context)!.accountPhoneNumber,
                       icon: Icons.phone_outlined,
                       keyboardType: TextInputType.phone,
                       ext: ext),
                   const SizedBox(height: 20),
 
                   // ── Locale section ─────────────────────────────────────
-                  _SectionLabel('Locale & region', ext),
+                  _SectionLabel(AppLocalizations.of(context)!.accountLocaleRegion, ext),
                   const SizedBox(height: 10),
                   _ProfileField(
                       controller: _countryCodeCtrl,
-                      label: 'Country code (e.g. US)',
+                      label: AppLocalizations.of(context)!.accountCountryCode,
                       icon: Icons.flag_outlined,
                       maxLength: 2,
                       ext: ext),
                   const SizedBox(height: 10),
                   _ProfileField(
                       controller: _localeCtrl,
-                      label: 'Locale (e.g. en-US)',
+                      label: AppLocalizations.of(context)!.accountLocale,
                       icon: Icons.language_outlined,
                       ext: ext),
                   const SizedBox(height: 10),
                   _ProfileField(
                       controller: _languageCtrl,
-                      label: 'Preferred language (e.g. en)',
+                      label: AppLocalizations.of(context)!.accountPreferredLanguage,
                       icon: Icons.translate_rounded,
                       ext: ext),
                   const SizedBox(height: 10),
                   _ProfileField(
                       controller: _timezoneCtrl,
-                      label: 'Timezone (e.g. America/New_York)',
+                      label: AppLocalizations.of(context)!.accountTimezone,
                       icon: Icons.access_time_rounded,
                       ext: ext),
                   const SizedBox(height: 20),
 
                   // ── Interests section ──────────────────────────────────
-                  _SectionLabel('Photography interests', ext),
+                  _SectionLabel(AppLocalizations.of(context)!.accountPhotographyInterests, ext),
                   const SizedBox(height: 10),
                   StatefulBuilder(
                     builder: (context, setChipState) => Wrap(
@@ -442,9 +431,9 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Text(
-                                  'Save changes',
-                                  style: TextStyle(
+                              : Text(
+                                  AppLocalizations.of(context)!.accountSaveChanges,
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 15,
@@ -560,7 +549,7 @@ class _ThemeToggleCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
                 child: Text(
-                  'Appearance',
+                  AppLocalizations.of(context)!.accountAppearance,
                   style: TextStyle(
                     color: ext.searchHintColor,
                     fontSize: 12,
@@ -575,12 +564,14 @@ class _ThemeToggleCard extends StatelessWidget {
                 activeThumbColor: ext.accentGold,
                 activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
                 title: Text(
-                  'Dark Mode',
+                  AppLocalizations.of(context)!.accountDarkMode,
                   style: TextStyle(
                       color: ext.greetingColor, fontSize: 14),
                 ),
                 subtitle: Text(
-                  isDark ? 'Dark theme is on' : 'Light theme is on',
+                  isDark
+                      ? AppLocalizations.of(context)!.accountDarkThemeOn
+                      : AppLocalizations.of(context)!.accountLightThemeOn,
                   style: TextStyle(
                       color: ext.searchHintColor, fontSize: 12),
                 ),
@@ -624,7 +615,7 @@ class _PublicationSettingsCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
             child: Text(
-              'Publication',
+              AppLocalizations.of(context)!.accountPublication,
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12,
@@ -638,13 +629,13 @@ class _PublicationSettingsCard extends StatelessWidget {
             activeThumbColor: ext.accentGold,
             activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
             title: Text(
-              'Always add public images',
+              AppLocalizations.of(context)!.accountAlwaysPublicImages,
               style: TextStyle(color: ext.greetingColor, fontSize: 14),
             ),
             subtitle: Text(
               alwaysPublic
-                  ? 'New uploads are public by default'
-                  : 'New uploads are private by default',
+                  ? AppLocalizations.of(context)!.accountUploadsPublicByDefault
+                  : AppLocalizations.of(context)!.accountUploadsPrivateByDefault,
               style: TextStyle(color: ext.searchHintColor, fontSize: 12),
             ),
             secondary: Icon(
@@ -663,14 +654,14 @@ class _PublicationSettingsCard extends StatelessWidget {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16),
             leading: Icon(Icons.bookmark_rounded, color: ext.accentGold),
             title: Text(
-              'Saved items',
+              AppLocalizations.of(context)!.accountSavedItems,
               style: TextStyle(
                   color: ext.greetingColor,
                   fontSize: 14,
                   fontWeight: FontWeight.w500),
             ),
             subtitle: Text(
-              'View your bookmarked events',
+              AppLocalizations.of(context)!.accountViewBookmarkedEvents,
               style: TextStyle(color: ext.searchHintColor, fontSize: 12),
             ),
             trailing: Icon(Icons.chevron_right_rounded,
@@ -720,7 +711,7 @@ class _PrivacySettingsCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
             child: Text(
-              'Privacy',
+              AppLocalizations.of(context)!.accountPrivacy,
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12,
@@ -734,13 +725,13 @@ class _PrivacySettingsCard extends StatelessWidget {
             activeThumbColor: ext.accentGold,
             activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
             title: Text(
-              'Anonymous comments',
+              AppLocalizations.of(context)!.accountAnonymousComments,
               style: TextStyle(color: ext.greetingColor, fontSize: 14),
             ),
             subtitle: Text(
               anonymousMode
-                  ? 'Your name appears as "Anonymous"'
-                  : 'Your name is shown on comments',
+                  ? AppLocalizations.of(context)!.accountAnonymousModeOn
+                  : AppLocalizations.of(context)!.accountAnonymousModeOff,
               style: TextStyle(color: ext.searchHintColor, fontSize: 12),
             ),
             secondary: Icon(
@@ -758,13 +749,13 @@ class _PrivacySettingsCard extends StatelessWidget {
             activeThumbColor: ext.accentGold,
             activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
             title: Text(
-              'Hide profile',
+              AppLocalizations.of(context)!.accountHideProfile,
               style: TextStyle(color: ext.greetingColor, fontSize: 14),
             ),
             subtitle: Text(
               hideProfile
-                  ? 'Others cannot start new conversations with you'
-                  : 'Anyone can start a conversation with you',
+                  ? AppLocalizations.of(context)!.accountHideProfileOn
+                  : AppLocalizations.of(context)!.accountHideProfileOff,
               style: TextStyle(color: ext.searchHintColor, fontSize: 12),
             ),
             secondary: Icon(
@@ -805,7 +796,7 @@ class _NotificationSettingsCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
             child: Text(
-              'Notifications',
+              AppLocalizations.of(context)!.accountNotifications,
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12,
@@ -820,13 +811,13 @@ class _NotificationSettingsCard extends StatelessWidget {
             activeThumbColor: ext.accentGold,
             activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
             title: Text(
-              'Mute message sounds & vibration',
+              AppLocalizations.of(context)!.accountMuteNotifications,
               style: TextStyle(color: ext.greetingColor, fontSize: 14),
             ),
             subtitle: Text(
               isMuted
-                  ? 'Messages arrive silently'
-                  : 'You\'ll feel a vibration for new messages',
+                  ? AppLocalizations.of(context)!.accountMutedOn
+                  : AppLocalizations.of(context)!.accountMutedOff,
               style: TextStyle(color: ext.searchHintColor, fontSize: 12),
             ),
             secondary: Icon(

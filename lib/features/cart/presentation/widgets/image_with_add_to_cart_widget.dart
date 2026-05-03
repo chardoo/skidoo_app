@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 
@@ -65,14 +66,10 @@ class ImageWithAddToCartWidget extends StatelessWidget {
               onTap: () {
                 if (photo.price == 0) {
                   context.read<CartBloc>().add(CartImageDownloaded(photo.url));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Downloading…')),
-                  );
+                  AppSnackBar.info(context, 'Downloading…');
                 } else {
                   context.read<CartBloc>().add(CartItemAdded(photo));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Added to cart')),
-                  );
+                  AppSnackBar.success(context, 'Added to cart');
                 }
               },
               child: Container(
