@@ -266,7 +266,16 @@ class ChatBackgroundService {
 
       final sessionKey = await _e2ee.loadSessionKey(msg.roomId);
       if (sessionKey == null) {
-        debugPrint('[BgChat] no session key for room ${msg.roomId} — storing ciphertext');
+        // No DM session key — try group sender key (peer or own echo).
+        final groupKey = isOwnEcho
+            ? await _e2ee.loadGroupSenderKey(msg.roomId)
+            : await _e2ee.loadPeerGroupSenderKey(msg.roomId, msg.senderId);
+        if (groupKey != null) {
+          final plaintext = await _e2ee.decrypt(groupKey, msg.content, msg.iv!);
+          debugPrint('[BgChat] group decrypted msgId=${msg.id}');
+          return msg.copyWith(content: plaintext, isEncrypted: false);
+        }
+        debugPrint('[BgChat] no key for room ${msg.roomId} — storing ciphertext');
         return msg;
       }
       final plaintext = await _e2ee.decrypt(sessionKey, msg.content, msg.iv!);

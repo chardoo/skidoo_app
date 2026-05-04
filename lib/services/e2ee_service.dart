@@ -469,6 +469,90 @@ class E2eeService {
     return jsonDecode(v) as Map<String, dynamic>;
   }
 
+  // ── Group sender keys ──────────────────────────────────────────────────────
+
+  /// Generates a random 32-byte group sender key.
+  Future<Uint8List> generateSenderKey() async {
+    final pair = await _x25519.newKeyPair();
+    final bytes = await pair.extractPrivateKeyBytes();
+    return Uint8List.fromList(bytes.sublist(0, 32));
+  }
+
+  /// Stores our own sender key for [roomId].
+  Future<void> storeGroupSenderKey(String roomId, Uint8List key) =>
+      _storage.write(key: 'e2ee.group.$roomId.my', value: _b64e(key));
+
+  /// Loads our own sender key for [roomId]. Returns null if not yet generated.
+  Future<Uint8List?> loadGroupSenderKey(String roomId) async {
+    final v = await _storage.read(key: 'e2ee.group.$roomId.my');
+    return v != null ? _b64d(v) : null;
+  }
+
+  /// Deletes our own sender key for [roomId].
+  Future<void> deleteGroupSenderKey(String roomId) =>
+      _storage.delete(key: 'e2ee.group.$roomId.my');
+
+  /// Stores a peer's sender key for [roomId].
+  Future<void> storePeerGroupSenderKey(
+      String roomId, String userId, Uint8List key) =>
+      _storage.write(key: 'e2ee.group.$roomId.peer.$userId', value: _b64e(key));
+
+  /// Loads a peer's sender key for [roomId]. Returns null if unknown.
+  Future<Uint8List?> loadPeerGroupSenderKey(String roomId, String userId) async {
+    final v = await _storage.read(key: 'e2ee.group.$roomId.peer.$userId');
+    return v != null ? _b64d(v) : null;
+  }
+
+  /// Encrypts [senderKey] for [recipientIkPub] using ECDH(my_ik, recipient_ik).
+  /// Wire format: base64url(nonce[12] || ciphertext[32] || mac[16]).
+  Future<String> encryptSenderKeyForRecipient(
+      Uint8List senderKey, String recipientIkPub) async {
+    final wrapKey = await _groupWrapKey(recipientIkPub);
+    final nonce = _aesGcm.newNonce();
+    final box = await _aesGcm.encrypt(
+      senderKey,
+      secretKey: SecretKey(wrapKey),
+      nonce: nonce,
+    );
+    final payload = Uint8List.fromList(
+        [...box.nonce, ...box.cipherText, ...box.mac.bytes]);
+    return _b64e(payload);
+  }
+
+  /// Decrypts an encrypted sender key that was wrapped for us by [senderIkPub].
+  /// Returns null if decryption fails.
+  Future<Uint8List?> decryptSenderKeyFromSender(
+      String encryptedKey, String senderIkPub) async {
+    try {
+      final payload = _b64d(encryptedKey);
+      if (payload.length < 12 + 16) return null;
+      final nonce = payload.sublist(0, 12);
+      final ct = payload.sublist(12, payload.length - 16);
+      final mac = payload.sublist(payload.length - 16);
+      final wrapKey = await _groupWrapKey(senderIkPub);
+      final plain = await _aesGcm.decrypt(
+        SecretBox(ct, nonce: nonce, mac: Mac(mac)),
+        secretKey: SecretKey(wrapKey),
+      );
+      return Uint8List.fromList(plain);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// ECDH(my_ik_priv, other_ik_pub) → HKDF → 32-byte wrap key.
+  /// Commutative: both parties derive the same key without consuming OTPKs.
+  Future<Uint8List> _groupWrapKey(String otherIkPub) async {
+    final myIkPriv = await _readPrivKey(_kIkPriv);
+    final shared = await _dh(myIkPriv, _toPub(otherIkPub));
+    final out = await _hkdf.deriveKey(
+      secretKey: SecretKey(shared),
+      nonce: Uint8List(32),
+      info: utf8.encode('group-key-wrap'),
+    );
+    return Uint8List.fromList(await out.extractBytes());
+  }
+
   /// Deletes every e2ee key from secure storage. Called when a different user
   /// logs in so that session keys, identity keys, and OPKs are never reused
   /// across accounts.

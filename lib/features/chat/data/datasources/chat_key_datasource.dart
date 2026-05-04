@@ -73,4 +73,83 @@ class ChatKeyDataSource {
     final res = await _api.dio.get('/chat/keys/me/prekeys/count');
     return (res.data['oneTimePreKeysRemaining'] as num?)?.toInt() ?? 0;
   }
+
+  // ── Group sender keys ──────────────────────────────────────────────────────
+
+  /// GET /chat/keys/groups/{roomId}/sender-keys
+  /// Returns each member's sender key (encrypted for us) together with their
+  /// identity key public (needed to decrypt + to re-encrypt our key for them).
+  Future<List<GroupSenderKeyEntry>> fetchGroupSenderKeys(String roomId) async {
+    try {
+      final res = await _api.dio.get('/chat/keys/groups/$roomId/sender-keys');
+      final data = res.data;
+      final List<dynamic> list;
+      if (data is List) {
+        list = data;
+      } else if (data is Map<String, dynamic>) {
+        // Server wraps the array — try common field names.
+        final wrapped = data['distributions'] ?? data['senderKeys'] ?? data['keys'] ?? data['data'];
+        list = wrapped is List ? wrapped : [];
+      } else {
+        list = [];
+      }
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map(GroupSenderKeyEntry.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      throw Exception('fetchGroupSenderKeys ${e.response?.statusCode}: ${e.response?.data}');
+    }
+  }
+
+  /// POST /chat/keys/groups/{roomId}/sender-keys
+  /// Distributes our sender key, encrypted once per remaining member.
+  Future<void> distributeGroupSenderKey(
+      String roomId, List<GroupSenderKeyRecipient> recipients) async {
+    try {
+      await _api.dio.post(
+        '/chat/keys/groups/$roomId/sender-keys',
+        data: {
+          'distributions': recipients.map((r) => r.toJson()).toList(),
+        },
+      );
+    } on DioException catch (e) {
+      throw Exception('distributeGroupSenderKey ${e.response?.statusCode}: ${e.response?.data}');
+    }
+  }
+}
+
+// ── Models ─────────────────────────────────────────────────────────────────────
+
+/// One entry from GET /chat/keys/groups/{roomId}/sender-keys.
+class GroupSenderKeyEntry {
+  final String userId;      // sender_id from server
+  final String encryptedKey; // message field from server — encrypted sender key
+
+  const GroupSenderKeyEntry({
+    required this.userId,
+    required this.encryptedKey,
+  });
+
+  factory GroupSenderKeyEntry.fromJson(Map<String, dynamic> json) =>
+      GroupSenderKeyEntry(
+        userId: json['sender_id'] as String,
+        encryptedKey: json['message'] as String,
+      );
+}
+
+/// One per-recipient entry inside POST /chat/keys/groups/{roomId}/sender-keys.
+class GroupSenderKeyRecipient {
+  final String userId;
+  final String encryptedKey; // our sender key encrypted for this recipient
+
+  const GroupSenderKeyRecipient({
+    required this.userId,
+    required this.encryptedKey,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'recipient_id': userId,
+        'message': encryptedKey,
+      };
 }

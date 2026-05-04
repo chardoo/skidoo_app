@@ -167,7 +167,8 @@ class _KeyRotationReceived extends ChatRoomEvent {
 class _WsUserJoined extends ChatRoomEvent {
   final String userId;
   final String userName;
-  const _WsUserJoined(this.userId, this.userName);
+  final String userRole;
+  const _WsUserJoined(this.userId, this.userName, {this.userRole = ''});
 }
 
 // ── Group admin actions (dispatched by the UI) ────────────────────────────────
@@ -238,4 +239,17 @@ class ChatRoomDeleteRequested extends ChatRoomEvent {
 class _RoomDeleted extends ChatRoomEvent {
   final String deletedBy;
   const _RoomDeleted(this.deletedBy);
+}
+
+/// WS push: another member distributed their group sender key directly to us.
+class _GroupSenderKeyReceived extends ChatRoomEvent {
+  final String senderId;
+  final String encryptedKey; // 'message' blob from server
+  const _GroupSenderKeyReceived(this.senderId, this.encryptedKey);
+}
+
+/// WS broadcast: a member voluntarily left the room (triggers group re-key).
+class _ParticipantLeft extends ChatRoomEvent {
+  final String userId;
+  const _ParticipantLeft(this.userId);
 }

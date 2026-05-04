@@ -12,7 +12,8 @@ import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service
         WsKeyBundlesEvent, WsKeyRotationEvent, WsMessageDeletedEvent,
         WsMessageEditedEvent, WsParticipantKeyAvailable,
         WsParticipantRemovedEvent, WsRoomDeletedEvent,
-        WsRoomSettingsUpdatedEvent, WsUserJoinedEvent;
+        WsRoomSettingsUpdatedEvent, WsSenderKeyDistributionEvent,
+        WsUserJoinedEvent;
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
@@ -61,6 +62,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
   // E2EE state
   bool _isDirectRoom = false;
+  bool _isGroupRoom = false;
   String? _recipientId;          // other party's userId in a DM room
   // Proactive X3DH session held in memory only — never written to secure
   // storage until the first outgoing message actually uses it.
@@ -89,6 +91,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   StreamSubscription<WsRoomSettingsUpdatedEvent>? _wsRoomSettingsSub;
   StreamSubscription<WsParticipantRemovedEvent>? _wsParticipantRemovedSub;
   StreamSubscription<WsRoomDeletedEvent>? _wsRoomDeletedSub;
+  StreamSubscription<WsSenderKeyDistributionEvent>? _wsSenderKeyDistSub;
+  StreamSubscription? _wsParticipantLeftSub;
   // Waits for ChatBackgroundService to signal the WS is (re)connected.
   StreamSubscription<bool>? _wsConnectionSub;
   Timer? _otpkPollTimer;
@@ -175,6 +179,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<ChatRoomLeaveGroupRequested>(_onLeaveGroupRequested);
     on<ChatRoomDeleteRequested>(_onDeleteRequested);
     on<_RoomDeleted>(_onRoomDeleted);
+    on<_GroupSenderKeyReceived>(_onGroupSenderKeyReceived);
+    on<_ParticipantLeft>(_onParticipantLeft);
   }
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -284,6 +290,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _recipientId = null;
     }
 
+    _isGroupRoom = roomType == RoomType.group;
+
     try {
       // Fetch messages and fresh room data (for up-to-date adminOnly /
       // participants) in parallel — both are network calls, so running them
@@ -329,6 +337,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       // re-used for a second (wrong) derivation.
       if (_isDirectRoom && _currentRoomId != null) {
         await _deriveKeyFromHistory(emit);
+      }
+
+      // Group rooms: fetch peer sender keys and distribute our own.
+      if (_isGroupRoom && _currentRoomId != null) {
+        await _setupGroupE2EE(_currentRoomId!, emit);
       }
     } catch (e) {
       emit(state.copyWith(
@@ -413,6 +426,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsRoomSettingsSub?.cancel();
     _wsParticipantRemovedSub?.cancel();
     _wsRoomDeletedSub?.cancel();
+    _wsSenderKeyDistSub?.cancel();
+    _wsParticipantLeftSub?.cancel();
     _wsMsgSub = null;
     _wsLikeSub = null;
     _wsPicLikeSub = null;
@@ -427,6 +442,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsRoomSettingsSub = null;
     _wsParticipantRemovedSub = null;
     _wsRoomDeletedSub = null;
+    _wsSenderKeyDistSub = null;
+    _wsParticipantLeftSub = null;
   }
 
   void _setupWsListeners(String roomId) {
@@ -506,7 +523,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsUserJoinedSub = _ws.userJoinedEvents.listen(
       (event) {
         if (!isClosed && event.roomId == roomId) {
-          add(_WsUserJoined(event.userId, event.userName));
+          add(_WsUserJoined(event.userId, event.userName,
+              userRole: event.userRole));
         }
       },
     );
@@ -548,6 +566,22 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       (event) {
         if (!isClosed && event.roomId == roomId) {
           add(_RoomDeleted(event.deletedBy));
+        }
+      },
+    );
+
+    _wsSenderKeyDistSub = _ws.senderKeyDistributionEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_GroupSenderKeyReceived(event.senderId, event.encryptedKey));
+        }
+      },
+    );
+
+    _wsParticipantLeftSub = _ws.participantLeftEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_ParticipantLeft(event.userId));
         }
       },
     );
@@ -767,6 +801,16 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     debugPrint('[E2EE] send — isDirectRoom: $_isDirectRoom, recipientId: $_recipientId, needsRekey: $_needsRekey');
 
+    if (_isGroupRoom) {
+      await _encryptAndSendGroup(
+        content: content,
+        imageUrl: imageUrl,
+        isVideo: isVideo,
+        replyToId: replyToId,
+      );
+      return;
+    }
+
     if (!_isDirectRoom || _recipientId == null || !hasText) {
       debugPrint('[E2EE] Not a DM, no recipient, or no text — sending plaintext');
       _ws.send(content, imageUrl: imageUrl, isVideo: isVideo, replyToId: replyToId, roomId: _currentRoomId);
@@ -958,6 +1002,38 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           ' hasEphKey=${msg.ephemeralKey != null && msg.ephemeralKey!.isNotEmpty}'
           ' senderId=${msg.senderId}'
           ' myUserId=$_myUserId');
+    }
+
+    // Decrypt group E2EE messages using the sender's SenderKey.
+    // Own echoes (senderId == _myUserId) are decrypted with our own sender key
+    // so the plaintext matches the optimistic placeholder and replaces it.
+    if (_isGroupRoom && msg.isEncrypted && msg.content.isNotEmpty &&
+        msg.iv != null && _currentRoomId != null) {
+      final isOwnEcho = msg.senderId == _myUserId;
+      final senderKey = isOwnEcho
+          ? await _e2ee.loadGroupSenderKey(_currentRoomId!)
+          : await _e2ee.loadPeerGroupSenderKey(_currentRoomId!, msg.senderId);
+      debugPrint('[GroupE2EE] decrypt: msgId=${msg.id}'
+          ' isOwnEcho=$isOwnEcho'
+          ' isGroupRoom=$_isGroupRoom'
+          ' keyLoaded=${senderKey != null}');
+      if (senderKey != null) {
+        try {
+          final plaintext =
+              await _e2ee.decrypt(senderKey, msg.content, msg.iv!);
+          msg = msg.copyWith(content: plaintext, isEncrypted: false);
+          debugPrint('[GroupE2EE] Decrypted OK msgId=${msg.id}');
+        } catch (e) {
+          debugPrint('[GroupE2EE] Decrypt failed for ${msg.id}: $e');
+          msg = msg.copyWith(content: '', isEncrypted: false);
+        }
+      } else {
+        debugPrint('[GroupE2EE] No sender key for ${msg.senderId} — will retry when key arrives');
+        // Keep isEncrypted=true so _redecryptGroupMessages can decrypt when key arrives.
+        if (!isOwnEcho) {
+          _distributeSenderKeyToMember(msg.senderId).catchError((_) {});
+        }
+      }
     }
 
     // Decrypt E2EE messages — only in direct rooms, never in global/event/photo rooms.
@@ -1677,7 +1753,29 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
   void _onWsUserJoined(_WsUserJoined event, Emitter<ChatRoomState> emit) {
     final name = event.userName.isNotEmpty ? event.userName : event.userId;
-    emit(state.copyWith(systemNotice: '$name joined the group'));
+
+    // Add the new member to the local participant list so _rekeyGroup can
+    // include them and the participant count stays consistent.
+    ChatRoom? updatedRoom = state.room;
+    if (updatedRoom != null &&
+        !updatedRoom.participants.any((p) => p.userId == event.userId)) {
+      final newParticipant = ChatParticipant(
+        userId: event.userId,
+        userRole: event.userRole.isNotEmpty ? event.userRole : ChatConfig.roleClient,
+        joinedAt: DateTime.now(),
+        userName: event.userName.isNotEmpty ? event.userName : null,
+      );
+      updatedRoom = updatedRoom.copyWith(
+          participants: [...updatedRoom.participants, newParticipant]);
+    }
+
+    emit(state.copyWith(room: updatedRoom, systemNotice: '$name joined the group'));
+
+    // Distribute our group sender key to the new joiner so they can decrypt
+    // our past and future messages.
+    if (_isGroupRoom && _currentRoomId != null) {
+      _distributeSenderKeyToMember(event.userId).catchError((_) {});
+    }
   }
 
   // ── Group admin handlers ───────────────────────────────────────────────────
@@ -1797,6 +1895,306 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     emit(state.copyWith(isDeleted: true));
   }
 
+  // ── Group E2EE handlers ───────────────────────────────────────────────────
+
+  Future<void> _onGroupSenderKeyReceived(
+    _GroupSenderKeyReceived event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    try {
+      // Get sender's IK from cache; fall back to fetching bundle.
+      String? senderIk = await _e2ee.loadIdentityKey(event.senderId);
+      if (senderIk == null) {
+        final bundle = await _keyDs.fetchBundle(event.senderId);
+        if (bundle == null) {
+          debugPrint('[GroupE2EE] Cannot get IK for ${event.senderId} — skipping');
+          return;
+        }
+        senderIk = bundle.identityKey;
+        await _e2ee.storeIdentityKey(event.senderId, senderIk);
+      }
+
+      final key = await _e2ee.decryptSenderKeyFromSender(event.encryptedKey, senderIk);
+      if (key != null) {
+        // Check before storing so we can detect first-time receives.
+        final isFirstReceive =
+            await _e2ee.loadPeerGroupSenderKey(roomId, event.senderId) == null;
+        await _e2ee.storePeerGroupSenderKey(roomId, event.senderId, key);
+        debugPrint('[GroupE2EE] Stored sender key for ${event.senderId}');
+
+        // Re-decrypt any encrypted messages from this sender already in state.
+        await _redecryptGroupMessages(emit, event.senderId, key);
+
+        // Bootstrap: on first receive, distribute our key back so they can
+        // decrypt our messages (handles new-member join and initial setup).
+        if (isFirstReceive) {
+          final myKey = await _e2ee.loadGroupSenderKey(roomId);
+          if (myKey != null) {
+            try {
+              final encKey = await _e2ee.encryptSenderKeyForRecipient(myKey, senderIk);
+              await _keyDs.distributeGroupSenderKey(roomId, [
+                GroupSenderKeyRecipient(userId: event.senderId, encryptedKey: encKey),
+              ]);
+              debugPrint('[GroupE2EE] Bootstrap: distributed our key to ${event.senderId}');
+            } catch (_) {}
+          }
+        }
+      } else {
+        debugPrint('[GroupE2EE] decryptSenderKeyFromSender returned null for ${event.senderId}');
+      }
+    } catch (e) {
+      debugPrint('[GroupE2EE] Failed to store sender key from ${event.senderId}: $e');
+    }
+  }
+
+  Future<void> _onParticipantLeft(
+    _ParticipantLeft event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    if (event.userId == _myUserId) return; // handled by _onLeaveGroupRequested
+    final name = _participantName(event.userId);
+    final updatedParticipants = state.room?.participants
+        .where((p) => p.userId != event.userId)
+        .toList();
+    final updatedRoom = updatedParticipants != null
+        ? state.room!.copyWith(participants: updatedParticipants)
+        : state.room;
+    emit(state.copyWith(
+      room: updatedRoom,
+      systemNotice: '$name left the group.',
+    ));
+
+    // Re-key: the departed member must not decrypt future messages.
+    if (_isGroupRoom && _currentRoomId != null) {
+      _rekeyGroup(_currentRoomId!).catchError((_) {});
+    }
+  }
+
+  // ── Group E2EE helpers ────────────────────────────────────────────────────
+
+  /// On group room join: fetch all members' sender keys, then distribute ours.
+  Future<void> _setupGroupE2EE(String roomId, Emitter<ChatRoomState> emit) async {
+    try {
+      final entries = await _keyDs.fetchGroupSenderKeys(roomId);
+      for (final entry in entries) {
+        if (entry.userId == _myUserId) continue;
+        // Load sender IK from cache; fall back to fetching bundle.
+        String? senderIk = await _e2ee.loadIdentityKey(entry.userId);
+        if (senderIk == null) {
+          final bundle = await _keyDs.fetchBundle(entry.userId);
+          if (bundle == null) continue;
+          senderIk = bundle.identityKey;
+          await _e2ee.storeIdentityKey(entry.userId, senderIk);
+        }
+        final key = await _e2ee.decryptSenderKeyFromSender(entry.encryptedKey, senderIk);
+        if (key != null) {
+          await _e2ee.storePeerGroupSenderKey(roomId, entry.userId, key);
+          debugPrint('[GroupE2EE] Stored peer sender key for ${entry.userId}');
+          // Re-decrypt any already-loaded ciphertext messages from this sender.
+          await _redecryptGroupMessages(emit, entry.userId, key);
+        }
+      }
+
+      // Distribute our own sender key. Generate a new one if we don't have one.
+      var myKey = await _e2ee.loadGroupSenderKey(roomId);
+      if (myKey == null) {
+        myKey = await _e2ee.generateSenderKey();
+        await _e2ee.storeGroupSenderKey(roomId, myKey);
+      }
+
+      // Build recipient list using the cached IK (loaded above during decrypt loop).
+      final recipients = <GroupSenderKeyRecipient>[];
+      for (final entry in entries) {
+        if (entry.userId == _myUserId) continue;
+        final ikPub = await _e2ee.loadIdentityKey(entry.userId);
+        if (ikPub == null) continue;
+        try {
+          final encryptedKey =
+              await _e2ee.encryptSenderKeyForRecipient(myKey, ikPub);
+          recipients.add(GroupSenderKeyRecipient(
+              userId: entry.userId, encryptedKey: encryptedKey));
+        } catch (_) {}
+      }
+
+      // Also distribute to active participants NOT returned by the GET endpoint
+      // (bootstrap deadlock: both users join simultaneously → entries list is
+      // empty for both → neither can distribute their key via the GET response).
+      final entryIds = entries.map((e) => e.userId).toSet();
+      final uncoveredParticipants = state.room?.participants
+              .where((p) =>
+                  p.userId != _myUserId &&
+                  !p.isPending &&
+                  !entryIds.contains(p.userId))
+              .toList() ??
+          [];
+      for (final p in uncoveredParticipants) {
+        String? ikPub = await _e2ee.loadIdentityKey(p.userId);
+        if (ikPub == null) {
+          final bundle = await _keyDs.fetchBundle(p.userId);
+          if (bundle == null) continue;
+          ikPub = bundle.identityKey;
+          await _e2ee.storeIdentityKey(p.userId, ikPub);
+        }
+        try {
+          final encryptedKey =
+              await _e2ee.encryptSenderKeyForRecipient(myKey, ikPub);
+          recipients.add(GroupSenderKeyRecipient(
+              userId: p.userId, encryptedKey: encryptedKey));
+        } catch (_) {}
+      }
+
+      if (recipients.isNotEmpty) {
+        await _keyDs.distributeGroupSenderKey(roomId, recipients);
+        debugPrint('[GroupE2EE] Distributed sender key to ${recipients.length} member(s)');
+      }
+    } catch (e) {
+      debugPrint('[GroupE2EE] _setupGroupE2EE failed: $e');
+    }
+  }
+
+  /// Generate a new sender key and distribute it to all current active members.
+  /// Called after any member is removed or leaves (forward secrecy).
+  Future<void> _rekeyGroup(String roomId) async {
+    try {
+      final newKey = await _e2ee.generateSenderKey();
+      await _e2ee.storeGroupSenderKey(roomId, newKey);
+      debugPrint('[GroupE2EE] Re-keyed: new sender key generated');
+
+      final participants = state.room?.participants
+          .where((p) => p.userId != _myUserId && !p.isPending)
+          .toList() ?? [];
+
+      if (participants.isEmpty) return;
+
+      final recipients = <GroupSenderKeyRecipient>[];
+      for (final p in participants) {
+        final ikPub = await _e2ee.loadIdentityKey(p.userId);
+        if (ikPub == null) continue;
+        try {
+          final encryptedKey =
+              await _e2ee.encryptSenderKeyForRecipient(newKey, ikPub);
+          recipients.add(GroupSenderKeyRecipient(
+              userId: p.userId, encryptedKey: encryptedKey));
+        } catch (_) {}
+      }
+
+      if (recipients.isNotEmpty) {
+        await _keyDs.distributeGroupSenderKey(roomId, recipients);
+        debugPrint('[GroupE2EE] Distributed re-keyed sender key to ${recipients.length} member(s)');
+      }
+    } catch (e) {
+      debugPrint('[GroupE2EE] _rekeyGroup failed: $e');
+    }
+  }
+
+  /// Encrypt [content] with our group sender key and send over WS.
+  /// Falls back to plaintext if no sender key is available.
+  Future<void> _encryptAndSendGroup({
+    String? content,
+    String? imageUrl,
+    bool isVideo = false,
+    String? replyToId,
+  }) async {
+    final roomId = _currentRoomId;
+    final hasText = content != null && content.isNotEmpty;
+
+    if (roomId == null || !hasText) {
+      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo,
+          replyToId: replyToId, roomId: roomId);
+      return;
+    }
+
+    final senderKey = await _e2ee.loadGroupSenderKey(roomId);
+    if (senderKey == null) {
+      debugPrint('[GroupE2EE] No sender key — sending plaintext');
+      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo,
+          replyToId: replyToId, roomId: roomId);
+      return;
+    }
+
+    try {
+      final encrypted = await _e2ee.encrypt(senderKey, content);
+      _ws.sendEncrypted(
+        ciphertext: encrypted.ciphertext,
+        iv: encrypted.iv,
+        imageUrl: imageUrl,
+        isVideo: isVideo,
+        replyToId: replyToId,
+        roomId: roomId,
+      );
+    } catch (e) {
+      debugPrint('[GroupE2EE] Encrypt failed, sending plaintext: $e');
+      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo,
+          replyToId: replyToId, roomId: roomId);
+    }
+  }
+
+  /// Distributes our group sender key to [userId].
+  /// Uses the cached identity key when available to avoid consuming an OTPK;
+  /// falls back to fetching the bundle if the IK is not yet cached.
+  Future<void> _distributeSenderKeyToMember(String userId) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    final myKey = await _e2ee.loadGroupSenderKey(roomId);
+    if (myKey == null) return;
+
+    String? ikPub = await _e2ee.loadIdentityKey(userId);
+    if (ikPub == null) {
+      final bundle = await _keyDs.fetchBundle(userId);
+      if (bundle == null) return;
+      ikPub = bundle.identityKey;
+      await _e2ee.storeIdentityKey(userId, ikPub);
+    }
+
+    try {
+      final encryptedKey =
+          await _e2ee.encryptSenderKeyForRecipient(myKey, ikPub);
+      await _keyDs.distributeGroupSenderKey(
+          roomId, [GroupSenderKeyRecipient(userId: userId, encryptedKey: encryptedKey)]);
+      debugPrint('[GroupE2EE] Distributed sender key to $userId');
+    } catch (e) {
+      debugPrint('[GroupE2EE] Failed to distribute key to $userId: $e');
+    }
+  }
+
+  /// Re-decrypts encrypted group messages from [senderId] that are already in
+  /// state (e.g. loaded from REST history before the sender key arrived).
+  Future<void> _redecryptGroupMessages(
+    Emitter<ChatRoomState> emit,
+    String senderId,
+    Uint8List senderKey,
+  ) async {
+    final toDecrypt = state.messages
+        .where((m) =>
+            m.senderId == senderId &&
+            m.isEncrypted &&
+            m.content.isNotEmpty &&
+            m.iv != null)
+        .toList();
+    if (toDecrypt.isEmpty) return;
+
+    debugPrint('[GroupE2EE] Re-decrypting ${toDecrypt.length} message(s) from $senderId');
+    final decryptedMap = <String, ChatMessage>{};
+    for (final m in toDecrypt) {
+      try {
+        final plaintext = await _e2ee.decrypt(senderKey, m.content, m.iv!);
+        final updated = m.copyWith(content: plaintext, isEncrypted: false);
+        decryptedMap[m.id] = updated;
+        _cacheMessage(updated).catchError((_) {});
+      } catch (e) {
+        debugPrint('[GroupE2EE] Re-decrypt failed for ${m.id}: $e');
+        decryptedMap[m.id] = m.copyWith(content: '', isEncrypted: false);
+      }
+    }
+
+    if (decryptedMap.isEmpty) return;
+    emit(state.copyWith(
+        messages:
+            _sorted(state.messages.map((m) => decryptedMap[m.id] ?? m).toList())));
+  }
+
   int? _parseStatusCode(String message) {
     final match = RegExp(r'Chat API error (\d{3})').firstMatch(message);
     return int.tryParse(match?.group(1) ?? '');
@@ -1870,6 +2268,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       room: updatedRoom,
       systemNotice: '$name was removed from the group.',
     ));
+
+    // Re-key: the removed member must not decrypt future messages.
+    if (_isGroupRoom && _currentRoomId != null) {
+      _rekeyGroup(_currentRoomId!).catchError((_) {});
+    }
   }
 
   /// Resolves a userId to its best available display name from the current

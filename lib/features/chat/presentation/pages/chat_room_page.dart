@@ -481,7 +481,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                           )
                         : const SizedBox.shrink(),
                   ),
-                  if (widget.room.type == RoomType.direct)
+                  if (widget.room.type == RoomType.direct ||
+                      widget.room.type == RoomType.group)
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 6.h),
                       child: Row(

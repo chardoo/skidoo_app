@@ -109,7 +109,7 @@ class ChatDatabase {
     final db = await _database;
     await db.insert(
       'chat_rooms',
-      _roomToRow(room),
+      _nonNullRow(_roomToRow(room)),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
@@ -120,7 +120,7 @@ class ChatDatabase {
     for (final room in rooms) {
       batch.insert(
         'chat_rooms',
-        _roomToRow(room),
+        _nonNullRow(_roomToRow(room)),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
@@ -170,59 +170,65 @@ class ChatDatabase {
           where: 'room_id = ? AND is_local = 1 AND content = ? AND image_url IS ?',
           whereArgs: [msg.roomId, msg.content, msg.imageUrl],
         );
-        // Preserve is_read=1 when re-fetching from server.
-        // The server does not return read status, so we must not let a
-        // re-fetch reset a message the user has already read.
-        await txn.rawInsert(
-          '''
-          INSERT INTO chat_messages
-            (id, room_id, sender_id, sender_name, sender_role, content,
-             image_url, is_video, reply_to_id, reply_preview, created_at,
-             is_read, is_local, is_encrypted, iv, ephemeral_key,
-             sender_identity_key, otpk_id, spk_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(id) DO UPDATE SET
-            room_id      = excluded.room_id,
-            sender_id    = excluded.sender_id,
-            sender_name  = excluded.sender_name,
-            sender_role  = excluded.sender_role,
-            image_url    = excluded.image_url,
-            is_video     = excluded.is_video,
-            reply_to_id  = excluded.reply_to_id,
-            reply_preview= excluded.reply_preview,
-            created_at   = excluded.created_at,
-            is_read      = MAX(is_read, excluded.is_read),
-            is_local     = excluded.is_local,
-            content             = CASE WHEN is_encrypted = 0 THEN content ELSE excluded.content END,
-            is_encrypted        = CASE WHEN is_encrypted = 0 THEN 0 ELSE excluded.is_encrypted END,
-            iv                  = CASE WHEN is_encrypted = 0 THEN iv ELSE excluded.iv END,
-            ephemeral_key       = CASE WHEN is_encrypted = 0 THEN ephemeral_key ELSE excluded.ephemeral_key END,
-            sender_identity_key = CASE WHEN is_encrypted = 0 THEN sender_identity_key ELSE excluded.sender_identity_key END,
-            otpk_id             = CASE WHEN is_encrypted = 0 THEN otpk_id ELSE excluded.otpk_id END,
-            spk_id              = CASE WHEN is_encrypted = 0 THEN spk_id ELSE excluded.spk_id END
-          ''',
-          [
-            msg.id,
-            msg.roomId,
-            msg.senderId,
-            msg.senderName,
-            msg.senderRole,
-            msg.content,
-            msg.imageUrl,
-            msg.isVideo ? 1 : 0,
-            msg.replyToId,
-            msg.replyPreview != null ? jsonEncode(msg.replyPreview!.toJson()) : null,
-            msg.createdAt.toIso8601String(),
-            msg.isRead ? 1 : 0,
-            msg.isLocal ? 1 : 0,
-            msg.isEncrypted ? 1 : 0,
-            msg.iv,
-            msg.ephemeralKey,
-            msg.senderIdentityKey,
-            msg.otpkId,
-            msg.senderSpkId,
-          ],
+
+        // Check whether a row with this id already exists so we can
+        // preserve is_read=1 and decrypted content across server re-fetches.
+        final existing = await txn.query(
+          'chat_messages',
+          columns: ['is_read', 'is_encrypted'],
+          where: 'id = ?',
+          whereArgs: [msg.id],
+          limit: 1,
         );
+
+        if (existing.isEmpty) {
+          // New message — insert without passing Null-typed values to sqflite
+          // (the column defaults to NULL when the key is absent from the map).
+          await txn.insert(
+            'chat_messages',
+            _nonNullRow(_messageToRow(msg)),
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+        } else {
+          final wasRead = (existing.first['is_read'] as int) == 1;
+          final wasDecrypted = (existing.first['is_encrypted'] as int) == 0;
+
+          final updateRow = <String, Object?>{
+            'room_id': msg.roomId,
+            'sender_id': msg.senderId,
+            'sender_name': msg.senderName,
+            'sender_role': msg.senderRole,
+            'image_url': msg.imageUrl,
+            'is_video': msg.isVideo ? 1 : 0,
+            'reply_to_id': msg.replyToId,
+            'reply_preview': msg.replyPreview != null
+                ? jsonEncode(msg.replyPreview!.toJson())
+                : null,
+            'created_at': msg.createdAt.toIso8601String(),
+            'is_local': msg.isLocal ? 1 : 0,
+            // Preserve is_read=1 if the user already read this message.
+            'is_read': wasRead || msg.isRead ? 1 : 0,
+          };
+
+          // Only overwrite E2EE / content fields when the stored copy is still
+          // encrypted. Once decrypted, the plaintext is authoritative.
+          if (!wasDecrypted) {
+            updateRow['content'] = msg.content;
+            updateRow['is_encrypted'] = msg.isEncrypted ? 1 : 0;
+            updateRow['iv'] = msg.iv;
+            updateRow['ephemeral_key'] = msg.ephemeralKey;
+            updateRow['sender_identity_key'] = msg.senderIdentityKey;
+            updateRow['otpk_id'] = msg.otpkId;
+            updateRow['spk_id'] = msg.senderSpkId;
+          }
+
+          await txn.update(
+            'chat_messages',
+            _nonNullRow(updateRow),
+            where: 'id = ?',
+            whereArgs: [msg.id],
+          );
+        }
       }
     });
   }
@@ -242,7 +248,7 @@ class ChatDatabase {
       );
       await txn.insert(
         'chat_messages',
-        _messageToRow(message),
+        _nonNullRow(_messageToRow(message)),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     });
@@ -427,6 +433,17 @@ class ChatDatabase {
         'spk_id': msg.senderSpkId,
         'updated_at': msg.updatedAt?.toIso8601String(),
       };
+
+  /// Removes entries with null values before passing to sqflite insert/update.
+  /// SQLite uses the column DEFAULT (NULL) for omitted columns on INSERT,
+  /// and leaves the column unchanged on UPDATE — both are correct here.
+  /// This avoids the "argument null with type Null" sqflite warning caused by
+  /// passing Dart's Null type through raw SQL parameter lists.
+  Map<String, Object> _nonNullRow(Map<String, Object?> row) => Map.fromEntries(
+        row.entries
+            .where((e) => e.value != null)
+            .map((e) => MapEntry(e.key, e.value!)),
+      );
 
   ChatMessage _rowToMessage(Map<String, dynamic> row) {
     ReplyPreview? preview;

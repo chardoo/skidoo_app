@@ -151,6 +151,19 @@ class WsRoomDeletedEvent {
   const WsRoomDeletedEvent({required this.roomId, required this.deletedBy});
 }
 
+/// Pushed directly to a member when another member distributes their group
+/// sender key (on join or after a re-key triggered by a member departure).
+class WsSenderKeyDistributionEvent {
+  final String roomId;
+  final String senderId;
+  final String encryptedKey; // 'message' field from server — encrypted sender key
+  const WsSenderKeyDistributionEvent({
+    required this.roomId,
+    required this.senderId,
+    required this.encryptedKey,
+  });
+}
+
 /// Broadcast to all active room members when a pending invitee accepts
 /// and joins the group.
 class WsUserJoinedEvent {
@@ -201,6 +214,7 @@ class ChatWebSocketService {
   StreamController<WsParticipantRemovedEvent>? _participantRemovedController;
   StreamController<WsParticipantLeftEvent>? _participantLeftController;
   StreamController<WsRoomDeletedEvent>? _roomDeletedController;
+  StreamController<WsSenderKeyDistributionEvent>? _senderKeyDistController;
   StreamSubscription? _sub;
 
   /// Emits the initial server handshake (userId + room list).
@@ -270,6 +284,10 @@ class ChatWebSocketService {
   /// Emits when the room is permanently deleted.
   Stream<WsRoomDeletedEvent> get roomDeletedEvents =>
       _roomDeletedController?.stream ?? const Stream.empty();
+
+  /// Emits when another member distributes their group sender key to us.
+  Stream<WsSenderKeyDistributionEvent> get senderKeyDistributionEvents =>
+      _senderKeyDistController?.stream ?? const Stream.empty();
 
   bool _connected = false;
   bool get isConnected => _connected;
@@ -370,6 +388,7 @@ class ChatWebSocketService {
     _participantRemovedController = StreamController<WsParticipantRemovedEvent>.broadcast();
     _participantLeftController = StreamController<WsParticipantLeftEvent>.broadcast();
     _roomDeletedController = StreamController<WsRoomDeletedEvent>.broadcast();
+    _senderKeyDistController = StreamController<WsSenderKeyDistributionEvent>.broadcast();
 
     try {
       _channel = IOWebSocketChannel.connect(uri);
@@ -520,6 +539,16 @@ class ChatWebSocketService {
                 deletedBy: json['deleted_by'] as String? ?? '',
               ));
             }
+          } else if (type == 'sender_key_distribution') {
+            if (json['room_id'] is String &&
+                json['sender_id'] is String &&
+                json['message'] is String) {
+              _senderKeyDistController?.add(WsSenderKeyDistributionEvent(
+                roomId: json['room_id'] as String,
+                senderId: json['sender_id'] as String,
+                encryptedKey: json['message'] as String,
+              ));
+            }
           } else {
             debugPrint('[WS] routing as ChatMessage: type=$type id=${json['id']} roomId=${json['room_id']} senderId=${json['sender_id']} isEncrypted=${json['is_encrypted']} contentLen=${json['content']?.toString().length}');
             _msgController?.add(ChatMessage.fromJson(json));
@@ -659,6 +688,7 @@ class ChatWebSocketService {
     _participantRemovedController?.close();
     _participantLeftController?.close();
     _roomDeletedController?.close();
+    _senderKeyDistController?.close();
     _connectedController = null;
     _msgController = null;
     _likeController = null;
@@ -676,6 +706,7 @@ class ChatWebSocketService {
     _participantRemovedController = null;
     _participantLeftController = null;
     _roomDeletedController = null;
+    _senderKeyDistController = null;
   }
 
   /// Gracefully close the connection.
