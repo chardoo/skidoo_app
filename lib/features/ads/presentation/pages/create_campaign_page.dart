@@ -1,0 +1,1166 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
+
+const _objectives = ['awareness', 'traffic', 'conversions', 'reach'];
+const _objectiveLabels = {
+  'awareness': 'Awareness',
+  'traffic': 'Traffic',
+  'conversions': 'Conversions',
+  'reach': 'Reach',
+};
+const _placements = ['event_feed', 'search_results', 'post_recognition', 'profile_page'];
+const _placementLabels = {
+  'event_feed': 'Event Feed',
+  'search_results': 'Search Results',
+  'post_recognition': 'After Face Recognition',
+  'profile_page': 'Photographer Profile',
+};
+const _audienceTypes = ['all', 'clients', 'photographers'];
+const _audienceLabels = {
+  'all': 'Everyone',
+  'clients': 'Clients',
+  'photographers': 'Photographers',
+};
+const _bidTypes = ['cpm', 'cpc', 'cpa'];
+const _bidTypeLabels = {
+  'cpm': 'CPM — per 1,000 views',
+  'cpc': 'CPC — per click',
+  'cpa': 'CPA — per conversion',
+};
+const _currencies = ['GHS', 'NGN', 'USD', 'ZAR', 'KES', 'EGP', 'XOF', 'RWF'];
+const _eventTypes = [
+  'Wedding', 'Birthday', 'Corporate', 'Concert',
+  'Graduation', 'Engagement', 'Baby Shower', 'Other',
+];
+
+class CreateCampaignPage extends StatefulWidget {
+  const CreateCampaignPage({super.key});
+
+  @override
+  State<CreateCampaignPage> createState() => _CreateCampaignPageState();
+}
+
+class _CreateCampaignPageState extends State<CreateCampaignPage> {
+  int _step = 0;
+  bool _loading = false;
+
+  // Step 1 — Campaign shell
+  final _nameCtrl = TextEditingController();
+  String _objective = _objectives[0];
+  String _currency = _currencies[0];
+  final _budgetCtrl = TextEditingController();
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  // Step 2 — Ad set
+  String _placement = _placements[0];
+  String _audience = _audienceTypes[0];
+  String _bidType = _bidTypes[0];
+  String? _targetEventType;
+  final _locationCtrl = TextEditingController();
+  final _bidCtrl = TextEditingController();
+  final _dailyBudgetCtrl = TextEditingController();
+
+  // Step 3 — Creative
+  final _headlineCtrl = TextEditingController();
+  final _bodyCtrl = TextEditingController();
+  final _ctaTextCtrl = TextEditingController();
+  final _ctaLinkCtrl = TextEditingController();
+
+  // Stored IDs from API calls
+  String? _campaignId;
+  String? _adsetId;
+
+  final _repo = AdsRepository();
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _budgetCtrl.dispose();
+    _locationCtrl.dispose();
+    _bidCtrl.dispose();
+    _dailyBudgetCtrl.dispose();
+    _headlineCtrl.dispose();
+    _bodyCtrl.dispose();
+    _ctaTextCtrl.dispose();
+    _ctaLinkCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _nextStep() async {
+    debugPrint('[CreateCampaignPage] _nextStep — current step=$_step');
+    setState(() => _loading = true);
+    try {
+      switch (_step) {
+        case 0:
+          await _createCampaignShell();
+        case 1:
+          await _createAdSet();
+        case 2:
+          await _createAd();
+        case 3:
+          await _pay();
+          return;
+      }
+      debugPrint('[CreateCampaignPage] advancing to step ${_step + 1}');
+      setState(() => _step++);
+    } catch (e) {
+      debugPrint('[CreateCampaignPage] _nextStep ERROR at step=$_step: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Something went wrong. Please try again.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _createCampaignShell() async {
+    debugPrint('[CreateCampaignPage] _createCampaignShell name="${_nameCtrl.text.trim()}" objective=$_objective budget=${_budgetCtrl.text.trim()} currency=$_currency');
+    final result = await _repo.createCampaign(
+      name: _nameCtrl.text.trim(),
+      objective: _objective,
+      budgetAmount: double.tryParse(_budgetCtrl.text.trim()) ?? 0,
+      currency: _currency,
+      startAt: _startDate?.toUtc().toIso8601String(),
+      endAt: _endDate?.toUtc().toIso8601String(),
+    );
+    _campaignId = result['id'] as String?;
+    debugPrint('[CreateCampaignPage] _createCampaignShell — campaignId=$_campaignId');
+  }
+
+  Future<void> _createAdSet() async {
+    debugPrint('[CreateCampaignPage] _createAdSet campaignId=$_campaignId placement=$_placement audience=$_audience bidType=$_bidType');
+    final result = await _repo.createAdSet(
+      campaignId: _campaignId!,
+      name: '${_nameCtrl.text.trim()} — ${_placementLabels[_placement] ?? _placement}',
+      placement: _placement,
+      dailyBudget: double.tryParse(_dailyBudgetCtrl.text.trim()) ?? 0,
+      bidType: _bidType,
+      bidAmount: double.tryParse(_bidCtrl.text.trim()) ?? 0,
+      audience: _audience,
+      eventTypes: _targetEventType != null ? [_targetEventType!] : [],
+      locations: _locationCtrl.text.trim().isNotEmpty
+          ? [_locationCtrl.text.trim()]
+          : [],
+    );
+    _adsetId = result['id'] as String?;
+    debugPrint('[CreateCampaignPage] _createAdSet — adsetId=$_adsetId');
+  }
+
+  Future<void> _createAd() async {
+    debugPrint('[CreateCampaignPage] _createAd adsetId=$_adsetId headline="${_headlineCtrl.text.trim()}"');
+    await _repo.createAd(
+      adsetId: _adsetId!,
+      headline: _headlineCtrl.text.trim(),
+      body: _bodyCtrl.text.trim(),
+      mediaType: 'text',
+      ctaText: _ctaTextCtrl.text.trim().isEmpty
+          ? 'Learn More'
+          : _ctaTextCtrl.text.trim(),
+      ctaUrl: _ctaLinkCtrl.text.trim(),
+    );
+    debugPrint('[CreateCampaignPage] _createAd — done');
+  }
+
+  Future<void> _pay() async {
+    debugPrint('[CreateCampaignPage] _pay — requesting authorization URL for campaignId=$_campaignId');
+    final url = await _repo.payCampaign(_campaignId!);
+    debugPrint('[CreateCampaignPage] _pay — authorization_url="${url.isEmpty ? 'EMPTY' : url}"');
+    if (!mounted) return;
+    if (url.isEmpty) {
+      AppSnackBar.error(context, 'Could not get payment URL. Please try again.');
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AdsCheckoutPage(
+          authorizationUrl: url,
+          onSuccess: () {
+            AppSnackBar.success(
+              context,
+              'Payment received! Your campaign is under review.',
+            );
+            Navigator.of(context).popUntil((r) => r.isFirst);
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDate(bool isStart) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      if (isStart) {
+        _startDate = picked;
+      } else {
+        _endDate = picked;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    return Scaffold(
+      backgroundColor: ext.homeBackground,
+      appBar: AppBar(
+        backgroundColor: ext.homeBackground,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: ext.greetingColor, size: 20.sp),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Create Campaign',
+          style: TextStyle(
+            color: ext.greetingColor,
+            fontSize: 17.sp,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
+          ),
+        ),
+        centerTitle: false,
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(52.h),
+          child: _StepIndicator(currentStep: _step, ext: ext),
+        ),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: _buildStep(context, ext),
+            ),
+          ),
+          _BottomBar(
+            step: _step,
+            loading: _loading,
+            onNext: _nextStep,
+            onBack: _step > 0
+                ? () => setState(() => _step--)
+                : null,
+            ext: ext,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStep(BuildContext context, AppThemeExtension ext) {
+    switch (_step) {
+      case 0:
+        return _Step1(
+          key: const ValueKey(0),
+          nameCtrl: _nameCtrl,
+          budgetCtrl: _budgetCtrl,
+          objective: _objective,
+          currency: _currency,
+          startDate: _startDate,
+          endDate: _endDate,
+          ext: ext,
+          onObjectiveChanged: (v) => setState(() => _objective = v ?? _objectives[0]),
+          onCurrencyChanged: (v) => setState(() => _currency = v ?? _currencies[0]),
+          onPickStart: () => _pickDate(true),
+          onPickEnd: () => _pickDate(false),
+        );
+      case 1:
+        return _Step2(
+          key: const ValueKey(1),
+          placement: _placement,
+          audience: _audience,
+          bidType: _bidType,
+          targetEventType: _targetEventType,
+          locationCtrl: _locationCtrl,
+          bidCtrl: _bidCtrl,
+          dailyBudgetCtrl: _dailyBudgetCtrl,
+          ext: ext,
+          onPlacementChanged: (v) => setState(() => _placement = v ?? _placements[0]),
+          onAudienceChanged: (v) => setState(() => _audience = v ?? _audienceTypes[0]),
+          onBidTypeChanged: (v) => setState(() => _bidType = v ?? _bidTypes[0]),
+          onEventTypeChanged: (v) => setState(() => _targetEventType = v),
+        );
+      case 2:
+        return _Step3(
+          key: const ValueKey(2),
+          headlineCtrl: _headlineCtrl,
+          bodyCtrl: _bodyCtrl,
+          ctaTextCtrl: _ctaTextCtrl,
+          ctaLinkCtrl: _ctaLinkCtrl,
+          ext: ext,
+        );
+      case 3:
+        return _Step4(
+          key: const ValueKey(3),
+          name: _nameCtrl.text.trim(),
+          budget: _budgetCtrl.text.trim(),
+          objective: _objective,
+          headline: _headlineCtrl.text.trim(),
+          ext: ext,
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+}
+
+// ── Step indicator ─────────────────────────────────────────────────────────────
+
+class _StepIndicator extends StatelessWidget {
+  const _StepIndicator({required this.currentStep, required this.ext});
+  final int currentStep;
+  final AppThemeExtension ext;
+
+  static const _labels = ['Campaign', 'Targeting', 'Creative', 'Review'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 12.h),
+      child: Row(
+        children: List.generate(_labels.length * 2 - 1, (i) {
+          if (i.isOdd) {
+            final stepIdx = i ~/ 2;
+            final done = stepIdx < currentStep;
+            return Expanded(
+              child: Container(
+                height: 2.h,
+                color: done
+                    ? ext.accentGold
+                    : ext.searchHintColor.withValues(alpha: 0.2),
+              ),
+            );
+          }
+          final stepIdx = i ~/ 2;
+          final done = stepIdx < currentStep;
+          final active = stepIdx == currentStep;
+          return _StepDot(
+            label: _labels[stepIdx],
+            done: done,
+            active: active,
+            ext: ext,
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _StepDot extends StatelessWidget {
+  const _StepDot({
+    required this.label,
+    required this.done,
+    required this.active,
+    required this.ext,
+  });
+  final String label;
+  final bool done;
+  final bool active;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 22.w,
+          height: 22.w,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: done || active
+                ? ext.accentGold
+                : ext.searchFieldFill,
+          ),
+          alignment: Alignment.center,
+          child: done
+              ? Icon(Icons.check_rounded,
+                  color: Colors.white, size: 12.sp)
+              : Text(
+                  '${_StepIndicator._labels.indexOf(label) + 1}',
+                  style: TextStyle(
+                    color: active
+                        ? Colors.white
+                        : ext.searchHintColor,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+        ),
+        SizedBox(height: 3.h),
+        Text(
+          label,
+          style: TextStyle(
+            color: active || done
+                ? ext.greetingColor
+                : ext.searchHintColor,
+            fontSize: 9.sp,
+            fontWeight:
+                active ? FontWeight.w700 : FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Bottom action bar ─────────────────────────────────────────────────────────
+
+class _BottomBar extends StatelessWidget {
+  const _BottomBar({
+    required this.step,
+    required this.loading,
+    required this.onNext,
+    required this.onBack,
+    required this.ext,
+  });
+  final int step;
+  final bool loading;
+  final VoidCallback onNext;
+  final VoidCallback? onBack;
+  final AppThemeExtension ext;
+
+  static const _nextLabels = [
+    'Continue',
+    'Continue',
+    'Continue',
+    'Pay & Launch',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
+      decoration: BoxDecoration(
+        color: ext.homeBackground,
+        border: Border(
+          top: BorderSide(
+            color: ext.searchHintColor.withValues(alpha: 0.1),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (onBack != null)
+            GestureDetector(
+              onTap: onBack,
+              child: Container(
+                width: 48.w,
+                height: 50.h,
+                decoration: BoxDecoration(
+                  color: ext.searchFieldFill,
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                alignment: Alignment.center,
+                child: Icon(Icons.arrow_back_rounded,
+                    color: ext.greetingColor, size: 20.sp),
+              ),
+            ),
+          if (onBack != null) SizedBox(width: 12.w),
+          Expanded(
+            child: GestureDetector(
+              onTap: loading ? null : onNext,
+              child: Container(
+                height: 50.h,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: loading
+                        ? [
+                            ext.accentGold.withValues(alpha: 0.5),
+                            const Color(0xFFFF6B35).withValues(alpha: 0.5),
+                          ]
+                        : [ext.accentGold, const Color(0xFFFF6B35)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14.r),
+                ),
+                alignment: Alignment.center,
+                child: loading
+                    ? SizedBox(
+                        width: 20.w,
+                        height: 20.w,
+                        child: const CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _nextLabels[step],
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          if (step == 3) ...[
+                            SizedBox(width: 6.w),
+                            Icon(Icons.lock_rounded,
+                                color: Colors.white, size: 15.sp),
+                          ],
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Step 1: Campaign shell ────────────────────────────────────────────────────
+
+class _Step1 extends StatelessWidget {
+  const _Step1({
+    super.key,
+    required this.nameCtrl,
+    required this.budgetCtrl,
+    required this.objective,
+    required this.currency,
+    required this.startDate,
+    required this.endDate,
+    required this.ext,
+    required this.onObjectiveChanged,
+    required this.onCurrencyChanged,
+    required this.onPickStart,
+    required this.onPickEnd,
+  });
+
+  final TextEditingController nameCtrl;
+  final TextEditingController budgetCtrl;
+  final String objective;
+  final String currency;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final AppThemeExtension ext;
+  final ValueChanged<String?> onObjectiveChanged;
+  final ValueChanged<String?> onCurrencyChanged;
+  final VoidCallback onPickStart;
+  final VoidCallback onPickEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return _StepScroll(
+      ext: ext,
+      stepTitle: 'Campaign Details',
+      stepSubtitle: 'Set your campaign name, goal, and budget.',
+      children: [
+        _CLabel('Campaign name', ext),
+        SizedBox(height: 8.h),
+        _CField(controller: nameCtrl, hint: 'e.g. Summer Wedding Promo', ext: ext),
+
+        SizedBox(height: 20.h),
+        _CLabel('Objective', ext),
+        SizedBox(height: 8.h),
+        _CDropdown<String>(
+          value: objective,
+          items: _objectives,
+          itemLabel: (v) => _objectiveLabels[v] ?? v,
+          ext: ext,
+          onChanged: onObjectiveChanged,
+        ),
+
+        SizedBox(height: 20.h),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _CLabel('Total budget', ext),
+                  SizedBox(height: 8.h),
+                  _CField(
+                    controller: budgetCtrl,
+                    hint: 'e.g. 1000',
+                    ext: ext,
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _CLabel('Currency', ext),
+                  SizedBox(height: 8.h),
+                  _CDropdown<String>(
+                    value: currency,
+                    items: _currencies,
+                    itemLabel: (v) => v,
+                    ext: ext,
+                    onChanged: onCurrencyChanged,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        SizedBox(height: 20.h),
+        _CLabel('Campaign dates (optional)', ext),
+        SizedBox(height: 8.h),
+        Row(
+          children: [
+            Expanded(
+              child: _DatePickerTile(
+                label: startDate == null
+                    ? 'Start date'
+                    : '${startDate!.day}/${startDate!.month}/${startDate!.year}',
+                ext: ext,
+                onTap: onPickStart,
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: _DatePickerTile(
+                label: endDate == null
+                    ? 'End date'
+                    : '${endDate!.day}/${endDate!.month}/${endDate!.year}',
+                ext: ext,
+                onTap: onPickEnd,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ── Step 2: Targeting ─────────────────────────────────────────────────────────
+
+class _Step2 extends StatelessWidget {
+  const _Step2({
+    super.key,
+    required this.placement,
+    required this.audience,
+    required this.bidType,
+    required this.targetEventType,
+    required this.locationCtrl,
+    required this.bidCtrl,
+    required this.dailyBudgetCtrl,
+    required this.ext,
+    required this.onPlacementChanged,
+    required this.onAudienceChanged,
+    required this.onBidTypeChanged,
+    required this.onEventTypeChanged,
+  });
+
+  final String placement;
+  final String audience;
+  final String bidType;
+  final String? targetEventType;
+  final TextEditingController locationCtrl;
+  final TextEditingController bidCtrl;
+  final TextEditingController dailyBudgetCtrl;
+  final AppThemeExtension ext;
+  final ValueChanged<String?> onPlacementChanged;
+  final ValueChanged<String?> onAudienceChanged;
+  final ValueChanged<String?> onBidTypeChanged;
+  final ValueChanged<String?> onEventTypeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _StepScroll(
+      ext: ext,
+      stepTitle: 'Targeting',
+      stepSubtitle: 'Choose where and who sees your ad.',
+      children: [
+        _CLabel('Placement', ext),
+        SizedBox(height: 8.h),
+        _CDropdown<String>(
+          value: placement,
+          items: _placements,
+          itemLabel: (v) => _placementLabels[v] ?? v,
+          ext: ext,
+          onChanged: onPlacementChanged,
+        ),
+
+        SizedBox(height: 20.h),
+        _CLabel('Audience', ext),
+        SizedBox(height: 8.h),
+        _CDropdown<String>(
+          value: audience,
+          items: _audienceTypes,
+          itemLabel: (v) => _audienceLabels[v] ?? v,
+          ext: ext,
+          onChanged: onAudienceChanged,
+        ),
+
+        SizedBox(height: 20.h),
+        _CLabel('Bid type', ext),
+        SizedBox(height: 8.h),
+        _CDropdown<String>(
+          value: bidType,
+          items: _bidTypes,
+          itemLabel: (v) => _bidTypeLabels[v] ?? v,
+          ext: ext,
+          onChanged: onBidTypeChanged,
+        ),
+
+        SizedBox(height: 20.h),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _CLabel('Daily budget', ext),
+                  SizedBox(height: 8.h),
+                  _CField(
+                    controller: dailyBudgetCtrl,
+                    hint: 'e.g. 50',
+                    ext: ext,
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _CLabel('Bid amount', ext),
+                  SizedBox(height: 8.h),
+                  _CField(
+                    controller: bidCtrl,
+                    hint: 'e.g. 2.00',
+                    ext: ext,
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        SizedBox(height: 20.h),
+        _CLabel('Target event type (optional)', ext),
+        SizedBox(height: 8.h),
+        _CDropdown<String>(
+          value: targetEventType,
+          items: _eventTypes,
+          itemLabel: (v) => v,
+          ext: ext,
+          onChanged: onEventTypeChanged,
+          hint: 'Any event type',
+          nullable: true,
+        ),
+
+        SizedBox(height: 20.h),
+        _CLabel('Target location (optional)', ext),
+        SizedBox(height: 8.h),
+        _CField(controller: locationCtrl, hint: 'e.g. Accra', ext: ext),
+      ],
+    );
+  }
+}
+
+// ── Step 3: Creative ──────────────────────────────────────────────────────────
+
+class _Step3 extends StatelessWidget {
+  const _Step3({
+    super.key,
+    required this.headlineCtrl,
+    required this.bodyCtrl,
+    required this.ctaTextCtrl,
+    required this.ctaLinkCtrl,
+    required this.ext,
+  });
+
+  final TextEditingController headlineCtrl;
+  final TextEditingController bodyCtrl;
+  final TextEditingController ctaTextCtrl;
+  final TextEditingController ctaLinkCtrl;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return _StepScroll(
+      ext: ext,
+      stepTitle: 'Your Ad',
+      stepSubtitle: 'Write what people will see in the feed.',
+      children: [
+        _CLabel('Headline', ext),
+        SizedBox(height: 8.h),
+        _CField(
+          controller: headlineCtrl,
+          hint: 'Grab attention in one line',
+          ext: ext,
+        ),
+
+        SizedBox(height: 20.h),
+        _CLabel('Body text', ext),
+        SizedBox(height: 8.h),
+        _CField(
+          controller: bodyCtrl,
+          hint: 'Describe what you offer...',
+          ext: ext,
+          maxLines: 3,
+        ),
+
+        SizedBox(height: 20.h),
+        _CLabel('CTA button text (optional)', ext),
+        SizedBox(height: 8.h),
+        _CField(
+          controller: ctaTextCtrl,
+          hint: 'e.g. Book Now · View Gallery · Learn More',
+          ext: ext,
+        ),
+
+        SizedBox(height: 20.h),
+        _CLabel('CTA link', ext),
+        SizedBox(height: 8.h),
+        _CField(
+          controller: ctaLinkCtrl,
+          hint: 'https://',
+          ext: ext,
+          keyboardType: TextInputType.url,
+        ),
+      ],
+    );
+  }
+}
+
+// ── Step 4: Review & Pay ──────────────────────────────────────────────────────
+
+class _Step4 extends StatelessWidget {
+  const _Step4({
+    super.key,
+    required this.name,
+    required this.budget,
+    required this.objective,
+    required this.headline,
+    required this.ext,
+  });
+
+  final String name;
+  final String budget;
+  final String objective;
+  final String headline;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return _StepScroll(
+      ext: ext,
+      stepTitle: 'Review & Pay',
+      stepSubtitle:
+          'Your campaign will go live after payment and admin approval.',
+      children: [
+        _ReviewRow('Campaign', name.isEmpty ? '—' : name, ext),
+        _ReviewRow('Objective', objective, ext),
+        _ReviewRow('Budget', budget.isEmpty ? '—' : 'USD $budget', ext),
+        _ReviewRow('Headline', headline.isEmpty ? '—' : headline, ext),
+
+        SizedBox(height: 24.h),
+        Container(
+          padding: EdgeInsets.all(16.w),
+          decoration: BoxDecoration(
+            color: ext.accentGold.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(
+              color: ext.accentGold.withValues(alpha: 0.3),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline_rounded,
+                  color: ext.accentGold, size: 18.sp),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Text(
+                  'Tapping "Pay & Launch" will open the Paystack payment page. After payment, your campaign moves to admin review.',
+                  style: TextStyle(
+                    color: ext.greetingColor.withValues(alpha: 0.75),
+                    fontSize: 12.sp,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReviewRow extends StatelessWidget {
+  const _ReviewRow(this.label, this.value, this.ext);
+  final String label;
+  final String value;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90.w,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Shared step scroll wrapper ────────────────────────────────────────────────
+
+class _StepScroll extends StatelessWidget {
+  const _StepScroll({
+    required this.ext,
+    required this.stepTitle,
+    required this.stepSubtitle,
+    required this.children,
+  });
+
+  final AppThemeExtension ext;
+  final String stepTitle;
+  final String stepSubtitle;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 8.h),
+      children: [
+        Text(
+          stepTitle,
+          style: TextStyle(
+            color: ext.greetingColor,
+            fontSize: 20.sp,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.4,
+          ),
+        ),
+        SizedBox(height: 4.h),
+        Text(
+          stepSubtitle,
+          style: TextStyle(
+            color: ext.searchHintColor,
+            fontSize: 13.sp,
+          ),
+        ),
+        SizedBox(height: 24.h),
+        ...children,
+      ],
+    );
+  }
+}
+
+// ── Shared form controls for campaign wizard ──────────────────────────────────
+
+class _CLabel extends StatelessWidget {
+  const _CLabel(this.text, this.ext);
+  final String text;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: ext.greetingColor,
+        fontSize: 13.sp,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+class _CField extends StatelessWidget {
+  const _CField({
+    required this.controller,
+    required this.hint,
+    required this.ext,
+    this.maxLines = 1,
+    this.keyboardType,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final AppThemeExtension ext;
+  final int maxLines;
+  final TextInputType? keyboardType;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle:
+            TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
+        filled: true,
+        fillColor: ext.searchFieldFill,
+        contentPadding:
+            EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide(
+            color: ext.accentGold.withValues(alpha: 0.6),
+            width: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CDropdown<T> extends StatelessWidget {
+  const _CDropdown({
+    required this.value,
+    required this.items,
+    required this.itemLabel,
+    required this.ext,
+    required this.onChanged,
+    this.hint,
+    this.nullable = false,
+  });
+
+  final T? value;
+  final List<T> items;
+  final String Function(T) itemLabel;
+  final AppThemeExtension ext;
+  final ValueChanged<T?> onChanged;
+  final String? hint;
+  final bool nullable;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 14.w),
+      decoration: BoxDecoration(
+        color: ext.searchFieldFill,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: DropdownButton<T>(
+        value: value,
+        isExpanded: true,
+        underline: const SizedBox.shrink(),
+        dropdownColor: ext.cardSurface,
+        style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+        icon: Icon(Icons.expand_more_rounded,
+            color: ext.searchHintColor, size: 20.sp),
+        hint: hint != null
+            ? Text(hint!,
+                style:
+                    TextStyle(color: ext.searchHintColor, fontSize: 14.sp))
+            : null,
+        items: [
+          if (nullable)
+            DropdownMenuItem<T>(
+              value: null,
+              child: Text(
+                hint ?? 'None',
+                style:
+                    TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
+              ),
+            ),
+          ...items.map(
+            (t) => DropdownMenuItem<T>(
+              value: t,
+              child: Text(itemLabel(t)),
+            ),
+          ),
+        ],
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _DatePickerTile extends StatelessWidget {
+  const _DatePickerTile({
+    required this.label,
+    required this.ext,
+    required this.onTap,
+  });
+  final String label;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
+        decoration: BoxDecoration(
+          color: ext.searchFieldFill,
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today_outlined,
+                color: ext.searchHintColor, size: 16.sp),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: ext.searchHintColor,
+                  fontSize: 13.sp,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
