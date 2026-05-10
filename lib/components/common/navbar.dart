@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/constants/icons.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -8,19 +9,14 @@ class AppNavbar extends StatelessWidget {
     super.key,
     required this.selectedIndex,
     required this.onchange,
+    required this.onCreateTap,
     this.messageUnreadCount = 0,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onchange;
+  final VoidCallback onCreateTap;
   final int messageUnreadCount;
-
-  static const _items = [
-    _NavItem(label: 'Home', iconPath: IconsPath.home),
-    _NavItem(label: 'Messages', iconPath: null, icon: Icons.chat_bubble_outline_rounded),
-    _NavItem(label: 'Gallery', iconPath: IconsPath.gallery),
-    _NavItem(label: 'Creators', iconPath: IconsPath.photographer),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -28,32 +24,52 @@ class AppNavbar extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: ext.cardSurface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+        color: ext.homeBackground,
+        border: Border(
+          top: BorderSide(
+            color: ext.searchHintColor.withValues(alpha: 0.08),
+            width: 0.5,
           ),
-        ],
+        ),
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+        child: SizedBox(
+          height: 62.h,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(_items.length, (index) {
-              final selected = index == selectedIndex;
-              final badge = index == 1 ? messageUnreadCount : 0;
-              return _NavBarButton(
-                item: _items[index],
-                selected: selected,
+            children: [
+              _NavTab(
+                label: 'Home',
+                iconPath: IconsPath.home,
+                selected: selectedIndex == 0,
                 ext: ext,
-                unreadCount: badge,
-                onTap: () => onchange(index),
-              );
-            }),
+                onTap: () => onchange(0),
+              ),
+              _NavTab(
+                label: 'Messages',
+                icon: Icons.chat_bubble_outline_rounded,
+                selectedIcon: Icons.chat_bubble_rounded,
+                selected: selectedIndex == 1,
+                ext: ext,
+                unreadCount: messageUnreadCount,
+                onTap: () => onchange(1),
+              ),
+              _CreateFab(onTap: onCreateTap, ext: ext),
+              _NavTab(
+                label: 'Gallery',
+                iconPath: IconsPath.gallery,
+                selected: selectedIndex == 2,
+                ext: ext,
+                onTap: () => onchange(2),
+              ),
+              _NavTab(
+                label: 'Creators',
+                iconPath: IconsPath.photographer,
+                selected: selectedIndex == 3,
+                ext: ext,
+                onTap: () => onchange(3),
+              ),
+            ],
           ),
         ),
       ),
@@ -61,108 +77,177 @@ class AppNavbar extends StatelessWidget {
   }
 }
 
-// ── Single tab button ─────────────────────────────────────────────────────────
+// ── Single nav tab ────────────────────────────────────────────────────────────
 
-class _NavBarButton extends StatelessWidget {
-  const _NavBarButton({
-    required this.item,
+class _NavTab extends StatelessWidget {
+  const _NavTab({
+    required this.label,
     required this.selected,
     required this.ext,
     required this.onTap,
+    this.iconPath,
+    this.icon,
+    this.selectedIcon,
     this.unreadCount = 0,
-  });
+  }) : assert(iconPath != null || icon != null);
 
-  final _NavItem item;
+  final String label;
   final bool selected;
   final AppThemeExtension ext;
   final VoidCallback onTap;
+  final String? iconPath;
+  final IconData? icon;
+  final IconData? selectedIcon;
   final int unreadCount;
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = selected ? ext.accentGold : ext.searchHintColor;
-    final iconWidget = item.icon != null
-        ? Icon(item.icon, size: 20.h, color: iconColor)
+    final activeColor = ext.accentGold;
+    final inactiveColor = ext.searchHintColor.withValues(alpha: 0.55);
+    final color = selected ? activeColor : inactiveColor;
+
+    Widget iconWidget = icon != null
+        ? Icon(
+            selected && selectedIcon != null ? selectedIcon! : icon!,
+            size: 22.sp,
+            color: color,
+          )
         : Image.asset(
-            item.iconPath!,
-            width: 20.h,
-            height: 20.h,
-            color: iconColor,
+            iconPath!,
+            width: 22.sp,
+            height: 22.sp,
+            color: color,
           );
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeInOut,
-        padding: EdgeInsets.symmetric(
-          horizontal: selected ? 16.w : 12.w,
-          vertical: 8.h,
-        ),
-        decoration: BoxDecoration(
-          color: selected
-              ? ext.accentGold.withValues(alpha: 0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(20.r),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (unreadCount > 0)
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  iconWidget,
-                  Positioned(
-                    top: -4,
-                    right: -6,
-                    child: Container(
-                      padding: EdgeInsets.all(unreadCount > 9 ? 2.r : 3.r),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: BoxConstraints(minWidth: 16.w, minHeight: 16.w),
-                      child: Text(
-                        unreadCount > 99 ? '99+' : '$unreadCount',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9.sp,
-                          fontWeight: FontWeight.bold,
-                          height: 1,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+    if (unreadCount > 0) {
+      iconWidget = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          iconWidget,
+          Positioned(
+            top: -4,
+            right: -6,
+            child: Container(
+              padding: EdgeInsets.all(2.5.r),
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              constraints: BoxConstraints(minWidth: 15.w, minHeight: 15.w),
+              child: Text(
+                unreadCount > 99 ? '99+' : '$unreadCount',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 8.sp,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          height: 62.h,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Pill highlight expands behind icon when active
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+                padding: EdgeInsets.symmetric(
+                  horizontal: selected ? 14.w : 8.w,
+                  vertical: 6.h,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? activeColor.withValues(alpha: 0.13)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20.r),
+                ),
+                child: iconWidget,
+              ),
+
+              // Label — always occupies space but fades in/out
+              SizedBox(height: 3.h),
+              SizedBox(
+                height: 12.h,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: selected ? 1.0 : 0.0,
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: activeColor,
+                      fontSize: 9.5.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.1,
                     ),
                   ),
-                ],
-              )
-            else
-              iconWidget,
-            if (selected) ...[
-              SizedBox(width: 8.w),
-              Text(
-                item.label,
-                style: TextStyle(
-                  color: ext.accentGold,
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ── Data class ────────────────────────────────────────────────────────────────
+// ── Center create button ──────────────────────────────────────────────────────
 
-class _NavItem {
-  const _NavItem({required this.label, this.iconPath, this.icon});
-  final String label;
-  final String? iconPath;
-  final IconData? icon;
+class _CreateFab extends StatelessWidget {
+  const _CreateFab({required this.onTap, required this.ext});
+  final VoidCallback onTap;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          onTap();
+        },
+        behavior: HitTestBehavior.opaque,
+        child: Center(
+          child: Container(
+            width: 46.w,
+            height: 46.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: ext.accentGold.withValues(alpha: 0.45),
+                  blurRadius: 18,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.add_rounded,
+              color: Colors.white,
+              size: 26.sp,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
