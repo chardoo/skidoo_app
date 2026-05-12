@@ -179,8 +179,8 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     final currentPic =
         pics.isNotEmpty && _currentPage < pics.length ? pics[_currentPage] : null;
     final isCurrentVideo = currentPic?.isVideo ?? false;
-    final videoH = (size.width * 1.5).clamp(520.0, 580.0);
-    final imageH = (size.width * 0.75).clamp(240.0, 320.0);
+    final videoH = (size.width * 1.55).clamp(540.0, 620.0);
+    final imageH = (size.width * 1.0).clamp(340.0, 480.0);
     final mediaH = isCurrentVideo ? videoH : imageH;
 
     return Container(
@@ -188,18 +188,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── 1. Post header ─────────────────────────────────────────────
-          _PostHeader(
-            event: widget.event,
-            ext: ext,
-            isOwner: widget.isOwner,
-            isAuthenticated: widget.isAuthenticated,
-            onPhotographerTap: () => _openPhotographerProfile(context),
-            onHide: widget.onHide,
-            onLoginRequired: widget.onTap,
-          ),
-
-          // ── 2. Photo area ──────────────────────────────────────────────
+          // ── 1. Photo area (header overlaid at top) ─────────────────────
           GestureDetector(
             onTap: widget.isAuthenticated ? null : widget.onTap,
             child: AnimatedContainer(
@@ -226,18 +215,18 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                           activeCardIndex: widget.activeCardIndex,
                         ),
 
-                  // Top gradient (header area legibility)
+                  // Top gradient — covers the overlaid header
                   Positioned(
                     top: 0,
                     left: 0,
                     right: 0,
-                    height: 80.h,
+                    height: 100.h,
                     child: const DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Color(0x88000000), Color(0x00000000)],
+                          colors: [Color(0xAA000000), Color(0x00000000)],
                         ),
                       ),
                     ),
@@ -260,18 +249,23 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                     ),
                   ),
 
-                  // Photo counter badge (top right)
-                  if (pics.length > 1)
-                    Positioned(
-                      top: 14.h,
-                      right: 14.w,
-                      child: _PhotoCountBadge(
-                        current: _currentPage + 1,
-                        total: widget.isAuthenticated
-                            ? pics.length
-                            : math.min(3, pics.length),
-                      ),
+                  // Post header overlaid on image
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: _PostHeader(
+                      event: widget.event,
+                      ext: ext,
+                      isOwner: widget.isOwner,
+                      isAuthenticated: widget.isAuthenticated,
+                      onPhotographerTap: () =>
+                          _openPhotographerProfile(context),
+                      onHide: widget.onHide,
+                      onLoginRequired: widget.onTap,
+                      onImage: true,
                     ),
+                  ),
 
                   // Event name + location at bottom
                   Positioned(
@@ -297,9 +291,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             ),
           ),
 
-          // ── 3. Page dots ───────────────────────────────────────────────
+          // ── 2. Page dots ───────────────────────────────────────────────
           if (pics.length > 1) ...[
-            SizedBox(height: 10.h),
+            SizedBox(height: 6.h),
             _PageDots(
               count: _visibleCount,
               current: _currentPage,
@@ -315,9 +309,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                   : (_) => widget.onTap(),
             ),
           ] else
-            SizedBox(height: 10.h),
+            SizedBox(height: 6.h),
 
-          // ── 4. Interaction bar ─────────────────────────────────────────
+          // ── 3. Interaction bar ─────────────────────────────────────────
           BlocBuilder<DiscoveryBloc, DiscoveryState>(
             buildWhen: (prev, next) =>
                 prev.savedEventIds != next.savedEventIds,
@@ -396,7 +390,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             onToggle: () => setState(() => _descExpanded = !_descExpanded),
           ),
 
-          SizedBox(height: 14.h),
+          SizedBox(height: 6.h),
 
           // ── 6. Thin divider ────────────────────────────────────────────
           Divider(
@@ -456,6 +450,7 @@ class _PostHeader extends StatelessWidget {
     this.onPhotographerTap,
     this.onHide,
     this.onLoginRequired,
+    this.onImage = false,
   });
   final EventDiscovery event;
   final AppThemeExtension ext;
@@ -464,6 +459,7 @@ class _PostHeader extends StatelessWidget {
   final VoidCallback? onPhotographerTap;
   final VoidCallback? onHide;
   final VoidCallback? onLoginRequired;
+  final bool onImage;
 
   void _showMoreOptions(BuildContext context) {
     if (!isAuthenticated) {
@@ -484,99 +480,46 @@ class _PostHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = event.photographerName;
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final nameColor = onImage ? Colors.white : ext.greetingColor;
+    final iconColor = onImage ? Colors.white : ext.greetingColor;
+    final textShadows = onImage
+        ? const [
+            Shadow(blurRadius: 12, color: Colors.black87),
+            Shadow(blurRadius: 4, color: Colors.black54),
+          ]
+        : null;
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Story-ring avatar (tappable) — crown badge when owner
-          GestureDetector(
-            onTap: onPhotographerTap,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                _StoryRingAvatar(initial: initial, ext: ext),
-                if (isOwner)
-                  Positioned(
-                    bottom: -3,
-                    right: -3,
-                    child: Container(
-                      width: 18.w,
-                      height: 18.w,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [ext.accentGold, const Color(0xFFFF8C00)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        border:
-                            Border.all(color: ext.homeBackground, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: ext.accentGold.withValues(alpha: 0.5),
-                            blurRadius: 6,
-                            spreadRadius: 0,
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.workspace_premium_rounded,
-                        color: Colors.white,
-                        size: 10.sp,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          SizedBox(width: 10.w),
-
-          // Name + sub-label (also tappable)
+          // Creator name (tappable)
           Expanded(
             child: GestureDetector(
               onTap: onPhotographerTap,
               behavior: HitTestBehavior.opaque,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          name,
-                          style: TextStyle(
-                            color: ext.greetingColor,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.1,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                  Flexible(
+                    child: Text(
+                      name,
+                      style: TextStyle(
+                        color: nameColor,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                        shadows: textShadows,
                       ),
-                      if (isOwner) ...[
-                        SizedBox(width: 6.w),
-                        _OwnerPill(ext: ext),
-                      ],
-                    ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  Row(
-                    children: [
-                      Icon(Icons.photo_camera_rounded,
-                          size: 11.sp, color: ext.accentGold),
-                      SizedBox(width: 3.w),
-                      Text(
-                        'Creator',
-                        style: TextStyle(
-                          color: ext.searchHintColor,
-                          fontSize: 11.sp,
-                        ),
-                      ),
-                    ],
-                  ),
+                  if (isOwner) ...[
+                    SizedBox(width: 8.w),
+                    _OwnerPill(ext: ext),
+                  ],
                 ],
               ),
             ),
@@ -586,9 +529,9 @@ class _PostHeader extends StatelessWidget {
           GestureDetector(
             onTap: () => _showMoreOptions(context),
             child: Padding(
-              padding: EdgeInsets.only(left: 8.w),
+              padding: EdgeInsets.only(left: 10.w),
               child: Icon(Icons.more_horiz_rounded,
-                  color: ext.greetingColor, size: 22.sp),
+                  color: iconColor, size: 22.sp),
             ),
           ),
         ],
@@ -643,82 +586,6 @@ class _OwnerPill extends StatelessWidget {
   }
 }
 
-// ── Story-ring avatar ─────────────────────────────────────────────────────────
-
-class _StoryRingAvatar extends StatelessWidget {
-  const _StoryRingAvatar({required this.initial, required this.ext});
-  final String initial;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(2.5),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            ext.accentGold,
-            const Color(0xFFFF6B35),
-            const Color(0xFFE53935),
-          ],
-        ),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: ext.homeBackground,
-        ),
-        child: CircleAvatar(
-          radius: 17.r,
-          backgroundColor: ext.accentGold.withValues(alpha: 0.2),
-          child: Text(
-            initial,
-            style: TextStyle(
-              color: ext.accentGold,
-              fontWeight: FontWeight.w800,
-              fontSize: 14.sp,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Photo counter badge ───────────────────────────────────────────────────────
-
-class _PhotoCountBadge extends StatelessWidget {
-  const _PhotoCountBadge({required this.current, required this.total});
-  final int current;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(20.r),
-        border:
-            Border.all(color: Colors.white.withValues(alpha: 0.15), width: 0.8),
-      ),
-      child: Text(
-        '$current / $total',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 11.sp,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
-}
-
 // ── Image footer (event name + subtle location) ───────────────────────────────
 
 class _ImageFooter extends StatelessWidget {
@@ -737,12 +604,28 @@ class _ImageFooter extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.white,
-            fontSize: 16.sp,
+            fontSize: 20.sp,
             fontWeight: FontWeight.w800,
-            letterSpacing: -0.2,
+            letterSpacing: -0.5,
+            height: 1.2,
+            shadows: const [
+              Shadow(blurRadius: 12, color: Colors.black87),
+              Shadow(blurRadius: 4, color: Colors.black54),
+            ],
+          ),
+        ),
+        SizedBox(height: 3.h),
+        Text(
+          event.photographerName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.1,
             shadows: const [
               Shadow(blurRadius: 8, color: Colors.black87),
-              Shadow(blurRadius: 2, color: Colors.black54),
             ],
           ),
         ),

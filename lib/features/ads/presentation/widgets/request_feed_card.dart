@@ -1,8 +1,11 @@
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:video_player/video_player.dart';
 
 const _tag = '[RequestFeedCard]';
@@ -63,27 +66,32 @@ class _RequestFeedCardState extends State<RequestFeedCard> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint(
-        '$_tag build id=${widget.request.id} title="${widget.request.title}"');
+    debugPrint('$_tag build id=${widget.request.id} title="${widget.request.title}" '
+        'assetUrl=${widget.request.assetUrl} assetType=${widget.request.assetType}');
+
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final r = widget.request;
+    final size = MediaQuery.sizeOf(context);
 
-    // Taller for video (like event card), square-ish for image/no-asset
     final isVideo = r.assetType == 'video';
-    final aspectRatio = isVideo ? 4 / 5 : 1.0;
+    final mediaH = isVideo
+        ? (size.width * 1.45).clamp(480.0, 580.0)
+        : (size.width * 1.0).clamp(340.0, 480.0);
 
     return Container(
       color: ext.homeBackground,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Media area ──────────────────────────────────────────────────
-          AspectRatio(
-            aspectRatio: aspectRatio,
+          // ── Full-bleed media ────────────────────────────────────────────
+          SizedBox(
+            width: double.infinity,
+            height: mediaH,
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _MediaBackground(
+                // Media background
+                _MediaBg(
                   request: r,
                   videoCtrl: _videoCtrl,
                   videoReady: _videoReady,
@@ -95,13 +103,13 @@ class _RequestFeedCardState extends State<RequestFeedCard> {
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: 100.h,
+                  height: 110.h,
                   child: const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Color(0xAA000000), Color(0x00000000)],
+                        colors: [Color(0xBB000000), Color(0x00000000)],
                       ),
                     ),
                   ),
@@ -112,49 +120,68 @@ class _RequestFeedCardState extends State<RequestFeedCard> {
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: 120.h,
+                  height: 150.h,
                   child: const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
-                        colors: [Color(0xCC000000), Color(0x00000000)],
+                        colors: [Color(0xDD000000), Color(0x00000000)],
                       ),
                     ),
                   ),
                 ),
 
-                // Header overlaid at top
+                // ── Top overlay: badge + requester ──────────────────────
                 Positioned(
                   top: 0,
                   left: 0,
                   right: 0,
-                  child: _RequestHeader(request: r),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 14.w, vertical: 12.h),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _OpenRequestBadge(),
+                        const Spacer(),
+                        _RequesterChip(request: r),
+                      ],
+                    ),
+                  ),
                 ),
 
-                // Title + budget at bottom
+                // ── Bottom overlay: title + meta ────────────────────────
                 Positioned(
                   bottom: 14.h,
                   left: 14.w,
                   right: 14.w,
-                  child: _RequestFooter(request: r),
+                  child: _MediaFooter(request: r),
                 ),
               ],
             ),
           ),
 
-          // ── Meta + description + CTA ─────────────────────────────────────
+          // ── Below-fold content ──────────────────────────────────────────
           Padding(
             padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (r.eventType.isNotEmpty)
-                  _MetaChip(
-                    icon: Icons.event_rounded,
-                    label: r.eventType,
-                    color: const Color(0xFF8B5CF6),
-                  ),
+                // Event type + asset type row
+                Row(
+                  children: [
+                    if (r.eventType.isNotEmpty)
+                      _Chip(
+                        icon: Icons.event_rounded,
+                        label: r.eventType,
+                        color: const Color(0xFF8B5CF6),
+                      ),
+                    if (r.eventType.isNotEmpty && r.assetType != null)
+                      SizedBox(width: 8.w),
+                    if (r.assetType != null) _AssetTypeBadge(r.assetType!),
+                  ],
+                ),
 
                 if (r.description.isNotEmpty) ...[
                   SizedBox(height: 10.h),
@@ -163,24 +190,36 @@ class _RequestFeedCardState extends State<RequestFeedCard> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Theme.of(context)
-                          .extension<AppThemeExtension>()!
-                          .searchHintColor,
+                      color: ext.searchHintColor,
                       fontSize: 13.sp,
                       height: 1.5,
                     ),
                   ),
                 ],
 
-                SizedBox(height: 12.h),
+                SizedBox(height: 14.h),
 
-                _MessageCta(
-                  onTap: () {
-                    debugPrint(
-                        '$_tag message tapped requestId=${widget.request.id}');
-                    widget.onMessageTap();
-                  },
-                  ext: ext,
+                // CTA row: gold gradient button + message icon
+                Row(
+                  children: [
+                    Expanded(
+                      child: _GoldCtaButton(
+                        label: 'Message Requester',
+                        onTap: () {
+                          debugPrint(
+                              '$_tag message tapped requestId=${widget.request.id}');
+                          widget.onMessageTap();
+                        },
+                        ext: ext,
+                      ),
+                    ),
+                    SizedBox(width: 10.w),
+                    _IconBtn(
+                      icon: Icons.chat_bubble_outline_rounded,
+                      onTap: widget.onMessageTap,
+                      ext: ext,
+                    ),
+                  ],
                 ),
 
                 SizedBox(height: 14.h),
@@ -188,180 +227,21 @@ class _RequestFeedCardState extends State<RequestFeedCard> {
             ),
           ),
 
-          // ── Divider ──────────────────────────────────────────────────────
           Divider(
             height: 1,
             thickness: 0.5,
-            color: Theme.of(context)
-                .extension<AppThemeExtension>()!
-                .searchHintColor
-                .withValues(alpha: 0.1),
+            color: ext.searchHintColor.withValues(alpha: 0.1),
           ),
         ],
       ),
-    );
-  }
-}
-
-String _roleLabel(String type) =>
-    type == 'photographer' ? 'Photographer' : 'Client';
-
-// ── Request header (overlaid on image, like _PostHeader in event card) ─────────
-
-class _RequestHeader extends StatelessWidget {
-  const _RequestHeader({required this.request});
-  final FeedRequestModel request;
-
-  @override
-  Widget build(BuildContext context) {
-    final r = request;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Avatar — letter fallback uses requester_type initial
-          Container(
-            width: 32.w,
-            height: 32.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white24,
-              border: Border.all(color: Colors.white30, width: 0.8),
-              image: r.requesterPhoto != null
-                  ? DecorationImage(
-                      image: NetworkImage(r.requesterPhoto!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: r.requesterPhoto == null
-                ? Center(
-                    child: Icon(
-                      r.requesterType == 'photographer'
-                          ? Icons.camera_alt_rounded
-                          : Icons.person_rounded,
-                      color: Colors.white,
-                      size: 14.sp,
-                    ),
-                  )
-                : null,
-          ),
-
-          SizedBox(width: 8.w),
-
-          // Display name (or role label when API omits it) + badge
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  r.requesterName.isNotEmpty
-                      ? r.requesterName
-                      : _roleLabel(r.requesterType),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w700,
-                    shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
-                  ),
-                ),
-                SizedBox(height: 3.h),
-                _OpenRequestBadge(),
-              ],
-            ),
-          ),
-
-          // Asset type pill on the right
-          if (r.assetType != null) ...[
-            SizedBox(width: 8.w),
-            _AssetTypePill(assetType: r.assetType!),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ── Request footer (title + budget, like _ImageFooter in event card) ───────────
-
-class _RequestFooter extends StatelessWidget {
-  const _RequestFooter({required this.request});
-  final FeedRequestModel request;
-
-  @override
-  Widget build(BuildContext context) {
-    final r = request;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          r.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20.sp,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-            height: 1.2,
-            shadows: const [
-              Shadow(blurRadius: 12, color: Colors.black87),
-              Shadow(blurRadius: 4, color: Colors.black54),
-            ],
-          ),
-        ),
-        SizedBox(height: 4.h),
-        Row(
-          children: [
-            if (r.budgetAmount != null) ...[
-              Icon(Icons.payments_outlined,
-                  size: 11.sp, color: Colors.white60),
-              SizedBox(width: 4.w),
-              Text(
-                '${r.currency} ${r.budgetAmount!.toStringAsFixed(0)}',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
-                  shadows: const [Shadow(blurRadius: 8, color: Colors.black87)],
-                ),
-              ),
-              SizedBox(width: 10.w),
-            ],
-            if (r.location.isNotEmpty) ...[
-              Icon(Icons.location_on_outlined,
-                  size: 11.sp, color: Colors.white60),
-              SizedBox(width: 3.w),
-              Flexible(
-                child: Text(
-                  r.location,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w500,
-                    shadows: const [Shadow(blurRadius: 8, color: Colors.black87)],
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ],
     );
   }
 }
 
 // ── Media background ───────────────────────────────────────────────────────────
 
-class _MediaBackground extends StatelessWidget {
-  const _MediaBackground({
+class _MediaBg extends StatelessWidget {
+  const _MediaBg({
     required this.request,
     required this.videoCtrl,
     required this.videoReady,
@@ -377,71 +257,99 @@ class _MediaBackground extends StatelessWidget {
     final url = request.assetUrl;
 
     if (url == null || url.isEmpty) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [ext.searchFieldFill, ext.cardSurface],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Center(
-          child: Icon(
-            Icons.camera_alt_outlined,
-            color: ext.searchHintColor.withValues(alpha: 0.4),
-            size: 40.sp,
-          ),
-        ),
-      );
+      return CardGradientPlaceholder(name: request.title);
     }
 
     if (request.assetType == 'video') {
       if (videoReady && videoCtrl != null) {
-        return FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: videoCtrl!.value.size.width,
-            height: videoCtrl!.value.size.height,
-            child: VideoPlayer(videoCtrl!),
+        final w = videoCtrl!.value.size.width > 0
+            ? videoCtrl!.value.size.width
+            : 1.0;
+        final h = videoCtrl!.value.size.height > 0
+            ? videoCtrl!.value.size.height
+            : 1.0;
+        return ColoredBox(
+          color: const Color(0xFF0A0A0A),
+          child: SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox(
+                width: w,
+                height: h,
+                child: VideoPlayer(videoCtrl!),
+              ),
+            ),
           ),
         );
       }
-      return Container(
-        color: Colors.black,
+      return const ColoredBox(
+        color: Color(0xFF0A0A0A),
         child: Center(
-          child: Icon(Icons.play_circle_outline_rounded,
-              color: Colors.white30, size: 40.sp),
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+                color: Colors.white30, strokeWidth: 2),
+          ),
         ),
       );
     }
 
-    return CachedNetworkImage(
-      imageUrl: url,
-      fit: BoxFit.cover,
-      placeholder: (_, __) => Container(color: ext.searchFieldFill),
-      errorWidget: (_, __, ___) => Container(
-        color: ext.searchFieldFill,
-        child: Center(
-          child: Icon(Icons.broken_image_outlined,
-              color: ext.searchHintColor, size: 32.sp),
+    // Image — blurred background + colour-corrected contained foreground,
+    // same technique as PostPhotoCarousel for a polished full-bleed look.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.low,
+            placeholder: (_, __) =>
+                const ColoredBox(color: Color(0xFF111111)),
+            errorWidget: (_, __, ___) =>
+                const ColoredBox(color: Color(0xFF111111)),
+          ),
         ),
-      ),
+        const ColoredBox(color: Color(0x55000000)),
+        ColorFiltered(
+          colorFilter: const ColorFilter.matrix(<double>[
+            1.18, -0.06, -0.06, 0, 18,
+            -0.05,  1.16, -0.05, 0, 18,
+            -0.05, -0.05,  1.20, 0, 18,
+            0,     0,     0,     1, 0,
+          ]),
+          child: CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+            placeholder: (_, __) => const SizedBox.shrink(),
+            errorWidget: (_, __, ___) =>
+                const ColoredBox(color: Color(0xFF111111)),
+          ),
+        ),
+      ],
     );
   }
 }
 
-// ── "Open Request" badge ───────────────────────────────────────────────────────
+// ── "Open Request" badge — mirrors the Sponsored badge style ──────────────────
 
 class _OpenRequestBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
+        gradient: const LinearGradient(
+          colors: [Color(0x303B82F6), Color(0x301A56DB)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
         borderRadius: BorderRadius.circular(20.r),
         border: Border.all(
-          color: const Color(0xFF3B82F6).withValues(alpha: 0.6),
+          color: const Color(0xFF3B82F6).withValues(alpha: 0.7),
           width: 0.8,
         ),
       ),
@@ -449,13 +357,13 @@ class _OpenRequestBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.radio_button_checked_rounded,
-              size: 8.sp, color: const Color(0xFF3B82F6)),
-          SizedBox(width: 3.w),
+              size: 10.sp, color: const Color(0xFF60A5FA)),
+          SizedBox(width: 4.w),
           Text(
             'Open Request',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 9.sp,
+              color: const Color(0xFF93C5FD),
+              fontSize: 10.sp,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.3,
             ),
@@ -466,49 +374,228 @@ class _OpenRequestBadge extends StatelessWidget {
   }
 }
 
-// ── Asset type pill ────────────────────────────────────────────────────────────
+// ── Requester chip (top-right, mirrors AdvertiserChip in AdFeedCard) ──────────
 
-class _AssetTypePill extends StatelessWidget {
-  const _AssetTypePill({required this.assetType});
-  final String assetType;
+class _RequesterChip extends StatelessWidget {
+  const _RequesterChip({required this.request});
+  final FeedRequestModel request;
 
   @override
   Widget build(BuildContext context) {
-    final isVideo = assetType == 'video';
-    final color = isVideo ? const Color(0xFF8B5CF6) : const Color(0xFF10B981);
-    final icon = isVideo ? Icons.play_circle_rounded : Icons.image_rounded;
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: color.withValues(alpha: 0.7), width: 0.8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 9.sp, color: color),
-          SizedBox(width: 3.w),
-          Text(
-            isVideo ? 'Video' : 'Image',
+    final r = request;
+    final name = r.requesterName.isNotEmpty ? r.requesterName : 'Anonymous';
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 26.w,
+          height: 26.w,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white24,
+            border: Border.all(color: Colors.white30, width: 0.8),
+            image: r.requesterPhoto != null
+                ? DecorationImage(
+                    image: NetworkImage(r.requesterPhoto!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: r.requesterPhoto == null
+              ? Center(
+                  child: Icon(
+                    r.requesterType == 'photographer'
+                        ? Icons.camera_alt_rounded
+                        : Icons.person_rounded,
+                    color: Colors.white,
+                    size: 13.sp,
+                  ),
+                )
+              : null,
+        ),
+        SizedBox(width: 6.w),
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 100.w),
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: color,
-              fontSize: 9.sp,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
+              color: Colors.white,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w600,
+              shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
             ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+// ── Media footer: title + budget/location ─────────────────────────────────────
+
+class _MediaFooter extends StatelessWidget {
+  const _MediaFooter({required this.request});
+  final FeedRequestModel request;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = request;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          r.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 22.sp,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.6,
+            height: 1.15,
+            shadows: const [
+              Shadow(blurRadius: 14, color: Colors.black87),
+              Shadow(blurRadius: 4, color: Colors.black54),
+            ],
+          ),
+        ),
+        SizedBox(height: 5.h),
+        Row(
+          children: [
+            if (r.budgetAmount != null) ...[
+              Icon(Icons.payments_outlined,
+                  size: 12.sp, color: Colors.white70),
+              SizedBox(width: 4.w),
+              Text(
+                '${r.currency} ${r.budgetAmount!.toStringAsFixed(0)}',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                  shadows: const [
+                    Shadow(blurRadius: 8, color: Colors.black87)
+                  ],
+                ),
+              ),
+              SizedBox(width: 12.w),
+            ],
+            if (r.location.isNotEmpty) ...[
+              Icon(Icons.location_on_outlined,
+                  size: 12.sp, color: Colors.white70),
+              SizedBox(width: 3.w),
+              Flexible(
+                child: Text(
+                  r.location,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                    shadows: const [
+                      Shadow(blurRadius: 8, color: Colors.black87)
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ── Gold gradient CTA button (matches AdFeedCard style) ───────────────────────
+
+class _GoldCtaButton extends StatelessWidget {
+  const _GoldCtaButton({
+    required this.label,
+    required this.onTap,
+    required this.ext,
+  });
+  final String label;
+  final VoidCallback onTap;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 13.h),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [ext.accentGold, const Color(0xFFFF6B35)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.chat_bubble_rounded,
+                size: 15.sp, color: Colors.white),
+            SizedBox(width: 7.w),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.1,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ── Meta chip ──────────────────────────────────────────────────────────────────
+// ── Icon-only button (right of CTA row) ──────────────────────────────────────
 
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({
+class _IconBtn extends StatelessWidget {
+  const _IconBtn({
+    required this.icon,
+    required this.onTap,
+    required this.ext,
+  });
+  final IconData icon;
+  final VoidCallback onTap;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48.w,
+        height: 48.w,
+        decoration: BoxDecoration(
+          color: ext.searchFieldFill,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: ext.searchHintColor.withValues(alpha: 0.2),
+            width: 0.8,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, color: ext.greetingColor, size: 20.sp),
+      ),
+    );
+  }
+}
+
+// ── Event type chip ───────────────────────────────────────────────────────────
+
+class _Chip extends StatelessWidget {
+  const _Chip({
     required this.icon,
     required this.label,
     required this.color,
@@ -544,42 +631,39 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
-// ── Message CTA button ─────────────────────────────────────────────────────────
+// ── Asset type badge (Image / Video) ─────────────────────────────────────────
 
-class _MessageCta extends StatelessWidget {
-  const _MessageCta({required this.onTap, required this.ext});
-  final VoidCallback onTap;
-  final AppThemeExtension ext;
+class _AssetTypeBadge extends StatelessWidget {
+  const _AssetTypeBadge(this.assetType);
+  final String assetType;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 12.h),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF3B82F6), Color(0xFF6366F1)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.chat_bubble_rounded, size: 16.sp, color: Colors.white),
-            SizedBox(width: 7.w),
-            Text(
-              'Message Requester',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w700,
-              ),
+    final isVideo = assetType == 'video';
+    final color =
+        isVideo ? const Color(0xFF8B5CF6) : const Color(0xFF10B981);
+    final icon =
+        isVideo ? Icons.play_circle_rounded : Icons.image_rounded;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11.sp, color: color),
+          SizedBox(width: 4.w),
+          Text(
+            isVideo ? 'Video' : 'Image',
+            style: TextStyle(
+              color: color,
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

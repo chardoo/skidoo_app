@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
@@ -8,7 +7,6 @@ import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
 import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_card.dart';
-import 'package:skidoo_app/features/photographers/presentation/widgets/photographers_header.dart';
 
 class PhotographersPage extends StatefulWidget {
   const PhotographersPage({super.key});
@@ -17,42 +15,13 @@ class PhotographersPage extends StatefulWidget {
   State<PhotographersPage> createState() => _PhotographersPageState();
 }
 
-class _PhotographersPageState extends State<PhotographersPage>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _progress;
-  late final TextEditingController _textCtrl;
-  bool _isSearchOpen = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _progress = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
-    _textCtrl = TextEditingController();
-  }
+class _PhotographersPageState extends State<PhotographersPage> {
+  final _textCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _ctrl.dispose();
     _textCtrl.dispose();
     super.dispose();
-  }
-
-  void _openSearch() {
-    setState(() => _isSearchOpen = true);
-    _ctrl.forward();
-  }
-
-  void _closeSearch() {
-    setState(() => _isSearchOpen = false);
-    _ctrl.reverse();
-    _textCtrl.clear();
-    SystemChannels.textInput.invokeMethod('TextInput.hide');
-    context.read<PhotographerBloc>().add(const PhotographersLoadRequested());
   }
 
   @override
@@ -61,71 +30,121 @@ class _PhotographersPageState extends State<PhotographersPage>
 
     return Scaffold(
       backgroundColor: ext.homeBackground,
-      body: SafeArea(
-        child: Column(
-        children: [
-          // ── Header ──────────────────────────────────────────────────
-          PhotographersHeader(
-            progress: _progress,
-            textCtrl: _textCtrl,
-            isSearchOpen: _isSearchOpen,
-            onSearchOpen: _openSearch,
-            onSearchClose: _closeSearch,
-            onSearchChanged: (q) {
-              context
-                  .read<PhotographerBloc>()
-                  .add(PhotographersSearched(q));
-            },
-          ),
-
-          // ── List ─────────────────────────────────────────────────────
-          Expanded(
-            child: BlocBuilder<PhotographerBloc, PhotographerState>(
-              builder: (context, state) {
-                if (state.isLoading) return const AppLoadingIndicator();
-                if (state.errorMessage != null) {
-                  return AppErrorView(
-                    message: state.errorMessage!,
-                    onRetry: () => context
-                        .read<PhotographerBloc>()
-                        .add(const PhotographersLoadRequested()),
-                  );
-                }
-                if (state.photographers.isEmpty) {
-                  return const AppEmptyState(
-                    icon: Icons.person_search_rounded,
-                    message: 'No creators found.',
-                  );
-                }
-                return Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 900),
-                    child: ListView.builder(
-                      padding: EdgeInsets.only(top: 4.h, bottom: 24.h),
-                      itemCount: state.photographers.length,
-                      itemBuilder: (context, index) {
-                        final p = state.photographers[index];
-                        return PhotographerCard(
-                          photographer: p,
-                          onTap: () {
-                            final homeBloc = context.read<HomeBloc>();
-                            Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => BlocProvider.value(
-                                value: homeBloc,
-                                child: PhotographerProfilePage(photographer: p),
-                              ),
-                            ));
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                );
-              },
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverAppBar(
+            automaticallyImplyLeading: false,
+            backgroundColor: ext.homeBackground,
+            surfaceTintColor: Colors.transparent,
+            floating: true,
+            snap: true,
+            elevation: 0,
+            titleSpacing: 16.w,
+            title: Text(
+              'Creators',
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 20.sp,
+              ),
+            ),
+            bottom: PreferredSize(
+              preferredSize: Size.fromHeight(52.h),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
+                child: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _textCtrl,
+                  builder: (context, value, _) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: ext.searchFieldFill,
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      child: TextField(
+                        controller: _textCtrl,
+                        style:
+                            TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+                        decoration: InputDecoration(
+                          hintText: 'Search creators...',
+                          hintStyle: TextStyle(
+                              color: ext.searchHintColor, fontSize: 14.sp),
+                          prefixIcon: Icon(Icons.search_rounded,
+                              color: ext.searchHintColor, size: 20.sp),
+                          suffixIcon: value.text.isNotEmpty
+                              ? GestureDetector(
+                                  onTap: () {
+                                    _textCtrl.clear();
+                                    context
+                                        .read<PhotographerBloc>()
+                                        .add(PhotographersSearched(''));
+                                  },
+                                  child: Icon(Icons.close_rounded,
+                                      color: ext.searchHintColor, size: 18.sp),
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          isDense: true,
+                          contentPadding:
+                              EdgeInsets.symmetric(vertical: 12.h),
+                        ),
+                        onChanged: (q) => context
+                            .read<PhotographerBloc>()
+                            .add(PhotographersSearched(q)),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
           ),
         ],
+        body: SafeArea(
+          top: false,
+          child: BlocBuilder<PhotographerBloc, PhotographerState>(
+            builder: (context, state) {
+              if (state.isLoading) return const AppLoadingIndicator();
+              if (state.errorMessage != null) {
+                return AppErrorView(
+                  message: state.errorMessage!,
+                  onRetry: () => context
+                      .read<PhotographerBloc>()
+                      .add(const PhotographersLoadRequested()),
+                );
+              }
+              if (state.photographers.isEmpty) {
+                return const AppEmptyState(
+                  icon: Icons.person_search_rounded,
+                  message: 'No creators found.',
+                );
+              }
+              return Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: ListView.builder(
+                    padding: EdgeInsets.only(top: 4.h, bottom: 24.h),
+                    itemCount: state.photographers.length,
+                    itemBuilder: (context, index) {
+                      final p = state.photographers[index];
+                      return PhotographerCard(
+                        photographer: p,
+                        onTap: () {
+                          final homeBloc = context.read<HomeBloc>();
+                          Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => BlocProvider.value(
+                              value: homeBloc,
+                              child: PhotographerProfilePage(photographer: p),
+                            ),
+                          ));
+                        },
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

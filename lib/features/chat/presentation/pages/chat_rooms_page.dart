@@ -17,144 +17,258 @@ class ChatRoomsPage extends StatelessWidget {
   Widget build(BuildContext context) => const _ChatRoomsView();
 }
 
-class _ChatRoomsView extends StatelessWidget {
+class _ChatRoomsView extends StatefulWidget {
   const _ChatRoomsView();
+
+  @override
+  State<_ChatRoomsView> createState() => _ChatRoomsViewState();
+}
+
+class _ChatRoomsViewState extends State<_ChatRoomsView> {
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: ext.homeBackground,
-      appBar: AppBar(
-        backgroundColor: ext.homeBackground,
-        elevation: 0,
-        centerTitle: false,
-        title: Text(
-          AppLocalizations.of(context)!.chatRoomsTitle,
-          style: TextStyle(
-            color: ext.greetingColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 20.sp,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.public_rounded,
-                color: ext.accentGold, size: 22.sp),
-            onPressed: () => _openGlobalChat(context),
-            tooltip: AppLocalizations.of(context)!.chatRoomsGlobalChat,
-          ),
-          IconButton(
-            icon: Icon(Icons.refresh_rounded,
-                color: ext.greetingColor, size: 20.sp),
-            onPressed: () => context
-                .read<ChatRoomsBloc>()
-                .add(const ChatRoomsLoadRequested()),
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: ext.accentGold,
         foregroundColor: Colors.white,
-        tooltip: AppLocalizations.of(context)!.chatRoomsNewGroup,
+        tooltip: l10n.chatRoomsNewGroup,
         onPressed: () => _openCreateGroup(context),
         child: const Icon(Icons.group_add_rounded),
       ),
-      body: BlocBuilder<ChatRoomsBloc, ChatRoomsState>(
-        builder: (context, state) {
-          if (state.isLoading) return const AppLoadingIndicator();
-
-          if (state.errorMessage != null &&
-              state.rooms.isEmpty &&
-              state.pendingInvites.isEmpty) {
-            return AppErrorView(
-              message: state.errorMessage!,
-              icon: Icons.chat_bubble_outline_rounded,
-              onRetry: () => context
-                  .read<ChatRoomsBloc>()
-                  .add(const ChatRoomsLoadRequested()),
-            );
-          }
-
-          final filtered =
-              state.rooms.where((r) => r.type.isConversation).toList();
-
-          final noConversationsAction = TextButton(
-            onPressed: () => _openGlobalChat(context),
-            child: Text(AppLocalizations.of(context)!.chatRoomsJoinGlobalChat,
-                style: TextStyle(color: ext.accentGold)),
-          );
-
-          if (filtered.isEmpty && state.pendingInvites.isEmpty) {
-            return AppEmptyState(
-              icon: Icons.chat_bubble_outline_rounded,
-              message: AppLocalizations.of(context)!.chatRoomsNoConversations,
-              action: noConversationsAction,
-            );
-          }
-
-          final sorted = [...filtered]..sort((a, b) {
-              final la = state.lastMessageAt[a.id] ?? a.createdAt;
-              final lb = state.lastMessageAt[b.id] ?? b.createdAt;
-              return lb.compareTo(la);
-            });
-
-          return Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 680),
-              child: Column(
-                children: [
-                  if (state.isSyncing)
-                    LinearProgressIndicator(
-                      minHeight: 2,
-                      backgroundColor: Colors.transparent,
-                      color: ext.accentGold.withValues(alpha: 0.6),
-                    ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      color: ext.accentGold,
-                      onRefresh: () async => context
-                          .read<ChatRoomsBloc>()
-                          .add(const ChatRoomsLoadRequested()),
-                      child: ListView(
-                        padding: EdgeInsets.only(top: 8.h, bottom: 80.h),
-                        children: [
-                          // Pending invites appear above active rooms.
-                          if (state.pendingInvites.isNotEmpty) ...[
-                            _SectionHeader(label: AppLocalizations.of(context)!.chatRoomsPendingInvites, ext: ext),
-                            ...state.pendingInvites.map((room) =>
-                                _PendingInviteTile(
-                                  room: room,
-                                  ext: ext,
-                                  onAccept: () => context
-                                      .read<ChatRoomsBloc>()
-                                      .add(ChatRoomsAcceptInvite(room.id)),
-                                  onDecline: () => context
-                                      .read<ChatRoomsBloc>()
-                                      .add(ChatRoomsDeclineInvite(room.id)),
-                                )),
-                            SizedBox(height: 8.h),
-                          ],
-                          if (sorted.isNotEmpty)
-                            _SectionHeader(label: AppLocalizations.of(context)!.chatRoomsChats, ext: ext),
-                          ...sorted.map((room) => RoomTile(
-                                room: room,
-                                unreadCount:
-                                    state.unreadCounts[room.id] ?? 0,
-                                lastMessageAt: state.lastMessageAt[room.id],
-                                onTap: () => _openRoom(context, room),
-                              )),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverAppBar(
+            automaticallyImplyLeading: false,
+            backgroundColor: ext.homeBackground,
+            surfaceTintColor: Colors.transparent,
+            floating: true,
+            snap: true,
+            elevation: 0,
+            titleSpacing: 16.w,
+            title: Text(
+              l10n.chatRoomsTitle,
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 20.sp,
               ),
             ),
-          );
-        },
+            actions: [
+              IconButton(
+                icon: Icon(Icons.refresh_rounded,
+                    color: ext.greetingColor, size: 20.sp),
+                onPressed: () => context
+                    .read<ChatRoomsBloc>()
+                    .add(const ChatRoomsLoadRequested()),
+              ),
+            ],
+          ),
+        ],
+        body: BlocBuilder<ChatRoomsBloc, ChatRoomsState>(
+          builder: (context, state) {
+            if (state.isLoading) return const AppLoadingIndicator();
+
+            if (state.errorMessage != null &&
+                state.rooms.isEmpty &&
+                state.pendingInvites.isEmpty) {
+              return AppErrorView(
+                message: state.errorMessage!,
+                icon: Icons.chat_bubble_outline_rounded,
+                onRetry: () => context
+                    .read<ChatRoomsBloc>()
+                    .add(const ChatRoomsLoadRequested()),
+              );
+            }
+
+            final filtered =
+                state.rooms.where((r) => r.type.isConversation).toList();
+
+            if (filtered.isEmpty && state.pendingInvites.isEmpty) {
+              return AppEmptyState(
+                icon: Icons.chat_bubble_outline_rounded,
+                message: l10n.chatRoomsNoConversations,
+                action: TextButton(
+                  onPressed: () => _openGlobalChat(context),
+                  child: Text(l10n.chatRoomsJoinGlobalChat,
+                      style: TextStyle(color: ext.accentGold)),
+                ),
+              );
+            }
+
+            final sorted = [...filtered]..sort((a, b) {
+                final la = state.lastMessageAt[a.id] ?? a.createdAt;
+                final lb = state.lastMessageAt[b.id] ?? b.createdAt;
+                return lb.compareTo(la);
+              });
+
+            final q = _searchQuery.toLowerCase();
+            final displayed = q.isEmpty
+                ? sorted
+                : sorted
+                    .where((r) => r
+                        .displayNameFor(state.currentUserId)
+                        .toLowerCase()
+                        .contains(q))
+                    .toList();
+
+            final showPendingInvites =
+                state.pendingInvites.isNotEmpty && _searchQuery.isEmpty;
+
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: RefreshIndicator(
+                  color: ext.accentGold,
+                  onRefresh: () async => context
+                      .read<ChatRoomsBloc>()
+                      .add(const ChatRoomsLoadRequested()),
+                  child: CustomScrollView(
+                    slivers: [
+                      // Sync indicator
+                      if (state.isSyncing)
+                        SliverToBoxAdapter(
+                          child: LinearProgressIndicator(
+                            minHeight: 2,
+                            backgroundColor: Colors.transparent,
+                            color: ext.accentGold.withValues(alpha: 0.6),
+                          ),
+                        ),
+
+                      // Search bar
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding:
+                              EdgeInsets.fromLTRB(14.w, 8.h, 14.w, 4.h),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: ext.searchFieldFill,
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: TextField(
+                              controller: _searchCtrl,
+                              style: TextStyle(
+                                  color: ext.greetingColor, fontSize: 14.sp),
+                              decoration: InputDecoration(
+                                hintText: 'Search messages...',
+                                hintStyle: TextStyle(
+                                    color: ext.searchHintColor,
+                                    fontSize: 14.sp),
+                                prefixIcon: Icon(Icons.search_rounded,
+                                    color: ext.searchHintColor, size: 20.sp),
+                                suffixIcon: _searchQuery.isNotEmpty
+                                    ? GestureDetector(
+                                        onTap: () {
+                                          _searchCtrl.clear();
+                                          setState(() => _searchQuery = '');
+                                        },
+                                        child: Icon(Icons.close_rounded,
+                                            color: ext.searchHintColor,
+                                            size: 18.sp),
+                                      )
+                                    : null,
+                                border: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                isDense: true,
+                                contentPadding:
+                                    EdgeInsets.symmetric(vertical: 12.h),
+                              ),
+                              onChanged: (v) =>
+                                  setState(() => _searchQuery = v),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Pending invites
+                      if (showPendingInvites) ...[
+                        SliverToBoxAdapter(
+                          child: _SectionHeader(
+                              label: l10n.chatRoomsPendingInvites, ext: ext),
+                        ),
+                        SliverList(
+                          delegate: SliverChildListDelegate(
+                            state.pendingInvites
+                                .map((room) => _PendingInviteTile(
+                                      room: room,
+                                      ext: ext,
+                                      onAccept: () => context
+                                          .read<ChatRoomsBloc>()
+                                          .add(ChatRoomsAcceptInvite(room.id)),
+                                      onDecline: () => context
+                                          .read<ChatRoomsBloc>()
+                                          .add(
+                                              ChatRoomsDeclineInvite(room.id)),
+                                    ))
+                                .toList(),
+                          ),
+                        ),
+                        SliverToBoxAdapter(child: SizedBox(height: 8.h)),
+                      ],
+
+                      // Chats section header
+                      if (displayed.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: _SectionHeader(
+                              label: l10n.chatRoomsChats, ext: ext),
+                        ),
+
+                      // Room tiles
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final room = displayed[index];
+                            return RoomTile(
+                              room: room,
+                              unreadCount:
+                                  state.unreadCounts[room.id] ?? 0,
+                              lastMessageAt: state.lastMessageAt[room.id],
+                              currentUserId: state.currentUserId,
+                              onTap: () => _openRoom(context, room),
+                            );
+                          },
+                          childCount: displayed.length,
+                        ),
+                      ),
+
+                      // No search results
+                      if (displayed.isEmpty && _searchQuery.isNotEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 40.h),
+                              child: Text(
+                                'No chats match "$_searchQuery"',
+                                style: TextStyle(
+                                    color: ext.searchHintColor,
+                                    fontSize: 14.sp),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      SliverToBoxAdapter(child: SizedBox(height: 80.h)),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -239,7 +353,8 @@ class _PendingInviteTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(10.r),
             ),
             alignment: Alignment.center,
-            child: Icon(Icons.group_rounded, color: Colors.orange, size: 18.sp),
+            child:
+                Icon(Icons.group_rounded, color: Colors.orange, size: 18.sp),
           ),
           SizedBox(width: 10.w),
           Expanded(

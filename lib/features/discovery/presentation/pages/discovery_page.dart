@@ -238,7 +238,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                     return Align(
                       alignment: Alignment.topCenter,
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 680),
+                        constraints: BoxConstraints(maxWidth: 680.w),
                         child: feed,
                       ),
                     );

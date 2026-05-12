@@ -78,7 +78,6 @@ class UserSearchDataSource {
     return ShareableUser(
       id: (m['id'] ?? m['_id'] ?? '').toString(),
       name: (m['name'] ?? m['fullName'] ?? '').toString(),
-      email: (m['email'] ?? '').toString(),
       imageUrl: m['imageUrl'] as String? ?? m['avatarUrl'] as String?,
       role: role,
     );

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/my_campaigns_page.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/request_board_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/saved_items_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 
@@ -74,22 +78,16 @@ class _AccountView extends StatelessWidget {
           ),
           body: state.isLoading
               ? const Center(child: CircularProgressIndicator())
-              : LayoutBuilder(
-                  builder: (context, constraints) => Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 540),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight - 48,
-                          ),
-                          child: IntrinsicHeight(
-                            child: Column(
+              : Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 540),
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(24.w),
+                      child: Column(
                           children: [
-                            const SizedBox(height: 24),
+                            SizedBox(height: 24.h),
                             CircleAvatar(
-                              radius: 48,
+                              radius: 48.r,
                               backgroundColor: ext.avatarBackground,
                               child: Text(
                                 state.name.isNotEmpty
@@ -97,40 +95,42 @@ class _AccountView extends StatelessWidget {
                                     : '?',
                                 style: TextStyle(
                                   color: ext.avatarForeground,
-                                  fontSize: 36,
+                                  fontSize: 36.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            SizedBox(height: 20.h),
                             Text(
                               state.name,
                               style: TextStyle(
                                 color: ext.greetingColor,
-                                fontSize: 22,
+                                fontSize: 22.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            SizedBox(height: 6.h),
                             Text(
                               state.email,
                               style: TextStyle(
                                 color: ext.searchHintColor,
-                                fontSize: 14,
+                                fontSize: 14.sp,
                               ),
                             ),
-                            const SizedBox(height: 32),
+                            SizedBox(height: 32.h),
                             _EditProfileCard(state: state, ext: ext),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12.h),
                             _ThemeToggleCard(ext: ext),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12.h),
                             _NotificationSettingsCard(
                                 isMuted: state.isMuted, ext: ext),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12.h),
                             _PublicationSettingsCard(
                                 alwaysPublic: state.alwaysPublicImages,
                                 ext: ext),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12.h),
+                            _AdsCard(ext: ext),
+                            SizedBox(height: 12.h),
                             _PrivacySettingsCard(
                               anonymousMode: state.anonymousMode,
                               hideProfile: state.hideProfile,
@@ -138,17 +138,17 @@ class _AccountView extends StatelessWidget {
                               isHideProfileUpdating: state.isHideProfileUpdating,
                               ext: ext,
                             ),
-                            const Spacer(),
-                            const SizedBox(height: 24),
+                            // const Spacer(),
+                            SizedBox(height: 24.h),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.red,
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 14),
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 14.h),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(8.r),
                                   ),
                                 ),
                                 onPressed: () {
@@ -158,23 +158,20 @@ class _AccountView extends StatelessWidget {
                                 },
                                 child: Text(
                                   AppLocalizations.of(context)!.accountLogout,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 32),
+                            SizedBox(height: 32.h),
                           ],
                         ),
-                      ),
-                    ),
                   ),
                 ),
               ),
-            ),
         );
       },
     );
@@ -271,27 +268,27 @@ class _EditProfileCardState extends State<_EditProfileCard> {
     return Container(
       decoration: BoxDecoration(
         color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Header row ────────────────────────────────────────────────────
           InkWell(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
             onTap: () => setState(() => _expanded = !_expanded),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 14.h),
               child: Row(
                 children: [
-                  Icon(Icons.edit_outlined, color: ext.accentGold, size: 18),
-                  const SizedBox(width: 10),
+                  Icon(Icons.edit_outlined, color: ext.accentGold, size: 18.sp),
+                  SizedBox(width: 10.w),
                   Expanded(
                     child: Text(
                       AppLocalizations.of(context)!.accountEditProfile,
                       style: TextStyle(
                         color: ext.greetingColor,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -301,7 +298,7 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
                     color: ext.searchHintColor,
-                    size: 22,
+                    size: 22.sp,
                   ),
                 ],
               ),
@@ -315,72 +312,72 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                 : CrossFadeState.showFirst,
             firstChild: const SizedBox.shrink(),
             secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+              padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 20.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Divider(height: 1),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
 
                   // ── Basic info section ─────────────────────────────────
                   _SectionLabel(AppLocalizations.of(context)!.accountBasicInfo, ext),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10.h),
                   _ProfileField(
                       controller: _nameCtrl,
                       label: AppLocalizations.of(context)!.accountDisplayName,
                       icon: Icons.person_outline_rounded,
                       ext: ext),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10.h),
                   _ProfileField(
                       controller: _usernameCtrl,
                       label: AppLocalizations.of(context)!.accountUsername,
                       icon: Icons.alternate_email_rounded,
                       ext: ext),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10.h),
                   _ProfileField(
                       controller: _contactCtrl,
                       label: AppLocalizations.of(context)!.accountPhoneNumber,
                       icon: Icons.phone_outlined,
                       keyboardType: TextInputType.phone,
                       ext: ext),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20.h),
 
                   // ── Locale section ─────────────────────────────────────
                   _SectionLabel(AppLocalizations.of(context)!.accountLocaleRegion, ext),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10.h),
                   _ProfileField(
                       controller: _countryCodeCtrl,
                       label: AppLocalizations.of(context)!.accountCountryCode,
                       icon: Icons.flag_outlined,
                       maxLength: 2,
                       ext: ext),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10.h),
                   _ProfileField(
                       controller: _localeCtrl,
                       label: AppLocalizations.of(context)!.accountLocale,
                       icon: Icons.language_outlined,
                       ext: ext),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10.h),
                   _ProfileField(
                       controller: _languageCtrl,
                       label: AppLocalizations.of(context)!.accountPreferredLanguage,
                       icon: Icons.translate_rounded,
                       ext: ext),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10.h),
                   _ProfileField(
                       controller: _timezoneCtrl,
                       label: AppLocalizations.of(context)!.accountTimezone,
                       icon: Icons.access_time_rounded,
                       ext: ext),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20.h),
 
                   // ── Interests section ──────────────────────────────────
                   _SectionLabel(AppLocalizations.of(context)!.accountPhotographyInterests, ext),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10.h),
                   StatefulBuilder(
                     builder: (context, setChipState) => Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                      spacing: 8.w,
+                      runSpacing: 8.h,
                       children: _allTags.map((tag) {
                         final selected = _selectedTags.contains(tag);
                         return FilterChip(
@@ -401,7 +398,7 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                             color: selected
                                 ? ext.accentGold
                                 : ext.searchHintColor,
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             fontWeight: selected
                                 ? FontWeight.w600
                                 : FontWeight.w400,
@@ -412,13 +409,13 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                                 : ext.searchHintColor.withValues(alpha: 0.3),
                           ),
                           backgroundColor: ext.cardSurface,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 2),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 4.w, vertical: 2.h),
                         );
                       }).toList(),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24.h),
 
                   // ── Save button ────────────────────────────────────────
                   BlocBuilder<UserProfileBloc, UserProfileState>(
@@ -429,28 +426,27 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: ext.accentGold,
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 14),
+                            padding: EdgeInsets.symmetric(vertical: 14.h),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(10.r),
                             ),
                           ),
                           onPressed: loading ? null : () => _save(context),
                           child: loading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
+                              ? SizedBox(
+                                  width: 20.w,
+                                  height: 20.w,
+                                  child: const CircularProgressIndicator(
                                     color: Colors.white,
                                     strokeWidth: 2,
                                   ),
                                 )
                               : Text(
                                   AppLocalizations.of(context)!.accountSaveChanges,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 15,
+                                    fontSize: 15.sp,
                                   ),
                                 ),
                         ),
@@ -479,7 +475,7 @@ class _SectionLabel extends StatelessWidget {
       label.toUpperCase(),
       style: TextStyle(
         color: ext.searchHintColor,
-        fontSize: 11,
+        fontSize: 11.sp,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.8,
       ),
@@ -510,30 +506,30 @@ class _ProfileField extends StatelessWidget {
       controller: controller,
       keyboardType: keyboardType,
       maxLength: maxLength,
-      style: TextStyle(color: ext.greetingColor, fontSize: 14),
+      style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: ext.searchHintColor, fontSize: 13),
-        prefixIcon: Icon(icon, color: ext.searchHintColor, size: 18),
+        labelStyle: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+        prefixIcon: Icon(icon, color: ext.searchHintColor, size: 18.sp),
         counterText: '',
         filled: true,
         fillColor: ext.homeBackground,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           borderSide: BorderSide(
               color: ext.searchHintColor.withValues(alpha: 0.2)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           borderSide: BorderSide(
               color: ext.searchHintColor.withValues(alpha: 0.2)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.r),
           borderSide: BorderSide(color: ext.accentGold, width: 1.5),
         ),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            EdgeInsets.symmetric(horizontal: 12.w, vertical: 14.h),
       ),
     );
   }
@@ -555,39 +551,38 @@ class _ThemeToggleCard extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: ext.cardSurface,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
                 child: Text(
                   AppLocalizations.of(context)!.accountAppearance,
                   style: TextStyle(
                     color: ext.searchHintColor,
-                    fontSize: 12,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.8,
                   ),
                 ),
               ),
               SwitchListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
                 activeThumbColor: ext.accentGold,
                 activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
                 title: Text(
                   AppLocalizations.of(context)!.accountDarkMode,
                   style: TextStyle(
-                      color: ext.greetingColor, fontSize: 14),
+                      color: ext.greetingColor, fontSize: 14.sp),
                 ),
                 subtitle: Text(
                   isDark
                       ? AppLocalizations.of(context)!.accountDarkThemeOn
                       : AppLocalizations.of(context)!.accountLightThemeOn,
                   style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 12),
+                      color: ext.searchHintColor, fontSize: 12.sp),
                 ),
                 secondary: Icon(
                   isDark
@@ -598,7 +593,7 @@ class _ThemeToggleCard extends StatelessWidget {
                 value: isDark,
                 onChanged: (_) => sl<ThemeCubit>().toggleTheme(),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4.h),
             ],
           ),
         );
@@ -621,36 +616,36 @@ class _PublicationSettingsCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
             child: Text(
               AppLocalizations.of(context)!.accountPublication,
               style: TextStyle(
                 color: ext.searchHintColor,
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.8,
               ),
             ),
           ),
           SwitchListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
             activeThumbColor: ext.accentGold,
             activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
             title: Text(
               AppLocalizations.of(context)!.accountAlwaysPublicImages,
-              style: TextStyle(color: ext.greetingColor, fontSize: 14),
+              style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
             ),
             subtitle: Text(
               alwaysPublic
                   ? AppLocalizations.of(context)!.accountUploadsPublicByDefault
                   : AppLocalizations.of(context)!.accountUploadsPrivateByDefault,
-              style: TextStyle(color: ext.searchHintColor, fontSize: 12),
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
             secondary: Icon(
               Icons.public_rounded,
@@ -665,21 +660,21 @@ class _PublicationSettingsCard extends StatelessWidget {
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
           ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
             leading: Icon(Icons.bookmark_rounded, color: ext.accentGold),
             title: Text(
               AppLocalizations.of(context)!.accountSavedItems,
               style: TextStyle(
                   color: ext.greetingColor,
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.w500),
             ),
             subtitle: Text(
               AppLocalizations.of(context)!.accountViewBookmarkedEvents,
-              style: TextStyle(color: ext.searchHintColor, fontSize: 12),
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
             trailing: Icon(Icons.chevron_right_rounded,
-                color: ext.searchHintColor, size: 20),
+                color: ext.searchHintColor, size: 20.sp),
             onTap: () {
               final discoveryBloc = context.read<DiscoveryBloc>();
               Navigator.of(context).push(
@@ -692,7 +687,7 @@ class _PublicationSettingsCard extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4.h),
         ],
       ),
     );
@@ -721,41 +716,41 @@ class _PrivacySettingsCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
             child: Text(
               AppLocalizations.of(context)!.accountPrivacy,
               style: TextStyle(
                 color: ext.searchHintColor,
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.8,
               ),
             ),
           ),
           SwitchListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
             activeThumbColor: ext.accentGold,
             activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
             title: Text(
               AppLocalizations.of(context)!.accountAnonymousComments,
-              style: TextStyle(color: ext.greetingColor, fontSize: 14),
+              style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
             ),
             subtitle: Text(
               anonymousMode
                   ? AppLocalizations.of(context)!.accountAnonymousModeOn
                   : AppLocalizations.of(context)!.accountAnonymousModeOff,
-              style: TextStyle(color: ext.searchHintColor, fontSize: 12),
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
             secondary: isAnonymousModeUpdating
                 ? SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 20.w,
+                    height: 20.w,
                     child: CircularProgressIndicator(
                         color: ext.accentGold, strokeWidth: 2),
                   )
@@ -774,23 +769,23 @@ class _PrivacySettingsCard extends StatelessWidget {
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
           SwitchListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
             activeThumbColor: ext.accentGold,
             activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
             title: Text(
               AppLocalizations.of(context)!.accountHideProfile,
-              style: TextStyle(color: ext.greetingColor, fontSize: 14),
+              style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
             ),
             subtitle: Text(
               hideProfile
                   ? AppLocalizations.of(context)!.accountHideProfileOn
                   : AppLocalizations.of(context)!.accountHideProfileOff,
-              style: TextStyle(color: ext.searchHintColor, fontSize: 12),
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
             secondary: isHideProfileUpdating
                 ? SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 20.w,
+                    height: 20.w,
                     child: CircularProgressIndicator(
                         color: ext.accentGold, strokeWidth: 2),
                   )
@@ -807,7 +802,7 @@ class _PrivacySettingsCard extends StatelessWidget {
                         .add(HideProfileToggled(value));
                   },
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4.h),
         ],
       ),
     );
@@ -828,37 +823,36 @@ class _NotificationSettingsCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
             child: Text(
               AppLocalizations.of(context)!.accountNotifications,
               style: TextStyle(
                 color: ext.searchHintColor,
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.8,
               ),
             ),
           ),
           SwitchListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
             activeThumbColor: ext.accentGold,
             activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
             title: Text(
               AppLocalizations.of(context)!.accountMuteNotifications,
-              style: TextStyle(color: ext.greetingColor, fontSize: 14),
+              style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
             ),
             subtitle: Text(
               isMuted
                   ? AppLocalizations.of(context)!.accountMutedOn
                   : AppLocalizations.of(context)!.accountMutedOff,
-              style: TextStyle(color: ext.searchHintColor, fontSize: 12),
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
             secondary: Icon(
               isMuted
@@ -873,9 +867,115 @@ class _NotificationSettingsCard extends StatelessWidget {
                   .add(NotificationsMuteToggled(value));
             },
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4.h),
         ],
       ),
+    );
+  }
+}
+
+// ── Ads & Promotions card ─────────────────────────────────────────────────────
+
+class _AdsCard extends StatelessWidget {
+  const _AdsCard({required this.ext});
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
+            child: Text(
+              'ADS & PROMOTIONS',
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          _AdsListTile(
+            icon: Icons.inbox_outlined,
+            iconColor: const Color(0xFF3B82F6),
+            title: 'Request Board',
+            subtitle: 'Browse open requests from others',
+            ext: ext,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const RequestBoardPage()),
+            ),
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          _AdsListTile(
+            icon: Icons.edit_note_rounded,
+            iconColor: const Color(0xFF10B981),
+            title: 'My Requests',
+            subtitle: 'Manage the requests you posted',
+            ext: ext,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MyRequestsPage()),
+            ),
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          _AdsListTile(
+            icon: Icons.rocket_launch_rounded,
+            iconColor: ext.accentGold,
+            title: 'My Campaigns',
+            subtitle: 'Track and top up your ad campaigns',
+            ext: ext,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MyCampaignsPage()),
+            ),
+          ),
+          SizedBox(height: 4.h),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdsListTile extends StatelessWidget {
+  const _AdsListTile({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.ext,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
+      leading: Icon(icon, color: iconColor),
+      title: Text(
+        title,
+        style: TextStyle(
+            color: ext.greetingColor,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+      ),
+      trailing: Icon(Icons.chevron_right_rounded,
+          color: ext.searchHintColor, size: 20.sp),
+      onTap: onTap,
     );
   }
 }

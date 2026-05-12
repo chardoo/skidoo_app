@@ -2,11 +2,80 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
+import 'package:skidoo_app/core/config/chat_config.dart';
+import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
+import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
+import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/ad_feed_card.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/request_feed_card.dart';
+import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
+import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
-import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/event_discovery_card.dart';
+import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+
+// ── Virtual feed item types ───────────────────────────────────────────────────
+
+sealed class _FeedItem {
+  const _FeedItem();
+}
+
+final class _EventItem extends _FeedItem {
+  const _EventItem(this.event, this.eventIndex);
+  final EventDiscovery event;
+  final int eventIndex;
+}
+
+final class _AdItem extends _FeedItem {
+  const _AdItem();
+}
+
+final class _RequestItem extends _FeedItem {
+  const _RequestItem(this.requestIndex);
+  final int requestIndex;
+}
+
+final class _LoadingItem extends _FeedItem {
+  const _LoadingItem();
+}
+
+// ── Build the virtual list ────────────────────────────────────────────────────
+
+List<_FeedItem> _buildVirtualList(
+  List<EventDiscovery> events,
+  bool isLoadingMore,
+) {
+  final items = <_FeedItem>[];
+  var requestSlot = 0;
+  var adSlotCount = 0;
+
+  for (var i = 0; i < events.length; i++) {
+    items.add(_EventItem(events[i], i));
+    final count = i + 1;
+    if (count % 20 == 0) {
+      items.add(_RequestItem(requestSlot++));
+    } else if (count % 10 == 0) {
+      items.add(const _AdItem());
+      adSlotCount++;
+    }
+  }
+
+  // When the feed has fewer than 10 events the loop never inserts an ad or
+  // request. Always append them so they appear regardless of feed length.
+  // The builder silently collapses these slots when there is no data yet.
+  if (events.isNotEmpty) {
+    if (adSlotCount == 0) items.add(const _AdItem());
+    if (requestSlot == 0) items.add(const _RequestItem(0));
+  }
+
+  if (isLoadingMore) items.add(const _LoadingItem());
+  return items;
+}
 
 // ── Scrollable events feed (authenticated) ────────────────────────────────────
 
@@ -29,12 +98,12 @@ class EventsFeed extends StatefulWidget {
 }
 
 class _EventsFeedState extends State<EventsFeed> {
-  /// Which card index (in the feed list) should have its video playing.
   final _activeCardIndex = ValueNotifier<int>(0);
-
-  /// Stable GlobalKey per event id — reused across rebuilds so RenderBox
-  /// lookups stay valid after list updates.
   final _cardKeys = <String, GlobalKey>{};
+  final _repo = AdsRepository();
+
+  AdModel? _servedAd;
+  List<FeedRequestModel> _requests = [];
 
   GlobalKey _keyFor(String eventId) =>
       _cardKeys.putIfAbsent(eventId, GlobalKey.new);
@@ -42,9 +111,25 @@ class _EventsFeedState extends State<EventsFeed> {
   @override
   void initState() {
     super.initState();
-    // Measure once after the first frame so card 0 auto-plays on load.
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _updateActiveCard());
+    _fetchAdsData();
+  }
+
+  Future<void> _fetchAdsData() async {
+    debugPrint('[EventsFeed] _fetchAdsData start');
+    final results = await Future.wait([
+      _repo.serveAd(placement: 'event_feed'),
+      _repo.getRequests(),
+    ]);
+    if (!mounted) return;
+    final ad = results[0] as AdModel?;
+    final requests = results[1] as List<FeedRequestModel>;
+    debugPrint('[EventsFeed] _fetchAdsData done — ad=${ad?.adId ?? 'null'} requests=${requests.length}');
+    setState(() {
+      _servedAd = ad;
+      _requests = requests;
+    });
   }
 
   @override
@@ -54,8 +139,8 @@ class _EventsFeedState extends State<EventsFeed> {
   }
 
   void _onHide(String eventId) {
-    // If the card being hidden is currently playing a video, pause it first.
-    final idx = widget.discoveryState.events.indexWhere((e) => e.id == eventId);
+    final idx =
+        widget.discoveryState.events.indexWhere((e) => e.id == eventId);
     if (idx != -1 && _activeCardIndex.value == idx) {
       _activeCardIndex.value = -1;
     }
@@ -75,8 +160,6 @@ class _EventsFeedState extends State<EventsFeed> {
     });
   }
 
-  /// Find the card whose centre is closest to the viewport centre and mark it
-  /// as active so its video starts playing (others pause).
   void _updateActiveCard() {
     if (!mounted) return;
     final screenH = MediaQuery.sizeOf(context).height;
@@ -107,9 +190,53 @@ class _EventsFeedState extends State<EventsFeed> {
     }
   }
 
+  Future<void> _openChat(
+    BuildContext context,
+    String userId,
+    String userType,
+    String displayName,
+  ) async {
+    debugPrint('[EventsFeed] _openChat → userId=$userId userType=$userType displayName="$displayName"');
+    final role = userType == 'photographer'
+        ? ChatConfig.rolePhotographer
+        : ChatConfig.roleClient;
+
+    ChatRoomsBloc? roomsBloc;
+    try {
+      roomsBloc = context.read<ChatRoomsBloc>();
+    } catch (_) {}
+
+    try {
+      final room = await sl<GetOrCreateDirectRoomUseCase>().call(
+        recipientId: userId,
+        recipientRole: role,
+        localDisplayName: displayName,
+      );
+      debugPrint('[EventsFeed] _openChat — room created/found roomId=${room.id}');
+      if (!context.mounted) return;
+      roomsBloc?.add(const ChatRoomsLoadRequested());
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
+      );
+      if (context.mounted) roomsBloc?.add(const ChatRoomsLoadRequested());
+    } catch (e) {
+      debugPrint('[EventsFeed] _openChat ERROR: $e');
+      if (!context.mounted) return;
+      final blocked = e is ServerException && e.message.contains('400');
+      AppSnackBar.error(
+        context,
+        blocked ? 'This user is not accepting messages.' : 'Could not open chat.',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = widget.discoveryState;
+    final virtualItems = _buildVirtualList(
+      state.events,
+      state.isLoadingMore,
+    );
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
@@ -118,11 +245,9 @@ class _EventsFeedState extends State<EventsFeed> {
           if (metrics.pixels >= metrics.maxScrollExtent - 300) {
             widget.onLoadMore();
           }
-          // Update the active card every scroll tick.
           WidgetsBinding.instance
               .addPostFrameCallback((_) => _updateActiveCard());
         } else if (notification is ScrollEndNotification) {
-          // Final snap after fling.
           WidgetsBinding.instance
               .addPostFrameCallback((_) => _updateActiveCard());
         }
@@ -134,16 +259,53 @@ class _EventsFeedState extends State<EventsFeed> {
           constraints: const BoxConstraints(maxWidth: 720),
           child: ListView.builder(
             physics: const BouncingScrollPhysics(),
-            itemCount: state.events.length + (state.isLoadingMore ? 1 : 0),
+            itemCount: virtualItems.length,
             itemBuilder: (context, index) {
-              if (index == state.events.length) {
+              final item = virtualItems[index];
+
+              // ── Loading spinner ─────────────────────────────────────────
+              if (item is _LoadingItem) {
                 return Padding(
                   padding: EdgeInsets.symmetric(vertical: 20.h),
                   child: const AppLoadingIndicator(),
                 );
               }
-              final event = state.events[index];
+
+              // ── Injected ad ─────────────────────────────────────────────
+              if (item is _AdItem) {
+                final ad = _servedAd;
+                if (ad == null) {
+                  return const SizedBox.shrink();
+                }
+                return AdFeedCard(
+                  key: ValueKey('ad_${item.hashCode}'),
+                  ad: ad,
+                );
+              }
+
+              // ── Injected request ────────────────────────────────────────
+              if (item is _RequestItem) {
+                if (item.requestIndex >= _requests.length) {
+                  return const SizedBox.shrink();
+                }
+                final req = _requests[item.requestIndex];
+                return RequestFeedCard(
+                  key: ValueKey('req_${req.id}'),
+                  request: req,
+                  onMessageTap: () => _openChat(
+                    context,
+                    req.requesterId,
+                    req.requesterType,
+                    req.requesterName,
+                  ),
+                );
+              }
+
+              // ── Event card ──────────────────────────────────────────────
+              final eventItem = item as _EventItem;
+              final event = eventItem.event;
               final isPending = state.pendingHideEventId == event.id;
+
               return ClipRect(
                 child: AnimatedAlign(
                   duration: const Duration(milliseconds: 380),
@@ -155,7 +317,7 @@ class _EventsFeedState extends State<EventsFeed> {
                     child: EventDiscoveryCard(
                       key: _keyFor(event.id),
                       event: event,
-                      cardIndex: index,
+                      cardIndex: eventItem.eventIndex,
                       activeCardIndex: _activeCardIndex,
                       isAuthenticated: true,
                       onTap: () => widget.onCardTap(event),

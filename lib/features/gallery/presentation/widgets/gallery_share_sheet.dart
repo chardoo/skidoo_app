@@ -329,14 +329,6 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                                     ),
                                   ),
                                 ),
-                                SizedBox(width: 6.w),
-                                Expanded(
-                                  child: Text(u.email,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                          color: ext.searchHintColor,
-                                          fontSize: 11.sp)),
-                                ),
                               ],
                             ),
                             trailing: isSending

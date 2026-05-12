@@ -1,9 +1,14 @@
+import 'dart:developer' as dev;
+
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:skidoo_app/API/dio_client_service.dart';
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
+import 'package:skidoo_app/features/ads/models/ad.dart';
+import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
+import 'package:skidoo_app/features/ads/models/ad_set.dart';
 
 const _tag = '[AdsRepository]';
 
@@ -52,14 +57,36 @@ class AdsRepository {
         if (contextLocation != null) 'context_location': contextLocation,
         if (contextEventId != null) 'context_event_id': contextEventId,
       });
-      debugPrint('$_tag serveAd ← status=${resp.statusCode} data=${resp.data}');
-      final data = _unwrap<Map<String, dynamic>>(resp);
-      if (data == null) {
-        debugPrint('$_tag serveAd — no ad returned (null data)');
+      debugPrint('$_tag serveAd ← status=${resp.statusCode}');
+      debugPrint('$_tag serveAd RAW BODY: ${resp.data}');
+
+      // Extract the ad map — handle both {data: {...}} and {data: [{...}]} shapes
+      Map<String, dynamic>? data;
+      final body = resp.data;
+      if (body is Map<String, dynamic>) {
+        final raw = body['data'];
+        if (raw is Map<String, dynamic>) {
+          data = raw;
+        } else if (raw is List && raw.isNotEmpty) {
+          data = raw.first as Map<String, dynamic>?;
+        }
+        // If data key is missing, try the body itself as a flat ad object
+        if (data == null && body.containsKey('id')) data = body;
+      }
+
+      debugPrint('$_tag serveAd UNWRAPPED keys: ${data?.keys.toList()}');
+
+      if (data == null || data.isEmpty) {
+        debugPrint('$_tag serveAd — no ad returned (null/empty data)');
         return null;
       }
+
       final ad = AdModel.fromJson(data);
-      debugPrint('$_tag serveAd — parsed ad: id=${ad.adId} headline="${ad.headline}"');
+      debugPrint(
+        '$_tag serveAd PARSED: adId="${ad.adId}" headline="${ad.headline}" '
+        'mediaType=${ad.mediaType} mediaUrl=${ad.mediaUrl} '
+        'advertiserName="${ad.advertiserName}" placement="${ad.placement}"',
+      );
       return ad;
     } catch (e, st) {
       debugPrint('$_tag serveAd ERROR: $e\n$st');
@@ -151,11 +178,48 @@ class AdsRepository {
         'page': page,
         'limit': limit,
       });
-      debugPrint('$_tag getRequests ← status=${resp.statusCode} data=${resp.data}');
-      final list = _unwrapList<Map<String, dynamic>>(resp)
-          .map(FeedRequestModel.fromJson)
-          .toList();
-      debugPrint('$_tag getRequests — parsed ${list.length} requests');
+      debugPrint('$_tag getRequests ← status=${resp.statusCode}');
+
+      // Use dart:developer log — no 1000-char truncation
+      dev.log('$_tag getRequests RAW BODY:\n${resp.data}', name: 'AdsRepository');
+
+      final rawList = _unwrapList<Map<String, dynamic>>(resp);
+      dev.log(
+        '$_tag getRequests rawList length=${rawList.length}',
+        name: 'AdsRepository',
+      );
+
+      for (var i = 0; i < rawList.length; i++) {
+        dev.log(
+          '$_tag getRequests RAW item[$i]:\n${rawList[i]}',
+          name: 'AdsRepository',
+        );
+      }
+
+      final list = rawList.map(FeedRequestModel.fromJson).toList();
+
+      for (var i = 0; i < list.length; i++) {
+        final r = list[i];
+        dev.log(
+          '$_tag getRequests PARSED item[$i]:\n'
+          '  id           = ${r.id}\n'
+          '  title        = "${r.title}"\n'
+          '  description  = "${r.description}"\n'
+          '  eventType    = ${r.eventType}\n'
+          '  location     = ${r.location}\n'
+          '  status       = ${r.status}\n'
+          '  requesterName= "${r.requesterName}"\n'
+          '  requesterType= ${r.requesterType}\n'
+          '  requesterPhoto=${r.requesterPhoto}\n'
+          '  assetUrl     = ${r.assetUrl}\n'
+          '  assetType    = ${r.assetType}\n'
+          '  budget       = ${r.budgetAmount} ${r.currency}\n'
+          '  visibleTo    = ${r.visibleTo}\n'
+          '  createdAt    = ${r.createdAt}',
+          name: 'AdsRepository',
+        );
+      }
+
       return list;
     } catch (e, st) {
       debugPrint('$_tag getRequests ERROR: $e\n$st');
@@ -215,16 +279,33 @@ class AdsRepository {
     return id;
   }
 
+  static String _mimeFor(String ext, bool isVideo) {
+    if (!isVideo) {
+      return switch (ext) {
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        _ => 'image/jpeg',
+      };
+    }
+    return switch (ext) {
+      'mov' => 'video/quicktime',
+      'avi' => 'video/x-msvideo',
+      'webm' => 'video/webm',
+      _ => 'video/mp4',
+    };
+  }
+
   Future<void> uploadRequestAsset(String requestId, String filePath) async {
     debugPrint('$_tag uploadRequestAsset → requestId=$requestId path=$filePath');
     final fileName = filePath.split('/').last;
     final ext = fileName.split('.').last.toLowerCase();
-    final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
+    final isVideo = ['mp4', 'mov', 'avi', 'webm', 'm4v'].contains(ext);
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(
         filePath,
         filename: fileName,
-        contentType: MediaType.parse(mime),
+        contentType: MediaType.parse(_mimeFor(ext, isVideo)),
       ),
     });
     final resp = await _dio.post(
@@ -232,6 +313,43 @@ class AdsRepository {
       data: formData,
     );
     debugPrint('$_tag uploadRequestAsset ← status=${resp.statusCode}');
+  }
+
+  Future<void> uploadAdCreative(
+      String adId, String filePath, bool isVideo) async {
+    debugPrint('$_tag uploadAdCreative → adId=$adId path=$filePath isVideo=$isVideo');
+    final fileName = filePath.split('/').last;
+    final ext = fileName.split('.').last.toLowerCase();
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: fileName,
+        contentType: MediaType.parse(_mimeFor(ext, isVideo)),
+      ),
+    });
+    final resp = await _dio.post('/ads/ads/$adId/media', data: formData);
+    debugPrint('$_tag uploadAdCreative ← status=${resp.statusCode}');
+  }
+
+  Future<FeedRequestModel> updateRequest(
+    String requestId, {
+    String? title,
+    String? description,
+    String? eventType,
+    String? location,
+    double? budgetAmount,
+  }) async {
+    debugPrint('$_tag updateRequest → id=$requestId title=$title location=$location');
+    final resp = await _dio.patch('/ads/requests/$requestId', data: {
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (eventType != null) 'event_type': eventType,
+      if (location != null) 'location': location,
+      if (budgetAmount != null) 'budget_amount': budgetAmount,
+    });
+    debugPrint('$_tag updateRequest ← status=${resp.statusCode}');
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    return FeedRequestModel.fromJson(data);
   }
 
   Future<void> closeRequest(String requestId, {required String status}) async {
@@ -252,11 +370,11 @@ class AdsRepository {
 
   // ── Campaign management ───────────────────────────────────────────────────
 
-  Future<Map<String, dynamic>> createCampaign({
+  Future<AdCampaign> createCampaign({
     required String name,
     required String objective,
     required double budgetAmount,
-    String currency = 'USD',
+    String currency = 'GHS',
     String? startAt,
     String? endAt,
   }) async {
@@ -270,12 +388,12 @@ class AdsRepository {
       if (endAt != null) 'end_at': endAt,
     });
     debugPrint('$_tag createCampaign ← status=${resp.statusCode} data=${resp.data}');
-    final result = _unwrap<Map<String, dynamic>>(resp) ?? {};
-    debugPrint('$_tag createCampaign — campaign_id=${result['id']}');
-    return result;
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    debugPrint('$_tag createCampaign — campaign_id=${data['id']}');
+    return AdCampaign.fromJson(data);
   }
 
-  Future<Map<String, dynamic>> createAdSet({
+  Future<AdSet> createAdSet({
     required String campaignId,
     required String name,
     required String placement,
@@ -300,12 +418,12 @@ class AdsRepository {
       },
     });
     debugPrint('$_tag createAdSet ← status=${resp.statusCode} data=${resp.data}');
-    final result = _unwrap<Map<String, dynamic>>(resp) ?? {};
-    debugPrint('$_tag createAdSet — adset_id=${result['id']}');
-    return result;
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    debugPrint('$_tag createAdSet — adset_id=${data['id']}');
+    return AdSet.fromJson(data);
   }
 
-  Future<Map<String, dynamic>> createAd({
+  Future<Ad> createAd({
     required String adsetId,
     required String headline,
     required String body,
@@ -322,22 +440,25 @@ class AdsRepository {
       'cta_url': ctaUrl,
     });
     debugPrint('$_tag createAd ← status=${resp.statusCode} data=${resp.data}');
-    final result = _unwrap<Map<String, dynamic>>(resp) ?? {};
-    debugPrint('$_tag createAd — ad_id=${result['id']}');
-    return result;
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    debugPrint('$_tag createAd — ad_id=${data['id']}');
+    return Ad.fromJson(data);
   }
 
-  Future<String> payCampaign(String campaignId) async {
+  Future<({String authorizationUrl, String reference})> payCampaign(
+      String campaignId) async {
     debugPrint('$_tag payCampaign → campaignId=$campaignId');
     final resp = await _dio.post('/ads/campaigns/$campaignId/pay');
     debugPrint('$_tag payCampaign ← status=${resp.statusCode} data=${resp.data}');
     final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
     final url = data['authorization_url'] as String? ?? '';
-    debugPrint('$_tag payCampaign — authorization_url=$url');
-    return url;
+    final ref = data['reference'] as String? ?? '';
+    debugPrint('$_tag payCampaign — authorization_url=$url reference=$ref');
+    return (authorizationUrl: url, reference: ref);
   }
 
-  Future<String> topUpCampaign(String campaignId, double amount) async {
+  Future<({String authorizationUrl, String reference})> topUpCampaign(
+      String campaignId, double amount) async {
     debugPrint('$_tag topUpCampaign → campaignId=$campaignId amount=$amount');
     final resp = await _dio.post(
       '/ads/campaigns/$campaignId/topup',
@@ -345,25 +466,126 @@ class AdsRepository {
     );
     debugPrint('$_tag topUpCampaign ← status=${resp.statusCode} data=${resp.data}');
     final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
-    return data['authorization_url'] as String? ?? '';
+    final url = data['authorization_url'] as String? ?? '';
+    final ref = data['reference'] as String? ?? '';
+    debugPrint('$_tag topUpCampaign — authorization_url=$url reference=$ref topup_amount=${data['topup_amount']}');
+    return (authorizationUrl: url, reference: ref);
   }
 
-  Future<List<Map<String, dynamic>>> getMyCampaigns() async {
+  Future<List<AdCampaign>> getMyCampaigns() async {
     debugPrint('$_tag getMyCampaigns');
     try {
       final resp = await _dio.get('/ads/campaigns');
       debugPrint('$_tag getMyCampaigns ← status=${resp.statusCode}');
-      return _unwrapList<Map<String, dynamic>>(resp);
+      return _unwrapList<Map<String, dynamic>>(resp)
+          .map(AdCampaign.fromJson)
+          .toList();
     } catch (e, st) {
       debugPrint('$_tag getMyCampaigns ERROR: $e\n$st');
       return [];
     }
   }
 
-  Future<Map<String, dynamic>> getCampaign(String campaignId) async {
+  Future<AdCampaign> updateCampaign(
+    String campaignId, {
+    String? name,
+    String? objective,
+    double? budgetAmount,
+    String? currency,
+    String? startAt,
+    String? endAt,
+  }) async {
+    debugPrint('$_tag updateCampaign → id=$campaignId name=$name objective=$objective budget=$budgetAmount');
+    final resp = await _dio.patch('/ads/campaigns/$campaignId', data: {
+      if (name != null) 'name': name,
+      if (objective != null) 'objective': objective,
+      if (budgetAmount != null) 'budget_amount': budgetAmount,
+      if (currency != null) 'currency': currency,
+      if (startAt != null) 'start_at': startAt,
+      if (endAt != null) 'end_at': endAt,
+    });
+    debugPrint('$_tag updateCampaign ← status=${resp.statusCode}');
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    return AdCampaign.fromJson(data);
+  }
+
+  Future<Ad> updateAd(
+    String adId, {
+    String? headline,
+    String? body,
+    String? ctaText,
+    String? ctaUrl,
+  }) async {
+    debugPrint('$_tag updateAd → adId=$adId headline=$headline');
+    final resp = await _dio.patch('/ads/ads/$adId', data: {
+      if (headline != null) 'headline': headline,
+      if (body != null) 'body': body,
+      if (ctaText != null) 'cta_text': ctaText,
+      if (ctaUrl != null) 'cta_url': ctaUrl,
+    });
+    debugPrint('$_tag updateAd ← status=${resp.statusCode}');
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    return Ad.fromJson(data);
+  }
+
+  Future<AdSet> updateAdSet(
+    String adsetId, {
+    String? name,
+    double? dailyBudget,
+    double? bidAmount,
+    Map<String, dynamic>? targeting,
+    String? status,
+  }) async {
+    debugPrint('$_tag updateAdSet → id=$adsetId status=$status');
+    final resp = await _dio.patch('/ads/adsets/$adsetId', data: {
+      if (name != null) 'name': name,
+      if (dailyBudget != null) 'daily_budget': dailyBudget,
+      if (bidAmount != null) 'bid_amount': bidAmount,
+      if (targeting != null) 'targeting': targeting,
+      if (status != null) 'status': status,
+    });
+    debugPrint('$_tag updateAdSet ← status=${resp.statusCode}');
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    return AdSet.fromJson(data);
+  }
+
+  Future<void> updateAdStatus(String adId, {required String status}) async {
+    assert(status == 'active' || status == 'paused');
+    debugPrint('$_tag updateAdStatus → adId=$adId status=$status');
+    try {
+      final resp = await _dio.patch(
+        '/ads/ads/$adId/status',
+        queryParameters: {'status': status},
+      );
+      debugPrint('$_tag updateAdStatus ← status=${resp.statusCode}');
+    } catch (e, st) {
+      debugPrint('$_tag updateAdStatus ERROR: $e\n$st');
+      rethrow;
+    }
+  }
+
+  Future<({bool success, String status, String message})> verifyPayment(
+      String campaignId) async {
+    debugPrint('$_tag verifyPayment → campaignId=$campaignId');
+    final resp =
+        await _dio.post('/ads/campaigns/$campaignId/verify-payment');
+    debugPrint(
+        '$_tag verifyPayment ← status=${resp.statusCode} data=${resp.data}');
+    final body = resp.data as Map<String, dynamic>? ?? {};
+    final data = body['data'] as Map<String, dynamic>? ?? {};
+    final success = body['success'] as bool? ?? false;
+    final status = data['status'] as String? ?? '';
+    final message = data['message'] as String? ?? '';
+    debugPrint(
+        '$_tag verifyPayment — success=$success status=$status message=$message');
+    return (success: success, status: status, message: message);
+  }
+
+  Future<AdCampaign> getCampaign(String campaignId) async {
     debugPrint('$_tag getCampaign → id=$campaignId');
     final resp = await _dio.get('/ads/campaigns/$campaignId');
     debugPrint('$_tag getCampaign ← status=${resp.statusCode}');
-    return _unwrap<Map<String, dynamic>>(resp) ?? {};
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    return AdCampaign.fromJson(data);
   }
 }

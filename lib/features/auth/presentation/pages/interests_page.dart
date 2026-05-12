@@ -63,19 +63,19 @@ class _InterestsView extends StatelessWidget {
         builder: (context, state) {
           return SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
                   Text(
                     AppLocalizations.of(context)!.interestsTitle,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          fontSize: 24,
+                          fontSize: 24.sp,
                         ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8.h),
                   Text(
                     AppLocalizations.of(context)!.interestsSubtitle,
                     style: Theme.of(context)
@@ -83,12 +83,12 @@ class _InterestsView extends StatelessWidget {
                         .labelSmall
                         ?.copyWith(color: Colors.grey),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24.h),
                   Expanded(
                     child: SingleChildScrollView(
                       child: Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
+                        spacing: 10.w,
+                        runSpacing: 10.h,
                         children: _interests.map((tag) {
                           final selected = state.selected.contains(tag);
                           return GestureDetector(
@@ -97,13 +97,13 @@ class _InterestsView extends StatelessWidget {
                                 .add(InterestToggled(tag)),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 10),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 16.w, vertical: 10.h),
                               decoration: BoxDecoration(
                                 color: selected
                                     ? Theme.of(context).colorScheme.primary
                                     : Colors.transparent,
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(24.r),
                                 border: Border.all(
                                   color: selected
                                       ? Theme.of(context).colorScheme.primary
@@ -117,6 +117,7 @@ class _InterestsView extends StatelessWidget {
                                   color: selected
                                       ? Colors.white
                                       : Colors.grey.shade400,
+                                  fontSize: 13.sp,
                                   fontWeight: selected
                                       ? FontWeight.w600
                                       : FontWeight.normal,
@@ -128,7 +129,7 @@ class _InterestsView extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16.h),
                   state.isLoading
                       ? const LoadingButton()
                       : CustomButton(
@@ -141,7 +142,7 @@ class _InterestsView extends StatelessWidget {
                                   .add(const InterestsSubmitted()),
                           label: AppLocalizations.of(context)!.interestsContinue,
                         ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8.h),
                   Center(
                     child: TextButton(
                       onPressed: () => Navigator.of(context)

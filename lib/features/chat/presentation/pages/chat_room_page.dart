@@ -580,8 +580,20 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                                 ),
                               );
                             }
-                            final msg = state.messages[index];
+                            var msg = state.messages[index];
                             final isMe = msg.senderId == state.myUserId;
+
+                            // Fill senderName from the participants list when
+                            // the server/cache left it blank.
+                            if (!isMe && msg.senderName.isEmpty) {
+                              final participant = state.room?.participants
+                                  .where((p) => p.userId == msg.senderId)
+                                  .firstOrNull;
+                              if (participant != null) {
+                                msg = msg.copyWith(
+                                    senderName: participant.displayName);
+                              }
+                            }
 
                             final bubble = MessageBubble(
                               key: ValueKey(msg.id),

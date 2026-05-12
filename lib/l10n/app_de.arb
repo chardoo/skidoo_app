@@ -52,6 +52,7 @@
   "navCreators": "Fotografen",
 
   "homeSearchEvents": "Events suchen...",
+  "homeSearchAiPlaceholder": "Durchsuche deine Bilder mit unserer KI",
   "homeNoEventsFound": "Keine Events gefunden",
   "homeNoEventsYet": "Noch keine Events",
 

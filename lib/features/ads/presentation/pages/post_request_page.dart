@@ -66,6 +66,8 @@ class _PostRequestPageState extends State<PostRequestPage> {
     );
   }
 
+  static const _maxBytes = 50 * 1024 * 1024; // 50 MB
+
   Future<void> _handlePick(ImageSource source, bool video) async {
     XFile? file;
     if (video) {
@@ -74,6 +76,13 @@ class _PostRequestPageState extends State<PostRequestPage> {
       file = await _picker.pickImage(source: source, imageQuality: 85);
     }
     if (file == null) return;
+
+    final size = await File(file.path).length();
+    if (size > _maxBytes) {
+      if (!mounted) return;
+      AppSnackBar.error(context, 'File is too large. Maximum size is 50 MB.');
+      return;
+    }
 
     VideoPlayerController? newCtrl;
     if (video) {

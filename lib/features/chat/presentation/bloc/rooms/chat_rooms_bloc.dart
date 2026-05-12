@@ -101,6 +101,7 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
           lastMessageAt: lastTimes,
           isSyncing: true,
           clearError: true,
+          currentUserId: myUserId,
         ));
         _bgService.connectAll(split.$1);
       } else {
@@ -128,6 +129,7 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
         isLoading: false,
         isSyncing: false,
         clearError: true,
+        currentUserId: myUserId,
       ));
 
       // 3. Background-fetch the latest messages for active rooms.

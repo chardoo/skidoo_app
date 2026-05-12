@@ -1,24 +1,34 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
+import 'package:video_player/video_player.dart';
 
-const _objectives = ['awareness', 'traffic', 'conversions', 'reach'];
+const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
-  'awareness': 'Awareness',
-  'traffic': 'Traffic',
-  'conversions': 'Conversions',
-  'reach': 'Reach',
+  'awareness': 'Brand Awareness',
+  'traffic': 'Drive Traffic',
+  'conversion': 'Conversions',
 };
-const _placements = ['event_feed', 'search_results', 'post_recognition', 'profile_page'];
+const _placements = [
+  'event_feed',
+  'search_results',
+  'post_recognition',
+  'profile_page',
+  'request_board',
+];
 const _placementLabels = {
   'event_feed': 'Event Feed',
   'search_results': 'Search Results',
   'post_recognition': 'After Face Recognition',
   'profile_page': 'Photographer Profile',
+  'request_board': 'Request Board',
 };
 const _audienceTypes = ['all', 'clients', 'photographers'];
 const _audienceLabels = {
@@ -72,11 +82,17 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   final _ctaTextCtrl = TextEditingController();
   final _ctaLinkCtrl = TextEditingController();
 
+  // Step 3 — Creative media
+  XFile? _creative;
+  bool _creativeIsVideo = false;
+  VideoPlayerController? _creativeVideoCtrl;
+
   // Stored IDs from API calls
   String? _campaignId;
   String? _adsetId;
 
   final _repo = AdsRepository();
+  final _picker = ImagePicker();
 
   @override
   void dispose() {
@@ -89,11 +105,42 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
     _bodyCtrl.dispose();
     _ctaTextCtrl.dispose();
     _ctaLinkCtrl.dispose();
+    _creativeVideoCtrl?.dispose();
     super.dispose();
+  }
+
+  String? _validateStep() {
+    switch (_step) {
+      case 0:
+        if (_nameCtrl.text.trim().isEmpty) return 'Campaign name is required.';
+        final budget = double.tryParse(_budgetCtrl.text.trim());
+        if (budget == null || budget <= 0) return 'Enter a valid total budget.';
+      case 1:
+        final daily = double.tryParse(_dailyBudgetCtrl.text.trim());
+        if (daily == null || daily <= 0) return 'Enter a valid daily budget.';
+        final bid = double.tryParse(_bidCtrl.text.trim());
+        if (bid == null || bid <= 0) return 'Enter a valid bid amount.';
+      case 2:
+        if (_headlineCtrl.text.trim().isEmpty) return 'Headline is required.';
+        if (_bodyCtrl.text.trim().isEmpty) return 'Body text is required.';
+        final link = _ctaLinkCtrl.text.trim();
+        if (link.isNotEmpty) {
+          final uri = Uri.tryParse(link);
+          if (uri == null || !uri.hasScheme) {
+            return 'CTA link must start with https://.';
+          }
+        }
+    }
+    return null;
   }
 
   Future<void> _nextStep() async {
     debugPrint('[CreateCampaignPage] _nextStep — current step=$_step');
+    final validationError = _validateStep();
+    if (validationError != null) {
+      AppSnackBar.error(context, validationError);
+      return;
+    }
     setState(() => _loading = true);
     try {
       switch (_step) {
@@ -128,8 +175,11 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
       startAt: _startDate?.toUtc().toIso8601String(),
       endAt: _endDate?.toUtc().toIso8601String(),
     );
-    _campaignId = result['id'] as String?;
+    _campaignId = result.id;
     debugPrint('[CreateCampaignPage] _createCampaignShell — campaignId=$_campaignId');
+    if (_campaignId!.isEmpty) {
+      throw Exception('Campaign creation failed — no ID returned.');
+    }
   }
 
   Future<void> _createAdSet() async {
@@ -147,48 +197,140 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           ? [_locationCtrl.text.trim()]
           : [],
     );
-    _adsetId = result['id'] as String?;
+    _adsetId = result.id;
     debugPrint('[CreateCampaignPage] _createAdSet — adsetId=$_adsetId');
+    if (_adsetId!.isEmpty) {
+      throw Exception('Ad set creation failed — no ID returned.');
+    }
   }
 
   Future<void> _createAd() async {
-    debugPrint('[CreateCampaignPage] _createAd adsetId=$_adsetId headline="${_headlineCtrl.text.trim()}"');
-    await _repo.createAd(
+    final mediaType = _creative != null
+        ? (_creativeIsVideo ? 'video' : 'image')
+        : 'text';
+    debugPrint('[CreateCampaignPage] _createAd adsetId=$_adsetId headline="${_headlineCtrl.text.trim()}" mediaType=$mediaType');
+    final result = await _repo.createAd(
       adsetId: _adsetId!,
       headline: _headlineCtrl.text.trim(),
       body: _bodyCtrl.text.trim(),
-      mediaType: 'text',
+      mediaType: mediaType,
       ctaText: _ctaTextCtrl.text.trim().isEmpty
           ? 'Learn More'
           : _ctaTextCtrl.text.trim(),
       ctaUrl: _ctaLinkCtrl.text.trim(),
     );
-    debugPrint('[CreateCampaignPage] _createAd — done');
+    final adId = result.id;
+    debugPrint('[CreateCampaignPage] _createAd — adId=$adId');
+    if (adId.isEmpty) {
+      throw Exception('Ad creation failed — no ID returned.');
+    }
+    if (_creative != null) {
+      debugPrint('[CreateCampaignPage] _createAd — uploading creative');
+      await _repo.uploadAdCreative(adId, _creative!.path, _creativeIsVideo);
+    }
+  }
+
+  Future<void> _pickCreative(BuildContext context) async {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CampaignMediaSheet(ext: ext, onPick: _handleCreativePick),
+    );
+  }
+
+  static const _maxBytes = 50 * 1024 * 1024; // 50 MB
+
+  Future<void> _handleCreativePick(ImageSource source, bool video) async {
+    XFile? file;
+    if (video) {
+      file = await _picker.pickVideo(
+          source: source, maxDuration: const Duration(minutes: 2));
+    } else {
+      file = await _picker.pickImage(source: source, imageQuality: 85);
+    }
+    if (file == null) return;
+
+    final size = await File(file.path).length();
+    if (size > _maxBytes) {
+      if (!mounted) return;
+      AppSnackBar.error(context, 'File is too large. Maximum size is 50 MB.');
+      return;
+    }
+    VideoPlayerController? newCtrl;
+    if (video) {
+      newCtrl = VideoPlayerController.file(File(file.path));
+      try {
+        await newCtrl.initialize();
+        await newCtrl.setVolume(0);
+        await newCtrl.setLooping(true);
+        await newCtrl.play();
+      } catch (e) {
+        debugPrint('[CreateCampaignPage] video preview error: $e');
+        newCtrl.dispose();
+        newCtrl = null;
+      }
+    }
+    if (!mounted) {
+      newCtrl?.dispose();
+      return;
+    }
+    setState(() {
+      _creativeVideoCtrl?.dispose();
+      _creativeVideoCtrl = newCtrl;
+      _creative = file;
+      _creativeIsVideo = video;
+    });
+  }
+
+  void _removeCreative() {
+    setState(() {
+      _creativeVideoCtrl?.dispose();
+      _creativeVideoCtrl = null;
+      _creative = null;
+      _creativeIsVideo = false;
+    });
   }
 
   Future<void> _pay() async {
     debugPrint('[CreateCampaignPage] _pay — requesting authorization URL for campaignId=$_campaignId');
-    final url = await _repo.payCampaign(_campaignId!);
-    debugPrint('[CreateCampaignPage] _pay — authorization_url="${url.isEmpty ? 'EMPTY' : url}"');
+    final result = await _repo.payCampaign(_campaignId!);
+    debugPrint(
+      '[CreateCampaignPage] _pay — authorization_url="${result.authorizationUrl.isEmpty ? 'EMPTY' : result.authorizationUrl}" '
+      'reference="${result.reference}"',
+    );
     if (!mounted) return;
-    if (url.isEmpty) {
+    if (result.authorizationUrl.isEmpty) {
       AppSnackBar.error(context, 'Could not get payment URL. Please try again.');
       return;
     }
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => AdsCheckoutPage(
-          authorizationUrl: url,
-          onSuccess: () {
-            AppSnackBar.success(
-              context,
-              'Payment received! Your campaign is under review.',
-            );
-            Navigator.of(context).popUntil((r) => r.isFirst);
-          },
+          authorizationUrl: result.authorizationUrl,
+          reference: result.reference,
+          onSuccess: () {},
         ),
       ),
     );
+    if (!mounted) return;
+    try {
+      final verify = await _repo.verifyPayment(_campaignId!);
+      debugPrint(
+          '[CreateCampaignPage] _pay verify — success=${verify.success} status=${verify.status}');
+      if (!mounted) return;
+      if (verify.success) {
+        AppSnackBar.success(
+          context,
+          verify.message.isNotEmpty
+              ? verify.message
+              : 'Payment confirmed! Your campaign is under review.',
+        );
+        Navigator.of(context).popUntil((r) => r.isFirst);
+      }
+    } catch (e) {
+      debugPrint('[CreateCampaignPage] _pay verifyPayment ERROR: $e');
+    }
   }
 
   Future<void> _pickDate(bool isStart) async {
@@ -300,13 +442,19 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           bodyCtrl: _bodyCtrl,
           ctaTextCtrl: _ctaTextCtrl,
           ctaLinkCtrl: _ctaLinkCtrl,
+          creative: _creative,
+          creativeIsVideo: _creativeIsVideo,
+          videoCtrl: _creativeVideoCtrl,
           ext: ext,
+          onPickCreative: () => _pickCreative(context),
+          onRemoveCreative: _removeCreative,
         );
       case 3:
         return _Step4(
           key: const ValueKey(3),
           name: _nameCtrl.text.trim(),
           budget: _budgetCtrl.text.trim(),
+          currency: _currency,
           objective: _objective,
           headline: _headlineCtrl.text.trim(),
           ext: ext,
@@ -788,14 +936,24 @@ class _Step3 extends StatelessWidget {
     required this.bodyCtrl,
     required this.ctaTextCtrl,
     required this.ctaLinkCtrl,
+    required this.creative,
+    required this.creativeIsVideo,
+    required this.videoCtrl,
     required this.ext,
+    required this.onPickCreative,
+    required this.onRemoveCreative,
   });
 
   final TextEditingController headlineCtrl;
   final TextEditingController bodyCtrl;
   final TextEditingController ctaTextCtrl;
   final TextEditingController ctaLinkCtrl;
+  final XFile? creative;
+  final bool creativeIsVideo;
+  final VideoPlayerController? videoCtrl;
   final AppThemeExtension ext;
+  final VoidCallback onPickCreative;
+  final VoidCallback onRemoveCreative;
 
   @override
   Widget build(BuildContext context) {
@@ -820,6 +978,30 @@ class _Step3 extends StatelessWidget {
           hint: 'Describe what you offer...',
           ext: ext,
           maxLines: 3,
+        ),
+
+        SizedBox(height: 20.h),
+        Row(
+          children: [
+            _CLabel('Creative media', ext),
+            SizedBox(width: 6.w),
+            Text('(optional)',
+                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp)),
+          ],
+        ),
+        SizedBox(height: 4.h),
+        Text(
+          'Attach an image or video to make your ad stand out.',
+          style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+        ),
+        SizedBox(height: 10.h),
+        _CampaignCreativePreview(
+          creative: creative,
+          isVideo: creativeIsVideo,
+          videoCtrl: videoCtrl,
+          ext: ext,
+          onPick: onPickCreative,
+          onRemove: onRemoveCreative,
         ),
 
         SizedBox(height: 20.h),
@@ -852,6 +1034,7 @@ class _Step4 extends StatelessWidget {
     super.key,
     required this.name,
     required this.budget,
+    required this.currency,
     required this.objective,
     required this.headline,
     required this.ext,
@@ -859,6 +1042,7 @@ class _Step4 extends StatelessWidget {
 
   final String name;
   final String budget;
+  final String currency;
   final String objective;
   final String headline;
   final AppThemeExtension ext;
@@ -873,7 +1057,7 @@ class _Step4 extends StatelessWidget {
       children: [
         _ReviewRow('Campaign', name.isEmpty ? '—' : name, ext),
         _ReviewRow('Objective', objective, ext),
-        _ReviewRow('Budget', budget.isEmpty ? '—' : 'USD $budget', ext),
+        _ReviewRow('Budget', budget.isEmpty ? '—' : '$currency $budget', ext),
         _ReviewRow('Headline', headline.isEmpty ? '—' : headline, ext),
 
         SizedBox(height: 24.h),
@@ -1118,6 +1302,295 @@ class _CDropdown<T> extends StatelessWidget {
           ),
         ],
         onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+// ── Campaign creative preview / picker ───────────────────────────────────────
+
+class _CampaignCreativePreview extends StatelessWidget {
+  const _CampaignCreativePreview({
+    required this.creative,
+    required this.isVideo,
+    required this.videoCtrl,
+    required this.ext,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  final XFile? creative;
+  final bool isVideo;
+  final VideoPlayerController? videoCtrl;
+  final AppThemeExtension ext;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    if (creative == null) {
+      return GestureDetector(
+        onTap: onPick,
+        child: Container(
+          height: 120.h,
+          decoration: BoxDecoration(
+            color: ext.searchFieldFill,
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(
+              color: ext.searchHintColor.withValues(alpha: 0.25),
+              width: 1.2,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _MediaTypeIcon(
+                    icon: Icons.image_outlined,
+                    label: 'Photo',
+                    color: ext.accentGold,
+                  ),
+                  SizedBox(width: 24.w),
+                  const _MediaTypeIcon(
+                    icon: Icons.videocam_outlined,
+                    label: 'Video',
+                    color: Color(0xFF8B5CF6),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                'Tap to add creative',
+                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14.r),
+      child: Stack(
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: isVideo
+                ? (videoCtrl != null && videoCtrl!.value.isInitialized
+                    ? VideoPlayer(videoCtrl!)
+                    : Container(color: Colors.black))
+                : Image.file(File(creative!.path), fit: BoxFit.cover),
+          ),
+          Positioned(
+            top: 8.h,
+            left: 10.w,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(20.r),
+              ),
+              child: Text(
+                isVideo ? 'Video' : 'Image',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 9.sp,
+                    fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 6.h,
+            right: 8.w,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.close_rounded, color: Colors.white, size: 16.sp),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: onPick,
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.45),
+                padding: EdgeInsets.symmetric(vertical: 7.h),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.edit_rounded, color: Colors.white70, size: 14.sp),
+                    SizedBox(width: 5.w),
+                    Text(
+                      'Change media',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MediaTypeIcon extends StatelessWidget {
+  const _MediaTypeIcon({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 22.sp),
+        ),
+        SizedBox(height: 4.h),
+        Text(label,
+            style: TextStyle(
+                color: color, fontSize: 11.sp, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+}
+
+class _CampaignMediaSheet extends StatelessWidget {
+  const _CampaignMediaSheet({required this.ext, required this.onPick});
+  final AppThemeExtension ext;
+  final Future<void> Function(ImageSource, bool) onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.homeBackground,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: EdgeInsets.symmetric(vertical: 12.h),
+              width: 36.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: ext.searchHintColor.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 8.h),
+              child: Text(
+                'Add Creative',
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16.sp,
+                ),
+              ),
+            ),
+            Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
+            _SheetItem(
+              ext: ext,
+              icon: Icons.image_rounded,
+              color: ext.accentGold,
+              title: 'Photo from Gallery',
+              onTap: () async {
+                Navigator.of(context).pop();
+                await onPick(ImageSource.gallery, false);
+              },
+            ),
+            _SheetItem(
+              ext: ext,
+              icon: Icons.videocam_rounded,
+              color: const Color(0xFF8B5CF6),
+              title: 'Video from Gallery',
+              onTap: () async {
+                Navigator.of(context).pop();
+                await onPick(ImageSource.gallery, true);
+              },
+            ),
+            _SheetItem(
+              ext: ext,
+              icon: Icons.camera_alt_rounded,
+              color: const Color(0xFF3B82F6),
+              title: 'Take a Photo',
+              onTap: () async {
+                Navigator.of(context).pop();
+                await onPick(ImageSource.camera, false);
+              },
+            ),
+            SizedBox(height: 8.h),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SheetItem extends StatelessWidget {
+  const _SheetItem({
+    required this.ext,
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.onTap,
+  });
+  final AppThemeExtension ext;
+  final IconData icon;
+  final Color color;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      leading: Container(
+        width: 40.w,
+        height: 40.w,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 20.sp),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: ext.greetingColor,
+          fontWeight: FontWeight.w600,
+          fontSize: 14.sp,
+        ),
       ),
     );
   }

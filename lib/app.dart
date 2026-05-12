@@ -98,46 +98,46 @@ class _SecurityWarningPage extends StatelessWidget {
       backgroundColor: const Color(0xFF0D0D0D),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+          padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 48.h),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 Icons.shield_outlined,
-                color: Color(0xFFF5A623),
-                size: 72,
+                color: const Color(0xFFF5A623),
+                size: 72.sp,
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24.h),
               Text(
                 AppLocalizations.of(context)!.securityWarningTitle,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 24,
+                  fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.3,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16.h),
               Text(
                 AppLocalizations.of(context)!.securityWarningBody,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white60,
-                  fontSize: 14,
+                  fontSize: 14.sp,
                   height: 1.6,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40.h),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFFF5A623),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14.r),
                     ),
                   ),
                   onPressed: () {

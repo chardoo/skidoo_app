@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // ── Shared design tokens ───────────────────────────────────────────────────────
 const _kFill          = Color(0xFF151821);
@@ -73,7 +74,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
       curve: Curves.easeOut,
       decoration: BoxDecoration(
         color: _kFill,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14.r),
         border: Border.all(
           color: _isFocused ? _kBorderFocused : _kBorderIdle,
           width: _isFocused ? 1.5 : 1,
@@ -99,9 +100,9 @@ class _AuthTextFieldState extends State<AuthTextField> {
         readOnly: widget.readOnly,
         onTap: widget.onTap,
         inputFormatters: widget.inputFormatters,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 15,
+          fontSize: 15.sp,
           fontWeight: FontWeight.w400,
           letterSpacing: 0.2,
         ),
@@ -110,19 +111,19 @@ class _AuthTextFieldState extends State<AuthTextField> {
           hintText: widget.hint,
           labelStyle: TextStyle(
             color: _isFocused ? _kLabelFocused : _kLabelIdle,
-            fontSize: 14,
+            fontSize: 14.sp,
             fontWeight: FontWeight.w400,
           ),
-          hintStyle: const TextStyle(
+          hintStyle: TextStyle(
             color: _kHint,
-            fontSize: 14,
+            fontSize: 14.sp,
           ),
           prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 4),
+            padding: EdgeInsets.only(left: 4.w),
             child: Icon(
               widget.prefixIcon,
               color: _isFocused ? _kLabelFocused : _kLabelIdle,
-              size: 20,
+              size: 20.sp,
             ),
           ),
           suffixIcon: widget.suffix,
@@ -132,10 +133,10 @@ class _AuthTextFieldState extends State<AuthTextField> {
           errorBorder: InputBorder.none,
           focusedErrorBorder: InputBorder.none,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-          errorStyle: const TextStyle(
+              EdgeInsets.symmetric(horizontal: 16.w, vertical: 18.h),
+          errorStyle: TextStyle(
             color: _kError,
-            fontSize: 11.5,
+            fontSize: 11.5.sp,
             height: 0.1,
           ),
           errorMaxLines: 1,
@@ -180,13 +181,13 @@ class _AuthPasswordFieldState extends State<AuthPasswordField> {
       suffix: GestureDetector(
         onTap: () => setState(() => _obscure = !_obscure),
         child: Padding(
-          padding: const EdgeInsets.only(right: 4),
+          padding: EdgeInsets.only(right: 4.w),
           child: Icon(
             _obscure
                 ? Icons.visibility_outlined
                 : Icons.visibility_off_outlined,
             color: _kLabelIdle,
-            size: 20,
+            size: 20.sp,
           ),
         ),
       ),

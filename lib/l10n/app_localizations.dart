@@ -368,6 +368,12 @@ abstract class AppLocalizations {
   /// **'Search events...'**
   String get homeSearchEvents;
 
+  /// No description provided for @homeSearchAiPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search your image with our AI'**
+  String get homeSearchAiPlaceholder;
+
   /// No description provided for @homeNoEventsFound.
   ///
   /// In en, this message translates to:

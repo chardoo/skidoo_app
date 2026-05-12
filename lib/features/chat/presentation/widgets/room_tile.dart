@@ -10,12 +10,14 @@ class RoomTile extends StatelessWidget {
     required this.onTap,
     this.unreadCount = 0,
     this.lastMessageAt,
+    this.currentUserId = '',
   });
 
   final ChatRoom room;
   final VoidCallback onTap;
   final int unreadCount;
   final DateTime? lastMessageAt;
+  final String currentUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,7 @@ class RoomTile extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
         child: Row(
           children: [
-            _RoomAvatar(type: room.type, ext: ext),
+            _RoomAvatar(type: room.type, ext: ext, isAdmin: room.hasAdminParticipant),
             SizedBox(width: 12.w),
             Expanded(
               child: Column(
@@ -37,16 +39,29 @@ class RoomTile extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          room.displayName,
-                          style: TextStyle(
-                            color: ext.greetingColor,
-                            fontWeight:
-                                hasUnread ? FontWeight.bold : FontWeight.w600,
-                            fontSize: 15.sp,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (room.hasAdminParticipant) ...[
+                              Icon(Icons.verified_rounded,
+                                  size: 14.sp, color: ext.accentGold),
+                              SizedBox(width: 4.w),
+                            ],
+                            Flexible(
+                              child: Text(
+                                room.displayNameFor(currentUserId),
+                                style: TextStyle(
+                                  color: ext.greetingColor,
+                                  fontWeight: hasUnread
+                                      ? FontWeight.bold
+                                      : FontWeight.w600,
+                                  fontSize: 15.sp,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       if (lastMessageAt != null)
@@ -69,7 +84,7 @@ class RoomTile extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          _subtitle(room),
+                          _subtitle(room, currentUserId),
                           style: TextStyle(
                             color: ext.searchHintColor,
                             fontSize: 13.sp,
@@ -106,12 +121,12 @@ class RoomTile extends StatelessWidget {
     );
   }
 
-  String _subtitle(ChatRoom room) {
+  String _subtitle(ChatRoom room, String myId) {
     switch (room.type) {
       case RoomType.global:
         return 'Everyone';
       case RoomType.direct:
-        return 'Direct message';
+        return room.peerName(myId) ?? 'Direct message';
       case RoomType.event:
         return 'Event discussion';
       case RoomType.eventPrivate:
@@ -156,12 +171,36 @@ class RoomTile extends StatelessWidget {
 }
 
 class _RoomAvatar extends StatelessWidget {
-  const _RoomAvatar({required this.type, required this.ext});
+  const _RoomAvatar({required this.type, required this.ext, this.isAdmin = false});
   final RoomType type;
   final AppThemeExtension ext;
+  final bool isAdmin;
 
   @override
   Widget build(BuildContext context) {
+    if (isAdmin) {
+      return Container(
+        width: 52.w,
+        height: 52.w,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [ext.accentGold, const Color(0xFFFF6B35)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: ext.accentGold.withValues(alpha: 0.35),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Icon(Icons.shield_rounded, color: Colors.white, size: 22.sp),
+      );
+    }
     final (icon, color) = _iconAndColor(ext);
     return CircleAvatar(
       radius: 26.r,

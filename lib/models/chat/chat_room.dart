@@ -181,6 +181,30 @@ class ChatRoom {
     }
   }
 
+  /// For direct rooms: returns the other participant's display name.
+  /// Falls back to [displayName] for non-direct rooms or when [myId] is empty.
+  String displayNameFor(String myId) {
+    if (type != RoomType.direct || myId.isEmpty) return displayName;
+    if (name != null && name!.isNotEmpty) return name!;
+    final peer = participants.where((p) => p.userId != myId).firstOrNull;
+    return peer?.displayName ?? displayName;
+  }
+
+  /// True when any participant is an admin or superAdmin — used to badge
+  /// the room tile in the listing so users know this is an official room.
+  bool get hasAdminParticipant => participants.any(
+        (p) => p.userRole == 'admin' || p.userRole == 'superAdmin',
+      );
+
+  /// For direct rooms: returns the other participant's display name as subtitle.
+  /// Returns null for non-direct rooms so the caller can use its own label.
+  String? peerName(String myId) {
+    if (type != RoomType.direct || myId.isEmpty) return null;
+    if (name != null && name!.isNotEmpty) return name!;
+    final peer = participants.where((p) => p.userId != myId).firstOrNull;
+    return peer?.displayName;
+  }
+
   /// True if [userId] has a pending invite to this room.
   bool hasPendingInvite(String userId) =>
       participants.any((p) => p.userId == userId && p.isPending);

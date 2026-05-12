@@ -84,6 +84,12 @@ class ChatMessage {
 
   bool get isEdited => updatedAt != null;
 
+  bool get isAdminMessage =>
+      senderRole == 'admin' || senderRole == 'superAdmin';
+
+  String get displayName =>
+      isAdminMessage ? 'Skidoo Admin' : senderName;
+
   const ChatMessage({
     required this.id,
     required this.roomId,

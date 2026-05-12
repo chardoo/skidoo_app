@@ -146,6 +146,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSearchEvents => 'Search events...';
 
   @override
+  String get homeSearchAiPlaceholder => 'Search your image with our AI';
+
+  @override
   String get homeNoEventsFound => 'No events found';
 
   @override

@@ -56,9 +56,12 @@ class MessageBubble extends StatelessWidget {
               Padding(
                 padding: EdgeInsets.only(left: 4.w, bottom: 2.h),
                 child: Text(
-                  message.senderName.isNotEmpty
-                      ? message.senderName
-                      : message.senderRole,
+                  message.displayName.isNotEmpty
+                      ? message.displayName
+                      : message.senderRole.isNotEmpty
+                          ? message.senderRole[0].toUpperCase() +
+                              message.senderRole.substring(1)
+                          : '',
                   style: TextStyle(
                     color: ext.searchHintColor,
                     fontSize: 10.sp,

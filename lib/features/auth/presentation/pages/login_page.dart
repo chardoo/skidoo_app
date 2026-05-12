@@ -140,15 +140,15 @@ class _LoginViewState extends State<_LoginView>
 
                           // ── Logo mark ──────────────────────────────────
                           Container(
-                            width: 52,
-                            height: 52,
+                            width: 52.w,
+                            height: 52.w,
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [_kOrange, _kOrangeDark],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(14.r),
                               boxShadow: [
                                 BoxShadow(
                                   color: _kOrange.withValues(alpha: 0.35),
@@ -157,10 +157,10 @@ class _LoginViewState extends State<_LoginView>
                                 ),
                               ],
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.photo_camera_rounded,
                               color: Colors.white,
-                              size: 26,
+                              size: 26.sp,
                             ),
                           ),
                           SizedBox(height: 32.h),
@@ -310,7 +310,7 @@ class _GradientButton extends StatelessWidget {
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           boxShadow: isLoading
               ? []
               : [
@@ -323,19 +323,19 @@ class _GradientButton extends StatelessWidget {
         ),
         child: Center(
           child: isLoading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
+              ? SizedBox(
+                  width: 24.w,
+                  height: 24.w,
+                  child: const CircularProgressIndicator(
                     color: Colors.white,
                     strokeWidth: 2.5,
                   ),
                 )
               : Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,
                   ),

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -10,9 +9,11 @@ class AdsCheckoutPage extends StatefulWidget {
     super.key,
     required this.authorizationUrl,
     required this.onSuccess,
+    this.reference = '',
   });
 
   final String authorizationUrl;
+  final String reference;
   /// Called when Paystack redirects back indicating a successful payment.
   final VoidCallback onSuccess;
 
@@ -24,39 +25,66 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
   late final WebViewController _controller;
   bool _loading = true;
 
+  /// Paystack appends trxref= and reference= on the callback redirect.
+  static bool _isSuccess(String url) =>
+      url.contains('trxref=') || url.contains('reference=');
+
+  /// Paystack redirects here when the user cancels / closes the popup.
+  static bool _isClose(String url) =>
+      url.contains('standard.paystack.co/close') ||
+      url.contains('paystack.co/close');
+
   @override
   void initState() {
     super.initState();
-    debugPrint('[AdsCheckoutPage] initState — loading URL: ${widget.authorizationUrl}');
+    debugPrint(
+      '[AdsCheckoutPage] initState — url: ${widget.authorizationUrl} '
+      'reference: ${widget.reference}',
+    );
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (url) {
-            debugPrint('[AdsCheckoutPage] onPageStarted: $url');
+            debugPrint('[AdsCheckoutPage] pageStarted: $url');
             if (mounted) setState(() => _loading = true);
           },
           onPageFinished: (url) {
-            debugPrint('[AdsCheckoutPage] onPageFinished: $url');
+            debugPrint('[AdsCheckoutPage] pageFinished: $url');
             if (mounted) setState(() => _loading = false);
           },
           onWebResourceError: (error) {
-            debugPrint('[AdsCheckoutPage] onWebResourceError: ${error.errorCode} ${error.description}');
+            debugPrint(
+              '[AdsCheckoutPage] webResourceError: '
+              '${error.errorCode} ${error.description}',
+            );
             if (mounted) {
-              AppSnackBar.error(context,
-                  'Payment page error: ${error.description}');
+              AppSnackBar.error(
+                  context, 'Payment page error: ${error.description}');
             }
           },
           onNavigationRequest: (request) {
-            debugPrint('[AdsCheckoutPage] onNavigationRequest: ${request.url}');
-            if (request.url.contains('/payment/success') ||
-                request.url.contains('payment_complete') ||
-                request.url.contains('trxref=')) {
-              debugPrint('[AdsCheckoutPage] payment success detected — url=${request.url}');
+            final url = request.url;
+            debugPrint('[AdsCheckoutPage] navigationRequest: $url');
+
+            // Paystack close / cancel
+            if (_isClose(url)) {
+              debugPrint('[AdsCheckoutPage] Paystack close detected — popping');
+              if (mounted) Navigator.of(context).pop();
+              return NavigationDecision.prevent;
+            }
+
+            // Payment success callback
+            if (_isSuccess(url)) {
+              debugPrint(
+                '[AdsCheckoutPage] payment success detected — '
+                'url=$url reference=${widget.reference}',
+              );
               widget.onSuccess();
               if (mounted) Navigator.of(context).pop();
               return NavigationDecision.prevent;
             }
+
             return NavigationDecision.navigate;
           },
         ),

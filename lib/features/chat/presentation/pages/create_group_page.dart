@@ -298,10 +298,10 @@ class _UserTile extends StatelessWidget {
       title: Text(user.name,
           style:
               TextStyle(color: ext.greetingColor, fontSize: 14.sp)),
-      subtitle: Text(user.email,
-          style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis),
+      // subtitle: Text(user.email,
+      //     style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+      //     maxLines: 1,
+      //     overflow: TextOverflow.ellipsis),
       trailing: Icon(Icons.add_circle_outline_rounded,
           color: ext.accentGold, size: 22.sp),
     );

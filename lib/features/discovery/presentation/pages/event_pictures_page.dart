@@ -328,11 +328,11 @@ class _PhotoTile extends StatelessWidget {
       fadeInDuration: const Duration(milliseconds: 280),
       fadeInCurve: Curves.easeOut,
       placeholder: (_, __) => const ColoredBox(color: Color(0xFF141414)),
-      errorWidget: (_, __, ___) => const ColoredBox(
-        color: Color(0xFF141414),
+      errorWidget: (_, __, ___) => ColoredBox(
+        color: const Color(0xFF141414),
         child: Center(
           child: Icon(Icons.broken_image_outlined,
-              color: Colors.white12, size: 22),
+              color: Colors.white12, size: 22.sp),
         ),
       ),
     );

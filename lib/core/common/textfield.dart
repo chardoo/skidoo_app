@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class MyTextField extends StatelessWidget {
   MyTextField(
@@ -48,7 +49,7 @@ class MyTextField extends StatelessWidget {
         fillColor: bgColor,
         filled: bgColor != null,
         contentPadding: EdgeInsets.symmetric(
-            horizontal: 18, vertical: line != null && line! > 1 ? 10 : 0),
+            horizontal: 18.w, vertical: line != null && line! > 1 ? 10.h : 0),
         suffixIcon: trailing,
         labelText: label,
       ),

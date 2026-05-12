@@ -80,26 +80,38 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
         AppSnackBar.error(context, 'Could not promote request. Try again.');
         return;
       }
-      final url = await _repo.payCampaign(campaignId);
-      debugPrint('[MyRequestsPage] _promote — authorizationUrl=$url');
+      final payment = await _repo.payCampaign(campaignId);
+      debugPrint('[MyRequestsPage] _promote — authorizationUrl=${payment.authorizationUrl} reference=${payment.reference}');
       if (!mounted) return;
-      if (url.isEmpty) {
+      if (payment.authorizationUrl.isEmpty) {
         AppSnackBar.error(context, 'Could not get payment URL. Try again.');
         return;
       }
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => AdsCheckoutPage(
-            authorizationUrl: url,
-            onSuccess: () {
-              AppSnackBar.success(
-                context,
-                'Payment received! Your campaign is under review.',
-              );
-            },
+            authorizationUrl: payment.authorizationUrl,
+            reference: payment.reference,
+            onSuccess: () {},
           ),
         ),
       );
+      if (!mounted) return;
+      try {
+        final verify = await _repo.verifyPayment(campaignId);
+        debugPrint('[MyRequestsPage] _promote verify — success=${verify.success} status=${verify.status}');
+        if (mounted && verify.success) {
+          AppSnackBar.success(
+            context,
+            verify.message.isNotEmpty
+                ? verify.message
+                : 'Payment confirmed! Your campaign is under review.',
+          );
+        }
+      } catch (e) {
+        debugPrint('[MyRequestsPage] _promote verifyPayment ERROR: $e');
+      }
+      _load();
     } catch (e) {
       debugPrint('[MyRequestsPage] _promote ERROR: $e');
       if (!mounted) return;
@@ -108,6 +120,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
   }
 
   void _showActions(BuildContext context, FeedRequestModel req, AppThemeExtension ext) {
+    final canEdit = req.status == 'open';
     final isActive = req.status == 'open' || req.status == 'promoted';
     showModalBottomSheet<void>(
       context: context,
@@ -131,6 +144,17 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
                   borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
+              if (canEdit)
+                _ActionTile(
+                  icon: Icons.edit_outlined,
+                  label: 'Edit Request',
+                  color: const Color(0xFF3B82F6),
+                  ext: ext,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _showEditSheet(context, req, ext);
+                  },
+                ),
               if (isActive && req.promotedCampaignId == null)
                 _ActionTile(
                   icon: Icons.rocket_launch_rounded,
@@ -168,6 +192,26 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showEditSheet(BuildContext context, FeedRequestModel req, AppThemeExtension ext) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _EditRequestSheet(
+        request: req,
+        ext: ext,
+        onSave: (updated) {
+          setState(() {
+            final idx = _requests.indexWhere((r) => r.id == updated.id);
+            if (idx != -1) _requests[idx] = updated;
+          });
+          AppSnackBar.success(context, 'Request updated.');
+        },
+        repo: _repo,
       ),
     );
   }
@@ -415,6 +459,286 @@ class _MetaText extends StatelessWidget {
           style: TextStyle(color: c, fontSize: 11.sp, fontWeight: FontWeight.w500),
         ),
       ],
+    );
+  }
+}
+
+// ── Edit request bottom sheet ─────────────────────────────────────────────────
+
+const _editEventTypes = [
+  'Wedding', 'Birthday', 'Corporate', 'Concert',
+  'Graduation', 'Engagement', 'Baby Shower', 'Anniversary', 'Sports', 'Other',
+];
+
+class _EditRequestSheet extends StatefulWidget {
+  const _EditRequestSheet({
+    required this.request,
+    required this.ext,
+    required this.onSave,
+    required this.repo,
+  });
+  final FeedRequestModel request;
+  final AppThemeExtension ext;
+  final ValueChanged<FeedRequestModel> onSave;
+  final AdsRepository repo;
+
+  @override
+  State<_EditRequestSheet> createState() => _EditRequestSheetState();
+}
+
+class _EditRequestSheetState extends State<_EditRequestSheet> {
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _descCtrl;
+  late final TextEditingController _locationCtrl;
+  late final TextEditingController _budgetCtrl;
+  String? _eventType;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final r = widget.request;
+    _titleCtrl = TextEditingController(text: r.title);
+    _descCtrl = TextEditingController(text: r.description);
+    _locationCtrl = TextEditingController(text: r.location);
+    _budgetCtrl = TextEditingController(
+      text: r.budgetAmount != null ? r.budgetAmount!.toStringAsFixed(0) : '',
+    );
+    _eventType = r.eventType.isEmpty ? null : r.eventType;
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _descCtrl.dispose();
+    _locationCtrl.dispose();
+    _budgetCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final title = _titleCtrl.text.trim();
+    if (title.isEmpty) return;
+    setState(() => _saving = true);
+    try {
+      final updated = await widget.repo.updateRequest(
+        widget.request.id,
+        title: title,
+        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        eventType: _eventType,
+        location: _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
+        budgetAmount: double.tryParse(_budgetCtrl.text.trim()),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      widget.onSave(updated);
+    } catch (e) {
+      debugPrint('[EditRequestSheet] save ERROR: $e');
+      if (!mounted) return;
+      setState(() => _saving = false);
+      AppSnackBar.error(context, 'Failed to update request.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = widget.ext;
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.homeBackground,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
+      padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 20.h + bottom),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  margin: EdgeInsets.symmetric(vertical: 12.h),
+                  width: 36.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: ext.searchHintColor.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
+                ),
+              ),
+              Text(
+                'Edit Request',
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              SizedBox(height: 16.h),
+              _EditField(label: 'Title *', ctrl: _titleCtrl, ext: ext),
+              SizedBox(height: 12.h),
+              _EditField(label: 'Description', ctrl: _descCtrl, ext: ext, maxLines: 3),
+              SizedBox(height: 12.h),
+              _EditField(label: 'Location', ctrl: _locationCtrl, ext: ext),
+              SizedBox(height: 12.h),
+              _EditField(
+                label: 'Budget (${widget.request.currency})',
+                ctrl: _budgetCtrl,
+                ext: ext,
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: 16.h),
+              Text(
+                'Event Type',
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: 8.h),
+              Wrap(
+                spacing: 8.w,
+                runSpacing: 8.h,
+                children: [
+                  _Chip(
+                    label: 'Any',
+                    selected: _eventType == null,
+                    ext: ext,
+                    onTap: () => setState(() => _eventType = null),
+                  ),
+                  ..._editEventTypes.map((t) => _Chip(
+                        label: t,
+                        selected: _eventType == t.toLowerCase(),
+                        ext: ext,
+                        onTap: () => setState(() => _eventType = t.toLowerCase()),
+                      )),
+                ],
+              ),
+              SizedBox(height: 24.h),
+              GestureDetector(
+                onTap: _saving ? null : _save,
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 15.h),
+                  decoration: BoxDecoration(
+                    gradient: _saving
+                        ? null
+                        : LinearGradient(
+                            colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                    color: _saving ? ext.searchFieldFill : null,
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                  alignment: Alignment.center,
+                  child: _saving
+                      ? SizedBox(
+                          width: 20.w,
+                          height: 20.w,
+                          child: CircularProgressIndicator(
+                              color: ext.accentGold, strokeWidth: 2),
+                        )
+                      : Text(
+                          'Save Changes',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EditField extends StatelessWidget {
+  const _EditField({
+    required this.label,
+    required this.ctrl,
+    required this.ext,
+    this.maxLines = 1,
+    this.keyboardType = TextInputType.text,
+  });
+  final String label;
+  final TextEditingController ctrl;
+  final AppThemeExtension ext;
+  final int maxLines;
+  final TextInputType keyboardType;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: ctrl,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+        filled: true,
+        fillColor: ext.searchFieldFill,
+        contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide(color: ext.accentGold.withValues(alpha: 0.7), width: 1.2),
+        ),
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.label,
+    required this.selected,
+    required this.ext,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
+        decoration: BoxDecoration(
+          color: selected
+              ? ext.accentGold.withValues(alpha: 0.15)
+              : ext.searchFieldFill,
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(
+            color: selected
+                ? ext.accentGold.withValues(alpha: 0.6)
+                : Colors.transparent,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? ext.accentGold : ext.searchHintColor,
+            fontSize: 12.sp,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 }

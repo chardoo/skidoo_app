@@ -4,7 +4,6 @@
 class ShareableUser {
   final String id;
   final String name;
-  final String email;
   final String? imageUrl;
 
   /// 'client' or 'photographer' — matches [ChatConfig] role constants.
@@ -13,7 +12,6 @@ class ShareableUser {
   const ShareableUser({
     required this.id,
     required this.name,
-    required this.email,
     this.imageUrl,
     required this.role,
   });

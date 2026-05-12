@@ -49,19 +49,39 @@ class ChatInputBar extends StatelessWidget {
   /// True only while the media is being uploaded (after send is tapped).
   final bool isUploadingImage;
 
-  Future<void> _pickImage() async {
+  static const _maxBytes = 50 * 1024 * 1024; // 50 MB
+
+  Future<void> _pickImage(BuildContext context) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,
     );
-    if (picked != null) onImagePicked?.call(picked.path, isVideo: false);
+    if (picked == null) return;
+    final size = await File(picked.path).length();
+    if (size > _maxBytes) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('File is too large. Maximum size is 50 MB.')),
+      );
+      return;
+    }
+    onImagePicked?.call(picked.path, isVideo: false);
   }
 
-  Future<void> _pickVideo() async {
+  Future<void> _pickVideo(BuildContext context) async {
     final picker = ImagePicker();
     final picked = await picker.pickVideo(source: ImageSource.gallery);
-    if (picked != null) onImagePicked?.call(picked.path, isVideo: true);
+    if (picked == null) return;
+    final size = await File(picked.path).length();
+    if (size > _maxBytes) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('File is too large. Maximum size is 50 MB.')),
+      );
+      return;
+    }
+    onImagePicked?.call(picked.path, isVideo: true);
   }
 
   void _showMediaPicker(BuildContext context) {
@@ -72,11 +92,11 @@ class ChatInputBar extends StatelessWidget {
         ext: ext,
         onPickImage: () {
           Navigator.of(context).pop();
-          _pickImage();
+          _pickImage(context);
         },
         onPickVideo: () {
           Navigator.of(context).pop();
-          _pickVideo();
+          _pickVideo(context);
         },
       ),
     );

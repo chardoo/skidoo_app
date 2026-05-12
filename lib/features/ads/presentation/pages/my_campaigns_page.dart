@@ -4,7 +4,9 @@ import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/edit_campaign_page.dart';
 
 class MyCampaignsPage extends StatefulWidget {
   const MyCampaignsPage({super.key});
@@ -15,7 +17,7 @@ class MyCampaignsPage extends StatefulWidget {
 
 class _MyCampaignsPageState extends State<MyCampaignsPage> {
   final _repo = AdsRepository();
-  List<Map<String, dynamic>> _campaigns = [];
+  List<AdCampaign> _campaigns = [];
   bool _loading = true;
   String? _errorMessage;
 
@@ -49,7 +51,26 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
     }
   }
 
-  void _showTopUpDialog(Map<String, dynamic> campaign) {
+  Future<void> _showEditSheet(AdCampaign campaign) async {
+    AdCampaign full;
+    try {
+      full = await _repo.getCampaign(campaign.id);
+    } catch (e) {
+      debugPrint('[MyCampaignsPage] _showEditSheet getCampaign ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Could not load campaign details. Try again.');
+      return;
+    }
+    if (!mounted) return;
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => EditCampaignPage(campaign: full),
+      ),
+    );
+    if (saved == true) _load();
+  }
+
+  void _showTopUpDialog(AdCampaign campaign) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final ctrl = TextEditingController();
 
@@ -96,7 +117,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                   ),
                   SizedBox(height: 6.h),
                   Text(
-                    campaign['name'] as String? ?? 'Campaign',
+                    campaign.name,
                     style:
                         TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
                   ),
@@ -136,7 +157,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                       }
                       Navigator.of(context).pop();
                       await _topUp(
-                        campaign['id'] as String? ?? '',
+                        campaign.id,
                         amount,
                       );
                     },
@@ -170,27 +191,86 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
     );
   }
 
-  Future<void> _topUp(String campaignId, double amount) async {
-    debugPrint('[MyCampaignsPage] _topUp campaignId=$campaignId amount=$amount');
+  Future<void> _verifyPayment(String campaignId, {bool isTopUp = false}) async {
+    debugPrint(
+        '[MyCampaignsPage] _verifyPayment campaignId=$campaignId isTopUp=$isTopUp');
     try {
-      final url = await _repo.topUpCampaign(campaignId, amount);
-      debugPrint('[MyCampaignsPage] _topUp — authorizationUrl=$url');
+      final verify = await _repo.verifyPayment(campaignId);
+      debugPrint(
+          '[MyCampaignsPage] _verifyPayment — success=${verify.success} status=${verify.status}');
       if (!mounted) return;
-      if (url.isEmpty) {
+      if (verify.success) {
+        AppSnackBar.success(
+          context,
+          verify.message.isNotEmpty
+              ? verify.message
+              : isTopUp
+                  ? 'Top-up confirmed! Campaign resumed.'
+                  : 'Payment confirmed! Campaign is under review.',
+        );
+      }
+    } catch (e) {
+      debugPrint('[MyCampaignsPage] _verifyPayment ERROR: $e');
+    } finally {
+      _load();
+    }
+  }
+
+  Future<void> _pay(String campaignId) async {
+    debugPrint('[MyCampaignsPage] _pay campaignId=$campaignId');
+    try {
+      final result = await _repo.payCampaign(campaignId);
+      debugPrint(
+        '[MyCampaignsPage] _pay — authorizationUrl=${result.authorizationUrl} '
+        'reference=${result.reference}',
+      );
+      if (!mounted) return;
+      if (result.authorizationUrl.isEmpty) {
         AppSnackBar.error(context, 'Could not get payment URL. Try again.');
         return;
       }
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => AdsCheckoutPage(
-            authorizationUrl: url,
-            onSuccess: () {
-              AppSnackBar.success(context, 'Top-up successful! Campaign resumed.');
-              _load();
-            },
+            authorizationUrl: result.authorizationUrl,
+            reference: result.reference,
+            onSuccess: () {},
           ),
         ),
       );
+      if (!mounted) return;
+      await _verifyPayment(campaignId);
+    } catch (e) {
+      debugPrint('[MyCampaignsPage] _pay ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Payment failed. Please try again.');
+    }
+  }
+
+  Future<void> _topUp(String campaignId, double amount) async {
+    debugPrint('[MyCampaignsPage] _topUp campaignId=$campaignId amount=$amount');
+    try {
+      final result = await _repo.topUpCampaign(campaignId, amount);
+      debugPrint(
+        '[MyCampaignsPage] _topUp — authorizationUrl=${result.authorizationUrl} '
+        'reference=${result.reference}',
+      );
+      if (!mounted) return;
+      if (result.authorizationUrl.isEmpty) {
+        AppSnackBar.error(context, 'Could not get payment URL. Try again.');
+        return;
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => AdsCheckoutPage(
+            authorizationUrl: result.authorizationUrl,
+            reference: result.reference,
+            onSuccess: () {},
+          ),
+        ),
+      );
+      if (!mounted) return;
+      await _verifyPayment(campaignId, isTopUp: true);
     } catch (e) {
       debugPrint('[MyCampaignsPage] _topUp ERROR: $e');
       if (!mounted) return;
@@ -247,6 +327,8 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                           campaign: _campaigns[i],
                           ext: ext,
                           onTopUp: () => _showTopUpDialog(_campaigns[i]),
+                          onPay: () => _pay(_campaigns[i].id),
+                          onEdit: () => _showEditSheet(_campaigns[i]),
                         ),
                       ),
                     ),
@@ -261,20 +343,18 @@ class _CampaignTile extends StatelessWidget {
     required this.campaign,
     required this.ext,
     required this.onTopUp,
+    required this.onPay,
+    required this.onEdit,
   });
-  final Map<String, dynamic> campaign;
+  final AdCampaign campaign;
   final AppThemeExtension ext;
   final VoidCallback onTopUp;
+  final VoidCallback onPay;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
-    final name = campaign['name'] as String? ?? 'Unnamed';
-    final status = campaign['status'] as String? ?? 'draft';
-    final budget = (campaign['budget_amount'] as num?)?.toDouble();
-    final spent = (campaign['amount_spent'] as num?)?.toDouble();
-    final currency = campaign['currency'] as String? ?? 'USD';
-    final objective = campaign['objective'] as String? ?? '';
-    final statusColor = _statusColor(status);
+    final statusColor = _statusColor(campaign.status);
 
     return Container(
       margin: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 0),
@@ -295,7 +375,7 @@ class _CampaignTile extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  name,
+                  campaign.name,
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontSize: 15.sp,
@@ -307,14 +387,23 @@ class _CampaignTile extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 10.w),
-              _Badge(label: _statusLabel(status), color: statusColor),
+              _Badge(label: campaign.status.label, color: statusColor),
+              if (campaign.status.isEditable) ...[
+                SizedBox(width: 6.w),
+                GestureDetector(
+                  onTap: onEdit,
+                  child: Icon(Icons.edit_outlined,
+                      size: 16.sp,
+                      color: ext.searchHintColor.withValues(alpha: 0.7)),
+                ),
+              ],
             ],
           ),
 
           SizedBox(height: 10.h),
 
           // ── Budget bar ───────────────────────────────────────────────────
-          if (budget != null && budget > 0) ...[
+          if (campaign.budgetAmount > 0) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -324,9 +413,7 @@ class _CampaignTile extends StatelessWidget {
                       color: ext.searchHintColor, fontSize: 11.sp),
                 ),
                 Text(
-                  spent != null
-                      ? '$currency ${spent.toStringAsFixed(0)} / ${budget.toStringAsFixed(0)}'
-                      : '$currency ${budget.toStringAsFixed(0)}',
+                  '${campaign.currency} ${campaign.spent.toStringAsFixed(0)} / ${campaign.budgetAmount.toStringAsFixed(0)}',
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontSize: 11.sp,
@@ -339,11 +426,9 @@ class _CampaignTile extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(4.r),
               child: LinearProgressIndicator(
-                value: spent != null ? (spent / budget).clamp(0.0, 1.0) : 0.0,
+                value: campaign.spentPercent,
                 backgroundColor: ext.searchFieldFill,
-                color: spent != null && spent >= budget
-                    ? Colors.redAccent
-                    : ext.accentGold,
+                color: campaign.remaining <= 0 ? Colors.redAccent : ext.accentGold,
                 minHeight: 5.h,
               ),
             ),
@@ -351,15 +436,49 @@ class _CampaignTile extends StatelessWidget {
           ],
 
           // ── Objective ────────────────────────────────────────────────────
-          if (objective.isNotEmpty)
-            Text(
-              objective[0].toUpperCase() + objective.substring(1),
-              style: TextStyle(
-                  color: ext.searchHintColor, fontSize: 12.sp),
+          Text(
+            campaign.objective.label,
+            style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+          ),
+
+          // ── Pay & Submit button (draft / pending payment) ─────────────
+          if (campaign.status.canPay) ...[
+            SizedBox(height: 12.h),
+            GestureDetector(
+              onTap: onPay,
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 10.h),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.payment_rounded,
+                        color: Colors.white, size: 16.sp),
+                    SizedBox(width: 5.w),
+                    Text(
+                      'Pay & Submit for Review',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+          ],
 
           // ── Top-up button (only for paused campaigns) ─────────────────
-          if (status == 'paused') ...[
+          if (campaign.status.canTopup) ...[
             SizedBox(height: 12.h),
             GestureDetector(
               onTap: onTopUp,
@@ -397,24 +516,14 @@ class _CampaignTile extends StatelessWidget {
     );
   }
 
-  static Color _statusColor(String s) => switch (s) {
-        'active' => const Color(0xFF10B981),
-        'paused' => Colors.orangeAccent,
-        'pending_review' => const Color(0xFF3B82F6),
-        'draft' => const Color(0xFF6B7280),
-        'completed' => const Color(0xFF8B5CF6),
-        'rejected' => Colors.redAccent,
-        _ => const Color(0xFF6B7280),
-      };
-
-  static String _statusLabel(String s) => switch (s) {
-        'active' => 'Active',
-        'paused' => 'Paused',
-        'pending_review' => 'In Review',
-        'draft' => 'Draft',
-        'completed' => 'Completed',
-        'rejected' => 'Rejected',
-        _ => s,
+  static Color _statusColor(CampaignStatus s) => switch (s) {
+        CampaignStatus.active => const Color(0xFF10B981),
+        CampaignStatus.paused => Colors.orangeAccent,
+        CampaignStatus.pendingReview => const Color(0xFF3B82F6),
+        CampaignStatus.pendingPayment => const Color(0xFFF59E0B),
+        CampaignStatus.draft => const Color(0xFF6B7280),
+        CampaignStatus.completed => const Color(0xFF8B5CF6),
+        CampaignStatus.rejected => Colors.redAccent,
       };
 }
 

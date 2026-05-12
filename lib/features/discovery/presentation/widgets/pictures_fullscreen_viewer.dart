@@ -81,8 +81,8 @@ class _PicturesFullscreenViewerState extends State<PicturesFullscreenViewer> {
                           color: Colors.black54,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.close,
-                            color: Colors.white, size: 20),
+                        child: Icon(Icons.close,
+                            color: Colors.white, size: 20.sp),
                       ),
                     ),
                     const Spacer(),
@@ -139,10 +139,10 @@ class _FullscreenPhoto extends StatelessWidget {
           fit: BoxFit.contain,
           placeholder: (_, __) => const CircularProgressIndicator(
               color: Colors.white30, strokeWidth: 2),
-          errorWidget: (_, __, ___) => const Icon(
+          errorWidget: (_, __, ___) => Icon(
               Icons.broken_image_outlined,
               color: Colors.white38,
-              size: 64),
+              size: 64.sp),
         ),
       ),
     );

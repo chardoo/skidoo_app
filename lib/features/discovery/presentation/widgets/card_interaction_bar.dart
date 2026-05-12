@@ -36,7 +36,7 @@ class CardInteractionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 7.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

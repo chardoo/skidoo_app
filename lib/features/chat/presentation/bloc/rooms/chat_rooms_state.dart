@@ -20,6 +20,10 @@ class ChatRoomsState extends Equatable {
 
   final String? errorMessage;
 
+  /// The authenticated user's own ID — used to identify the other participant
+  /// in direct rooms so we can show their name instead of "Direct message".
+  final String currentUserId;
+
   const ChatRoomsState({
     this.rooms = const [],
     this.pendingInvites = const [],
@@ -28,6 +32,7 @@ class ChatRoomsState extends Equatable {
     this.unreadCounts = const {},
     this.lastMessageAt = const {},
     this.errorMessage,
+    this.currentUserId = '',
   });
 
   ChatRoomsState copyWith({
@@ -39,6 +44,7 @@ class ChatRoomsState extends Equatable {
     Map<String, DateTime>? lastMessageAt,
     String? errorMessage,
     bool clearError = false,
+    String? currentUserId,
   }) =>
       ChatRoomsState(
         rooms: rooms ?? this.rooms,
@@ -48,6 +54,7 @@ class ChatRoomsState extends Equatable {
         unreadCounts: unreadCounts ?? this.unreadCounts,
         lastMessageAt: lastMessageAt ?? this.lastMessageAt,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+        currentUserId: currentUserId ?? this.currentUserId,
       );
 
   @override
@@ -59,5 +66,6 @@ class ChatRoomsState extends Equatable {
         unreadCounts,
         lastMessageAt,
         errorMessage,
+        currentUserId,
       ];
 }

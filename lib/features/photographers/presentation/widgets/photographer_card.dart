@@ -18,118 +18,48 @@ class PhotographerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-        decoration: BoxDecoration(
-          color: ext.cardSurface,
-          borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(
-            color: ext.accentGold.withValues(alpha: 0.15),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 11.h),
         child: Row(
           children: [
-            // Gold left accent bar
-            Container(
-              width: 4.w,
-              height: 68.h,
-              decoration: BoxDecoration(
-                color: ext.accentGold,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16.r),
-                  bottomLeft: Radius.circular(16.r),
-                ),
-              ),
-            ),
-
-            SizedBox(width: 14.w),
-
-            // Avatar
             _PhotographerAvatar(photographer: photographer, ext: ext),
-
-            SizedBox(width: 14.w),
-
-            // Info
+            SizedBox(width: 12.w),
             Expanded(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.h),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    photographer.name,
+                    style: TextStyle(
+                      color: ext.greetingColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15.sp,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 3.h),
+                  if (photographer.rating != null && photographer.rating! > 0)
+                    _RatingRow(rating: photographer.rating!, ext: ext)
+                  else if (photographer.contact.isNotEmpty)
                     Text(
-                      photographer.name,
+                      photographer.contact,
                       style: TextStyle(
-                        color: ext.greetingColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15.sp,
+                        color: ext.searchHintColor,
+                        fontSize: 13.sp,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: 4.h),
-                
-                    if (photographer.contact.isNotEmpty)
-                      Row(
-                        children: [
-                          Icon(Icons.phone_outlined,
-                              size: 12.sp,
-                              color: ext.searchHintColor),
-                          SizedBox(width: 4.w),
-                          Flexible(
-                            child: Text(
-                              photographer.contact,
-                              style: TextStyle(
-                                color: ext.searchHintColor,
-                                fontSize: 12.sp,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    SizedBox(height: 3.h),
-                    Row(
-                      children: [
-                        Icon(Icons.mail_outline_rounded,
-                            size: 12.sp,
-                            color: ext.searchHintColor),
-                        SizedBox(width: 4.w),
-                        Flexible(
-                          child: Text(
-                            photographer.email,
-                            style: TextStyle(
-                              color: ext.searchHintColor,
-                              fontSize: 12.sp,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
-
-            // Chevron
-            Padding(
-              padding: EdgeInsets.only(right: 12.w),
-              child: Icon(
-                Icons.chevron_right_rounded,
-                color: ext.accentGold,
-                size: 20.sp,
-              ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: ext.searchHintColor,
+              size: 20.sp,
             ),
           ],
         ),
@@ -139,10 +69,7 @@ class PhotographerCard extends StatelessWidget {
 }
 
 class _PhotographerAvatar extends StatelessWidget {
-  const _PhotographerAvatar({
-    required this.photographer,
-    required this.ext,
-  });
+  const _PhotographerAvatar({required this.photographer, required this.ext});
 
   final PhotographerModel photographer;
   final AppThemeExtension ext;
@@ -155,52 +82,21 @@ class _PhotographerAvatar extends StatelessWidget {
         photographer.name.isNotEmpty ? photographer.name[0].toUpperCase() : '?';
 
     if (hasImage) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(28.r),
-        child: CachedNetworkImage(
-          imageUrl: photographer.imageUrl!,
-          width: 46.w,
-          height: 46.h,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => _InitialsAvatar(
-              initial: initial, ext: ext),
-          errorWidget: (_, __, ___) => _InitialsAvatar(
-              initial: initial, ext: ext),
-        ),
+      return CircleAvatar(
+        radius: 24.r,
+        backgroundImage: CachedNetworkImageProvider(photographer.imageUrl!),
+        backgroundColor: ext.searchFieldFill,
       );
     }
-    return _InitialsAvatar(initial: initial, ext: ext);
-  }
-}
-
-class _InitialsAvatar extends StatelessWidget {
-  const _InitialsAvatar({required this.initial, required this.ext});
-  final String initial;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 46.w,
-      height: 46.h,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [
-            ext.accentGold,
-            ext.accentGold.withValues(alpha: 0.6),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      alignment: Alignment.center,
+    return CircleAvatar(
+      radius: 24.r,
+      backgroundColor: ext.accentGold.withValues(alpha: 0.18),
       child: Text(
         initial,
         style: TextStyle(
-          color: Colors.white,
+          color: ext.accentGold,
           fontWeight: FontWeight.bold,
-          fontSize: 22.sp,
+          fontSize: 18.sp,
         ),
       ),
     );
@@ -209,31 +105,29 @@ class _InitialsAvatar extends StatelessWidget {
 
 class _RatingRow extends StatelessWidget {
   const _RatingRow({required this.rating, required this.ext});
-  final double? rating;
+  final double rating;
   final AppThemeExtension ext;
 
   @override
   Widget build(BuildContext context) {
-    final r = rating ?? 0.0;
     return Row(
       children: [
         ...List.generate(5, (i) {
-          if (i < r.floor()) {
-            return Icon(Icons.star_rounded,
-                color: ext.accentGold, size: 13.sp);
-          } else if (i < r && r - i >= 0.5) {
+          if (i < rating.floor()) {
+            return Icon(Icons.star_rounded, color: ext.accentGold, size: 12.sp);
+          } else if (i < rating && rating - i >= 0.5) {
             return Icon(Icons.star_half_rounded,
-                color: ext.accentGold, size: 13.sp);
+                color: ext.accentGold, size: 12.sp);
           } else {
             return Icon(Icons.star_outline_rounded,
-                color: ext.searchHintColor, size: 13.sp);
+                color: ext.searchHintColor, size: 12.sp);
           }
         }),
         SizedBox(width: 4.w),
         Text(
-          r > 0 ? r.toStringAsFixed(1) : 'No rating',
+          rating.toStringAsFixed(1),
           style: TextStyle(
-            color: r > 0 ? ext.accentGold : ext.searchHintColor,
+            color: ext.accentGold,
             fontSize: 11.sp,
             fontWeight: FontWeight.w500,
           ),

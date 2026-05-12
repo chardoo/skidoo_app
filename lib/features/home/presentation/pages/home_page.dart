@@ -16,6 +16,7 @@ import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc
 import 'package:skidoo_app/features/chat/presentation/pages/chat_rooms_page.dart';
 import 'package:skidoo_app/components/common/navbar.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 
 class HomePage extends StatelessWidget {
@@ -74,9 +75,6 @@ class _HomeViewState extends State<_HomeView> {
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
-    // Only auto-hide the nav bar on the home tab.
-    if (_selectedTab != 0) return false;
-
     if (notification is ScrollUpdateNotification) {
       final current = notification.metrics.pixels;
       final delta = current - _lastScrollOffset;
@@ -127,6 +125,7 @@ class _HomeViewState extends State<_HomeView> {
               builder: (context, totalUnread) => AppNavbar(
                 selectedIndex: _selectedTab,
                 onchange: _changeTab,
+                onCreateTap: () => CreateBottomSheet.show(context),
                 messageUnreadCount: totalUnread,
               ),
             ),

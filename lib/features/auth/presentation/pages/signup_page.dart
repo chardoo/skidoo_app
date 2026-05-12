@@ -175,15 +175,15 @@ class _SignUpViewState extends State<_SignUpView>
 
                           // ── Logo mark ──────────────────────────────────
                           Container(
-                            width: 52,
-                            height: 52,
+                            width: 52.w,
+                            height: 52.w,
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [_kOrange, _kOrangeDark],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(14.r),
                               boxShadow: [
                                 BoxShadow(
                                   color: _kOrange.withValues(alpha: 0.35),
@@ -192,10 +192,10 @@ class _SignUpViewState extends State<_SignUpView>
                                 ),
                               ],
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.photo_camera_rounded,
                               color: Colors.white,
-                              size: 26,
+                              size: 26.sp,
                             ),
                           ),
                           SizedBox(height: 28.h),
@@ -361,10 +361,10 @@ class _FaceCaptureButton extends StatelessWidget {
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOut,
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 16.w),
             decoration: BoxDecoration(
               color: const Color(0xFF151821),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16.r),
               border: Border.all(
                 color: showError
                     ? _kError
@@ -387,8 +387,8 @@ class _FaceCaptureButton extends StatelessWidget {
               children: [
                 // Avatar / placeholder
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 56.w,
+                  height: 56.w,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: const Color(0xFF0F1525),
@@ -412,13 +412,13 @@ class _FaceCaptureButton extends StatelessWidget {
                             fit: BoxFit.cover,
                           ),
                         )
-                      : const Icon(
+                      : Icon(
                           Icons.face_retouching_natural,
-                          color: Color(0xFF9BA3B2),
-                          size: 28,
+                          color: const Color(0xFF9BA3B2),
+                          size: 28.sp,
                         ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16.w),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,18 +427,18 @@ class _FaceCaptureButton extends StatelessWidget {
                         captured ? AppLocalizations.of(context)!.signupFaceCaptured : AppLocalizations.of(context)!.signupRegisterFace,
                         style: TextStyle(
                           color: captured ? Colors.white : const Color(0xFF9BA3B2),
-                          fontSize: 14,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      SizedBox(height: 3.h),
                       Text(
                         captured
                             ? AppLocalizations.of(context)!.signupTapToRetake
                             : AppLocalizations.of(context)!.signupTapToOpenCamera,
-                        style: const TextStyle(
-                          color: Color(0xFF4A5568),
-                          fontSize: 12,
+                        style: TextStyle(
+                          color: const Color(0xFF4A5568),
+                          fontSize: 12.sp,
                         ),
                       ),
                     ],
@@ -449,20 +449,20 @@ class _FaceCaptureButton extends StatelessWidget {
                       ? Icons.check_circle_rounded
                       : Icons.chevron_right_rounded,
                   color: captured ? _kOrange : const Color(0xFF4A5568),
-                  size: 22,
+                  size: 22.sp,
                 ),
               ],
             ),
           ),
           if (showError) ...[
-            const SizedBox(height: 6),
+            SizedBox(height: 6.h),
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 AppLocalizations.of(context)!.signupFaceRequired,
-                style: const TextStyle(
+                style: TextStyle(
                   color: _kError,
-                  fontSize: 11.5,
+                  fontSize: 11.5.sp,
                 ),
               ),
             ),
@@ -501,7 +501,7 @@ class _GradientButton extends StatelessWidget {
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14.r),
           boxShadow: isLoading
               ? []
               : [
@@ -514,19 +514,19 @@ class _GradientButton extends StatelessWidget {
         ),
         child: Center(
           child: isLoading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
+              ? SizedBox(
+                  width: 24.w,
+                  height: 24.w,
+                  child: const CircularProgressIndicator(
                     color: Colors.white,
                     strokeWidth: 2.5,
                   ),
                 )
               : Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,
                   ),

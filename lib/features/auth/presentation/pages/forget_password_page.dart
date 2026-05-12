@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/common/customButtom.dart';
@@ -33,7 +34,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.w),
         child: Form(
           key: _formKey,
           child: Column(
@@ -44,9 +45,9 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold, fontSize: 24),
+                    ?.copyWith(fontWeight: FontWeight.bold, fontSize: 24.sp),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8.h),
               Text(
                 AppLocalizations.of(context)!.forgotPasswordSubtitle,
                 style: Theme.of(context)
@@ -54,15 +55,15 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                     .labelSmall
                     ?.copyWith(color: Colors.grey),
               ),
-              const SizedBox(height: 30),
+              SizedBox(height: 30.h),
               MyTextField(
                 controller: _emailController,
                 validator: Validators.emailValidator,
                 label: AppLocalizations.of(context)!.forgotPasswordEmail,
               ),
-              const SizedBox(height: 30),
+              SizedBox(height: 30.h),
               CustomButton(
-                height: 50,
+                height: 50.h,
                 width: double.infinity,
                 ontap: () {
                   if (_formKey.currentState?.validate() ?? false) {

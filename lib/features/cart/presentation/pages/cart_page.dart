@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:skidoo_app/core/common/customButtom.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
@@ -60,31 +61,32 @@ class _CartView extends StatelessWidget {
       builder: (context, state) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text(
+            title: Text(
               'My Cart',
               style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 15),
+                  fontSize: 15.sp),
             ),
           ),
           body: SafeArea(
             child: state.items.isEmpty
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.image, size: 100),
+                        Icon(Icons.image, size: 80.sp),
                         Text(
                           'Cart Empty',
                           style: TextStyle(
-                              color: Color.fromARGB(255, 221, 217, 217)),
+                              fontSize: 16.sp,
+                              color: const Color.fromARGB(255, 221, 217, 217)),
                         ),
                       ],
                     ),
                   )
                 : Padding(
-                    padding: const EdgeInsets.all(10),
+                    padding: EdgeInsets.all(10.w),
                     child: MasonryGridView.count(
                       crossAxisCount: 2,
                       mainAxisSpacing: 8,
@@ -105,8 +107,8 @@ class _CartView extends StatelessWidget {
               ? state.status == CartStatus.paymentLoading
                   ? const CircularProgressIndicator()
                   : CustomButton(
-                      width: 343,
-                      height: 50,
+                      width: 343.w,
+                      height: 50.h,
                       label: 'Pay ${state.totalAmount}',
                       ontap: state.totalAmount > 0
                           ? () => context

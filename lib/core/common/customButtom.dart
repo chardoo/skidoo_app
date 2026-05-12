@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class CustomButton extends StatelessWidget {
   const CustomButton(
@@ -17,7 +18,7 @@ class CustomButton extends StatelessWidget {
           style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).primaryColor,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8))),
+                  borderRadius: BorderRadius.circular(8.r))),
           onPressed: ontap,
           child: Text(label,
            style: const TextStyle(color: Colors.white),
@@ -44,7 +45,7 @@ class CustomButtonTwo extends StatelessWidget {
           style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).primaryColor,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8))),
+                  borderRadius: BorderRadius.circular(8.r))),
           onPressed: ontap,
           child:label),
     );

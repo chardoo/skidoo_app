@@ -98,6 +98,8 @@
 
   "homeSearchEvents": "Search events...",
   "@homeSearchEvents": {},
+  "homeSearchAiPlaceholder": "Search your image with our AI",
+  "@homeSearchAiPlaceholder": {},
   "homeNoEventsFound": "No events found",
   "@homeNoEventsFound": {},
   "homeNoEventsYet": "No events yet",

@@ -42,22 +42,15 @@ class CardDescriptionText extends StatelessWidget {
                   expanded ? TextOverflow.visible : TextOverflow.ellipsis,
               text: TextSpan(
                 style: TextStyle(
-                    fontSize: 13.sp, height: 1.45, color: ext.greetingColor),
+                    fontSize: 13.sp, height: 1.5, color: ext.greetingColor),
                 children: [
-                  // Bold photographer name as prefix
                   TextSpan(
-                    text: '${event.photographerName}  ',
+                    text: '${event.eventName}  ',
                     style: TextStyle(
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       color: ext.greetingColor,
                     ),
                   ),
-                  // Caption text
-                  TextSpan(
-                    text: '${event.eventName} — stunning moments captured',
-                  ),
-                  const TextSpan(text: '  '),
-                  // Hashtags in gold
                   ..._hashtagSpans(),
                 ],
               ),
@@ -72,7 +65,7 @@ class CardDescriptionText extends StatelessWidget {
                 'more',
                 style: TextStyle(
                   color: ext.searchHintColor,
-                  fontSize: 13.sp,
+                  fontSize: 12.sp,
                 ),
               ),
             ),
