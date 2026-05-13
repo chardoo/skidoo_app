@@ -156,12 +156,30 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
 
   Future<void> _loadBlockStatus() async {
     try {
-      final myId = await sl<AuthService>().getUserId();
-      final peer = widget.room.participants
-          .where((p) => p.userId != myId)
-          .firstOrNull;
+      // Prefer myUserId already in bloc state (avoids a SharedPrefs round-trip)
+      final myId = _bloc.state.myUserId.isNotEmpty
+          ? _bloc.state.myUserId
+          : await sl<AuthService>().getUserId();
+
+      // widget.room.participants may be empty when the room was opened from the
+      // cached rooms list (that API doesn't hydrate per-room participants).
+      // Fall back to the BLoC state, waiting for it to load if necessary.
+      var participants = widget.room.participants.isNotEmpty
+          ? widget.room.participants
+          : _bloc.state.room?.participants ?? [];
+
+      if (participants.isEmpty) {
+        // Wait until ChatRoomJoined finishes and the state has participants.
+        final loaded = await _bloc.stream
+            .firstWhere((s) => s.room?.participants.isNotEmpty == true)
+            .timeout(const Duration(seconds: 8), onTimeout: () => _bloc.state);
+        participants = loaded.room?.participants ?? [];
+      }
+
+      final peer = participants.where((p) => p.userId != myId).firstOrNull;
       if (peer == null) return;
       _otherUserId = peer.userId;
+
       final blocked = await sl<GetBlockedUsersUseCase>().call();
       if (mounted) setState(() => _isBlocked = blocked.contains(_otherUserId));
     } catch (_) {}
