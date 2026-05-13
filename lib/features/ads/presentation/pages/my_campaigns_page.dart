@@ -51,6 +51,87 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
     }
   }
 
+  Future<void> _pause(AdCampaign campaign) async {
+    debugPrint('[MyCampaignsPage] _pause campaignId=${campaign.id}');
+    try {
+      await _repo.pauseCampaign(campaign.id);
+      if (!mounted) return;
+      AppSnackBar.success(context, 'Campaign paused.');
+    } catch (e) {
+      debugPrint('[MyCampaignsPage] _pause ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Could not pause campaign. Try again.');
+    } finally {
+      _load();
+    }
+  }
+
+  Future<void> _resume(AdCampaign campaign) async {
+    debugPrint('[MyCampaignsPage] _resume campaignId=${campaign.id}');
+    try {
+      await _repo.resumeCampaign(campaign.id);
+      if (!mounted) return;
+      AppSnackBar.success(context, 'Campaign resumed.');
+    } catch (e) {
+      debugPrint('[MyCampaignsPage] _resume ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Could not resume campaign. Try again.');
+    } finally {
+      _load();
+    }
+  }
+
+  Future<void> _confirmDelete(AdCampaign campaign) async {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: ext.homeBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text(
+          'Delete campaign?',
+          style: TextStyle(
+            color: ext.greetingColor,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        content: Text(
+          '"${campaign.name}" will be permanently deleted.',
+          style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel',
+                style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Delete',
+                style: TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    debugPrint('[MyCampaignsPage] _delete campaignId=${campaign.id}');
+    try {
+      await _repo.deleteCampaign(campaign.id);
+      if (!mounted) return;
+      AppSnackBar.success(context, 'Campaign deleted.');
+    } catch (e) {
+      debugPrint('[MyCampaignsPage] _delete ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Could not delete campaign. Try again.');
+    } finally {
+      _load();
+    }
+  }
+
   Future<void> _showEditSheet(AdCampaign campaign) async {
     AdCampaign full;
     try {
@@ -335,6 +416,9 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                           onTopUp: () => _showTopUpDialog(_campaigns[i]),
                           onPay: () => _pay(_campaigns[i].id),
                           onEdit: () => _showEditSheet(_campaigns[i]),
+                          onPause: () => _pause(_campaigns[i]),
+                          onResume: () => _resume(_campaigns[i]),
+                          onDelete: () => _confirmDelete(_campaigns[i]),
                         ),
                       ),
                     ),
@@ -351,12 +435,18 @@ class _CampaignTile extends StatelessWidget {
     required this.onTopUp,
     required this.onPay,
     required this.onEdit,
+    required this.onPause,
+    required this.onResume,
+    required this.onDelete,
   });
   final AdCampaign campaign;
   final AppThemeExtension ext;
   final VoidCallback onTopUp;
   final VoidCallback onPay;
   final VoidCallback onEdit;
+  final VoidCallback onPause;
+  final VoidCallback onResume;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -483,33 +573,149 @@ class _CampaignTile extends StatelessWidget {
             ),
           ],
 
-          // ── Top-up button (only for paused campaigns) ─────────────────
-          if (campaign.status.canTopup) ...[
+          // ── Pause button (active campaigns) ──────────────────────────
+          if (campaign.status.canPause) ...[
             SizedBox(height: 12.h),
             GestureDetector(
-              onTap: onTopUp,
+              onTap: onPause,
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 10.h),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [ext.accentGold, const Color(0xFFFF6B35)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
+                  color: ext.searchFieldFill,
                   borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(
+                    color: ext.searchHintColor.withValues(alpha: 0.25),
+                    width: 1.0,
+                  ),
                 ),
                 alignment: Alignment.center,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.add_rounded, color: Colors.white, size: 16.sp),
+                    Icon(Icons.pause_circle_outline_rounded,
+                        color: ext.greetingColor, size: 16.sp),
                     SizedBox(width: 5.w),
                     Text(
-                      'Top Up',
+                      'Pause Campaign',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: ext.greetingColor,
                         fontSize: 13.sp,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+
+          // ── Resume + Top-up buttons (paused campaigns) ────────────────
+          if (campaign.status.canResume) ...[
+            SizedBox(height: 12.h),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: onResume,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF10B981),
+                            Color(0xFF059669),
+                          ],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.play_circle_outline_rounded,
+                              color: Colors.white, size: 16.sp),
+                          SizedBox(width: 5.w),
+                          Text(
+                            'Resume',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: onTopUp,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 10.h),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_rounded,
+                              color: Colors.white, size: 16.sp),
+                          SizedBox(width: 5.w),
+                          Text(
+                            'Top Up',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          // ── Delete button (draft only) ────────────────────────────────
+          if (campaign.status.canDelete) ...[
+            SizedBox(height: 10.h),
+            GestureDetector(
+              onTap: onDelete,
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 10.h),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(
+                    color: Colors.redAccent.withValues(alpha: 0.3),
+                    width: 1.0,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.delete_outline_rounded,
+                        color: Colors.redAccent, size: 16.sp),
+                    SizedBox(width: 5.w),
+                    Text(
+                      'Delete Draft',
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],

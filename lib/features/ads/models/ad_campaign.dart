@@ -112,6 +112,9 @@ enum CampaignStatus {
   bool get isEditable => this == draft || this == pendingPayment || this == pendingReview;
   bool get canPay => this == draft || this == pendingPayment;
   bool get canTopup => this == paused;
+  bool get canPause => this == active;
+  bool get canResume => this == paused;
+  bool get canDelete => this == draft;
 }
 
 enum CampaignObjective {

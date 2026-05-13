@@ -593,4 +593,28 @@ class AdsRepository {
     final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
     return AdCampaign.fromJson(data);
   }
+
+  Future<void> pauseCampaign(String campaignId) async {
+    debugPrint('$_tag pauseCampaign → id=$campaignId');
+    final resp = await _dio.patch(
+      '/ads/campaigns/$campaignId/status',
+      data: {'status': 'paused'},
+    );
+    debugPrint('$_tag pauseCampaign ← status=${resp.statusCode}');
+  }
+
+  Future<void> resumeCampaign(String campaignId) async {
+    debugPrint('$_tag resumeCampaign → id=$campaignId');
+    final resp = await _dio.patch(
+      '/ads/campaigns/$campaignId/status',
+      data: {'status': 'active'},
+    );
+    debugPrint('$_tag resumeCampaign ← status=${resp.statusCode}');
+  }
+
+  Future<void> deleteCampaign(String campaignId) async {
+    debugPrint('$_tag deleteCampaign → id=$campaignId');
+    final resp = await _dio.delete('/ads/campaigns/$campaignId');
+    debugPrint('$_tag deleteCampaign ← status=${resp.statusCode}');
+  }
 }
