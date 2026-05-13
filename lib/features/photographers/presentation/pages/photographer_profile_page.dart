@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,7 +13,9 @@ import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart'
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
 import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_events_usecase.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/samples_fullscreen_page.dart';
 import 'package:skidoo_app/features/photographers/presentation/widgets/profile_header.dart';
 import 'package:skidoo_app/features/photographers/presentation/widgets/profile_info_row.dart';
@@ -38,15 +42,20 @@ class PhotographerProfilePage extends StatefulWidget {
 class _PhotographerProfilePageState extends State<PhotographerProfilePage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  late final Future<List<PhotographerSample>> _samplesFuture;
-  bool _isBlocked = false;
+  bool _isOwner = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _samplesFuture =
-        sl<GetPhotographerSamplesUseCase>().call(widget.photographer.id);
+    _checkOwner();
+  }
+
+  Future<void> _checkOwner() async {
+    try {
+      final myId = await sl<AuthService>().getUserId();
+      if (mounted) setState(() => _isOwner = myId == widget.photographer.id);
+    } catch (_) {}
   }
 
   @override
@@ -203,7 +212,8 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
           children: [
             // ── Sample Work tab ──────────────────────────────────────────
             _SamplesTab(
-              samplesFuture: _samplesFuture,
+              photographerId: p.id,
+              isOwner: _isOwner,
               ext: ext,
             ),
 
@@ -221,49 +231,221 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
 
 // ── Samples tab ───────────────────────────────────────────────────────────────
 
-class _SamplesTab extends StatelessWidget {
-  const _SamplesTab({required this.samplesFuture, required this.ext});
+class _SamplesTab extends StatefulWidget {
+  const _SamplesTab({
+    required this.photographerId,
+    required this.isOwner,
+    required this.ext,
+  });
 
-  final Future<List<PhotographerSample>> samplesFuture;
+  final String photographerId;
+  final bool isOwner;
   final AppThemeExtension ext;
 
   @override
+  State<_SamplesTab> createState() => _SamplesTabState();
+}
+
+class _SamplesTabState extends State<_SamplesTab>
+    with AutomaticKeepAliveClientMixin {
+  final _picker = ImagePicker();
+  List<PhotographerSample> _samples = [];
+  bool _loading = true;
+  bool _uploading = false;
+  String? _error;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSamples();
+  }
+
+  Future<void> _loadSamples() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final s = await sl<GetPhotographerSamplesUseCase>()
+          .call(widget.photographerId);
+      if (mounted) setState(() { _samples = s; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _pickAndUpload() async {
+    final picked = await _picker.pickMultiImage(imageQuality: 85);
+    if (picked.isEmpty || !mounted) return;
+    setState(() => _uploading = true);
+    try {
+      final files = picked.map((x) => File(x.path)).toList();
+      final updated = await sl<UploadSamplesUseCase>().call(
+        photographerId: widget.photographerId,
+        files: files,
+      );
+      if (mounted) setState(() => _samples = updated);
+    } catch (e) {
+      if (mounted) AppSnackBar.error(context, 'Upload failed: $e');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _confirmDelete(PhotographerSample sample) async {
+    final ext = widget.ext;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: ext.cardSurface,
+        title: Text('Remove sample?',
+            style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
+        content: Text('This photo will be removed from your portfolio.',
+            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel',
+                style: TextStyle(color: ext.searchHintColor)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remove',
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await sl<DeleteSampleUseCase>().call(
+        sampleId: sample.id,
+        photographerId: widget.photographerId,
+      );
+      if (mounted) {
+        setState(() => _samples.removeWhere((s) => s.id == sample.id));
+      }
+    } catch (e) {
+      if (mounted) AppSnackBar.error(context, 'Could not remove sample: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<PhotographerSample>>(
-      future: samplesFuture,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: CircularProgressIndicator(color: ext.accentGold),
-          );
-        }
-        if (snap.hasError || !snap.hasData || snap.data!.isEmpty) {
-          return Center(
-            child: Text(
-              snap.hasError ? 'Could not load samples.' : 'No sample images yet.',
-              style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+    super.build(context);
+    final ext = widget.ext;
+
+    if (_loading) {
+      return Center(child: CircularProgressIndicator(color: ext.accentGold));
+    }
+
+    if (_error != null && _samples.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Could not load samples.',
+                style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp)),
+            SizedBox(height: 10.h),
+            TextButton(
+              onPressed: _loadSamples,
+              child: Text('Retry', style: TextStyle(color: ext.accentGold)),
             ),
-          );
-        }
-        final samples = snap.data!;
-        return GridView.builder(
+          ],
+        ),
+      );
+    }
+
+    // Total cells = samples + (owner ? 1 add-button : 0)
+    final cellCount = _samples.length + (widget.isOwner ? 1 : 0);
+
+    if (cellCount == 0) {
+      return Center(
+        child: Text('No sample images yet.',
+            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp)),
+      );
+    }
+
+    return Stack(
+      children: [
+        GridView.builder(
           padding: EdgeInsets.all(4.w),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
             crossAxisSpacing: 4.w,
             mainAxisSpacing: 4.h,
           ),
-          itemCount: samples.length,
-          itemBuilder: (context, index) => PhotographerSampleTile(
-            sample: samples[index],
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              fullscreenDialog: true,
-              builder: (_) => SamplesFullscreenPage(
-                  samples: samples, initialIndex: index),
-            )),
-          ),
-        );
-      },
+          itemCount: cellCount,
+          itemBuilder: (context, index) {
+            // Last cell is the "add" button for owners
+            if (widget.isOwner && index == cellCount - 1) {
+              return GestureDetector(
+                onTap: _uploading ? null : _pickAndUpload,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: ext.cardSurface,
+                    borderRadius: BorderRadius.circular(4.r),
+                    border: Border.all(
+                      color: ext.accentGold.withValues(alpha: 0.4),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: _uploading
+                      ? Center(
+                          child: CircularProgressIndicator(
+                              color: ext.accentGold, strokeWidth: 2),
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_photo_alternate_outlined,
+                                color: ext.accentGold, size: 28.sp),
+                            SizedBox(height: 4.h),
+                            Text('Add',
+                                style: TextStyle(
+                                    color: ext.accentGold,
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                ),
+              );
+            }
+
+            final sample = _samples[index];
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                PhotographerSampleTile(
+                  sample: sample,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    fullscreenDialog: true,
+                    builder: (_) => SamplesFullscreenPage(
+                        samples: _samples, initialIndex: index),
+                  )),
+                ),
+                if (widget.isOwner)
+                  Positioned(
+                    top: 4.h,
+                    right: 4.w,
+                    child: GestureDetector(
+                      onTap: () => _confirmDelete(sample),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.close_rounded,
+                            color: Colors.white, size: 13.sp),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }

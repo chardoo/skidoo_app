@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart' as dio;
 import 'package:skidoo_app/api/dio_client_service.dart';
@@ -11,6 +12,14 @@ abstract class PhotographerRemoteDataSource {
   Future<List<PhotographerModel>> getPhotographers();
   Future<List<PhotographerModel>> searchPhotographers(String query);
   Future<List<PhotographerSample>> getSamples(String photographerId);
+  Future<List<PhotographerSample>> uploadSamples({
+    required String photographerId,
+    required List<File> files,
+  });
+  Future<void> deleteSample({
+    required String sampleId,
+    required String photographerId,
+  });
   Future<PhotographerEventsResult> getPhotographerEvents({
     required String photographerId,
     required int page,
@@ -67,7 +76,7 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
   Future<List<PhotographerSample>> getSamples(String photographerId) async {
     try {
       final res = await _api.dio.post(
-        '/api/photographer/samples',
+        '/photographer/samples',
         data: jsonEncode({'userId': photographerId}),
       );
       final body = res.data as List<dynamic>;
@@ -79,6 +88,64 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
       if (err.response == null) throw const app_ex.NetworkException();
       throw app_ex.ServerException(
           'Failed to load samples: ${err.response?.statusCode}');
+    } catch (e) {
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
+    }
+  }
+
+  @override
+  Future<List<PhotographerSample>> uploadSamples({
+    required String photographerId,
+    required List<File> files,
+  }) async {
+    try {
+      final multiparts = await Future.wait(files.map((f) =>
+          dio.MultipartFile.fromFile(
+            f.path,
+            filename: f.uri.pathSegments.last,
+          )));
+      final formData = dio.FormData.fromMap({
+        'userId': photographerId,
+        'files': multiparts,
+      });
+      final res = await _api.dio.put(
+        '/photographer/samples',
+        data: formData,
+        options: dio.Options(
+          contentType: 'multipart/form-data',
+          sendTimeout: const Duration(minutes: 2),
+        ),
+      );
+      final body = res.data as List<dynamic>;
+      return body
+          .map((item) =>
+              PhotographerSample.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      throw app_ex.ServerException(
+          'Failed to upload samples: ${err.response?.statusCode}');
+    } catch (e) {
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteSample({
+    required String sampleId,
+    required String photographerId,
+  }) async {
+    try {
+      await _api.dio.delete(
+        '/photographer/samples',
+        data: jsonEncode({'sampleId': sampleId, 'userId': photographerId}),
+      );
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      throw app_ex.ServerException(
+          'Failed to delete sample: ${err.response?.statusCode}');
     } catch (e) {
       if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
       throw app_ex.ServerException('Unexpected error: $e');

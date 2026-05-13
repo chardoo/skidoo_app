@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/photographers/data/datasources/photographer_remote_data_source.dart';
 import 'package:skidoo_app/features/photographers/domain/repositories/photographer_repository.dart';
@@ -45,6 +47,40 @@ class PhotographerRepositoryImpl implements PhotographerRepository {
       rethrow;
     } catch (e) {
       throw ServerException('Error loading samples: $e');
+    }
+  }
+
+  @override
+  Future<List<PhotographerSample>> uploadSamples({
+    required String photographerId,
+    required List<File> files,
+  }) async {
+    try {
+      return await _remoteDataSource.uploadSamples(
+          photographerId: photographerId, files: files);
+    } on NetworkException {
+      rethrow;
+    } on ServerException {
+      rethrow;
+    } catch (e) {
+      throw ServerException('Error uploading samples: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteSample({
+    required String sampleId,
+    required String photographerId,
+  }) async {
+    try {
+      await _remoteDataSource.deleteSample(
+          sampleId: sampleId, photographerId: photographerId);
+    } on NetworkException {
+      rethrow;
+    } on ServerException {
+      rethrow;
+    } catch (e) {
+      throw ServerException('Error deleting sample: $e');
     }
   }
 

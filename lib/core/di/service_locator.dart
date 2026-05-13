@@ -239,6 +239,10 @@ Future<void> setupServiceLocator() async {
       SearchPhotographersUseCase(sl<PhotographerRepository>()));
   sl.registerSingleton<GetPhotographerSamplesUseCase>(
       GetPhotographerSamplesUseCase(sl<PhotographerRepository>()));
+  sl.registerSingleton<UploadSamplesUseCase>(
+      UploadSamplesUseCase(sl<PhotographerRepository>()));
+  sl.registerSingleton<DeleteSampleUseCase>(
+      DeleteSampleUseCase(sl<PhotographerRepository>()));
   sl.registerSingleton<GetPhotographerEventsUseCase>(
       GetPhotographerEventsUseCase(sl<PhotographerRepository>()));
 
