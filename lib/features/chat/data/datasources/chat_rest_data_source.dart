@@ -172,13 +172,13 @@ abstract class ChatRestDataSource {
   /// DELETE /chat/features/hide_profile
   Future<void> disableHideProfile();
 
-  /// GET /blocks — returns list of blocked user IDs
+  /// GET /chat/blocks — returns list of blocked user IDs
   Future<List<String>> getBlockedUsers();
 
-  /// POST /blocks/{userId}
+  /// POST /chat/blocks/{userId}
   Future<void> blockUser(String userId);
 
-  /// DELETE /blocks/{userId}
+  /// DELETE /chat/blocks/{userId}
   Future<void> unblockUser(String userId);
 }
 
@@ -517,7 +517,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
 
   @override
   Future<List<String>> getBlockedUsers() => _wrap(() async {
-        final resp = await _client.dio.get('/blocks');
+        final resp = await _client.dio.get('/chat/blocks');
         final data = resp.data;
         if (data is List) {
           return data.map((e) => e['blocked_id']?.toString() ?? '').where((s) => s.isNotEmpty).toList();
@@ -527,11 +527,11 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
 
   @override
   Future<void> blockUser(String userId) =>
-      _wrap(() => _client.dio.post('/blocks/$userId'));
+      _wrap(() => _client.dio.post('/chat/blocks/$userId'));
 
   @override
   Future<void> unblockUser(String userId) =>
-      _wrap(() => _client.dio.delete('/blocks/$userId'));
+      _wrap(() => _client.dio.delete('/chat/blocks/$userId'));
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
