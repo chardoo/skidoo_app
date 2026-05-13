@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:skidoo_app/core/navigation/app_navigator.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 
@@ -34,9 +35,10 @@ class AppInterceptors extends Interceptor {
     try {
       final authService = sl<AuthService>();
       final token = await authService.getToken();
-      final expired = await authService.isTokenExpired();
-      // Only attach token when it exists and has not expired.
-      if (token.isNotEmpty && !expired) {
+      // Always send the token — let the server decide if it has expired.
+      // The local expiry check was causing false negatives after the WebView
+      // checkout page kept the app in the background for an extended period.
+      if (token.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $token';
       }
     } catch (_) {
@@ -46,7 +48,19 @@ class AppInterceptors extends Interceptor {
   }
 
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) {
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    if (err.response?.statusCode == 401) {
+      // Session is genuinely expired on the server — clear local credentials
+      // and send the user to the login screen so they can re-authenticate.
+      try {
+        final authService = sl<AuthService>();
+        final token = await authService.getToken();
+        if (token.isNotEmpty) {
+          await authService.removeToken();
+          AppNavigator.navigateToLogin();
+        }
+      } catch (_) {}
+    }
     handler.next(err);
   }
 }

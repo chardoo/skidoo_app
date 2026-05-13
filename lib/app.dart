@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/customThemeData.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
+import 'package:skidoo_app/core/navigation/app_navigator.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/interests_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
@@ -43,6 +44,7 @@ class MyApp extends StatelessWidget {
         splitScreenMode: true,
         builder: (context, child) => BlocBuilder<ThemeCubit, ThemeMode>(
           builder: (context, themeMode) => MaterialApp(
+            navigatorKey: AppNavigator.navigatorKey,
             debugShowCheckedModeBanner: false,
             theme: Styles.light,
             darkTheme: Styles.dark,

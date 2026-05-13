@@ -39,8 +39,10 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
   late final WebViewController _controller;
   bool _loading = true;
 
-  static bool _isSuccess(String url) =>
-      url.contains('trxref=') || url.contains('reference=');
+  // 'trxref=' is Paystack-specific and only present in the final success
+  // redirect. The broader 'reference=' check was matching intermediate
+  // checkout pages and triggering a premature pop.
+  static bool _isSuccess(String url) => url.contains('trxref=');
 
   static bool _isClose(String url) =>
       url.contains('standard.paystack.co/close') ||
