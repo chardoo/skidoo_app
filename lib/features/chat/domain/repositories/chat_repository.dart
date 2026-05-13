@@ -124,6 +124,7 @@ abstract class ChatRepository {
   Future<void> disableAnonymousMode();
   Future<void> enableHideProfile();
   Future<void> disableHideProfile();
+  Future<List<String>> getBlockedUsers();
   Future<void> blockUser(String userId);
   Future<void> unblockUser(String userId);
 }

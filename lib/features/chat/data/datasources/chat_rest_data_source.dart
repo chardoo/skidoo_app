@@ -172,6 +172,9 @@ abstract class ChatRestDataSource {
   /// DELETE /chat/features/hide_profile
   Future<void> disableHideProfile();
 
+  /// GET /blocks — returns list of blocked user IDs
+  Future<List<String>> getBlockedUsers();
+
   /// POST /blocks/{userId}
   Future<void> blockUser(String userId);
 
@@ -511,6 +514,16 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   @override
   Future<void> disableHideProfile() =>
       _wrap(() => _client.dio.delete('/chat/features/hide_profile'));
+
+  @override
+  Future<List<String>> getBlockedUsers() => _wrap(() async {
+        final resp = await _client.dio.get('/blocks');
+        final data = resp.data;
+        if (data is List) {
+          return data.map((e) => e['blocked_id']?.toString() ?? '').where((s) => s.isNotEmpty).toList();
+        }
+        return <String>[];
+      });
 
   @override
   Future<void> blockUser(String userId) =>

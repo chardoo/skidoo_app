@@ -8,6 +8,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/group_info_page.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/invite_to_group_page.dart';
@@ -138,12 +139,52 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       widget.room.type == RoomType.event ||
       widget.room.type == RoomType.eventPrivate;
 
+  bool get _isDirect => widget.room.type == RoomType.direct;
+
+  bool _isBlocked = false;
+  bool _blockLoading = false;
+  String _otherUserId = '';
+
   @override
   void initState() {
     super.initState();
     _bloc = context.read<ChatRoomBloc>();
     _bloc.add(ChatRoomJoined(widget.room.id, shareUrl: widget.shareUrl, room: widget.room));
     _scrollCtrl.addListener(_onScroll);
+    if (_isDirect) _loadBlockStatus();
+  }
+
+  Future<void> _loadBlockStatus() async {
+    try {
+      final myId = await sl<AuthService>().getUserId();
+      final peer = widget.room.participants
+          .where((p) => p.userId != myId)
+          .firstOrNull;
+      if (peer == null) return;
+      _otherUserId = peer.userId;
+      final blocked = await sl<GetBlockedUsersUseCase>().call();
+      if (mounted) setState(() => _isBlocked = blocked.contains(_otherUserId));
+    } catch (_) {}
+  }
+
+  Future<void> _toggleBlock() async {
+    if (_otherUserId.isEmpty || _blockLoading) return;
+    setState(() => _blockLoading = true);
+    try {
+      if (_isBlocked) {
+        await sl<UnblockUserUseCase>().call(_otherUserId);
+        if (mounted) setState(() => _isBlocked = false);
+      } else {
+        await sl<BlockUserUseCase>().call(_otherUserId);
+        if (mounted) setState(() => _isBlocked = true);
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Could not ${_isBlocked ? 'unblock' : 'block'} user: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _blockLoading = false);
+    }
   }
 
   @override
@@ -432,6 +473,51 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
           ),
         ),
         actions: [
+          // Block/Unblock menu — only shown for DM rooms
+          if (_isDirect)
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert_rounded,
+                  color: ext.greetingColor, size: 20.sp),
+              color: ext.cardSurface,
+              onSelected: (v) {
+                if (v == 'block') _toggleBlock();
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'block',
+                  child: _blockLoading
+                      ? SizedBox(
+                          width: 20.w,
+                          height: 20.w,
+                          child: CircularProgressIndicator(
+                              color: ext.accentGold, strokeWidth: 2),
+                        )
+                      : Row(
+                          children: [
+                            Icon(
+                              _isBlocked
+                                  ? Icons.person_add_alt_1_rounded
+                                  : Icons.block_rounded,
+                              color: _isBlocked
+                                  ? const Color(0xFF10B981)
+                                  : Colors.redAccent,
+                              size: 18.sp,
+                            ),
+                            SizedBox(width: 10.w),
+                            Text(
+                              _isBlocked ? 'Unblock user' : 'Block user',
+                              style: TextStyle(
+                                color: _isBlocked
+                                    ? const Color(0xFF10B981)
+                                    : Colors.redAccent,
+                                fontSize: 14.sp,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
           // Invite button — only shown for group rooms
           if (widget.room.type == RoomType.group)
             IconButton(
@@ -659,6 +745,14 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                               ),
                             ],
                           ),
+                        );
+                      }
+
+                      if (_isBlocked) {
+                        return _BlockedBanner(
+                          ext: ext,
+                          loading: _blockLoading,
+                          onUnblock: _toggleBlock,
                         );
                       }
 
@@ -963,6 +1057,63 @@ class _MessageOptionsSheet extends StatelessWidget {
               accentColor: Colors.redAccent,
               onTap: onDelete!,
             ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Blocked state banner ──────────────────────────────────────────────────────
+
+class _BlockedBanner extends StatelessWidget {
+  const _BlockedBanner({
+    required this.ext,
+    required this.loading,
+    required this.onUnblock,
+  });
+
+  final AppThemeExtension ext;
+  final bool loading;
+  final VoidCallback onUnblock;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        border: Border(
+          top: BorderSide(color: ext.searchHintColor.withValues(alpha: 0.15)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.block_rounded, color: Colors.redAccent, size: 18.sp),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              'You have blocked this user',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+            ),
+          ),
+          TextButton(
+            onPressed: loading ? null : onUnblock,
+            child: loading
+                ? SizedBox(
+                    width: 16.w,
+                    height: 16.w,
+                    child: CircularProgressIndicator(
+                        color: ext.accentGold, strokeWidth: 2),
+                  )
+                : Text(
+                    'Unblock',
+                    style: TextStyle(
+                      color: ext.accentGold,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+          ),
         ],
       ),
     );

@@ -285,6 +285,9 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> disableHideProfile() => _rest.disableHideProfile();
 
   @override
+  Future<List<String>> getBlockedUsers() => _rest.getBlockedUsers();
+
+  @override
   Future<void> blockUser(String userId) => _rest.blockUser(userId);
 
   @override

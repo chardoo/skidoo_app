@@ -11,6 +11,7 @@ import 'package:skidoo_app/features/admin/presentation/pages/admin_settings_page
 import 'package:skidoo_app/features/ads/presentation/pages/my_campaigns_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/request_board_page.dart';
+import 'package:skidoo_app/features/user_profile/presentation/pages/face_recognition_page.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/saved_items_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
@@ -130,6 +131,8 @@ class _AccountView extends StatelessWidget {
                             _PublicationSettingsCard(
                                 alwaysPublic: state.alwaysPublicImages,
                                 ext: ext),
+                            SizedBox(height: 12.h),
+                            _FaceRecognitionCard(ext: ext),
                             SizedBox(height: 12.h),
                             _AdsCard(ext: ext),
                             SizedBox(height: 12.h),
@@ -965,6 +968,54 @@ class _AdsCard extends StatelessWidget {
     );
   }
 }
+
+// ── Face Recognition card ─────────────────────────────────────────────────────
+
+class _FaceRecognitionCard extends StatelessWidget {
+  const _FaceRecognitionCard({required this.ext});
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
+            child: Text(
+              'IDENTITY',
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          _AdsListTile(
+            icon: Icons.face_outlined,
+            iconColor: const Color(0xFF8B5CF6),
+            title: 'Face Recognition',
+            subtitle: 'Train model to find you in event photos',
+            ext: ext,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const FaceRecognitionPage()),
+            ),
+          ),
+          SizedBox(height: 4.h),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Ads & Promotions card ─────────────────────────────────────────────────────
 
 class _AdsListTile extends StatelessWidget {
   const _AdsListTile({

@@ -356,6 +356,8 @@ Future<void> setupServiceLocator() async {
       SetAnonymousModeUseCase(sl<ChatRepository>()));
   sl.registerSingleton<SetHideProfileUseCase>(
       SetHideProfileUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetBlockedUsersUseCase>(
+      GetBlockedUsersUseCase(sl<ChatRepository>()));
   sl.registerSingleton<BlockUserUseCase>(
       BlockUserUseCase(sl<ChatRepository>()));
   sl.registerSingleton<UnblockUserUseCase>(

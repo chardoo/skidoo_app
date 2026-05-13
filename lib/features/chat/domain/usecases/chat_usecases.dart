@@ -286,6 +286,12 @@ class SetHideProfileUseCase {
       enable ? _repo.enableHideProfile() : _repo.disableHideProfile();
 }
 
+class GetBlockedUsersUseCase {
+  final ChatRepository _repo;
+  GetBlockedUsersUseCase(this._repo);
+  Future<List<String>> call() => _repo.getBlockedUsers();
+}
+
 class BlockUserUseCase {
   final ChatRepository _repo;
   BlockUserUseCase(this._repo);
