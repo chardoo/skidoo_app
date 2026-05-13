@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/components/media/media_action_buttons.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -26,17 +27,34 @@ class _PicEntry {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-class EventPicturesPage extends StatelessWidget {
+class EventPicturesPage extends StatefulWidget {
   const EventPicturesPage({super.key, required this.event});
   final EventDiscovery event;
 
-  List<_PicEntry> get _entries => event.pictures
+  @override
+  State<EventPicturesPage> createState() => _EventPicturesPageState();
+}
+
+class _EventPicturesPageState extends State<EventPicturesPage> {
+  List<_PicEntry> get _entries => widget.event.pictures
       .map((p) => _PicEntry(
             picture: p,
-            eventName: event.eventName,
-            photographerName: event.photographerName,
+            eventName: widget.event.eventName,
+            photographerName: widget.event.photographerName,
           ))
       .toList();
+
+  @override
+  void initState() {
+    super.initState();
+    // Fire-and-forget view signal — non-fatal if it fails.
+    sl<Api>()
+        .dio
+        .post('/recommend/${widget.event.id}/view')
+        .then((_) => debugPrint(
+            '[EventView] tracked view for event ${widget.event.id}'))
+        .catchError((e) => debugPrint('[EventView] view tracking failed: $e'));
+  }
 
   void _openFullscreen(BuildContext context, int idx) {
     final entries = _entries;
@@ -51,6 +69,7 @@ class EventPicturesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final event = widget.event;
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final pics = event.pictures;
 
