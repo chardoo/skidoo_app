@@ -2,9 +2,13 @@ import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/feed_comment_sheet.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:video_player/video_player.dart';
 
@@ -27,6 +31,50 @@ class RequestFeedCard extends StatefulWidget {
 class _RequestFeedCardState extends State<RequestFeedCard> {
   VideoPlayerController? _videoCtrl;
   bool _videoReady = false;
+
+  bool _liked = false;
+  bool _disliked = false;
+  bool _saved = false;
+
+  void _handleLike() {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _liked = !_liked;
+      if (_liked) _disliked = false;
+    });
+  }
+
+  void _handleDislike() {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _disliked = !_disliked;
+      if (_disliked) _liked = false;
+    });
+  }
+
+  void _handleSave() {
+    HapticFeedback.selectionClick();
+    setState(() => _saved = !_saved);
+  }
+
+  void _handleComment(BuildContext context) {
+    FeedCommentSheet.show(
+      context,
+      targetType: 'request',
+      targetId: widget.request.id,
+      title: widget.request.title.isNotEmpty ? widget.request.title : 'Request',
+      subtitle: widget.request.requesterName.isNotEmpty
+          ? 'by ${widget.request.requesterName}'
+          : null,
+      commentsEnabled: widget.request.commentsEnabled,
+    );
+  }
+
+  Future<void> _handleShare() async {
+    final r = widget.request;
+    final text = r.title.isNotEmpty ? r.title : 'Check out this request';
+    await Share.share(text, subject: r.title);
+  }
 
   @override
   void initState() {
@@ -199,32 +247,36 @@ class _RequestFeedCardState extends State<RequestFeedCard> {
 
                 SizedBox(height: 14.h),
 
-                // CTA row: gold gradient button + message icon
-                Row(
-                  children: [
-                    Expanded(
-                      child: _GoldCtaButton(
-                        label: 'Message Requester',
-                        onTap: () {
-                          debugPrint(
-                              '$_tag message tapped requestId=${widget.request.id}');
-                          widget.onMessageTap();
-                        },
-                        ext: ext,
-                      ),
-                    ),
-                    SizedBox(width: 10.w),
-                    _IconBtn(
-                      icon: Icons.chat_bubble_outline_rounded,
-                      onTap: widget.onMessageTap,
-                      ext: ext,
-                    ),
-                  ],
+                // CTA button
+                _GoldCtaButton(
+                  label: 'Message Requester',
+                  onTap: () {
+                    debugPrint(
+                        '$_tag message tapped requestId=${widget.request.id}');
+                    widget.onMessageTap();
+                  },
+                  ext: ext,
                 ),
 
                 SizedBox(height: 14.h),
               ],
             ),
+          ),
+
+          // ── Interaction bar ─────────────────────────────────────────────
+          CardInteractionBar(
+            liked: _liked,
+            disliked: _disliked,
+            saved: _saved,
+            likeCount: 0,
+            dislikeCount: 0,
+            commentCount: 0,
+            ext: ext,
+            onLike: _handleLike,
+            onDislike: _handleDislike,
+            onComment: () => _handleComment(context),
+            onShare: _handleShare,
+            onSave: _handleSave,
           ),
 
           Divider(
@@ -553,40 +605,6 @@ class _GoldCtaButton extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Icon-only button (right of CTA row) ──────────────────────────────────────
-
-class _IconBtn extends StatelessWidget {
-  const _IconBtn({
-    required this.icon,
-    required this.onTap,
-    required this.ext,
-  });
-  final IconData icon;
-  final VoidCallback onTap;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48.w,
-        height: 48.w,
-        decoration: BoxDecoration(
-          color: ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(
-            color: ext.searchHintColor.withValues(alpha: 0.2),
-            width: 0.8,
-          ),
-        ),
-        alignment: Alignment.center,
-        child: Icon(icon, color: ext.greetingColor, size: 20.sp),
       ),
     );
   }

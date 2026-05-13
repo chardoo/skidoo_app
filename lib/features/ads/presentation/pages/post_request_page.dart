@@ -36,6 +36,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
   final _budgetCtrl = TextEditingController();
   String? _selectedEventType;
   bool _submitting = false;
+  bool _commentsEnabled = true;
 
   XFile? _asset;
   bool _assetIsVideo = false;
@@ -135,6 +136,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
         location: _locationCtrl.text.trim(),
         budgetAmount: budget,
         currency: 'GHS',
+        commentsEnabled: _commentsEnabled,
       );
       debugPrint('[PostRequestPage] _submit — requestId=$requestId');
 
@@ -283,7 +285,25 @@ class _PostRequestPageState extends State<PostRequestPage> {
               ),
             ),
 
-            SizedBox(height: 32.h),
+            SizedBox(height: 16.h),
+
+            // ── Comments toggle ───────────────────────────────────────────
+            SwitchListTile(
+              value: _commentsEnabled,
+              onChanged: (v) => setState(() => _commentsEnabled = v),
+              title: Text(
+                'Allow comments',
+                style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+              ),
+              subtitle: Text(
+                'Let others comment on your request',
+                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+              ),
+              activeThumbColor: ext.accentGold,
+              contentPadding: EdgeInsets.zero,
+            ),
+
+            SizedBox(height: 16.h),
 
             // ── Submit ────────────────────────────────────────────────────
             _SubmitButton(

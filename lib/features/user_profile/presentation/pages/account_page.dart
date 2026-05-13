@@ -7,9 +7,11 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:skidoo_app/features/admin/presentation/pages/admin_settings_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/my_campaigns_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/request_board_page.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/saved_items_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 
@@ -933,6 +935,29 @@ class _AdsCard extends StatelessWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const MyCampaignsPage()),
             ),
+          ),
+          // Admin settings — only shown to super_admin users
+          FutureBuilder<bool>(
+            future: sl<AuthService>().isSuperAdmin(),
+            builder: (context, snap) {
+              if (snap.data != true) return const SizedBox.shrink();
+              return Column(
+                children: [
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  _AdsListTile(
+                    icon: Icons.admin_panel_settings_rounded,
+                    iconColor: const Color(0xFFEF4444),
+                    title: 'Admin Settings',
+                    subtitle: 'Configure feed, ads, and app-wide settings',
+                    ext: ext,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const AdminSettingsPage()),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           SizedBox(height: 4.h),
         ],

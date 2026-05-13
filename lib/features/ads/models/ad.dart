@@ -12,6 +12,7 @@ class Ad {
   final int conversions;
   final String status;
   final DateTime createdAt;
+  final bool commentsEnabled;
 
   double get ctr => impressions > 0 ? clicks / impressions : 0.0;
 
@@ -29,6 +30,7 @@ class Ad {
     required this.conversions,
     required this.status,
     required this.createdAt,
+    this.commentsEnabled = true,
   });
 
   factory Ad.fromJson(Map<String, dynamic> j) => Ad(
@@ -46,6 +48,7 @@ class Ad {
         status: j['status'] as String? ?? 'active',
         createdAt: DateTime.parse(
             j['createdAt'] as String? ?? j['created_at'] as String),
+        commentsEnabled: j['comments_enabled'] as bool? ?? true,
       );
 }
 

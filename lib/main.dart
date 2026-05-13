@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import 'package:skidoo_app/app.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
 void main() async {
@@ -12,6 +13,12 @@ void main() async {
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   await setupServiceLocator();
+
+  // Fire-and-forget — never blocks startup; failures use safe defaults.
+  Future.wait([
+    sl<AppConfigRepository>().fetch(),
+    sl<AppConfigRepository>().fetchRates(),
+  ]).ignore();
 
   // ── Device integrity check ──────────────────────────────────────────────────
   // On iOS this checks for Cydia, jailbreak artefacts, and writable system

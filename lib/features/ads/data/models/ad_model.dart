@@ -15,6 +15,7 @@ class AdModel {
     this.mediaType = 'text',
     this.advertiserPhoto,
     this.advertiserType,
+    this.commentsEnabled = true,
   });
 
   final String adId;
@@ -32,6 +33,7 @@ class AdModel {
   final String? advertiserPhoto;
   /// "photographer" | "client"
   final String? advertiserType;
+  final bool commentsEnabled;
   final String placement;
   final String impressionToken;
 
@@ -52,6 +54,7 @@ class AdModel {
         advertiserName: json['advertiser_name'] as String? ?? json['advertiser_username'] as String? ?? '',
         advertiserPhoto: json['advertiser_photo'] as String? ?? json['advertiser_avatar'] as String?,
         advertiserType: json['advertiser_type'] as String?,
+        commentsEnabled: json['comments_enabled'] as bool? ?? true,
         placement: json['placement'] as String? ?? '',
         impressionToken: json['impression_token'] as String? ?? '',
       );

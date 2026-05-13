@@ -27,6 +27,7 @@ class AuthService {
   static const _kPreferredLanguage  = 'auth.preferred_language';
   static const _kTimezone           = 'auth.timezone';
   static const _kInterestTags       = 'auth.interest_tags';
+  static const _kRole               = 'auth.role';
 
   // ── Token ────────────────────────────────────────────────────────────────────
   Future<void> setToken(String token) =>
@@ -120,6 +121,10 @@ class AuthService {
 
   // ── Session teardown ─────────────────────────────────────────────────────────
   /// Deletes every auth key individually so non-auth preferences are untouched.
+  Future<void> setRole(String role) => _storage.write(key: _kRole, value: role);
+  Future<String> getRole() async => await _storage.read(key: _kRole) ?? '';
+  Future<bool> isSuperAdmin() async => (await getRole()) == 'super_admin';
+
   Future<void> removeToken() => Future.wait([
         _storage.delete(key: _kToken),
         _storage.delete(key: _kExpiration),
@@ -133,5 +138,6 @@ class AuthService {
         _storage.delete(key: _kPreferredLanguage),
         _storage.delete(key: _kTimezone),
         _storage.delete(key: _kInterestTags),
+        _storage.delete(key: _kRole),
       ]);
 }

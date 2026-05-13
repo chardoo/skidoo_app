@@ -179,6 +179,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
             ctaUrl: a.ctaUrlCtrl.text.trim().isEmpty
                 ? null
                 : a.ctaUrlCtrl.text.trim(),
+            commentsEnabled: a.commentsEnabled,
           );
           // Upload new media if picked
           if (a.newMedia != null) {
@@ -488,6 +489,7 @@ class _AdState {
     required this.ctaTextCtrl,
     required this.ctaUrlCtrl,
     required this.existingMediaUrl,
+    required this.commentsEnabled,
   });
 
   final String adId;
@@ -498,6 +500,7 @@ class _AdState {
   final String? existingMediaUrl;
   XFile? newMedia;
   bool newMediaIsVideo = false;
+  bool commentsEnabled;
 
   factory _AdState.from(ad) => _AdState(
         adId: ad.id,
@@ -507,6 +510,7 @@ class _AdState {
             text: ad.ctaText == 'Learn More' ? '' : ad.ctaText),
         ctaUrlCtrl: TextEditingController(text: ad.ctaUrl),
         existingMediaUrl: ad.mediaUrl,
+        commentsEnabled: ad.commentsEnabled,
       );
 
   void dispose() {
@@ -692,6 +696,17 @@ class _AdForm extends StatelessWidget {
           hint: 'https://',
           ext: ext,
           keyboardType: TextInputType.url,
+        ),
+        SizedBox(height: 20.h),
+        _EToggleRow(
+          label: 'Allow comments',
+          subtitle: 'Let viewers comment on this ad',
+          value: state.commentsEnabled,
+          ext: ext,
+          onChanged: (v) {
+            state.commentsEnabled = v;
+            onChanged();
+          },
         ),
         SizedBox(height: 20.h),
         _ELabel('Creative media', ext),
@@ -1164,6 +1179,49 @@ class _EDropdown<T> extends StatelessWidget {
           ),
         ],
         onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _EToggleRow extends StatelessWidget {
+  const _EToggleRow({
+    required this.label,
+    required this.subtitle,
+    required this.value,
+    required this.ext,
+    required this.onChanged,
+  });
+  final String label;
+  final String subtitle;
+  final bool value;
+  final AppThemeExtension ext;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.searchFieldFill,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: SwitchListTile(
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: ext.accentGold,
+        contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
+        title: Text(
+          label,
+          style: TextStyle(
+            color: ext.greetingColor,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+        ),
       ),
     );
   }

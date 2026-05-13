@@ -17,6 +17,7 @@ class FeedRequestModel {
     this.assetUrl,
     this.assetType,
     this.createdAt,
+    this.commentsEnabled = true,
   });
 
   final String id;
@@ -41,6 +42,7 @@ class FeedRequestModel {
   /// "image" | "video"
   final String? assetType;
   final DateTime? createdAt;
+  final bool commentsEnabled;
 
   factory FeedRequestModel.fromJson(Map<String, dynamic> json) =>
       FeedRequestModel(
@@ -62,6 +64,7 @@ class FeedRequestModel {
         status: json['status'] as String? ?? 'open',
         assetUrl: (json['asset_url'] ?? json['media_url']) as String?,
         assetType: (json['asset_type'] ?? json['media_type']) as String?,
+        commentsEnabled: json['comments_enabled'] as bool? ?? true,
         createdAt: json['createdAt'] != null
             ? DateTime.tryParse(json['createdAt'] as String)
             : null,

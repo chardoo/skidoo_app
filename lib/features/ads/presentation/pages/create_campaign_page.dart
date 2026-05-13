@@ -1,11 +1,12 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
+import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
 import 'package:video_player/video_player.dart';
@@ -85,6 +86,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   // Step 3 — Creative media
   XFile? _creative;
   bool _creativeIsVideo = false;
+  bool _commentsEnabled = true;
   VideoPlayerController? _creativeVideoCtrl;
 
   // Stored IDs from API calls
@@ -115,6 +117,11 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
         if (_nameCtrl.text.trim().isEmpty) return 'Campaign name is required.';
         final budget = double.tryParse(_budgetCtrl.text.trim());
         if (budget == null || budget <= 0) return 'Enter a valid total budget.';
+        final budgetGhs = AppConfigRepository.rates.toGhs(budget, _currency);
+        final minGhs = AppConfigRepository.current.minCampaignBudgetGhs;
+        if (budgetGhs < minGhs) {
+          return 'Minimum budget is ${ExchangeRates.formatGhs(minGhs)}.';
+        }
       case 1:
         final daily = double.tryParse(_dailyBudgetCtrl.text.trim());
         if (daily == null || daily <= 0) return 'Enter a valid daily budget.';
@@ -218,6 +225,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           ? 'Learn More'
           : _ctaTextCtrl.text.trim(),
       ctaUrl: _ctaLinkCtrl.text.trim(),
+      commentsEnabled: _commentsEnabled,
     );
     final adId = result.id;
     debugPrint('[CreateCampaignPage] _createAd — adId=$adId');
@@ -309,6 +317,9 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
         builder: (_) => AdsCheckoutPage(
           authorizationUrl: result.authorizationUrl,
           reference: result.reference,
+          amountGhs: result.amountGhs,
+          originalAmount: result.originalAmount,
+          originalCurrency: result.originalCurrency,
           onSuccess: () {},
         ),
       ),
@@ -445,6 +456,8 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           creative: _creative,
           creativeIsVideo: _creativeIsVideo,
           videoCtrl: _creativeVideoCtrl,
+          commentsEnabled: _commentsEnabled,
+          onCommentsToggle: (v) => setState(() => _commentsEnabled = v),
           ext: ext,
           onPickCreative: () => _pickCreative(context),
           onRemoveCreative: _removeCreative,
@@ -939,6 +952,8 @@ class _Step3 extends StatelessWidget {
     required this.creative,
     required this.creativeIsVideo,
     required this.videoCtrl,
+    required this.commentsEnabled,
+    required this.onCommentsToggle,
     required this.ext,
     required this.onPickCreative,
     required this.onRemoveCreative,
@@ -951,6 +966,8 @@ class _Step3 extends StatelessWidget {
   final XFile? creative;
   final bool creativeIsVideo;
   final VideoPlayerController? videoCtrl;
+  final bool commentsEnabled;
+  final ValueChanged<bool> onCommentsToggle;
   final AppThemeExtension ext;
   final VoidCallback onPickCreative;
   final VoidCallback onRemoveCreative;
@@ -1022,6 +1039,21 @@ class _Step3 extends StatelessWidget {
           ext: ext,
           keyboardType: TextInputType.url,
         ),
+        SizedBox(height: 16.h),
+        SwitchListTile(
+          value: commentsEnabled,
+          onChanged: onCommentsToggle,
+          title: Text(
+            'Allow comments',
+            style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+          ),
+          subtitle: Text(
+            'Let viewers comment on this ad',
+            style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+          ),
+          activeThumbColor: ext.accentGold,
+          contentPadding: EdgeInsets.symmetric(horizontal: 4.w),
+        ),
       ],
     );
   }
@@ -1049,6 +1081,16 @@ class _Step4 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String budgetDisplay = budget.isEmpty ? '—' : '$currency $budget';
+    if (budget.isNotEmpty && currency != 'GHS') {
+      final amount = double.tryParse(budget);
+      if (amount != null) {
+        final ghsAmount = AppConfigRepository.rates.toGhs(amount, currency);
+        budgetDisplay =
+            '$currency $budget ≈ ${ExchangeRates.formatGhs(ghsAmount)} (est.)';
+      }
+    }
+
     return _StepScroll(
       ext: ext,
       stepTitle: 'Review & Pay',
@@ -1057,7 +1099,7 @@ class _Step4 extends StatelessWidget {
       children: [
         _ReviewRow('Campaign', name.isEmpty ? '—' : name, ext),
         _ReviewRow('Objective', objective, ext),
-        _ReviewRow('Budget', budget.isEmpty ? '—' : '$currency $budget', ext),
+        _ReviewRow('Budget', budgetDisplay, ext),
         _ReviewRow('Headline', headline.isEmpty ? '—' : headline, ext),
 
         SizedBox(height: 24.h),

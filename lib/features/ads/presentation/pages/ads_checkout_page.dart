@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class AdsCheckoutPage extends StatefulWidget {
@@ -10,12 +11,25 @@ class AdsCheckoutPage extends StatefulWidget {
     required this.authorizationUrl,
     required this.onSuccess,
     this.reference = '',
+    this.amountGhs = 0,
+    this.originalAmount = 0,
+    this.originalCurrency = '',
   });
 
   final String authorizationUrl;
   final String reference;
+
   /// Called when Paystack redirects back indicating a successful payment.
   final VoidCallback onSuccess;
+
+  /// Exact GHS amount returned by the server's pay endpoint.
+  final double amountGhs;
+
+  /// Original amount in the advertiser's chosen currency.
+  final double originalAmount;
+
+  /// ISO-4217 currency code of the original amount (e.g. "USD").
+  final String originalCurrency;
 
   @override
   State<AdsCheckoutPage> createState() => _AdsCheckoutPageState();
@@ -25,11 +39,9 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
   late final WebViewController _controller;
   bool _loading = true;
 
-  /// Paystack appends trxref= and reference= on the callback redirect.
   static bool _isSuccess(String url) =>
       url.contains('trxref=') || url.contains('reference=');
 
-  /// Paystack redirects here when the user cancels / closes the popup.
   static bool _isClose(String url) =>
       url.contains('standard.paystack.co/close') ||
       url.contains('paystack.co/close');
@@ -39,7 +51,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
     super.initState();
     debugPrint(
       '[AdsCheckoutPage] initState — url: ${widget.authorizationUrl} '
-      'reference: ${widget.reference}',
+      'reference: ${widget.reference} amountGhs: ${widget.amountGhs}',
     );
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -67,19 +79,14 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
             final url = request.url;
             debugPrint('[AdsCheckoutPage] navigationRequest: $url');
 
-            // Paystack close / cancel
             if (_isClose(url)) {
               debugPrint('[AdsCheckoutPage] Paystack close detected — popping');
               if (mounted) Navigator.of(context).pop();
               return NavigationDecision.prevent;
             }
 
-            // Payment success callback
             if (_isSuccess(url)) {
-              debugPrint(
-                '[AdsCheckoutPage] payment success detected — '
-                'url=$url reference=${widget.reference}',
-              );
+              debugPrint('[AdsCheckoutPage] payment success detected — url=$url');
               widget.onSuccess();
               if (mounted) Navigator.of(context).pop();
               return NavigationDecision.prevent;
@@ -95,6 +102,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final showAmounts = widget.amountGhs > 0;
 
     return Scaffold(
       backgroundColor: ext.homeBackground,
@@ -102,8 +110,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         backgroundColor: ext.homeBackground,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.close_rounded,
-              color: ext.greetingColor, size: 22.sp),
+          icon: Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
@@ -120,8 +127,97 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         children: [
           WebViewWidget(controller: _controller),
           if (_loading)
-            const Center(child: CircularProgressIndicator()),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: ext.accentGold),
+                  if (showAmounts) ...[
+                    SizedBox(height: 20.h),
+                    _PaymentInfoCard(
+                      amountGhs: widget.amountGhs,
+                      originalAmount: widget.originalAmount,
+                      originalCurrency: widget.originalCurrency,
+                      ext: ext,
+                    ),
+                  ],
+                ],
+              ),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Payment amount info card shown while WebView loads ────────────────────────
+
+class _PaymentInfoCard extends StatelessWidget {
+  const _PaymentInfoCard({
+    required this.amountGhs,
+    required this.originalAmount,
+    required this.originalCurrency,
+    required this.ext,
+  });
+
+  final double amountGhs;
+  final double originalAmount;
+  final String originalCurrency;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    final ghsFormatted = ExchangeRates.formatGhs(amountGhs);
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 32.w),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+        decoration: BoxDecoration(
+          color: ext.cardSurface,
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(
+            color: ext.accentGold.withValues(alpha: 0.3),
+            width: 0.8,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (originalCurrency.isNotEmpty &&
+                originalCurrency != 'GHS' &&
+                originalAmount > 0)
+              Text(
+                '${originalAmount.toStringAsFixed(2)} $originalCurrency'
+                ' ≈ $ghsFormatted',
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              )
+            else
+              Text(
+                ghsFormatted,
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            SizedBox(height: 6.h),
+            Text(
+              'You will be charged in GHS via Paystack',
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12.sp,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

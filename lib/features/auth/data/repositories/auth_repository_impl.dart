@@ -53,6 +53,7 @@ class AuthRepositoryImpl implements AuthRepository {
         _authService.setId(user.id),
         _authService.setEmail(user.email),
         _authService.setName(user.name),
+        if (user.role.isNotEmpty) _authService.setRole(user.role),
         if (user.expiration.isNotEmpty)
           _authService.setExpiration(user.expiration),
       ]);

@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/feed_comment_sheet.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 
@@ -103,6 +104,19 @@ class _AdFeedCardState extends State<AdFeedCard> {
   void _handleSave() {
     HapticFeedback.selectionClick();
     setState(() => _saved = !_saved);
+  }
+
+  void _handleComment(BuildContext context) {
+    FeedCommentSheet.show(
+      context,
+      targetType: 'ad',
+      targetId: widget.ad.adId,
+      title: widget.ad.headline.isNotEmpty ? widget.ad.headline : 'Ad',
+      subtitle: widget.ad.advertiserName.isNotEmpty
+          ? 'by ${widget.ad.advertiserName}'
+          : null,
+      commentsEnabled: widget.ad.commentsEnabled,
+    );
   }
 
   Future<void> _handleShare() async {
@@ -228,7 +242,7 @@ class _AdFeedCardState extends State<AdFeedCard> {
             ext: ext,
             onLike: _handleLike,
             onDislike: _handleDislike,
-            onComment: () {},
+            onComment: () => _handleComment(context),
             onShare: _handleShare,
             onSave: _handleSave,
           ),

@@ -6,6 +6,7 @@ import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
@@ -50,6 +51,10 @@ List<_FeedItem> _buildVirtualList(
   List<EventDiscovery> events,
   bool isLoadingMore,
 ) {
+  final cfg = AppConfigRepository.current;
+  final adsInterval = cfg.adsEveryNEvents.clamp(1, 9999);
+  final requestsInterval = cfg.requestsEveryNEvents.clamp(1, 9999);
+
   final items = <_FeedItem>[];
   var requestSlot = 0;
   var adSlotCount = 0;
@@ -57,20 +62,24 @@ List<_FeedItem> _buildVirtualList(
   for (var i = 0; i < events.length; i++) {
     items.add(_EventItem(events[i], i));
     final count = i + 1;
-    if (count % 20 == 0) {
-      items.add(_RequestItem(requestSlot++));
-    } else if (count % 10 == 0) {
-      items.add(const _AdItem());
-      adSlotCount++;
+    // Requests take priority when both intervals coincide.
+    if (count % requestsInterval == 0) {
+      if (cfg.requestsEnabled) items.add(_RequestItem(requestSlot++));
+    } else if (count % adsInterval == 0) {
+      if (cfg.adsEnabled) {
+        items.add(const _AdItem());
+        adSlotCount++;
+      }
     }
   }
 
-  // When the feed has fewer than 10 events the loop never inserts an ad or
-  // request. Always append them so they appear regardless of feed length.
-  // The builder silently collapses these slots when there is no data yet.
+  // When the feed is shorter than both intervals, append one slot of each
+  // so they always appear. The builder collapses them when data is absent.
   if (events.isNotEmpty) {
-    if (adSlotCount == 0) items.add(const _AdItem());
-    if (requestSlot == 0) items.add(const _RequestItem(0));
+    if (adSlotCount == 0 && cfg.adsEnabled) items.add(const _AdItem());
+    if (requestSlot == 0 && cfg.requestsEnabled) {
+      items.add(const _RequestItem(0));
+    }
   }
 
   if (isLoadingMore) items.add(const _LoadingItem());
@@ -118,18 +127,34 @@ class _EventsFeedState extends State<EventsFeed> {
 
   Future<void> _fetchAdsData() async {
     debugPrint('[EventsFeed] _fetchAdsData start');
-    final results = await Future.wait([
-      _repo.serveAd(placement: 'event_feed'),
-      _repo.getRequests(),
-    ]);
-    if (!mounted) return;
-    final ad = results[0] as AdModel?;
-    final requests = results[1] as List<FeedRequestModel>;
-    debugPrint('[EventsFeed] _fetchAdsData done — ad=${ad?.adId ?? 'null'} requests=${requests.length}');
-    setState(() {
-      _servedAd = ad;
-      _requests = requests;
-    });
+    try {
+      // Fetch config in parallel — failure is non-fatal, defaults remain.
+      sl<AppConfigRepository>().fetch().catchError((_) => AppConfigRepository.current);
+      final results = await Future.wait([
+        _repo.serveAd(placement: 'event_feed'),
+        _repo.getRequests(),
+      ]);
+      if (!mounted) return;
+      final ad = results[0] as AdModel?;
+      final requests = results[1] as List<FeedRequestModel>;
+      debugPrint(
+        '[EventsFeed] _fetchAdsData done ─── '
+        'ad=${ad == null ? "NULL (no active campaign)" : "✓ adId=${ad.adId} headline=${ad.headline}"} | '
+        'requests=${requests.length} items',
+      );
+      if (ad == null) {
+        debugPrint('[EventsFeed] ad slot will be hidden — serveAd returned null');
+      }
+      if (requests.isEmpty) {
+        debugPrint('[EventsFeed] request slot will be hidden — getRequests returned empty list');
+      }
+      setState(() {
+        _servedAd = ad;
+        _requests = requests;
+      });
+    } catch (e, st) {
+      debugPrint('[EventsFeed] _fetchAdsData ERROR: $e\n$st');
+    }
   }
 
   @override

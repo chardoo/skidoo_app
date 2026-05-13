@@ -3,6 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_key_datasource.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
+import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
+import 'package:skidoo_app/features/ads/data/datasources/feed_comment_data_source.dart';
+import 'package:skidoo_app/features/ads/presentation/bloc/feed_comment_bloc.dart';
 import 'package:skidoo_app/features/photo_comments/data/photo_comment_remote_data_source.dart';
 import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
 import 'package:skidoo_app/features/photo_comments/presentation/bloc/photo_comment_bloc.dart';
@@ -408,4 +411,13 @@ Future<void> setupServiceLocator() async {
       () => PhotoCommentBloc(sl<PhotoCommentRemoteDataSource>(), sl<AuthService>()));
   sl.registerSingleton<PictureLikeService>(
       PictureLikeService(sl<ChatRestDataSource>()));
+
+  // ── Feed Comments (ads / requests) ───────────────────────────────────────
+  sl.registerSingleton<FeedCommentDataSource>(
+      FeedCommentDataSourceImpl(sl<Api>()));
+  sl.registerFactory<FeedCommentBloc>(
+      () => FeedCommentBloc(sl<FeedCommentDataSource>(), sl<AuthService>()));
+
+  // ── Super admin app config ────────────────────────────────────────────────
+  sl.registerSingleton<AppConfigRepository>(AppConfigRepository(sl<Api>()));
 }

@@ -92,6 +92,9 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
           builder: (_) => AdsCheckoutPage(
             authorizationUrl: payment.authorizationUrl,
             reference: payment.reference,
+            amountGhs: payment.amountGhs,
+            originalAmount: payment.originalAmount,
+            originalCurrency: payment.originalCurrency,
             onSuccess: () {},
           ),
         ),
@@ -492,6 +495,7 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
   late final TextEditingController _locationCtrl;
   late final TextEditingController _budgetCtrl;
   String? _eventType;
+  bool _commentsEnabled = true;
   bool _saving = false;
 
   @override
@@ -505,6 +509,7 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
       text: r.budgetAmount != null ? r.budgetAmount!.toStringAsFixed(0) : '',
     );
     _eventType = r.eventType.isEmpty ? null : r.eventType;
+    _commentsEnabled = r.commentsEnabled;
   }
 
   @override
@@ -528,6 +533,7 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
         eventType: _eventType,
         location: _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
         budgetAmount: double.tryParse(_budgetCtrl.text.trim()),
+        commentsEnabled: _commentsEnabled,
       );
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -618,6 +624,31 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
                         onTap: () => setState(() => _eventType = t.toLowerCase()),
                       )),
                 ],
+              ),
+              SizedBox(height: 20.h),
+              Container(
+                decoration: BoxDecoration(
+                  color: ext.searchFieldFill,
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: SwitchListTile(
+                  value: _commentsEnabled,
+                  onChanged: (v) => setState(() => _commentsEnabled = v),
+                  activeThumbColor: ext.accentGold,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
+                  title: Text(
+                    'Allow comments',
+                    style: TextStyle(
+                      color: ext.greetingColor,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Let people comment on this request',
+                    style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                  ),
+                ),
               ),
               SizedBox(height: 24.h),
               GestureDetector(

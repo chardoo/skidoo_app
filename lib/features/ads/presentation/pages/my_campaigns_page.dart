@@ -234,6 +234,9 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
           builder: (_) => AdsCheckoutPage(
             authorizationUrl: result.authorizationUrl,
             reference: result.reference,
+            amountGhs: result.amountGhs,
+            originalAmount: result.originalAmount,
+            originalCurrency: result.originalCurrency,
             onSuccess: () {},
           ),
         ),
@@ -265,6 +268,9 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
           builder: (_) => AdsCheckoutPage(
             authorizationUrl: result.authorizationUrl,
             reference: result.reference,
+            amountGhs: result.amountGhs,
+            originalAmount: result.originalAmount,
+            originalCurrency: result.originalCurrency,
             onSuccess: () {},
           ),
         ),
