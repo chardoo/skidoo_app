@@ -136,6 +136,7 @@ class _FeedItemCardState extends State<FeedItemCard> {
   bool _saved = false;
   bool _bodyExpanded = false;
   bool _initFired = false;
+  bool _muted = true;
 
   @override
   void initState() {
@@ -174,6 +175,13 @@ class _FeedItemCardState extends State<FeedItemCard> {
   void dispose() {
     _videoCtrl?.dispose();
     super.dispose();
+  }
+
+  void _toggleMute() {
+    if (_videoCtrl == null) return;
+    final nowMuted = !_muted;
+    _videoCtrl!.setVolume(nowMuted ? 0.0 : 1.0);
+    setState(() => _muted = nowMuted);
   }
 
   void _handleLike() {
@@ -342,6 +350,30 @@ class _FeedItemCardState extends State<FeedItemCard> {
                   right: 14.w,
                   child: _FooterOverlay(data: d),
                 ),
+
+                // Mute toggle — only when a video is playing
+                if (_videoReady && d.mediaIsVideo)
+                  Positioned(
+                    bottom: 60.h,
+                    right: 14.w,
+                    child: GestureDetector(
+                      onTap: _toggleMute,
+                      child: Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: const BoxDecoration(
+                          color: Colors.black45,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _muted
+                              ? Icons.volume_off_rounded
+                              : Icons.volume_up_rounded,
+                          color: Colors.white,
+                          size: 18.sp,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
