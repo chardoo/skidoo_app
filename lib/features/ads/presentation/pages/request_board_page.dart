@@ -8,7 +8,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/request_feed_card.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/feed_item_card.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 
@@ -175,9 +175,11 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                       child: ListView.builder(
                         physics: const BouncingScrollPhysics(),
                         itemCount: _requests.length,
-                        itemBuilder: (_, i) => RequestFeedCard(
-                          request: _requests[i],
-                          onMessageTap: () => _openChat(_requests[i]),
+                        itemBuilder: (_, i) => FeedItemCard(
+                          data: FeedItemData.fromRequest(
+                            _requests[i],
+                            onMessageTap: () => _openChat(_requests[i]),
+                          ),
                         ),
                       ),
                     ),

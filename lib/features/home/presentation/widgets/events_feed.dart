@@ -10,8 +10,7 @@ import 'package:skidoo_app/features/admin/data/repositories/app_config_repositor
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/ad_feed_card.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/request_feed_card.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/feed_item_card.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
@@ -299,12 +298,23 @@ class _EventsFeedState extends State<EventsFeed> {
               // ── Injected ad ─────────────────────────────────────────────
               if (item is _AdItem) {
                 final ad = _servedAd;
-                if (ad == null) {
-                  return const SizedBox.shrink();
-                }
-                return AdFeedCard(
+                if (ad == null) return const SizedBox.shrink();
+                return FeedItemCard(
                   key: ValueKey('ad_${item.hashCode}'),
-                  ad: ad,
+                  data: FeedItemData.fromAd(
+                    ad,
+                    onCtaTap: () => _repo.trackClick(
+                      adId: ad.adId,
+                      campaignId: ad.campaignId,
+                    ),
+                    onInit: () => _repo.trackImpression(
+                      adId: ad.adId,
+                      adsetId: ad.adsetId,
+                      campaignId: ad.campaignId,
+                      placement: ad.placement,
+                      impressionToken: ad.impressionToken,
+                    ),
+                  ),
                 );
               }
 
@@ -314,14 +324,16 @@ class _EventsFeedState extends State<EventsFeed> {
                   return const SizedBox.shrink();
                 }
                 final req = _requests[item.requestIndex];
-                return RequestFeedCard(
+                return FeedItemCard(
                   key: ValueKey('req_${req.id}'),
-                  request: req,
-                  onMessageTap: () => _openChat(
-                    context,
-                    req.requesterId,
-                    req.requesterType,
-                    req.requesterName,
+                  data: FeedItemData.fromRequest(
+                    req,
+                    onMessageTap: () => _openChat(
+                      context,
+                      req.requesterId,
+                      req.requesterType,
+                      req.requesterName,
+                    ),
                   ),
                 );
               }
