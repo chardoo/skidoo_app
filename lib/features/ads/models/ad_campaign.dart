@@ -109,7 +109,7 @@ enum CampaignStatus {
         rejected => 'Rejected',
       };
 
-  bool get isEditable => this == draft || this == pendingPayment || this == pendingReview;
+  bool get isEditable => this != completed;
   bool get canPay => this == draft || this == pendingPayment;
   bool get canTopup => this == paused;
   bool get canPause => this == active;

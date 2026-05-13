@@ -484,7 +484,9 @@ class _CampaignTile extends StatelessWidget {
               ),
               SizedBox(width: 10.w),
               _Badge(label: campaign.status.label, color: statusColor),
-              if (campaign.status.isEditable) ...[
+              if (campaign.status.isEditable && !campaign.status.canPause &&
+                  !campaign.status.canResume &&
+                  campaign.status != CampaignStatus.rejected) ...[
                 SizedBox(width: 6.w),
                 GestureDetector(
                   onTap: onEdit,
@@ -573,43 +575,33 @@ class _CampaignTile extends StatelessWidget {
             ),
           ],
 
-          // ── Pause button (active campaigns) ──────────────────────────
+          // ── Active: Edit + Pause side by side ────────────────────────
           if (campaign.status.canPause) ...[
             SizedBox(height: 12.h),
-            GestureDetector(
-              onTap: onPause,
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 10.h),
-                decoration: BoxDecoration(
-                  color: ext.searchFieldFill,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(
-                    color: ext.searchHintColor.withValues(alpha: 0.25),
-                    width: 1.0,
+            Row(
+              children: [
+                Expanded(
+                  child: _OutlinedActionBtn(
+                    icon: Icons.edit_outlined,
+                    label: 'Edit',
+                    ext: ext,
+                    onTap: onEdit,
                   ),
                 ),
-                alignment: Alignment.center,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.pause_circle_outline_rounded,
-                        color: ext.greetingColor, size: 16.sp),
-                    SizedBox(width: 5.w),
-                    Text(
-                      'Pause Campaign',
-                      style: TextStyle(
-                        color: ext.greetingColor,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: _OutlinedActionBtn(
+                    icon: Icons.pause_circle_outline_rounded,
+                    label: 'Pause',
+                    ext: ext,
+                    onTap: onPause,
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
 
-          // ── Resume + Top-up buttons (paused campaigns) ────────────────
+          // ── Paused: Resume + Top-up, then Edit below ──────────────────
           if (campaign.status.canResume) ...[
             SizedBox(height: 12.h),
             Row(
@@ -621,10 +613,7 @@ class _CampaignTile extends StatelessWidget {
                       padding: EdgeInsets.symmetric(vertical: 10.h),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF10B981),
-                            Color(0xFF059669),
-                          ],
+                          colors: [Color(0xFF10B981), Color(0xFF059669)],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
@@ -686,6 +675,80 @@ class _CampaignTile extends StatelessWidget {
                 ),
               ],
             ),
+            SizedBox(height: 8.h),
+            _OutlinedActionBtn(
+              icon: Icons.edit_outlined,
+              label: 'Edit Campaign',
+              ext: ext,
+              onTap: onEdit,
+            ),
+          ],
+
+          // ── Rejected: Fix & Resubmit (gold) ──────────────────────────
+          if (campaign.status == CampaignStatus.rejected) ...[
+            SizedBox(height: 12.h),
+            GestureDetector(
+              onTap: onEdit,
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 10.h),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.edit_outlined, color: Colors.white, size: 16.sp),
+                    SizedBox(width: 5.w),
+                    Text(
+                      'Fix & Resubmit',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (campaign.rejectionReason != null &&
+                campaign.rejectionReason!.isNotEmpty) ...[
+              SizedBox(height: 8.h),
+              Container(
+                padding: EdgeInsets.all(10.w),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(10.r),
+                  border: Border.all(
+                      color: Colors.redAccent.withValues(alpha: 0.2),
+                      width: 0.8),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline_rounded,
+                        color: Colors.redAccent, size: 14.sp),
+                    SizedBox(width: 6.w),
+                    Expanded(
+                      child: Text(
+                        campaign.rejectionReason!,
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 11.sp,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
 
           // ── Delete button (draft only) ────────────────────────────────
@@ -737,6 +800,53 @@ class _CampaignTile extends StatelessWidget {
         CampaignStatus.completed => const Color(0xFF8B5CF6),
         CampaignStatus.rejected => Colors.redAccent,
       };
+}
+
+class _OutlinedActionBtn extends StatelessWidget {
+  const _OutlinedActionBtn({
+    required this.icon,
+    required this.label,
+    required this.ext,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 10.h),
+        decoration: BoxDecoration(
+          color: ext.searchFieldFill,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: ext.searchHintColor.withValues(alpha: 0.25),
+            width: 1.0,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: ext.greetingColor, size: 15.sp),
+            SizedBox(width: 5.w),
+            Text(
+              label,
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _Badge extends StatelessWidget {
