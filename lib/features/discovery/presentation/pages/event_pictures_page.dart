@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -230,9 +232,8 @@ class _MasonryGrid extends StatelessWidget {
   final int startIndex;
   final void Function(int globalIdx) onTap;
 
-  // Dramatic alternating heights for a classic editorial masonry look.
-  static const _leftH  = [210.0, 135.0, 185.0, 120.0, 195.0, 145.0];
-  static const _rightH = [145.0, 195.0, 125.0, 190.0, 130.0, 205.0];
+  static const _leftH  = [210.0, 170.0, 195.0, 165.0, 200.0, 175.0];
+  static const _rightH = [175.0, 200.0, 165.0, 195.0, 170.0, 210.0];
 
   @override
   Widget build(BuildContext context) {
@@ -885,25 +886,44 @@ class _PhotoBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CachedNetworkImage(
-      imageUrl: url,
-      width: double.infinity,
-      height: double.infinity,
-      fit: BoxFit.cover,
-      memCacheWidth: 800,
-      filterQuality: FilterQuality.medium,
-      placeholder: (_, __) => const ColoredBox(
-        color: Color(0xFF0D0D0D),
-        child: Center(
-          child: CircularProgressIndicator(color: Colors.white24, strokeWidth: 2),
-        ),
+    const placeholder = ColoredBox(
+      color: Color(0xFF0D0D0D),
+      child: Center(
+        child: CircularProgressIndicator(color: Colors.white24, strokeWidth: 2),
       ),
-      errorWidget: (_, __, ___) => const ColoredBox(
-        color: Color(0xFF0D0D0D),
-        child: Center(
-          child: Icon(Icons.broken_image_outlined, color: Colors.white24, size: 48),
-        ),
+    );
+    const errorWidget = ColoredBox(
+      color: Color(0xFF0D0D0D),
+      child: Center(
+        child: Icon(Icons.broken_image_outlined, color: Colors.white24, size: 48),
       ),
+    );
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Blurred background fill so letterbox bars look intentional
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+          child: CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.cover,
+            memCacheWidth: 400,
+            filterQuality: FilterQuality.low,
+            placeholder: (_, __) => placeholder,
+            errorWidget: (_, __, ___) => errorWidget,
+          ),
+        ),
+        const ColoredBox(color: Color(0x55000000)),
+        // Full image, never cropped
+        CachedNetworkImage(
+          imageUrl: url,
+          fit: BoxFit.contain,
+          memCacheWidth: 800,
+          filterQuality: FilterQuality.medium,
+          placeholder: (_, __) => placeholder,
+          errorWidget: (_, __, ___) => errorWidget,
+        ),
+      ],
     );
   }
 }

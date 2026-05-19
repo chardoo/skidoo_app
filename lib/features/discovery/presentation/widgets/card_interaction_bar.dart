@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/follow/data/follow_repository.dart';
 
 class CardInteractionBar extends StatelessWidget {
   const CardInteractionBar({
@@ -18,6 +19,7 @@ class CardInteractionBar extends StatelessWidget {
     required this.onComment,
     required this.onShare,
     required this.onSave,
+    this.commentsEnabled = true,
   });
 
   final bool liked;
@@ -26,6 +28,7 @@ class CardInteractionBar extends StatelessWidget {
   final int likeCount;
   final int dislikeCount;
   final int commentCount;
+  final bool commentsEnabled;
   final AppThemeExtension ext;
   final VoidCallback onLike;
   final VoidCallback onDislike;
@@ -131,19 +134,41 @@ class CardInteractionBar extends StatelessWidget {
           SizedBox(width: 18.w),
 
           // ── Comment ──────────────────────────────────────────────────────
-          _AnimatedActionBtn(
-            onTap: onComment,
-            child: Row(
+          if (commentsEnabled)
+            _AnimatedActionBtn(
+              onTap: onComment,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.mode_comment_outlined,
+                      color: ext.greetingColor, size: 24.sp),
+                  if (commentCount > 0) ...[
+                    SizedBox(width: 5.w),
+                    Text(
+                      _fmt(commentCount),
+                      style: TextStyle(
+                        color: ext.greetingColor,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            )
+          else
+            Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.mode_comment_outlined,
-                    color: ext.greetingColor, size: 24.sp),
+                Icon(Icons.comments_disabled_outlined,
+                    color: ext.searchHintColor.withValues(alpha: 0.4),
+                    size: 24.sp),
                 if (commentCount > 0) ...[
                   SizedBox(width: 5.w),
                   Text(
                     _fmt(commentCount),
                     style: TextStyle(
-                      color: ext.greetingColor,
+                      color: ext.searchHintColor.withValues(alpha: 0.4),
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                     ),
@@ -151,7 +176,6 @@ class CardInteractionBar extends StatelessWidget {
                 ],
               ],
             ),
-          ),
 
           SizedBox(width: 18.w),
 
@@ -237,6 +261,138 @@ class _AnimatedActionBtnState extends State<_AnimatedActionBtn>
       },
       onTapCancel: () => _ctrl.forward(),
       child: ScaleTransition(scale: _ctrl, child: widget.child),
+    );
+  }
+}
+
+// ── Follow button — shared across event, campaign, and request cards ──────────
+
+class FollowButton extends StatefulWidget {
+  const FollowButton({
+    super.key,
+    required this.photographerId,
+    this.onImage = false,
+    this.initialFollowing = false,
+  });
+
+  /// The photographer/creator to follow or unfollow.
+  final String photographerId;
+
+  /// When true, colours are adjusted for use on a dark image overlay.
+  final bool onImage;
+
+  /// Seed state — set true when the viewer already follows this creator.
+  final bool initialFollowing;
+
+  @override
+  State<FollowButton> createState() => _FollowButtonState();
+}
+
+class _FollowButtonState extends State<FollowButton>
+    with SingleTickerProviderStateMixin {
+  late bool _following;
+  bool _loading = false;
+  final _repo = FollowRepository();
+
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 120),
+    lowerBound: 0.88,
+    upperBound: 1.0,
+    value: 1.0,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _following = widget.initialFollowing ||
+        FollowRepository.followedIds.contains(widget.photographerId);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggle() async {
+    if (_loading || widget.photographerId.isEmpty) return;
+    HapticFeedback.lightImpact();
+    final willFollow = !_following;
+    await _ctrl.reverse();
+    if (!mounted) return;
+    setState(() {
+      _following = willFollow;
+      _loading = true;
+    });
+    _ctrl.forward();
+    try {
+      if (willFollow) {
+        await _repo.follow(widget.photographerId);
+      } else {
+        await _repo.unfollow(widget.photographerId);
+      }
+    } catch (_) {
+      // Revert optimistic update on error.
+      if (mounted) setState(() => _following = !willFollow);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final onImg = widget.onImage;
+
+    return GestureDetector(
+      onTap: _toggle,
+      child: ScaleTransition(
+        scale: _ctrl,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.symmetric(horizontal: 13.w, vertical: 5.h),
+          decoration: BoxDecoration(
+            color: _following
+                ? (onImg
+                    ? Colors.white.withValues(alpha: 0.18)
+                    : ext.searchFieldFill)
+                : (onImg ? Colors.white : ext.accentGold),
+            borderRadius: BorderRadius.circular(20.r),
+            border: Border.all(
+              color: _following
+                  ? (onImg
+                      ? Colors.white.withValues(alpha: 0.45)
+                      : ext.searchHintColor.withValues(alpha: 0.3))
+                  : Colors.transparent,
+              width: 0.8,
+            ),
+          ),
+          child: _loading
+              ? SizedBox(
+                  width: 12.w,
+                  height: 12.w,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: _following
+                        ? (onImg ? Colors.white70 : ext.searchHintColor)
+                        : (onImg ? ext.accentGold : Colors.white),
+                  ),
+                )
+              : Text(
+                  _following ? 'Following' : 'Follow',
+                  style: TextStyle(
+                    color: _following
+                        ? (onImg ? Colors.white70 : ext.greetingColor)
+                        : (onImg ? ext.accentGold : Colors.white),
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+        ),
+      ),
     );
   }
 }

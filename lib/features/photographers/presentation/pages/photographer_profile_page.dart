@@ -28,6 +28,7 @@ import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/models/photographer/photographer_event.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:skidoo_app/features/follow/data/follow_repository.dart';
 
 class PhotographerProfilePage extends StatefulWidget {
   const PhotographerProfilePage({super.key, required this.photographer});
@@ -42,13 +43,17 @@ class PhotographerProfilePage extends StatefulWidget {
 class _PhotographerProfilePageState extends State<PhotographerProfilePage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  final _followRepo = FollowRepository();
   bool _isOwner = false;
+  FollowStats _stats = const FollowStats(followers: 0, following: 0);
+  bool _statsLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _checkOwner();
+    _loadStats();
   }
 
   Future<void> _checkOwner() async {
@@ -56,6 +61,14 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
       final myId = await sl<AuthService>().getUserId();
       if (mounted) setState(() => _isOwner = myId == widget.photographer.id);
     } catch (_) {}
+  }
+
+  Future<void> _loadStats() async {
+    final stats = await _followRepo.getStats(widget.photographer.id);
+    if (mounted) setState(() {
+      _stats = stats;
+      _statsLoaded = true;
+    });
   }
 
   @override
@@ -143,7 +156,29 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                   ),
                   SizedBox(height: 6.h),
                   PhotographerRatingRow(rating: p.rating, ext: ext),
+                  SizedBox(height: 12.h),
+
+                  // ── Follow stats ────────────────────────────────────────
+                  if (_statsLoaded)
+                    _FollowStatsRow(stats: _stats, ext: ext),
+                  if (!_statsLoaded)
+                    SizedBox(
+                      height: 18.h,
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 12.w,
+                            height: 12.w,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: ext.accentGold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   SizedBox(height: 16.h),
+
                   PhotographerInfoRow(
                       icon: Icons.mail_outline_rounded,
                       text: p.email,
@@ -155,31 +190,72 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                         text: p.contact,
                         ext: ext),
                   SizedBox(height: 20.h),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50.h,
-                    child: ElevatedButton.icon(
-                      onPressed: () => requireAuth(
-                        context,
-                        action: () => _openDirectChat(context),
-                      ),
-                      icon: Icon(Icons.chat_bubble_outline_rounded,
-                          size: 18.sp),
-                      label: Text(
-                        'Chat with ${p.name.split(' ').first}',
-                        style: TextStyle(
-                            fontSize: 15.sp, fontWeight: FontWeight.w600),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: ext.accentGold,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14.r),
+
+                  // ── Action row: Follow + Chat ───────────────────────────
+                  if (!_isOwner)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _ProfileFollowButton(
+                            photographerId: p.id,
+                            ext: ext,
+                          ),
                         ),
-                        elevation: 0,
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => requireAuth(
+                              context,
+                              action: () => _openDirectChat(context),
+                            ),
+                            icon: Icon(Icons.chat_bubble_outline_rounded,
+                                size: 16.sp),
+                            label: Text(
+                              'Message',
+                              style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: ext.greetingColor,
+                              side: BorderSide(
+                                  color: ext.searchHintColor
+                                      .withValues(alpha: 0.4)),
+                              padding: EdgeInsets.symmetric(vertical: 13.h),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14.r),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (_isOwner)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50.h,
+                      child: ElevatedButton.icon(
+                        onPressed: () => requireAuth(
+                          context,
+                          action: () => _openDirectChat(context),
+                        ),
+                        icon: Icon(Icons.chat_bubble_outline_rounded,
+                            size: 18.sp),
+                        label: Text(
+                          'Chat with ${p.name.split(' ').first}',
+                          style: TextStyle(
+                              fontSize: 15.sp, fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ext.accentGold,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14.r),
+                          ),
+                          elevation: 0,
+                        ),
                       ),
                     ),
-                  ),
                   SizedBox(height: 8.h),
                 ],
               ),
@@ -685,4 +761,159 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(_TabBarDelegate old) =>
       old.tabBar != tabBar || old.backgroundColor != backgroundColor;
+}
+
+// ── Follow stats row ──────────────────────────────────────────────────────────
+
+class _FollowStatsRow extends StatelessWidget {
+  const _FollowStatsRow({required this.stats, required this.ext});
+  final FollowStats stats;
+  final AppThemeExtension ext;
+
+  String _fmt(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return '$n';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _Stat(label: 'Followers', value: _fmt(stats.followers), ext: ext),
+        SizedBox(width: 24.w),
+        _Stat(label: 'Following', value: _fmt(stats.following), ext: ext),
+      ],
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.label, required this.value, required this.ext});
+  final String label;
+  final String value;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: ext.greetingColor,
+            fontSize: 17.sp,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: ext.searchHintColor,
+            fontSize: 11.sp,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Profile-level Follow button ───────────────────────────────────────────────
+
+class _ProfileFollowButton extends StatefulWidget {
+  const _ProfileFollowButton({
+    required this.photographerId,
+    required this.ext,
+  });
+  final String photographerId;
+  final AppThemeExtension ext;
+
+  @override
+  State<_ProfileFollowButton> createState() => _ProfileFollowButtonState();
+}
+
+class _ProfileFollowButtonState extends State<_ProfileFollowButton> {
+  late bool _following;
+  bool _loading = false;
+  final _repo = FollowRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    _following =
+        FollowRepository.followedIds.contains(widget.photographerId);
+  }
+
+  Future<void> _toggle(BuildContext context) async {
+    if (_loading) return;
+    final willFollow = !_following;
+    setState(() {
+      _following = willFollow;
+      _loading = true;
+    });
+    try {
+      if (willFollow) {
+        await _repo.follow(widget.photographerId);
+      } else {
+        await _repo.unfollow(widget.photographerId);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _following = !willFollow);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = widget.ext;
+    return SizedBox(
+      height: 50.h,
+      child: ElevatedButton(
+        onPressed: () => requireAuth(context, action: () => _toggle(context)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _following ? ext.searchFieldFill : ext.accentGold,
+          foregroundColor: _following ? ext.greetingColor : Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14.r),
+            side: _following
+                ? BorderSide(
+                    color: ext.searchHintColor.withValues(alpha: 0.35))
+                : BorderSide.none,
+          ),
+        ),
+        child: _loading
+            ? SizedBox(
+                width: 18.w,
+                height: 18.w,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _following ? ext.searchHintColor : Colors.white,
+                ),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _following
+                        ? Icons.person_remove_outlined
+                        : Icons.person_add_outlined,
+                    size: 16.sp,
+                  ),
+                  SizedBox(width: 6.w),
+                  Text(
+                    _following ? 'Following' : 'Follow',
+                    style: TextStyle(
+                        fontSize: 14.sp, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
 }

@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'package:dio/dio.dart' as dio;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,10 +11,7 @@ import 'package:skidoo_app/features/discovery/presentation/widgets/card_interact
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_description_text.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_comment_sheet.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/report_sheet.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
@@ -188,7 +184,19 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── 1. Photo area (header overlaid at top) ─────────────────────
+          // ── 0. Post header — above the photo (matches FeedItemCard) ───
+          _PostHeader(
+            event: widget.event,
+            ext: ext,
+            isOwner: widget.isOwner,
+            isAuthenticated: widget.isAuthenticated,
+            onPhotographerTap: () => _openPhotographerProfile(context),
+            onHide: widget.onHide,
+            onLoginRequired: widget.onTap,
+            onImage: false,
+          ),
+
+          // ── 1. Photo area ──────────────────────────────────────────────
           GestureDetector(
             onTap: widget.isAuthenticated ? null : widget.onTap,
             child: AnimatedContainer(
@@ -215,55 +223,20 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                           activeCardIndex: widget.activeCardIndex,
                         ),
 
-                  // Top gradient — covers the overlaid header
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: 100.h,
-                    child: const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0xAA000000), Color(0x00000000)],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Bottom gradient
+                  // Bottom gradient for footer text readability
                   Positioned(
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    height: 120.h,
+                    height: 130.h,
                     child: const DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
-                          colors: [Color(0xCC000000), Color(0x00000000)],
+                          colors: [Color(0xDD000000), Color(0x00000000)],
                         ),
                       ),
-                    ),
-                  ),
-
-                  // Post header overlaid on image
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: _PostHeader(
-                      event: widget.event,
-                      ext: ext,
-                      isOwner: widget.isOwner,
-                      isAuthenticated: widget.isAuthenticated,
-                      onPhotographerTap: () =>
-                          _openPhotographerProfile(context),
-                      onHide: widget.onHide,
-                      onLoginRequired: widget.onTap,
-                      onImage: true,
                     ),
                   ),
 
@@ -283,6 +256,18 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                       ),
                     ),
 
+                  // Instagram-style page dots — overlaid at the bottom of the image
+                  if (pics.length > 1)
+                    Positioned(
+                      bottom: 10.h,
+                      left: 0,
+                      right: 0,
+                      child: _PageDots(
+                        count: _visibleCount,
+                        controller: _pageCtrl,
+                      ),
+                    ),
+
                   // Unauthenticated full-blur CTA (only when no photos visible)
                   if (!widget.isAuthenticated && pics.isEmpty)
                     _UnauthCta(onTap: widget.onTap),
@@ -291,25 +276,8 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             ),
           ),
 
-          // ── 2. Page dots ───────────────────────────────────────────────
-          if (pics.length > 1) ...[
-            SizedBox(height: 6.h),
-            _PageDots(
-              count: _visibleCount,
-              current: _currentPage,
-              ext: ext,
-              onPageChanged: widget.isAuthenticated
-                  ? (i) {
-                      _pageCtrl.animateToPage(
-                        i,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      );
-                    }
-                  : (_) => widget.onTap(),
-            ),
-          ] else
-            SizedBox(height: 6.h),
+          // ── 2. Spacing ─────────────────────────────────────────────────
+          SizedBox(height: 6.h),
 
           // ── 3. Interaction bar ─────────────────────────────────────────
           BlocBuilder<DiscoveryBloc, DiscoveryState>(
@@ -322,6 +290,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               likeCount: _likeCount,
               dislikeCount: _dislikeCount,
               commentCount: widget.event.commentCount,
+              commentsEnabled: widget.event.commentsEnabled,
               ext: ext,
               onLike: widget.isAuthenticated
                   ? () {
@@ -481,6 +450,9 @@ class _PostHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = event.photographerName;
     final nameColor = onImage ? Colors.white : ext.greetingColor;
+    final subColor = onImage
+        ? Colors.white.withValues(alpha: 0.65)
+        : ext.searchHintColor;
     final iconColor = onImage ? Colors.white : ext.greetingColor;
     final textShadows = onImage
         ? const [
@@ -494,36 +466,73 @@ class _PostHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Creator name (tappable)
+          // Creator avatar
+          GestureDetector(
+            onTap: onPhotographerTap,
+            child: _CreatorInitialsAvatar(
+              name: name,
+              size: 36.w,
+              onImage: onImage,
+            ),
+          ),
+
+          SizedBox(width: 9.w),
+
+          // Creator name + subtitle (tappable)
           Expanded(
             child: GestureDetector(
               onTap: onPhotographerTap,
               behavior: HitTestBehavior.opaque,
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Flexible(
-                    child: Text(
-                      name,
-                      style: TextStyle(
-                        color: nameColor,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.3,
-                        shadows: textShadows,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            color: nameColor,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.3,
+                            shadows: textShadows,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      if (isOwner) ...[
+                        SizedBox(width: 8.w),
+                        _OwnerPill(ext: ext),
+                      ],
+                    ],
+                  ),
+                  Text(
+                    'Creator',
+                    style: TextStyle(
+                      color: subColor,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w500,
+                      shadows: textShadows,
                     ),
                   ),
-                  if (isOwner) ...[
-                    SizedBox(width: 8.w),
-                    _OwnerPill(ext: ext),
-                  ],
                 ],
               ),
             ),
           ),
+
+          // Follow button — hidden for own posts
+          if (!isOwner) ...[
+            SizedBox(width: 8.w),
+            FollowButton(
+              photographerId: event.photographerId,
+              onImage: onImage,
+              initialFollowing: event.isFollowed,
+            ),
+          ],
 
           // More options
           GestureDetector(
@@ -581,6 +590,67 @@ class _OwnerPill extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Creator initials avatar — used on image overlays ─────────────────────────
+
+class _CreatorInitialsAvatar extends StatelessWidget {
+  const _CreatorInitialsAvatar({
+    required this.name,
+    required this.size,
+    this.onImage = false,
+  });
+  final String name;
+  final double size;
+  final bool onImage;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    const borderPad = 2.5;
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [ext.accentGold, const Color(0xFFFF6B35)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: ext.accentGold.withValues(alpha: 0.40),
+            blurRadius: 10,
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(borderPad),
+      child: Container(
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [Color(0xFFFFAB40), Color(0xFFFF6B35)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          initial,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: (size - borderPad * 2) * 0.42,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
       ),
     );
   }
@@ -671,57 +741,60 @@ class _HeartBurst extends StatelessWidget {
 }
 
 // ── Page dots ─────────────────────────────────────────────────────────────────
+// Smooth Instagram-style dots: width and opacity interpolate continuously with
+// the PageController's fractional .page value so animation tracks the finger.
 
 class _PageDots extends StatelessWidget {
   const _PageDots({
     required this.count,
-    required this.current,
-    required this.ext,
-    required this.onPageChanged,
+    required this.controller,
   });
 
   final int count;
-  final int current;
-  final AppThemeExtension ext;
-  final void Function(int) onPageChanged;
+  final PageController controller;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(count, (i) {
-        final isActive = i == current;
-        return GestureDetector(
-          onTap: () => onPageChanged(i),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            margin: EdgeInsets.symmetric(horizontal: 3.w),
-            width: isActive ? 20.w : 6.w,
-            height: 6.h,
-            decoration: BoxDecoration(
-              color: isActive
-                  ? ext.accentGold
-                  : ext.searchHintColor.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(3.r),
-            ),
-          ),
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (_, __) {
+        final page =
+            controller.hasClients ? (controller.page ?? 0.0) : 0.0;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(count, (i) {
+            final t = (page - i).abs().clamp(0.0, 1.0);
+            // Width: active=20w inactive=6w, interpolated continuously.
+            final w = 20.w - 14.w * t;
+            final color = Color.lerp(
+              Colors.white,
+              Colors.white.withValues(alpha: 0.35),
+              t,
+            )!;
+            return Container(
+              margin: EdgeInsets.symmetric(horizontal: 3.w),
+              width: w,
+              height: 6.h,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(3.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+            );
+          }),
         );
-      }),
+      },
     );
   }
 }
 
 // ── Event "more options" bottom sheet ─────────────────────────────────────────
 
-/// Maps the backend enum values → display labels.
-const _reportReasons = <String, String>{
-  'inappropriate_content': 'Inappropriate content',
-  'spam': 'Spam',
-  'harassment': 'Harassment',
-  'copyright': 'Copyright violation',
-  'other': 'Other',
-};
 
 class _EventMoreOptionsSheet extends StatelessWidget {
   const _EventMoreOptionsSheet({
@@ -816,171 +889,16 @@ class _EventMoreOptionsSheet extends StatelessWidget {
                   color: ext.searchHintColor, size: 20.sp),
               onTap: () {
                 Navigator.of(context).pop();
-                showModalBottomSheet<void>(
-                  context: context,
-                  backgroundColor: Colors.transparent,
-                  isScrollControlled: true,
-                  builder: (_) => _ReportReasonSheet(
-                    ext: ext,
-                    eventId: eventId,
-                  ),
+                ReportSheet.show(
+                  context,
+                  ext: ext,
+                  assetType: 'event',
+                  assetId: eventId,
                 );
               },
             ),
 
             SizedBox(height: 8.h),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Report reason picker ──────────────────────────────────────────────────────
-
-class _ReportReasonSheet extends StatefulWidget {
-  const _ReportReasonSheet({required this.ext, required this.eventId});
-  final AppThemeExtension ext;
-  final String eventId;
-
-  @override
-  State<_ReportReasonSheet> createState() => _ReportReasonSheetState();
-}
-
-class _ReportReasonSheetState extends State<_ReportReasonSheet> {
-  String? _selected;
-  bool _submitting = false;
-
-  Future<void> _submit() async {
-    if (_selected == null || _submitting) return;
-    setState(() => _submitting = true);
-    try {
-      final authService = sl<AuthService>();
-      final userId = await authService.getUserId();
-      await sl<Api>().dio.post(
-        '/client/$userId/report',
-        data: {
-          'assetType': 'event',
-          'assetId': widget.eventId,
-          'reason': _selected,
-        },
-      );
-    } on dio.DioException catch (_) {
-      // Best-effort — don't block the user on a network error.
-    } finally {
-      if (mounted) setState(() => _submitting = false);
-    }
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    AppSnackBar.success(context, 'Report submitted. Thank you for your feedback.');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = widget.ext;
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.homeBackground,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Drag handle
-            Container(
-              margin: EdgeInsets.symmetric(vertical: 12.h),
-              width: 36.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: ext.searchHintColor.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-
-            Padding(
-              padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 12.h),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Icon(Icons.arrow_back_ios_new_rounded,
-                        color: ext.greetingColor, size: 18.sp),
-                  ),
-                  SizedBox(width: 12.w),
-                  Text(
-                    'Why are you reporting this?',
-                    style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.sp,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
-
-            ..._reportReasons.entries.map((entry) {
-              final selected = _selected == entry.key;
-              return ListTile(
-                title: Text(
-                  entry.value,
-                  style: TextStyle(
-                    color: selected ? Colors.redAccent : ext.greetingColor,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 14.sp,
-                  ),
-                ),
-                trailing: selected
-                    ? Icon(Icons.check_circle_rounded,
-                        color: Colors.redAccent, size: 20.sp)
-                    : Icon(Icons.radio_button_unchecked_rounded,
-                        color: ext.searchHintColor, size: 20.sp),
-                onTap: () => setState(() => _selected = entry.key),
-              );
-            }),
-
-            SizedBox(height: 12.h),
-
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _selected == null || _submitting ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    disabledBackgroundColor:
-                        Colors.redAccent.withValues(alpha: 0.3),
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _submitting
-                      ? SizedBox(
-                          width: 18.w,
-                          height: 18.w,
-                          child: const CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
-                        )
-                      : Text(
-                          'Submit Report',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15.sp,
-                          ),
-                        ),
-                ),
-              ),
-            ),
-
-            SizedBox(height: 16.h),
           ],
         ),
       ),
