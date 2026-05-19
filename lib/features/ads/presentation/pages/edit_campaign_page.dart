@@ -48,6 +48,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
   late String _currency;
   DateTime? _startAt;
   DateTime? _endAt;
+  late bool _commentsEnabled;
 
   // ── Per-adset state (indexed by adset position) ──────────────────────────
   late final List<_AdSetState> _adsetStates;
@@ -63,6 +64,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
     _currency = c.currency;
     _startAt = c.startAt;
     _endAt = c.endAt;
+    _commentsEnabled = c.commentsEnabled;
 
     _adsetStates = c.adSets.map(_AdSetState.from).toList();
   }
@@ -148,6 +150,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
         currency: _currency,
         startAt: _startAt?.toIso8601String(),
         endAt: _endAt?.toIso8601String(),
+        commentsEnabled: _commentsEnabled,
       );
 
       // Ad sets
@@ -316,6 +319,15 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                       ),
                     ),
                   ],
+                ),
+
+                SizedBox(height: 20.h),
+                _EToggleRow(
+                  label: 'Allow comments',
+                  subtitle: 'Let viewers comment on this campaign',
+                  value: _commentsEnabled,
+                  ext: ext,
+                  onChanged: (v) => setState(() => _commentsEnabled = v),
                 ),
 
                 // ── Ad Sets ──────────────────────────────────────────────

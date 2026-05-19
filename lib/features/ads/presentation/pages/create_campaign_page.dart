@@ -9,7 +9,6 @@ import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
-import 'package:video_player/video_player.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -50,7 +49,11 @@ const _eventTypes = [
 ];
 
 class CreateCampaignPage extends StatefulWidget {
-  const CreateCampaignPage({super.key});
+  /// Pass [existingCampaignId] when the campaign shell already exists (e.g.
+  /// promoted from a request). The wizard will skip Step 1 and start directly
+  /// at Step 2 (Ad Set), with the campaign ID pre-filled.
+  const CreateCampaignPage({super.key, this.existingCampaignId});
+  final String? existingCampaignId;
 
   @override
   State<CreateCampaignPage> createState() => _CreateCampaignPageState();
@@ -84,10 +87,9 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   final _ctaLinkCtrl = TextEditingController();
 
   // Step 3 — Creative media
-  XFile? _creative;
-  bool _creativeIsVideo = false;
+  final List<XFile> _creatives = [];
+  static const _maxCreatives = 5;
   bool _commentsEnabled = true;
-  VideoPlayerController? _creativeVideoCtrl;
 
   // Stored IDs from API calls
   String? _campaignId;
@@ -95,6 +97,16 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
 
   final _repo = AdsRepository();
   final _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    final preFilledId = widget.existingCampaignId;
+    if (preFilledId != null && preFilledId.isNotEmpty) {
+      _campaignId = preFilledId;
+      _step = 1;
+    }
+  }
 
   @override
   void dispose() {
@@ -107,7 +119,6 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
     _bodyCtrl.dispose();
     _ctaTextCtrl.dispose();
     _ctaLinkCtrl.dispose();
-    _creativeVideoCtrl?.dispose();
     super.dispose();
   }
 
@@ -129,13 +140,11 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
         if (bid == null || bid <= 0) return 'Enter a valid bid amount.';
       case 2:
         if (_headlineCtrl.text.trim().isEmpty) return 'Headline is required.';
-        if (_bodyCtrl.text.trim().isEmpty) return 'Body text is required.';
         final link = _ctaLinkCtrl.text.trim();
-        if (link.isNotEmpty) {
-          final uri = Uri.tryParse(link);
-          if (uri == null || !uri.hasScheme) {
-            return 'CTA link must start with https://.';
-          }
+        if (link.isEmpty) return 'CTA link is required.';
+        final uri = Uri.tryParse(link);
+        if (uri == null || !uri.hasScheme) {
+          return 'CTA link must start with https://.';
         }
     }
     return null;
@@ -212,9 +221,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   }
 
   Future<void> _createAd() async {
-    final mediaType = _creative != null
-        ? (_creativeIsVideo ? 'video' : 'image')
-        : 'text';
+    final mediaType = _creatives.isNotEmpty ? 'image' : 'text';
     debugPrint('[CreateCampaignPage] _createAd adsetId=$_adsetId headline="${_headlineCtrl.text.trim()}" mediaType=$mediaType');
     final result = await _repo.createAd(
       adsetId: _adsetId!,
@@ -232,72 +239,36 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
     if (adId.isEmpty) {
       throw Exception('Ad creation failed — no ID returned.');
     }
-    if (_creative != null) {
-      debugPrint('[CreateCampaignPage] _createAd — uploading creative');
-      await _repo.uploadAdCreative(adId, _creative!.path, _creativeIsVideo);
+    if (_creatives.isNotEmpty) {
+      debugPrint('[CreateCampaignPage] _createAd — uploading ${_creatives.length} creative(s) to adId=$adId');
+      for (final file in _creatives) {
+        final ext = file.path.split('.').last.toLowerCase();
+        final isVideo = ['mp4', 'mov', 'avi', 'webm', 'm4v'].contains(ext);
+        await _repo.uploadAdCreative(adId, file.path, isVideo);
+      }
     }
   }
 
-  Future<void> _pickCreative(BuildContext context) async {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _CampaignMediaSheet(ext: ext, onPick: _handleCreativePick),
-    );
-  }
-
-  static const _maxBytes = 50 * 1024 * 1024; // 50 MB
-
-  Future<void> _handleCreativePick(ImageSource source, bool video) async {
-    XFile? file;
-    if (video) {
-      file = await _picker.pickVideo(
-          source: source, maxDuration: const Duration(minutes: 2));
-    } else {
-      file = await _picker.pickImage(source: source, imageQuality: 85);
-    }
+  Future<void> _pickCreative() async {
+    if (_creatives.length >= _maxCreatives) return;
+    final file = await _picker.pickImage(
+        source: ImageSource.gallery, imageQuality: 85);
     if (file == null) return;
 
     final size = await File(file.path).length();
-    if (size > _maxBytes) {
+    if (size > _maxCreativeBytes) {
       if (!mounted) return;
       AppSnackBar.error(context, 'File is too large. Maximum size is 50 MB.');
       return;
     }
-    VideoPlayerController? newCtrl;
-    if (video) {
-      newCtrl = VideoPlayerController.file(File(file.path));
-      try {
-        await newCtrl.initialize();
-        await newCtrl.setVolume(0);
-        await newCtrl.setLooping(true);
-        await newCtrl.play();
-      } catch (e) {
-        debugPrint('[CreateCampaignPage] video preview error: $e');
-        newCtrl.dispose();
-        newCtrl = null;
-      }
-    }
-    if (!mounted) {
-      newCtrl?.dispose();
-      return;
-    }
-    setState(() {
-      _creativeVideoCtrl?.dispose();
-      _creativeVideoCtrl = newCtrl;
-      _creative = file;
-      _creativeIsVideo = video;
-    });
+    if (!mounted) return;
+    setState(() => _creatives.add(file));
   }
 
-  void _removeCreative() {
-    setState(() {
-      _creativeVideoCtrl?.dispose();
-      _creativeVideoCtrl = null;
-      _creative = null;
-      _creativeIsVideo = false;
-    });
+  static const _maxCreativeBytes = 50 * 1024 * 1024; // 50 MB
+
+  void _removeCreative(int index) {
+    setState(() => _creatives.removeAt(index));
   }
 
   Future<void> _pay() async {
@@ -453,13 +424,12 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           bodyCtrl: _bodyCtrl,
           ctaTextCtrl: _ctaTextCtrl,
           ctaLinkCtrl: _ctaLinkCtrl,
-          creative: _creative,
-          creativeIsVideo: _creativeIsVideo,
-          videoCtrl: _creativeVideoCtrl,
+          creatives: _creatives,
+          maxCreatives: _maxCreatives,
           commentsEnabled: _commentsEnabled,
           onCommentsToggle: (v) => setState(() => _commentsEnabled = v),
           ext: ext,
-          onPickCreative: () => _pickCreative(context),
+          onPickCreative: _pickCreative,
           onRemoveCreative: _removeCreative,
         );
       case 3:
@@ -949,9 +919,8 @@ class _Step3 extends StatelessWidget {
     required this.bodyCtrl,
     required this.ctaTextCtrl,
     required this.ctaLinkCtrl,
-    required this.creative,
-    required this.creativeIsVideo,
-    required this.videoCtrl,
+    required this.creatives,
+    required this.maxCreatives,
     required this.commentsEnabled,
     required this.onCommentsToggle,
     required this.ext,
@@ -963,14 +932,13 @@ class _Step3 extends StatelessWidget {
   final TextEditingController bodyCtrl;
   final TextEditingController ctaTextCtrl;
   final TextEditingController ctaLinkCtrl;
-  final XFile? creative;
-  final bool creativeIsVideo;
-  final VideoPlayerController? videoCtrl;
+  final List<XFile> creatives;
+  final int maxCreatives;
   final bool commentsEnabled;
   final ValueChanged<bool> onCommentsToggle;
   final AppThemeExtension ext;
   final VoidCallback onPickCreative;
-  final VoidCallback onRemoveCreative;
+  final void Function(int) onRemoveCreative;
 
   @override
   Widget build(BuildContext context) {
@@ -1000,24 +968,32 @@ class _Step3 extends StatelessWidget {
         SizedBox(height: 20.h),
         Row(
           children: [
-            _CLabel('Creative media', ext),
+            _CLabel('Creative photos', ext),
             SizedBox(width: 6.w),
             Text('(optional)',
                 style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp)),
+            const Spacer(),
+            Text(
+              '${creatives.length}/$maxCreatives',
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
         SizedBox(height: 4.h),
         Text(
-          'Attach an image or video to make your ad stand out.',
+          'Add up to 5 photos to make your ad stand out.',
           style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
         ),
         SizedBox(height: 10.h),
-        _CampaignCreativePreview(
-          creative: creative,
-          isVideo: creativeIsVideo,
-          videoCtrl: videoCtrl,
+        _CampaignMultiPicker(
+          creatives: creatives,
+          maxCreatives: maxCreatives,
           ext: ext,
-          onPick: onPickCreative,
+          onAdd: onPickCreative,
           onRemove: onRemoveCreative,
         ),
 
@@ -1349,134 +1325,92 @@ class _CDropdown<T> extends StatelessWidget {
   }
 }
 
-// ── Campaign creative preview / picker ───────────────────────────────────────
+// ── Campaign multi-image picker ───────────────────────────────────────────────
 
-class _CampaignCreativePreview extends StatelessWidget {
-  const _CampaignCreativePreview({
-    required this.creative,
-    required this.isVideo,
-    required this.videoCtrl,
+class _CampaignMultiPicker extends StatelessWidget {
+  const _CampaignMultiPicker({
+    required this.creatives,
+    required this.maxCreatives,
     required this.ext,
-    required this.onPick,
+    required this.onAdd,
     required this.onRemove,
   });
 
-  final XFile? creative;
-  final bool isVideo;
-  final VideoPlayerController? videoCtrl;
+  final List<XFile> creatives;
+  final int maxCreatives;
   final AppThemeExtension ext;
-  final VoidCallback onPick;
-  final VoidCallback onRemove;
+  final VoidCallback onAdd;
+  final void Function(int index) onRemove;
+
+  static const _thumbSize = 90.0;
 
   @override
   Widget build(BuildContext context) {
-    if (creative == null) {
-      return GestureDetector(
-        onTap: onPick,
-        child: Container(
-          height: 120.h,
-          decoration: BoxDecoration(
-            color: ext.searchFieldFill,
-            borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(
-              color: ext.searchHintColor.withValues(alpha: 0.25),
-              width: 1.2,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+    final atLimit = creatives.length >= maxCreatives;
+    return SizedBox(
+      height: _thumbSize,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          ...List.generate(creatives.length, (i) {
+            return Padding(
+              padding: EdgeInsets.only(right: 8.w),
+              child: Stack(
                 children: [
-                  _MediaTypeIcon(
-                    icon: Icons.image_outlined,
-                    label: 'Photo',
-                    color: ext.accentGold,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10.r),
+                    child: Image.file(
+                      File(creatives[i].path),
+                      width: _thumbSize,
+                      height: _thumbSize,
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                  SizedBox(width: 24.w),
-                  const _MediaTypeIcon(
-                    icon: Icons.videocam_outlined,
-                    label: 'Video',
-                    color: Color(0xFF8B5CF6),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => onRemove(i),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.close_rounded,
+                            color: Colors.white, size: 14.sp),
+                      ),
+                    ),
                   ),
                 ],
               ),
-              SizedBox(height: 8.h),
-              Text(
-                'Tap to add creative',
-                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14.r),
-      child: Stack(
-        children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: isVideo
-                ? (videoCtrl != null && videoCtrl!.value.isInitialized
-                    ? VideoPlayer(videoCtrl!)
-                    : Container(color: Colors.black))
-                : Image.file(File(creative!.path), fit: BoxFit.cover),
-          ),
-          Positioned(
-            top: 8.h,
-            left: 10.w,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(20.r),
-              ),
-              child: Text(
-                isVideo ? 'Video' : 'Image',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 9.sp,
-                    fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 6.h,
-            right: 8.w,
-            child: GestureDetector(
-              onTap: onRemove,
+            );
+          }),
+          if (!atLimit)
+            GestureDetector(
+              onTap: onAdd,
               child: Container(
-                padding: const EdgeInsets.all(5),
+                width: _thumbSize,
+                height: _thumbSize,
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  shape: BoxShape.circle,
+                  color: ext.searchFieldFill,
+                  borderRadius: BorderRadius.circular(10.r),
+                  border: Border.all(
+                    color: ext.searchHintColor.withValues(alpha: 0.25),
+                    width: 1.2,
+                  ),
                 ),
-                child: Icon(Icons.close_rounded, color: Colors.white, size: 16.sp),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: GestureDetector(
-              onTap: onPick,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.45),
-                padding: EdgeInsets.symmetric(vertical: 7.h),
-                child: Row(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.edit_rounded, color: Colors.white70, size: 14.sp),
-                    SizedBox(width: 5.w),
+                    Icon(Icons.add_photo_alternate_outlined,
+                        color: ext.accentGold, size: 26.sp),
+                    SizedBox(height: 4.h),
                     Text(
-                      'Change media',
+                      'Add Photo',
                       style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12.sp,
+                        color: ext.searchHintColor,
+                        fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1484,155 +1418,7 @@ class _CampaignCreativePreview extends StatelessWidget {
                 ),
               ),
             ),
-          ),
         ],
-      ),
-    );
-  }
-}
-
-class _MediaTypeIcon extends StatelessWidget {
-  const _MediaTypeIcon({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color, size: 22.sp),
-        ),
-        SizedBox(height: 4.h),
-        Text(label,
-            style: TextStyle(
-                color: color, fontSize: 11.sp, fontWeight: FontWeight.w600)),
-      ],
-    );
-  }
-}
-
-class _CampaignMediaSheet extends StatelessWidget {
-  const _CampaignMediaSheet({required this.ext, required this.onPick});
-  final AppThemeExtension ext;
-  final Future<void> Function(ImageSource, bool) onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.homeBackground,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: EdgeInsets.symmetric(vertical: 12.h),
-              width: 36.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: ext.searchHintColor.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 8.h),
-              child: Text(
-                'Add Creative',
-                style: TextStyle(
-                  color: ext.greetingColor,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16.sp,
-                ),
-              ),
-            ),
-            Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
-            _SheetItem(
-              ext: ext,
-              icon: Icons.image_rounded,
-              color: ext.accentGold,
-              title: 'Photo from Gallery',
-              onTap: () async {
-                Navigator.of(context).pop();
-                await onPick(ImageSource.gallery, false);
-              },
-            ),
-            _SheetItem(
-              ext: ext,
-              icon: Icons.videocam_rounded,
-              color: const Color(0xFF8B5CF6),
-              title: 'Video from Gallery',
-              onTap: () async {
-                Navigator.of(context).pop();
-                await onPick(ImageSource.gallery, true);
-              },
-            ),
-            _SheetItem(
-              ext: ext,
-              icon: Icons.camera_alt_rounded,
-              color: const Color(0xFF3B82F6),
-              title: 'Take a Photo',
-              onTap: () async {
-                Navigator.of(context).pop();
-                await onPick(ImageSource.camera, false);
-              },
-            ),
-            SizedBox(height: 8.h),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SheetItem extends StatelessWidget {
-  const _SheetItem({
-    required this.ext,
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.onTap,
-  });
-  final AppThemeExtension ext;
-  final IconData icon;
-  final Color color;
-  final String title;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      leading: Container(
-        width: 40.w,
-        height: 40.w,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: color, size: 20.sp),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: ext.greetingColor,
-          fontWeight: FontWeight.w600,
-          fontSize: 14.sp,
-        ),
       ),
     );
   }

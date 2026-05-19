@@ -1,3 +1,4 @@
+import 'package:skidoo_app/features/ads/models/ad_media.dart';
 import 'package:skidoo_app/features/ads/models/ad_set.dart';
 
 class AdCampaign {
@@ -17,9 +18,12 @@ class AdCampaign {
   final DateTime? startAt;
   final DateTime? endAt;
   final String? paystackReference;
+  final bool commentsEnabled;
+  final int commentCount;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<AdSet> adSets;
+  final List<AdMedia> media;
 
   double get spentPercent =>
       budgetAmount > 0 ? (spent / budgetAmount).clamp(0.0, 1.0) : 0.0;
@@ -43,9 +47,12 @@ class AdCampaign {
     this.startAt,
     this.endAt,
     this.paystackReference,
+    this.commentsEnabled = true,
+    this.commentCount = 0,
     required this.createdAt,
     required this.updatedAt,
     this.adSets = const [],
+    this.media = const [],
   });
 
   factory AdCampaign.fromJson(Map<String, dynamic> j) => AdCampaign(
@@ -69,12 +76,18 @@ class AdCampaign {
         endAt:
             j['end_at'] != null ? DateTime.parse(j['end_at'] as String) : null,
         paystackReference: j['paystack_reference'] as String?,
+        commentsEnabled: j['comments_enabled'] as bool? ?? true,
+        commentCount: (j['comment_count'] as num?)?.toInt() ?? 0,
         createdAt: DateTime.parse(
             j['createdAt'] as String? ?? j['created_at'] as String),
         updatedAt: DateTime.parse(
             j['updatedAt'] as String? ?? j['updated_at'] as String),
         adSets: (j['ad_sets'] as List<dynamic>? ?? [])
             .map((e) => AdSet.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        media: (j['media'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(AdMedia.fromJson)
             .toList(),
       );
 }

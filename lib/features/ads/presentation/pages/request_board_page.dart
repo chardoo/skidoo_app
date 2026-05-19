@@ -6,6 +6,7 @@ import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/feed_item_card.dart';
@@ -29,9 +30,19 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
   final _locationCtrl = TextEditingController();
 
   List<FeedRequestModel> _requests = [];
+  final _hiddenIds = <String>{};
   bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  int _page = 1;
   String? _errorMessage;
   String? _selectedEventType;
+
+  // Sponsored ad at top of the board (null = show nothing)
+  AdModel? _sponsoredAd;
+  String? _sponsoredImpressionId;
+
+  static const _limit = 20;
 
   @override
   void initState() {
@@ -50,18 +61,30 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
     setState(() {
       _loading = true;
       _errorMessage = null;
+      _page = 1;
+      _hasMore = true;
     });
     try {
-      final requests = await _repo.getRequests(
-        eventType: _selectedEventType,
-        location: _locationCtrl.text.trim().isEmpty
-            ? null
-            : _locationCtrl.text.trim(),
-      );
+      final results = await Future.wait([
+        _repo.getRequests(
+          eventType: _selectedEventType,
+          location: _locationCtrl.text.trim().isEmpty
+              ? null
+              : _locationCtrl.text.trim(),
+          page: 1,
+          limit: _limit,
+        ),
+        _repo.serveAd(placement: 'request_board'),
+      ]);
       if (!mounted) return;
-      debugPrint('[RequestBoardPage] _load done — ${requests.length} requests');
+      final requests = results[0] as List<FeedRequestModel>;
+      final ad = results[1] as AdModel?;
+      debugPrint('[RequestBoardPage] _load done — ${requests.length} requests, ad=${ad?.adId}');
       setState(() {
         _requests = requests;
+        _sponsoredAd = ad;
+        _sponsoredImpressionId = null;
+        _hasMore = requests.length == _limit;
         _loading = false;
       });
     } catch (e) {
@@ -71,6 +94,32 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
         _errorMessage = 'Could not load requests.';
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    final next = _page + 1;
+    try {
+      final more = await _repo.getRequests(
+        eventType: _selectedEventType,
+        location: _locationCtrl.text.trim().isEmpty
+            ? null
+            : _locationCtrl.text.trim(),
+        page: next,
+        limit: _limit,
+      );
+      if (!mounted) return;
+      setState(() {
+        _page = next;
+        _requests = [..._requests, ...more];
+        _loadingMore = false;
+        _hasMore = more.length == _limit;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
     }
   }
 
@@ -164,25 +213,89 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                   icon: Icons.cloud_off_outlined,
                   onRetry: _load,
                 )
-              : _requests.isEmpty
-                  ? const AppEmptyState(
+              : Builder(builder: (context) {
+                  final visible = _requests
+                      .where((r) => !_hiddenIds.contains(r.id))
+                      .toList();
+                  final hasAd = _sponsoredAd != null;
+                  final adOffset = hasAd ? 1 : 0;
+                  final itemCount =
+                      adOffset + visible.length + (_loadingMore ? 1 : 0);
+
+                  if (!hasAd && visible.isEmpty) {
+                    return const AppEmptyState(
                       icon: Icons.inbox_outlined,
                       message: 'No open requests found',
-                    )
-                  : RefreshIndicator(
+                    );
+                  }
+                  return NotificationListener<ScrollNotification>(
+                    onNotification: (n) {
+                      if (n is ScrollUpdateNotification &&
+                          n.metrics.pixels >=
+                              n.metrics.maxScrollExtent - 800) {
+                        _loadMore();
+                      }
+                      return false;
+                    },
+                    child: RefreshIndicator(
                       onRefresh: _load,
                       color: ext.accentGold,
                       child: ListView.builder(
                         physics: const BouncingScrollPhysics(),
-                        itemCount: _requests.length,
-                        itemBuilder: (_, i) => FeedItemCard(
-                          data: FeedItemData.fromRequest(
-                            _requests[i],
-                            onMessageTap: () => _openChat(_requests[i]),
-                          ),
-                        ),
+                        itemCount: itemCount,
+                        itemBuilder: (_, i) {
+                          // Loading spinner at the very end
+                          if (i == adOffset + visible.length) {
+                            return Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20.h),
+                              child: const AppLoadingIndicator(),
+                            );
+                          }
+
+                          // Sponsored ad at position 0
+                          if (hasAd && i == 0) {
+                            final ad = _sponsoredAd!;
+                            return FeedItemCard(
+                              key: ValueKey('sponsored_${ad.adId}'),
+                              data: FeedItemData.fromAd(
+                                ad,
+                                onCtaTap: () => _repo.trackClick(
+                                  adId: ad.adId,
+                                  campaignId: ad.campaignId,
+                                  impressionId: _sponsoredImpressionId,
+                                ),
+                                onInit: () async {
+                                  final id = await _repo.trackImpression(
+                                    adId: ad.adId,
+                                    adsetId: ad.adsetId,
+                                    campaignId: ad.campaignId,
+                                    placement: 'request_board',
+                                    impressionToken: ad.impressionToken,
+                                  );
+                                  if (mounted) {
+                                    setState(() => _sponsoredImpressionId = id);
+                                  }
+                                },
+                              ),
+                              onHide: () =>
+                                  setState(() => _sponsoredAd = null),
+                            );
+                          }
+
+                          final req = visible[i - adOffset];
+                          return FeedItemCard(
+                            data: FeedItemData.fromRequest(
+                              req,
+                              onMessageTap: () => _openChat(req),
+                            ),
+                            onHide: () =>
+                                setState(() => _hiddenIds.add(req.id)),
+                          );
+                        },
                       ),
                     ),
+                  );
+                }),
     );
   }
 }

@@ -10,9 +10,11 @@ import 'package:video_player/video_player.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
+import 'package:skidoo_app/features/ads/models/ad_media.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/feed_comment_sheet.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/report_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model — same shape for ads and requests, mirrors EventDiscovery fields
@@ -26,12 +28,15 @@ class FeedItemData {
     required this.id,
     required this.title,
     required this.creatorName,
+    this.creatorId = '',
     this.creatorPhotoUrl,
     this.mediaUrl,
     this.mediaIsVideo = false,
+    this.mediaList = const <AdMedia>[],
     this.body,
     this.secondaryLabel,
     this.commentsEnabled = true,
+    this.commentCount = 0,
     this.ctaLabel,
     this.onCtaTap,
     this.onInit,
@@ -47,10 +52,17 @@ class FeedItemData {
 
   /// advertiser name (ad) · requester name
   final String creatorName;
+
+  /// advertiser_id (ad) · requester_id — used by the Follow button.
+  final String creatorId;
   final String? creatorPhotoUrl;
 
   final String? mediaUrl;
   final bool mediaIsVideo;
+
+  /// Ordered list of media items (new API). Falls back to single-item wrapping
+  /// of mediaUrl for backward compat.
+  final List<AdMedia> mediaList;
 
   /// ad body copy · request description — shown as expandable caption
   final String? body;
@@ -60,6 +72,7 @@ class FeedItemData {
   final String? secondaryLabel;
 
   final bool commentsEnabled;
+  final int commentCount;
 
   final String? ctaLabel;
   final VoidCallback? onCtaTap;
@@ -73,22 +86,31 @@ class FeedItemData {
     AdModel ad, {
     required VoidCallback onCtaTap,
     VoidCallback? onInit,
-  }) =>
-      FeedItemData(
-        type: FeedItemType.ad,
-        id: ad.adId,
-        title: ad.headline,
-        creatorName:
-            ad.advertiserName.isNotEmpty ? ad.advertiserName : 'Advertiser',
-        creatorPhotoUrl: ad.advertiserPhoto,
-        mediaUrl: ad.mediaUrl,
-        mediaIsVideo: ad.isVideo,
-        body: ad.body.isNotEmpty ? ad.body : null,
-        commentsEnabled: ad.commentsEnabled,
-        ctaLabel: ad.ctaText.isEmpty ? 'Learn More' : ad.ctaText,
-        onCtaTap: onCtaTap,
-        onInit: onInit,
-      );
+  }) {
+    final mediaList = ad.media.isNotEmpty
+        ? ad.media
+        : (ad.mediaUrl != null && ad.mediaUrl!.isNotEmpty
+            ? [AdMedia(id: '', url: ad.mediaUrl!, mediaType: ad.mediaType)]
+            : <AdMedia>[]);
+    return FeedItemData(
+      type: FeedItemType.ad,
+      id: ad.adId,
+      title: ad.headline,
+      creatorName:
+          ad.advertiserName.isNotEmpty ? ad.advertiserName : 'Advertiser',
+      creatorId: ad.advertiserId,
+      creatorPhotoUrl: ad.advertiserPhoto,
+      mediaUrl: ad.mediaUrl,
+      mediaIsVideo: ad.isVideo,
+      mediaList: mediaList,
+      body: ad.body.isNotEmpty ? ad.body : null,
+      commentsEnabled: ad.commentsEnabled,
+      commentCount: ad.commentCount,
+      ctaLabel: ad.ctaText.isEmpty ? 'Learn More' : ad.ctaText,
+      onCtaTap: onCtaTap,
+      onInit: onInit,
+    );
+  }
 
   factory FeedItemData.fromRequest(
     FeedRequestModel req, {
@@ -97,18 +119,31 @@ class FeedItemData {
     final parts = <String>[];
     if (req.eventType.isNotEmpty) parts.add(req.eventType);
     if (req.location.isNotEmpty) parts.add(req.location);
+    final mediaList = req.media.isNotEmpty
+        ? req.media
+        : (req.assetUrl != null && req.assetUrl!.isNotEmpty
+            ? [
+                AdMedia(
+                    id: '',
+                    url: req.assetUrl!,
+                    mediaType: req.assetType ?? 'image')
+              ]
+            : <AdMedia>[]);
     return FeedItemData(
       type: FeedItemType.request,
       id: req.id,
       title: req.title,
       creatorName:
           req.requesterName.isNotEmpty ? req.requesterName : 'Anonymous',
+      creatorId: req.requesterId,
       creatorPhotoUrl: req.requesterPhoto,
       mediaUrl: req.assetUrl,
       mediaIsVideo: req.assetType == 'video',
+      mediaList: mediaList,
       body: req.description.isNotEmpty ? req.description : null,
       secondaryLabel: parts.isEmpty ? null : parts.join(' · '),
       commentsEnabled: req.commentsEnabled,
+      commentCount: req.commentCount,
       ctaLabel: 'Message Requester',
       onCtaTap: onMessageTap,
     );
@@ -120,8 +155,9 @@ class FeedItemData {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class FeedItemCard extends StatefulWidget {
-  const FeedItemCard({super.key, required this.data});
+  const FeedItemCard({super.key, required this.data, this.onHide});
   final FeedItemData data;
+  final VoidCallback? onHide;
 
   @override
   State<FeedItemCard> createState() => _FeedItemCardState();
@@ -130,6 +166,9 @@ class FeedItemCard extends StatefulWidget {
 class _FeedItemCardState extends State<FeedItemCard> {
   VideoPlayerController? _videoCtrl;
   bool _videoReady = false;
+
+  final PageController _pageCtrl = PageController();
+  int _currentPage = 0;
 
   bool _liked = false;
   bool _disliked = false;
@@ -141,8 +180,16 @@ class _FeedItemCardState extends State<FeedItemCard> {
   @override
   void initState() {
     super.initState();
-    if (widget.data.mediaIsVideo && widget.data.mediaUrl != null) {
-      _initVideo(widget.data.mediaUrl!);
+    _pageCtrl.addListener(() {
+      final page = _pageCtrl.page?.round() ?? 0;
+      if (page != _currentPage && mounted) setState(() => _currentPage = page);
+    });
+    final d = widget.data;
+    // Only init video for single-media video items
+    if (d.mediaList.length == 1 && d.mediaList[0].isVideo) {
+      _initVideo(d.mediaList[0].url);
+    } else if (d.mediaList.isEmpty && d.mediaIsVideo && d.mediaUrl != null) {
+      _initVideo(d.mediaUrl!);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _initFired) return;
@@ -174,6 +221,7 @@ class _FeedItemCardState extends State<FeedItemCard> {
   @override
   void dispose() {
     _videoCtrl?.dispose();
+    _pageCtrl.dispose();
     super.dispose();
   }
 
@@ -233,8 +281,10 @@ class _FeedItemCardState extends State<FeedItemCard> {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final size = MediaQuery.sizeOf(context);
 
-    // Same height formula as EventDiscoveryCard
-    final mediaH = d.mediaIsVideo
+    final isVideo = d.mediaList.length == 1
+        ? d.mediaList[0].isVideo
+        : d.mediaIsVideo;
+    final mediaH = isVideo
         ? (size.width * 1.55).clamp(540.0, 620.0)
         : (size.width * 1.0).clamp(340.0, 480.0);
 
@@ -243,7 +293,54 @@ class _FeedItemCardState extends State<FeedItemCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── 1. Photo area — identical Stack structure to EventDiscoveryCard ─
+          // ── 1. Header — above the image ───────────────────────────────────
+          Padding(
+            padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 10.h),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _CreatorAvatar(data: d),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        d.creatorName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: ext.greetingColor,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      _TypeLabel(type: d.type, ext: ext),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                FollowButton(photographerId: d.creatorId),
+                SizedBox(width: 6.w),
+                GestureDetector(
+                  onTap: () => _FeedItemMoreOptionsSheet.show(
+                    context,
+                    ext: ext,
+                    type: d.type,
+                    assetId: d.id,
+                    onHide: widget.onHide,
+                  ),
+                  child: Icon(Icons.more_horiz_rounded,
+                      color: ext.searchHintColor, size: 22.sp),
+                ),
+              ],
+            ),
+          ),
+
+          // ── 2. Media ───────────────────────────────────────────────────────
           AnimatedContainer(
             duration: const Duration(milliseconds: 280),
             curve: Curves.easeInOut,
@@ -252,98 +349,54 @@ class _FeedItemCardState extends State<FeedItemCard> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _MediaBackground(
-                  data: d,
-                  videoCtrl: _videoCtrl,
-                  videoReady: _videoReady,
-                  ext: ext,
-                ),
-
-                // Top gradient — covers overlaid header
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 100.h,
-                  child: const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xAA000000), Color(0x00000000)],
-                      ),
+                if (d.mediaList.length > 1)
+                  PageView.builder(
+                    controller: _pageCtrl,
+                    itemCount: d.mediaList.length,
+                    itemBuilder: (_, i) => _SingleMediaFrame(
+                      media: d.mediaList[i],
+                      ext: ext,
+                      title: d.title,
+                      creatorName: d.creatorName,
                     ),
+                  )
+                else if (d.mediaList.length == 1 && !d.mediaList[0].isVideo)
+                  // Single image from mediaList — use _SingleMediaFrame so it
+                  // reads media.url directly instead of the legacy data.mediaUrl.
+                  _SingleMediaFrame(
+                    media: d.mediaList[0],
+                    ext: ext,
+                    title: d.title,
+                    creatorName: d.creatorName,
+                  )
+                else
+                  // Single video (controller already initialised from mediaList[0].url)
+                  // or no mediaList at all (falls back to legacy data.mediaUrl).
+                  _MediaBackground(
+                    data: d,
+                    videoCtrl: _videoCtrl,
+                    videoReady: _videoReady,
+                    ext: ext,
                   ),
-                ),
 
                 // Bottom gradient
                 Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: 120.h,
+                  height: 130.h,
                   child: const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
-                        colors: [Color(0xCC000000), Color(0x00000000)],
+                        colors: [Color(0xDD000000), Color(0x00000000)],
                       ),
                     ),
                   ),
                 ),
 
-                // Post header overlaid on image — mirrors _PostHeader
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 14.w, vertical: 12.h),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Creator avatar + name (mirrors photographer name row)
-                        Expanded(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _CreatorAvatar(data: d),
-                              SizedBox(width: 8.w),
-                              Flexible(
-                                child: Text(
-                                  d.creatorName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -0.3,
-                                    shadows: const [
-                                      Shadow(
-                                          blurRadius: 12,
-                                          color: Colors.black87),
-                                      Shadow(
-                                          blurRadius: 4,
-                                          color: Colors.black54),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(width: 8.w),
-                        // Type badge — replaces the owner pill / more-options
-                        _TypeBadge(type: d.type, ext: ext),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Footer: title + secondary label — mirrors _ImageFooter
+                // Footer: title + secondary label
                 Positioned(
                   bottom: 14.h,
                   left: 14.w,
@@ -351,8 +404,8 @@ class _FeedItemCardState extends State<FeedItemCard> {
                   child: _FooterOverlay(data: d),
                 ),
 
-                // Mute toggle — only when a video is playing
-                if (_videoReady && d.mediaIsVideo)
+                // Mute toggle for single video
+                if (_videoReady && d.mediaIsVideo && d.mediaList.length <= 1)
                   Positioned(
                     bottom: 60.h,
                     right: 14.w,
@@ -374,21 +427,41 @@ class _FeedItemCardState extends State<FeedItemCard> {
                       ),
                     ),
                   ),
+
+                // Page dots for multi-image (Instagram-style)
+                if (d.mediaList.length > 1)
+                  Positioned(
+                    bottom: 58.h,
+                    left: 0,
+                    right: 0,
+                    child: _AdPageDots(
+                      count: d.mediaList.length,
+                      current: _currentPage,
+                      ext: ext,
+                    ),
+                  ),
               ],
             ),
           ),
 
-          // ── 2. Spacing — same as EventDiscoveryCard (no page dots here) ───
-          SizedBox(height: 6.h),
+          // ── 3. CTA strip — between image and reactions ────────────────────
+          if (d.ctaLabel != null && d.onCtaTap != null)
+            _CtaStrip(
+              label: d.ctaLabel!,
+              onTap: d.onCtaTap!,
+              ext: ext,
+              type: d.type,
+            ),
 
-          // ── 3. Interaction bar ────────────────────────────────────────────
+          // ── 4. Interaction bar ─────────────────────────────────────────────
           CardInteractionBar(
             liked: _liked,
             disliked: _disliked,
             saved: _saved,
             likeCount: 0,
             dislikeCount: 0,
-            commentCount: 0,
+            commentCount: d.commentCount,
+            commentsEnabled: d.commentsEnabled,
             ext: ext,
             onLike: _handleLike,
             onDislike: _handleDislike,
@@ -397,32 +470,19 @@ class _FeedItemCardState extends State<FeedItemCard> {
             onSave: _handleSave,
           ),
 
-          // ── 4. Caption — mirrors CardDescriptionText pattern ──────────────
+          // ── 5. Caption ─────────────────────────────────────────────────────
           if (d.body != null)
             _BodyText(
               creatorName: d.creatorName,
               body: d.body!,
               ext: ext,
               expanded: _bodyExpanded,
-              onToggle: () =>
-                  setState(() => _bodyExpanded = !_bodyExpanded),
+              onToggle: () => setState(() => _bodyExpanded = !_bodyExpanded),
             ),
 
-          // ── 5. CTA button ─────────────────────────────────────────────────
-          if (d.ctaLabel != null && d.onCtaTap != null)
-            Padding(
-              padding: EdgeInsets.fromLTRB(14.w, 8.h, 14.w, 14.h),
-              child: _GoldCtaButton(
-                label: d.ctaLabel!,
-                onTap: d.onCtaTap!,
-                ext: ext,
-                type: d.type,
-              ),
-            )
-          else
-            SizedBox(height: 6.h),
+          SizedBox(height: 6.h),
 
-          // ── 6. Divider ────────────────────────────────────────────────────
+          // ── 6. Divider ─────────────────────────────────────────────────────
           Divider(
             height: 1,
             thickness: 0.5,
@@ -536,94 +596,168 @@ class _CreatorAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final photo = data.creatorPhotoUrl;
     final name = data.creatorName;
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    const borderPad = 2.0;
+
     return Container(
-      width: 28.w,
-      height: 28.w,
+      width: 38.w,
+      height: 38.w,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white24,
-        border: Border.all(color: Colors.white30, width: 0.8),
-        image: photo != null
-            ? DecorationImage(
-                image: NetworkImage(photo), fit: BoxFit.cover)
+        gradient: LinearGradient(
+          colors: [ext.accentGold, const Color(0xFFFF6B35)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: ext.accentGold.withValues(alpha: 0.40),
+            blurRadius: 10,
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(borderPad),
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: photo == null
+              ? const LinearGradient(
+                  colors: [Color(0xFFFFAB40), Color(0xFFFF6B35)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          image: photo != null
+              ? DecorationImage(image: NetworkImage(photo), fit: BoxFit.cover)
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: photo == null
+            ? Text(
+                initial,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              )
             : null,
       ),
-      child: photo == null
-          ? Center(
-              child: data.type == FeedItemType.request
-                  ? Icon(Icons.person_rounded,
-                      color: Colors.white, size: 14.sp)
-                  : Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : '?',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-            )
-          : null,
     );
   }
 }
 
-// ── Type badge — mirrors the owner-pill style from EventDiscoveryCard ─────────
+// ── Type label — small inline subtitle below creator name ────────────────────
 
-class _TypeBadge extends StatelessWidget {
-  const _TypeBadge({required this.type, required this.ext});
+class _TypeLabel extends StatelessWidget {
+  const _TypeLabel({required this.type, required this.ext});
   final FeedItemType type;
   final AppThemeExtension ext;
 
   @override
   Widget build(BuildContext context) {
     final isAd = type == FeedItemType.ad;
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isAd
-              ? [
-                  ext.accentGold.withValues(alpha: 0.25),
-                  const Color(0xFFFF6B35).withValues(alpha: 0.18),
-                ]
-              : [
-                  const Color(0x303B82F6),
-                  const Color(0x301A56DB),
-                ],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          isAd ? Icons.bolt_rounded : Icons.radio_button_checked_rounded,
+          size: 11.sp,
           color: isAd
-              ? ext.accentGold.withValues(alpha: 0.7)
-              : const Color(0xFF3B82F6).withValues(alpha: 0.7),
-          width: 0.8,
+              ? ext.accentGold.withValues(alpha: 0.85)
+              : const Color(0xFF60A5FA).withValues(alpha: 0.85),
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isAd
-                ? Icons.bolt_rounded
-                : Icons.radio_button_checked_rounded,
-            size: 10.sp,
-            color: isAd ? ext.accentGold : const Color(0xFF60A5FA),
+        SizedBox(width: 3.w),
+        Text(
+          isAd ? 'Sponsored' : 'Open Request',
+          style: TextStyle(
+            color: isAd
+                ? ext.accentGold.withValues(alpha: 0.85)
+                : const Color(0xFF60A5FA).withValues(alpha: 0.85),
+            fontSize: 11.sp,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
           ),
-          SizedBox(width: 4.w),
-          Text(
-            isAd ? 'Sponsored' : 'Open Request',
-            style: TextStyle(
-              color: isAd ? ext.accentGold : const Color(0xFF93C5FD),
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
+        ),
+      ],
+    );
+  }
+}
+
+// ── CTA strip — sits between image and reactions, full-width tappable ─────────
+
+class _CtaStrip extends StatelessWidget {
+  const _CtaStrip({
+    required this.label,
+    required this.onTap,
+    required this.ext,
+    required this.type,
+  });
+  final String label;
+  final VoidCallback onTap;
+  final AppThemeExtension ext;
+  final FeedItemType type;
+
+  @override
+  Widget build(BuildContext context) {
+    final isAd = type == FeedItemType.ad;
+    final accentColor =
+        isAd ? ext.accentGold : const Color(0xFF3B82F6);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 13.h),
+        decoration: BoxDecoration(
+          color: accentColor.withValues(alpha: 0.07),
+          border: Border.symmetric(
+            horizontal: BorderSide(
+              color: accentColor.withValues(alpha: 0.18),
+              width: 0.8,
             ),
           ),
-        ],
+        ),
+        child: Row(
+          children: [
+            // Left accent bar
+            Container(
+              width: 3.w,
+              height: 16.h,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isAd
+                      ? [ext.accentGold, const Color(0xFFFF6B35)]
+                      : [const Color(0xFF3B82F6), const Color(0xFF1D4ED8)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: accentColor,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 13.sp,
+              color: accentColor.withValues(alpha: 0.7),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -745,52 +879,238 @@ class _BodyText extends StatelessWidget {
   }
 }
 
-// ── CTA button ────────────────────────────────────────────────────────────────
+// ── More options sheet ────────────────────────────────────────────────────────
 
-class _GoldCtaButton extends StatelessWidget {
-  const _GoldCtaButton({
-    required this.label,
-    required this.onTap,
+// ── Single media frame (used inside PageView for multi-image) ─────────────────
+
+class _SingleMediaFrame extends StatelessWidget {
+  const _SingleMediaFrame({
+    required this.media,
     required this.ext,
-    required this.type,
+    required this.title,
+    required this.creatorName,
   });
-  final String label;
-  final VoidCallback onTap;
+  final AdMedia media;
   final AppThemeExtension ext;
-  final FeedItemType type;
+  final String title;
+  final String creatorName;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 13.h),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [ext.accentGold, const Color(0xFFFF6B35)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+    if (media.url.isEmpty) {
+      return CardGradientPlaceholder(
+        name: title.isNotEmpty ? title : creatorName,
+      );
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: CachedNetworkImage(
+            imageUrl: media.url,
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.low,
+            placeholder: (_, __) => const ColoredBox(color: Color(0xFF111111)),
+            errorWidget: (_, __, ___) =>
+                const ColoredBox(color: Color(0xFF111111)),
           ),
-          borderRadius: BorderRadius.circular(12.r),
         ),
-        alignment: Alignment.center,
-        child: Row(
+        const ColoredBox(color: Color(0x55000000)),
+        ColorFiltered(
+          colorFilter: const ColorFilter.matrix(<double>[
+            1.18, -0.06, -0.06, 0, 18,
+            -0.05,  1.16, -0.05, 0, 18,
+            -0.05, -0.05,  1.20, 0, 18,
+            0,     0,     0,     1, 0,
+          ]),
+          child: CachedNetworkImage(
+            imageUrl: media.url,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+            placeholder: (_, __) => const SizedBox.shrink(),
+            errorWidget: (_, __, ___) =>
+                const ColoredBox(color: Color(0xFF111111)),
+          ),
+        ),
+        if (media.isVideo)
+          const Center(
+            child: Icon(
+              Icons.play_circle_rounded,
+              color: Colors.white70,
+              size: 54,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ── Instagram-style page dots ─────────────────────────────────────────────────
+
+class _AdPageDots extends StatelessWidget {
+  const _AdPageDots({
+    required this.count,
+    required this.current,
+    required this.ext,
+  });
+  final int count;
+  final int current;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(count, (i) {
+        final active = i == current;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: active ? 18.0 : 6.0,
+          height: 6.0,
+          decoration: BoxDecoration(
+            color: active
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(3),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+// ── More options sheet ────────────────────────────────────────────────────────
+
+class _FeedItemMoreOptionsSheet extends StatelessWidget {
+  const _FeedItemMoreOptionsSheet({
+    required this.ext,
+    required this.type,
+    required this.assetId,
+    this.onHide,
+  });
+  final AppThemeExtension ext;
+  final FeedItemType type;
+  final String assetId;
+  final VoidCallback? onHide;
+
+  static void show(
+    BuildContext context, {
+    required AppThemeExtension ext,
+    required FeedItemType type,
+    required String assetId,
+    VoidCallback? onHide,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _FeedItemMoreOptionsSheet(
+        ext: ext,
+        type: type,
+        assetId: assetId,
+        onHide: onHide,
+      ),
+    );
+  }
+
+  String get _assetType =>
+      type == FeedItemType.ad ? 'campaign' : 'request';
+
+  @override
+  Widget build(BuildContext context) {
+    final label = type == FeedItemType.ad ? 'campaign' : 'request';
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.homeBackground,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (type == FeedItemType.request) ...[
-              Icon(Icons.chat_bubble_rounded,
-                  size: 15.sp, color: Colors.white),
-              SizedBox(width: 7.w),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.2,
+            Container(
+              margin: EdgeInsets.symmetric(vertical: 12.h),
+              width: 36.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: ext.searchHintColor.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(2.r),
               ),
             ),
+
+            // Hide
+            ListTile(
+              leading: Container(
+                width: 40.w,
+                height: 40.w,
+                decoration: BoxDecoration(
+                  color: ext.searchFieldFill,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.visibility_off_outlined,
+                    color: ext.greetingColor, size: 20.sp),
+              ),
+              title: Text(
+                'Hide this $label',
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15.sp,
+                ),
+              ),
+              subtitle: Text(
+                "You won't see this $label again",
+                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                onHide?.call();
+              },
+            ),
+
+            Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
+
+            // Report
+            ListTile(
+              leading: Container(
+                width: 40.w,
+                height: 40.w,
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.flag_outlined,
+                    color: Colors.redAccent, size: 20.sp),
+              ),
+              title: Text(
+                'Report $label',
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15.sp,
+                ),
+              ),
+              subtitle: Text(
+                'Inappropriate, misleading or harmful content',
+                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+              ),
+              trailing: Icon(Icons.chevron_right_rounded,
+                  color: ext.searchHintColor, size: 20.sp),
+              onTap: () {
+                Navigator.of(context).pop();
+                ReportSheet.show(
+                  context,
+                  ext: ext,
+                  assetType: _assetType,
+                  assetId: assetId,
+                );
+              },
+            ),
+
+            SizedBox(height: 8.h),
           ],
         ),
       ),

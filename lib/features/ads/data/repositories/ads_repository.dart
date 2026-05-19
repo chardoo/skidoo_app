@@ -100,7 +100,8 @@ class AdsRepository {
     }
   }
 
-  Future<void> trackImpression({
+  /// Returns the server-issued impression_id (needed for click tracking).
+  Future<String?> trackImpression({
     required String adId,
     required String adsetId,
     required String campaignId,
@@ -110,7 +111,7 @@ class AdsRepository {
   }) async {
     if (adId.isEmpty || campaignId.isEmpty) {
       debugPrint('$_tag trackImpression skipped — empty adId or campaignId');
-      return;
+      return null;
     }
     debugPrint('$_tag trackImpression → adId=$adId placement=$placement');
     try {
@@ -123,8 +124,13 @@ class AdsRepository {
         if (contextEventId != null) 'context_event_id': contextEventId,
       });
       debugPrint('$_tag trackImpression ← status=${resp.statusCode}');
+      final data = _unwrap<Map<String, dynamic>>(resp);
+      final impressionId = data?['impression_id'] as String? ?? data?['id'] as String?;
+      debugPrint('$_tag trackImpression — impressionId=$impressionId');
+      return impressionId;
     } catch (e, st) {
       debugPrint('$_tag trackImpression ERROR: $e\n$st');
+      return null;
     }
   }
 
@@ -220,10 +226,13 @@ class AdsRepository {
     }
   }
 
-  Future<List<FeedRequestModel>> getMyRequests() async {
-    debugPrint('$_tag getMyRequests');
+  Future<List<FeedRequestModel>> getMyRequests({int page = 1, int limit = 20}) async {
+    debugPrint('$_tag getMyRequests page=$page limit=$limit');
     try {
-      final resp = await _dio.get('/ads/requests/mine');
+      final resp = await _dio.get('/ads/requests/mine', queryParameters: {
+        'page': page,
+        'limit': limit,
+      });
       debugPrint('$_tag getMyRequests ← status=${resp.statusCode}');
       return _unwrapList<Map<String, dynamic>>(resp)
           .map(FeedRequestModel.fromJson)
@@ -242,8 +251,9 @@ class AdsRepository {
     double? budgetAmount,
     String currency = 'USD',
     bool commentsEnabled = true,
+    String? visibleTo,
   }) async {
-    debugPrint('$_tag postRequest → title="$title" eventType=$eventType location=$location budget=$budgetAmount $currency commentsEnabled=$commentsEnabled');
+    debugPrint('$_tag postRequest → title="$title" eventType=$eventType location=$location budget=$budgetAmount $currency commentsEnabled=$commentsEnabled visibleTo=$visibleTo');
     final resp = await _dio.post('/ads/requests', data: {
       'title': title,
       'description': description,
@@ -252,6 +262,7 @@ class AdsRepository {
       if (budgetAmount != null) 'budget_amount': budgetAmount,
       'currency': currency,
       'comments_enabled': commentsEnabled,
+      if (visibleTo != null) 'visible_to': visibleTo,
     });
     debugPrint('$_tag postRequest ← status=${resp.statusCode} data=${resp.data}');
     final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
@@ -279,6 +290,11 @@ class AdsRepository {
 
   Future<void> uploadRequestAsset(String requestId, String filePath) async {
     debugPrint('$_tag uploadRequestAsset → requestId=$requestId path=$filePath');
+    await uploadRequestMedia(requestId, filePath);
+  }
+
+  Future<int> uploadRequestMedia(String requestId, String filePath) async {
+    debugPrint('$_tag uploadRequestMedia → requestId=$requestId path=$filePath');
     final fileName = filePath.split('/').last;
     final ext = fileName.split('.').last.toLowerCase();
     final isVideo = ['mp4', 'mov', 'avi', 'webm', 'm4v'].contains(ext);
@@ -289,11 +305,40 @@ class AdsRepository {
         contentType: MediaType.parse(_mimeFor(ext, isVideo)),
       ),
     });
-    final resp = await _dio.post(
-      '/ads/requests/$requestId/asset',
-      data: formData,
-    );
-    debugPrint('$_tag uploadRequestAsset ← status=${resp.statusCode}');
+    final resp = await _dio.post('/requests/$requestId/media', data: formData);
+    debugPrint('$_tag uploadRequestMedia ← status=${resp.statusCode}');
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    return (data['media_count'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<void> deleteRequestMedia(String requestId, String mediaId) async {
+    debugPrint('$_tag deleteRequestMedia → requestId=$requestId mediaId=$mediaId');
+    await _dio.delete('/requests/$requestId/media/$mediaId');
+    debugPrint('$_tag deleteRequestMedia ← done');
+  }
+
+  Future<int> uploadCampaignMedia(String campaignId, String filePath) async {
+    debugPrint('$_tag uploadCampaignMedia → campaignId=$campaignId path=$filePath');
+    final fileName = filePath.split('/').last;
+    final ext = fileName.split('.').last.toLowerCase();
+    final isVideo = ['mp4', 'mov', 'avi', 'webm', 'm4v'].contains(ext);
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        filePath,
+        filename: fileName,
+        contentType: MediaType.parse(_mimeFor(ext, isVideo)),
+      ),
+    });
+    final resp = await _dio.post('/campaigns/$campaignId/media', data: formData);
+    debugPrint('$_tag uploadCampaignMedia ← status=${resp.statusCode}');
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    return (data['media_count'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<void> deleteCampaignMedia(String campaignId, String mediaId) async {
+    debugPrint('$_tag deleteCampaignMedia → campaignId=$campaignId mediaId=$mediaId');
+    await _dio.delete('/campaigns/$campaignId/media/$mediaId');
+    debugPrint('$_tag deleteCampaignMedia ← done');
   }
 
   Future<void> uploadAdCreative(
@@ -475,10 +520,13 @@ class AdsRepository {
     );
   }
 
-  Future<List<AdCampaign>> getMyCampaigns() async {
-    debugPrint('$_tag getMyCampaigns');
+  Future<List<AdCampaign>> getMyCampaigns({int page = 1, int limit = 20}) async {
+    debugPrint('$_tag getMyCampaigns page=$page limit=$limit');
     try {
-      final resp = await _dio.get('/ads/campaigns');
+      final resp = await _dio.get('/ads/campaigns', queryParameters: {
+        'page': page,
+        'limit': limit,
+      });
       debugPrint('$_tag getMyCampaigns ← status=${resp.statusCode}');
       return _unwrapList<Map<String, dynamic>>(resp)
           .map(AdCampaign.fromJson)
@@ -497,8 +545,9 @@ class AdsRepository {
     String? currency,
     String? startAt,
     String? endAt,
+    bool? commentsEnabled,
   }) async {
-    debugPrint('$_tag updateCampaign → id=$campaignId name=$name objective=$objective budget=$budgetAmount');
+    debugPrint('$_tag updateCampaign → id=$campaignId name=$name objective=$objective budget=$budgetAmount commentsEnabled=$commentsEnabled');
     final resp = await _dio.patch('/ads/campaigns/$campaignId', data: {
       if (name != null) 'name': name,
       if (objective != null) 'objective': objective,
@@ -506,6 +555,7 @@ class AdsRepository {
       if (currency != null) 'currency': currency,
       if (startAt != null) 'start_at': startAt,
       if (endAt != null) 'end_at': endAt,
+      if (commentsEnabled != null) 'comments_enabled': commentsEnabled,
     });
     debugPrint('$_tag updateCampaign ← status=${resp.statusCode}');
     final data = _unwrap<Map<String, dynamic>>(resp) ?? {};

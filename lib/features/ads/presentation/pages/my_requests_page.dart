@@ -5,7 +5,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/create_campaign_page.dart';
 
 class MyRequestsPage extends StatefulWidget {
   const MyRequestsPage({super.key});
@@ -80,41 +80,16 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
         AppSnackBar.error(context, 'Could not promote request. Try again.');
         return;
       }
-      final payment = await _repo.payCampaign(campaignId);
-      debugPrint('[MyRequestsPage] _promote — authorizationUrl=${payment.authorizationUrl} reference=${payment.reference}');
+      // Navigate to the campaign wizard pre-filled at Step 2 (ad set) so the
+      // user can review targeting and creative before paying.
       if (!mounted) return;
-      if (payment.authorizationUrl.isEmpty) {
-        AppSnackBar.error(context, 'Could not get payment URL. Try again.');
-        return;
-      }
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => AdsCheckoutPage(
-            authorizationUrl: payment.authorizationUrl,
-            reference: payment.reference,
-            amountGhs: payment.amountGhs,
-            originalAmount: payment.originalAmount,
-            originalCurrency: payment.originalCurrency,
-            onSuccess: () {},
-          ),
+          builder: (_) =>
+              CreateCampaignPage(existingCampaignId: campaignId),
         ),
       );
-      if (!mounted) return;
-      try {
-        final verify = await _repo.verifyPayment(campaignId);
-        debugPrint('[MyRequestsPage] _promote verify — success=${verify.success} status=${verify.status}');
-        if (mounted && verify.success) {
-          AppSnackBar.success(
-            context,
-            verify.message.isNotEmpty
-                ? verify.message
-                : 'Payment confirmed! Your campaign is under review.',
-          );
-        }
-      } catch (e) {
-        debugPrint('[MyRequestsPage] _promote verifyPayment ERROR: $e');
-      }
-      _load();
+      if (mounted) _load();
     } catch (e) {
       debugPrint('[MyRequestsPage] _promote ERROR: $e');
       if (!mounted) return;

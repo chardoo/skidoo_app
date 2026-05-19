@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
-import 'package:video_player/video_player.dart';
 
 const _eventTypes = [
   'Wedding',
@@ -35,12 +34,12 @@ class _PostRequestPageState extends State<PostRequestPage> {
   final _locationCtrl = TextEditingController();
   final _budgetCtrl = TextEditingController();
   String? _selectedEventType;
+  String _visibleTo = 'all';
   bool _submitting = false;
   bool _commentsEnabled = true;
 
-  XFile? _asset;
-  bool _assetIsVideo = false;
-  VideoPlayerController? _videoCtrl;
+  final List<XFile> _assets = [];
+  static const _maxAssets = 5;
 
   final _repo = AdsRepository();
   final _picker = ImagePicker();
@@ -51,31 +50,13 @@ class _PostRequestPageState extends State<PostRequestPage> {
     _descCtrl.dispose();
     _locationCtrl.dispose();
     _budgetCtrl.dispose();
-    _videoCtrl?.dispose();
     super.dispose();
   }
 
-  Future<void> _pickMedia(BuildContext context) async {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _MediaPickerSheet(
-        ext: ext,
-        onPick: _handlePick,
-      ),
-    );
-  }
-
-  static const _maxBytes = 50 * 1024 * 1024; // 50 MB
-
-  Future<void> _handlePick(ImageSource source, bool video) async {
-    XFile? file;
-    if (video) {
-      file = await _picker.pickVideo(source: source, maxDuration: const Duration(minutes: 2));
-    } else {
-      file = await _picker.pickImage(source: source, imageQuality: 85);
-    }
+  Future<void> _pickMedia() async {
+    if (_assets.length >= _maxAssets) return;
+    final file = await _picker.pickImage(
+        source: ImageSource.gallery, imageQuality: 85);
     if (file == null) return;
 
     final size = await File(file.path).length();
@@ -85,40 +66,14 @@ class _PostRequestPageState extends State<PostRequestPage> {
       return;
     }
 
-    VideoPlayerController? newCtrl;
-    if (video) {
-      newCtrl = VideoPlayerController.file(File(file.path));
-      try {
-        await newCtrl.initialize();
-        await newCtrl.setVolume(0);
-        await newCtrl.setLooping(true);
-        await newCtrl.play();
-      } catch (e) {
-        debugPrint('[PostRequestPage] video preview error: $e');
-        newCtrl.dispose();
-        newCtrl = null;
-      }
-    }
-
-    if (!mounted) {
-      newCtrl?.dispose();
-      return;
-    }
-    setState(() {
-      _videoCtrl?.dispose();
-      _videoCtrl = newCtrl;
-      _asset = file;
-      _assetIsVideo = video;
-    });
+    if (!mounted) return;
+    setState(() => _assets.add(file));
   }
 
-  void _removeAsset() {
-    setState(() {
-      _videoCtrl?.dispose();
-      _videoCtrl = null;
-      _asset = null;
-      _assetIsVideo = false;
-    });
+  static const _maxBytes = 50 * 1024 * 1024; // 50 MB
+
+  void _removeAsset(int index) {
+    setState(() => _assets.removeAt(index));
   }
 
   Future<void> _submit() async {
@@ -137,12 +92,15 @@ class _PostRequestPageState extends State<PostRequestPage> {
         budgetAmount: budget,
         currency: 'GHS',
         commentsEnabled: _commentsEnabled,
+        visibleTo: _visibleTo,
       );
       debugPrint('[PostRequestPage] _submit — requestId=$requestId');
 
-      if (_asset != null && requestId.isNotEmpty) {
-        debugPrint('[PostRequestPage] _submit — uploading asset');
-        await _repo.uploadRequestAsset(requestId, _asset!.path);
+      if (_assets.isNotEmpty && requestId.isNotEmpty) {
+        debugPrint('[PostRequestPage] _submit — uploading ${_assets.length} asset(s)');
+        for (final file in _assets) {
+          await _repo.uploadRequestMedia(requestId, file.path);
+        }
       }
 
       if (!mounted) return;
@@ -210,6 +168,15 @@ class _PostRequestPageState extends State<PostRequestPage> {
             ),
 
             SizedBox(height: 20.h),
+            _SectionLabel('Visible to', ext),
+            SizedBox(height: 8.h),
+            _VisibleToSelector(
+              value: _visibleTo,
+              ext: ext,
+              onChanged: (v) => setState(() => _visibleTo = v),
+            ),
+
+            SizedBox(height: 20.h),
             _SectionLabel('Location', ext),
             SizedBox(height: 8.h),
             _Field(
@@ -229,35 +196,41 @@ class _PostRequestPageState extends State<PostRequestPage> {
                   'Describe the event, date, style preferences, anything helpful...',
               ext: ext,
               maxLines: 4,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
 
             SizedBox(height: 20.h),
             // ── Media picker ──────────────────────────────────────────────
             Row(
               children: [
-                _SectionLabel('Media', ext),
+                _SectionLabel('Photos', ext),
                 SizedBox(width: 6.w),
                 Text(
                   '(optional)',
                   style:
                       TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
                 ),
+                const Spacer(),
+                Text(
+                  '${_assets.length}/$_maxAssets',
+                  style: TextStyle(
+                    color: ext.searchHintColor,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
             SizedBox(height: 4.h),
             Text(
-              'Attach a photo or short video to attract more photographers.',
+              'Add up to 5 photos to attract more photographers.',
               style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
             SizedBox(height: 10.h),
-            _AssetPreview(
-              asset: _asset,
-              isVideo: _assetIsVideo,
-              videoCtrl: _videoCtrl,
+            _MultiMediaPicker(
+              assets: _assets,
+              maxAssets: _maxAssets,
               ext: ext,
-              onPick: () => _pickMedia(context),
+              onAdd: _pickMedia,
               onRemove: _removeAsset,
             ),
 
@@ -319,132 +292,95 @@ class _PostRequestPageState extends State<PostRequestPage> {
   }
 }
 
-// ── Asset preview / picker ────────────────────────────────────────────────────
+// ── Multi-image picker ────────────────────────────────────────────────────────
 
-class _AssetPreview extends StatelessWidget {
-  const _AssetPreview({
-    required this.asset,
-    required this.isVideo,
-    required this.videoCtrl,
+class _MultiMediaPicker extends StatelessWidget {
+  const _MultiMediaPicker({
+    required this.assets,
+    required this.maxAssets,
     required this.ext,
-    required this.onPick,
+    required this.onAdd,
     required this.onRemove,
   });
 
-  final XFile? asset;
-  final bool isVideo;
-  final VideoPlayerController? videoCtrl;
+  final List<XFile> assets;
+  final int maxAssets;
   final AppThemeExtension ext;
-  final VoidCallback onPick;
-  final VoidCallback onRemove;
+  final VoidCallback onAdd;
+  final void Function(int index) onRemove;
+
+  static const _thumbSize = 90.0;
 
   @override
   Widget build(BuildContext context) {
-    if (asset == null) {
-      // Empty picker tap target
-      return GestureDetector(
-        onTap: onPick,
-        child: Container(
-          height: 130.h,
-          decoration: BoxDecoration(
-            color: ext.searchFieldFill,
-            borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(
-              color: ext.searchHintColor.withValues(alpha: 0.25),
-              width: 1.2,
-              strokeAlign: BorderSide.strokeAlignInside,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+    final atLimit = assets.length >= maxAssets;
+    return SizedBox(
+      height: _thumbSize,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          // Existing thumbnails
+          ...List.generate(assets.length, (i) {
+            return Padding(
+              padding: EdgeInsets.only(right: 8.w),
+              child: Stack(
                 children: [
-                  _MediaTypeButton(
-                    icon: Icons.image_outlined,
-                    label: 'Photo',
-                    color: ext.accentGold,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10.r),
+                    child: Image.file(
+                      File(assets[i].path),
+                      width: _thumbSize,
+                      height: _thumbSize,
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                  SizedBox(width: 20.w),
-                  const _MediaTypeButton(
-                    icon: Icons.videocam_outlined,
-                    label: 'Video',
-                    color: Color(0xFF8B5CF6),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => onRemove(i),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.close_rounded,
+                            color: Colors.white, size: 14.sp),
+                      ),
+                    ),
                   ),
                 ],
               ),
-              SizedBox(height: 10.h),
-              Text(
-                'Tap to add media',
-                style: TextStyle(
-                  color: ext.searchHintColor,
-                  fontSize: 12.sp,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+            );
+          }),
 
-    // Preview of selected asset
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14.r),
-      child: Stack(
-        children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: isVideo
-                ? (videoCtrl != null && videoCtrl!.value.isInitialized
-                    ? VideoPlayer(videoCtrl!)
-                    : Container(color: Colors.black))
-                : Image.file(File(asset!.path), fit: BoxFit.cover),
-          ),
-          // Asset type pill
-          Positioned(
-            top: 8.h,
-            left: 10.w,
-            child: _AssetTypePill(isVideo: isVideo),
-          ),
-          // Remove button
-          Positioned(
-            top: 6.h,
-            right: 8.w,
-            child: GestureDetector(
-              onTap: onRemove,
+          // Add button (shown when under limit)
+          if (!atLimit)
+            GestureDetector(
+              onTap: onAdd,
               child: Container(
-                padding: const EdgeInsets.all(5),
+                width: _thumbSize,
+                height: _thumbSize,
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  shape: BoxShape.circle,
+                  color: ext.searchFieldFill,
+                  borderRadius: BorderRadius.circular(10.r),
+                  border: Border.all(
+                    color: ext.searchHintColor.withValues(alpha: 0.25),
+                    width: 1.2,
+                  ),
                 ),
-                child: Icon(Icons.close_rounded,
-                    color: Colors.white, size: 16.sp),
-              ),
-            ),
-          ),
-          // Re-pick tap on the bottom strip
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: GestureDetector(
-              onTap: onPick,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.45),
-                padding: EdgeInsets.symmetric(vertical: 7.h),
-                child: Row(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.edit_rounded,
-                        color: Colors.white70, size: 14.sp),
-                    SizedBox(width: 5.w),
+                    Icon(Icons.add_photo_alternate_outlined,
+                        color: ext.accentGold, size: 26.sp),
+                    SizedBox(height: 4.h),
                     Text(
-                      'Change media',
+                      'Add Photo',
                       style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12.sp,
+                        color: ext.searchHintColor,
+                        fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -452,212 +388,7 @@ class _AssetPreview extends StatelessWidget {
                 ),
               ),
             ),
-          ),
         ],
-      ),
-    );
-  }
-}
-
-class _MediaTypeButton extends StatelessWidget {
-  const _MediaTypeButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color, size: 24.sp),
-        ),
-        SizedBox(height: 4.h),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 11.sp,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Asset type pill ───────────────────────────────────────────────────────────
-
-class _AssetTypePill extends StatelessWidget {
-  const _AssetTypePill({required this.isVideo});
-  final bool isVideo;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isVideo ? const Color(0xFF8B5CF6) : const Color(0xFF3B82F6);
-    final icon = isVideo ? Icons.play_circle_rounded : Icons.image_rounded;
-    final label = isVideo ? 'Video' : 'Image';
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: color.withValues(alpha: 0.7), width: 0.8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 10.sp, color: color),
-          SizedBox(width: 3.w),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 9.sp,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Media picker bottom sheet ─────────────────────────────────────────────────
-
-class _MediaPickerSheet extends StatelessWidget {
-  const _MediaPickerSheet({required this.ext, required this.onPick});
-  final AppThemeExtension ext;
-  final Future<void> Function(ImageSource, bool) onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.homeBackground,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: EdgeInsets.symmetric(vertical: 12.h),
-              width: 36.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: ext.searchHintColor.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 8.h),
-              child: Text(
-                'Add Media',
-                style: TextStyle(
-                  color: ext.greetingColor,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16.sp,
-                ),
-              ),
-            ),
-            Divider(
-                height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
-            _SheetOption(
-              ext: ext,
-              icon: Icons.image_rounded,
-              color: ext.accentGold,
-              title: 'Photo from Gallery',
-              onTap: () async {
-                Navigator.of(context).pop();
-                await onPick(ImageSource.gallery, false);
-              },
-            ),
-            _SheetOption(
-              ext: ext,
-              icon: Icons.videocam_rounded,
-              color: const Color(0xFF8B5CF6),
-              title: 'Video from Gallery',
-              onTap: () async {
-                Navigator.of(context).pop();
-                await onPick(ImageSource.gallery, true);
-              },
-            ),
-            _SheetOption(
-              ext: ext,
-              icon: Icons.camera_alt_rounded,
-              color: const Color(0xFF3B82F6),
-              title: 'Take a Photo',
-              onTap: () async {
-                Navigator.of(context).pop();
-                await onPick(ImageSource.camera, false);
-              },
-            ),
-            _SheetOption(
-              ext: ext,
-              icon: Icons.videocam_outlined,
-              color: const Color(0xFF10B981),
-              title: 'Record a Video',
-              onTap: () async {
-                Navigator.of(context).pop();
-                await onPick(ImageSource.camera, true);
-              },
-            ),
-            SizedBox(height: 8.h),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SheetOption extends StatelessWidget {
-  const _SheetOption({
-    required this.ext,
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.onTap,
-  });
-  final AppThemeExtension ext;
-  final IconData icon;
-  final Color color;
-  final String title;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      leading: Container(
-        width: 40.w,
-        height: 40.w,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: color, size: 20.sp),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: ext.greetingColor,
-          fontWeight: FontWeight.w600,
-          fontSize: 14.sp,
-        ),
       ),
     );
   }
@@ -851,6 +582,98 @@ class _SubmitButton extends StatelessWidget {
                   letterSpacing: 0.2,
                 ),
               ),
+      ),
+    );
+  }
+}
+
+// ── Visible-to toggle — "Photographers" | "Clients" ──────────────────────────
+
+class _VisibleToSelector extends StatelessWidget {
+  const _VisibleToSelector({
+    required this.value,
+    required this.ext,
+    required this.onChanged,
+  });
+  final String value;
+  final AppThemeExtension ext;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8.w,
+      runSpacing: 8.h,
+      children: [
+        _VisibleToChip(
+          label: 'Everyone',
+          selected: value == 'all',
+          ext: ext,
+          onTap: () => onChanged('all'),
+        ),
+        _VisibleToChip(
+          label: 'Photographers',
+          selected: value == 'photographers',
+          ext: ext,
+          onTap: () => onChanged('photographers'),
+        ),
+        _VisibleToChip(
+          label: 'Clients',
+          selected: value == 'clients',
+          ext: ext,
+          onTap: () => onChanged('clients'),
+        ),
+        _VisibleToChip(
+          label: 'Followers',
+          selected: value == 'followers',
+          ext: ext,
+          onTap: () => onChanged('followers'),
+        ),
+      ],
+    );
+  }
+}
+
+class _VisibleToChip extends StatelessWidget {
+  const _VisibleToChip({
+    required this.label,
+    required this.selected,
+    required this.ext,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 11.h),
+        decoration: BoxDecoration(
+          color: selected
+              ? ext.accentGold.withValues(alpha: 0.12)
+              : ext.searchFieldFill,
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(
+            color: selected
+                ? ext.accentGold
+                : ext.searchHintColor.withValues(alpha: 0.25),
+            width: selected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? ext.accentGold : ext.searchHintColor,
+            fontSize: 13.sp,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
       ),
     );
   }

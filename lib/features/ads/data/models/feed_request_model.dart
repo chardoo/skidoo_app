@@ -1,3 +1,5 @@
+import 'package:skidoo_app/features/ads/models/ad_media.dart';
+
 class FeedRequestModel {
   const FeedRequestModel({
     required this.id,
@@ -18,6 +20,8 @@ class FeedRequestModel {
     this.assetType,
     this.createdAt,
     this.commentsEnabled = true,
+    this.commentCount = 0,
+    this.media = const [],
   });
 
   final String id;
@@ -37,36 +41,55 @@ class FeedRequestModel {
   final String? promotedCampaignId;
   /// "pending_review" | "open" | "promoted" | "filled" | "closed" | "rejected"
   final String status;
-  /// Cloudinary URL for the attached media asset
+  /// Cloudinary URL for the attached media asset (legacy)
   final String? assetUrl;
-  /// "image" | "video"
+  /// "image" | "video" (legacy)
   final String? assetType;
   final DateTime? createdAt;
   final bool commentsEnabled;
+  final int commentCount;
+  final List<AdMedia> media;
 
-  factory FeedRequestModel.fromJson(Map<String, dynamic> json) =>
-      FeedRequestModel(
-        id: json['id'] as String? ?? '',
-        requesterId: json['requester_id'] as String? ?? '',
-        requesterName: json['requester_name'] as String? ??
-            json['requester_username'] as String? ??
-            '',
-        requesterType: json['requester_type'] as String? ?? 'client',
-        title: json['title'] as String? ?? '',
-        description: json['description'] as String? ?? '',
-        eventType: json['event_type'] as String? ?? '',
-        location: json['location'] as String? ?? '',
-        budgetAmount: (json['budget_amount'] as num?)?.toDouble(),
-        currency: json['currency'] as String? ?? 'USD',
-        requesterPhoto: json['requester_photo'] as String?,
-        visibleTo: json['visible_to'] as String?,
-        promotedCampaignId: json['promoted_campaign_id'] as String?,
-        status: json['status'] as String? ?? 'open',
-        assetUrl: (json['asset_url'] ?? json['media_url']) as String?,
-        assetType: (json['asset_type'] ?? json['media_type']) as String?,
-        commentsEnabled: json['comments_enabled'] as bool? ?? true,
-        createdAt: json['createdAt'] != null
-            ? DateTime.tryParse(json['createdAt'] as String)
-            : null,
-      );
+  factory FeedRequestModel.fromJson(Map<String, dynamic> json) {
+    final rawMedia = (json['media'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(AdMedia.fromJson)
+        .toList();
+    final legacyUrl =
+        (json['asset_url'] ?? json['media_url']) as String?;
+    final legacyType =
+        (json['asset_type'] ?? json['media_type']) as String? ?? 'image';
+    final media = rawMedia.isNotEmpty
+        ? rawMedia
+        : (legacyUrl != null && legacyUrl.isNotEmpty
+            ? [AdMedia(id: '', url: legacyUrl, mediaType: legacyType)]
+            : <AdMedia>[]);
+
+    return FeedRequestModel(
+      id: json['id'] as String? ?? '',
+      requesterId: json['requester_id'] as String? ?? '',
+      requesterName: json['requester_name'] as String? ??
+          json['requester_username'] as String? ??
+          '',
+      requesterType: json['requester_type'] as String? ?? 'client',
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      eventType: json['event_type'] as String? ?? '',
+      location: json['location'] as String? ?? '',
+      budgetAmount: (json['budget_amount'] as num?)?.toDouble(),
+      currency: json['currency'] as String? ?? 'USD',
+      requesterPhoto: json['requester_photo'] as String?,
+      visibleTo: json['visible_to'] as String?,
+      promotedCampaignId: json['promoted_campaign_id'] as String?,
+      status: json['status'] as String? ?? 'open',
+      assetUrl: legacyUrl,
+      assetType: legacyType,
+      commentsEnabled: json['comments_enabled'] as bool? ?? true,
+      commentCount: (json['comment_count'] as num?)?.toInt() ?? 0,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'] as String)
+          : null,
+      media: media,
+    );
+  }
 }

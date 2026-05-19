@@ -1,3 +1,5 @@
+import 'package:skidoo_app/features/ads/models/ad_media.dart';
+
 class AdModel {
   const AdModel({
     required this.adId,
@@ -16,6 +18,8 @@ class AdModel {
     this.advertiserPhoto,
     this.advertiserType,
     this.commentsEnabled = true,
+    this.commentCount = 0,
+    this.media = const [],
   });
 
   final String adId;
@@ -34,8 +38,10 @@ class AdModel {
   /// "photographer" | "client"
   final String? advertiserType;
   final bool commentsEnabled;
+  final int commentCount;
   final String placement;
   final String impressionToken;
+  final List<AdMedia> media;
 
   bool get isVideo => mediaType == 'video';
 
@@ -55,7 +61,23 @@ class AdModel {
         advertiserPhoto: json['advertiser_photo'] as String? ?? json['advertiser_avatar'] as String?,
         advertiserType: json['advertiser_type'] as String?,
         commentsEnabled: json['comments_enabled'] as bool? ?? true,
+        commentCount: (json['comment_count'] as num?)?.toInt() ?? 0,
         placement: json['placement'] as String? ?? '',
         impressionToken: json['impression_token'] as String? ?? '',
+        media: () {
+          final rawMedia = (json['media'] as List<dynamic>? ?? [])
+              .whereType<Map<String, dynamic>>()
+              .map(AdMedia.fromJson)
+              .toList();
+          final legacyUrl =
+              json['media_url'] as String? ?? json['asset_url'] as String?;
+          final legacyType =
+              json['media_type'] as String? ?? json['asset_type'] as String? ?? 'image';
+          if (rawMedia.isNotEmpty) return rawMedia;
+          if (legacyUrl != null && legacyUrl.isNotEmpty) {
+            return [AdMedia(id: '', url: legacyUrl, mediaType: legacyType)];
+          }
+          return <AdMedia>[];
+        }(),
       );
 }
