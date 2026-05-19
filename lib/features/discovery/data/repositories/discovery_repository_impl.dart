@@ -9,7 +9,14 @@ class DiscoveryRepositoryImpl implements DiscoveryRepository {
   @override
   Future<List<EventDiscovery>> getRandomEvents({
     required int take,
+    required int skip,
     String? userId,
+    List<String>? followedPhotographerIds,
   }) =>
-      _dataSource.getRandomEvents(take: take, userId: userId);
+      _dataSource.getRandomEvents(
+        take: take,
+        skip: skip,
+        userId: userId,
+        followedPhotographerIds: followedPhotographerIds,
+      );
 }

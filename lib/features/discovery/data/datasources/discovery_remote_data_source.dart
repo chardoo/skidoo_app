@@ -7,7 +7,9 @@ import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 abstract class DiscoveryRemoteDataSource {
   Future<List<EventDiscovery>> getRandomEvents({
     required int take,
+    required int skip,
     String? userId,
+    List<String>? followedPhotographerIds,
   });
 
   /// GET /photographer/events/{eventId}/images
@@ -21,11 +23,16 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
   @override
   Future<List<EventDiscovery>> getRandomEvents({
     required int take,
+    required int skip,
     String? userId,
+    List<String>? followedPhotographerIds,
   }) async {
     try {
-      final params = <String, dynamic>{'take': take};
+      final params = <String, dynamic>{'take': take, 'skip': skip};
       if (userId != null && userId.isNotEmpty) params['userId'] = userId;
+      if (followedPhotographerIds != null && followedPhotographerIds.isNotEmpty) {
+        params['followed_photographer_ids'] = followedPhotographerIds;
+      }
 
       final res = await _api.dio.get(
         '/client/random-images',
@@ -61,8 +68,19 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
   @override
   Future<EventDiscovery> getEventById(String eventId) async {
     try {
-      final res = await _api.dio.get('/photographer/events/$eventId/images');
-      final data = res.data as Map<String, dynamic>;
+      final res = await _api.dio.get(
+        '/photographer/events/$eventId/images',
+        queryParameters: {'page': 1, 'limit': 25},
+      );
+      final raw = res.data;
+      final Map<String, dynamic> data;
+      if (raw is Map<String, dynamic> && raw['data'] is Map<String, dynamic>) {
+        data = raw['data'] as Map<String, dynamic>;
+      } else if (raw is Map<String, dynamic>) {
+        data = raw;
+      } else {
+        throw const app_ex.ServerException('Unexpected event response format');
+      }
       debugPrint('[Discovery] getEventById raw keys: ${data.keys.toList()}');
       debugPrint('[Discovery] getEventById raw: $data');
       return EventDiscovery.fromMap(data);

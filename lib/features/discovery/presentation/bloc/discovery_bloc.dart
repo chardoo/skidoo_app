@@ -12,6 +12,7 @@ import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
 import 'package:skidoo_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
+import 'package:skidoo_app/features/follow/data/follow_repository.dart';
 import 'package:skidoo_app/models/chat/like_update.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/services/auth_service.dart';
@@ -19,7 +20,7 @@ import 'package:skidoo_app/services/auth_service.dart';
 part 'discovery_event.dart';
 part 'discovery_state.dart';
 
-const _pageSize = 10;
+const _pageSize = 20;
 
 /// How long to keep a WS connection alive after a card leaves the viewport.
 const _disconnectDelay = Duration(seconds: 30);
@@ -38,6 +39,10 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   final Map<String, Timer> _disconnectTimers = {};
   // Guards against duplicate concurrent connect attempts for the same event.
   final Set<String> _connecting = {};
+
+  // Running skip counter — tracks total events fetched so the server returns
+  // the correct next page regardless of how many the user has hidden locally.
+  int _skip = 0;
 
   late final ChatBackgroundService _bgService;
   String? _currentUserId;
@@ -123,19 +128,27 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
   Future<void> _onLoadRequested(
       DiscoveryLoadRequested event, Emitter<DiscoveryState> emit) async {
+    _skip = 0;
     emit(const DiscoveryState(isLoading: true));
     try {
       final userId = await _getUserId();
+      final followed = FollowRepository.followedIds.toList();
       final events = await _getRandomImagesUseCase(
         take: _pageSize,
+        skip: 0,
         userId: userId,
+        followedPhotographerIds: followed.isEmpty ? null : followed,
+      );
+      _skip = _pageSize;
+      // Seed follow cache from is_followed flags returned by the server.
+      FollowRepository.seedFollowed(
+        events.where((e) => e.isFollowed).map((e) => e.photographerId),
       );
       // ✅ Show events immediately — don't wait for reactions.
       emit(DiscoveryState(
         events: events,
         currentUserId: userId,
-        // Fewer results than requested → no more pages to fetch.
-        hasMore: events.length >= _pageSize,
+        hasMore: events.isNotEmpty,
       ));
       // Enrich reactions in background and patch state once ready.
       if (userId != null && events.isNotEmpty) {
@@ -158,16 +171,22 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     emit(state.copyWith(isLoadingMore: true, clearError: true));
     try {
       final userId = await _getUserId();
+      final followed = FollowRepository.followedIds.toList();
       final more = await _getRandomImagesUseCase(
         take: _pageSize,
+        skip: _skip,
         userId: userId,
+        followedPhotographerIds: followed.isEmpty ? null : followed,
+      );
+      _skip += _pageSize;
+      FollowRepository.seedFollowed(
+        more.where((e) => e.isFollowed).map((e) => e.photographerId),
       );
       // ✅ Append events immediately.
       emit(state.copyWith(
         isLoadingMore: false,
         events: [...state.events, ...more],
-        // If this page is also short, we've reached the end.
-        hasMore: more.length >= _pageSize,
+        hasMore: more.isNotEmpty,
       ));
       // Patch reactions in background.
       if (userId != null && more.isNotEmpty) {

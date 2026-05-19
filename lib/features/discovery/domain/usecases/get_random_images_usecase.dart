@@ -7,7 +7,14 @@ class GetRandomImagesUseCase {
 
   Future<List<EventDiscovery>> call({
     required int take,
+    required int skip,
     String? userId,
+    List<String>? followedPhotographerIds,
   }) =>
-      _repository.getRandomEvents(take: take, userId: userId);
+      _repository.getRandomEvents(
+        take: take,
+        skip: skip,
+        userId: userId,
+        followedPhotographerIds: followedPhotographerIds,
+      );
 }

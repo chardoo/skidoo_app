@@ -53,9 +53,14 @@ class EventDiscovery {
   final int likes;
   final int dislikes;
   final int commentCount;
+  final bool commentsEnabled;
 
   /// The authenticated user's current reaction: 'like', 'dislike', or null.
   final String? userReaction;
+
+  /// True when the current user already follows this photographer.
+  /// Sourced directly from event.user.is_followed in the feed response.
+  final bool isFollowed;
 
   const EventDiscovery({
     required this.id,
@@ -66,15 +71,19 @@ class EventDiscovery {
     this.likes = 0,
     this.dislikes = 0,
     this.commentCount = 0,
+    this.commentsEnabled = true,
     this.userReaction,
+    this.isFollowed = false,
   });
 
   EventDiscovery copyWith({
     int? likes,
     int? dislikes,
     int? commentCount,
+    bool? commentsEnabled,
     String? userReaction,
     bool clearReaction = false,
+    bool? isFollowed,
   }) {
     return EventDiscovery(
       id: id,
@@ -85,8 +94,10 @@ class EventDiscovery {
       likes: likes ?? this.likes,
       dislikes: dislikes ?? this.dislikes,
       commentCount: commentCount ?? this.commentCount,
+      commentsEnabled: commentsEnabled ?? this.commentsEnabled,
       userReaction:
           clearReaction ? null : (userReaction ?? this.userReaction),
+      isFollowed: isFollowed ?? this.isFollowed,
     );
   }
 
@@ -107,6 +118,7 @@ class EventDiscovery {
     final pics = rawPics
         .map((p) => EventPicture.fromMap(p as Map<String, dynamic>))
         .toList();
+    final isFollowed = user['is_followed'] == true;
     return EventDiscovery(
       id: event['id']?.toString() ?? '',
       // Event name can be 'eventName' or 'name'.
@@ -119,6 +131,8 @@ class EventDiscovery {
       dislikes: (event['dislikes'] as num?)?.toInt() ?? 0,
       commentCount: (event['commentCount'] as num?)?.toInt() ??
           (event['comment_count'] as num?)?.toInt() ?? 0,
+      commentsEnabled: event['comments_enabled'] as bool? ?? true,
+      isFollowed: isFollowed,
     );
   }
 }
