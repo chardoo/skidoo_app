@@ -87,10 +87,21 @@ class ClientSavedDataSource {
     final userId = await _authService.getUserId();
     final res = await _api.dio.get(
       '/client/$userId/saved',
-      queryParameters:
-          assetType != null ? {'assetType': assetType} : null,
+      queryParameters: {
+        if (assetType != null) 'assetType': assetType,
+        'page': 1,
+        'limit': 25,
+      },
     );
-    final list = res.data as List<dynamic>? ?? [];
+    final raw = res.data;
+    final List<dynamic> list;
+    if (raw is Map<String, dynamic> && raw['data'] is List) {
+      list = raw['data'] as List<dynamic>;
+    } else if (raw is List) {
+      list = raw;
+    } else {
+      list = [];
+    }
     return list
         .map((e) => SavedItem.fromJson(e as Map<String, dynamic>))
         .toList();

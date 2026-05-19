@@ -18,9 +18,17 @@ class GalleryRemoteDataSourceImpl implements GalleryRemoteDataSource {
     try {
       final res = await _api.dio.post(
         '/client/dashboard',
-        data: jsonEncode({'clientId': clientId}),
+        data: jsonEncode({'clientId': clientId, 'page': 1, 'limit': 25}),
       );
-      final body = res.data as List<dynamic>;
+      final raw = res.data;
+      final List<dynamic> body;
+      if (raw is Map<String, dynamic> && raw['data'] is List) {
+        body = raw['data'] as List<dynamic>;
+      } else if (raw is List) {
+        body = raw;
+      } else {
+        body = [];
+      }
       return body
           .map((item) => Photo.fromMap(item as Map<String, dynamic>))
           .toList();

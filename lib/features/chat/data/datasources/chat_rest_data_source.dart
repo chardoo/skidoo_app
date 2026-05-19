@@ -239,8 +239,19 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   @override
   Future<List<ChatRoom>> getMyRooms() async {
     return _wrap(() async {
-      final res = await _client.dio.get('/chat/rooms');
-      final list = res.data as List<dynamic>;
+      final res = await _client.dio.get(
+        '/chat/rooms',
+        queryParameters: {'page': 1, 'limit': 25},
+      );
+      final raw = res.data;
+      final List<dynamic> list;
+      if (raw is Map<String, dynamic> && raw['data'] is List) {
+        list = raw['data'] as List<dynamic>;
+      } else if (raw is List) {
+        list = raw;
+      } else {
+        list = [];
+      }
       return list
           .map((r) => ChatRoom.fromJson(r as Map<String, dynamic>))
           .toList();
