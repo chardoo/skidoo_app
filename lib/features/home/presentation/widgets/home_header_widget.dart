@@ -16,6 +16,7 @@ class HomeHeaderWidget extends StatefulWidget {
     required this.onSearchClose,
     required this.onSearchChanged,
     required this.onAvatarTap,
+    this.onQrScan,
   });
 
   final String userName;
@@ -25,6 +26,7 @@ class HomeHeaderWidget extends StatefulWidget {
   final VoidCallback onSearchClose;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onAvatarTap;
+  final VoidCallback? onQrScan;
 
   @override
   State<HomeHeaderWidget> createState() => _HomeHeaderWidgetState();
@@ -136,7 +138,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                                 ),
                               ),
                       ),
-                      // Close button (only while search is open)
+                      // Right side: close (search open) or QR scan button
                       if (widget.isSearchOpen)
                         GestureDetector(
                           onTap: _handleClose,
@@ -147,6 +149,18 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                               Icons.close_rounded,
                               color: ext.searchHintColor,
                               size: 18.sp,
+                            ),
+                          ),
+                        )
+                      else if (widget.onQrScan != null)
+                        GestureDetector(
+                          onTap: widget.onQrScan,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12.w),
+                            child: Icon(
+                              Icons.qr_code_scanner_rounded,
+                              color: ext.searchHintColor,
+                              size: 20.sp,
                             ),
                           ),
                         )

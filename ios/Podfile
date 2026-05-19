@@ -1,4 +1,4 @@
-platform :ios, '13.0'
+platform :ios, '15.5'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -56,7 +56,7 @@ post_install do |installer|
       # Fix Xcode 16 explicit-modules / CFNetwork scan failures.
       config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
       # Raise minimum deployment target so older pods stop warning.
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
       # GoogleMLKit 5.0+ ships arm64 simulator slices; no exclusion needed.
     end
     if target.name == 'BoringSSL-GRPC'

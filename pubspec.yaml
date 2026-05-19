@@ -68,6 +68,9 @@ dependencies:
   # Video
   video_player: ^2.9.1
 
+  # QR / Barcode
+  mobile_scanner: ^6.0.0
+
   # Web
   webview_flutter: ^4.4.2
 

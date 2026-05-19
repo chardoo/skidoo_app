@@ -15,6 +15,8 @@ import 'package:skidoo_app/features/home/presentation/widgets/search_events_list
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:skidoo_app/features/follow/presentation/pages/following_feed_page.dart';
+import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 
 class HomeNavigationPage extends StatefulWidget {
   const HomeNavigationPage({super.key});
@@ -50,6 +52,12 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
   void _onSearchChanged(String query) {
     context.read<HomeBloc>().add(HomeEventSearched(query));
+  }
+
+  void _openQrScan() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const QrScanPage()),
+    );
   }
 
   void _openEventImages(BuildContext context, EventDiscovery event) {
@@ -124,6 +132,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                   onSearchOpen: _openSearch,
                   onSearchClose: _closeSearch,
                   onSearchChanged: _onSearchChanged,
+                  onQrScan: _openQrScan,
                   onAvatarTap: () {
                     final discoveryBloc = context.read<DiscoveryBloc>();
                     Navigator.of(context).push(
@@ -139,6 +148,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
               ),
             ),
           ),
+
+          // ── "For You / Following" pill tabs ──────────────────────────────
+          if (!_isSearchOpen)
+            _FeedTabBar(ext: ext),
 
           // ── Body ─────────────────────────────────────────────────────────
           Expanded(
@@ -230,6 +243,88 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       onCommentTap: (event) => _openEventComments(context, event),
       onLoadMore: () =>
           context.read<DiscoveryBloc>().add(const DiscoveryLoadMoreRequested()),
+    );
+  }
+}
+
+class _FeedTabBar extends StatelessWidget {
+  final AppThemeExtension ext;
+  const _FeedTabBar({required this.ext});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          _PillTab(
+            label: 'For You',
+            active: true,
+            ext: ext,
+            onTap: () {},
+          ),
+          const SizedBox(width: 8),
+          _PillTab(
+            label: 'Following',
+            active: false,
+            ext: ext,
+            onTap: () {
+              final discoveryBloc = context.read<DiscoveryBloc>();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider.value(
+                    value: discoveryBloc,
+                    child: const FollowingFeedPage(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PillTab extends StatelessWidget {
+  final String label;
+  final bool active;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+
+  const _PillTab({
+    required this.label,
+    required this.active,
+    required this.ext,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? ext.accentGold : Colors.transparent,
+          border: Border.all(
+            color: active ? ext.accentGold : ext.searchHintColor.withValues(alpha: 0.4),
+            width: 1.2,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? Colors.black : ext.greetingColor,
+            fontSize: 13,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ),
     );
   }
 }
