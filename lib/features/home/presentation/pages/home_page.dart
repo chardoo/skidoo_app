@@ -60,7 +60,12 @@ class _HomeView extends StatefulWidget {
 class _HomeViewState extends State<_HomeView> {
   int _selectedTab = 0;
   bool _navBarVisible = true;
-  double _lastScrollOffset = 0;
+
+  // Accumulates downward scroll px. Resets on any upward movement or tab
+  // switch. The nav bar hides only after the user has scrolled down a clear,
+  // intentional distance — avoids hiding on micro-bounces or tap-holds.
+  double _downAccum = 0;
+  static const _hideThreshold = 28.0;
 
   void _changeTab(int index) {
     VideoPauseNotifier.pauseAll();
@@ -68,6 +73,7 @@ class _HomeViewState extends State<_HomeView> {
       _selectedTab = index;
       _navBarVisible = true;
     });
+    _downAccum = 0;
     if (index == 1) {
       // Full reload so any newly created rooms appear immediately.
       context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
@@ -76,17 +82,23 @@ class _HomeViewState extends State<_HomeView> {
 
   bool _onScrollNotification(ScrollNotification notification) {
     if (notification is ScrollUpdateNotification) {
-      final current = notification.metrics.pixels;
-      final delta = current - _lastScrollOffset;
-      _lastScrollOffset = current;
+      final delta = notification.scrollDelta ?? 0;
 
-      if (delta > 8 && _navBarVisible) {
-        setState(() => _navBarVisible = false);
-      } else if (delta < 0 && !_navBarVisible) {
-        setState(() => _navBarVisible = true);
+      if (delta > 0) {
+        // Downward — accumulate and hide once past threshold.
+        _downAccum += delta;
+        if (_downAccum >= _hideThreshold && _navBarVisible) {
+          setState(() => _navBarVisible = false);
+        }
+      } else if (delta < 0) {
+        // Any upward movement — show immediately, reset accumulator.
+        _downAccum = 0;
+        if (!_navBarVisible) {
+          setState(() => _navBarVisible = true);
+        }
       }
     } else if (notification is ScrollEndNotification) {
-      _lastScrollOffset = notification.metrics.pixels;
+      _downAccum = 0;
     }
     return false;
   }

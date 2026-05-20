@@ -20,11 +20,15 @@ class _PicEntry {
     required this.picture,
     required this.eventName,
     required this.photographerName,
+    required this.eventCommentsEnabled,
   });
 
   final EventPicture picture;
   final String eventName;
   final String photographerName;
+  final bool eventCommentsEnabled;
+
+  bool get commentsAllowed => eventCommentsEnabled && picture.commentsEnabled;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -43,6 +47,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
             picture: p,
             eventName: widget.event.eventName,
             photographerName: widget.event.photographerName,
+            eventCommentsEnabled: widget.event.commentsEnabled,
           ))
       .toList();
 
@@ -344,7 +349,8 @@ class _PhotoTile extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: url,
       fit: BoxFit.cover,
-      memCacheWidth: 480,
+      memCacheWidth: 720,
+      filterQuality: FilterQuality.high,
       fadeInDuration: const Duration(milliseconds: 280),
       fadeInCurve: Curves.easeOut,
       placeholder: (_, __) => const ColoredBox(color: Color(0xFF141414)),
@@ -667,6 +673,7 @@ class _FeedCardState extends State<_FeedCard> {
             initiallyLiked: pic.isLikedByUser,
             axis: Axis.vertical,
             showDownload: false,
+            showComment: widget.entry.commentsAllowed,
             onSend: () => GalleryShareSheet.show(
               context,
               imageUrl: pic.url,
@@ -914,14 +921,21 @@ class _PhotoBackground extends StatelessWidget {
           ),
         ),
         const ColoredBox(color: Color(0x55000000)),
-        // Full image, never cropped
-        CachedNetworkImage(
-          imageUrl: url,
-          fit: BoxFit.contain,
-          memCacheWidth: 800,
-          filterQuality: FilterQuality.medium,
-          placeholder: (_, __) => placeholder,
-          errorWidget: (_, __, ___) => errorWidget,
+        // Full image, never cropped — vibrancy boost matches feed card
+        ColorFiltered(
+          colorFilter: const ColorFilter.matrix(<double>[
+            1.18, -0.06, -0.06, 0, 18,
+            -0.05,  1.16, -0.05, 0, 18,
+            -0.05, -0.05,  1.20, 0, 18,
+            0,     0,     0,     1, 0,
+          ]),
+          child: CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            placeholder: (_, __) => placeholder,
+            errorWidget: (_, __, ___) => errorWidget,
+          ),
         ),
       ],
     );

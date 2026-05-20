@@ -116,11 +116,6 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
         AppSnackBar.error(context, 'Enter a valid daily budget for each ad set.');
         return;
       }
-      final bid = double.tryParse(s.bidCtrl.text.trim());
-      if (bid == null || bid <= 0) {
-        AppSnackBar.error(context, 'Enter a valid bid amount for each ad set.');
-        return;
-      }
     }
     for (final s in _adsetStates) {
       for (final a in s.adStates) {
@@ -141,53 +136,46 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
 
     setState(() => _saving = true);
     try {
-      // Campaign
-      await _repo.updateCampaign(
-        widget.campaign.id,
-        name: name,
-        objective: _objective,
-        budgetAmount: budget,
-        currency: _currency,
-        startAt: _startAt?.toIso8601String(),
-        endAt: _endAt?.toIso8601String(),
-        commentsEnabled: _commentsEnabled,
-      );
+      // Campaign-level fields can only be updated for drafts; the server rejects
+      // changes to live campaigns at the campaign level.
+      if (widget.campaign.status == CampaignStatus.draft) {
+        await _repo.updateCampaign(
+          widget.campaign.id,
+          name: name,
+          objective: _objective,
+          budgetAmount: budget,
+          currency: _currency,
+          startAt: _startAt?.toIso8601String(),
+          endAt: _endAt?.toIso8601String(),
+          commentsEnabled: _commentsEnabled,
+        );
+      }
 
-      // Ad sets
+      // Ad set targeting / budget can always be updated regardless of status.
       for (final s in _adsetStates) {
         final daily = double.tryParse(s.dailyBudgetCtrl.text.trim());
-        final bid = double.tryParse(s.bidCtrl.text.trim());
         final loc = s.locationCtrl.text.trim();
         await _repo.updateAdSet(
           s.adset.id,
           dailyBudget: daily,
-          bidAmount: bid,
           targeting: {
             'audience': s.audience,
             if (s.eventType != null) 'event_types': [s.eventType!],
             if (loc.isNotEmpty) 'locations': [loc],
           },
         );
-        // Ads within this adset
+        // Ad creative updates (non-fatal if endpoint unavailable on this server).
         for (final a in s.adStates) {
           await _repo.updateAd(
             a.adId,
             headline: a.headlineCtrl.text.trim(),
-            body: a.bodyCtrl.text.trim().isEmpty
-                ? null
-                : a.bodyCtrl.text.trim(),
-            ctaText: a.ctaTextCtrl.text.trim().isEmpty
-                ? null
-                : a.ctaTextCtrl.text.trim(),
-            ctaUrl: a.ctaUrlCtrl.text.trim().isEmpty
-                ? null
-                : a.ctaUrlCtrl.text.trim(),
+            body: a.bodyCtrl.text.trim().isEmpty ? null : a.bodyCtrl.text.trim(),
+            ctaText: a.ctaTextCtrl.text.trim().isEmpty ? null : a.ctaTextCtrl.text.trim(),
+            ctaUrl: a.ctaUrlCtrl.text.trim().isEmpty ? null : a.ctaUrlCtrl.text.trim(),
             commentsEnabled: a.commentsEnabled,
           );
-          // Upload new media if picked
           if (a.newMedia != null) {
-            await _repo.uploadAdCreative(
-                a.adId, a.newMedia!.path, a.newMediaIsVideo);
+            await _repo.uploadAdCreative(a.adId, a.newMedia!.path, a.newMediaIsVideo);
           }
         }
       }
@@ -449,7 +437,6 @@ class _AdSetState {
   _AdSetState({
     required this.adset,
     required this.dailyBudgetCtrl,
-    required this.bidCtrl,
     required this.locationCtrl,
     required this.audience,
     required this.eventType,
@@ -458,7 +445,6 @@ class _AdSetState {
 
   final AdSet adset;
   final TextEditingController dailyBudgetCtrl;
-  final TextEditingController bidCtrl;
   final TextEditingController locationCtrl;
   String audience;
   String? eventType;
@@ -468,8 +454,6 @@ class _AdSetState {
         adset: s,
         dailyBudgetCtrl: TextEditingController(
             text: s.dailyBudget > 0 ? s.dailyBudget.toStringAsFixed(0) : ''),
-        bidCtrl: TextEditingController(
-            text: s.bidAmount > 0 ? s.bidAmount.toStringAsFixed(2) : ''),
         locationCtrl: TextEditingController(
             text: s.targeting.locations.isNotEmpty
                 ? s.targeting.locations.first
@@ -483,7 +467,6 @@ class _AdSetState {
 
   void dispose() {
     dailyBudgetCtrl.dispose();
-    bidCtrl.dispose();
     locationCtrl.dispose();
     for (final a in adStates) {
       a.dispose();
@@ -547,40 +530,13 @@ class _AdSetForm extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ELabel('Daily budget', ext),
-                  SizedBox(height: 8.h),
-                  _EField(
-                    controller: state.dailyBudgetCtrl,
-                    hint: 'e.g. 50',
-                    ext: ext,
-                    keyboardType: TextInputType.number,
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ELabel('Bid amount', ext),
-                  SizedBox(height: 8.h),
-                  _EField(
-                    controller: state.bidCtrl,
-                    hint: 'e.g. 2.00',
-                    ext: ext,
-                    keyboardType: TextInputType.number,
-                  ),
-                ],
-              ),
-            ),
-          ],
+        _ELabel('Daily budget', ext),
+        SizedBox(height: 8.h),
+        _EField(
+          controller: state.dailyBudgetCtrl,
+          hint: 'e.g. 50',
+          ext: ext,
+          keyboardType: TextInputType.number,
         ),
         SizedBox(height: 20.h),
         _ELabel('Audience', ext),

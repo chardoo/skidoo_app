@@ -137,6 +137,7 @@ class _FullscreenPhoto extends StatelessWidget {
         child: CachedNetworkImage(
           imageUrl: url,
           fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
           placeholder: (_, __) => const CircularProgressIndicator(
               color: Colors.white30, strokeWidth: 2),
           errorWidget: (_, __, ___) => Icon(

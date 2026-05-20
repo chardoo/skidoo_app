@@ -55,6 +55,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                 child: CachedNetworkImage(
                   imageUrl: widget.photo.url,
                   fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
                   placeholder: (_, __) => Center(
                     child: CircularProgressIndicator(
                         color: ext.accentGold, strokeWidth: 2),

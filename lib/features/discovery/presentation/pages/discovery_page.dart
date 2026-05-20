@@ -7,6 +7,7 @@ import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/responsive.dart';
+import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/login_bottom_sheet.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/event_discovery_card.dart';
@@ -317,20 +318,45 @@ class _FeedAppBar extends StatelessWidget {
             ],
           ),
 
-          // Right actions
+          // Right: sign-up + log-in CTAs
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _AppBarIcon(
-                icon: Icons.search_rounded,
-                ext: ext,
-                onTap: () {},
+              GestureDetector(
+                onTap: () => Navigator.of(context)
+                    .pushNamed(SignUpPage.routeName),
+                child: Text(
+                  'Sign up',
+                  style: TextStyle(
+                    color: ext.searchHintColor,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-              SizedBox(width: 4.w),
-              _AppBarIcon(
-                icon: Icons.notifications_none_rounded,
-                ext: ext,
-                onTap: () {},
+              SizedBox(width: 12.w),
+              GestureDetector(
+                onTap: () => showLoginSheet(
+                  context,
+                  onLoginSuccess: () => Navigator.of(context)
+                      .pushReplacementNamed(HomePage.routeName),
+                ),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 16.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    color: ext.accentGold,
+                    borderRadius: BorderRadius.circular(20.r),
+                  ),
+                  child: Text(
+                    'Log in',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -340,31 +366,4 @@ class _FeedAppBar extends StatelessWidget {
   }
 }
 
-class _AppBarIcon extends StatelessWidget {
-  const _AppBarIcon({
-    required this.icon,
-    required this.ext,
-    required this.onTap,
-  });
-  final IconData icon;
-  final AppThemeExtension ext;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36.w,
-        height: 36.h,
-        decoration: BoxDecoration(
-          color: ext.searchFieldFill,
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: Icon(icon, color: ext.greetingColor, size: 20.sp),
-      ),
-    );
-  }
-}
 

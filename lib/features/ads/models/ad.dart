@@ -46,8 +46,11 @@ class Ad {
         clicks: j['clicks'] as int? ?? 0,
         conversions: j['conversions'] as int? ?? 0,
         status: j['status'] as String? ?? 'active',
-        createdAt: DateTime.parse(
-            j['createdAt'] as String? ?? j['created_at'] as String),
+        createdAt: j['createdAt'] != null
+            ? DateTime.parse(j['createdAt'] as String)
+            : j['created_at'] != null
+                ? DateTime.parse(j['created_at'] as String)
+                : DateTime.now(),
         commentsEnabled: j['comments_enabled'] as bool? ?? true,
       );
 }

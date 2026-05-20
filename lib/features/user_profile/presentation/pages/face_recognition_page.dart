@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:dio/dio.dart' as dio_pkg;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
+import 'package:skidoo_app/core/common/widgets/selfie_capture_screen.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
@@ -18,42 +18,30 @@ class FaceRecognitionPage extends StatefulWidget {
 }
 
 class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
-  final _picker = ImagePicker();
-  final List<File> _photos = [];
+  // Validated selfie files — each was accepted by face detection.
+  final List<File> _selfies = [];
   bool _uploading = false;
 
-  Future<void> _pickPhotos() async {
-    final picked = await _picker.pickMultiImage(imageQuality: 85);
-    if (picked.isEmpty) return;
-    setState(() {
-      for (final xf in picked) {
-        final f = File(xf.path);
-        if (!_photos.any((p) => p.path == f.path)) _photos.add(f);
-      }
-    });
+  static const _maxSelfies = 5;
+
+  Future<void> _addSelfie() async {
+    if (_selfies.length >= _maxSelfies) return;
+    final file = await SelfieCaptureScreen.push(context);
+    if (file == null || !mounted) return;
+    setState(() => _selfies.add(file));
   }
 
-  Future<void> _pickFromCamera() async {
-    final picked = await _picker.pickImage(
-        source: ImageSource.camera, imageQuality: 85);
-    if (picked == null) return;
-    final f = File(picked.path);
-    if (!_photos.any((p) => p.path == f.path)) {
-      setState(() => _photos.add(f));
-    }
-  }
-
-  void _removePhoto(int index) => setState(() => _photos.removeAt(index));
+  void _removeSelfie(int index) => setState(() => _selfies.removeAt(index));
 
   Future<void> _submit() async {
-    if (_photos.isEmpty) {
-      AppSnackBar.error(context, 'Add at least one photo.');
+    if (_selfies.isEmpty) {
+      AppSnackBar.error(context, 'Take at least one selfie first.');
       return;
     }
     setState(() => _uploading = true);
     try {
       final email = await sl<AuthService>().getEmail();
-      final files = await Future.wait(_photos.map((f) async =>
+      final files = await Future.wait(_selfies.map((f) async =>
           dio_pkg.MultipartFile.fromFile(
             f.path,
             filename: f.uri.pathSegments.last,
@@ -85,6 +73,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final canAdd = _selfies.length < _maxSelfies && !_uploading;
 
     return Scaffold(
       backgroundColor: ext.homeBackground,
@@ -109,8 +98,9 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Header ──────────────────────────────────────────────────────
             Padding(
-              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 8.h),
+              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 20.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -124,99 +114,78 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
                   ),
                   SizedBox(height: 6.h),
                   Text(
-                    'Upload clear face photos so we can recognise you in event photos automatically. '
-                    'Use well-lit, front-facing shots for best results.',
+                    'Take up to $_maxSelfies clear selfies so we can '
+                    'recognise you in event photos automatically. '
+                    'Face the camera directly in good lighting.',
                     style: TextStyle(
-                        color: ext.searchHintColor, fontSize: 13.sp, height: 1.5),
+                        color: ext.searchHintColor,
+                        fontSize: 13.sp,
+                        height: 1.5),
                   ),
                 ],
               ),
             ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              child: Row(
-                children: [
-                  _AddPhotoButton(
-                    icon: Icons.photo_library_outlined,
-                    label: 'Gallery',
-                    ext: ext,
-                    onTap: _uploading ? null : _pickPhotos,
-                  ),
-                  SizedBox(width: 12.w),
-                  _AddPhotoButton(
-                    icon: Icons.camera_alt_outlined,
-                    label: 'Camera',
-                    ext: ext,
-                    onTap: _uploading ? null : _pickFromCamera,
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 16.h),
-            if (_photos.isNotEmpty)
-              Expanded(
+
+            // ── Selfie grid ──────────────────────────────────────────────────
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
                 child: GridView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
-                    crossAxisSpacing: 8.w,
-                    mainAxisSpacing: 8.h,
+                    crossAxisSpacing: 10.w,
+                    mainAxisSpacing: 10.h,
                   ),
-                  itemCount: _photos.length,
-                  itemBuilder: (_, i) => _PhotoTile(
-                    file: _photos[i],
-                    onRemove: _uploading ? null : () => _removePhoto(i),
-                  ),
-                ),
-              )
-            else
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.face_outlined,
-                          size: 56.sp,
-                          color: ext.searchHintColor.withValues(alpha: 0.4)),
-                      SizedBox(height: 12.h),
-                      Text(
-                        'No photos selected',
-                        style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 14.sp),
-                      ),
-                    ],
-                  ),
+                  itemCount: _selfies.length + (canAdd ? 1 : 0),
+                  itemBuilder: (_, i) {
+                    if (i == _selfies.length) {
+                      // "+" add-selfie tile
+                      return _AddSelfieTile(
+                        ext: ext,
+                        onTap: _uploading ? null : _addSelfie,
+                        count: _selfies.length,
+                        max: _maxSelfies,
+                      );
+                    }
+                    return _SelfieTile(
+                      file: _selfies[i],
+                      onRemove: _uploading ? null : () => _removeSelfie(i),
+                    );
+                  },
                 ),
               ),
+            ),
+
+            // ── Submit button ────────────────────────────────────────────────
             Padding(
-              padding:
-                  EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
+              padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
               child: SizedBox(
                 width: double.infinity,
                 height: 50.h,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ext.accentGold,
-                    foregroundColor: Colors.white,
+                    foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.r),
                     ),
                     disabledBackgroundColor:
-                        ext.accentGold.withValues(alpha: 0.5),
+                        ext.accentGold.withValues(alpha: 0.4),
                   ),
-                  onPressed:
-                      (_uploading || _photos.isEmpty) ? null : _submit,
+                  onPressed: (_uploading || _selfies.isEmpty) ? null : _submit,
                   child: _uploading
                       ? SizedBox(
                           width: 22.w,
                           height: 22.w,
                           child: const CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
+                              color: Colors.black, strokeWidth: 2),
                         )
                       : Text(
-                          'Train Face Model (${_photos.length} photo${_photos.length == 1 ? '' : 's'})',
+                          _selfies.isEmpty
+                              ? 'Take a selfie to continue'
+                              : 'Train with ${_selfies.length} selfie${_selfies.length == 1 ? '' : 's'}',
                           style: TextStyle(
-                              fontSize: 15.sp, fontWeight: FontWeight.w600),
+                              fontSize: 15.sp, fontWeight: FontWeight.w700),
                         ),
                 ),
               ),
@@ -228,57 +197,56 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
   }
 }
 
-class _AddPhotoButton extends StatelessWidget {
-  const _AddPhotoButton({
-    required this.icon,
-    required this.label,
+// ── Grid tiles ────────────────────────────────────────────────────────────────
+
+class _AddSelfieTile extends StatelessWidget {
+  const _AddSelfieTile({
     required this.ext,
     required this.onTap,
+    required this.count,
+    required this.max,
   });
 
-  final IconData icon;
-  final String label;
   final AppThemeExtension ext;
   final VoidCallback? onTap;
+  final int count;
+  final int max;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 14.h),
-          decoration: BoxDecoration(
-            color: ext.cardSurface,
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(
-              color: ext.accentGold.withValues(alpha: 0.3),
-              width: 0.8,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: ext.cardSurface,
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(
+            color: ext.accentGold.withValues(alpha: 0.35),
+            width: 1.2,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_a_photo_rounded,
+                color: ext.accentGold, size: 26.sp),
+            SizedBox(height: 6.h),
+            Text(
+              '$count / $max',
+              style: TextStyle(
+                  color: ext.searchHintColor,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w500),
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: ext.accentGold, size: 24.sp),
-              SizedBox(height: 4.h),
-              Text(
-                label,
-                style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _PhotoTile extends StatelessWidget {
-  const _PhotoTile({required this.file, required this.onRemove});
-
+class _SelfieTile extends StatelessWidget {
+  const _SelfieTile({required this.file, required this.onRemove});
   final File file;
   final VoidCallback? onRemove;
 
@@ -288,22 +256,48 @@ class _PhotoTile extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(8.r),
+          borderRadius: BorderRadius.circular(10.r),
           child: Image.file(file, fit: BoxFit.cover),
         ),
+        // Face-confirmed badge
+        Positioned(
+          bottom: 4.h,
+          left: 4.w,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
+            decoration: BoxDecoration(
+              color: Colors.green.shade700.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(4.r),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_rounded,
+                    color: Colors.white, size: 10),
+                SizedBox(width: 2.w),
+                Text('Face OK',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+        // Remove button
         Positioned(
           top: 4.h,
           right: 4.w,
           child: GestureDetector(
             onTap: onRemove,
             child: Container(
-              padding: const EdgeInsets.all(3),
+              padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(
                 color: Colors.black54,
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.close_rounded,
-                  color: Colors.white, size: 14.sp),
+                  color: Colors.white, size: 13.sp),
             ),
           ),
         ),

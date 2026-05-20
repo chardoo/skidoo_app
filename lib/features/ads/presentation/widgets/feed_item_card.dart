@@ -10,6 +10,8 @@ import 'package:video_player/video_player.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
+import 'package:skidoo_app/features/ads/models/ad.dart';
+import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
 import 'package:skidoo_app/features/ads/models/ad_media.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/feed_comment_sheet.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
@@ -109,6 +111,84 @@ class FeedItemData {
       ctaLabel: ad.ctaText.isEmpty ? 'Learn More' : ad.ctaText,
       onCtaTap: onCtaTap,
       onInit: onInit,
+    );
+  }
+
+  /// Builds a sponsored-content slot directly from an [AdCampaign].
+  /// Used when the ad-serve endpoint returns null (campaign not yet active
+  /// in the targeting pipeline) so the feed falls back to direct campaign data.
+  factory FeedItemData.fromCampaign(AdCampaign campaign) {
+    // Collect the first Ad creative across all ad sets.
+    Ad? firstAd;
+    for (final adSet in campaign.adSets) {
+      if (adSet.ads.isNotEmpty) {
+        firstAd = adSet.ads.first;
+        break;
+      }
+    }
+
+    // Media priority:
+    //   1. Campaign-level media list (covers/banners).
+    //   2. Ad-level mediaUrl collected across every ad in every ad set.
+    //   3. Empty → the card shows a gradient placeholder.
+    List<AdMedia> mediaList = campaign.media;
+    if (mediaList.isEmpty) {
+      final collected = <AdMedia>[];
+      for (final adSet in campaign.adSets) {
+        for (final ad in adSet.ads) {
+          if (ad.mediaUrl != null && ad.mediaUrl!.isNotEmpty) {
+            collected.add(AdMedia(
+              id: ad.id,
+              url: ad.mediaUrl!,
+              mediaType: ad.mediaType.value,
+            ));
+          }
+        }
+      }
+      if (collected.isNotEmpty) mediaList = collected;
+    }
+
+    final firstMedia = mediaList.isNotEmpty ? mediaList.first : null;
+
+    debugPrint(
+      '[FeedItemCard] fromCampaign id=${campaign.id} '
+      'name="${campaign.name}" '
+      'campaignMedia=${campaign.media.length} '
+      'adSets=${campaign.adSets.length} '
+      'resolvedMedia=${mediaList.length} '
+      'firstMediaUrl=${firstMedia?.url} '
+      'firstAd=${firstAd?.id}',
+    );
+
+    // Use ad-creative copy when available — more descriptive than campaign name.
+    final title = (firstAd?.headline.isNotEmpty ?? false)
+        ? firstAd!.headline
+        : campaign.name;
+    final body = (firstAd?.body?.isNotEmpty ?? false)
+        ? firstAd!.body
+        : campaign.objective.label;
+    final ctaLabel =
+        (firstAd?.ctaText.isNotEmpty ?? false) ? firstAd!.ctaText : null;
+    final ctaUrl =
+        (firstAd?.ctaUrl.isNotEmpty ?? false) ? firstAd!.ctaUrl : null;
+
+    return FeedItemData(
+      type: FeedItemType.ad,
+      id: campaign.id,
+      title: title,
+      creatorName: (campaign.advertiserName?.isNotEmpty ?? false)
+          ? campaign.advertiserName!
+          : 'Advertiser',
+      creatorId: campaign.advertiserId,
+      creatorPhotoUrl: campaign.advertiserPhoto,
+      mediaUrl: firstMedia?.url,
+      mediaIsVideo: firstMedia?.isVideo ?? false,
+      mediaList: mediaList,
+      body: body,
+      commentsEnabled: campaign.commentsEnabled,
+      commentCount: campaign.commentCount,
+      ctaLabel: ctaLabel,
+      onCtaTap: ctaUrl != null && ctaUrl.isNotEmpty ? () {} : null,
     );
   }
 
@@ -285,8 +365,8 @@ class _FeedItemCardState extends State<FeedItemCard> {
         ? d.mediaList[0].isVideo
         : d.mediaIsVideo;
     final mediaH = isVideo
-        ? (size.width * 1.55).clamp(540.0, 620.0)
-        : (size.width * 1.0).clamp(340.0, 480.0);
+        ? (size.height * 0.80).clamp(540.0, 780.0)
+        : (size.height * 0.75).clamp(480.0, 740.0);
 
     return Container(
       color: ext.homeBackground,
@@ -577,7 +657,7 @@ class _MediaBackground extends StatelessWidget {
           child: CachedNetworkImage(
             imageUrl: url,
             fit: BoxFit.contain,
-            filterQuality: FilterQuality.medium,
+            filterQuality: FilterQuality.high,
             placeholder: (_, __) => const SizedBox.shrink(),
             errorWidget: (_, __, ___) =>
                 const ColoredBox(color: Color(0xFF111111)),
@@ -897,7 +977,12 @@ class _SingleMediaFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint(
+      '[_SingleMediaFrame] build — url="${media.url}" '
+      'mediaType=${media.mediaType} isVideo=${media.isVideo}',
+    );
     if (media.url.isEmpty) {
+      debugPrint('[_SingleMediaFrame] ← url empty, showing placeholder');
       return CardGradientPlaceholder(
         name: title.isNotEmpty ? title : creatorName,
       );
@@ -912,8 +997,10 @@ class _SingleMediaFrame extends StatelessWidget {
             fit: BoxFit.cover,
             filterQuality: FilterQuality.low,
             placeholder: (_, __) => const ColoredBox(color: Color(0xFF111111)),
-            errorWidget: (_, __, ___) =>
-                const ColoredBox(color: Color(0xFF111111)),
+            errorWidget: (ctx, url, err) {
+              debugPrint('[_SingleMediaFrame] CachedNetworkImage ERROR (bg): url=$url err=$err');
+              return const ColoredBox(color: Color(0xFF111111));
+            },
           ),
         ),
         const ColoredBox(color: Color(0x55000000)),
@@ -927,10 +1014,12 @@ class _SingleMediaFrame extends StatelessWidget {
           child: CachedNetworkImage(
             imageUrl: media.url,
             fit: BoxFit.contain,
-            filterQuality: FilterQuality.medium,
+            filterQuality: FilterQuality.high,
             placeholder: (_, __) => const SizedBox.shrink(),
-            errorWidget: (_, __, ___) =>
-                const ColoredBox(color: Color(0xFF111111)),
+            errorWidget: (ctx, url, err) {
+              debugPrint('[_SingleMediaFrame] CachedNetworkImage ERROR (fg): url=$url err=$err');
+              return const ColoredBox(color: Color(0xFF111111));
+            },
           ),
         ),
         if (media.isVideo)

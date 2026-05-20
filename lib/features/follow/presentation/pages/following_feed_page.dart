@@ -116,19 +116,34 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
   }
 
   Future<void> _loadMore() async {
-    if (_loadingMore || !_hasMore) return;
-    setState(() => _loadingMore = true);
+    if (_loadingMore) {
+      debugPrint('[FollowingFeed] load-more skipped — already loading');
+      return;
+    }
+    if (!_hasMore) {
+      debugPrint('[FollowingFeed] load-more skipped — no more events');
+      return;
+    }
     final next = _page + 1;
+    debugPrint(
+      '[FollowingFeed] load-more START — currentCount=${_events.length} nextPage=$next',
+    );
+    setState(() => _loadingMore = true);
     try {
       final result = await _repo.getFollowFeed(page: next, limit: _limit);
       if (!mounted) return;
+      debugPrint(
+        '[FollowingFeed] load-more DONE — fetched=${result.events.length} '
+        'totalNow=${_events.length + result.events.length} hasMore=${result.hasMore}',
+      );
       setState(() {
         _page = next;
         _events = [..._events, ...result.events];
         _loadingMore = false;
         _hasMore = result.hasMore;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[FollowingFeed] load-more ERROR: $e');
       if (!mounted) return;
       setState(() => _loadingMore = false);
     }
@@ -232,8 +247,10 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 720),
                             child: ListView.builder(
-                              physics: const BouncingScrollPhysics(),
-                              cacheExtent: 800,
+                              physics: const BouncingScrollPhysics(
+                                decelerationRate: ScrollDecelerationRate.fast,
+                              ),
+                              cacheExtent: 1500,
                               padding: EdgeInsets.zero,
                               itemCount:
                                   _events.length + (_loadingMore ? 1 : 0),

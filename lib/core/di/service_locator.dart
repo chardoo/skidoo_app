@@ -11,6 +11,7 @@ import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dar
 import 'package:skidoo_app/features/photo_comments/presentation/bloc/photo_comment_bloc.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
 import 'package:skidoo_app/features/discovery/data/repositories/discovery_repository_impl.dart';
+import 'package:skidoo_app/features/discovery/data/services/feed_cache_service.dart';
 import 'package:skidoo_app/features/discovery/domain/repositories/discovery_repository.dart';
 import 'package:skidoo_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
@@ -113,6 +114,7 @@ Future<void> setupServiceLocator() async {
     }
   }
   sl.registerSingleton<AuthService>(authService);
+  sl.registerSingleton<FeedCacheService>(FeedCacheService(prefs));
   sl.registerSingleton<NotificationPrefsService>(
       NotificationPrefsService(prefs));
   sl.registerSingleton<ThemeCubit>(ThemeCubit(prefs));
@@ -187,6 +189,7 @@ Future<void> setupServiceLocator() async {
         getRandomImagesUseCase: sl<GetRandomImagesUseCase>(),
         getEventReaction: sl<GetEventReactionUseCase>(),
         getEventRoom: sl<GetEventRoomUseCase>(),
+        feedCache: sl<FeedCacheService>(),
       ));
 
   // ── Gallery feature ───────────────────────────────────────────────────────

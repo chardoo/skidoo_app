@@ -34,8 +34,8 @@ class PhotographerCardWidget extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: photographer.imageUrl!,
                       fit: BoxFit.cover,
-                      memCacheWidth: 600,
-                      filterQuality: FilterQuality.medium,
+                      memCacheWidth: 720,
+                      filterQuality: FilterQuality.high,
                       placeholder: (_, __) =>
                           _GradientPlaceholder(name: photographer.name),
                       errorWidget: (_, __, ___) =>

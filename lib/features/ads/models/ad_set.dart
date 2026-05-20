@@ -19,8 +19,8 @@ class AdSet {
     required this.placement,
     required this.targeting,
     required this.dailyBudget,
-    required this.bidType,
-    required this.bidAmount,
+    this.bidType = BidType.cpm,
+    this.bidAmount = 0,
     required this.status,
     this.ads = const [],
   });
@@ -28,13 +28,13 @@ class AdSet {
   factory AdSet.fromJson(Map<String, dynamic> j) => AdSet(
         id: j['id'] as String,
         campaignId: j['campaign_id'] as String? ?? '',
-        name: j['name'] as String,
+        name: j['name'] as String? ?? '',
         placement: AdPlacement.fromString(j['placement'] as String? ?? ''),
         targeting: AdSetTargeting.fromJson(
             j['targeting'] as Map<String, dynamic>? ?? {}),
-        dailyBudget: (j['daily_budget'] as num).toDouble(),
+        dailyBudget: (j['daily_budget'] as num?)?.toDouble() ?? 0,
         bidType: BidType.fromString(j['bid_type'] as String? ?? ''),
-        bidAmount: (j['bid_amount'] as num).toDouble(),
+        bidAmount: (j['bid_amount'] as num?)?.toDouble() ?? 0,
         status: j['status'] as String? ?? 'active',
         ads: (j['ads'] as List<dynamic>? ?? [])
             .map((e) => Ad.fromJson(e as Map<String, dynamic>))

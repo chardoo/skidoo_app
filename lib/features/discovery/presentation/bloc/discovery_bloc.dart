@@ -11,6 +11,7 @@ import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
+import 'package:skidoo_app/features/discovery/data/services/feed_cache_service.dart';
 import 'package:skidoo_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
 import 'package:skidoo_app/features/follow/data/follow_repository.dart';
 import 'package:skidoo_app/models/chat/like_update.dart';
@@ -47,16 +48,20 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   late final ChatBackgroundService _bgService;
   String? _currentUserId;
 
+  late final FeedCacheService _feedCache;
+
   DiscoveryBloc({
     required GetRandomImagesUseCase getRandomImagesUseCase,
     required GetEventReactionUseCase getEventReaction,
     required GetEventRoomUseCase getEventRoom,
+    required FeedCacheService feedCache,
   })  : _getRandomImagesUseCase = getRandomImagesUseCase,
         _getEventReaction = getEventReaction,
         _getEventRoom = getEventRoom,
         _authService = sl<AuthService>(),
         _savedDs = sl<ClientSavedDataSource>(),
         super(const DiscoveryState()) {
+    _feedCache = feedCache;
     _bgService = sl<ChatBackgroundService>();
     on<DiscoveryLoadRequested>(_onLoadRequested);
     on<DiscoveryLoadMoreRequested>(_onLoadMoreRequested);
@@ -129,7 +134,18 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   Future<void> _onLoadRequested(
       DiscoveryLoadRequested event, Emitter<DiscoveryState> emit) async {
     _skip = 0;
-    emit(const DiscoveryState(isLoading: true));
+
+    // ── Fast path: show cached events before the network returns ─────────────
+    // restore() is synchronous (SharedPreferences is already in memory).
+    final cached = _feedCache.restore();
+    if (cached.isNotEmpty) {
+      debugPrint('[DiscoveryBloc] cache hit — ${cached.length} events shown instantly');
+      emit(DiscoveryState(events: cached, hasMore: true));
+    } else {
+      emit(const DiscoveryState(isLoading: true));
+    }
+
+    // ── Slow path: fetch fresh data and replace ───────────────────────────────
     try {
       final userId = await _getUserId();
       final followed = FollowRepository.followedIds.toList();
@@ -140,34 +156,50 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
         followedPhotographerIds: followed.isEmpty ? null : followed,
       );
       _skip = _pageSize;
-      // Seed follow cache from is_followed flags returned by the server.
       FollowRepository.seedFollowed(
         events.where((e) => e.isFollowed).map((e) => e.photographerId),
       );
-      // ✅ Show events immediately — don't wait for reactions.
+      // Persist fresh events so the next launch is fast too.
+      unawaited(_feedCache.save(events));
       emit(DiscoveryState(
         events: events,
         currentUserId: userId,
         hasMore: events.isNotEmpty,
       ));
-      // Enrich reactions in background and patch state once ready.
       if (userId != null && events.isNotEmpty) {
         _enrichInBackground(events, userId);
       }
     } on NetworkException {
-      emit(const DiscoveryState(errorMessage: 'No internet connection.'));
+      // Keep cached events on screen when offline — only hard-fail if empty.
+      if (cached.isEmpty) {
+        emit(const DiscoveryState(errorMessage: 'No internet connection.'));
+      }
     } on ServerException catch (e) {
       debugPrint('[DiscoveryBloc] ServerException on load: $e');
-      emit(const DiscoveryState(errorMessage: 'Server error. Please retry.'));
+      if (cached.isEmpty) {
+        emit(const DiscoveryState(errorMessage: 'Server error. Please retry.'));
+      }
     } catch (e, st) {
       debugPrint('[DiscoveryBloc] Unexpected error on load: $e\n$st');
-      emit(const DiscoveryState(errorMessage: 'Something went wrong.'));
+      if (cached.isEmpty) {
+        emit(const DiscoveryState(errorMessage: 'Something went wrong.'));
+      }
     }
   }
 
   Future<void> _onLoadMoreRequested(
       DiscoveryLoadMoreRequested event, Emitter<DiscoveryState> emit) async {
-    if (state.isLoadingMore || !state.hasMore) return;
+    if (state.isLoadingMore) {
+      debugPrint('[ForYouFeed] load-more skipped — already loading');
+      return;
+    }
+    if (!state.hasMore) {
+      debugPrint('[ForYouFeed] load-more skipped — no more events');
+      return;
+    }
+    debugPrint(
+      '[ForYouFeed] load-more START — currentCount=${state.events.length} skip=$_skip',
+    );
     emit(state.copyWith(isLoadingMore: true, clearError: true));
     try {
       final userId = await _getUserId();
@@ -182,7 +214,10 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       FollowRepository.seedFollowed(
         more.where((e) => e.isFollowed).map((e) => e.photographerId),
       );
-      // ✅ Append events immediately.
+      debugPrint(
+        '[ForYouFeed] load-more DONE — fetched=${more.length} '
+        'totalNow=${state.events.length + more.length} hasMore=${more.isNotEmpty}',
+      );
       emit(state.copyWith(
         isLoadingMore: false,
         events: [...state.events, ...more],

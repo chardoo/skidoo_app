@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/features/ads/models/ad_media.dart';
 import 'package:skidoo_app/features/ads/models/ad_set.dart';
 
@@ -85,10 +86,28 @@ class AdCampaign {
         adSets: (j['ad_sets'] as List<dynamic>? ?? [])
             .map((e) => AdSet.fromJson(e as Map<String, dynamic>))
             .toList(),
-        media: (j['media'] as List<dynamic>? ?? [])
-            .whereType<Map<String, dynamic>>()
-            .map(AdMedia.fromJson)
-            .toList(),
+        media: () {
+          // Try every key the server might use for campaign-level media.
+          for (final key in const ['media', 'images', 'assets', 'campaign_media']) {
+            final raw = j[key];
+            if (raw is List && raw.isNotEmpty) {
+              return raw
+                  .whereType<Map<String, dynamic>>()
+                  .map(AdMedia.fromJson)
+                  .toList();
+            }
+          }
+          // Fall back to a single cover/thumbnail URL if present.
+          final singleUrl = j['thumbnail_url'] as String? ??
+              j['cover_url'] as String? ??
+              j['cover_image'] as String? ??
+              j['image_url'] as String?;
+          if (singleUrl != null && singleUrl.isNotEmpty) {
+            debugPrint('[AdCampaign] using single cover URL for id=${j['id']}: $singleUrl');
+            return [AdMedia(id: '', url: singleUrl, mediaType: 'image')];
+          }
+          return <AdMedia>[];
+        }(),
       );
 }
 

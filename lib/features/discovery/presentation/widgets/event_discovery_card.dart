@@ -51,6 +51,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     with SingleTickerProviderStateMixin {
   final _pageCtrl = PageController();
   int _currentPage = 0;
+  int _maxRevealedPage = 0;
   bool _liked = false;
   bool _disliked = false;
   int _likeCount = 0;
@@ -97,7 +98,12 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       });
     _pageCtrl.addListener(() {
       final page = _pageCtrl.page?.round() ?? 0;
-      if (page != _currentPage && mounted) setState(() => _currentPage = page);
+      if (page != _currentPage && mounted) {
+        setState(() {
+          _currentPage = page;
+          if (page > _maxRevealedPage) _maxRevealedPage = page;
+        });
+      }
     });
     // Notify the bloc that this card is now visible.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -171,12 +177,12 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     final pics = widget.event.pictures;
     final size = MediaQuery.sizeOf(context);
 
-    // Height varies by media type: videos taller than images.
+    // Height based on screen height so the photo almost fills the viewport.
     final currentPic =
         pics.isNotEmpty && _currentPage < pics.length ? pics[_currentPage] : null;
     final isCurrentVideo = currentPic?.isVideo ?? false;
-    final videoH = (size.width * 1.55).clamp(540.0, 620.0);
-    final imageH = (size.width * 1.0).clamp(340.0, 480.0);
+    final videoH = (size.height * 0.80).clamp(540.0, 780.0);
+    final imageH = (size.height * 0.75).clamp(480.0, 740.0);
     final mediaH = isCurrentVideo ? videoH : imageH;
 
     return Container(
@@ -263,8 +269,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                       left: 0,
                       right: 0,
                       child: _PageDots(
-                        count: _visibleCount,
+                        totalCount: _visibleCount,
                         controller: _pageCtrl,
+                        maxRevealedPage: _maxRevealedPage,
                       ),
                     ),
 
@@ -290,7 +297,12 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               likeCount: _likeCount,
               dislikeCount: _dislikeCount,
               commentCount: widget.event.commentCount,
-              commentsEnabled: widget.event.commentsEnabled,
+              commentsEnabled: widget.event.commentsEnabled &&
+                  (widget.event.pictures.isEmpty ||
+                      widget.event.pictures[
+                              _currentPage.clamp(
+                                  0, widget.event.pictures.length - 1)]
+                          .commentsEnabled),
               ext: ext,
               onLike: widget.isAuthenticated
                   ? () {
@@ -746,47 +758,67 @@ class _HeartBurst extends StatelessWidget {
 
 class _PageDots extends StatelessWidget {
   const _PageDots({
-    required this.count,
+    required this.totalCount,
     required this.controller,
+    required this.maxRevealedPage,
   });
 
-  final int count;
+  final int totalCount;
   final PageController controller;
+
+  /// The highest page index the user has swiped to so far.
+  /// Dots are revealed up to this index, with a minimum of min(3, totalCount).
+  final int maxRevealedPage;
 
   @override
   Widget build(BuildContext context) {
+    // Show min(3, totalCount) dots immediately. Reveal the next dot one step
+    // early — when the user reaches the last-but-one of the currently shown
+    // dots — so there's always one more waiting ahead.
+    final revealedCount = math.min(
+      totalCount,
+      math.max(math.min(3, totalCount), maxRevealedPage + 3),
+    );
+
     return ListenableBuilder(
       listenable: controller,
       builder: (_, __) {
         final page =
             controller.hasClients ? (controller.page ?? 0.0) : 0.0;
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(count, (i) {
-            final t = (page - i).abs().clamp(0.0, 1.0);
-            // Width: active=20w inactive=6w, interpolated continuously.
-            final w = 20.w - 14.w * t;
-            final color = Color.lerp(
-              Colors.white,
-              Colors.white.withValues(alpha: 0.35),
-              t,
-            )!;
-            return Container(
-              margin: EdgeInsets.symmetric(horizontal: 3.w),
-              width: w,
-              height: 6.h,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(3.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-            );
-          }),
+        return AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(revealedCount, (i) {
+              final t = (page - i).abs().clamp(0.0, 1.0);
+              // Active dot is wider; interpolated continuously while swiping.
+              final w = 20.w - 14.w * t;
+              final color = Color.lerp(
+                Colors.white,
+                Colors.white.withValues(alpha: 0.35),
+                t,
+              )!;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                margin: EdgeInsets.symmetric(horizontal: 3.w),
+                width: w,
+                height: 6.h,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(3.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
         );
       },
     );

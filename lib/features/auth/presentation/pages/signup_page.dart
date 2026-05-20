@@ -1,11 +1,10 @@
 import 'dart:io';
 
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/components/Screens/captureFace.dart';
+import 'package:skidoo_app/core/common/widgets/selfie_capture_screen.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/signup/signup_bloc.dart';
@@ -23,21 +22,19 @@ const _kError       = Color(0xFFFF4757);
 
 class SignUpPage extends StatelessWidget {
   static const routeName = '/signup';
-  final CameraDescription camera;
-  const SignUpPage({super.key, required this.camera});
+  const SignUpPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<SignUpBloc>(),
-      child: _SignUpView(camera: camera),
+      child: const _SignUpView(),
     );
   }
 }
 
 class _SignUpView extends StatefulWidget {
-  final CameraDescription camera;
-  const _SignUpView({required this.camera});
+  const _SignUpView();
 
   @override
   State<_SignUpView> createState() => _SignUpViewState();
@@ -89,24 +86,10 @@ class _SignUpViewState extends State<_SignUpView>
     }
   }
 
-  Future<void> _openCamera(BuildContext context) async {
-    final cameras = await availableCameras();
-    if (!context.mounted) return;
-    if (cameras.isEmpty) {
-      AppSnackBar.error(context, AppLocalizations.of(context)!.signupNoCameraAvailable);
-      return;
-    }
-    final camera = cameras.length > 1 ? cameras[1] : cameras[0];
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TakePictureScreen(
-          camera: camera,
-          onImageCaptured: (path) {
-            context.read<SignUpBloc>().add(SignUpFaceImageCaptured(path));
-          },
-        ),
-      ),
-    );
+  Future<void> _takeSelfie(BuildContext context) async {
+    final file = await SelfieCaptureScreen.push(context);
+    if (!context.mounted || file == null) return;
+    context.read<SignUpBloc>().add(SignUpFaceImageCaptured(file.path));
   }
 
   @override
@@ -227,7 +210,7 @@ class _SignUpViewState extends State<_SignUpView>
                           _FaceCaptureButton(
                             imagePath: state.imagePath,
                             showError: _submitAttempted && state.imagePath.isEmpty,
-                            onTap: () => _openCamera(context),
+                            onTap: () => _takeSelfie(context),
                           ),
                           SizedBox(height: 24.h),
 

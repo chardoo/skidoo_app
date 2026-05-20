@@ -292,8 +292,8 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                 imageUrl: photo.url,
                 fit: BoxFit.cover,
                 width: double.infinity,
-                memCacheWidth: 600,
-                filterQuality: FilterQuality.medium,
+                memCacheWidth: 720,
+                filterQuality: FilterQuality.high,
                 placeholder: (_, __) => Container(
                   height: 150.h,
                   color: ext.searchFieldFill,

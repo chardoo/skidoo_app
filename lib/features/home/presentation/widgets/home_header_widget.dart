@@ -79,6 +79,17 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
         height: 46.h,
         child: Row(
           children: [
+            // ── Brand mark (hidden when search is open) ───────────────────
+            // if (!widget.isSearchOpen) ...[
+            //   Image.asset(
+            //     'assets/logo/skiido_mark.png',
+            //     height: 36.h,
+            //     width: 36.h,
+            //     fit: BoxFit.contain,
+            //   ),
+            //   SizedBox(width: 10.w),
+            // ],
+
             // ── Search field ──────────────────────────────────────────────
             Expanded(
               child: GestureDetector(

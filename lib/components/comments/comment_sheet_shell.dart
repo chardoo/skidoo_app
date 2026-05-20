@@ -32,7 +32,7 @@ class CommentSheetShell extends StatelessWidget {
       curve: Curves.easeOut,
       padding: EdgeInsets.only(bottom: keyboardH),
       child: Container(
-        height: screenH * 0.88,
+        height: screenH * 0.67,
         decoration: BoxDecoration(
           color: ext.homeBackground,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),

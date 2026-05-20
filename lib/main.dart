@@ -1,4 +1,3 @@
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
@@ -12,7 +11,10 @@ void main() async {
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
+  final sw = Stopwatch()..start();
+
   await setupServiceLocator();
+  debugPrint('[Startup] DI ready — ${sw.elapsedMilliseconds}ms');
 
   // Fire-and-forget — never blocks startup; failures use safe defaults.
   Future.wait([
@@ -20,30 +22,48 @@ void main() async {
     sl<AppConfigRepository>().fetchRates(),
   ]).ignore();
 
-  // ── Device integrity check ──────────────────────────────────────────────────
-  // On iOS this checks for Cydia, jailbreak artefacts, and writable system
-  // paths.  On Android it checks for su binaries and test-keys builds.
-  bool isDeviceCompromised = false;
-  try {
-    isDeviceCompromised = await FlutterJailbreakDetection.jailbroken;
-  } catch (_) {
-    // Plugin unavailable (e.g. simulator) — treat device as safe.
+  final authService = sl<AuthService>();
+
+  // ── Run all independent startup checks in parallel ──────────────────────────
+  // Previously these were 4 serial awaits (jailbreak check, two Keychain reads
+  // for the token, one more for the expiration, and camera enumeration). Now
+  // they all race together so the critical path is only as long as the slowest
+  // one rather than the sum of all four.
+  final results = await Future.wait([
+    // [0] Jailbreak / root detection
+    Future<bool>(() async {
+      try {
+        return await FlutterJailbreakDetection.jailbroken;
+      } catch (_) {
+        return false; // simulator or plugin unavailable — treat as safe
+      }
+    }),
+    // [1] Auth token (one Keychain read)
+    authService.getToken(),
+    // [2] Token expiration string (one Keychain read — avoids isTokenExpired()
+    //     re-reading the token a second time internally)
+    authService.getExpiration(),
+  ]);
+
+  final isDeviceCompromised = results[0] as bool;
+  final token              = results[1] as String;
+  final expiration         = results[2] as String;
+
+  // Replicate isTokenExpired() logic without a second Keychain round-trip.
+  bool isExpired = token.isEmpty;
+  if (!isExpired && expiration.isNotEmpty) {
+    try {
+      isExpired = DateTime.now().isAfter(DateTime.parse(expiration));
+    } catch (_) {
+      isExpired = false;
+    }
   }
 
-  // ── Token validity check ────────────────────────────────────────────────────
-  final authService = sl<AuthService>();
-  final token = await authService.getToken();
-  final isExpired = await authService.isTokenExpired();
-  // An expired token is treated the same as having no token: user goes to
-  // the discovery/login flow rather than straight to the home feed.
-  final effectiveToken = isExpired ? '' : token;
-
-  final cameras = await availableCameras();
-  final firstCamera = cameras.isNotEmpty ? cameras.first : null;
+  debugPrint('[Startup] all checks done — ${sw.elapsedMilliseconds}ms '
+      '(token=${token.isNotEmpty} expired=$isExpired compromised=$isDeviceCompromised)');
 
   runApp(MyApp(
-    token: effectiveToken,
-    firstCamera: firstCamera,
+    token: isExpired ? '' : token,
     isDeviceCompromised: isDeviceCompromised,
   ));
 }

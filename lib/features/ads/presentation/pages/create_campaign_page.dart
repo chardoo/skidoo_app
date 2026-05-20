@@ -36,12 +36,6 @@ const _audienceLabels = {
   'clients': 'Clients',
   'photographers': 'Photographers',
 };
-const _bidTypes = ['cpm', 'cpc', 'cpa'];
-const _bidTypeLabels = {
-  'cpm': 'CPM — per 1,000 views',
-  'cpc': 'CPC — per click',
-  'cpa': 'CPA — per conversion',
-};
 const _currencies = ['GHS', 'NGN', 'USD', 'ZAR', 'KES', 'EGP', 'XOF', 'RWF'];
 const _eventTypes = [
   'Wedding', 'Birthday', 'Corporate', 'Concert',
@@ -74,10 +68,8 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   // Step 2 — Ad set
   String _placement = _placements[0];
   String _audience = _audienceTypes[0];
-  String _bidType = _bidTypes[0];
   String? _targetEventType;
   final _locationCtrl = TextEditingController();
-  final _bidCtrl = TextEditingController();
   final _dailyBudgetCtrl = TextEditingController();
 
   // Step 3 — Creative
@@ -113,7 +105,6 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
     _nameCtrl.dispose();
     _budgetCtrl.dispose();
     _locationCtrl.dispose();
-    _bidCtrl.dispose();
     _dailyBudgetCtrl.dispose();
     _headlineCtrl.dispose();
     _bodyCtrl.dispose();
@@ -136,8 +127,6 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
       case 1:
         final daily = double.tryParse(_dailyBudgetCtrl.text.trim());
         if (daily == null || daily <= 0) return 'Enter a valid daily budget.';
-        final bid = double.tryParse(_bidCtrl.text.trim());
-        if (bid == null || bid <= 0) return 'Enter a valid bid amount.';
       case 2:
         if (_headlineCtrl.text.trim().isEmpty) return 'Headline is required.';
         final link = _ctaLinkCtrl.text.trim();
@@ -199,14 +188,12 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   }
 
   Future<void> _createAdSet() async {
-    debugPrint('[CreateCampaignPage] _createAdSet campaignId=$_campaignId placement=$_placement audience=$_audience bidType=$_bidType');
+    debugPrint('[CreateCampaignPage] _createAdSet campaignId=$_campaignId placement=$_placement audience=$_audience');
     final result = await _repo.createAdSet(
       campaignId: _campaignId!,
       name: '${_nameCtrl.text.trim()} — ${_placementLabels[_placement] ?? _placement}',
       placement: _placement,
       dailyBudget: double.tryParse(_dailyBudgetCtrl.text.trim()) ?? 0,
-      bidType: _bidType,
-      bidAmount: double.tryParse(_bidCtrl.text.trim()) ?? 0,
       audience: _audience,
       eventTypes: _targetEventType != null ? [_targetEventType!] : [],
       locations: _locationCtrl.text.trim().isNotEmpty
@@ -406,15 +393,12 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           key: const ValueKey(1),
           placement: _placement,
           audience: _audience,
-          bidType: _bidType,
           targetEventType: _targetEventType,
           locationCtrl: _locationCtrl,
-          bidCtrl: _bidCtrl,
           dailyBudgetCtrl: _dailyBudgetCtrl,
           ext: ext,
           onPlacementChanged: (v) => setState(() => _placement = v ?? _placements[0]),
           onAudienceChanged: (v) => setState(() => _audience = v ?? _audienceTypes[0]),
-          onBidTypeChanged: (v) => setState(() => _bidType = v ?? _bidTypes[0]),
           onEventTypeChanged: (v) => setState(() => _targetEventType = v),
         );
       case 2:
@@ -787,29 +771,23 @@ class _Step2 extends StatelessWidget {
     super.key,
     required this.placement,
     required this.audience,
-    required this.bidType,
     required this.targetEventType,
     required this.locationCtrl,
-    required this.bidCtrl,
     required this.dailyBudgetCtrl,
     required this.ext,
     required this.onPlacementChanged,
     required this.onAudienceChanged,
-    required this.onBidTypeChanged,
     required this.onEventTypeChanged,
   });
 
   final String placement;
   final String audience;
-  final String bidType;
   final String? targetEventType;
   final TextEditingController locationCtrl;
-  final TextEditingController bidCtrl;
   final TextEditingController dailyBudgetCtrl;
   final AppThemeExtension ext;
   final ValueChanged<String?> onPlacementChanged;
   final ValueChanged<String?> onAudienceChanged;
-  final ValueChanged<String?> onBidTypeChanged;
   final ValueChanged<String?> onEventTypeChanged;
 
   @override
@@ -841,51 +819,13 @@ class _Step2 extends StatelessWidget {
         ),
 
         SizedBox(height: 20.h),
-        _CLabel('Bid type', ext),
+        _CLabel('Daily budget', ext),
         SizedBox(height: 8.h),
-        _CDropdown<String>(
-          value: bidType,
-          items: _bidTypes,
-          itemLabel: (v) => _bidTypeLabels[v] ?? v,
+        _CField(
+          controller: dailyBudgetCtrl,
+          hint: 'e.g. 50',
           ext: ext,
-          onChanged: onBidTypeChanged,
-        ),
-
-        SizedBox(height: 20.h),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _CLabel('Daily budget', ext),
-                  SizedBox(height: 8.h),
-                  _CField(
-                    controller: dailyBudgetCtrl,
-                    hint: 'e.g. 50',
-                    ext: ext,
-                    keyboardType: TextInputType.number,
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _CLabel('Bid amount', ext),
-                  SizedBox(height: 8.h),
-                  _CField(
-                    controller: bidCtrl,
-                    hint: 'e.g. 2.00',
-                    ext: ext,
-                    keyboardType: TextInputType.number,
-                  ),
-                ],
-              ),
-            ),
-          ],
+          keyboardType: TextInputType.number,
         ),
 
         SizedBox(height: 20.h),

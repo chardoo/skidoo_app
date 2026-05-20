@@ -20,6 +20,6 @@ class AdMedia {
         url: j['url'] as String? ?? j['media_url'] as String? ?? j['asset_url'] as String? ?? '',
         mediaType:
             j['media_type'] as String? ?? j['type'] as String? ?? 'image',
-        position: (j['position'] as num?)?.toInt() ?? 0,
+        position: (j['sort_order'] as num? ?? j['position'] as num?)?.toInt() ?? 0,
       );
 }

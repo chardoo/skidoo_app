@@ -51,6 +51,7 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
                 child: CachedNetworkImage(
                   imageUrl: widget.samples[i].url,
                   fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
                   placeholder: (_, __) => const Center(
                     child: CircularProgressIndicator(),
                   ),

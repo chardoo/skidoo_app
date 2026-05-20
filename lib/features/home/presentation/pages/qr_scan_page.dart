@@ -2,12 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 
 class QrScanPage extends StatefulWidget {
   const QrScanPage({super.key});
@@ -34,36 +30,10 @@ class _QrScanPageState extends State<QrScanPage> {
     if (_processing) return;
     setState(() => _processing = true);
     try { await _controller.stop(); } catch (_) {}
-
-    try {
-      final event = await _fetchEvent(code.trim());
-      if (!mounted) return;
-      await Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => EventPicturesPage(event: event)),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      AppSnackBar.error(context, 'No event found for this QR code.');
-      try { await _controller.start(); } catch (_) {}
-      if (mounted) setState(() => _processing = false);
-    }
-  }
-
-  Future<EventDiscovery> _fetchEvent(String eventId) async {
-    final res = await sl<Api>().dio.get(
-      '/photographer/events/$eventId/images',
-      queryParameters: {'page': 1, 'limit': 25},
-    );
-    final raw = res.data;
-    final Map<String, dynamic> data;
-    if (raw is Map<String, dynamic> && raw['data'] is Map<String, dynamic>) {
-      data = raw['data'] as Map<String, dynamic>;
-    } else if (raw is Map<String, dynamic>) {
-      data = raw;
-    } else {
-      throw Exception('Unexpected response format');
-    }
-    return EventDiscovery.fromMap(data);
+    if (!mounted) return;
+    // Return the event ID to the caller (HomeNavigationPage) which will
+    // fire HomeImagesSearched and push SearchResultsPage.
+    Navigator.of(context).pop(code.trim());
   }
 
   Future<void> _pickFromGallery() async {

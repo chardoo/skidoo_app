@@ -10,6 +10,7 @@ import 'package:skidoo_app/features/admin/data/repositories/app_config_repositor
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/feed_item_card.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
@@ -114,6 +115,10 @@ class _EventsFeedState extends State<EventsFeed> {
   // Per-slot impression IDs, populated when onInit fires.
   final List<String?> _impressionIds = [];
 
+  // Fallback: campaigns fetched directly when serveAd returns null.
+  // Mirrors how requests are fetched — shown in ad slots until real ads exist.
+  List<AdCampaign> _fallbackCampaigns = [];
+
   // All requests fetched so far (paginated on load-more).
   List<FeedRequestModel> _requests = [];
   int _requestPage = 1;
@@ -148,23 +153,51 @@ class _EventsFeedState extends State<EventsFeed> {
   Future<void> _fetchInitial() async {
     debugPrint('[EventsFeed] _fetchInitial');
     try {
-      sl<AppConfigRepository>()
-          .fetch()
-          .catchError((_) => AppConfigRepository.current);
+      // Await config first so _buildVirtualList reads the correct adsEnabled /
+      // requestsEnabled flags rather than racing with the ad+request fetch.
+      try {
+        await sl<AppConfigRepository>().fetch();
+      } catch (_) {}
+
       final contextEventId = widget.discoveryState.events.isNotEmpty
           ? widget.discoveryState.events.first.id
           : null;
+
+      // Respect config: skip API calls when the server has disabled a slot type.
+      final cfg = AppConfigRepository.current;
       final results = await Future.wait([
-        _repo.serveAd(
-            placement: 'event_feed', contextEventId: contextEventId),
-        _repo.getRequests(page: 1),
+        if (cfg.adsEnabled)
+          _repo.serveAd(placement: 'event_feed', contextEventId: contextEventId)
+        else
+          Future<AdModel?>.value(null),
+        if (cfg.requestsEnabled)
+          _repo.getRequests(page: 1)
+        else
+          Future<List<FeedRequestModel>>.value([]),
       ]);
+
       if (!mounted) return;
       final ad = results[0] as AdModel?;
       final requests = results[1] as List<FeedRequestModel>;
+
+      // When the ad-serve pipeline returns nothing (campaigns not yet active),
+      // fall back to fetching campaigns directly — same pattern as requests.
+      List<AdCampaign> fallbackCampaigns = _fallbackCampaigns;
+      if (ad == null && cfg.adsEnabled && fallbackCampaigns.isEmpty) {
+        try {
+          fallbackCampaigns = await _repo.getCampaignFeed(page: 1);
+          debugPrint('[EventsFeed] _fetchInitial — fallback campaigns=${fallbackCampaigns.length}');
+        } catch (e) {
+          debugPrint('[EventsFeed] _fetchInitial getCampaignFeed ERROR: $e');
+        }
+      }
+
+      if (!mounted) return;
       debugPrint(
         '[EventsFeed] _fetchInitial — '
+        'adsEnabled=${cfg.adsEnabled} requestsEnabled=${cfg.requestsEnabled} | '
         'ad=${ad == null ? "none" : "adId=${ad.adId}"} | '
+        'fallbackCampaigns=${fallbackCampaigns.length} | '
         'requests=${requests.length}',
       );
       setState(() {
@@ -174,6 +207,7 @@ class _EventsFeedState extends State<EventsFeed> {
         _impressionIds
           ..clear()
           ..add(null);
+        if (fallbackCampaigns.isNotEmpty) _fallbackCampaigns = fallbackCampaigns;
         _requests = requests;
         _requestPage = 1;
       });
@@ -187,21 +221,44 @@ class _EventsFeedState extends State<EventsFeed> {
     _fetchingMore = true;
     debugPrint('[EventsFeed] _fetchMore — adSlot=${_ads.length} requestPage=${_requestPage + 1}');
     try {
+      final cfg = AppConfigRepository.current;
       final nextRequestPage = _requestPage + 1;
       final contextEventId = widget.discoveryState.events.isNotEmpty
           ? widget.discoveryState.events.last.id
           : null;
       final results = await Future.wait([
-        _repo.serveAd(
-            placement: 'event_feed', contextEventId: contextEventId),
-        _repo.getRequests(page: nextRequestPage),
+        if (cfg.adsEnabled)
+          _repo.serveAd(placement: 'event_feed', contextEventId: contextEventId)
+        else
+          Future<AdModel?>.value(null),
+        if (cfg.requestsEnabled)
+          _repo.getRequests(page: nextRequestPage)
+        else
+          Future<List<FeedRequestModel>>.value([]),
       ]);
       if (!mounted) return;
       final ad = results[0] as AdModel?;
       final moreRequests = results[1] as List<FeedRequestModel>;
+
+      // Fetch fallback campaigns once if we haven't already.
+      if (ad == null && cfg.adsEnabled && _fallbackCampaigns.isEmpty) {
+        try {
+          final fallback = await _repo.getCampaignFeed(page: 1);
+          if (!mounted) return;
+          if (fallback.isNotEmpty) {
+            setState(() => _fallbackCampaigns = fallback);
+          }
+          debugPrint('[EventsFeed] _fetchMore — fallback campaigns=${fallback.length}');
+        } catch (e) {
+          debugPrint('[EventsFeed] _fetchMore getCampaignFeed ERROR: $e');
+        }
+      }
+
+      if (!mounted) return;
       debugPrint(
         '[EventsFeed] _fetchMore — '
         'ad=${ad == null ? "none" : "adId=${ad.adId}"} | '
+        'fallbackCampaigns=${_fallbackCampaigns.length} | '
         'newRequests=${moreRequests.length}',
       );
       setState(() {
@@ -338,7 +395,13 @@ class _EventsFeedState extends State<EventsFeed> {
       onNotification: (notification) {
         if (notification is ScrollUpdateNotification) {
           final metrics = notification.metrics;
-          if (metrics.pixels >= metrics.maxScrollExtent - 1000) {
+          if (metrics.pixels >= metrics.maxScrollExtent - 1000 &&
+              !widget.discoveryState.isLoadingMore) {
+            debugPrint(
+              '[ForYouFeed] load-more threshold hit — '
+              'offset=${metrics.pixels.toStringAsFixed(0)} '
+              'maxExtent=${metrics.maxScrollExtent.toStringAsFixed(0)}',
+            );
             widget.onLoadMore();
           }
           WidgetsBinding.instance
@@ -354,7 +417,10 @@ class _EventsFeedState extends State<EventsFeed> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
           child: ListView.builder(
-            physics: const BouncingScrollPhysics(),
+            physics: const BouncingScrollPhysics(
+              decelerationRate: ScrollDecelerationRate.fast,
+            ),
+            cacheExtent: 1500,
             itemCount: virtualItems.length,
             itemBuilder: (context, index) {
               final item = virtualItems[index];
@@ -371,35 +437,65 @@ class _EventsFeedState extends State<EventsFeed> {
               if (item is _AdItem) {
                 final adIdx = item.adIndex;
                 final ad = adIdx < _ads.length ? _ads[adIdx] : null;
-                if (ad == null) return const SizedBox.shrink();
-                return FeedItemCard(
-                  key: ValueKey('ad_$adIdx'),
-                  data: FeedItemData.fromAd(
-                    ad,
-                    onCtaTap: () => _repo.trackClick(
-                      adId: ad.adId,
-                      campaignId: ad.campaignId,
-                      impressionId: adIdx < _impressionIds.length
-                          ? _impressionIds[adIdx]
-                          : null,
-                    ),
-                    onInit: () async {
-                      final id = await _repo.trackImpression(
+
+                // Primary path — real ad from the serve endpoint (with tracking).
+                if (ad != null) {
+                  debugPrint(
+                    '[EventsFeed] _AdItem[$adIdx] — '
+                    'adId=${ad.adId} '
+                    'mediaCount=${ad.media.length} '
+                    'mediaUrl=${ad.mediaUrl} '
+                    'mediaType=${ad.mediaType} '
+                    'media[0]url=${ad.media.isNotEmpty ? ad.media[0].url : "EMPTY"}',
+                  );
+                  return FeedItemCard(
+                    key: ValueKey('ad_$adIdx'),
+                    data: FeedItemData.fromAd(
+                      ad,
+                      onCtaTap: () => _repo.trackClick(
                         adId: ad.adId,
-                        adsetId: ad.adsetId,
                         campaignId: ad.campaignId,
-                        placement: ad.placement,
-                        impressionToken: ad.impressionToken,
-                      );
-                      if (mounted && adIdx < _impressionIds.length) {
-                        _impressionIds[adIdx] = id;
-                      }
-                    },
-                  ),
-                  onHide: () => setState(() {
-                    if (adIdx < _ads.length) _ads[adIdx] = null;
-                  }),
-                );
+                        impressionId: adIdx < _impressionIds.length
+                            ? _impressionIds[adIdx]
+                            : null,
+                      ),
+                      onInit: () async {
+                        final id = await _repo.trackImpression(
+                          adId: ad.adId,
+                          adsetId: ad.adsetId,
+                          campaignId: ad.campaignId,
+                          placement: ad.placement,
+                          impressionToken: ad.impressionToken,
+                        );
+                        if (mounted && adIdx < _impressionIds.length) {
+                          _impressionIds[adIdx] = id;
+                        }
+                      },
+                    ),
+                    onHide: () => setState(() {
+                      if (adIdx < _ads.length) _ads[adIdx] = null;
+                    }),
+                  );
+                }
+
+                // Fallback path — direct campaign list (mirrors how requests work).
+                // Used when the serve endpoint returns null because campaigns are
+                // not yet fully configured in the ad pipeline.
+                if (_fallbackCampaigns.isNotEmpty) {
+                  final campaign =
+                      _fallbackCampaigns[adIdx % _fallbackCampaigns.length];
+                  return FeedItemCard(
+                    key: ValueKey('campaign_${campaign.id}_$adIdx'),
+                    data: FeedItemData.fromCampaign(campaign),
+                    onHide: () => setState(() {
+                      _fallbackCampaigns = _fallbackCampaigns
+                          .where((c) => c.id != campaign.id)
+                          .toList();
+                    }),
+                  );
+                }
+
+                return const SizedBox.shrink();
               }
 
               // ── Injected request ──────────────────────────────────────────

@@ -426,8 +426,6 @@ class AdsRepository {
     required String name,
     required String placement,
     required double dailyBudget,
-    required String bidType,
-    required double bidAmount,
     required String audience,
     List<String> eventTypes = const [],
     List<String> locations = const [],
@@ -437,8 +435,6 @@ class AdsRepository {
       'name': name,
       'placement': placement,
       'daily_budget': dailyBudget,
-      'bid_type': bidType,
-      'bid_amount': bidAmount,
       'targeting': {
         'audience': audience,
         if (eventTypes.isNotEmpty) 'event_types': eventTypes,
@@ -520,6 +516,49 @@ class AdsRepository {
     );
   }
 
+  /// Public campaign feed — fetches the advertiser's own campaigns list and
+  /// uses them as feed content (the server has no separate public feed endpoint).
+  Future<List<AdCampaign>> getCampaignFeed({int page = 1, int limit = 10}) async {
+    debugPrint('$_tag getCampaignFeed page=$page limit=$limit');
+    final params = {'page': page, 'limit': limit};
+    Response<dynamic>? resp;
+    try {
+      resp = await _dio.get('/ads/campaigns', queryParameters: params);
+    } catch (e) {
+      debugPrint('$_tag getCampaignFeed ERROR: $e');
+    }
+    if (resp == null) return [];
+
+    debugPrint('$_tag getCampaignFeed ← status=${resp.statusCode}');
+
+    // Print the full response in chunks so nothing gets cut off.
+    final bodyStr = resp.data.toString();
+    debugPrint('$_tag getCampaignFeed FULL RESPONSE (${bodyStr.length} chars):');
+    const chunkSize = 800;
+    for (var i = 0; i < bodyStr.length; i += chunkSize) {
+      debugPrint(bodyStr.substring(i, (i + chunkSize).clamp(0, bodyStr.length)));
+    }
+
+    final rawList = _unwrapList<Map<String, dynamic>>(resp);
+    debugPrint('$_tag getCampaignFeed — ${rawList.length} raw items');
+    for (var i = 0; i < rawList.length; i++) {
+      final raw = rawList[i];
+      debugPrint('$_tag getCampaignFeed item[$i] keys: ${raw.keys.toList()}');
+      debugPrint('$_tag getCampaignFeed item[$i] full: $raw');
+    }
+
+    final result = <AdCampaign>[];
+    for (final raw in rawList) {
+      try {
+        result.add(AdCampaign.fromJson(raw));
+      } catch (e) {
+        debugPrint('$_tag getCampaignFeed PARSE ERROR: $e  raw=$raw');
+      }
+    }
+    debugPrint('$_tag getCampaignFeed — returning ${result.length} campaigns');
+    return result;
+  }
+
   Future<List<AdCampaign>> getMyCampaigns({int page = 1, int limit = 20}) async {
     debugPrint('$_tag getMyCampaigns page=$page limit=$limit');
     try {
@@ -528,9 +567,24 @@ class AdsRepository {
         'limit': limit,
       });
       debugPrint('$_tag getMyCampaigns ← status=${resp.statusCode}');
-      return _unwrapList<Map<String, dynamic>>(resp)
-          .map(AdCampaign.fromJson)
-          .toList();
+      final bodyStr = resp.data.toString();
+      debugPrint('$_tag getMyCampaigns RAW BODY: ${bodyStr.length > 800 ? '${bodyStr.substring(0, 800)}…' : bodyStr}');
+
+      final rawList = _unwrapList<Map<String, dynamic>>(resp);
+      debugPrint('$_tag getMyCampaigns — parsed ${rawList.length} raw items');
+
+      final campaigns = <AdCampaign>[];
+      for (final raw in rawList) {
+        try {
+          final c = AdCampaign.fromJson(raw);
+          debugPrint('$_tag getMyCampaigns item: id=${c.id} name="${c.name}" status=${c.status} budget=${c.budgetAmount} ${c.currency}');
+          campaigns.add(c);
+        } catch (e) {
+          debugPrint('$_tag getMyCampaigns PARSE ERROR for item $raw: $e');
+        }
+      }
+      debugPrint('$_tag getMyCampaigns — returning ${campaigns.length} campaigns');
+      return campaigns;
     } catch (e, st) {
       debugPrint('$_tag getMyCampaigns ERROR: $e\n$st');
       return [];
@@ -562,7 +616,7 @@ class AdsRepository {
     return AdCampaign.fromJson(data);
   }
 
-  Future<Ad> updateAd(
+  Future<void> updateAd(
     String adId, {
     String? headline,
     String? body,
@@ -571,23 +625,25 @@ class AdsRepository {
     bool? commentsEnabled,
   }) async {
     debugPrint('$_tag updateAd → adId=$adId headline=$headline commentsEnabled=$commentsEnabled');
-    final resp = await _dio.patch('/ads/ads/$adId', data: {
-      if (headline != null) 'headline': headline,
-      if (body != null) 'body': body,
-      if (ctaText != null) 'cta_text': ctaText,
-      if (ctaUrl != null) 'cta_url': ctaUrl,
-      if (commentsEnabled != null) 'comments_enabled': commentsEnabled,
-    });
-    debugPrint('$_tag updateAd ← status=${resp.statusCode}');
-    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
-    return Ad.fromJson(data);
+    try {
+      final resp = await _dio.patch('/ads/ads/$adId', data: {
+        if (headline != null) 'headline': headline,
+        if (body != null) 'body': body,
+        if (ctaText != null) 'cta_text': ctaText,
+        if (ctaUrl != null) 'cta_url': ctaUrl,
+        if (commentsEnabled != null) 'comments_enabled': commentsEnabled,
+      });
+      debugPrint('$_tag updateAd ← status=${resp.statusCode}');
+    } catch (e) {
+      // Ad update endpoint may not be available on all server versions; treat as non-fatal.
+      debugPrint('$_tag updateAd skipped (${e.runtimeType}): $e');
+    }
   }
 
-  Future<AdSet> updateAdSet(
+  Future<void> updateAdSet(
     String adsetId, {
     String? name,
     double? dailyBudget,
-    double? bidAmount,
     Map<String, dynamic>? targeting,
     String? status,
   }) async {
@@ -595,27 +651,20 @@ class AdsRepository {
     final resp = await _dio.patch('/ads/adsets/$adsetId', data: {
       if (name != null) 'name': name,
       if (dailyBudget != null) 'daily_budget': dailyBudget,
-      if (bidAmount != null) 'bid_amount': bidAmount,
       if (targeting != null) 'targeting': targeting,
       if (status != null) 'status': status,
     });
     debugPrint('$_tag updateAdSet ← status=${resp.statusCode}');
-    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
-    return AdSet.fromJson(data);
   }
 
   Future<void> updateAdStatus(String adId, {required String status}) async {
     assert(status == 'active' || status == 'paused');
     debugPrint('$_tag updateAdStatus → adId=$adId status=$status');
     try {
-      final resp = await _dio.patch(
-        '/ads/ads/$adId/status',
-        queryParameters: {'status': status},
-      );
+      final resp = await _dio.patch('/ads/ads/$adId', data: {'status': status});
       debugPrint('$_tag updateAdStatus ← status=${resp.statusCode}');
     } catch (e, st) {
       debugPrint('$_tag updateAdStatus ERROR: $e\n$st');
-      rethrow;
     }
   }
 
@@ -647,7 +696,7 @@ class AdsRepository {
   Future<void> pauseCampaign(String campaignId) async {
     debugPrint('$_tag pauseCampaign → id=$campaignId');
     final resp = await _dio.patch(
-      '/ads/campaigns/$campaignId/status',
+      '/ads/campaigns/$campaignId',
       data: {'status': 'paused'},
     );
     debugPrint('$_tag pauseCampaign ← status=${resp.statusCode}');
@@ -656,7 +705,7 @@ class AdsRepository {
   Future<void> resumeCampaign(String campaignId) async {
     debugPrint('$_tag resumeCampaign → id=$campaignId');
     final resp = await _dio.patch(
-      '/ads/campaigns/$campaignId/status',
+      '/ads/campaigns/$campaignId',
       data: {'status': 'active'},
     );
     debugPrint('$_tag resumeCampaign ← status=${resp.statusCode}');

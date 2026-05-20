@@ -15,7 +15,8 @@ import 'package:skidoo_app/features/home/presentation/widgets/search_events_list
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/features/follow/presentation/pages/following_feed_page.dart';
+import 'package:skidoo_app/core/common/widgets/feed_launch_overlay.dart';
+import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
 import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 
 class HomeNavigationPage extends StatefulWidget {
@@ -27,15 +28,14 @@ class HomeNavigationPage extends StatefulWidget {
 
 class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool _isSearchOpen = false;
+  int _selectedTab = 0; // 0 = For You, 1 = Following
 
-  /// Whether the header is currently visible. Toggled by scroll direction.
   bool _headerVisible = true;
-
-  /// The scroll offset captured on the previous notification, used to compute
-  /// delta and decide whether the user is scrolling up or down.
-  double _lastScrollOffset = 0;
+  double _headerDownAccum = 0;
+  static const _headerHideThreshold = 20.0;
 
   void _openSearch() {
+    _headerDownAccum = 0;
     setState(() {
       _isSearchOpen = true;
       _headerVisible = true;
@@ -43,6 +43,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   }
 
   void _closeSearch() {
+    _headerDownAccum = 0;
     setState(() {
       _isSearchOpen = false;
       _headerVisible = true;
@@ -54,9 +55,22 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     context.read<HomeBloc>().add(HomeEventSearched(query));
   }
 
-  void _openQrScan() {
-    Navigator.of(context).push(
+  Future<void> _openQrScan() async {
+    final eventId = await Navigator.of(context).push<String>(
       MaterialPageRoute(builder: (_) => const QrScanPage()),
+    );
+    if (!mounted || eventId == null || eventId.isEmpty) return;
+
+    // Fire the same event the search flow uses, then push SearchResultsPage.
+    final homeBloc = context.read<HomeBloc>();
+    homeBloc.add(HomeImagesSearched(eventId: eventId, eventName: ''));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: homeBloc,
+          child: const SearchResultsPage(),
+        ),
+      ),
     );
   }
 
@@ -81,23 +95,22 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
   /// Returns false so notifications continue to bubble up the tree.
   bool _onScrollNotification(ScrollNotification notification) {
-    // Never auto-hide the header while the search bar is open.
     if (_isSearchOpen) return false;
 
     if (notification is ScrollUpdateNotification) {
-      final current = notification.metrics.pixels;
-      final delta = current - _lastScrollOffset;
-      _lastScrollOffset = current;
+      final delta = notification.scrollDelta ?? 0;
 
-      if (delta > 8 && _headerVisible) {
-        // Scrolling down past threshold → hide header.
-        setState(() => _headerVisible = false);
-      } else if (delta < 0 && !_headerVisible) {
-        // Any upward movement → show header immediately.
-        setState(() => _headerVisible = true);
+      if (delta > 0) {
+        _headerDownAccum += delta;
+        if (_headerDownAccum >= _headerHideThreshold && _headerVisible) {
+          setState(() => _headerVisible = false);
+        }
+      } else if (delta < 0) {
+        _headerDownAccum = 0;
+        if (!_headerVisible) setState(() => _headerVisible = true);
       }
     } else if (notification is ScrollEndNotification) {
-      _lastScrollOffset = notification.metrics.pixels;
+      _headerDownAccum = 0;
     }
     return false;
   }
@@ -112,7 +125,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
     final topPadding = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
+    return FeedLaunchOverlay(
+      child: Scaffold(
       backgroundColor: ext.homeBackground,
       body: Column(
         children: [
@@ -149,24 +163,32 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
             ),
           ),
 
-          // ── "For You / Following" pill tabs ──────────────────────────────
+          // ── "For You / Following" pill tabs — collapses with the header ───
           if (!_isSearchOpen)
-            _FeedTabBar(ext: ext),
+            ClipRect(
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                alignment: Alignment.topCenter,
+                heightFactor: _headerVisible ? 1.0 : 0.0,
+                child: _FeedTabBar(
+                  ext: ext,
+                  selectedTab: _selectedTab,
+                  onTabChanged: (i) => setState(() => _selectedTab = i),
+                ),
+              ),
+            ),
 
           // ── Body ─────────────────────────────────────────────────────────
           Expanded(
             child: NotificationListener<ScrollNotification>(
               onNotification: _onScrollNotification,
-              child: RefreshIndicator(
-                onRefresh: _onRefresh,
-                color: ext.accentGold,
-                backgroundColor: ext.homeBackground,
-                child: _buildBody(context, ext, homeState, discoveryState),
-              ),
+              child: _buildBody(context, ext, homeState, discoveryState),
             ),
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -176,14 +198,85 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     HomeState homeState,
     DiscoveryState discoveryState,
   ) {
-    // ── Search mode ──────────────────────────────────────────────────────────
-    if (_isSearchOpen && homeState.isLoadingEvents) {
-      return const CustomScrollView(slivers: [
-        SliverFillRemaining(hasScrollBody: false, child: AppLoadingIndicator()),
-      ]);
-    }
+    return IndexedStack(
+      index: _selectedTab,
+      children: [
+        // ── For You ──────────────────────────────────────────────────────────
+        RefreshIndicator(
+          onRefresh: _onRefresh,
+          color: ext.accentGold,
+          backgroundColor: ext.homeBackground,
+          child: _buildForYouContent(context, ext, homeState, discoveryState),
+        ),
+        // ── Following ────────────────────────────────────────────────────────
+        const FollowingFeed(),
+      ],
+    );
+  }
 
-    if (_isSearchOpen && homeState.events.isNotEmpty) {
+  Widget _buildForYouContent(
+    BuildContext context,
+    AppThemeExtension ext,
+    HomeState homeState,
+    DiscoveryState discoveryState,
+  ) {
+    // EventsFeed stays mounted at all times so its ad/request state is never
+    // lost. Loading and empty states are overlaid on top of it.
+    return Stack(
+      children: [
+        EventsFeed(
+          discoveryState: discoveryState,
+          onCardTap: (event) => _openEventImages(context, event),
+          onCommentTap: (event) => _openEventComments(context, event),
+          onLoadMore: () =>
+              context.read<DiscoveryBloc>().add(const DiscoveryLoadMoreRequested()),
+        ),
+        if (discoveryState.isLoading)
+          Positioned.fill(
+            child: ColoredBox(
+              color: ext.homeBackground,
+              child: const CustomScrollView(slivers: [
+                SliverFillRemaining(
+                    hasScrollBody: false, child: AppLoadingIndicator()),
+              ]),
+            ),
+          ),
+        if (!discoveryState.isLoading && discoveryState.events.isEmpty)
+          Positioned.fill(
+            child: ColoredBox(
+              color: ext.homeBackground,
+              child: CustomScrollView(slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: HomeEmptyState(
+                    ext: ext,
+                    icon: Icons.photo_library_outlined,
+                    message: AppLocalizations.of(context)!.homeNoEventsYet,
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        if (_isSearchOpen)
+          Positioned.fill(
+            child: ColoredBox(
+              color: ext.homeBackground,
+              child: _buildSearchOverlay(context, ext, homeState),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSearchOverlay(
+    BuildContext context,
+    AppThemeExtension ext,
+    HomeState homeState,
+  ) {
+    if (homeState.isLoadingEvents) {
+      return const AppLoadingIndicator();
+    }
+    if (homeState.events.isNotEmpty) {
       return SearchEventsList(
         homeState: homeState,
         ext: ext,
@@ -203,53 +296,27 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         },
       );
     }
-
-    if (_isSearchOpen && homeState.isSearching && homeState.events.isEmpty) {
-      return CustomScrollView(slivers: [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: HomeEmptyState(
-            ext: ext,
-            icon: Icons.event_busy_outlined,
-            message: AppLocalizations.of(context)!.homeNoEventsFound,
-          ),
-        ),
-      ]);
+    if (homeState.isSearching && homeState.events.isEmpty) {
+      return HomeEmptyState(
+        ext: ext,
+        icon: Icons.event_busy_outlined,
+        message: AppLocalizations.of(context)!.homeNoEventsFound,
+      );
     }
-
-    // ── Normal mode ──────────────────────────────────────────────────────────
-    if (discoveryState.isLoading) {
-      return const CustomScrollView(slivers: [
-        SliverFillRemaining(hasScrollBody: false, child: AppLoadingIndicator()),
-      ]);
-    }
-
-    if (discoveryState.events.isEmpty) {
-      return CustomScrollView(slivers: [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: HomeEmptyState(
-            ext: ext,
-            icon: Icons.photo_library_outlined,
-            message: AppLocalizations.of(context)!.homeNoEventsYet,
-          ),
-        ),
-      ]);
-    }
-
-    return EventsFeed(
-      discoveryState: discoveryState,
-      onCardTap: (event) => _openEventImages(context, event),
-      onCommentTap: (event) => _openEventComments(context, event),
-      onLoadMore: () =>
-          context.read<DiscoveryBloc>().add(const DiscoveryLoadMoreRequested()),
-    );
+    return const SizedBox.shrink();
   }
 }
 
 class _FeedTabBar extends StatelessWidget {
   final AppThemeExtension ext;
-  const _FeedTabBar({required this.ext});
+  final int selectedTab;
+  final ValueChanged<int> onTabChanged;
+
+  const _FeedTabBar({
+    required this.ext,
+    required this.selectedTab,
+    required this.onTabChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -259,26 +326,16 @@ class _FeedTabBar extends StatelessWidget {
         children: [
           _PillTab(
             label: 'For You',
-            active: true,
+            active: selectedTab == 0,
             ext: ext,
-            onTap: () {},
+            onTap: () => onTabChanged(0),
           ),
           const SizedBox(width: 8),
           _PillTab(
             label: 'Following',
-            active: false,
+            active: selectedTab == 1,
             ext: ext,
-            onTap: () {
-              final discoveryBloc = context.read<DiscoveryBloc>();
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => BlocProvider.value(
-                    value: discoveryBloc,
-                    child: const FollowingFeedPage(),
-                  ),
-                ),
-              );
-            },
+            onTap: () => onTabChanged(1),
           ),
         ],
       ),
@@ -306,22 +363,28 @@ class _PillTab extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
-          color: active ? ext.accentGold : Colors.transparent,
+          color: active
+              ? ext.accentGold.withValues(alpha: 0.92)
+              : Colors.transparent,
           border: Border.all(
-            color: active ? ext.accentGold : ext.searchHintColor.withValues(alpha: 0.4),
-            width: 1.2,
+            color: active
+                ? ext.accentGold
+                : ext.searchHintColor.withValues(alpha: 0.25),
+            width: 1.0,
           ),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: active ? Colors.black : ext.greetingColor,
-            fontSize: 13,
+            color: active
+                ? Colors.black
+                : ext.greetingColor.withValues(alpha: 0.6),
+            fontSize: 12,
             fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            letterSpacing: -0.2,
+            letterSpacing: 0.3,
           ),
         ),
       ),

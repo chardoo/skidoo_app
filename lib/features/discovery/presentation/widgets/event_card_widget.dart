@@ -35,8 +35,8 @@ class EventCardWidget extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: photo.url,
                       fit: BoxFit.cover,
-                      memCacheWidth: 600,
-                      filterQuality: FilterQuality.medium,
+                      memCacheWidth: 720,
+                      filterQuality: FilterQuality.high,
                       placeholder: (_, __) =>
                           _GradientPlaceholder(name: photo.eventName),
                       errorWidget: (_, __, ___) =>

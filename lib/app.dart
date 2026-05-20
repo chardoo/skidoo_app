@@ -1,4 +1,3 @@
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -17,7 +16,6 @@ import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 
 class MyApp extends StatelessWidget {
   final String token;
-  final CameraDescription? firstCamera;
 
   /// True when [FlutterJailbreakDetection] flagged the device as rooted /
   /// jailbroken.  The app will show a non-bypassable security warning before
@@ -27,7 +25,6 @@ class MyApp extends StatelessWidget {
   const MyApp({
     super.key,
     required this.token,
-    this.firstCamera,
     this.isDeviceCompromised = false,
   });
 
@@ -67,14 +64,7 @@ class MyApp extends StatelessWidget {
                   ? const _SecurityWarningPage()
                   : const DiscoveryPage(),
               LoginPage.routeName: (_) => const LoginPage(),
-              SignUpPage.routeName: (_) => SignUpPage(
-                    camera: firstCamera ??
-                        const CameraDescription(
-                          name: '',
-                          lensDirection: CameraLensDirection.front,
-                          sensorOrientation: 0,
-                        ),
-                  ),
+              SignUpPage.routeName: (_) => const SignUpPage(),
               HomePage.routeName: (_) => isDeviceCompromised
                   ? const _SecurityWarningPage()
                   : const HomePage(),

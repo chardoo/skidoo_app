@@ -110,7 +110,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                 child: CachedNetworkImage(
                   imageUrl: pic.url,
                   fit: BoxFit.contain,
-                  filterQuality: FilterQuality.medium,
+                  filterQuality: FilterQuality.high,
                   placeholder: (_, __) =>
                       const SizedBox.shrink(),
                   errorWidget: (_, __, ___) =>

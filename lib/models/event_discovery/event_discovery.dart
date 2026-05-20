@@ -10,6 +10,7 @@ class EventPicture {
   final int likeCount;
   final int commentCount;
   final bool isLikedByUser;
+  final bool commentsEnabled;
 
   const EventPicture({
     required this.id,
@@ -21,9 +22,23 @@ class EventPicture {
     this.likeCount = 0,
     this.commentCount = 0,
     this.isLikedByUser = false,
+    this.commentsEnabled = true,
   });
 
   bool get isVideo => mediaType == MediaType.video;
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'url': url,
+        'imageId': imageId,
+        'price': price,
+        'mediaType': isVideo ? 'video' : 'photo',
+        'owner': owner,
+        'like_count': likeCount,
+        'comment_count': commentCount,
+        'isLikedByUser': isLikedByUser,
+        'comments_enabled': commentsEnabled,
+      };
 
   factory EventPicture.fromMap(Map<String, dynamic> json) {
     final typeRaw = json['mediaType']?.toString().toLowerCase() ?? 'photo';
@@ -40,6 +55,7 @@ class EventPicture {
       likeCount: parseInt('likeCount', 'like_count'),
       commentCount: parseInt('commentCount', 'comment_count'),
       isLikedByUser: json['isLikedByUser'] == true || json['is_liked_by_user'] == true,
+      commentsEnabled: json['comments_enabled'] as bool? ?? true,
     );
   }
 }
@@ -75,6 +91,21 @@ class EventDiscovery {
     this.userReaction,
     this.isFollowed = false,
   });
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'eventName': eventName,
+        'user': {
+          'id': photographerId,
+          'name': photographerName,
+          'is_followed': isFollowed,
+        },
+        'pictures': pictures.map((p) => p.toMap()).toList(),
+        'likes': likes,
+        'dislikes': dislikes,
+        'comment_count': commentCount,
+        'comments_enabled': commentsEnabled,
+      };
 
   EventDiscovery copyWith({
     int? likes,
