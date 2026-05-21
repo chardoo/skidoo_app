@@ -482,26 +482,6 @@ class _FeedItemCardState extends State<FeedItemCard> {
                 SizedBox(width: 8.w),
                 FollowButton(photographerId: d.creatorId),
                 SizedBox(width: 6.w),
-                // ── DM / Message icon ────────────────────────────────────
-                if (d.creatorId.isNotEmpty)
-                  GestureDetector(
-                    onTap: _chatLoading ? null : _openChat,
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 4.w, vertical: 4.h),
-                      child: _chatLoading
-                          ? SizedBox(
-                              width: 18.w,
-                              height: 18.w,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 1.5, color: ext.accentGold),
-                            )
-                          : Icon(Icons.chat_bubble_outline_rounded,
-                              color: ext.accentGold, size: 22.sp),
-                    ),
-                  ),
-                SizedBox(width: 2.w),
                 GestureDetector(
                   onTap: () => _FeedItemMoreOptionsSheet.show(
                     context,
@@ -648,6 +628,9 @@ class _FeedItemCardState extends State<FeedItemCard> {
             onComment: _handleComment,
             onShare: _handleShare,
             onSave: _handleSave,
+            onMessage: d.creatorId.isNotEmpty
+                ? (_chatLoading ? null : _openChat)
+                : null,
           ),
 
           // ── 5. Caption ─────────────────────────────────────────────────────

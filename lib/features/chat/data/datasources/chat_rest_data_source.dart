@@ -487,6 +487,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   Future<Map<String, EventReaction>> getEventReactionsBatch(
       List<String> eventIds, String userId) async {
     return _wrap(() async {
+      debugPrint('[ChatRest] reactionsBatch → ${eventIds.length} ids userId=$userId');
       final res = await _client.dio.get(
         '/chat/events/reactions/batch',
         queryParameters: {
@@ -494,9 +495,33 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
           'userId': userId,
         },
       );
-      final raw = res.data as Map<String, dynamic>;
-      return raw.map((k, v) =>
-          MapEntry(k, EventReaction.fromJson(v as Map<String, dynamic>)));
+      debugPrint('[ChatRest] reactionsBatch ← ${res.statusCode} type=${res.data.runtimeType}');
+
+      // Server may return { "data": { id: reaction } } or the flat map directly.
+      Map<String, dynamic> raw;
+      final body = res.data;
+      if (body is Map<String, dynamic>) {
+        final inner = body['data'];
+        raw = (inner is Map<String, dynamic>) ? inner : body;
+      } else {
+        debugPrint('[ChatRest] reactionsBatch — unexpected body type, returning empty');
+        return {};
+      }
+
+      debugPrint('[ChatRest] reactionsBatch — ${raw.length} entries: ${raw.keys.take(3).join(', ')}…');
+
+      final result = <String, EventReaction>{};
+      for (final e in raw.entries) {
+        try {
+          if (e.value is Map<String, dynamic>) {
+            result[e.key] = EventReaction.fromJson(e.value as Map<String, dynamic>);
+          }
+        } catch (ex) {
+          debugPrint('[ChatRest] reactionsBatch parse error key=${e.key}: $ex');
+        }
+      }
+      debugPrint('[ChatRest] reactionsBatch — parsed ${result.length} reactions');
+      return result;
     });
   }
 

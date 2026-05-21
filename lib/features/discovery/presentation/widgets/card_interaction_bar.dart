@@ -19,6 +19,7 @@ class CardInteractionBar extends StatelessWidget {
     required this.onComment,
     required this.onShare,
     required this.onSave,
+    this.onMessage,
     this.commentsEnabled = true,
   });
 
@@ -35,6 +36,9 @@ class CardInteractionBar extends StatelessWidget {
   final VoidCallback onComment;
   final VoidCallback onShare;
   final VoidCallback onSave;
+
+  /// When non-null, a DM icon is shown between the spacer and the bookmark.
+  final VoidCallback? onMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -187,6 +191,22 @@ class CardInteractionBar extends StatelessWidget {
           ),
 
           const Spacer(),
+
+          // ── Message (DM) — optional, shown before bookmark ────────────────
+          if (onMessage != null) ...[
+            SizedBox(width: 6.w),
+            _AnimatedActionBtn(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onMessage!();
+              },
+              child: Icon(
+                Icons.chat_bubble_outline_rounded,
+                color: ext.accentGold,
+                size: 24.sp,
+              ),
+            ),
+          ],
 
           // ── Bookmark ──────────────────────────────────────────────────────
           _AnimatedActionBtn(

@@ -240,8 +240,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   void _enrichInBackground(List<EventDiscovery> events, String userId) {
     _enrichWithReactions(events, userId).then((enriched) {
       if (!isClosed) add(_DiscoveryReactionsPatchReceived(enriched));
-    }).catchError((_) {
-      // Reactions failed — events are already visible, so silently skip.
+    }).catchError((Object e) {
+      debugPrint('[DiscoveryBloc] _enrichInBackground error: $e');
     });
   }
 

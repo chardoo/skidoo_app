@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
-/// Shared bottom-sheet container: keyboard-avoiding, frosted-glass background,
-/// rounded top, gradient drag handle, and an optional title + subtitle header.
+/// Shared bottom-sheet container: frosted-glass background, rounded top,
+/// gradient drag handle, and an optional title + subtitle header row.
 class CommentSheetShell extends StatelessWidget {
   const CommentSheetShell({
     super.key,
@@ -25,115 +25,85 @@ class CommentSheetShell extends StatelessWidget {
     final screenH = MediaQuery.sizeOf(context).height;
     final keyboardH = MediaQuery.of(context).viewInsets.bottom;
 
+    // Frosted-glass tint — noticeably transparent so the blur shows through
     final bgColor = isDark
-        ? const Color(0xFF0D0F16).withValues(alpha: 0.88)
-        : Colors.white.withValues(alpha: 0.90);
+        ? const Color(0xFF0B0D14).withValues(alpha: 0.78)
+        : Colors.white.withValues(alpha: 0.82);
 
     return AnimatedPadding(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
       padding: EdgeInsets.only(bottom: keyboardH),
       child: ClipRRect(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+          filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
           child: Container(
-            height: screenH * 0.72,
+            height: screenH * 0.74,
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(24.r)),
+              // Thin top border that catches the light
               border: Border(
                 top: BorderSide(
-                  color: ext.accentGold.withValues(alpha: 0.35),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : Colors.white.withValues(alpha: 0.60),
                   width: 1.0,
-                ),
-                left: BorderSide(
-                  color: Colors.white.withValues(alpha: isDark ? 0.05 : 0.0),
-                  width: 0.5,
-                ),
-                right: BorderSide(
-                  color: Colors.white.withValues(alpha: isDark ? 0.05 : 0.0),
-                  width: 0.5,
                 ),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ── Drag handle ───────────────────────────────────────────────
+                // ── Drag handle ───────────────────────────────────────────
                 Center(
                   child: Container(
                     margin: EdgeInsets.only(
-                      top: 14.h,
-                      bottom: title != null ? 14.h : 18.h,
+                      top: 12.h,
+                      bottom: title != null ? 10.h : 16.h,
                     ),
-                    width: 40.w,
+                    width: 36.w,
                     height: 4.h,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          ext.accentGold.withValues(alpha: 0.7),
-                          ext.accentGold.withValues(alpha: 0.25),
-                        ],
-                      ),
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.20)
+                          : Colors.black.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(2.r),
                     ),
                   ),
                 ),
 
-                // ── Header ────────────────────────────────────────────────────
+                // ── Header ────────────────────────────────────────────────
                 if (title != null) ...[
                   Padding(
                     padding: EdgeInsets.fromLTRB(
-                      18.w,
+                      20.w,
                       0,
-                      18.w,
-                      subtitle != null ? 3.h : 14.h,
+                      20.w,
+                      subtitle != null ? 2.h : 10.h,
                     ),
-                    child: Row(
-                      children: [
-                        // Gold accent bar left of title
-                        Container(
-                          width: 3.w,
-                          height: 20.h,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                ext.accentGold,
-                                const Color(0xFFFF6B35),
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                            borderRadius: BorderRadius.circular(2.r),
-                          ),
-                        ),
-                        SizedBox(width: 10.w),
-                        Expanded(
-                          child: Text(
-                            title!,
-                            style: TextStyle(
-                              color: ext.greetingColor,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 17.sp,
-                              letterSpacing: -0.4,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      title!,
+                      style: TextStyle(
+                        color: ext.greetingColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16.sp,
+                        letterSpacing: -0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (subtitle != null)
                     Padding(
-                      padding: EdgeInsets.fromLTRB(31.w, 0, 18.w, 14.h),
+                      padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 10.h),
                       child: Text(
                         subtitle!,
                         style: TextStyle(
                           color: ext.searchHintColor,
                           fontSize: 12.sp,
-                          letterSpacing: 0.1,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -141,7 +111,9 @@ class CommentSheetShell extends StatelessWidget {
                     ),
                   Divider(
                     height: 1,
-                    color: ext.searchHintColor.withValues(alpha: 0.10),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.07)
+                        : Colors.black.withValues(alpha: 0.07),
                   ),
                 ],
 
@@ -166,24 +138,12 @@ class CommentEmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 56.w,
-            height: 56.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: ext.accentGold.withValues(alpha: 0.10),
-              border: Border.all(
-                color: ext.accentGold.withValues(alpha: 0.20),
-                width: 1,
-              ),
-            ),
-            child: Icon(
-              Icons.chat_bubble_outline_rounded,
-              size: 26.sp,
-              color: ext.accentGold.withValues(alpha: 0.70),
-            ),
+          Icon(
+            Icons.chat_bubble_outline_rounded,
+            size: 38.sp,
+            color: ext.searchHintColor.withValues(alpha: 0.5),
           ),
-          SizedBox(height: 14.h),
+          SizedBox(height: 12.h),
           Text(
             'No comments yet',
             style: TextStyle(
