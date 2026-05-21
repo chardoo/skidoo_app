@@ -227,29 +227,35 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
       throw Exception('Ad creation failed — no ID returned.');
     }
     if (_creatives.isNotEmpty) {
-      debugPrint('[CreateCampaignPage] _createAd — uploading ${_creatives.length} creative(s) to adId=$adId');
+      // Upload images at the campaign level so campaign.media is populated in
+      // the API response. The ad-creative endpoint replaces rather than appends,
+      // so sending N files there would only keep the last one.
+      debugPrint('[CreateCampaignPage] _createAd — uploading ${_creatives.length} image(s) to campaignId=$_campaignId');
       for (final file in _creatives) {
-        final ext = file.path.split('.').last.toLowerCase();
-        final isVideo = ['mp4', 'mov', 'avi', 'webm', 'm4v'].contains(ext);
-        await _repo.uploadAdCreative(adId, file.path, isVideo);
+        final count = await _repo.uploadCampaignMedia(_campaignId!, file.path);
+        debugPrint('[CreateCampaignPage] _createAd — media_count after upload: $count');
       }
     }
   }
 
   Future<void> _pickCreative() async {
     if (_creatives.length >= _maxCreatives) return;
-    final file = await _picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 85);
-    if (file == null) return;
+    final remaining = _maxCreatives - _creatives.length;
+    final picked = await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
+    if (picked.isEmpty || !mounted) return;
 
-    final size = await File(file.path).length();
-    if (size > _maxCreativeBytes) {
-      if (!mounted) return;
-      AppSnackBar.error(context, 'File is too large. Maximum size is 50 MB.');
-      return;
+    final valid = <XFile>[];
+    for (final file in picked) {
+      final size = await File(file.path).length();
+      if (size > _maxCreativeBytes) {
+        if (!mounted) return;
+        AppSnackBar.error(context, '${file.name} is too large. Maximum size is 50 MB.');
+        return;
+      }
+      valid.add(file);
     }
     if (!mounted) return;
-    setState(() => _creatives.add(file));
+    setState(() => _creatives.addAll(valid));
   }
 
   static const _maxCreativeBytes = 50 * 1024 * 1024; // 50 MB
@@ -925,7 +931,7 @@ class _Step3 extends StatelessWidget {
         ),
         SizedBox(height: 4.h),
         Text(
-          'Add up to 5 photos to make your ad stand out.',
+          'Select up to 5 photos at once to make your ad stand out.',
           style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
         ),
         SizedBox(height: 10.h),
@@ -1347,7 +1353,7 @@ class _CampaignMultiPicker extends StatelessWidget {
                         color: ext.accentGold, size: 26.sp),
                     SizedBox(height: 4.h),
                     Text(
-                      'Add Photo',
+                      'Add Photos',
                       style: TextStyle(
                         color: ext.searchHintColor,
                         fontSize: 10.sp,

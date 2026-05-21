@@ -264,6 +264,15 @@ class GetEventReactionUseCase {
       _repo.getEventReaction(eventId, userId);
 }
 
+class GetEventReactionsBatchUseCase {
+  final ChatRepository _repo;
+  GetEventReactionsBatchUseCase(this._repo);
+
+  Future<Map<String, EventReaction>> call(
+          List<String> eventIds, String userId) =>
+      _repo.getEventReactionsBatch(eventIds, userId);
+}
+
 // ── Privacy features ──────────────────────────────────────────────────────────
 
 class GetFeaturesUseCase {

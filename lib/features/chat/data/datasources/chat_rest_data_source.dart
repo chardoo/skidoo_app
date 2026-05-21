@@ -149,6 +149,11 @@ abstract class ChatRestDataSource {
   /// Returns the user's current reaction and aggregate counts.
   Future<EventReaction> getEventReaction(String eventId, String userId);
 
+  /// GET /chat/events/reactions/batch?eventIds=id1,id2,...&userId=xxx
+  /// Returns reactions for multiple events in one call.
+  Future<Map<String, EventReaction>> getEventReactionsBatch(
+      List<String> eventIds, String userId);
+
   /// GET /chat/pictures/{pictureId}/like — returns current like state.
   Future<PictureReaction> getPictureLike(String pictureId);
 
@@ -475,6 +480,23 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         queryParameters: {'userId': userId},
       );
       return EventReaction.fromJson(res.data as Map<String, dynamic>);
+    });
+  }
+
+  @override
+  Future<Map<String, EventReaction>> getEventReactionsBatch(
+      List<String> eventIds, String userId) async {
+    return _wrap(() async {
+      final res = await _client.dio.get(
+        '/chat/events/reactions/batch',
+        queryParameters: {
+          'eventIds': eventIds.join(','),
+          'userId': userId,
+        },
+      );
+      final raw = res.data as Map<String, dynamic>;
+      return raw.map((k, v) =>
+          MapEntry(k, EventReaction.fromJson(v as Map<String, dynamic>)));
     });
   }
 

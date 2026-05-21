@@ -187,7 +187,7 @@ Future<void> setupServiceLocator() async {
 
   sl.registerFactory<DiscoveryBloc>(() => DiscoveryBloc(
         getRandomImagesUseCase: sl<GetRandomImagesUseCase>(),
-        getEventReaction: sl<GetEventReactionUseCase>(),
+        getReactionsBatch: sl<GetEventReactionsBatchUseCase>(),
         getEventRoom: sl<GetEventRoomUseCase>(),
         feedCache: sl<FeedCacheService>(),
       ));
@@ -357,6 +357,8 @@ Future<void> setupServiceLocator() async {
       UploadChatImageUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetEventReactionUseCase>(
       GetEventReactionUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetEventReactionsBatchUseCase>(
+      GetEventReactionsBatchUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetFeaturesUseCase>(
       GetFeaturesUseCase(sl<ChatRepository>()));
   sl.registerSingleton<SetAnonymousModeUseCase>(

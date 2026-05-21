@@ -111,6 +111,10 @@ abstract class ChatRepository {
   /// GET /chat/events/{eventId}/reaction — user's reaction + aggregate counts.
   Future<EventReaction> getEventReaction(String eventId, String userId);
 
+  /// GET /chat/events/reactions/batch — reactions for many events in one call.
+  Future<Map<String, EventReaction>> getEventReactionsBatch(
+      List<String> eventIds, String userId);
+
   /// GET /chat/pictures/{pictureId}/like — current like state.
   Future<PictureReaction> getPictureLike(String pictureId);
 

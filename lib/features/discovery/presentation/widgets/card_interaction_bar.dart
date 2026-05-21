@@ -19,6 +19,7 @@ class CardInteractionBar extends StatelessWidget {
     required this.onComment,
     required this.onShare,
     required this.onSave,
+    this.onMessage,
     this.commentsEnabled = true,
   });
 
@@ -35,6 +36,9 @@ class CardInteractionBar extends StatelessWidget {
   final VoidCallback onComment;
   final VoidCallback onShare;
   final VoidCallback onSave;
+
+  /// When non-null, replaces the bookmark with a message/DM icon.
+  final VoidCallback? onMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -188,29 +192,42 @@ class CardInteractionBar extends StatelessWidget {
 
           const Spacer(),
 
-          // ── Bookmark ─────────────────────────────────────────────────────
-          _AnimatedActionBtn(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              onSave();
-            },
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              switchInCurve: Curves.elasticOut,
-              transitionBuilder: (child, anim) => ScaleTransition(
-                scale: anim,
-                child: child,
-              ),
+          // ── Message (DM) or Bookmark ──────────────────────────────────────
+          if (onMessage != null)
+            _AnimatedActionBtn(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onMessage!();
+              },
               child: Icon(
-                saved
-                    ? Icons.bookmark_rounded
-                    : Icons.bookmark_border_rounded,
-                key: ValueKey(saved),
-                color: saved ? ext.accentGold : ext.greetingColor,
-                size: 26.sp,
+                Icons.chat_bubble_outline_rounded,
+                color: ext.accentGold,
+                size: 25.sp,
+              ),
+            )
+          else
+            _AnimatedActionBtn(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onSave();
+              },
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                switchInCurve: Curves.elasticOut,
+                transitionBuilder: (child, anim) => ScaleTransition(
+                  scale: anim,
+                  child: child,
+                ),
+                child: Icon(
+                  saved
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                  key: ValueKey(saved),
+                  color: saved ? ext.accentGold : ext.greetingColor,
+                  size: 26.sp,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

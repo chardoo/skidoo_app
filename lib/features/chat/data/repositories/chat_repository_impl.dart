@@ -260,6 +260,11 @@ class ChatRepositoryImpl implements ChatRepository {
       _rest.getEventReaction(eventId, userId);
 
   @override
+  Future<Map<String, EventReaction>> getEventReactionsBatch(
+          List<String> eventIds, String userId) =>
+      _rest.getEventReactionsBatch(eventIds, userId);
+
+  @override
   Future<PictureReaction> getPictureLike(String pictureId) =>
       _rest.getPictureLike(pictureId);
 

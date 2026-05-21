@@ -28,7 +28,7 @@ const _disconnectDelay = Duration(seconds: 30);
 
 class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   final GetRandomImagesUseCase _getRandomImagesUseCase;
-  final GetEventReactionUseCase _getEventReaction;
+  final GetEventReactionsBatchUseCase _getReactionsBatch;
   final GetEventRoomUseCase _getEventRoom;
   final AuthService _authService;
   final ClientSavedDataSource _savedDs;
@@ -52,11 +52,11 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
   DiscoveryBloc({
     required GetRandomImagesUseCase getRandomImagesUseCase,
-    required GetEventReactionUseCase getEventReaction,
+    required GetEventReactionsBatchUseCase getReactionsBatch,
     required GetEventRoomUseCase getEventRoom,
     required FeedCacheService feedCache,
   })  : _getRandomImagesUseCase = getRandomImagesUseCase,
-        _getEventReaction = getEventReaction,
+        _getReactionsBatch = getReactionsBatch,
         _getEventRoom = getEventRoom,
         _authService = sl<AuthService>(),
         _savedDs = sl<ClientSavedDataSource>(),
@@ -114,19 +114,17 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     List<EventDiscovery> events,
     String userId,
   ) async {
-    final futures = events.map(
-      (e) => _getEventReaction(e.id, userId).catchError((_) => EventReaction.empty()),
-    );
-    final reactions = await Future.wait(futures);
-    return List.generate(events.length, (i) {
-      final r = reactions[i];
-      return events[i].copyWith(
+    final ids = events.map((e) => e.id).toList();
+    final reactions = await _getReactionsBatch(ids, userId);
+    return events.map((e) {
+      final r = reactions[e.id] ?? EventReaction.empty();
+      return e.copyWith(
         likes: r.likes,
         dislikes: r.dislikes,
         userReaction: r.userReaction,
         clearReaction: r.userReaction == null,
       );
-    });
+    }).toList();
   }
 
   // ── Load ──────────────────────────────────────────────────────────────────

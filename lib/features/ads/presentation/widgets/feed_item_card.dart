@@ -7,13 +7,20 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
+import 'package:skidoo_app/core/config/chat_config.dart';
+import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/models/ad.dart';
 import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
 import 'package:skidoo_app/features/ads/models/ad_media.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/feed_comment_sheet.dart';
+import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/report_sheet.dart';
@@ -31,6 +38,7 @@ class FeedItemData {
     required this.title,
     required this.creatorName,
     this.creatorId = '',
+    this.creatorRole = '',
     this.creatorPhotoUrl,
     this.mediaUrl,
     this.mediaIsVideo = false,
@@ -40,6 +48,7 @@ class FeedItemData {
     this.commentsEnabled = true,
     this.commentCount = 0,
     this.ctaLabel,
+    this.ctaUrl,
     this.onCtaTap,
     this.onInit,
   });
@@ -57,6 +66,9 @@ class FeedItemData {
 
   /// advertiser_id (ad) · requester_id — used by the Follow button.
   final String creatorId;
+
+  /// "photographer" | "client" — used to open a direct chat room.
+  final String creatorRole;
   final String? creatorPhotoUrl;
 
   final String? mediaUrl;
@@ -77,6 +89,12 @@ class FeedItemData {
   final int commentCount;
 
   final String? ctaLabel;
+
+  /// The URL to open in the external browser when the CTA is tapped.
+  /// Null for request cards, which use [onCtaTap] for messaging instead.
+  final String? ctaUrl;
+
+  /// For ads: click-tracking callback. For requests: opens the chat.
   final VoidCallback? onCtaTap;
 
   /// Called once after first render (ad impression tracking)
@@ -101,6 +119,7 @@ class FeedItemData {
       creatorName:
           ad.advertiserName.isNotEmpty ? ad.advertiserName : 'Advertiser',
       creatorId: ad.advertiserId,
+      creatorRole: ad.advertiserType ?? ChatConfig.rolePhotographer,
       creatorPhotoUrl: ad.advertiserPhoto,
       mediaUrl: ad.mediaUrl,
       mediaIsVideo: ad.isVideo,
@@ -108,8 +127,9 @@ class FeedItemData {
       body: ad.body.isNotEmpty ? ad.body : null,
       commentsEnabled: ad.commentsEnabled,
       commentCount: ad.commentCount,
-      ctaLabel: ad.ctaText.isEmpty ? 'Learn More' : ad.ctaText,
-      onCtaTap: onCtaTap,
+      ctaLabel: ad.ctaUrl.isNotEmpty ? (ad.ctaText.isEmpty ? 'Learn More' : ad.ctaText) : null,
+      ctaUrl: ad.ctaUrl.isNotEmpty ? ad.ctaUrl : null,
+      onCtaTap: ad.ctaUrl.isNotEmpty ? onCtaTap : null,
       onInit: onInit,
     );
   }
@@ -136,7 +156,10 @@ class FeedItemData {
       final collected = <AdMedia>[];
       for (final adSet in campaign.adSets) {
         for (final ad in adSet.ads) {
-          if (ad.mediaUrl != null && ad.mediaUrl!.isNotEmpty) {
+          if (ad.media.isNotEmpty) {
+            // Use the full media list from the ad (backend stores multiple images here)
+            collected.addAll(ad.media);
+          } else if (ad.mediaUrl != null && ad.mediaUrl!.isNotEmpty) {
             collected.add(AdMedia(
               id: ad.id,
               url: ad.mediaUrl!,
@@ -180,6 +203,9 @@ class FeedItemData {
           ? campaign.advertiserName!
           : 'Advertiser',
       creatorId: campaign.advertiserId,
+      creatorRole: campaign.advertiserType.isNotEmpty
+          ? campaign.advertiserType
+          : ChatConfig.rolePhotographer,
       creatorPhotoUrl: campaign.advertiserPhoto,
       mediaUrl: firstMedia?.url,
       mediaIsVideo: firstMedia?.isVideo ?? false,
@@ -187,8 +213,9 @@ class FeedItemData {
       body: body,
       commentsEnabled: campaign.commentsEnabled,
       commentCount: campaign.commentCount,
-      ctaLabel: ctaLabel,
-      onCtaTap: ctaUrl != null && ctaUrl.isNotEmpty ? () {} : null,
+      ctaLabel: (ctaUrl != null && ctaUrl.isNotEmpty) ? ctaLabel : null,
+      ctaUrl: (ctaUrl != null && ctaUrl.isNotEmpty) ? ctaUrl : null,
+      onCtaTap: null,
     );
   }
 
@@ -216,6 +243,9 @@ class FeedItemData {
       creatorName:
           req.requesterName.isNotEmpty ? req.requesterName : 'Anonymous',
       creatorId: req.requesterId,
+      creatorRole: req.requesterType.isNotEmpty
+          ? req.requesterType
+          : ChatConfig.roleClient,
       creatorPhotoUrl: req.requesterPhoto,
       mediaUrl: req.assetUrl,
       mediaIsVideo: req.assetType == 'video',
@@ -225,6 +255,7 @@ class FeedItemData {
       commentsEnabled: req.commentsEnabled,
       commentCount: req.commentCount,
       ctaLabel: 'Message Requester',
+      ctaUrl: null,
       onCtaTap: onMessageTap,
     );
   }
@@ -252,10 +283,10 @@ class _FeedItemCardState extends State<FeedItemCard> {
 
   bool _liked = false;
   bool _disliked = false;
-  bool _saved = false;
   bool _bodyExpanded = false;
   bool _initFired = false;
   bool _muted = true;
+  bool _chatLoading = false;
 
   @override
   void initState() {
@@ -328,9 +359,49 @@ class _FeedItemCardState extends State<FeedItemCard> {
     });
   }
 
-  void _handleSave() {
-    HapticFeedback.selectionClick();
-    setState(() => _saved = !_saved);
+  Future<void> _handleCtaTap() async {
+    final d = widget.data;
+    // For requests: onCtaTap opens the chat — call it and stop.
+    if (d.type == FeedItemType.request) {
+      d.onCtaTap?.call();
+      return;
+    }
+    // For ads/campaigns: fire tracking (non-blocking) then open URL.
+    d.onCtaTap?.call();
+    final raw = d.ctaUrl;
+    if (raw == null || raw.isEmpty) return;
+    final uri = Uri.tryParse(raw);
+    if (uri == null || !uri.hasScheme) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _openChat() async {
+    final d = widget.data;
+    if (d.creatorId.isEmpty || _chatLoading) return;
+    HapticFeedback.lightImpact();
+    setState(() => _chatLoading = true);
+    try {
+      final room = await sl<GetOrCreateDirectRoomUseCase>().call(
+        recipientId: d.creatorId,
+        recipientRole: d.creatorRole.isNotEmpty
+            ? d.creatorRole
+            : ChatConfig.rolePhotographer,
+        localDisplayName: d.creatorName,
+      );
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final isBlocked = e is ServerException && e.message.contains('400');
+      AppSnackBar.error(
+        context,
+        isBlocked ? 'This user is not accepting messages.' : 'Could not open chat. Try again.',
+      );
+    } finally {
+      if (mounted) setState(() => _chatLoading = false);
+    }
   }
 
   void _handleComment() {
@@ -525,10 +596,13 @@ class _FeedItemCardState extends State<FeedItemCard> {
           ),
 
           // ── 3. CTA strip — between image and reactions ────────────────────
-          if (d.ctaLabel != null && d.onCtaTap != null)
+          // Show when: ad/campaign has a URL, or request has a message handler.
+          if (d.ctaLabel != null &&
+              (d.ctaUrl?.isNotEmpty == true ||
+                  (d.type == FeedItemType.request && d.onCtaTap != null)))
             _CtaStrip(
               label: d.ctaLabel!,
-              onTap: d.onCtaTap!,
+              onTap: _handleCtaTap,
               ext: ext,
               type: d.type,
             ),
@@ -537,7 +611,7 @@ class _FeedItemCardState extends State<FeedItemCard> {
           CardInteractionBar(
             liked: _liked,
             disliked: _disliked,
-            saved: _saved,
+            saved: false,
             likeCount: 0,
             dislikeCount: 0,
             commentCount: d.commentCount,
@@ -547,7 +621,8 @@ class _FeedItemCardState extends State<FeedItemCard> {
             onDislike: _handleDislike,
             onComment: _handleComment,
             onShare: _handleShare,
-            onSave: _handleSave,
+            onSave: () {},
+            onMessage: _chatLoading ? null : _openChat,
           ),
 
           // ── 5. Caption ─────────────────────────────────────────────────────
@@ -832,8 +907,8 @@ class _CtaStrip extends StatelessWidget {
               ),
             ),
             Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 13.sp,
+              isAd ? Icons.open_in_new_rounded : Icons.arrow_forward_ios_rounded,
+              size: isAd ? 16.sp : 13.sp,
               color: accentColor.withValues(alpha: 0.7),
             ),
           ],
