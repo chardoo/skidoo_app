@@ -283,6 +283,7 @@ class _FeedItemCardState extends State<FeedItemCard> {
 
   bool _liked = false;
   bool _disliked = false;
+  bool _saved = false;
   bool _bodyExpanded = false;
   bool _initFired = false;
   bool _muted = true;
@@ -357,6 +358,11 @@ class _FeedItemCardState extends State<FeedItemCard> {
       _disliked = !_disliked;
       if (_disliked) _liked = false;
     });
+  }
+
+  void _handleSave() {
+    HapticFeedback.selectionClick();
+    setState(() => _saved = !_saved);
   }
 
   Future<void> _handleCtaTap() async {
@@ -476,6 +482,26 @@ class _FeedItemCardState extends State<FeedItemCard> {
                 SizedBox(width: 8.w),
                 FollowButton(photographerId: d.creatorId),
                 SizedBox(width: 6.w),
+                // ── DM / Message icon ────────────────────────────────────
+                if (d.creatorId.isNotEmpty)
+                  GestureDetector(
+                    onTap: _chatLoading ? null : _openChat,
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 4.w, vertical: 4.h),
+                      child: _chatLoading
+                          ? SizedBox(
+                              width: 18.w,
+                              height: 18.w,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 1.5, color: ext.accentGold),
+                            )
+                          : Icon(Icons.chat_bubble_outline_rounded,
+                              color: ext.accentGold, size: 22.sp),
+                    ),
+                  ),
+                SizedBox(width: 2.w),
                 GestureDetector(
                   onTap: () => _FeedItemMoreOptionsSheet.show(
                     context,
@@ -611,7 +637,7 @@ class _FeedItemCardState extends State<FeedItemCard> {
           CardInteractionBar(
             liked: _liked,
             disliked: _disliked,
-            saved: false,
+            saved: _saved,
             likeCount: 0,
             dislikeCount: 0,
             commentCount: d.commentCount,
@@ -621,8 +647,7 @@ class _FeedItemCardState extends State<FeedItemCard> {
             onDislike: _handleDislike,
             onComment: _handleComment,
             onShare: _handleShare,
-            onSave: () {},
-            onMessage: _chatLoading ? null : _openChat,
+            onSave: _handleSave,
           ),
 
           // ── 5. Caption ─────────────────────────────────────────────────────
@@ -817,36 +842,49 @@ class _TypeLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAd = type == FeedItemType.ad;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          isAd ? Icons.bolt_rounded : Icons.radio_button_checked_rounded,
-          size: 11.sp,
-          color: isAd
-              ? ext.accentGold.withValues(alpha: 0.85)
-              : const Color(0xFF60A5FA).withValues(alpha: 0.85),
-        ),
-        SizedBox(width: 3.w),
-        Text(
-          isAd ? 'Sponsored' : 'Open Request',
-          style: TextStyle(
-            color: isAd
-                ? ext.accentGold.withValues(alpha: 0.85)
-                : const Color(0xFF60A5FA).withValues(alpha: 0.85),
-            fontSize: 11.sp,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.1,
+    final bgColor =
+        isAd ? ext.accentGold : const Color(0xFF3B82F6);
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.5.h),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(4.r),
+        boxShadow: [
+          BoxShadow(
+            color: bgColor.withValues(alpha: 0.35),
+            blurRadius: 6,
+            spreadRadius: 0,
+            offset: const Offset(0, 1),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isAd ? Icons.bolt_rounded : Icons.radio_button_checked_rounded,
+            size: 10.sp,
+            color: Colors.white,
+          ),
+          SizedBox(width: 2.w),
+          Text(
+            isAd ? 'Sponsored' : 'Open Request',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 // ── CTA strip — sits between image and reactions, full-width tappable ─────────
 
-class _CtaStrip extends StatelessWidget {
+class _CtaStrip extends StatefulWidget {
   const _CtaStrip({
     required this.label,
     required this.onTap,
@@ -859,60 +897,109 @@ class _CtaStrip extends StatelessWidget {
   final FeedItemType type;
 
   @override
-  Widget build(BuildContext context) {
-    final isAd = type == FeedItemType.ad;
-    final accentColor =
-        isAd ? ext.accentGold : const Color(0xFF3B82F6);
+  State<_CtaStrip> createState() => _CtaStripState();
+}
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 13.h),
-        decoration: BoxDecoration(
-          color: accentColor.withValues(alpha: 0.07),
-          border: Border.symmetric(
-            horizontal: BorderSide(
-              color: accentColor.withValues(alpha: 0.18),
-              width: 0.8,
+class _CtaStripState extends State<_CtaStrip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 550),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    // Pulse twice to signal this is interactive, then come to rest.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _ctrl
+          .forward()
+          .then((_) => _ctrl.reverse())
+          .then((_) => mounted
+              ? _ctrl.forward().then((_) => _ctrl.reverse())
+              : null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isAd = widget.type == FeedItemType.ad;
+    final ext = widget.ext;
+    final accentColor = isAd ? ext.accentGold : const Color(0xFF3B82F6);
+
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        final p = _ctrl.value;
+        return GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 13.h),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.07 + p * 0.14),
+              border: Border.symmetric(
+                horizontal: BorderSide(
+                  color: accentColor.withValues(alpha: 0.18 + p * 0.5),
+                  width: 0.8 + p * 0.8,
+                ),
+              ),
+              boxShadow: p > 0
+                  ? [
+                      BoxShadow(
+                        color: accentColor.withValues(alpha: 0.18 * p),
+                        blurRadius: 10 * p,
+                        spreadRadius: 0,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: child,
+          ),
+        );
+      },
+      child: Row(
+        children: [
+          // Left accent bar
+          Container(
+            width: 3.w,
+            height: 16.h,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isAd
+                    ? [widget.ext.accentGold, const Color(0xFFFF6B35)]
+                    : [const Color(0xFF3B82F6), const Color(0xFF1D4ED8)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(2.r),
             ),
           ),
-        ),
-        child: Row(
-          children: [
-            // Left accent bar
-            Container(
-              width: 3.w,
-              height: 16.h,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isAd
-                      ? [ext.accentGold, const Color(0xFFFF6B35)]
-                      : [const Color(0xFF3B82F6), const Color(0xFF1D4ED8)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-                borderRadius: BorderRadius.circular(2.r),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              widget.label,
+              style: TextStyle(
+                color: isAd ? widget.ext.accentGold : const Color(0xFF3B82F6),
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.1,
               ),
             ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: accentColor,
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.1,
-                ),
-              ),
-            ),
-            Icon(
-              isAd ? Icons.open_in_new_rounded : Icons.arrow_forward_ios_rounded,
-              size: isAd ? 16.sp : 13.sp,
-              color: accentColor.withValues(alpha: 0.7),
-            ),
-          ],
-        ),
+          ),
+          Icon(
+            isAd ? Icons.open_in_new_rounded : Icons.arrow_forward_ios_rounded,
+            size: isAd ? 16.sp : 13.sp,
+            color: (isAd ? widget.ext.accentGold : const Color(0xFF3B82F6))
+                .withValues(alpha: 0.7),
+          ),
+        ],
       ),
     );
   }

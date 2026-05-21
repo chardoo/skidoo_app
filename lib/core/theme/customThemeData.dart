@@ -43,7 +43,7 @@ class Styles {
                 ? Colors.white
                 : const Color.fromARGB(255, 9, 10, 9)),
       ),
-      fontFamily: GoogleFonts.poppins().fontFamily,
+      fontFamily: GoogleFonts.spaceGrotesk().fontFamily,
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: isDarkTheme
             ? const Color.fromARGB(255, 10, 13, 17)
@@ -83,22 +83,22 @@ class Styles {
         headlineMedium: TextStyle(
             color: isDarkTheme ? Colors.white : Colors.black,
             fontSize: 16.sp),
-        headlineSmall: GoogleFonts.poppins(
+        headlineSmall: GoogleFonts.spaceGrotesk(
             fontWeight: FontWeight.w300,
             fontStyle: FontStyle.normal,
             fontSize: 14.sp,
             color: isDarkTheme ? Colors.white : const Color(0xff280C0B)),
-        displaySmall: GoogleFonts.poppins(
+        displaySmall: GoogleFonts.spaceGrotesk(
           fontFeatures: [const FontFeature.subscripts()],
           fontSize: 13.sp,
         ),
-        displayMedium: GoogleFonts.poppins(
+        displayMedium: GoogleFonts.spaceGrotesk(
             fontWeight: FontWeight.w500,
             fontStyle: FontStyle.normal,
             fontSize: 13.sp,
             color: isDarkTheme ? Colors.white : const Color(0xff280C0B)),
-        displayLarge: GoogleFonts.karla(
-            fontWeight: FontWeight.w500,
+        displayLarge: GoogleFonts.spaceGrotesk(
+            fontWeight: FontWeight.w600,
             fontStyle: FontStyle.normal,
             fontSize: 24.sp,
             color: isDarkTheme ? Colors.white : Colors.black),
@@ -123,7 +123,7 @@ class Styles {
           color: isDarkTheme ? Colors.white : Colors.black,
           fontSize: 18.sp,
           fontWeight: FontWeight.w600,
-          fontFamily: GoogleFonts.poppins().fontFamily,
+          fontFamily: GoogleFonts.spaceGrotesk().fontFamily,
         ),
         iconTheme: IconThemeData(
           color: isDarkTheme ? Colors.white : Colors.black,
