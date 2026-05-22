@@ -4,15 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
-// Prismatic gradient colours shared between border, glow, and divider.
-const _gradientColors = [
-  Color(0xFFF5A623), // gold
-  Color(0xFFCB5EEE), // purple
-  Color(0xFF4B79F7), // blue
-];
-
-/// Shared bottom-sheet container rendered as a floating card with horizontal
-/// margins, a prismatic gradient border, and a frosted-glass background.
+/// Shared bottom-sheet container: floating frosted-glass card with a thin
+/// neutral border and a single lift shadow.
 class CommentSheetShell extends StatelessWidget {
   const CommentSheetShell({
     super.key,
@@ -35,7 +28,6 @@ class CommentSheetShell extends StatelessWidget {
     return AnimatedPadding(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
-      // Horizontal margins make the sheet float; bottom covers keyboard + gap.
       padding: EdgeInsets.only(
         bottom: keyboardH + 10.h,
         left: 12.w,
@@ -43,65 +35,41 @@ class CommentSheetShell extends StatelessWidget {
       ),
       child: SizedBox(
         height: screenH * 0.72,
-        child: _GradientBorderCard(
+        child: _FrostedCard(
           isDark: isDark,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Drag handle ─────────────────────────────────────────────
+              // ── Drag handle ──────────────────────────────────────────────
               Center(
                 child: Container(
                   margin: EdgeInsets.only(
                     top: 14.h,
                     bottom: title != null ? 14.h : 20.h,
                   ),
-                  width: 44.w,
+                  width: 40.w,
                   height: 4.h,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.04),
-                        Colors.white.withValues(alpha: 0.30),
-                        Colors.white.withValues(alpha: 0.04),
-                      ],
-                    ),
+                    color: (isDark ? Colors.white : Colors.black)
+                        .withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(2.r),
                   ),
                 ),
               ),
 
-              // ── Header ──────────────────────────────────────────────────
+              // ── Header ───────────────────────────────────────────────────
               if (title != null) ...[
                 Padding(
                   padding: EdgeInsets.fromLTRB(18.w, 0, 18.w, 14.h),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Icon badge
-                      Container(
-                        padding: EdgeInsets.all(8.r),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFF5A623), Color(0xFFFF6B35)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(11.r),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFF5A623).withValues(alpha: 0.45),
-                              blurRadius: 10,
-                              spreadRadius: 0,
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          Icons.mode_comment_rounded,
-                          color: Colors.white,
-                          size: 14.sp,
-                        ),
+                      Icon(
+                        Icons.mode_comment_outlined,
+                        color: ext.searchHintColor,
+                        size: 18.sp,
                       ),
-                      SizedBox(width: 12.w),
+                      SizedBox(width: 10.w),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,7 +80,7 @@ class CommentSheetShell extends StatelessWidget {
                               style: TextStyle(
                                 color: isDark ? Colors.white : ext.greetingColor,
                                 fontWeight: FontWeight.w700,
-                                fontSize: 16.sp,
+                                fontSize: 15.sp,
                                 letterSpacing: -0.3,
                               ),
                               maxLines: 1,
@@ -137,19 +105,12 @@ class CommentSheetShell extends StatelessWidget {
                   ),
                 ),
 
-                // Gradient divider line
-                Container(
+                // Divider
+                Divider(
                   height: 1,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.transparent,
-                        Color(0x66F5A623),
-                        Color(0x44CB5EEE),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
+                  thickness: 0.5,
+                  color: (isDark ? Colors.white : Colors.black)
+                      .withValues(alpha: 0.10),
                 ),
               ],
 
@@ -162,71 +123,41 @@ class CommentSheetShell extends StatelessWidget {
   }
 }
 
-// ── Gradient border + frosted-glass card ──────────────────────────────────────
+// ── Frosted-glass card ────────────────────────────────────────────────────────
 
-class _GradientBorderCard extends StatelessWidget {
-  const _GradientBorderCard({required this.child, required this.isDark});
+class _FrostedCard extends StatelessWidget {
+  const _FrostedCard({required this.child, required this.isDark});
   final Widget child;
   final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     const radius = 26.0;
+    final borderColor = (isDark ? Colors.white : Colors.black)
+        .withValues(alpha: isDark ? 0.14 : 0.08);
 
     return Container(
-      // 1.5 px prismatic border rendered as gradient container padding
-      padding: const EdgeInsets.all(1.5),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: _gradientColors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
         borderRadius: BorderRadius.circular(radius.r),
+        border: Border.all(color: borderColor, width: 1.0),
         boxShadow: [
-          // Gold glow radiating outward from top-left
           BoxShadow(
-            color: const Color(0xFFF5A623).withValues(alpha: isDark ? 0.22 : 0.10),
+            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
             blurRadius: 28,
-            spreadRadius: 0,
-            offset: const Offset(-2, -2),
-          ),
-          // Purple glow at the bottom
-          BoxShadow(
-            color: const Color(0xFFCB5EEE).withValues(alpha: isDark ? 0.16 : 0.08),
-            blurRadius: 36,
-            spreadRadius: 4,
-            offset: const Offset(0, 6),
-          ),
-          // Deep shadow for lift
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.18),
-            blurRadius: 24,
-            spreadRadius: 0,
             offset: const Offset(0, 8),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular((radius - 1.5).r),
+        borderRadius: BorderRadius.circular(radius.r),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 44, sigmaY: 44),
+          filter: ImageFilter.blur(sigmaX: 52, sigmaY: 52),
           child: Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        const Color(0xFF161A2E).withValues(alpha: 0.93),
-                        const Color(0xFF0C0E1C).withValues(alpha: 0.97),
-                      ]
-                    : [
-                        Colors.white.withValues(alpha: 0.91),
-                        const Color(0xFFF4F5FF).withValues(alpha: 0.88),
-                      ],
-              ),
-              borderRadius: BorderRadius.circular((radius - 1.5).r),
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.52)
+                  : Colors.white.withValues(alpha: 0.64),
+              borderRadius: BorderRadius.circular(radius.r),
             ),
             child: child,
           ),
@@ -251,30 +182,25 @@ class CommentEmptyState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 64.w,
-            height: 64.w,
+            width: 56.w,
+            height: 56.w,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFFF5A623).withValues(alpha: isDark ? 0.18 : 0.12),
-                  const Color(0xFFCB5EEE).withValues(alpha: isDark ? 0.12 : 0.08),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20.r),
+              color: (isDark ? Colors.white : Colors.black)
+                  .withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(18.r),
               border: Border.all(
-                color: const Color(0xFFF5A623).withValues(alpha: 0.22),
+                color: (isDark ? Colors.white : Colors.black)
+                    .withValues(alpha: 0.10),
                 width: 1,
               ),
             ),
             child: Icon(
               Icons.chat_bubble_outline_rounded,
-              size: 28.sp,
-              color: const Color(0xFFF5A623).withValues(alpha: 0.70),
+              size: 26.sp,
+              color: ext.searchHintColor,
             ),
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 14.h),
           Text(
             'No comments yet',
             style: TextStyle(

@@ -404,8 +404,6 @@ class _EventsFeedState extends State<EventsFeed> {
             );
             widget.onLoadMore();
           }
-          WidgetsBinding.instance
-              .addPostFrameCallback((_) => _updateActiveCard());
         } else if (notification is ScrollEndNotification) {
           WidgetsBinding.instance
               .addPostFrameCallback((_) => _updateActiveCard());
@@ -417,9 +415,7 @@ class _EventsFeedState extends State<EventsFeed> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
           child: ListView.builder(
-            physics: const BouncingScrollPhysics(
-              decelerationRate: ScrollDecelerationRate.fast,
-            ),
+            physics: const BouncingScrollPhysics(),
             cacheExtent: 1500,
             itemCount: virtualItems.length,
             itemBuilder: (context, index) {

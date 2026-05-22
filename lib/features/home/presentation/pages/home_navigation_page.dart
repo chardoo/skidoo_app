@@ -32,7 +32,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
   bool _headerVisible = true;
   double _headerDownAccum = 0;
-  static const _headerHideThreshold = 20.0;
+  static const _headerHideThreshold = 28.0;
 
   void _openSearch() {
     _headerDownAccum = 0;

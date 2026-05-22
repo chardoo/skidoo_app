@@ -163,16 +163,23 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     return (active, pending);
   }
 
-  /// Fetches the first page of messages for each room without marking them
-  /// as read, then refreshes unread counts so the navbar badge updates.
+  /// Fetches the first page of messages for the most-recently-active rooms so
+  /// the local DB has enough data to show accurate unread counts in the badge.
+  /// Rooms are fetched sequentially to avoid flooding the server — older rooms
+  /// get their messages lazily when the user opens them.
   Future<void> _syncMessagesInBackground(List<ChatRoom> rooms) async {
-    try {
-      await Future.wait(
-        rooms.map((room) =>
-            _getRoomMessages(room.id).catchError((_) => <ChatMessage>[])),
-      );
-      if (!isClosed) add(const ChatRoomsRefreshUnread());
-    } catch (_) {}
+    const maxRooms = 5;
+    final toSync = rooms.take(maxRooms).toList();
+    debugPrint('[ChatRoomsBloc] _syncMessagesInBackground — syncing ${toSync.length} of ${rooms.length} rooms');
+    for (final room in toSync) {
+      if (isClosed) return;
+      try {
+        await _getRoomMessages(room.id);
+      } catch (e) {
+        debugPrint('[ChatRoomsBloc] _syncMessagesInBackground error room=${room.id}: $e');
+      }
+    }
+    if (!isClosed) add(const ChatRoomsRefreshUnread());
   }
 
   Future<void> _onRefreshUnread(
