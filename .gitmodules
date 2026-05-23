@@ -1,0 +1,3 @@
+[submodule "picco-v2"]
+	path = picco-v2
+	url = https://github.com/Michael-Ach/picco-v2.git
