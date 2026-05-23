@@ -1,0 +1,107 @@
+# Fastfile — iOS (TestFlight) and Android (Play Store) deployment lanes.
+#
+# Run locally:
+#   iOS     →  bundle exec fastlane ios deploy
+#   Android →  bundle exec fastlane android deploy
+#
+# Promotion (Android only, after internal → alpha → beta → production):
+#   bundle exec fastlane android promote from:internal to:alpha
+
+# ── iOS ─────────────────────────────────────────────────────────────────────
+
+platform :ios do
+  desc "Deploy to TestFlight via App Store Connect API + Fastlane Match"
+  lane :deploy do
+    setup_ci if ENV["CI"]
+
+    # App Store Connect API key — avoids 2FA prompts in CI.
+    api_key = app_store_connect_api_key(
+      key_id:       ENV.fetch("APP_STORE_CONNECT_API_KEY_ID"),
+      issuer_id:    ENV.fetch("APP_STORE_CONNECT_API_ISSUER_ID"),
+      key_filepath: File.expand_path(
+        "~/.appstoreconnect/private_keys/AuthKey_#{ENV['APP_STORE_CONNECT_API_KEY_ID']}.p8"
+      ),
+      duration:     1200,
+      in_house:     false,
+    )
+
+    # Pull certificates and provisioning profiles from the match repo.
+    match(
+      type:                    "appstore",
+      api_key:                 api_key,
+      git_url:                 ENV.fetch("MATCH_GIT_URL"),
+      git_basic_authorization: ENV.fetch("MATCH_GIT_BASIC_AUTHORIZATION"),
+      readonly:                is_ci,
+      app_identifier:          ENV.fetch("IOS_BUNDLE_ID"),
+      team_id:                 ENV.fetch("APPLE_TEAM_ID"),
+    )
+
+    # Archive and export the IPA.
+    build_app(
+      workspace:        "ios/Runner.xcworkspace",
+      scheme:           "Runner",
+      export_method:    "app-store",
+      output_directory: "build/ios",
+      output_name:      "Runner.ipa",
+      xcargs:           "DEVELOPMENT_TEAM=#{ENV['APPLE_TEAM_ID']}",
+      export_options: {
+        method:                 "app-store",
+        teamID:                 ENV.fetch("APPLE_TEAM_ID"),
+        uploadBitcode:          false,
+        uploadSymbols:          true,
+        compileBitcode:         false,
+      },
+    )
+
+    # Upload to TestFlight.
+    upload_to_testflight(
+      api_key:                           api_key,
+      ipa:                               "build/ios/Runner.ipa",
+      skip_waiting_for_build_processing: true,
+      changelog:                         "Build #{ENV['GITHUB_RUN_NUMBER']} — automated CI release",
+    )
+  end
+
+  desc "Initialise or refresh code signing certificates (run once locally)"
+  lane :sync_certs do
+    api_key = app_store_connect_api_key(
+      key_id:       ENV.fetch("APP_STORE_CONNECT_API_KEY_ID"),
+      issuer_id:    ENV.fetch("APP_STORE_CONNECT_API_ISSUER_ID"),
+      key_filepath: File.expand_path(
+        "~/.appstoreconnect/private_keys/AuthKey_#{ENV['APP_STORE_CONNECT_API_KEY_ID']}.p8"
+      ),
+    )
+    match(
+      type:           "appstore",
+      api_key:        api_key,
+      git_url:        ENV.fetch("MATCH_GIT_URL"),
+      app_identifier: ENV.fetch("IOS_BUNDLE_ID"),
+      readonly:       false,   # write mode — creates certs if missing
+    )
+  end
+end
+
+# ── Android ─────────────────────────────────────────────────────────────────
+
+platform :android do
+  desc "Upload signed AAB to Play Store internal track"
+  lane :deploy do
+    upload_to_play_store(
+      track:         "internal",
+      aab:           "build/app/outputs/bundle/release/app-release.aab",
+      json_key_data: ENV.fetch("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"),
+      package_name:  ENV.fetch("ANDROID_PACKAGE_NAME"),
+    )
+  end
+
+  desc "Promote a build between tracks — e.g. from:internal to:alpha"
+  lane :promote do |options|
+    upload_to_play_store(
+      track:              options.fetch(:to,   "alpha"),
+      track_promote_from: options.fetch(:from, "internal"),
+      rollout:            options.fetch(:rollout, "1.0"),
+      json_key_data:      ENV.fetch("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"),
+      package_name:       ENV.fetch("ANDROID_PACKAGE_NAME"),
+    )
+  end
+end

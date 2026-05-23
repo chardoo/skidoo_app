@@ -1,0 +1,91 @@
+name: Deploy iOS
+
+# ── Secrets required in GitHub → Settings → Secrets ──────────────────────────
+#
+#   APP_STORE_CONNECT_API_KEY_ID         e.g. ABCD123456
+#   APP_STORE_CONNECT_API_ISSUER_ID      UUID from App Store Connect
+#   APP_STORE_CONNECT_API_KEY_BASE64     base64 -i AuthKey_XXXX.p8
+#   IOS_BUNDLE_ID                        e.g. com.piccotechnologies.picco
+#   APPLE_TEAM_ID                        10-char team ID from developer.apple.com
+#   MATCH_GIT_URL                        private repo storing encrypted certs
+#                                        e.g. https://github.com/org/certs.git
+#   MATCH_GIT_BASIC_AUTHORIZATION        base64 of "username:personal_access_token"
+#   MATCH_PASSWORD                       encryption password for the match repo
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/**']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  deploy-ios:
+    name: Build & Deploy to TestFlight
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: mobile
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Generate l10n
+        run: flutter gen-l10n
+
+      # ── iOS build (no codesign — Fastlane handles signing) ────────────
+
+      - name: Flutter build iOS
+        run: |
+          flutter build ios \
+            --release \
+            --no-codesign \
+            --build-number=${{ github.run_number }}
+
+      - name: Install CocoaPods dependencies
+        run: cd ios && pod install
+
+      # ── App Store Connect API key ─────────────────────────────────────
+
+      - name: Write App Store Connect API key
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}" \
+            | base64 --decode \
+            > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+
+      # ── Fastlane: sync certs, archive, upload ─────────────────────────
+
+      - name: Deploy via Fastlane
+        env:
+          APP_STORE_CONNECT_API_KEY_ID:     ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID:  ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          IOS_BUNDLE_ID:                    ${{ secrets.IOS_BUNDLE_ID }}
+          APPLE_TEAM_ID:                    ${{ secrets.APPLE_TEAM_ID }}
+          MATCH_GIT_URL:                    ${{ secrets.MATCH_GIT_URL }}
+          MATCH_GIT_BASIC_AUTHORIZATION:    ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          MATCH_PASSWORD:                   ${{ secrets.MATCH_PASSWORD }}
+        run: bundle exec fastlane ios deploy
+
+      # ── Cleanup ───────────────────────────────────────────────────────
+
+      - name: Remove API key
+        if: always()
+        run: |
+          rm -f ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8

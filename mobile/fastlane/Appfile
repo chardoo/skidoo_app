@@ -1,0 +1,5 @@
+app_identifier ENV["IOS_BUNDLE_ID"]      # iOS bundle ID
+apple_team_id   ENV["APPLE_TEAM_ID"]    # 10-char Apple team ID
+
+# Android package name is passed via ENV["ANDROID_PACKAGE_NAME"]
+# and read directly in the Fastfile lanes.

@@ -1,0 +1,92 @@
+name: Deploy Android
+
+# ── Secrets required in GitHub → Settings → Secrets ──────────────────────────
+#
+#   ANDROID_KEYSTORE_BASE64              base64 -i upload-keystore.jks
+#   ANDROID_KEYSTORE_PASSWORD            keystore password
+#   ANDROID_KEY_ALIAS                    key alias inside the keystore
+#   ANDROID_KEY_PASSWORD                 key password
+#   ANDROID_PACKAGE_NAME                 e.g. com.piccotechnologies.picco
+#                                        ⚠ com.example.* is blocked by Google —
+#                                          update applicationId in build.gradle.kts first
+#   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON     full JSON of the Play service account
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/**']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  deploy-android:
+    name: Build & Deploy to Play Store
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: mobile
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Generate l10n
+        run: flutter gen-l10n
+
+      # ── Android signing ───────────────────────────────────────────────
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" \
+            | base64 --decode > android/app/upload-keystore.jks
+
+      - name: Write key.properties
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=upload-keystore.jks
+          EOF
+
+      # ── Build ─────────────────────────────────────────────────────────
+
+      - name: Build App Bundle
+        run: |
+          flutter build appbundle \
+            --release \
+            --build-number=${{ github.run_number }}
+
+      # ── Deploy ────────────────────────────────────────────────────────
+
+      - name: Upload to Play Store (internal track)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ secrets.ANDROID_PACKAGE_NAME }}
+          releaseFiles: mobile/build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+
+      # ── Cleanup ───────────────────────────────────────────────────────
+
+      - name: Remove signing artifacts
+        if: always()
+        run: |
+          rm -f android/app/upload-keystore.jks
+          rm -f android/key.properties
