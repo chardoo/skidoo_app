@@ -25,50 +25,55 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
     final previousUserId = await _authService.getUserId();
     final user = await _repository.login(params.email, params.password);
 
-    // Different user on the same device — wipe all user-scoped local data
-    // so that chat history and E2EE keys from the previous account can never
-    // bleed into the new session.
-    if (previousUserId.isNotEmpty && previousUserId != user.id) {
-      await Future.wait([
-        _chatDb.clearAll().catchError((_) {}),
-        _e2ee.clearAllKeys(),
-      ]);
+    if (!kIsWeb) {
+      // Different user on the same device — wipe all user-scoped local data
+      // so that chat history and E2EE keys from the previous account can never
+      // bleed into the new session.
+      if (previousUserId.isNotEmpty && previousUserId != user.id) {
+        await Future.wait([
+          _chatDb.clearAll().catchError((_) {}),
+          _e2ee.clearAllKeys(),
+        ]);
+      }
     }
 
     await _repository.saveUserSession(user);
 
-    // Server says this user has no bundle yet (new install, key wipe, or
-    // account on a different device). Publish immediately so every DM is
-    // encrypted from the very first message — not just after opening a DM.
-    if (user.keyBundlePublished && await _e2ee.hasKeys()) {
-      // Bundle already exists on both server and device — nothing to publish.
-      _e2ee.markBundlePublished();
-    } else {
-      try {
-        final PublishableKeyBundle bundle;
-        if (!await _e2ee.hasKeys()) {
-          bundle = await _e2ee.generateKeys();
-          // generates + stores 100 OTPKs
-        } else {
-          bundle =
-              (await _e2ee.currentBundle())!; // 0 OTPKs (top-up separately)
-        }
-        await _keyDs.publishBundle(bundle);
-        if (bundle.oneTimePreKeys.isEmpty) {
-          final otpks = await _e2ee.generateOtpks(100);
-          await _keyDs.topUpPrekeys(otpks);
-        }
+    // E2EE key management is mobile-only — chat/messaging is not used on web.
+    if (!kIsWeb) {
+      // Server says this user has no bundle yet (new install, key wipe, or
+      // account on a different device). Publish immediately so every DM is
+      // encrypted from the very first message — not just after opening a DM.
+      if (user.keyBundlePublished && await _e2ee.hasKeys()) {
+        // Bundle already exists on both server and device — nothing to publish.
         _e2ee.markBundlePublished();
-        debugPrint(
-            '[E2EE] Published bundle on login (${bundle.oneTimePreKeys.length} OTPKs in bundle)');
-      } catch (e) {
-        debugPrint(
-            '[E2EE] Failed to publish bundle on login (will retry on DM open): $e');
+      } else {
+        try {
+          final PublishableKeyBundle bundle;
+          if (!await _e2ee.hasKeys()) {
+            bundle = await _e2ee.generateKeys();
+            // generates + stores 100 OTPKs
+          } else {
+            bundle =
+                (await _e2ee.currentBundle())!; // 0 OTPKs (top-up separately)
+          }
+          await _keyDs.publishBundle(bundle);
+          if (bundle.oneTimePreKeys.isEmpty) {
+            final otpks = await _e2ee.generateOtpks(100);
+            await _keyDs.topUpPrekeys(otpks);
+          }
+          _e2ee.markBundlePublished();
+          debugPrint(
+              '[E2EE] Published bundle on login (${bundle.oneTimePreKeys.length} OTPKs in bundle)');
+        } catch (e) {
+          debugPrint(
+              '[E2EE] Failed to publish bundle on login (will retry on DM open): $e');
+        }
       }
-    }
 
-    // Phase 2 + SPK rotation — fire-and-forget so login is never blocked.
-    unawaited(_maintainKeysAfterLogin());
+      // Phase 2 + SPK rotation — fire-and-forget so login is never blocked.
+      unawaited(_maintainKeysAfterLogin());
+    }
 
     return user;
   }
