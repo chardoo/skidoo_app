@@ -331,7 +331,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
 
   // ── Web layout — image left, reactions/comments panel right ─────────────────
 
-  // ── Shared right-panel builder (reactions OR inline comments) ───────────────
+  // ── Shared right-panel builder (reactions + optional inline comments) ────────
 
   Widget _buildWebRightPanel(
     BuildContext context,
@@ -339,66 +339,99 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     bool commentsEnabled, {
     required bool isExternalPanel,
   }) {
-    if (_webCommentsOpen) {
-      return EventCommentInlinePanel(
-        event: widget.event,
-        isExternalPanel: isExternalPanel,
-        onClose: () => setState(() => _webCommentsOpen = false),
+    // Shared reactions column — used standalone or as a narrow strip beside
+    // the inline comment panel.
+    Widget buildReactions(BuildContext ctx) => _WebReactionsColumn(
+          liked: _liked,
+          disliked: _disliked,
+          saved: _isSaved(ctx),
+          likeCount: _likeCount,
+          dislikeCount: _dislikeCount,
+          commentCount: widget.event.commentCount,
+          commentsEnabled: commentsEnabled,
+          ext: ext,
+          isExternalPanel: isExternalPanel,
+          onLike: widget.isAuthenticated
+              ? () {
+                  setState(() {
+                    if (!_liked && _disliked) {
+                      _disliked = false;
+                      _dislikeCount = (_dislikeCount - 1).clamp(0, 999999999);
+                    }
+                    _liked = !_liked;
+                    _likeCount += _liked ? 1 : -1;
+                  });
+                  context.read<DiscoveryBloc>().add(
+                        DiscoveryReactionToggled(widget.event.id, isLike: true));
+                }
+              : widget.onTap,
+          onDislike: widget.isAuthenticated
+              ? () {
+                  setState(() {
+                    if (!_disliked && _liked) {
+                      _liked = false;
+                      _likeCount = (_likeCount - 1).clamp(0, 999999999);
+                    }
+                    _disliked = !_disliked;
+                    _dislikeCount += _disliked ? 1 : -1;
+                  });
+                  context.read<DiscoveryBloc>().add(
+                        DiscoveryReactionToggled(widget.event.id, isLike: false));
+                }
+              : widget.onTap,
+          // Toggle: tapping the comment icon closes the panel when it's open.
+          onComment: widget.isAuthenticated && commentsEnabled
+              ? () => setState(() => _webCommentsOpen = !_webCommentsOpen)
+              : widget.isAuthenticated
+                  ? null
+                  : widget.onTap,
+          onShare: () => GetAppSheet.show(context, ext: ext),
+          onSave: widget.isAuthenticated
+              ? () => context
+                  .read<DiscoveryBloc>()
+                  .add(DiscoveryEventSaveToggled(widget.event.id))
+              : widget.onTap,
+        );
+
+    if (!_webCommentsOpen) {
+      return BlocBuilder<DiscoveryBloc, DiscoveryState>(
+        buildWhen: (prev, next) => prev.savedEventIds != next.savedEventIds,
+        builder: (ctx2, _) => buildReactions(ctx2),
       );
     }
-    return BlocBuilder<DiscoveryBloc, DiscoveryState>(
-      buildWhen: (prev, next) => prev.savedEventIds != next.savedEventIds,
-      builder: (ctx2, _) => _WebReactionsColumn(
-        liked: _liked,
-        disliked: _disliked,
-        saved: _isSaved(ctx2),
-        likeCount: _likeCount,
-        dislikeCount: _dislikeCount,
-        commentCount: widget.event.commentCount,
-        commentsEnabled: commentsEnabled,
-        ext: ext,
-        isExternalPanel: isExternalPanel,
-        onLike: widget.isAuthenticated
-            ? () {
-                setState(() {
-                  if (!_liked && _disliked) {
-                    _disliked = false;
-                    _dislikeCount = (_dislikeCount - 1).clamp(0, 999999999);
-                  }
-                  _liked = !_liked;
-                  _likeCount += _liked ? 1 : -1;
-                });
-                context.read<DiscoveryBloc>().add(
-                      DiscoveryReactionToggled(widget.event.id, isLike: true));
-              }
-            : widget.onTap,
-        onDislike: widget.isAuthenticated
-            ? () {
-                setState(() {
-                  if (!_disliked && _liked) {
-                    _liked = false;
-                    _likeCount = (_likeCount - 1).clamp(0, 999999999);
-                  }
-                  _disliked = !_disliked;
-                  _dislikeCount += _disliked ? 1 : -1;
-                });
-                context.read<DiscoveryBloc>().add(
-                      DiscoveryReactionToggled(widget.event.id, isLike: false));
-              }
-            : widget.onTap,
-        onComment: widget.isAuthenticated && commentsEnabled
-            ? () => setState(() => _webCommentsOpen = true)
-            : widget.isAuthenticated
-                ? null
-                : widget.onTap,
-        onShare: () => GetAppSheet.show(context, ext: ext),
-        onSave: widget.isAuthenticated
-            ? () => context
-                .read<DiscoveryBloc>()
-                .add(DiscoveryEventSaveToggled(widget.event.id))
-            : widget.onTap,
-      ),
+
+    final commentsPanel = EventCommentInlinePanel(
+      event: widget.event,
+      isExternalPanel: isExternalPanel,
+      onClose: () => setState(() => _webCommentsOpen = false),
     );
+
+    // Narrow (inside-card) layout: comments replace reactions.
+    if (!isExternalPanel) return commentsPanel;
+
+    // External (desktop) layout: reactions strip stays visible on the left,
+    // comment thread fills the remaining space to the right.
+    // LayoutBuilder guards against the rare case where the panel hasn't grown
+    // wide enough to fit both (≥ 240 px = 64 reactions + 176 comments).
+    return LayoutBuilder(builder: (ctx, cons) {
+      if (cons.maxWidth >= 240.0) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 64.0,
+              child: BlocBuilder<DiscoveryBloc, DiscoveryState>(
+                buildWhen: (prev, next) =>
+                    prev.savedEventIds != next.savedEventIds,
+                builder: (ctx2, _) => buildReactions(ctx2),
+              ),
+            ),
+            Expanded(child: commentsPanel),
+          ],
+        );
+      }
+      return commentsPanel;
+    });
   }
 
   Widget _buildWebCard(BuildContext context, AppThemeExtension ext,
@@ -411,10 +444,10 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 .commentsEnabled);
 
     return LayoutBuilder(builder: (ctx, cons) {
-      // External panel activates when the card has ≥ 200px of room beyond the
-      // 480px content column (viewport ≈ 920px+, any typical laptop browser).
-      // Below that threshold the panel stays inside the card (170px).
-      final isWide = cons.maxWidth >= _kWebColumnWidth + 200.0; // ≥ 680px
+      // External panel activates when the card has ≥ 60px of room beyond the
+      // 480px content column (viewport ≈ 780px+, any laptop at a normal window
+      // size). Below that threshold the panel stays inside the card (170px).
+      final isWide = cons.maxWidth >= _kWebColumnWidth + 60.0; // ≥ 540px
       const cardW = _kWebColumnWidth; // 480
 
       if (isWide) {

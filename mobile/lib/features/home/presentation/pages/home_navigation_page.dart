@@ -128,7 +128,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
-    if (_isSearchOpen) return false;
+    // On web the header is always visible (Column layout) — skip hide logic.
+    if (kIsWeb || _isSearchOpen) return false;
 
     if (notification is ScrollUpdateNotification) {
       final delta = notification.scrollDelta ?? 0;
@@ -160,6 +161,11 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     return false;
   }
 
+  /// On web the header is part of the Column layout — no padding needed.
+  /// On mobile it floats as an overlay, so the feed must clear it.
+  double get _feedTopPadding =>
+      kIsWeb ? 0 : (_headerVisible ? _headerHeight : 0);
+
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
@@ -168,70 +174,120 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     final userState = context.watch<UserProfileBloc>().state;
     final userName = userState.name.isNotEmpty ? userState.name : 'User';
 
+    // ── Web: permanent header + Column layout (no auto-hide) ─────────────────
+    if (kIsWeb) {
+      return FeedLaunchOverlay(
+        child: Scaffold(
+          backgroundColor: ext.homeBackground,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Search + avatar header — always visible on desktop ──────────
+              HomeHeaderWidget(
+                userName: userName,
+                userInitial: userName[0].toUpperCase(),
+                isSearchOpen: _isSearchOpen,
+                onSearchOpen: _openSearch,
+                onSearchClose: _closeSearch,
+                onSearchChanged: _onSearchChanged,
+                onQrScan: null,
+                onAvatarTap: () {
+                  final discoveryBloc = context.read<DiscoveryBloc>();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider.value(
+                        value: discoveryBloc,
+                        child: const AccountPage(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              // ── For You / Following tabs ────────────────────────────────────
+              if (!_isSearchOpen)
+                _FeedTabBar(
+                  ext: ext,
+                  selectedTab: _selectedTab,
+                  onTabChanged: (i) => setState(() => _selectedTab = i),
+                ),
+              // ── Feed content ────────────────────────────────────────────────
+              Expanded(
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: _onScrollNotification,
+                  child: _buildBody(context, ext, homeState, discoveryState),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ── Mobile: floating overlay header that slides in/out on scroll ──────────
     final topPadding = MediaQuery.of(context).padding.top;
     _measureHeaderHeight();
 
     return FeedLaunchOverlay(
       child: Scaffold(
-      backgroundColor: ext.homeBackground,
-      body: Stack(
-        children: [
-          // ── Body fills entire screen — header/tab bar float above it ──────
-          Positioned.fill(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: _onScrollNotification,
-              child: _buildBody(context, ext, homeState, discoveryState),
-            ),
-          ),
-
-          // ── Header + tab bar slide in/out from top as an overlay ──────────
-          // AnimatedSlide uses Transform.translate — no layout shift ever.
-          Positioned(
-            top: 0, left: 0, right: 0,
-            child: AnimatedSlide(
-              offset: _headerVisible ? Offset.zero : const Offset(0, -1),
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              child: Column(
-                key: _headerKey,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(top: topPadding),
-                    child: HomeHeaderWidget(
-                      userName: userName,
-                      userInitial: userName[0].toUpperCase(),
-                      isSearchOpen: _isSearchOpen,
-                      onSearchOpen: _openSearch,
-                      onSearchClose: _closeSearch,
-                      onSearchChanged: _onSearchChanged,
-                      onQrScan: kIsWeb ? null : _openQrScan,
-                      onAvatarTap: () {
-                        final discoveryBloc = context.read<DiscoveryBloc>();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider.value(
-                              value: discoveryBloc,
-                              child: const AccountPage(),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  if (!_isSearchOpen)
-                    _FeedTabBar(
-                      ext: ext,
-                      selectedTab: _selectedTab,
-                      onTabChanged: (i) => setState(() => _selectedTab = i),
-                    ),
-                ],
+        backgroundColor: ext.homeBackground,
+        body: Stack(
+          children: [
+            // Body fills entire screen — header/tab bar float above it.
+            Positioned.fill(
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _onScrollNotification,
+                child: _buildBody(context, ext, homeState, discoveryState),
               ),
             ),
-          ),
-        ],
+
+            // Header + tab bar slide in/out from top (Transform.translate —
+            // no layout shift).
+            Positioned(
+              top: 0, left: 0, right: 0,
+              child: AnimatedSlide(
+                offset: _headerVisible ? Offset.zero : const Offset(0, -1),
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: Column(
+                  key: _headerKey,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(top: topPadding),
+                      child: HomeHeaderWidget(
+                        userName: userName,
+                        userInitial: userName[0].toUpperCase(),
+                        isSearchOpen: _isSearchOpen,
+                        onSearchOpen: _openSearch,
+                        onSearchClose: _closeSearch,
+                        onSearchChanged: _onSearchChanged,
+                        onQrScan: _openQrScan,
+                        onAvatarTap: () {
+                          final discoveryBloc = context.read<DiscoveryBloc>();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => BlocProvider.value(
+                                value: discoveryBloc,
+                                child: const AccountPage(),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    if (!_isSearchOpen)
+                      _FeedTabBar(
+                        ext: ext,
+                        selectedTab: _selectedTab,
+                        onTabChanged: (i) => setState(() => _selectedTab = i),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -252,7 +308,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
           child: _buildForYouContent(context, ext, homeState, discoveryState),
         ),
         // ── Following ────────────────────────────────────────────────────────
-        FollowingFeed(topPadding: _headerVisible ? _headerHeight : 0),
+        FollowingFeed(topPadding: _feedTopPadding),
       ],
     );
   }
@@ -269,7 +325,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       children: [
         EventsFeed(
           discoveryState: discoveryState,
-          topPadding: _headerVisible ? _headerHeight : 0,
+          topPadding: _feedTopPadding,
           onCardTap: (event) => _openEventImages(context, event),
           onCommentTap: (event) => _openEventComments(context, event),
           onLoadMore: () =>

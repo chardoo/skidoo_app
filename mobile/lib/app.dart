@@ -244,8 +244,10 @@ class _AppMaterial extends StatelessWidget {
   ///
   /// The content column grows dynamically from 480 px → 760 px as the viewport
   /// expands beyond the sidebar + card width. The card's own LayoutBuilder
-  /// switches to the external panel layout once it has ≥ 200 px of spare room
-  /// (which happens at viewport ≈ 920 px — any typical laptop browser window).
+  /// switches to the external panel layout once it has ≥ 60 px of spare room
+  /// (viewport ≈ 780 px — any laptop at a normal, non-tiny window size).
+  /// When the panel is ≥ 240 px wide, the inline comment thread opens beside
+  /// the reactions column instead of replacing it.
   static Widget _webLayoutBuilder(BuildContext ctx, Widget? child) {
     final bg = Theme.of(ctx).scaffoldBackgroundColor;
     final viewportW = MediaQuery.of(ctx).size.width;

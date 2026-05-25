@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
@@ -91,102 +90,100 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
             //   SizedBox(width: 10.w),
             // ],
 
-            // ── Search field — hidden on web (lives in the sidebar there) ──
-            if (!kIsWeb) ...[
-              Expanded(
-                child: GestureDetector(
-                  onTap: widget.isSearchOpen ? null : widget.onSearchOpen,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOut,
-                    height: 46.h,
-                    decoration: BoxDecoration(
-                      color: ext.glassFill,
-                      borderRadius: BorderRadius.circular(23.r),
-                      border: Border.all(
+            // ── Search field ──────────────────────────────────────────────
+            Expanded(
+              child: GestureDetector(
+                onTap: widget.isSearchOpen ? null : widget.onSearchOpen,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  height: 46.h,
+                  decoration: BoxDecoration(
+                    color: ext.glassFill,
+                    borderRadius: BorderRadius.circular(23.r),
+                    border: Border.all(
+                      color: widget.isSearchOpen
+                          ? ext.accentGold.withValues(alpha: 0.6)
+                          : ext.glassBorder,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(width: 14.w),
+                      Icon(
+                        Icons.search_rounded,
                         color: widget.isSearchOpen
-                            ? ext.accentGold.withValues(alpha: 0.6)
-                            : ext.glassBorder,
-                        width: 1.5,
+                            ? ext.accentGold
+                            : ext.glassIcon,
+                        size: 20.sp,
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        SizedBox(width: 14.w),
-                        Icon(
-                          Icons.search_rounded,
-                          color: widget.isSearchOpen
-                              ? ext.accentGold
-                              : ext.glassIcon,
-                          size: 20.sp,
-                        ),
-                        SizedBox(width: 8.w),
-                        Expanded(
-                          child: widget.isSearchOpen
-                              ? TextField(
-                                  controller: _textCtrl,
-                                  focusNode: _focusNode,
-                                  style: TextStyle(
-                                    color: ext.greetingColor,
-                                    fontSize: 14.sp,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: l10n.homeSearchEvents,
-                                    hintStyle: TextStyle(
-                                      color: ext.searchHintColor,
-                                      fontSize: 14.sp,
-                                    ),
-                                    border: InputBorder.none,
-                                    focusedBorder: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                  onChanged: widget.onSearchChanged,
-                                )
-                              : _TypewriterHint(
-                                  text: l10n.homeSearchAiPlaceholder,
-                                  style: TextStyle(
-                                    color: ext.glassHint,
-                                    fontSize: 14.sp,
-                                  ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: widget.isSearchOpen
+                            ? TextField(
+                                controller: _textCtrl,
+                                focusNode: _focusNode,
+                                style: TextStyle(
+                                  color: ext.greetingColor,
+                                  fontSize: 14.sp,
                                 ),
-                        ),
-                        // Right side: close (search open) or QR scan button
-                        if (widget.isSearchOpen)
-                          GestureDetector(
-                            onTap: _handleClose,
-                            child: Padding(
-                              padding:
-                                  EdgeInsets.symmetric(horizontal: 12.w),
-                              child: Icon(
-                                Icons.close_rounded,
-                                color: ext.searchHintColor,
-                                size: 18.sp,
+                                decoration: InputDecoration(
+                                  hintText: l10n.homeSearchEvents,
+                                  hintStyle: TextStyle(
+                                    color: ext.searchHintColor,
+                                    fontSize: 14.sp,
+                                  ),
+                                  border: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                                onChanged: widget.onSearchChanged,
+                              )
+                            : _TypewriterHint(
+                                text: l10n.homeSearchAiPlaceholder,
+                                style: TextStyle(
+                                  color: ext.glassHint,
+                                  fontSize: 14.sp,
+                                ),
                               ),
+                      ),
+                      // Right side: close (search open) or QR scan button
+                      if (widget.isSearchOpen)
+                        GestureDetector(
+                          onTap: _handleClose,
+                          child: Padding(
+                            padding:
+                                EdgeInsets.symmetric(horizontal: 12.w),
+                            child: Icon(
+                              Icons.close_rounded,
+                              color: ext.searchHintColor,
+                              size: 18.sp,
                             ),
-                          )
-                        else if (widget.onQrScan != null)
-                          GestureDetector(
-                            onTap: widget.onQrScan,
-                            child: Padding(
-                              padding:
-                                  EdgeInsets.symmetric(horizontal: 12.w),
-                              child: Icon(
-                                Icons.qr_code_scanner_rounded,
-                                color: ext.glassIcon,
-                                size: 20.sp,
-                              ),
+                          ),
+                        )
+                      else if (widget.onQrScan != null)
+                        GestureDetector(
+                          onTap: widget.onQrScan,
+                          child: Padding(
+                            padding:
+                                EdgeInsets.symmetric(horizontal: 12.w),
+                            child: Icon(
+                              Icons.qr_code_scanner_rounded,
+                              color: ext.glassIcon,
+                              size: 20.sp,
                             ),
-                          )
-                        else
-                          SizedBox(width: 14.w),
-                      ],
-                    ),
+                          ),
+                        )
+                      else
+                        SizedBox(width: 14.w),
+                    ],
                   ),
                 ),
               ),
-              SizedBox(width: 12.w),
-            ],
+            ),
+            SizedBox(width: 12.w),
 
             // ── Profile avatar ────────────────────────────────────────────
             GestureDetector(
@@ -238,7 +235,6 @@ class _TypewriterHint extends StatefulWidget {
 
 class _TypewriterHintState extends State<_TypewriterHint> {
   int _charCount = 0;
-  bool _typing = true;
   bool _cursorVisible = true;
 
   Timer? _typeTimer;
@@ -276,7 +272,6 @@ class _TypewriterHintState extends State<_TypewriterHint> {
   }
 
   void _scheduleErase() {
-    _typing = false;
     _typeTimer = Timer.periodic(_eraseSpeed, (_) {
       if (!mounted) return;
       if (_charCount > 0) {
@@ -285,7 +280,6 @@ class _TypewriterHintState extends State<_TypewriterHint> {
         _typeTimer?.cancel();
         _typeTimer = Timer(_pauseEmpty, () {
           if (!mounted) return;
-          _typing = true;
           _scheduleType();
         });
       }
