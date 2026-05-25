@@ -973,7 +973,7 @@ class _VideoBackgroundState extends State<_VideoBackground>
   late final VideoPlayerController _ctrl;
   bool _initialized = false;
   bool _manualPause = false;
-  bool _muted = false;
+  bool _muted = kIsWeb; // start muted on web — mobile browsers block audio autoplay
   bool _screenActive = true;
   bool _tabActive = true;
 
@@ -987,7 +987,7 @@ class _VideoBackgroundState extends State<_VideoBackground>
       ..setLooping(true)
       ..initialize().then((_) {
         if (!mounted) return;
-        _ctrl.setVolume(1.0);
+        _ctrl.setVolume(_muted ? 0.0 : 1.0);
         setState(() => _initialized = true);
         _syncPlayback();
       });

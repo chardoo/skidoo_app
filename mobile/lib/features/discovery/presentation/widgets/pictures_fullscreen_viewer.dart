@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -166,7 +167,7 @@ class _FullscreenVideoState extends State<_FullscreenVideo>
     with WidgetsBindingObserver {
   late final VideoPlayerController _ctrl;
   bool _initialized = false;
-  bool _muted = false;
+  bool _muted = kIsWeb; // start muted on web — mobile browsers block audio autoplay
   bool _screenActive = true;
   bool _tabActive = true;
 

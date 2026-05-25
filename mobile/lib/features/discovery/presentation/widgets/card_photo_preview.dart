@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
@@ -154,8 +155,10 @@ class _SliderVideoItem extends StatefulWidget {
 
 class _SliderVideoItemState extends State<_SliderVideoItem>
     with WidgetsBindingObserver {
-  /// Shared mute state across all feed carousel videos — starts unmuted on feed.
-  static final _muted = ValueNotifier<bool>(false);
+  /// Shared mute state across all feed carousel videos.
+  /// On web we start muted — mobile browsers block audio for auto-playing video.
+  /// The user taps the mute button once to enable audio for the whole session.
+  static final _muted = ValueNotifier<bool>(kIsWeb);
 
   late final VideoPlayerController _ctrl;
   bool _initialized = false;
@@ -175,9 +178,19 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
       ..setLooping(true)
       ..initialize().then((_) {
         if (!mounted) return;
-        _ctrl.setVolume(_muted.value ? 0.0 : 1.0);
+        // On web, always start muted so play() succeeds on mobile browsers
+        // (iOS/Android block autoplay with audio). If the user had already
+        // unmuted a previous card, try to restore volume after play() starts —
+        // setting muted=false on an already-playing video doesn't require a
+        // user gesture on iOS, unlike calling play() on an unmuted video.
+        _ctrl.setVolume(kIsWeb ? 0.0 : (_muted.value ? 0.0 : 1.0));
         setState(() => _initialized = true);
         _syncPlayback();
+        if (kIsWeb && !_muted.value) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _ctrl.setVolume(1.0);
+          });
+        }
       });
     widget.activeIndex.addListener(_syncPlayback);
     widget.activeCardIndex?.addListener(_syncPlayback);
