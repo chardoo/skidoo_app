@@ -183,9 +183,9 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
     } catch (_) {}
 
     return Scaffold(
-      backgroundColor: ext.homeBackground,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: ext.homeBackground,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(

@@ -12,7 +12,9 @@ import 'package:skidoo_app/l10n/app_localizations.dart'; // for discoveryContent
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 
 class FollowingFeed extends StatefulWidget {
-  const FollowingFeed({super.key});
+  const FollowingFeed({super.key, this.topPadding = 0});
+
+  final double topPadding;
 
   @override
   State<FollowingFeed> createState() => _FollowingFeedState();
@@ -209,12 +211,16 @@ class _FollowingFeedState extends State<FollowingFeed> {
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
-            child: ListView.builder(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: widget.topPadding),
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              builder: (context, pad, _) => ListView.builder(
               physics: const BouncingScrollPhysics(
                 decelerationRate: ScrollDecelerationRate.fast,
               ),
               cacheExtent: 1500,
-              padding: EdgeInsets.zero,
+              padding: EdgeInsets.only(top: pad),
               itemCount: _events.length + (_loadingMore ? 1 : 0),
               itemBuilder: (_, i) {
                 if (i == _events.length) {
@@ -250,6 +256,7 @@ class _FollowingFeedState extends State<FollowingFeed> {
                   ),
                 );
               },
+              ),
             ),
           ),
         ),

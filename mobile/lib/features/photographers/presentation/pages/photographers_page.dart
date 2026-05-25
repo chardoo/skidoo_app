@@ -29,12 +29,12 @@ class _PhotographersPageState extends State<PhotographersPage> {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return Scaffold(
-      backgroundColor: ext.homeBackground,
+      backgroundColor: Colors.transparent,
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
           SliverAppBar(
             automaticallyImplyLeading: false,
-            backgroundColor: ext.homeBackground,
+            backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             floating: true,
             snap: true,
@@ -57,8 +57,9 @@ class _PhotographersPageState extends State<PhotographersPage> {
                   builder: (context, value, _) {
                     return Container(
                       decoration: BoxDecoration(
-                        color: ext.searchFieldFill,
+                        color: ext.glassFill,
                         borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: ext.glassBorder),
                       ),
                       child: TextField(
                         controller: _textCtrl,
@@ -67,9 +68,9 @@ class _PhotographersPageState extends State<PhotographersPage> {
                         decoration: InputDecoration(
                           hintText: 'Search creators...',
                           hintStyle: TextStyle(
-                              color: ext.searchHintColor, fontSize: 14.sp),
+                                    color: ext.glassHint, fontSize: 14.sp),
                           prefixIcon: Icon(Icons.search_rounded,
-                              color: ext.searchHintColor, size: 20.sp),
+                              color: ext.glassIcon, size: 20.sp),
                           suffixIcon: value.text.isNotEmpty
                               ? GestureDetector(
                                   onTap: () {

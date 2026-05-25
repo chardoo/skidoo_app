@@ -109,8 +109,9 @@ class AdsRepository {
     required String impressionToken,
     String? contextEventId,
   }) async {
-    if (adId.isEmpty || campaignId.isEmpty) {
-      debugPrint('$_tag trackImpression skipped — empty adId or campaignId');
+    if (adId.isEmpty || adsetId.isEmpty || campaignId.isEmpty || impressionToken.isEmpty) {
+      debugPrint('$_tag trackImpression skipped — missing required field '
+          '(adId=$adId adsetId=$adsetId campaignId=$campaignId token=${impressionToken.isEmpty ? "EMPTY" : "ok"})');
       return null;
     }
     debugPrint('$_tag trackImpression → adId=$adId placement=$placement');
@@ -161,6 +162,10 @@ class AdsRepository {
     required String campaignId,
     String? impressionId,
   }) async {
+    if (adId.isEmpty || campaignId.isEmpty) {
+      debugPrint('$_tag trackConversion skipped — empty adId or campaignId');
+      return;
+    }
     debugPrint('$_tag trackConversion → adId=$adId');
     try {
       final resp = await _dio.post('/ads/track/conversion', data: {

@@ -40,7 +40,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      backgroundColor: ext.homeBackground,
+      backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(
         backgroundColor: ext.accentGold,
         foregroundColor: Colors.white,
@@ -52,7 +52,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
         headerSliverBuilder: (context, _) => [
           SliverAppBar(
             automaticallyImplyLeading: false,
-            backgroundColor: ext.homeBackground,
+            backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             floating: true,
             snap: true,
@@ -155,8 +155,9 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
                               EdgeInsets.fromLTRB(14.w, 8.h, 14.w, 4.h),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: ext.searchFieldFill,
+                              color: ext.glassFill,
                               borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: ext.glassBorder),
                             ),
                             child: TextField(
                               controller: _searchCtrl,
@@ -165,10 +166,10 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
                               decoration: InputDecoration(
                                 hintText: 'Search messages...',
                                 hintStyle: TextStyle(
-                                    color: ext.searchHintColor,
+                                    color: ext.glassHint,
                                     fontSize: 14.sp),
                                 prefixIcon: Icon(Icons.search_rounded,
-                                    color: ext.searchHintColor, size: 20.sp),
+                                    color: ext.glassIcon, size: 20.sp),
                                 suffixIcon: _searchQuery.isNotEmpty
                                     ? GestureDetector(
                                         onTap: () {

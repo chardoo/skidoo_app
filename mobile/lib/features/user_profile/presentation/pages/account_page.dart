@@ -7,6 +7,8 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:skidoo_app/features/admin/data/models/app_config.dart';
+import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/admin/presentation/pages/admin_settings_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/my_campaigns_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart';
@@ -66,11 +68,11 @@ class _AccountView extends StatelessWidget {
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: ext.homeBackground,
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             elevation: 0,
             centerTitle: true,
-            backgroundColor: ext.homeBackground,
+            backgroundColor: Colors.transparent,
             title: Text(
               AppLocalizations.of(context)!.accountTitle,
               style: TextStyle(
@@ -887,84 +889,108 @@ class _AdsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
-            child: Text(
-              'ADS & PROMOTIONS',
-              style: TextStyle(
-                color: ext.searchHintColor,
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.8,
+    return ValueListenableBuilder<AppConfig>(
+      valueListenable: AppConfigRepository.notifier,
+      builder: (context, cfg, _) {
+        return FutureBuilder<bool>(
+          future: sl<AuthService>().isSuperAdmin(),
+          builder: (context, adminSnap) {
+            final isAdmin = adminSnap.data == true;
+            final showRequests = cfg.requestsEnabled;
+            final showAds = cfg.adsEnabled;
+
+            // Collapse the entire card when nothing is enabled.
+            if (!showRequests && !showAds && !isAdmin) {
+              return const SizedBox.shrink();
+            }
+
+            final tiles = <Widget>[];
+
+            if (showRequests) {
+              tiles.add(_AdsListTile(
+                icon: Icons.inbox_outlined,
+                iconColor: const Color(0xFF3B82F6),
+                title: 'Request Board',
+                subtitle: 'Browse open requests from others',
+                ext: ext,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const RequestBoardPage()),
+                ),
+              ));
+              tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+              tiles.add(_AdsListTile(
+                icon: Icons.edit_note_rounded,
+                iconColor: const Color(0xFF10B981),
+                title: 'My Requests',
+                subtitle: 'Manage the requests you posted',
+                ext: ext,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MyRequestsPage()),
+                ),
+              ));
+            }
+
+            if (showAds) {
+              if (tiles.isNotEmpty) {
+                tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+              }
+              tiles.add(_AdsListTile(
+                icon: Icons.rocket_launch_rounded,
+                iconColor: ext.accentGold,
+                title: 'My Campaigns',
+                subtitle: 'Track and top up your ad campaigns',
+                ext: ext,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MyCampaignsPage()),
+                ),
+              ));
+            }
+
+            if (isAdmin) {
+              if (tiles.isNotEmpty) {
+                tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+              }
+              tiles.add(_AdsListTile(
+                icon: Icons.admin_panel_settings_rounded,
+                iconColor: const Color(0xFFEF4444),
+                title: 'Admin Settings',
+                subtitle: 'Configure feed, ads, and app-wide settings',
+                ext: ext,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const AdminSettingsPage()),
+                ),
+              ));
+            }
+
+            return Container(
+              decoration: BoxDecoration(
+                color: ext.cardSurface,
+                borderRadius: BorderRadius.circular(12.r),
               ),
-            ),
-          ),
-          _AdsListTile(
-            icon: Icons.inbox_outlined,
-            iconColor: const Color(0xFF3B82F6),
-            title: 'Request Board',
-            subtitle: 'Browse open requests from others',
-            ext: ext,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const RequestBoardPage()),
-            ),
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          _AdsListTile(
-            icon: Icons.edit_note_rounded,
-            iconColor: const Color(0xFF10B981),
-            title: 'My Requests',
-            subtitle: 'Manage the requests you posted',
-            ext: ext,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const MyRequestsPage()),
-            ),
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          _AdsListTile(
-            icon: Icons.rocket_launch_rounded,
-            iconColor: ext.accentGold,
-            title: 'My Campaigns',
-            subtitle: 'Track and top up your ad campaigns',
-            ext: ext,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const MyCampaignsPage()),
-            ),
-          ),
-          // Admin settings — only shown to super_admin users
-          FutureBuilder<bool>(
-            future: sl<AuthService>().isSuperAdmin(),
-            builder: (context, snap) {
-              if (snap.data != true) return const SizedBox.shrink();
-              return Column(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-                  _AdsListTile(
-                    icon: Icons.admin_panel_settings_rounded,
-                    iconColor: const Color(0xFFEF4444),
-                    title: 'Admin Settings',
-                    subtitle: 'Configure feed, ads, and app-wide settings',
-                    ext: ext,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => const AdminSettingsPage()),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
+                    child: Text(
+                      'ADS & PROMOTIONS',
+                      style: TextStyle(
+                        color: ext.searchHintColor,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.8,
+                      ),
                     ),
                   ),
+                  ...tiles,
+                  SizedBox(height: 4.h),
                 ],
-              );
-            },
-          ),
-          SizedBox(height: 4.h),
-        ],
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

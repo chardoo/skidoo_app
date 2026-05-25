@@ -377,14 +377,14 @@ class _FollowButtonState extends State<FollowButton>
             color: _following
                 ? (onImg
                     ? Colors.white.withValues(alpha: 0.18)
-                    : ext.searchFieldFill)
+                    : ext.glassFill)
                 : (onImg ? Colors.white : ext.accentGold),
             borderRadius: BorderRadius.circular(20.r),
             border: Border.all(
               color: _following
                   ? (onImg
                       ? Colors.white.withValues(alpha: 0.45)
-                      : ext.searchHintColor.withValues(alpha: 0.3))
+                      : ext.glassBorder)
                   : Colors.transparent,
               width: 0.8,
             ),

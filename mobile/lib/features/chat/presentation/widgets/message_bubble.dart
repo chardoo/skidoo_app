@@ -371,6 +371,15 @@ class _MessageVideoState extends State<_MessageVideo>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Pause when the chat tab is hidden behind IndexedStack.
+    if (!TickerMode.valuesOf(context).enabled) {
+      if (_initialized && _ctrl.value.isPlaying) _ctrl.pause();
+    }
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!_initialized) return;
     switch (state) {

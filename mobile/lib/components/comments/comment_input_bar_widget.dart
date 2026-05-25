@@ -73,10 +73,9 @@ class CommentInputBarWidget extends StatelessWidget {
         Container(
           padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 10.h),
           decoration: BoxDecoration(
-            color: ext.cardSurface,
+            color: ext.glassFill,
             border: Border(
-              top: BorderSide(
-                  color: ext.searchHintColor.withValues(alpha: 0.15)),
+              top: BorderSide(color: ext.glassBorder),
             ),
           ),
           child: Row(
@@ -94,9 +93,9 @@ class CommentInputBarWidget extends StatelessWidget {
                         ? 'Write a reply…'
                         : 'Add a comment…',
                     hintStyle: TextStyle(
-                        color: ext.searchHintColor, fontSize: 14.sp),
+                        color: ext.glassHint, fontSize: 14.sp),
                     filled: true,
-                    fillColor: ext.searchFieldFill,
+                    fillColor: ext.glassFill,
                     border: OutlineInputBorder(
                       borderSide: BorderSide.none,
                       borderRadius: BorderRadius.circular(22.r),

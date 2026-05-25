@@ -81,7 +81,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
     final pics = event.pictures;
 
     return Scaffold(
-      backgroundColor: ext.homeBackground,
+      backgroundColor: Colors.transparent,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
@@ -91,7 +91,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
           // ── App bar ───────────────────────────────────────────────────────
           SliverAppBar(
             pinned: true,
-            backgroundColor: ext.homeBackground,
+            backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(

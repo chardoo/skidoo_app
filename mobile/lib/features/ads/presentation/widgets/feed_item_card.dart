@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -24,6 +25,7 @@ import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart'
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/report_sheet.dart';
+import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model — same shape for ads and requests, mirrors EventDiscovery fields
@@ -274,9 +276,11 @@ class FeedItemCard extends StatefulWidget {
   State<FeedItemCard> createState() => _FeedItemCardState();
 }
 
-class _FeedItemCardState extends State<FeedItemCard> {
+class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver {
   VideoPlayerController? _videoCtrl;
   bool _videoReady = false;
+  bool _screenActive = true;
+  StreamSubscription<void>? _pauseSub;
 
   final PageController _pageCtrl = PageController();
   int _currentPage = 0;
@@ -292,6 +296,10 @@ class _FeedItemCardState extends State<FeedItemCard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _pauseSub = VideoPauseNotifier.listen(() {
+      if (_videoCtrl != null && _videoCtrl!.value.isPlaying) _videoCtrl!.pause();
+    });
     _pageCtrl.addListener(() {
       final page = _pageCtrl.page?.round() ?? 0;
       if (page != _currentPage && mounted) setState(() => _currentPage = page);
@@ -310,18 +318,52 @@ class _FeedItemCardState extends State<FeedItemCard> {
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final active = TickerMode.valuesOf(context).enabled;
+    if (active != _screenActive) {
+      _screenActive = active;
+      _syncPlayback();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_videoCtrl == null) return;
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        if (_videoCtrl!.value.isPlaying) _videoCtrl!.pause();
+      case AppLifecycleState.resumed:
+        _syncPlayback();
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  void _syncPlayback() {
+    if (_videoCtrl == null || !_videoReady) return;
+    if (_screenActive) {
+      if (!_videoCtrl!.value.isPlaying) _videoCtrl!.play();
+    } else {
+      if (_videoCtrl!.value.isPlaying) _videoCtrl!.pause();
+    }
+  }
+
   Future<void> _initVideo(String url) async {
     final ctrl = VideoPlayerController.networkUrl(Uri.parse(url));
     try {
       await ctrl.initialize();
       await ctrl.setVolume(0);
       await ctrl.setLooping(true);
-      await ctrl.play();
       if (mounted) {
         setState(() {
           _videoCtrl = ctrl;
           _videoReady = true;
         });
+        _syncPlayback();
       } else {
         ctrl.dispose();
       }
@@ -332,6 +374,9 @@ class _FeedItemCardState extends State<FeedItemCard> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pauseSub?.cancel();
+    _videoCtrl?.pause();
     _videoCtrl?.dispose();
     _pageCtrl.dispose();
     super.dispose();
@@ -446,7 +491,7 @@ class _FeedItemCardState extends State<FeedItemCard> {
         : (size.height * 0.75).clamp(480.0, 740.0);
 
     return Container(
-      color: ext.homeBackground,
+      color: Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

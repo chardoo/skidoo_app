@@ -16,7 +16,7 @@ class GalleryPage extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return Scaffold(
-      backgroundColor: ext.homeBackground,
+      backgroundColor: Colors.transparent,
       body: RefreshIndicator(
         color: ext.accentGold,
         backgroundColor: ext.cardSurface,
@@ -26,7 +26,7 @@ class GalleryPage extends StatelessWidget {
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
             SliverAppBar(
               automaticallyImplyLeading: false,
-              backgroundColor: ext.homeBackground,
+              backgroundColor: Colors.transparent,
               surfaceTintColor: Colors.transparent,
               floating: true,
               snap: true,

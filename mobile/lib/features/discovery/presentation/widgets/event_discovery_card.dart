@@ -187,7 +187,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     final mediaH = isCurrentVideo ? videoH : imageH;
 
     return Container(
-      color: ext.homeBackground,
+      color: Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

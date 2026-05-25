@@ -19,6 +19,8 @@ import 'package:skidoo_app/features/chat/presentation/pages/chat_rooms_page.dart
 import 'package:skidoo_app/components/common/navbar.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
+import 'package:skidoo_app/features/admin/data/models/app_config.dart';
+import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 
 class HomePage extends StatelessWidget {
@@ -104,15 +106,8 @@ class _HomeViewState extends State<_HomeView> {
     }
   }
 
-  // Called whenever HomeNavigationPage detects a deliberate tap.
-  void _onHomeTap() {
-    if (_selectedTab != 0) return;
-    if (!_navBarVisible) setState(() => _navBarVisible = true);
-    _chromeTimer?.cancel();
-    _chromeTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && _selectedTab == 0) setState(() => _navBarVisible = false);
-    });
-  }
+  // No longer used — nav visibility is driven by scroll direction only.
+  void _onHomeTap() {}
 
   void _changeTab(int index) {
     VideoPauseNotifier.pauseAll();
@@ -125,9 +120,7 @@ class _HomeViewState extends State<_HomeView> {
         _selectedTab = index;
         _navBarVisible = true;
       });
-      _chromeTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted && _selectedTab == 0) setState(() => _navBarVisible = false);
-      });
+      _startAutoHideTimer();
     } else {
       // All other tabs: chrome always visible, no timer.
       setState(() {
@@ -161,20 +154,30 @@ class _HomeViewState extends State<_HomeView> {
         _downAccum += delta;
         if (_downAccum >= _hideThreshold && _navBarVisible) {
           setState(() => _navBarVisible = false);
-          // Scrolling down cancels the show-timer so chrome doesn't flicker back.
-          if (_selectedTab == 0) _chromeTimer?.cancel();
+          _chromeTimer?.cancel();
         }
       } else if (delta < 0) {
-        // Upward — show nav on non-home tabs only; home tab requires a tap.
+        // Upward — always show nav (home tab included). No layout shift because
+        // AnimatedSlide + extendBody means the body height never changes.
         _downAccum = 0;
-        if (!_navBarVisible && _selectedTab != 0) {
+        if (!_navBarVisible) {
           setState(() => _navBarVisible = true);
+          if (_selectedTab == 0) _startAutoHideTimer();
         }
       }
     } else if (notification is ScrollEndNotification) {
       _downAccum = 0;
+      // Home tab: (re)start auto-hide once the fling settles.
+      if (_selectedTab == 0 && _navBarVisible) _startAutoHideTimer();
     }
     return false;
+  }
+
+  void _startAutoHideTimer() {
+    _chromeTimer?.cancel();
+    _chromeTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _selectedTab == 0) setState(() => _navBarVisible = false);
+    });
   }
 
   @override
@@ -190,6 +193,7 @@ class _HomeViewState extends State<_HomeView> {
       onNotification: _onScrollNotification,
       child: Scaffold(
         resizeToAvoidBottomInset: false,
+        extendBody: true,
         body: IndexedStack(
           index: _selectedTab,
           children: const [
@@ -199,20 +203,25 @@ class _HomeViewState extends State<_HomeView> {
             PhotographersPage(),
           ],
         ),
-        bottomNavigationBar: ClipRect(
-          child: AnimatedAlign(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            alignment: Alignment.topCenter,
-            heightFactor: _navBarVisible ? 1.0 : 0.0,
-            child: BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
-              selector: (state) =>
-                  state.unreadCounts.values.fold(0, (sum, c) => sum + c),
-              builder: (context, totalUnread) => AppNavbar(
-                selectedIndex: _selectedTab,
-                onchange: _changeTab,
-                onCreateTap: () => CreateBottomSheet.show(context),
-                messageUnreadCount: totalUnread,
+        bottomNavigationBar: AnimatedSlide(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          offset: _navBarVisible ? Offset.zero : const Offset(0, 1),
+          child: IgnorePointer(
+            ignoring: !_navBarVisible,
+            child: ValueListenableBuilder<AppConfig>(
+              valueListenable: AppConfigRepository.notifier,
+              builder: (context, cfg, _) =>
+                  BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
+                selector: (state) =>
+                    state.unreadCounts.values.fold(0, (sum, c) => sum + c),
+                builder: (context, totalUnread) => AppNavbar(
+                  selectedIndex: _selectedTab,
+                  onchange: _changeTab,
+                  onCreateTap: () => CreateBottomSheet.show(context),
+                  messageUnreadCount: totalUnread,
+                  showCreate: cfg.adsEnabled || cfg.requestsEnabled,
+                ),
               ),
             ),
           ),

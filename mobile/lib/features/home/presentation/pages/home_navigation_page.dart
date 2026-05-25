@@ -19,7 +19,6 @@ import 'package:skidoo_app/features/user_profile/presentation/pages/account_page
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/common/widgets/feed_launch_overlay.dart';
 import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
-import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 
 class HomeNavigationPage extends StatefulWidget {
@@ -33,10 +32,13 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool _isSearchOpen = false;
   int _selectedTab = 0; // 0 = For You, 1 = Following
 
-  // Starts hidden; shown on any touch, then auto-hides after 3 s of no touch.
   bool _headerVisible = false;
   double _headerDownAccum = 0;
   static const _headerHideThreshold = 28.0;
+
+  // Measured height of the floating header overlay — used as list top padding.
+  final _headerKey = GlobalKey();
+  double _headerHeight = 0;
 
   Timer? _chromeTimer;
 
@@ -46,15 +48,21 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     super.dispose();
   }
 
-  // Shows header+tab bar and notifies the bottom nav to also show.
-  // Auto-hides after 3 s of no further taps.
-  void _showChrome() {
-    if (!_headerVisible) setState(() => _headerVisible = true);
-    // Notify _HomeViewState so the bottom nav also shows/resets its timer.
-    HomePage.homeTapSignal.value++;
+  void _measureHeaderHeight() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final box =
+          _headerKey.currentContext?.findRenderObject() as RenderBox?;
+      if (box == null) return;
+      final h = box.size.height;
+      if (h != _headerHeight) setState(() => _headerHeight = h);
+    });
+  }
+
+  void _startHeaderAutoHideTimer() {
     _chromeTimer?.cancel();
     _chromeTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _headerVisible = false);
+      if (mounted && !_isSearchOpen) setState(() => _headerVisible = false);
     });
   }
 
@@ -118,26 +126,35 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         .timeout(const Duration(seconds: 10), onTimeout: () => bloc.state);
   }
 
-  /// Returns false so notifications continue to bubble up the tree.
   bool _onScrollNotification(ScrollNotification notification) {
     if (_isSearchOpen) return false;
 
     if (notification is ScrollUpdateNotification) {
       final delta = notification.scrollDelta ?? 0;
+      final atTop = notification.metrics.pixels <= 0;
 
-      if (delta > 0) {
-        // Scrolling down — hide chrome and cancel any pending show-timer.
+      if (delta > 0 && !atTop) {
+        // Scrolling down (and not at the top boundary) — accumulate and hide.
         _headerDownAccum += delta;
         if (_headerDownAccum >= _headerHideThreshold && _headerVisible) {
           setState(() => _headerVisible = false);
           _chromeTimer?.cancel();
         }
-      } else if (delta < 0) {
-        // Scrolling up — do NOT show chrome; only a deliberate tap does that.
+      } else if (delta < 0 || atTop) {
+        // Scrolling up, or bounce-back at top — show header, reset accum.
         _headerDownAccum = 0;
+        if (!_headerVisible) setState(() => _headerVisible = true);
+        if (!atTop) _startHeaderAutoHideTimer();
       }
     } else if (notification is ScrollEndNotification) {
       _headerDownAccum = 0;
+      if (notification.metrics.pixels <= 0) {
+        // At the very top — keep header visible, cancel any pending hide.
+        _chromeTimer?.cancel();
+        if (!_headerVisible) setState(() => _headerVisible = true);
+      } else if (_headerVisible) {
+        _startHeaderAutoHideTimer();
+      }
     }
     return false;
   }
@@ -151,73 +168,63 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     final userName = userState.name.isNotEmpty ? userState.name : 'User';
 
     final topPadding = MediaQuery.of(context).padding.top;
+    _measureHeaderHeight();
 
     return FeedLaunchOverlay(
       child: Scaffold(
       backgroundColor: ext.homeBackground,
-      body: Column(
+      body: Stack(
         children: [
-          // ── Header — collapses on scroll-down, snaps back on any scroll-up ─
-          ClipRect(
-            child: AnimatedAlign(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              alignment: Alignment.topCenter,
-              heightFactor: _headerVisible ? 1.0 : 0.0,
-              child: Padding(
-                padding: EdgeInsets.only(top: topPadding),
-                child: HomeHeaderWidget(
-                  userName: userName,
-                  userInitial: userName[0].toUpperCase(),
-                  isSearchOpen: _isSearchOpen,
-                  onSearchOpen: _openSearch,
-                  onSearchClose: _closeSearch,
-                  onSearchChanged: _onSearchChanged,
-                  onQrScan: _openQrScan,
-                  onAvatarTap: () {
-                    final discoveryBloc = context.read<DiscoveryBloc>();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => BlocProvider.value(
-                          value: discoveryBloc,
-                          child: const AccountPage(),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+          // ── Body fills entire screen — header/tab bar float above it ──────
+          Positioned.fill(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onScrollNotification,
+              child: _buildBody(context, ext, homeState, discoveryState),
             ),
           ),
 
-          // ── "For You / Following" pill tabs — collapses with the header ───
-          if (!_isSearchOpen)
-            ClipRect(
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                alignment: Alignment.topCenter,
-                heightFactor: _headerVisible ? 1.0 : 0.0,
-                child: _FeedTabBar(
-                  ext: ext,
-                  selectedTab: _selectedTab,
-                  onTabChanged: (i) => setState(() => _selectedTab = i),
-                ),
-              ),
-            ),
-
-          // ── Body ─────────────────────────────────────────────────────────
-          Expanded(
-            // Listener sits outside the scroll widgets so onPointerDown/Up
-            // fire for ALL touches regardless of the gesture arena winner.
-            // We compare pointer-down and pointer-up positions to detect taps
-            // (< 12 px movement) without consuming any child gestures.
-            child: Listener(
-              behavior: HitTestBehavior.translucent,
-              onPointerDown: (_) => _showChrome(),
-              child: NotificationListener<ScrollNotification>(
-                onNotification: _onScrollNotification,
-                child: _buildBody(context, ext, homeState, discoveryState),
+          // ── Header + tab bar slide in/out from top as an overlay ──────────
+          // AnimatedSlide uses Transform.translate — no layout shift ever.
+          Positioned(
+            top: 0, left: 0, right: 0,
+            child: AnimatedSlide(
+              offset: _headerVisible ? Offset.zero : const Offset(0, -1),
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: Column(
+                key: _headerKey,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: topPadding),
+                    child: HomeHeaderWidget(
+                      userName: userName,
+                      userInitial: userName[0].toUpperCase(),
+                      isSearchOpen: _isSearchOpen,
+                      onSearchOpen: _openSearch,
+                      onSearchClose: _closeSearch,
+                      onSearchChanged: _onSearchChanged,
+                      onQrScan: _openQrScan,
+                      onAvatarTap: () {
+                        final discoveryBloc = context.read<DiscoveryBloc>();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider.value(
+                              value: discoveryBloc,
+                              child: const AccountPage(),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  if (!_isSearchOpen)
+                    _FeedTabBar(
+                      ext: ext,
+                      selectedTab: _selectedTab,
+                      onTabChanged: (i) => setState(() => _selectedTab = i),
+                    ),
+                ],
               ),
             ),
           ),
@@ -244,7 +251,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
           child: _buildForYouContent(context, ext, homeState, discoveryState),
         ),
         // ── Following ────────────────────────────────────────────────────────
-        const FollowingFeed(),
+        FollowingFeed(topPadding: _headerVisible ? _headerHeight : 0),
       ],
     );
   }
@@ -261,6 +268,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       children: [
         EventsFeed(
           discoveryState: discoveryState,
+          topPadding: _headerVisible ? _headerHeight : 0,
           onCardTap: (event) => _openEventImages(context, event),
           onCommentTap: (event) => _openEventComments(context, event),
           onLoadMore: () =>
@@ -402,11 +410,9 @@ class _PillTab extends StatelessWidget {
         decoration: BoxDecoration(
           color: active
               ? ext.accentGold.withValues(alpha: 0.92)
-              : Colors.transparent,
+              : ext.glassFill,
           border: Border.all(
-            color: active
-                ? ext.accentGold
-                : ext.searchHintColor.withValues(alpha: 0.25),
+            color: active ? ext.accentGold : ext.glassBorder,
             width: 1.0,
           ),
           borderRadius: BorderRadius.circular(20),
@@ -414,9 +420,7 @@ class _PillTab extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: active
-                ? Colors.black
-                : ext.greetingColor.withValues(alpha: 0.6),
+            color: active ? Colors.black : ext.glassIcon,
             fontSize: 12,
             fontWeight: active ? FontWeight.w700 : FontWeight.w500,
             letterSpacing: 0.3,

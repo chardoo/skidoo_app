@@ -18,6 +18,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.logoTextColor,
     required this.searchItemBackground,
     required this.searchItemTextColor,
+    required this.glassFill,
+    required this.glassBorder,
+    required this.glassIcon,
+    required this.glassHint,
   });
 
   final Color homeBackground;
@@ -36,6 +40,14 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color searchItemBackground;
   final Color searchItemTextColor;
 
+  // Glass / chrome tokens — used by AppBar, navbar, header, pill tabs.
+  // Dark  → white-based (light elements over dark content).
+  // Light → black-based (dark elements over light content).
+  final Color glassFill;    // subtle tint behind chrome
+  final Color glassBorder;  // outline around glass elements
+  final Color glassIcon;    // icon / label colour
+  final Color glassHint;    // placeholder / secondary text
+
   static const dark = AppThemeExtension(
     homeBackground: Color(0xFF0F1117),
     cardSurface: Color(0xFF1A1D24),
@@ -52,6 +64,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     logoTextColor: Color(0xFFFFFFFF),
     searchItemBackground: Color(0xFF1E2230),
     searchItemTextColor: Color(0xFFFFFFFF),
+    glassFill:   Color(0x1AFFFFFF), // white 10 %
+    glassBorder: Color(0x40FFFFFF), // white 25 %
+    glassIcon:   Color(0xB3FFFFFF), // white 70 %
+    glassHint:   Color(0x8CFFFFFF), // white 55 %
   );
 
   static const light = AppThemeExtension(
@@ -70,6 +86,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     logoTextColor: Color(0xFF1A1A2E),
     searchItemBackground: Color(0xFFFFFFFF),
     searchItemTextColor: Color(0xFF1A1A2E),
+    glassFill:   Color(0x0D000000), // black  5 %
+    glassBorder: Color(0x26000000), // black 15 %
+    glassIcon:   Color(0xA6000000), // black 65 %
+    glassHint:   Color(0x73000000), // black 45 %
   );
 
   @override
@@ -89,6 +109,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     Color? logoTextColor,
     Color? searchItemBackground,
     Color? searchItemTextColor,
+    Color? glassFill,
+    Color? glassBorder,
+    Color? glassIcon,
+    Color? glassHint,
   }) {
     return AppThemeExtension(
       homeBackground: homeBackground ?? this.homeBackground,
@@ -106,6 +130,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       logoTextColor: logoTextColor ?? this.logoTextColor,
       searchItemBackground: searchItemBackground ?? this.searchItemBackground,
       searchItemTextColor: searchItemTextColor ?? this.searchItemTextColor,
+      glassFill: glassFill ?? this.glassFill,
+      glassBorder: glassBorder ?? this.glassBorder,
+      glassIcon: glassIcon ?? this.glassIcon,
+      glassHint: glassHint ?? this.glassHint,
     );
   }
 
@@ -124,13 +152,14 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       cardOverlayEnd: Color.lerp(cardOverlayEnd, other.cardOverlayEnd, t)!,
       avatarBackground: Color.lerp(avatarBackground, other.avatarBackground, t)!,
       avatarForeground: Color.lerp(avatarForeground, other.avatarForeground, t)!,
-      logoBadgeBackground:
-          Color.lerp(logoBadgeBackground, other.logoBadgeBackground, t)!,
+      logoBadgeBackground: Color.lerp(logoBadgeBackground, other.logoBadgeBackground, t)!,
       logoTextColor: Color.lerp(logoTextColor, other.logoTextColor, t)!,
-      searchItemBackground:
-          Color.lerp(searchItemBackground, other.searchItemBackground, t)!,
-      searchItemTextColor:
-          Color.lerp(searchItemTextColor, other.searchItemTextColor, t)!,
+      searchItemBackground: Color.lerp(searchItemBackground, other.searchItemBackground, t)!,
+      searchItemTextColor: Color.lerp(searchItemTextColor, other.searchItemTextColor, t)!,
+      glassFill: Color.lerp(glassFill, other.glassFill, t)!,
+      glassBorder: Color.lerp(glassBorder, other.glassBorder, t)!,
+      glassIcon: Color.lerp(glassIcon, other.glassIcon, t)!,
+      glassHint: Color.lerp(glassHint, other.glassHint, t)!,
     );
   }
 }

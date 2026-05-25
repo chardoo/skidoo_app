@@ -25,6 +25,20 @@ class ChatRepositoryImpl implements ChatRepository {
       _fetchAndCacheRoom(() => _rest.getEventRoom(eventId));
 
   @override
+  Future<Map<String, ChatRoom>> getEventRoomsBatch(
+      List<String> eventIds) async {
+    if (eventIds.isEmpty) return {};
+    // Clamp to the backend's limit of 20 per request.
+    final ids = eventIds.take(20).toList();
+    final rooms = await _rest.getEventRoomsBatch(ids);
+    // Cache every room returned so single-event lookups hit local DB first.
+    for (final room in rooms.values) {
+      await _db.upsertRoom(room);
+    }
+    return rooms;
+  }
+
+  @override
   Future<ChatRoom> getPhotoRoom(String pictureId) =>
       _fetchAndCacheRoom(() => _rest.getPhotoRoom(pictureId));
 

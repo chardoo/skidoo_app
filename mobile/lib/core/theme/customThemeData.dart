@@ -115,9 +115,8 @@ class Styles {
       ),
       appBarTheme: AppBarTheme(
         elevation: 0.0,
-        backgroundColor: isDarkTheme
-            ? const Color.fromARGB(255, 10, 13, 17)
-            : Colors.white,
+        scrolledUnderElevation: 0.0,
+        backgroundColor: Colors.transparent,
         foregroundColor: isDarkTheme ? Colors.white : Colors.black,
         titleTextStyle: TextStyle(
           color: isDarkTheme ? Colors.white : Colors.black,

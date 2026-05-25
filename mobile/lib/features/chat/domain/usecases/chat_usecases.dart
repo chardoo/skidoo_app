@@ -19,6 +19,14 @@ class GetEventRoomUseCase {
   Future<ChatRoom> call(String eventId) => _repo.getEventRoom(eventId);
 }
 
+class GetEventRoomsBatchUseCase {
+  final ChatRepository _repo;
+  GetEventRoomsBatchUseCase(this._repo);
+  /// Returns a map of eventId → ChatRoom. Handles up to 20 IDs per call.
+  Future<Map<String, ChatRoom>> call(List<String> eventIds) =>
+      _repo.getEventRoomsBatch(eventIds);
+}
+
 class GetPhotoRoomUseCase {
   final ChatRepository _repo;
   GetPhotoRoomUseCase(this._repo);

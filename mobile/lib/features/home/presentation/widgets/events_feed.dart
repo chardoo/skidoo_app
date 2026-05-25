@@ -93,12 +93,14 @@ class EventsFeed extends StatefulWidget {
     required this.onCardTap,
     required this.onCommentTap,
     required this.onLoadMore,
+    this.topPadding = 0,
   });
 
   final DiscoveryState discoveryState;
   final ValueChanged<EventDiscovery> onCardTap;
   final ValueChanged<EventDiscovery> onCommentTap;
   final VoidCallback onLoadMore;
+  final double topPadding;
 
   @override
   State<EventsFeed> createState() => _EventsFeedState();
@@ -111,10 +113,15 @@ class _EventsFeedState extends State<EventsFeed> {
 
   // One ad per slot — fetched fresh from the server for each slot.
   final List<AdModel?> _ads = [];
-  // Per-slot impression IDs, populated when onInit fires.
+  // Per-slot impression IDs, saved after trackImpression responds.
   final List<String?> _impressionIds = [];
   // Context event IDs passed to serveAd, forwarded to trackImpression.
   final List<String?> _adContextEventIds = [];
+
+  // GlobalKeys for ad cards — used to check viewport visibility.
+  final _adCardGlobalKeys = <int, GlobalKey>{};
+  // Ad slot indices that have already fired an impression (never re-fire).
+  final _firedAdImpressions = <int>{};
 
   // All requests fetched so far (paginated on load-more).
   List<FeedRequestModel> _requests = [];
@@ -126,6 +133,9 @@ class _EventsFeedState extends State<EventsFeed> {
 
   GlobalKey _keyFor(String eventId) =>
       _cardKeys.putIfAbsent(eventId, GlobalKey.new);
+
+  GlobalKey _adKeyFor(int adIdx) =>
+      _adCardGlobalKeys.putIfAbsent(adIdx, GlobalKey.new);
 
   @override
   void initState() {
@@ -156,6 +166,8 @@ class _EventsFeedState extends State<EventsFeed> {
         _adContextEventIds.clear();
         _requests = [];
         _requestPage = 1;
+        _adCardGlobalKeys.clear();
+        _firedAdImpressions.clear();
       });
       _fetchInitial();
     } else if (newEvents.length > oldEvents.length) {
@@ -333,6 +345,47 @@ class _EventsFeedState extends State<EventsFeed> {
     if (bestIdx != null && bestIdx != _activeCardIndex.value) {
       _activeCardIndex.value = bestIdx;
     }
+
+    _checkAdImpressions(screenH);
+  }
+
+  // Scans visible ad slots and fires impressions exactly once per slot.
+  void _checkAdImpressions(double screenH) {
+    for (final entry in _adCardGlobalKeys.entries) {
+      final adIdx = entry.key;
+      if (_firedAdImpressions.contains(adIdx)) continue;
+      final ctx = entry.value.currentContext;
+      if (ctx == null) continue;
+      final box = ctx.findRenderObject() as RenderBox?;
+      if (box == null || !box.attached) continue;
+      final top = box.localToGlobal(Offset.zero).dy;
+      // Fire when any part of the card is within the screen.
+      if (top + box.size.height > 0 && top < screenH) {
+        _firedAdImpressions.add(adIdx);
+        _fireAdImpression(adIdx);
+      }
+    }
+  }
+
+  Future<void> _fireAdImpression(int adIdx) async {
+    final ad = adIdx < _ads.length ? _ads[adIdx] : null;
+    if (ad == null) return;
+    final contextEventId =
+        adIdx < _adContextEventIds.length ? _adContextEventIds[adIdx] : null;
+    debugPrint(
+      '[EventsFeed] impression → adIdx=$adIdx adId=${ad.adId} token=${ad.impressionToken}',
+    );
+    final id = await _repo.trackImpression(
+      adId: ad.adId,
+      adsetId: ad.adsetId,
+      campaignId: ad.campaignId,
+      placement: ad.placement,
+      impressionToken: ad.impressionToken,
+      contextEventId: contextEventId,
+    );
+    if (mounted && adIdx < _impressionIds.length) {
+      _impressionIds[adIdx] = id;
+    }
   }
 
   // ── Chat ──────────────────────────────────────────────────────────────────
@@ -399,6 +452,9 @@ class _EventsFeedState extends State<EventsFeed> {
             );
             widget.onLoadMore();
           }
+          // Check ad visibility on every scroll frame.
+          WidgetsBinding.instance
+              .addPostFrameCallback((_) => _updateActiveCard());
         } else if (notification is ScrollEndNotification) {
           WidgetsBinding.instance
               .addPostFrameCallback((_) => _updateActiveCard());
@@ -409,9 +465,14 @@ class _EventsFeedState extends State<EventsFeed> {
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
-          child: ListView.builder(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: widget.topPadding),
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            builder: (context, pad, _) => ListView.builder(
             physics: const BouncingScrollPhysics(),
             cacheExtent: 1500,
+            padding: EdgeInsets.only(top: pad),
             itemCount: virtualItems.length,
             itemBuilder: (context, index) {
               final item = virtualItems[index];
@@ -440,7 +501,7 @@ class _EventsFeedState extends State<EventsFeed> {
                     'media[0]url=${ad.media.isNotEmpty ? ad.media[0].url : "EMPTY"}',
                   );
                   return FeedItemCard(
-                    key: ValueKey('ad_$adIdx'),
+                    key: _adKeyFor(adIdx),
                     data: FeedItemData.fromAd(
                       ad,
                       onCtaTap: () => _repo.trackClick(
@@ -450,21 +511,8 @@ class _EventsFeedState extends State<EventsFeed> {
                             ? _impressionIds[adIdx]
                             : null,
                       ),
-                      onInit: () async {
-                        final id = await _repo.trackImpression(
-                          adId: ad.adId,
-                          adsetId: ad.adsetId,
-                          campaignId: ad.campaignId,
-                          placement: ad.placement,
-                          impressionToken: ad.impressionToken,
-                          contextEventId: adIdx < _adContextEventIds.length
-                              ? _adContextEventIds[adIdx]
-                              : null,
-                        );
-                        if (mounted && adIdx < _impressionIds.length) {
-                          _impressionIds[adIdx] = id;
-                        }
-                      },
+                      // Impression is fired by _checkAdImpressions() on
+                      // first viewport entry — not on widget mount.
                     ),
                     onHide: () => setState(() {
                       if (adIdx < _ads.length) _ads[adIdx] = null;
@@ -528,6 +576,7 @@ class _EventsFeedState extends State<EventsFeed> {
                 ),
               );
             },
+          ),
           ),
         ),
       ),

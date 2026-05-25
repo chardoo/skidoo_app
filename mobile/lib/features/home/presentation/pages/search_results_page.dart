@@ -320,7 +320,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   PreferredSizeWidget _buildAppBar(AppThemeExtension ext, BuildContext ctx) {
     if (_selectionMode) {
       return AppBar(
-        backgroundColor: ext.cardSurface,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.close_rounded, color: ext.greetingColor),
@@ -362,7 +362,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     }
 
     return AppBar(
-      backgroundColor: ext.homeBackground,
+      backgroundColor: Colors.transparent,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       leading:
@@ -584,18 +584,10 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: ext.cardSurface,
+        color: ext.glassFill,
         border: Border(
-          top: BorderSide(
-              color: ext.searchHintColor.withValues(alpha: 0.12), width: 0.5),
+          top: BorderSide(color: ext.glassBorder, width: 0.5),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
-          ),
-        ],
       ),
       child: SafeArea(
         top: false,

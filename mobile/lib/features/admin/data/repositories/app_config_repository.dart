@@ -9,8 +9,13 @@ class AppConfigRepository {
 
   final Dio _dio;
 
+  /// Reactive config — subscribe to rebuild widgets when flags change after
+  /// the initial async fetch completes.
+  static final notifier = ValueNotifier<AppConfig>(const AppConfig());
+
   /// Cached feature-flag config — safe to read before first fetch (returns defaults).
-  static AppConfig current = const AppConfig();
+  static AppConfig get current => notifier.value;
+  static set current(AppConfig v) => notifier.value = v;
 
   /// Cached exchange rates — safe to read before first fetch (returns empty defaults).
   static ExchangeRates rates = const ExchangeRates();

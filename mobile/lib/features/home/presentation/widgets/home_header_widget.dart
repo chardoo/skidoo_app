@@ -99,12 +99,12 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                   curve: Curves.easeOut,
                   height: 46.h,
                   decoration: BoxDecoration(
-                    color: ext.searchFieldFill,
+                    color: ext.glassFill,
                     borderRadius: BorderRadius.circular(23.r),
                     border: Border.all(
                       color: widget.isSearchOpen
-                          ? ext.accentGold.withValues(alpha: 0.5)
-                          : Colors.transparent,
+                          ? ext.accentGold.withValues(alpha: 0.6)
+                          : ext.glassBorder,
                       width: 1.5,
                     ),
                   ),
@@ -115,7 +115,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                         Icons.search_rounded,
                         color: widget.isSearchOpen
                             ? ext.accentGold
-                            : ext.searchHintColor,
+                            : ext.glassIcon,
                         size: 20.sp,
                       ),
                       SizedBox(width: 8.w),
@@ -144,7 +144,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                             : _TypewriterHint(
                                 text: l10n.homeSearchAiPlaceholder,
                                 style: TextStyle(
-                                  color: ext.searchHintColor,
+                                  color: ext.glassHint,
                                   fontSize: 14.sp,
                                 ),
                               ),
@@ -170,7 +170,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                             padding: EdgeInsets.symmetric(horizontal: 12.w),
                             child: Icon(
                               Icons.qr_code_scanner_rounded,
-                              color: ext.searchHintColor,
+                              color: ext.glassIcon,
                               size: 20.sp,
                             ),
                           ),
@@ -203,11 +203,11 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                 ),
                 child: CircleAvatar(
                   radius: 19.r,
-                  backgroundColor: ext.avatarBackground,
+                  backgroundColor: ext.glassFill,
                   child: Text(
                     widget.userInitial,
                     style: TextStyle(
-                      color: ext.accentGold,
+                      color: ext.glassIcon,
                       fontWeight: FontWeight.w800,
                       fontSize: 14.sp,
                     ),

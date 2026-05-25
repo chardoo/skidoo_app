@@ -162,22 +162,54 @@ class _FullscreenVideo extends StatefulWidget {
   State<_FullscreenVideo> createState() => _FullscreenVideoState();
 }
 
-class _FullscreenVideoState extends State<_FullscreenVideo> {
+class _FullscreenVideoState extends State<_FullscreenVideo>
+    with WidgetsBindingObserver {
   late final VideoPlayerController _ctrl;
   bool _initialized = false;
   bool _muted = false;
+  bool _screenActive = true;
+  bool _tabActive = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
       ..setLooping(true)
       ..initialize().then((_) {
         if (!mounted) return;
         _ctrl.setVolume(_muted ? 0.0 : 1.0);
         setState(() => _initialized = true);
-        if (widget.isActive) _ctrl.play();
+        _syncPlayback();
       });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final active = TickerMode.valuesOf(context).enabled;
+    if (active != _tabActive) {
+      _tabActive = active;
+      _syncPlayback();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final active = state == AppLifecycleState.resumed;
+    if (_screenActive != active) {
+      _screenActive = active;
+      _syncPlayback();
+    }
+  }
+
+  void _syncPlayback() {
+    if (!_initialized) return;
+    if (widget.isActive && _screenActive && _tabActive) {
+      if (!_ctrl.value.isPlaying) _ctrl.play();
+    } else {
+      if (_ctrl.value.isPlaying) _ctrl.pause();
+    }
   }
 
   void _toggleMute() {
@@ -191,15 +223,12 @@ class _FullscreenVideoState extends State<_FullscreenVideo> {
   void didUpdateWidget(_FullscreenVideo old) {
     super.didUpdateWidget(old);
     if (!_initialized) return;
-    if (widget.isActive && !old.isActive) {
-      _ctrl.play();
-    } else if (!widget.isActive && old.isActive) {
-      _ctrl.pause();
-    }
+    _syncPlayback();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ctrl
       ..pause()
       ..dispose();

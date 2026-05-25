@@ -11,12 +11,15 @@ class AppNavbar extends StatelessWidget {
     required this.onchange,
     required this.onCreateTap,
     this.messageUnreadCount = 0,
+    this.showCreate = true,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onchange;
   final VoidCallback onCreateTap;
   final int messageUnreadCount;
+  /// Hide the centre + button when no creatable features are enabled.
+  final bool showCreate;
 
   @override
   Widget build(BuildContext context) {
@@ -24,12 +27,9 @@ class AppNavbar extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: ext.homeBackground,
+        color: Colors.transparent,
         border: Border(
-          top: BorderSide(
-            color: ext.searchHintColor.withValues(alpha: 0.08),
-            width: 0.5,
-          ),
+          top: BorderSide(color: ext.glassBorder, width: 0.5),
         ),
       ),
       child: SafeArea(
@@ -54,7 +54,7 @@ class AppNavbar extends StatelessWidget {
                 unreadCount: messageUnreadCount,
                 onTap: () => onchange(1),
               ),
-              _CreateFab(onTap: onCreateTap, ext: ext),
+              if (showCreate) _CreateFab(onTap: onCreateTap, ext: ext),
               _NavTab(
                 label: 'Gallery',
                 iconPath: IconsPath.gallery,
@@ -103,7 +103,7 @@ class _NavTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeColor = ext.accentGold;
-    final inactiveColor = ext.searchHintColor.withValues(alpha: 0.55);
+    final inactiveColor = ext.glassIcon;
     final color = selected ? activeColor : inactiveColor;
 
     Widget iconWidget = icon != null

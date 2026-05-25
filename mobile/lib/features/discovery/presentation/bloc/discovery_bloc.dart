@@ -10,6 +10,7 @@ import 'package:skidoo_app/features/chat/data/datasources/chat_background_servic
 import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
 import 'package:skidoo_app/features/discovery/data/services/feed_cache_service.dart';
 import 'package:skidoo_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
@@ -29,7 +30,7 @@ const _disconnectDelay = Duration(seconds: 30);
 class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   final GetRandomImagesUseCase _getRandomImagesUseCase;
   final GetEventReactionsBatchUseCase _getReactionsBatch;
-  final GetEventRoomUseCase _getEventRoom;
+  final GetEventRoomsBatchUseCase _getEventRoomsBatch;
   final AuthService _authService;
   final ClientSavedDataSource _savedDs;
 
@@ -40,6 +41,13 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   final Map<String, Timer> _disconnectTimers = {};
   // Guards against duplicate concurrent connect attempts for the same event.
   final Set<String> _connecting = {};
+
+  // Room cache populated by the batch prefetch — keyed by event ID.
+  final Map<String, ChatRoom> _roomCache = {};
+
+  // Tracks all in-flight prefetch work so cache-miss paths can await it
+  // instead of immediately firing a redundant single-ID batch call.
+  Future<void>? _prefetchFuture;
 
   // Running skip counter — tracks total events fetched so the server returns
   // the correct next page regardless of how many the user has hidden locally.
@@ -53,11 +61,11 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   DiscoveryBloc({
     required GetRandomImagesUseCase getRandomImagesUseCase,
     required GetEventReactionsBatchUseCase getReactionsBatch,
-    required GetEventRoomUseCase getEventRoom,
+    required GetEventRoomsBatchUseCase getEventRoomsBatch,
     required FeedCacheService feedCache,
   })  : _getRandomImagesUseCase = getRandomImagesUseCase,
         _getReactionsBatch = getReactionsBatch,
-        _getEventRoom = getEventRoom,
+        _getEventRoomsBatch = getEventRoomsBatch,
         _authService = sl<AuthService>(),
         _savedDs = sl<ClientSavedDataSource>(),
         super(const DiscoveryState()) {
@@ -127,6 +135,33 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     }).toList();
   }
 
+  /// Batch-fetches rooms for [events] and stores them in [_roomCache].
+  /// Silently ignores errors — WS connect will fall back to single fetch.
+  void _prefetchRooms(List<EventDiscovery> events) {
+    if (events.isEmpty) return;
+    final ids = events.map((e) => e.id).toList();
+    final futures = <Future<void>>[];
+    // Chunk into batches of 20 (backend limit).
+    for (var i = 0; i < ids.length; i += 20) {
+      final chunk = ids.sublist(i, (i + 20).clamp(0, ids.length));
+      futures.add(
+        _getEventRoomsBatch(chunk).then((map) {
+          _roomCache.addAll(map);
+          debugPrint(
+            '[DiscoveryBloc] batch-prefetched ${map.length} rooms '
+            '(cache size: ${_roomCache.length})',
+          );
+        }).catchError((Object e) {
+          debugPrint('[DiscoveryBloc] room batch prefetch error: $e');
+        }),
+      );
+    }
+    // Chain onto any prior prefetch so _prefetchFuture always represents
+    // all outstanding room-fetch work (initial load + load-more pages).
+    _prefetchFuture = (_prefetchFuture ?? Future<void>.value())
+        .then((_) => Future.wait(futures));
+  }
+
   // ── Load ──────────────────────────────────────────────────────────────────
 
   Future<void> _onLoadRequested(
@@ -167,6 +202,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       if (userId != null && events.isNotEmpty) {
         _enrichInBackground(events, userId);
       }
+      _prefetchRooms(events);
     } on NetworkException {
       // Keep cached events on screen when offline — only hard-fail if empty.
       if (cached.isEmpty) {
@@ -225,6 +261,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       if (userId != null && more.isNotEmpty) {
         _enrichInBackground(more, userId);
       }
+      _prefetchRooms(more);
     } on NetworkException {
       emit(state.copyWith(isLoadingMore: false, errorMessage: 'No internet connection.'));
     } on ServerException catch (e) {
@@ -271,7 +308,22 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
     _connecting.add(id);
     try {
-      final room = await _getEventRoom(id);
+      // Prefer the batch-prefetched cache. If the prefetch is still in-flight
+      // (card became visible before the HTTP response landed), wait for it to
+      // finish — this prevents N single-ID batch calls racing the bulk fetch.
+      ChatRoom? room = _roomCache[id];
+      if (room == null) {
+        await _prefetchFuture;
+        room = _roomCache[id];
+      }
+      // Last resort: truly missing from the feed batch (shouldn't happen in
+      // practice but guards against edge cases like load-more race).
+      if (room == null) {
+        final map = await _getEventRoomsBatch([id]);
+        room = map[id];
+        if (room != null) _roomCache[id] = room;
+      }
+      if (room == null) return;
       // Bloc might have been closed while we were awaiting.
       if (isClosed) return;
 
@@ -408,7 +460,17 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     try {
       ChatWebSocketService ws;
       if (useTemp) {
-        final room = await _getEventRoom(event.eventId);
+        ChatRoom? room = _roomCache[event.eventId];
+        if (room == null) {
+          await _prefetchFuture;
+          room = _roomCache[event.eventId];
+        }
+        if (room == null) {
+          final map = await _getEventRoomsBatch([event.eventId]);
+          room = map[event.eventId];
+          if (room != null) _roomCache[event.eventId] = room;
+        }
+        if (room == null) throw Exception('room not found for ${event.eventId}');
         ws = ChatWebSocketService(_authService);
         await ws.connectToRoom(room.id);
       } else {
