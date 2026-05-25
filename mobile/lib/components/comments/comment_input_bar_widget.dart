@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
@@ -80,44 +81,59 @@ class CommentInputBarWidget extends StatelessWidget {
           ),
           child: Row(
             children: [
+              // On web, multi-line TextField never fires onSubmitted for Enter
+              // (it inserts a newline instead). CallbackShortcuts intercepts
+              // plain Enter to send, while Shift+Enter still inserts a newline.
               Expanded(
-                child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-                  maxLines: 3,
-                  minLines: 1,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                    hintText: replyingToName != null
-                        ? 'Write a reply…'
-                        : 'Add a comment…',
-                    hintStyle: TextStyle(
-                        color: ext.glassHint, fontSize: 14.sp),
-                    filled: true,
-                    fillColor: ext.glassFill,
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide.none,
-                      borderRadius: BorderRadius.circular(22.r),
+                child: CallbackShortcuts(
+                  bindings: <ShortcutActivator, VoidCallback>{
+                    const SingleActivator(
+                        LogicalKeyboardKey.enter, shift: false): onSend,
+                    const SingleActivator(
+                        LogicalKeyboardKey.numpadEnter, shift: false): onSend,
+                  },
+                  child: TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    style:
+                        TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+                    maxLines: 3,
+                    minLines: 1,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: replyingToName != null
+                          ? 'Write a reply…'
+                          : 'Add a comment…',
+                      hintStyle:
+                          TextStyle(color: ext.glassHint, fontSize: 14.sp),
+                      filled: true,
+                      fillColor: ext.glassFill,
+                      border: OutlineInputBorder(
+                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.circular(22.r),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16.w, vertical: 10.h),
+                      isDense: true,
                     ),
-                    contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16.w, vertical: 10.h),
-                    isDense: true,
+                    onSubmitted: (_) => onSend(),
                   ),
-                  onSubmitted: (_) => onSend(),
                 ),
               ),
               SizedBox(width: 8.w),
-              GestureDetector(
-                onTap: onSend,
-                child: Container(
-                  width: 44.w,
-                  height: 44.h,
-                  decoration: BoxDecoration(
-                      color: ext.accentGold, shape: BoxShape.circle),
-                  alignment: Alignment.center,
-                  child: Icon(Icons.send_rounded,
-                      color: Colors.white, size: 20.sp),
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: onSend,
+                  child: Container(
+                    width: 44.w,
+                    height: 44.h,
+                    decoration: BoxDecoration(
+                        color: ext.accentGold, shape: BoxShape.circle),
+                    alignment: Alignment.center,
+                    child: Icon(Icons.send_rounded,
+                        color: Colors.white, size: 20.sp),
+                  ),
                 ),
               ),
             ],
