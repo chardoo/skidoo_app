@@ -74,6 +74,9 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
 
   /// Schedule exactly one active-card update per frame.
   void _scheduleActiveCardUpdate(List<EventDiscovery> events) {
+    // On web, no videos autoplay so active-card tracking adds per-frame
+    // O(n) localToGlobal work with zero benefit — skip entirely.
+    if (kIsWeb) return;
     if (_activeCardUpdateScheduled) return;
     _activeCardUpdateScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -157,6 +160,17 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
             // ── Feed ─────────────────────────────────────────────────────
             Expanded(
               child: BlocBuilder<DiscoveryBloc, DiscoveryState>(
+                // Exclude savedEventIds/savedItemRecordIds/hiddenEventIds —
+                // they're handled by inner BlocBuilders inside each card,
+                // so they must not trigger a full ListView rebuild mid-scroll.
+                buildWhen: (prev, next) =>
+                    prev.events != next.events ||
+                    prev.isLoading != next.isLoading ||
+                    prev.isLoadingMore != next.isLoadingMore ||
+                    prev.errorMessage != next.errorMessage ||
+                    prev.hasMore != next.hasMore ||
+                    prev.pendingHideEventId != next.pendingHideEventId ||
+                    prev.currentUserId != next.currentUserId,
                 builder: (context, state) {
                   if (state.isLoading) return const AppLoadingIndicator();
 
@@ -210,23 +224,25 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                         // way to collapse a ListView item smoothly. The card
                         // stays in the tree (no child-swap reconciliation
                         // issues); only the rendered height animates to 0.
-                        return ClipRect(
-                          child: AnimatedAlign(
-                            duration: const Duration(milliseconds: 380),
-                            curve: Curves.easeInOut,
-                            alignment: Alignment.topCenter,
-                            heightFactor: isPending ? 0.0 : 1.0,
-                            child: IgnorePointer(
-                              ignoring: isPending,
-                              child: EventDiscoveryCard(
-                                key: _keyFor(ev.id),
-                                event: ev,
-                                cardIndex: index,
-                                activeCardIndex: _activeCardIndex,
-                                onTap: () => _onCardTap(context, ev),
-                                isOwner: state.currentUserId != null &&
-                                    state.currentUserId == ev.photographerId,
-                                onHide: () => _onHide(ev.id),
+                        return RepaintBoundary(
+                          child: ClipRect(
+                            child: AnimatedAlign(
+                              duration: const Duration(milliseconds: 380),
+                              curve: Curves.easeInOut,
+                              alignment: Alignment.topCenter,
+                              heightFactor: isPending ? 0.0 : 1.0,
+                              child: IgnorePointer(
+                                ignoring: isPending,
+                                child: EventDiscoveryCard(
+                                  key: _keyFor(ev.id),
+                                  event: ev,
+                                  cardIndex: index,
+                                  activeCardIndex: _activeCardIndex,
+                                  onTap: () => _onCardTap(context, ev),
+                                  isOwner: state.currentUserId != null &&
+                                      state.currentUserId == ev.photographerId,
+                                  onHide: () => _onHide(ev.id),
+                                ),
                               ),
                             ),
                           ),
