@@ -2,8 +2,9 @@
 FROM ghcr.io/cirruslabs/flutter:stable AS builder
 WORKDIR /app
 COPY mobile/ .
+RUN flutter config --enable-web
 RUN flutter pub get
-RUN flutter build web --release --dart-define=FLUTTER_WEB_USE_SKIA=false
+RUN flutter build web --release
 
 # ── Serve ────────────────────────────────────────────────────────────────────
 FROM nginx:alpine
