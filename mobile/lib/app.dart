@@ -29,13 +29,12 @@ const double _kWebColumnWidth = 480;
 /// Below this viewport width the left sidebar won't fit — switch to top nav.
 const double _kWebMobileBreakpoint = 240 + _kWebColumnWidth; // sidebar + content
 
-/// Width of the external reactions / comments panel shown to the right of the
-/// content column on wide desktop screens.
+/// Maximum width of the external reactions / comments panel.
+/// The panel grows dynamically from 0 → this value as the viewport expands.
 const double _kWebReactionsPanelW = 280.0;
 
-/// Minimum viewport width to show the external reactions panel.
-/// sidebar (240) + card (480) + panel (280) + ~80 breathing room = 1080
-const double _kWebWithPanelBreakpoint = 1080.0;
+/// Width of the desktop sidebar — must stay in sync with WebSidebar._kSidebarWidth.
+const double _kWebSidebarW = 240.0;
 
 // ── Root application widget ───────────────────────────────────────────────────
 
@@ -240,18 +239,21 @@ class _AppMaterial extends StatelessWidget {
   }
 
   /// Web layout — adapts to viewport width:
-  ///   ≥ 720 px (desktop): left sidebar + centred 480 dp column + download button
+  ///   ≥ 720 px (desktop): left sidebar + centred column (480→760 px) + download button
   ///   <  720 px (mobile):  horizontally-scrollable top nav bar + full-width content
+  ///
+  /// The content column grows dynamically from 480 px → 760 px as the viewport
+  /// expands beyond the sidebar + card width. The card's own LayoutBuilder
+  /// switches to the external panel layout once it has ≥ 200 px of spare room
+  /// (which happens at viewport ≈ 920 px — any typical laptop browser window).
   static Widget _webLayoutBuilder(BuildContext ctx, Widget? child) {
     final bg = Theme.of(ctx).scaffoldBackgroundColor;
     final viewportW = MediaQuery.of(ctx).size.width;
     final isMobileWeb = viewportW < _kWebMobileBreakpoint;
-    // On wide screens (laptop/monitor) give the content column extra room for
-    // the external reactions/comments panel that sits beside each card.
-    final hasExtPanel = !isMobileWeb && viewportW >= _kWebWithPanelBreakpoint;
-    final contentW = hasExtPanel
-        ? _kWebColumnWidth + _kWebReactionsPanelW // 760
-        : _kWebColumnWidth; // 480
+    // Grow from 480 px (card only) up to 760 px (card + panel) as viewport expands.
+    // Clamped so it never exceeds available space after the sidebar.
+    final contentW = (viewportW - _kWebSidebarW)
+        .clamp(_kWebColumnWidth, _kWebColumnWidth + _kWebReactionsPanelW);
 
     return DefaultTextStyle(
       style: DefaultTextStyle.of(ctx).style.copyWith(decoration: TextDecoration.none),

@@ -411,9 +411,10 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 .commentsEnabled);
 
     return LayoutBuilder(builder: (ctx, cons) {
-      // Wide desktop (≥ 1080px viewport): card is 480px, right panel is external.
-      // Narrow (mobile web / mid-range desktop): inside-card panel at 170px.
-      final isWide = cons.maxWidth > _kWebColumnWidth + 20;
+      // External panel activates when the card has ≥ 200px of room beyond the
+      // 480px content column (viewport ≈ 920px+, any typical laptop browser).
+      // Below that threshold the panel stays inside the card (170px).
+      final isWide = cons.maxWidth >= _kWebColumnWidth + 200.0; // ≥ 680px
       const cardW = _kWebColumnWidth; // 480
 
       if (isWide) {
