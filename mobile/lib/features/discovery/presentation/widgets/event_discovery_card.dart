@@ -21,6 +21,9 @@ import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
 
+// Width of the side-panel (reactions column / inline comments) on web.
+const double _kWebSidePanelW = 170.0;
+
 class EventDiscoveryCard extends StatefulWidget {
   const EventDiscoveryCard({
     super.key,
@@ -65,6 +68,8 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   int _dislikeCount = 0;
   bool _descExpanded = false;
   bool _showHeartBurst = false;
+  // Web-only: whether the inline comment panel is open (replaces reactions col).
+  bool _webCommentsOpen = false;
 
   /// Natural dimensions of the first (or current) picture once resolved.
   Size? _imageSize;
@@ -247,11 +252,236 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     return math.min(3, widget.event.pictures.length);
   }
 
+  // ── Shared media stack (used by both mobile + web layouts) ─────────────────
+
+  Widget _buildMediaStack(BuildContext context, AppThemeExtension ext,
+      List<EventPicture> pics, double width, double height) {
+    return GestureDetector(
+      onTap: widget.isAuthenticated ? null : widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        width: width,
+        height: height,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            pics.isEmpty
+                ? CardGradientPlaceholder(name: widget.event.eventName)
+                : PostPhotoCarousel(
+                    pics: pics.take(_visibleCount).toList(),
+                    pageController: _pageCtrl,
+                    showBlur: !widget.isAuthenticated && pics.length > 3,
+                    onTap: handleTap,
+                    scrollable: widget.isAuthenticated,
+                    onDoubleTap: widget.isAuthenticated
+                        ? _handleDoubleTap
+                        : widget.onTap,
+                    cardIndex: widget.cardIndex,
+                    activeCardIndex: widget.activeCardIndex,
+                  ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 130.h,
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Color(0xDD000000), Color(0x00000000)],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 14.h,
+              left: 14.w,
+              right: kIsWeb ? 14.w : 60.w,
+              child: _ImageFooter(event: widget.event),
+            ),
+            if (_showHeartBurst)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Center(child: _HeartBurst(ctrl: _heartCtrl)),
+                ),
+              ),
+            if (pics.length > 1)
+              Positioned(
+                bottom: 10.h,
+                left: 0,
+                right: 0,
+                child: _PageDots(
+                  totalCount: _visibleCount,
+                  controller: _pageCtrl,
+                  maxRevealedPage: _maxRevealedPage,
+                ),
+              ),
+            if (!widget.isAuthenticated && pics.isEmpty)
+              _UnauthCta(onTap: widget.onTap),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Web layout — image left, reactions/comments panel right ─────────────────
+
+  Widget _buildWebCard(BuildContext context, AppThemeExtension ext,
+      List<EventPicture> pics, double screenH) {
+    final commentsEnabled = AppConfigRepository.current.commentsEnabled &&
+        widget.event.commentsEnabled &&
+        (widget.event.pictures.isEmpty ||
+            widget.event.pictures[
+                    _currentPage.clamp(0, widget.event.pictures.length - 1)]
+                .commentsEnabled);
+
+    return Container(
+      color: Colors.transparent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header ────────────────────────────────────────────────────
+          _PostHeader(
+            event: widget.event,
+            ext: ext,
+            isOwner: widget.isOwner,
+            isAuthenticated: widget.isAuthenticated,
+            onPhotographerTap: () => _openPhotographerProfile(context),
+            onHide: widget.onHide,
+            onLoginRequired: widget.onTap,
+            onImage: false,
+          ),
+
+          // ── Image + side panel ─────────────────────────────────────────
+          LayoutBuilder(
+            builder: (ctx, cons) {
+              const panelW = _kWebSidePanelW;
+              final imageW = cons.maxWidth - panelW;
+              final mediaH = _computeMediaHeight(imageW, screenH);
+              return SizedBox(
+                height: mediaH,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      width: imageW,
+                      child: _buildMediaStack(
+                          context, ext, pics, imageW, mediaH),
+                    ),
+                    SizedBox(
+                      width: panelW,
+                      child: _webCommentsOpen
+                          ? EventCommentInlinePanel(
+                              event: widget.event,
+                              onClose: () =>
+                                  setState(() => _webCommentsOpen = false),
+                            )
+                          : BlocBuilder<DiscoveryBloc, DiscoveryState>(
+                              buildWhen: (prev, next) =>
+                                  prev.savedEventIds != next.savedEventIds,
+                              builder: (ctx2, _) => _WebReactionsColumn(
+                                liked: _liked,
+                                disliked: _disliked,
+                                saved: _isSaved(ctx2),
+                                likeCount: _likeCount,
+                                dislikeCount: _dislikeCount,
+                                commentCount: widget.event.commentCount,
+                                commentsEnabled: commentsEnabled,
+                                ext: ext,
+                                onLike: widget.isAuthenticated
+                                    ? () {
+                                        setState(() {
+                                          if (!_liked && _disliked) {
+                                            _disliked = false;
+                                            _dislikeCount =
+                                                (_dislikeCount - 1)
+                                                    .clamp(0, 999999999);
+                                          }
+                                          _liked = !_liked;
+                                          _likeCount += _liked ? 1 : -1;
+                                        });
+                                        context.read<DiscoveryBloc>().add(
+                                              DiscoveryReactionToggled(
+                                                  widget.event.id,
+                                                  isLike: true),
+                                            );
+                                      }
+                                    : widget.onTap,
+                                onDislike: widget.isAuthenticated
+                                    ? () {
+                                        setState(() {
+                                          if (!_disliked && _liked) {
+                                            _liked = false;
+                                            _likeCount =
+                                                (_likeCount - 1)
+                                                    .clamp(0, 999999999);
+                                          }
+                                          _disliked = !_disliked;
+                                          _dislikeCount +=
+                                              _disliked ? 1 : -1;
+                                        });
+                                        context.read<DiscoveryBloc>().add(
+                                              DiscoveryReactionToggled(
+                                                  widget.event.id,
+                                                  isLike: false),
+                                            );
+                                      }
+                                    : widget.onTap,
+                                onComment: widget.isAuthenticated &&
+                                        commentsEnabled
+                                    ? () => setState(
+                                        () => _webCommentsOpen = true)
+                                    : widget.isAuthenticated
+                                        ? null
+                                        : widget.onTap,
+                                onShare: () =>
+                                    GetAppSheet.show(context, ext: ext),
+                                onSave: widget.isAuthenticated
+                                    ? () => context
+                                        .read<DiscoveryBloc>()
+                                        .add(DiscoveryEventSaveToggled(
+                                            widget.event.id))
+                                    : widget.onTap,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
+          // ── Caption ────────────────────────────────────────────────────
+          CardDescriptionText(
+            event: widget.event,
+            ext: ext,
+            expanded: _descExpanded,
+            onToggle: () => setState(() => _descExpanded = !_descExpanded),
+          ),
+
+          SizedBox(height: 6.h),
+
+          Divider(
+            height: 1,
+            thickness: 0.5,
+            color: ext.searchHintColor.withValues(alpha: 0.1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Mobile layout ────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final pics = widget.event.pictures;
     final screenH = MediaQuery.sizeOf(context).height;
+
+    if (kIsWeb) return _buildWebCard(context, ext, pics, screenH);
 
     return Container(
       color: Colors.transparent,
@@ -273,88 +503,12 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           // ── 1. Photo area ──────────────────────────────────────────────
           LayoutBuilder(
             builder: (context, constraints) {
-              final mediaH = _computeMediaHeight(constraints.maxWidth, screenH);
-              return GestureDetector(
-            onTap: widget.isAuthenticated ? null : widget.onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              width: double.infinity,
-              height: mediaH,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Photos or placeholder
-                  pics.isEmpty
-                      ? CardGradientPlaceholder(name: widget.event.eventName)
-                      : PostPhotoCarousel(
-                          pics: pics.take(_visibleCount).toList(),
-                          pageController: _pageCtrl,
-                          showBlur: !widget.isAuthenticated && pics.length > 3,
-                          onTap: handleTap,
-                          scrollable: widget.isAuthenticated,
-                          onDoubleTap: widget.isAuthenticated
-                              ? _handleDoubleTap
-                              : widget.onTap,
-                          cardIndex: widget.cardIndex,
-                          activeCardIndex: widget.activeCardIndex,
-                        ),
-
-                  // Bottom gradient for footer text readability
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: 130.h,
-                    child: const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [Color(0xDD000000), Color(0x00000000)],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Event name + location at bottom
-                  Positioned(
-                    bottom: 14.h,
-                    left: 14.w,
-                    right: 60.w,
-                    child: _ImageFooter(event: widget.event),
-                  ),
-
-                  // Double-tap heart burst
-                  if (_showHeartBurst)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: Center(child: _HeartBurst(ctrl: _heartCtrl)),
-                      ),
-                    ),
-
-                  // Instagram-style page dots — overlaid at the bottom of the image
-                  if (pics.length > 1)
-                    Positioned(
-                      bottom: 10.h,
-                      left: 0,
-                      right: 0,
-                      child: _PageDots(
-                        totalCount: _visibleCount,
-                        controller: _pageCtrl,
-                        maxRevealedPage: _maxRevealedPage,
-                      ),
-                    ),
-
-                  // Unauthenticated full-blur CTA (only when no photos visible)
-                  if (!widget.isAuthenticated && pics.isEmpty)
-                    _UnauthCta(onTap: widget.onTap),
-                ],
-              ),
-            ),
-          ); // GestureDetector
-            }, // LayoutBuilder builder
-          ), // LayoutBuilder
+              final mediaH =
+                  _computeMediaHeight(constraints.maxWidth, screenH);
+              return _buildMediaStack(
+                  context, ext, pics, constraints.maxWidth, mediaH);
+            },
+          ),
 
           // ── 2. Spacing ─────────────────────────────────────────────────
           SizedBox(height: 6.h),
@@ -416,21 +570,19 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                   ? (widget.onCommentTap ??
                       () => _showCommentSheet(context, ext))
                   : widget.onTap,
-              onShare: kIsWeb
-                  ? () => GetAppSheet.show(context, ext: ext)
-                  : widget.isAuthenticated
-                      ? () {
-                          final pics = widget.event.pictures;
-                          if (pics.isEmpty) return;
-                          final url =
-                              pics[_currentPage.clamp(0, pics.length - 1)].url;
-                          GalleryShareSheet.show(
-                            context,
-                            imageUrl: url,
-                            photoLabel: widget.event.eventName,
-                          );
-                        }
-                      : widget.onTap,
+              onShare: widget.isAuthenticated
+                  ? () {
+                      final pics = widget.event.pictures;
+                      if (pics.isEmpty) return;
+                      final url =
+                          pics[_currentPage.clamp(0, pics.length - 1)].url;
+                      GalleryShareSheet.show(
+                        context,
+                        imageUrl: url,
+                        photoLabel: widget.event.eventName,
+                      );
+                    }
+                  : widget.onTap,
               onSave: widget.isAuthenticated
                   ? () => context.read<DiscoveryBloc>().add(
                         DiscoveryEventSaveToggled(widget.event.id),
@@ -1029,6 +1181,184 @@ class _UnauthCta extends StatelessWidget {
               fontSize: 16.sp,
               fontWeight: FontWeight.w600,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Web: vertical reactions column ────────────────────────────────────────────
+
+class _WebReactionsColumn extends StatelessWidget {
+  const _WebReactionsColumn({
+    required this.liked,
+    required this.disliked,
+    required this.saved,
+    required this.likeCount,
+    required this.dislikeCount,
+    required this.commentCount,
+    required this.commentsEnabled,
+    required this.ext,
+    required this.onLike,
+    required this.onDislike,
+    required this.onComment,
+    required this.onShare,
+    required this.onSave,
+  });
+
+  final bool liked;
+  final bool disliked;
+  final bool saved;
+  final int likeCount;
+  final int dislikeCount;
+  final int commentCount;
+  final bool commentsEnabled;
+  final AppThemeExtension ext;
+  final VoidCallback onLike;
+  final VoidCallback onDislike;
+  /// Null when comments are disabled (authenticated user, comments turned off).
+  final VoidCallback? onComment;
+  final VoidCallback onShare;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.homeBackground,
+        border: Border(
+          left: BorderSide(
+            color: (isDark ? Colors.white : Colors.black)
+                .withValues(alpha: 0.08),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _WebActionBtn(
+            icon: liked
+                ? Icons.favorite_rounded
+                : Icons.favorite_border_rounded,
+            iconColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
+            count: likeCount,
+            countColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
+            onTap: onLike,
+          ),
+          const SizedBox(height: 22),
+          _WebActionBtn(
+            icon: disliked
+                ? Icons.thumb_down_rounded
+                : Icons.thumb_down_outlined,
+            iconColor:
+                disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
+            count: dislikeCount,
+            countColor:
+                disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
+            onTap: onDislike,
+          ),
+          const SizedBox(height: 22),
+          _WebActionBtn(
+            icon: commentsEnabled
+                ? Icons.mode_comment_outlined
+                : Icons.comments_disabled_outlined,
+            iconColor: commentsEnabled
+                ? ext.greetingColor
+                : ext.searchHintColor.withValues(alpha: 0.4),
+            count: commentCount,
+            countColor: commentsEnabled
+                ? ext.greetingColor
+                : ext.searchHintColor.withValues(alpha: 0.4),
+            onTap: onComment,
+          ),
+          const SizedBox(height: 22),
+          _WebActionBtn(
+            icon: saved
+                ? Icons.bookmark_rounded
+                : Icons.bookmark_border_rounded,
+            iconColor: saved ? ext.accentGold : ext.greetingColor,
+            count: null,
+            countColor: ext.greetingColor,
+            onTap: onSave,
+          ),
+          const SizedBox(height: 22),
+          _WebActionBtn(
+            icon: Icons.near_me_outlined,
+            iconColor: ext.greetingColor,
+            count: null,
+            countColor: ext.greetingColor,
+            onTap: onShare,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Web: single action button (icon + count, hover-scale) ────────────────────
+
+class _WebActionBtn extends StatefulWidget {
+  const _WebActionBtn({
+    required this.icon,
+    required this.iconColor,
+    required this.count,
+    required this.countColor,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final int? count;
+  final Color countColor;
+  /// Null disables the button (dimmed, non-interactive).
+  final VoidCallback? onTap;
+
+  @override
+  State<_WebActionBtn> createState() => _WebActionBtnState();
+}
+
+class _WebActionBtnState extends State<_WebActionBtn> {
+  bool _hovered = false;
+
+  String _fmt(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return '$n';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+    return MouseRegion(
+      cursor:
+          enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) { if (enabled) setState(() => _hovered = true); },
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _hovered ? 1.14 : 1.0,
+          duration: const Duration(milliseconds: 130),
+          curve: Curves.easeOut,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, color: widget.iconColor, size: 28.sp),
+              if (widget.count != null && widget.count! > 0) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _fmt(widget.count!),
+                  style: TextStyle(
+                    color: widget.countColor,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),

@@ -339,3 +339,356 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
   }
 }
 
+// ── Inline comment panel (web) ────────────────────────────────────────────────
+
+/// Embeds the event comment UI directly in the card's side panel on web,
+/// instead of opening a modal bottom sheet. Manages its own [ChatRoomBloc].
+class EventCommentInlinePanel extends StatelessWidget {
+  const EventCommentInlinePanel({
+    super.key,
+    required this.event,
+    required this.onClose,
+  });
+
+  final EventDiscovery event;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<ChatRoomBloc>(),
+      child: _InlineCommentContent(event: event, onClose: onClose),
+    );
+  }
+}
+
+class _InlineCommentContent extends StatefulWidget {
+  const _InlineCommentContent(
+      {required this.event, required this.onClose});
+  final EventDiscovery event;
+  final VoidCallback onClose;
+
+  @override
+  State<_InlineCommentContent> createState() =>
+      _InlineCommentContentState();
+}
+
+class _InlineCommentContentState extends State<_InlineCommentContent> {
+  bool _loading = true;
+  String? _error;
+  String _myId = '';
+  ChatMessage? _replyingTo;
+
+  final _inputCtrl = TextEditingController();
+  final _focusNode = FocusNode();
+  final _scrollCtrl = ScrollController();
+  late final ChatRoomBloc _bloc;
+  final _expandedIds = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+    _bloc = context.read<ChatRoomBloc>();
+    _scrollCtrl.addListener(_onScroll);
+    _loadRoom();
+    _loadMyId();
+  }
+
+  Future<void> _loadMyId() async {
+    final id = await sl<AuthService>().getUserId();
+    if (mounted) setState(() => _myId = id);
+  }
+
+  Future<void> _loadRoom() async {
+    try {
+      final room = await sl<GetEventRoomUseCase>().call(widget.event.id);
+      if (mounted) {
+        setState(() => _loading = false);
+        _bloc.add(ChatRoomJoined(room.id, room: room));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _bloc.add(const ChatRoomLeft());
+    _inputCtrl.dispose();
+    _focusNode.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollCtrl.hasClients) return;
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 200) {
+      _bloc.add(const ChatRoomLoadMoreRequested());
+    }
+  }
+
+  void _startReply(ChatMessage msg) {
+    setState(() => _replyingTo = msg);
+    _focusNode.requestFocus();
+  }
+
+  void _cancelReply() {
+    setState(() => _replyingTo = null);
+    _focusNode.unfocus();
+  }
+
+  void _send() {
+    final text = _inputCtrl.text.trim();
+    if (text.isEmpty) return;
+    _bloc.add(ChatRoomMessageSent(text, replyToId: _replyingTo?.id));
+    _inputCtrl.clear();
+    if (_replyingTo != null) setState(() => _replyingTo = null);
+  }
+
+  String _label(ChatMessage msg) {
+    if (msg.senderId == _myId) return 'You';
+    if (msg.senderName.isNotEmpty) return msg.senderName;
+    final r = msg.senderRole;
+    return r.isEmpty ? 'User' : r[0].toUpperCase() + r.substring(1);
+  }
+
+  void _openProfile(ChatMessage msg) {
+    final name = msg.senderName.isNotEmpty ? msg.senderName : 'Creator';
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PhotographerProfilePage(
+          photographer: PhotographerModel(msg.senderId, '', name, ''),
+        ),
+      ),
+    );
+  }
+
+  ({List<ChatMessage> topLevel, Map<String, List<ChatMessage>> repliesMap})
+      _buildThreads(List<ChatMessage> messages) {
+    final allIds = {for (final m in messages) m.id};
+    bool isTop(ChatMessage m) =>
+        m.replyToId == null || !allIds.contains(m.replyToId);
+    final topLevelIds = {
+      for (final m in messages)
+        if (isTop(m)) m.id,
+    };
+    String rootOf(ChatMessage m) {
+      var pid = m.replyToId!;
+      while (!topLevelIds.contains(pid)) {
+        final parent = messages
+            .cast<ChatMessage?>()
+            .firstWhere((x) => x?.id == pid, orElse: () => null);
+        if (parent == null || parent.replyToId == null) break;
+        pid = parent.replyToId!;
+      }
+      return pid;
+    }
+
+    final topLevel = messages.where(isTop).toList();
+    final repliesMap = <String, List<ChatMessage>>{};
+    for (final m in messages) {
+      if (!isTop(m)) {
+        repliesMap.putIfAbsent(rootOf(m), () => []).add(m);
+      }
+    }
+    return (topLevel: topLevel, repliesMap: repliesMap);
+  }
+
+  CommentRowData _toRowData(ChatMessage msg,
+      {List<ChatMessage>? replies,
+      required void Function(ChatMessage) onReply}) {
+    return CommentRowData(
+      id: msg.id,
+      label: _label(msg),
+      content: msg.content,
+      timeLabel: TimeFormatter.relative(msg.createdAt),
+      isMe: msg.senderId == _myId,
+      isPending: msg.isLocal,
+      replyCount: replies?.length ?? 0,
+      onReply: () => onReply(msg),
+      onUserTap: (msg.senderId == _myId ||
+              msg.senderRole != ChatConfig.rolePhotographer)
+          ? null
+          : () => _openProfile(msg),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor =
+        (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.homeBackground,
+        border: Border(
+          left: BorderSide(color: borderColor, width: 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Header ─────────────────────────────────────────────────────
+          Padding(
+            padding:
+                EdgeInsets.fromLTRB(12.w, 10.h, 8.w, 8.h),
+            child: Row(
+              children: [
+                Icon(Icons.mode_comment_outlined,
+                    color: ext.searchHintColor, size: 15.sp),
+                SizedBox(width: 6.w),
+                Expanded(
+                  child: Text(
+                    'Comments',
+                    style: TextStyle(
+                      color: ext.greetingColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.sp,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: widget.onClose,
+                  child: Padding(
+                    padding: EdgeInsets.all(4.w),
+                    child: Icon(Icons.close_rounded,
+                        color: ext.searchHintColor, size: 18.sp),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, thickness: 0.5, color: borderColor),
+
+          // ── Body ───────────────────────────────────────────────────────
+          Expanded(
+            child: _loading
+                ? const AppLoadingIndicator()
+                : _error != null
+                    ? AppErrorView(
+                        message: _error!,
+                        onRetry: () {
+                          setState(() {
+                            _loading = true;
+                            _error = null;
+                          });
+                          _loadRoom();
+                        },
+                      )
+                    : Column(
+                        children: [
+                          BlocBuilder<ChatRoomBloc, ChatRoomState>(
+                            buildWhen: (p, c) =>
+                                p.isSyncing != c.isSyncing,
+                            builder: (_, s) => s.isSyncing
+                                ? LinearProgressIndicator(
+                                    minHeight: 2,
+                                    backgroundColor: Colors.transparent,
+                                    color: ext.accentGold
+                                        .withValues(alpha: 0.6),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                          Expanded(
+                            child: BlocConsumer<ChatRoomBloc,
+                                ChatRoomState>(
+                              listenWhen: (prev, curr) =>
+                                  curr.errorMessage != null &&
+                                  curr.errorMessage !=
+                                      prev.errorMessage,
+                              listener: (_, state) {
+                                AppSnackBar.error(
+                                    context, state.errorMessage!);
+                              },
+                              builder: (_, state) {
+                                if (state.isLoadingHistory &&
+                                    state.messages.isEmpty) {
+                                  return const AppLoadingIndicator();
+                                }
+                                if (state.messages.isEmpty) {
+                                  return CommentEmptyState(ext: ext);
+                                }
+                                final threaded =
+                                    _buildThreads(state.messages);
+                                return ListView.builder(
+                                  controller: _scrollCtrl,
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 10.w,
+                                      vertical: 6.h),
+                                  itemCount:
+                                      threaded.topLevel.length +
+                                          (state.isLoadingMore
+                                              ? 1
+                                              : 0),
+                                  itemBuilder: (_, i) {
+                                    if (i ==
+                                        threaded.topLevel.length) {
+                                      return Padding(
+                                        padding: EdgeInsets.symmetric(
+                                            vertical: 10.h),
+                                        child: Center(
+                                          child:
+                                              CircularProgressIndicator(
+                                            color: ext.accentGold,
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    final msg = threaded.topLevel[i];
+                                    final replies = threaded
+                                            .repliesMap[msg.id] ??
+                                        [];
+                                    return ThreadedCommentWidget(
+                                      key: ValueKey(msg.id),
+                                      comment: _toRowData(msg,
+                                          replies: replies,
+                                          onReply: _startReply),
+                                      replies: replies
+                                          .map((r) => _toRowData(r,
+                                              onReply: _startReply))
+                                          .toList(),
+                                      ext: ext,
+                                      isExpanded: _expandedIds
+                                          .contains(msg.id),
+                                      onToggleReplies: () =>
+                                          setState(() {
+                                        if (_expandedIds
+                                            .contains(msg.id)) {
+                                          _expandedIds.remove(msg.id);
+                                        } else {
+                                          _expandedIds.add(msg.id);
+                                        }
+                                      }),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                          CommentInputBarWidget(
+                            controller: _inputCtrl,
+                            focusNode: _focusNode,
+                            onSend: _send,
+                            ext: ext,
+                            replyingToName: _replyingTo != null
+                                ? _label(_replyingTo!)
+                                : null,
+                            onCancelReply: _cancelReply,
+                          ),
+                        ],
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+}
