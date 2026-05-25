@@ -348,25 +348,34 @@ class EventCommentInlinePanel extends StatelessWidget {
     super.key,
     required this.event,
     required this.onClose,
+    this.isExternalPanel = false,
   });
 
   final EventDiscovery event;
   final VoidCallback onClose;
+  /// True when rendered outside the 480px card column (wide desktop layout).
+  /// Removes the left border and uses slightly looser padding.
+  final bool isExternalPanel;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<ChatRoomBloc>(),
-      child: _InlineCommentContent(event: event, onClose: onClose),
+      child: _InlineCommentContent(
+          event: event, onClose: onClose, isExternalPanel: isExternalPanel),
     );
   }
 }
 
 class _InlineCommentContent extends StatefulWidget {
-  const _InlineCommentContent(
-      {required this.event, required this.onClose});
+  const _InlineCommentContent({
+    required this.event,
+    required this.onClose,
+    this.isExternalPanel = false,
+  });
   final EventDiscovery event;
   final VoidCallback onClose;
+  final bool isExternalPanel;
 
   @override
   State<_InlineCommentContent> createState() =>
@@ -529,9 +538,10 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
     return Container(
       decoration: BoxDecoration(
         color: ext.homeBackground,
-        border: Border(
-          left: BorderSide(color: borderColor, width: 0.5),
-        ),
+        // External panel has no left border — visually separate from the card.
+        border: widget.isExternalPanel
+            ? null
+            : Border(left: BorderSide(color: borderColor, width: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

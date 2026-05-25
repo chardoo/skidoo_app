@@ -21,6 +21,9 @@ import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
 
+/// Width of the main content column on web — must match app.dart's _kWebColumnWidth.
+const double _kWebColumnWidth = 480.0;
+
 // Width of the side-panel (reactions column / inline comments) on web.
 const double _kWebSidePanelW = 170.0;
 
@@ -328,6 +331,76 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
 
   // ── Web layout — image left, reactions/comments panel right ─────────────────
 
+  // ── Shared right-panel builder (reactions OR inline comments) ───────────────
+
+  Widget _buildWebRightPanel(
+    BuildContext context,
+    AppThemeExtension ext,
+    bool commentsEnabled, {
+    required bool isExternalPanel,
+  }) {
+    if (_webCommentsOpen) {
+      return EventCommentInlinePanel(
+        event: widget.event,
+        isExternalPanel: isExternalPanel,
+        onClose: () => setState(() => _webCommentsOpen = false),
+      );
+    }
+    return BlocBuilder<DiscoveryBloc, DiscoveryState>(
+      buildWhen: (prev, next) => prev.savedEventIds != next.savedEventIds,
+      builder: (ctx2, _) => _WebReactionsColumn(
+        liked: _liked,
+        disliked: _disliked,
+        saved: _isSaved(ctx2),
+        likeCount: _likeCount,
+        dislikeCount: _dislikeCount,
+        commentCount: widget.event.commentCount,
+        commentsEnabled: commentsEnabled,
+        ext: ext,
+        isExternalPanel: isExternalPanel,
+        onLike: widget.isAuthenticated
+            ? () {
+                setState(() {
+                  if (!_liked && _disliked) {
+                    _disliked = false;
+                    _dislikeCount = (_dislikeCount - 1).clamp(0, 999999999);
+                  }
+                  _liked = !_liked;
+                  _likeCount += _liked ? 1 : -1;
+                });
+                context.read<DiscoveryBloc>().add(
+                      DiscoveryReactionToggled(widget.event.id, isLike: true));
+              }
+            : widget.onTap,
+        onDislike: widget.isAuthenticated
+            ? () {
+                setState(() {
+                  if (!_disliked && _liked) {
+                    _liked = false;
+                    _likeCount = (_likeCount - 1).clamp(0, 999999999);
+                  }
+                  _disliked = !_disliked;
+                  _dislikeCount += _disliked ? 1 : -1;
+                });
+                context.read<DiscoveryBloc>().add(
+                      DiscoveryReactionToggled(widget.event.id, isLike: false));
+              }
+            : widget.onTap,
+        onComment: widget.isAuthenticated && commentsEnabled
+            ? () => setState(() => _webCommentsOpen = true)
+            : widget.isAuthenticated
+                ? null
+                : widget.onTap,
+        onShare: () => GetAppSheet.show(context, ext: ext),
+        onSave: widget.isAuthenticated
+            ? () => context
+                .read<DiscoveryBloc>()
+                .add(DiscoveryEventSaveToggled(widget.event.id))
+            : widget.onTap,
+      ),
+    );
+  }
+
   Widget _buildWebCard(BuildContext context, AppThemeExtension ext,
       List<EventPicture> pics, double screenH) {
     final commentsEnabled = AppConfigRepository.current.commentsEnabled &&
@@ -337,140 +410,119 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                     _currentPage.clamp(0, widget.event.pictures.length - 1)]
                 .commentsEnabled);
 
-    return Container(
-      color: Colors.transparent,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Header ────────────────────────────────────────────────────
-          _PostHeader(
-            event: widget.event,
-            ext: ext,
-            isOwner: widget.isOwner,
-            isAuthenticated: widget.isAuthenticated,
-            onPhotographerTap: () => _openPhotographerProfile(context),
-            onHide: widget.onHide,
-            onLoginRequired: widget.onTap,
-            onImage: false,
-          ),
+    return LayoutBuilder(builder: (ctx, cons) {
+      // Wide desktop (≥ 1080px viewport): card is 480px, right panel is external.
+      // Narrow (mobile web / mid-range desktop): inside-card panel at 170px.
+      final isWide = cons.maxWidth > _kWebColumnWidth + 20;
+      const cardW = _kWebColumnWidth; // 480
 
-          // ── Image + side panel ─────────────────────────────────────────
-          LayoutBuilder(
-            builder: (ctx, cons) {
-              const panelW = _kWebSidePanelW;
-              final imageW = cons.maxWidth - panelW;
-              final mediaH = _computeMediaHeight(imageW, screenH);
-              return SizedBox(
+      if (isWide) {
+        // ── Desktop: image full-width, reactions/comments to the right ──────
+        final mediaH = _computeMediaHeight(cardW, screenH);
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Card column (header + image + caption + divider) ───────────
+            SizedBox(
+              width: cardW,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PostHeader(
+                    event: widget.event,
+                    ext: ext,
+                    isOwner: widget.isOwner,
+                    isAuthenticated: widget.isAuthenticated,
+                    onPhotographerTap: () => _openPhotographerProfile(context),
+                    onHide: widget.onHide,
+                    onLoginRequired: widget.onTap,
+                    onImage: false,
+                  ),
+                  SizedBox(
+                    height: mediaH,
+                    child: _buildMediaStack(context, ext, pics, cardW, mediaH),
+                  ),
+                  CardDescriptionText(
+                    event: widget.event,
+                    ext: ext,
+                    expanded: _descExpanded,
+                    onToggle: () =>
+                        setState(() => _descExpanded = !_descExpanded),
+                  ),
+                  SizedBox(height: 6.h),
+                  Divider(
+                    height: 1,
+                    thickness: 0.5,
+                    color: ext.searchHintColor.withValues(alpha: 0.1),
+                  ),
+                ],
+              ),
+            ),
+            // ── External reactions / comments panel ────────────────────────
+            Expanded(
+              child: SizedBox(
                 height: mediaH,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: imageW,
-                      child: _buildMediaStack(
-                          context, ext, pics, imageW, mediaH),
-                    ),
-                    SizedBox(
-                      width: panelW,
-                      child: _webCommentsOpen
-                          ? EventCommentInlinePanel(
-                              event: widget.event,
-                              onClose: () =>
-                                  setState(() => _webCommentsOpen = false),
-                            )
-                          : BlocBuilder<DiscoveryBloc, DiscoveryState>(
-                              buildWhen: (prev, next) =>
-                                  prev.savedEventIds != next.savedEventIds,
-                              builder: (ctx2, _) => _WebReactionsColumn(
-                                liked: _liked,
-                                disliked: _disliked,
-                                saved: _isSaved(ctx2),
-                                likeCount: _likeCount,
-                                dislikeCount: _dislikeCount,
-                                commentCount: widget.event.commentCount,
-                                commentsEnabled: commentsEnabled,
-                                ext: ext,
-                                onLike: widget.isAuthenticated
-                                    ? () {
-                                        setState(() {
-                                          if (!_liked && _disliked) {
-                                            _disliked = false;
-                                            _dislikeCount =
-                                                (_dislikeCount - 1)
-                                                    .clamp(0, 999999999);
-                                          }
-                                          _liked = !_liked;
-                                          _likeCount += _liked ? 1 : -1;
-                                        });
-                                        context.read<DiscoveryBloc>().add(
-                                              DiscoveryReactionToggled(
-                                                  widget.event.id,
-                                                  isLike: true),
-                                            );
-                                      }
-                                    : widget.onTap,
-                                onDislike: widget.isAuthenticated
-                                    ? () {
-                                        setState(() {
-                                          if (!_disliked && _liked) {
-                                            _liked = false;
-                                            _likeCount =
-                                                (_likeCount - 1)
-                                                    .clamp(0, 999999999);
-                                          }
-                                          _disliked = !_disliked;
-                                          _dislikeCount +=
-                                              _disliked ? 1 : -1;
-                                        });
-                                        context.read<DiscoveryBloc>().add(
-                                              DiscoveryReactionToggled(
-                                                  widget.event.id,
-                                                  isLike: false),
-                                            );
-                                      }
-                                    : widget.onTap,
-                                onComment: widget.isAuthenticated &&
-                                        commentsEnabled
-                                    ? () => setState(
-                                        () => _webCommentsOpen = true)
-                                    : widget.isAuthenticated
-                                        ? null
-                                        : widget.onTap,
-                                onShare: () =>
-                                    GetAppSheet.show(context, ext: ext),
-                                onSave: widget.isAuthenticated
-                                    ? () => context
-                                        .read<DiscoveryBloc>()
-                                        .add(DiscoveryEventSaveToggled(
-                                            widget.event.id))
-                                    : widget.onTap,
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+                child: _buildWebRightPanel(context, ext, commentsEnabled,
+                    isExternalPanel: true),
+              ),
+            ),
+          ],
+        );
+      }
 
-          // ── Caption ────────────────────────────────────────────────────
-          CardDescriptionText(
-            event: widget.event,
-            ext: ext,
-            expanded: _descExpanded,
-            onToggle: () => setState(() => _descExpanded = !_descExpanded),
-          ),
-
-          SizedBox(height: 6.h),
-
-          Divider(
-            height: 1,
-            thickness: 0.5,
-            color: ext.searchHintColor.withValues(alpha: 0.1),
-          ),
-        ],
-      ),
-    );
+      // ── Narrow: inside-card panel (current behaviour) ──────────────────────
+      const panelW = _kWebSidePanelW;
+      final imageW = cons.maxWidth - panelW;
+      final mediaH = _computeMediaHeight(imageW, screenH);
+      return Container(
+        color: Colors.transparent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _PostHeader(
+              event: widget.event,
+              ext: ext,
+              isOwner: widget.isOwner,
+              isAuthenticated: widget.isAuthenticated,
+              onPhotographerTap: () => _openPhotographerProfile(context),
+              onHide: widget.onHide,
+              onLoginRequired: widget.onTap,
+              onImage: false,
+            ),
+            SizedBox(
+              height: mediaH,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: imageW,
+                    child:
+                        _buildMediaStack(context, ext, pics, imageW, mediaH),
+                  ),
+                  SizedBox(
+                    width: panelW,
+                    child: _buildWebRightPanel(context, ext, commentsEnabled,
+                        isExternalPanel: false),
+                  ),
+                ],
+              ),
+            ),
+            CardDescriptionText(
+              event: widget.event,
+              ext: ext,
+              expanded: _descExpanded,
+              onToggle: () => setState(() => _descExpanded = !_descExpanded),
+            ),
+            SizedBox(height: 6.h),
+            Divider(
+              height: 1,
+              thickness: 0.5,
+              color: ext.searchHintColor.withValues(alpha: 0.1),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   // ── Mobile layout ────────────────────────────────────────────────────────────
@@ -1200,6 +1252,7 @@ class _WebReactionsColumn extends StatelessWidget {
     required this.commentCount,
     required this.commentsEnabled,
     required this.ext,
+    required this.isExternalPanel,
     required this.onLike,
     required this.onDislike,
     required this.onComment,
@@ -1215,6 +1268,8 @@ class _WebReactionsColumn extends StatelessWidget {
   final int commentCount;
   final bool commentsEnabled;
   final AppThemeExtension ext;
+  /// True when this column lives outside/to-the-right of the 480px card column.
+  final bool isExternalPanel;
   final VoidCallback onLike;
   final VoidCallback onDislike;
   /// Null when comments are disabled (authenticated user, comments turned off).
@@ -1225,16 +1280,24 @@ class _WebReactionsColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // External panel: no left border — it's already visually separate.
+    // Internal (narrow) panel: keep the subtle left divider.
+    final border = isExternalPanel
+        ? null
+        : Border(
+            left: BorderSide(
+              color: (isDark ? Colors.white : Colors.black)
+                  .withValues(alpha: 0.08),
+              width: 0.5,
+            ),
+          );
+    // External panel gets slightly larger icons since the space is ~280px wide.
+    final iconSize = isExternalPanel ? 32.0 : null; // null → default 28.sp
+
     return Container(
       decoration: BoxDecoration(
         color: ext.homeBackground,
-        border: Border(
-          left: BorderSide(
-            color: (isDark ? Colors.white : Colors.black)
-                .withValues(alpha: 0.08),
-            width: 0.5,
-          ),
-        ),
+        border: border,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1246,9 +1309,10 @@ class _WebReactionsColumn extends StatelessWidget {
             iconColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
             count: likeCount,
             countColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
+            iconSize: iconSize,
             onTap: onLike,
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 28),
           _WebActionBtn(
             icon: disliked
                 ? Icons.thumb_down_rounded
@@ -1258,9 +1322,10 @@ class _WebReactionsColumn extends StatelessWidget {
             count: dislikeCount,
             countColor:
                 disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
+            iconSize: iconSize,
             onTap: onDislike,
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 28),
           _WebActionBtn(
             icon: commentsEnabled
                 ? Icons.mode_comment_outlined
@@ -1272,9 +1337,10 @@ class _WebReactionsColumn extends StatelessWidget {
             countColor: commentsEnabled
                 ? ext.greetingColor
                 : ext.searchHintColor.withValues(alpha: 0.4),
+            iconSize: iconSize,
             onTap: onComment,
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 28),
           _WebActionBtn(
             icon: saved
                 ? Icons.bookmark_rounded
@@ -1282,14 +1348,16 @@ class _WebReactionsColumn extends StatelessWidget {
             iconColor: saved ? ext.accentGold : ext.greetingColor,
             count: null,
             countColor: ext.greetingColor,
+            iconSize: iconSize,
             onTap: onSave,
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 28),
           _WebActionBtn(
             icon: Icons.near_me_outlined,
             iconColor: ext.greetingColor,
             count: null,
             countColor: ext.greetingColor,
+            iconSize: iconSize,
             onTap: onShare,
           ),
         ],
@@ -1307,6 +1375,7 @@ class _WebActionBtn extends StatefulWidget {
     required this.count,
     required this.countColor,
     required this.onTap,
+    this.iconSize,
   });
 
   final IconData icon;
@@ -1315,6 +1384,8 @@ class _WebActionBtn extends StatefulWidget {
   final Color countColor;
   /// Null disables the button (dimmed, non-interactive).
   final VoidCallback? onTap;
+  /// Override icon size; when null falls back to 28.sp.
+  final double? iconSize;
 
   @override
   State<_WebActionBtn> createState() => _WebActionBtnState();
@@ -1346,7 +1417,8 @@ class _WebActionBtnState extends State<_WebActionBtn> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(widget.icon, color: widget.iconColor, size: 28.sp),
+              Icon(widget.icon, color: widget.iconColor,
+                  size: widget.iconSize ?? 28.sp),
               if (widget.count != null && widget.count! > 0) ...[
                 const SizedBox(height: 4),
                 Text(

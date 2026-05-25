@@ -29,6 +29,14 @@ const double _kWebColumnWidth = 480;
 /// Below this viewport width the left sidebar won't fit — switch to top nav.
 const double _kWebMobileBreakpoint = 240 + _kWebColumnWidth; // sidebar + content
 
+/// Width of the external reactions / comments panel shown to the right of the
+/// content column on wide desktop screens.
+const double _kWebReactionsPanelW = 280.0;
+
+/// Minimum viewport width to show the external reactions panel.
+/// sidebar (240) + card (480) + panel (280) + ~80 breathing room = 1080
+const double _kWebWithPanelBreakpoint = 1080.0;
+
 // ── Root application widget ───────────────────────────────────────────────────
 
 class MyApp extends StatelessWidget {
@@ -236,7 +244,14 @@ class _AppMaterial extends StatelessWidget {
   ///   <  720 px (mobile):  horizontally-scrollable top nav bar + full-width content
   static Widget _webLayoutBuilder(BuildContext ctx, Widget? child) {
     final bg = Theme.of(ctx).scaffoldBackgroundColor;
-    final isMobileWeb = MediaQuery.of(ctx).size.width < _kWebMobileBreakpoint;
+    final viewportW = MediaQuery.of(ctx).size.width;
+    final isMobileWeb = viewportW < _kWebMobileBreakpoint;
+    // On wide screens (laptop/monitor) give the content column extra room for
+    // the external reactions/comments panel that sits beside each card.
+    final hasExtPanel = !isMobileWeb && viewportW >= _kWebWithPanelBreakpoint;
+    final contentW = hasExtPanel
+        ? _kWebColumnWidth + _kWebReactionsPanelW // 760
+        : _kWebColumnWidth; // 480
 
     return DefaultTextStyle(
       style: DefaultTextStyle.of(ctx).style.copyWith(decoration: TextDecoration.none),
@@ -261,7 +276,7 @@ class _AppMaterial extends StatelessWidget {
                         child: Align(
                           alignment: Alignment.topCenter,
                           child: SizedBox(
-                            width: _kWebColumnWidth,
+                            width: contentW,
                             height: double.infinity,
                             child: ClipRect(child: child!),
                           ),
