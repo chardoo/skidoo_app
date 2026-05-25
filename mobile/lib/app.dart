@@ -6,6 +6,7 @@ import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/customThemeData.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
 import 'package:skidoo_app/core/navigation/app_navigator.dart';
 import 'package:skidoo_app/core/navigation/web_route_observer.dart';
@@ -211,11 +212,20 @@ class _AppMaterial extends StatelessWidget {
             : const DiscoveryPage(),
         LoginPage.routeName: (_) => const LoginPage(),
         SignUpPage.routeName: (_) => const SignUpPage(),
-        HomePage.routeName: (_) => isDeviceCompromised
-            ? const _SecurityWarningPage()
-            : const HomePage(),
-        InterestsPage.routeName: (_) => const InterestsPage(),
+        HomePage.routeName: (_) => _AuthGuard(
+              child: isDeviceCompromised
+                  ? const _SecurityWarningPage()
+                  : const HomePage(),
+            ),
+        InterestsPage.routeName: (_) => _AuthGuard(
+              child: const InterestsPage(),
+            ),
       },
+      onUnknownRoute: (settings) => MaterialPageRoute(
+        builder: (_) => token.isEmpty
+            ? const LoginPage()
+            : const DiscoveryPage(),
+      ),
     );
   }
 
@@ -327,6 +337,55 @@ class _DownloadAppButtonState extends State<_DownloadAppButton> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Auth route guard ─────────────────────────────────────────────────────────
+
+/// Checks whether a valid session exists before rendering [child].
+/// If the token is missing or empty the user is redirected to [LoginPage].
+///
+/// Used to protect named routes on web where someone can navigate directly to
+/// a URL like `/home` without being authenticated.
+class _AuthGuard extends StatefulWidget {
+  const _AuthGuard({required this.child});
+  final Widget child;
+
+  @override
+  State<_AuthGuard> createState() => _AuthGuardState();
+}
+
+class _AuthGuardState extends State<_AuthGuard> {
+  late final Future<bool> _authorized;
+
+  @override
+  void initState() {
+    super.initState();
+    _authorized = sl<AuthService>().getToken().then((t) => t.isNotEmpty);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _authorized,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          // Token check in flight — show neutral background (< 5 ms on web).
+          return const Scaffold(backgroundColor: Color(0xFF0D0D0D));
+        }
+        if (!snap.data!) {
+          // Not logged in — redirect after this frame so the navigator is ready.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.of(context)
+                  .pushReplacementNamed(LoginPage.routeName);
+            }
+          });
+          return const Scaffold(backgroundColor: Color(0xFF0D0D0D));
+        }
+        return widget.child;
+      },
     );
   }
 }
