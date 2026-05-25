@@ -463,9 +463,14 @@ class _EventsFeedState extends State<EventsFeed> {
         return false;
       },
       child: Align(
-        alignment: Alignment.topCenter,
+        alignment: Alignment.topLeft,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          // On web the card manages its own 480px column + reactions panel via
+          // LayoutBuilder — cap must not interfere. On mobile/tablet 720px
+          // prevents cards from stretching too wide on large screens.
+          constraints: kIsWeb
+              ? const BoxConstraints()
+              : const BoxConstraints(maxWidth: 720),
           child: TweenAnimationBuilder<double>(
             tween: Tween(end: widget.topPadding),
             duration: const Duration(milliseconds: 200),
