@@ -27,7 +27,8 @@ class SignUpSubmitted extends SignUpEvent {
 
 class SignUpFaceImageCaptured extends SignUpEvent {
   final String imagePath;
-  const SignUpFaceImageCaptured(this.imagePath);
+  final XFile xFile;
+  const SignUpFaceImageCaptured(this.imagePath, this.xFile);
   @override
   List<Object?> get props => [imagePath];
 }

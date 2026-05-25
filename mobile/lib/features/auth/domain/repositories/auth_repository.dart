@@ -1,10 +1,10 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:skidoo_app/models/Auth/LoginResponse.dart';
 
 abstract class AuthRepository {
   Future<LoginResponseObject> login(String email, String password);
-  Future<void> register(Map<String, String> fields, File image);
+  Future<void> register(Map<String, String> fields, Uint8List imageBytes, String imageFilename);
   Future<void> saveUserSession(LoginResponseObject user);
   Future<String> getToken();
   Future<void> logout();

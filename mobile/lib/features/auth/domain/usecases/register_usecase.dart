@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
 import 'package:skidoo_app/core/usecases/usecase.dart';
@@ -10,15 +10,16 @@ class RegisterUseCase implements UseCase<void, RegisterParams> {
 
   @override
   Future<void> call(RegisterParams params) async {
-    await _repository.register(params.fields, params.image);
+    await _repository.register(params.fields, params.imageBytes, params.imageFilename);
   }
 }
 
 class RegisterParams extends Equatable {
   final Map<String, String> fields;
-  final File image;
-  const RegisterParams({required this.fields, required this.image});
+  final Uint8List imageBytes;
+  final String imageFilename;
+  const RegisterParams({required this.fields, required this.imageBytes, required this.imageFilename});
 
   @override
-  List<Object?> get props => [fields, image];
+  List<Object?> get props => [fields, imageBytes, imageFilename];
 }

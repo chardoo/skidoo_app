@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:bloc/bloc.dart';
+import 'package:camera/camera.dart';
 import 'package:equatable/equatable.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/pending_interests_usecases.dart';
@@ -12,6 +11,9 @@ part 'signup_state.dart';
 class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
   final RegisterUseCase _registerUseCase;
   final SetPendingInterestsUseCase _setPendingInterests;
+
+  // Held outside state — only needed when submitting, not for UI diffing.
+  XFile? _capturedXFile;
 
   SignUpBloc({
     required RegisterUseCase registerUseCase,
@@ -26,7 +28,7 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
 
   Future<void> _onSignUpSubmitted(
       SignUpSubmitted event, Emitter<SignUpState> emit) async {
-    if (event.imagePath.isEmpty) {
+    if (event.imagePath.isEmpty || _capturedXFile == null) {
       emit(state.copyWith(
           errorMessage: 'Please capture your face photo first.'));
       return;
@@ -39,8 +41,15 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
         'contact': event.contact,
         'name': event.userName.isNotEmpty ? event.userName : 'user',
       };
-      await _registerUseCase(
-          RegisterParams(fields: fields, image: File(event.imagePath)));
+      final imageBytes = await _capturedXFile!.readAsBytes();
+      final filename = _capturedXFile!.name.isNotEmpty
+          ? _capturedXFile!.name
+          : 'selfie.jpg';
+      await _registerUseCase(RegisterParams(
+        fields: fields,
+        imageBytes: imageBytes,
+        imageFilename: filename,
+      ));
       await _setPendingInterests();
       emit(state.copyWith(isLoading: false, isSuccess: true));
     } on NetworkException catch (e) {
@@ -56,6 +65,7 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
 
   void _onFaceImageCaptured(
       SignUpFaceImageCaptured event, Emitter<SignUpState> emit) {
+    _capturedXFile = event.xFile;
     emit(state.copyWith(imagePath: event.imagePath));
   }
 

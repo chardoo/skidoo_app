@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
@@ -87,9 +88,9 @@ class _SignUpViewState extends State<_SignUpView>
   }
 
   Future<void> _takeSelfie(BuildContext context) async {
-    final file = await SelfieCaptureScreen.push(context);
-    if (!context.mounted || file == null) return;
-    context.read<SignUpBloc>().add(SignUpFaceImageCaptured(file.path));
+    final xFile = await SelfieCaptureScreen.push(context);
+    if (!context.mounted || xFile == null) return;
+    context.read<SignUpBloc>().add(SignUpFaceImageCaptured(xFile.path, xFile));
   }
 
   @override
@@ -390,10 +391,9 @@ class _FaceCaptureButton extends StatelessWidget {
                   ),
                   child: captured
                       ? ClipOval(
-                          child: Image.file(
-                            File(imagePath),
-                            fit: BoxFit.cover,
-                          ),
+                          child: kIsWeb
+                              ? Image.network(imagePath, fit: BoxFit.cover)
+                              : Image.file(File(imagePath), fit: BoxFit.cover),
                         )
                       : Icon(
                           Icons.face_retouching_natural,

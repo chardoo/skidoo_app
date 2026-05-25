@@ -1,6 +1,6 @@
-import 'dart:io';
-
+import 'package:camera/camera.dart';
 import 'package:dio/dio.dart' as dio_pkg;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
@@ -19,16 +19,16 @@ class FaceRecognitionPage extends StatefulWidget {
 
 class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
   // Validated selfie files — each was accepted by face detection.
-  final List<File> _selfies = [];
+  final List<XFile> _selfies = [];
   bool _uploading = false;
 
   static const _maxSelfies = 5;
 
   Future<void> _addSelfie() async {
     if (_selfies.length >= _maxSelfies) return;
-    final file = await SelfieCaptureScreen.push(context);
-    if (file == null || !mounted) return;
-    setState(() => _selfies.add(file));
+    final xFile = await SelfieCaptureScreen.push(context);
+    if (xFile == null || !mounted) return;
+    setState(() => _selfies.add(xFile));
   }
 
   void _removeSelfie(int index) => setState(() => _selfies.removeAt(index));
@@ -41,11 +41,11 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
     setState(() => _uploading = true);
     try {
       final email = await sl<AuthService>().getEmail();
-      final files = await Future.wait(_selfies.map((f) async =>
-          dio_pkg.MultipartFile.fromFile(
-            f.path,
-            filename: f.uri.pathSegments.last,
-          )));
+      final files = await Future.wait(_selfies.map((f) async {
+        final bytes = await f.readAsBytes();
+        final filename = f.name.isNotEmpty ? f.name : 'selfie.jpg';
+        return dio_pkg.MultipartFile.fromBytes(bytes, filename: filename);
+      }));
       final formData = dio_pkg.FormData.fromMap({
         'email': email,
         'files': files,
@@ -247,7 +247,7 @@ class _AddSelfieTile extends StatelessWidget {
 
 class _SelfieTile extends StatelessWidget {
   const _SelfieTile({required this.file, required this.onRemove});
-  final File file;
+  final XFile file;
   final VoidCallback? onRemove;
 
   @override
@@ -257,7 +257,14 @@ class _SelfieTile extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(10.r),
-          child: Image.file(file, fit: BoxFit.cover),
+          child: kIsWeb
+              ? Image.network(file.path, fit: BoxFit.cover)
+              : FutureBuilder<Uint8List>(
+                  future: file.readAsBytes(),
+                  builder: (_, snap) => snap.hasData
+                      ? Image.memory(snap.data!, fit: BoxFit.cover)
+                      : const SizedBox(),
+                ),
         ),
         // Face-confirmed badge
         Positioned(

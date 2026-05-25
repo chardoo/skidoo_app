@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -10,16 +9,17 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 ///
 /// Usage:
 /// ```dart
-/// final file = await SelfieCaptureScreen.push(context);
-/// if (file != null) { /* has a validated face */ }
+/// final xFile = await SelfieCaptureScreen.push(context);
+/// if (xFile != null) { /* has a validated face (or web bypass) */ }
 /// ```
 ///
-/// Returns a [File] when a face is confirmed, or null if the user cancels.
+/// Returns an [XFile] when a face is confirmed (or on web without ML validation),
+/// or null if the user cancels.
 class SelfieCaptureScreen extends StatefulWidget {
   const SelfieCaptureScreen({super.key});
 
-  static Future<File?> push(BuildContext context) =>
-      Navigator.of(context).push<File?>(
+  static Future<XFile?> push(BuildContext context) =>
+      Navigator.of(context).push<XFile?>(
         MaterialPageRoute(builder: (_) => const SelfieCaptureScreen()),
       );
 
@@ -34,18 +34,22 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
   bool _checking = false;
   String? _errorHint;
   // After a failed detection, let the user bypass the ML check.
-  File? _lastCapturedFile;
+  XFile? _lastCapturedFile;
 
-  final _faceDetector = FaceDetector(
-    options: FaceDetectorOptions(
-      performanceMode: FaceDetectorMode.fast,
-      minFaceSize: 0.15,
-    ),
-  );
+  // ML Kit is not available on web — initialized only on mobile.
+  FaceDetector? _faceDetector;
 
   @override
   void initState() {
     super.initState();
+    if (!kIsWeb) {
+      _faceDetector = FaceDetector(
+        options: FaceDetectorOptions(
+          performanceMode: FaceDetectorMode.fast,
+          minFaceSize: 0.15,
+        ),
+      );
+    }
     WidgetsBinding.instance.addObserver(this);
     _initCamera();
   }
@@ -69,12 +73,19 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
         (c) => c.lensDirection == CameraLensDirection.front,
         orElse: () => cameras.first,
       );
+      // On web the camera plugin ignores imageFormatGroup; Platform.isAndroid
+      // throws UnsupportedError on web so we must guard it.
+      ImageFormatGroup? fmt;
+      if (!kIsWeb) {
+        // ignore: avoid_dynamic_calls
+        fmt = (defaultTargetPlatform == TargetPlatform.android)
+            ? ImageFormatGroup.nv21
+            : ImageFormatGroup.bgra8888;
+      }
       final ctrl = CameraController(
         cam,
         ResolutionPreset.high,
-        imageFormatGroup: Platform.isAndroid
-            ? ImageFormatGroup.nv21
-            : ImageFormatGroup.bgra8888,
+        imageFormatGroup: fmt,
       );
       await ctrl.initialize();
       if (!mounted) {
@@ -94,7 +105,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _ctrl?.dispose();
-    _faceDetector.close();
+    _faceDetector?.close();
     super.dispose();
   }
 
@@ -107,20 +118,26 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     });
     try {
       final xFile = await _ctrl!.takePicture();
-      final file = File(xFile.path);
+      if (kIsWeb) {
+        // ML Kit is unavailable on web — skip face detection and accept the photo.
+        if (!mounted) return;
+        Navigator.of(context).pop(xFile);
+        return;
+      }
+      // Mobile: validate with ML Kit before accepting.
       final inputImage = InputImage.fromFilePath(xFile.path);
-      final faces = await _faceDetector.processImage(inputImage);
+      final faces = await _faceDetector!.processImage(inputImage);
       if (!mounted) return;
       if (faces.isEmpty) {
         setState(() {
           _checking = false;
-          _lastCapturedFile = file;
+          _lastCapturedFile = xFile;
           _errorHint =
               'No face detected — make sure your face fills the oval and the lighting is even.';
         });
         return;
       }
-      Navigator.of(context).pop(file);
+      Navigator.of(context).pop(xFile);
     } catch (_) {
       if (mounted) {
         setState(() {

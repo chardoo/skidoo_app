@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/auth/data/datasources/auth_remote_data_source.dart';
@@ -32,9 +32,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> register(Map<String, String> fields, File image) async {
+  Future<void> register(Map<String, String> fields, Uint8List imageBytes, String imageFilename) async {
     try {
-      await _remoteDataSource.register(fields, image);
+      await _remoteDataSource.register(fields, imageBytes, imageFilename);
     } on ServerException {
       rethrow;
     } on NetworkException {

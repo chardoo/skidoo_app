@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart' as dio;
 import 'package:http_parser/http_parser.dart';
@@ -10,7 +10,7 @@ import 'package:skidoo_app/models/Auth/LoginResponse.dart';
 
 abstract class AuthRemoteDataSource {
   Future<LoginResponseObject> login(String email, String password);
-  Future<void> register(Map<String, String> fields, File image);
+  Future<void> register(Map<String, String> fields, Uint8List imageBytes, String imageFilename);
   Future<LoginResponseObject> confirmEmail(Map<String, dynamic> data);
   Future<LoginResponseObject> verifyCode(Map<String, dynamic> data);
   Future<void> updateProfile(String clientId, Map<String, dynamic> data);
@@ -42,19 +42,18 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> register(Map<String, String> fields, File image) async {
+  Future<void> register(Map<String, String> fields, Uint8List imageBytes, String imageFilename) async {
     try {
-      final ext = image.path.split('.').last.toLowerCase();
+      final ext = imageFilename.split('.').last.toLowerCase();
       final mimeSubtype = (ext == 'jpg' || ext == 'jpeg') ? 'jpeg' : 'png';
-      final multipart = await dio.MultipartFile.fromFile(
-        image.path,
-        filename: image.path.split('/').last,
+      final multipart = dio.MultipartFile.fromBytes(
+        imageBytes,
+        filename: imageFilename,
         contentType: MediaType('image', mimeSubtype),
       );
       log('[register] fields: $fields');
-      log('[register] image path: ${image.path}');
-      log('[register] image exists: ${image.existsSync()}');
-      log('[register] image size: ${image.lengthSync()} bytes');
+      log('[register] image filename: $imageFilename');
+      log('[register] image size: ${imageBytes.length} bytes');
       log('[register] multipart filename: ${multipart.filename}');
       log('[register] multipart contentType: ${multipart.contentType}');
       final formData = dio.FormData.fromMap({
