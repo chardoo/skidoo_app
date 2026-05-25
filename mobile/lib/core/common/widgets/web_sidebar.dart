@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/navigation/app_navigator.dart';
@@ -7,7 +9,9 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/login_bottom_sheet.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
+import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
+import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
 const double _kSidebarWidth = 240.0;
@@ -214,6 +218,10 @@ class _LoggedInNav extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Search field — above nav items ────────────────────────────────
+        _SidebarSearchField(ext: ext),
+        const SizedBox(height: 4),
+
         _NavItem(
           icon: Icons.home_rounded,
           label: 'Home',
@@ -291,6 +299,138 @@ class _LoggedInNav extends StatelessWidget {
 }
 
 // ── Shared sub-widgets ────────────────────────────────────────────────────────
+
+/// Search field at the top of the logged-in sidebar nav.
+/// Submitting (Enter or search icon tap) pushes [SearchResultsPage] with its
+/// own [HomeBloc] so it works regardless of which page is currently active.
+class _SidebarSearchField extends StatefulWidget {
+  const _SidebarSearchField({required this.ext});
+  final AppThemeExtension ext;
+
+  @override
+  State<_SidebarSearchField> createState() => _SidebarSearchFieldState();
+}
+
+class _SidebarSearchFieldState extends State<_SidebarSearchField> {
+  final _ctrl = TextEditingController();
+  final _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(_rebuild);
+    _focusNode.addListener(_rebuild);
+  }
+
+  void _rebuild() => setState(() {});
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final query = _ctrl.text.trim();
+    if (query.isEmpty) return;
+    _focusNode.unfocus();
+    _ctrl.clear();
+    AppNavigator.navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider(
+          create: (_) => sl<HomeBloc>()..add(HomeEventSearched(query)),
+          child: const SearchResultsPage(),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = widget.ext;
+    final focused = _focusNode.hasFocus;
+    final hasText = _ctrl.text.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: ext.glassFill,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: focused
+                ? ext.accentGold.withValues(alpha: 0.55)
+                : ext.glassBorder,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 10),
+            Icon(
+              Icons.search_rounded,
+              color: focused ? ext.accentGold : ext.glassIcon,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: CallbackShortcuts(
+                bindings: <ShortcutActivator, VoidCallback>{
+                  const SingleActivator(LogicalKeyboardKey.enter): _submit,
+                },
+                child: TextField(
+                  controller: _ctrl,
+                  focusNode: _focusNode,
+                  style: TextStyle(color: ext.greetingColor, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Search events…',
+                    hintStyle:
+                        TextStyle(color: ext.searchHintColor, fontSize: 13),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  onSubmitted: (_) => _submit(),
+                ),
+              ),
+            ),
+            // Clear button when text is present, search icon tap otherwise.
+            if (hasText)
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () {
+                    _ctrl.clear();
+                    _focusNode.requestFocus();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(Icons.close_rounded,
+                        color: ext.searchHintColor, size: 15),
+                  ),
+                ),
+              )
+            else
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: _submit,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(Icons.arrow_forward_rounded,
+                        color: ext.searchHintColor.withValues(alpha: 0.5),
+                        size: 15),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 /// Tappable nav row with hover highlight — no Material/InkWell required.
 class _NavItem extends StatefulWidget {
