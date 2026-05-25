@@ -348,28 +348,6 @@ class ChatWebSocketService {
     }
   }
 
-  /// Connect to a per-room WebSocket endpoint (`/chat/ws/{roomId}`).
-  ///
-  /// Used for event comment sessions. The server auto-joins the user on
-  /// connection — no `subscribe_room` message is needed. Connection
-  /// lifecycle is per-page: open on enter, close on leave.
-  Future<void> connectToRoom(String roomId) async {
-    disconnect();
-    _roomId = roomId;
-    _fatalClose = false;
-
-    final wsBase = ChatConfig.wsBaseUrl
-        .replaceFirst('https://', 'wss://')
-        .replaceFirst('http://', 'ws://');
-    final token = await _authService.getToken();
-    final uri = Uri.parse('$wsBase/chat/ws/$roomId').replace(
-      queryParameters: token.isNotEmpty ? {'token': token} : null,
-    );
-
-    await _doConnect(uri);
-    debugPrint('[WS#$_instanceId] Per-room connected — room $roomId (event WS)');
-  }
-
   Future<void> _doConnect(Uri uri) async {
     _connectedController = StreamController<WsConnectedEvent>.broadcast();
     _msgController = StreamController<ChatMessage>.broadcast();

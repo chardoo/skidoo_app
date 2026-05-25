@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
@@ -10,7 +13,7 @@ import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_description_text.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_comment_sheet.dart';
+import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/report_sheet.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
@@ -50,6 +53,9 @@ class EventDiscoveryCard extends StatefulWidget {
 
 class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     with SingleTickerProviderStateMixin {
+  // ── Image dimension cache — shared across all card instances ────────────────
+  static final Map<String, Size> _sizeCache = {};
+
   final _pageCtrl = PageController();
   int _currentPage = 0;
   int _maxRevealedPage = 0;
@@ -59,6 +65,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   int _dislikeCount = 0;
   bool _descExpanded = false;
   bool _showHeartBurst = false;
+
+  /// Natural dimensions of the first (or current) picture once resolved.
+  Size? _imageSize;
 
   late final AnimationController _heartCtrl;
 
@@ -112,6 +121,8 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       _discoveryBloc = context.read<DiscoveryBloc>();
       _discoveryBloc?.add(DiscoveryEventVisible(widget.event.id));
     });
+    // Load natural image dimensions for dynamic card height.
+    _loadImageSize(widget.event);
   }
 
   @override
@@ -124,6 +135,10 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
         old.event.userReaction != widget.event.userReaction) {
       setState(() => _syncReactionFromEvent(widget.event));
     }
+    if (old.event.id != widget.event.id) {
+      _imageSize = null;
+      _loadImageSize(widget.event);
+    }
   }
 
   @override
@@ -133,6 +148,66 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     _heartCtrl.dispose();
     _pageCtrl.dispose();
     super.dispose();
+  }
+
+  // ── Dynamic image height ──────────────────────────────────────────────────
+
+  void _loadImageSize(EventDiscovery event) {
+    final pics = event.pictures;
+    if (pics.isEmpty || pics[0].isVideo) return;
+    final url = pics[0].url;
+    if (url.isEmpty) return;
+    // Cache hit — apply immediately without setState.
+    if (_sizeCache.containsKey(url)) {
+      _imageSize = _sizeCache[url];
+      return;
+    }
+    _resolveNetworkImageSize(url).then((size) {
+      if (mounted && size != null) {
+        _sizeCache[url] = size;
+        setState(() => _imageSize = size);
+      }
+    });
+  }
+
+  static Future<Size?> _resolveNetworkImageSize(String url) {
+    final completer = Completer<Size?>();
+    NetworkImage(url).resolve(const ImageConfiguration()).addListener(
+      ImageStreamListener(
+        (info, _) {
+          if (!completer.isCompleted) {
+            completer.complete(Size(
+              info.image.width.toDouble(),
+              info.image.height.toDouble(),
+            ));
+          }
+        },
+        onError: (_, __) {
+          if (!completer.isCompleted) completer.complete(null);
+        },
+      ),
+    );
+    return completer.future;
+  }
+
+  /// Computes the media area height using the image's natural aspect ratio.
+  /// Falls back to a screen-fraction height while the size is loading.
+  double _computeMediaHeight(double availableWidth, double screenHeight) {
+    final currentPic = widget.event.pictures.isNotEmpty
+        ? widget.event.pictures[
+            _currentPage.clamp(0, widget.event.pictures.length - 1)]
+        : null;
+    final isVideo = currentPic?.isVideo ?? false;
+
+    if (isVideo) return (screenHeight * 0.88).clamp(600.0, 860.0);
+
+    if (_imageSize != null && _imageSize!.width > 0) {
+      final ar = _imageSize!.width / _imageSize!.height;
+      return (availableWidth / ar).clamp(260.0, screenHeight * 0.92);
+    }
+
+    // Default while loading: roughly 4:5 portrait.
+    return (availableWidth / 0.8).clamp(380.0, screenHeight * 0.88);
   }
 
   void _handleDoubleTap() {
@@ -176,15 +251,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final pics = widget.event.pictures;
-    final size = MediaQuery.sizeOf(context);
-
-    // Height based on screen height so the photo almost fills the viewport.
-    final currentPic =
-        pics.isNotEmpty && _currentPage < pics.length ? pics[_currentPage] : null;
-    final isCurrentVideo = currentPic?.isVideo ?? false;
-    final videoH = (size.height * 0.88).clamp(600.0, 860.0);
-    final imageH = (size.height * 0.85).clamp(560.0, 820.0);
-    final mediaH = isCurrentVideo ? videoH : imageH;
+    final screenH = MediaQuery.sizeOf(context).height;
 
     return Container(
       color: Colors.transparent,
@@ -204,10 +271,13 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           ),
 
           // ── 1. Photo area ──────────────────────────────────────────────
-          GestureDetector(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final mediaH = _computeMediaHeight(constraints.maxWidth, screenH);
+              return GestureDetector(
             onTap: widget.isAuthenticated ? null : widget.onTap,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 280),
+              duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
               width: double.infinity,
               height: mediaH,
@@ -282,7 +352,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 ],
               ),
             ),
-          ),
+          ); // GestureDetector
+            }, // LayoutBuilder builder
+          ), // LayoutBuilder
 
           // ── 2. Spacing ─────────────────────────────────────────────────
           SizedBox(height: 6.h),
@@ -344,19 +416,21 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                   ? (widget.onCommentTap ??
                       () => _showCommentSheet(context, ext))
                   : widget.onTap,
-              onShare: widget.isAuthenticated
-                  ? () {
-                      final pics = widget.event.pictures;
-                      if (pics.isEmpty) return;
-                      final url =
-                          pics[_currentPage.clamp(0, pics.length - 1)].url;
-                      GalleryShareSheet.show(
-                        context,
-                        imageUrl: url,
-                        photoLabel: widget.event.eventName,
-                      );
-                    }
-                  : widget.onTap,
+              onShare: kIsWeb
+                  ? () => GetAppSheet.show(context, ext: ext)
+                  : widget.isAuthenticated
+                      ? () {
+                          final pics = widget.event.pictures;
+                          if (pics.isEmpty) return;
+                          final url =
+                              pics[_currentPage.clamp(0, pics.length - 1)].url;
+                          GalleryShareSheet.show(
+                            context,
+                            imageUrl: url,
+                            photoLabel: widget.event.eventName,
+                          );
+                        }
+                      : widget.onTap,
               onSave: widget.isAuthenticated
                   ? () => context.read<DiscoveryBloc>().add(
                         DiscoveryEventSaveToggled(widget.event.id),
@@ -412,13 +486,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   }
 
   void _showCommentSheet(BuildContext context, AppThemeExtension ext) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) =>
-          CardCommentSheet(ext: ext, eventName: widget.event.eventName),
-    );
+    EventCommentPage.show(context, widget.event);
   }
 }
 

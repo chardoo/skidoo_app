@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class AdsCheckoutPage extends StatefulWidget {
@@ -36,14 +38,10 @@ class AdsCheckoutPage extends StatefulWidget {
 }
 
 class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
-  late final WebViewController _controller;
+  WebViewController? _controller;
   bool _loading = true;
 
-  // 'trxref=' is Paystack-specific and only present in the final success
-  // redirect. The broader 'reference=' check was matching intermediate
-  // checkout pages and triggering a premature pop.
   static bool _isSuccess(String url) => url.contains('trxref=');
-
   static bool _isClose(String url) =>
       url.contains('standard.paystack.co/close') ||
       url.contains('paystack.co/close');
@@ -51,61 +49,118 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
   @override
   void initState() {
     super.initState();
-    debugPrint(
-      '[AdsCheckoutPage] initState — url: ${widget.authorizationUrl} '
-      'reference: ${widget.reference} amountGhs: ${widget.amountGhs}',
-    );
+    if (kIsWeb) {
+      // Launch payment URL in a new browser tab immediately.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _launchWebPayment());
+      return;
+    }
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (url) {
-            debugPrint('[AdsCheckoutPage] pageStarted: $url');
-            if (mounted) setState(() => _loading = true);
-          },
-          onPageFinished: (url) {
-            debugPrint('[AdsCheckoutPage] pageFinished: $url');
-            if (mounted) setState(() => _loading = false);
-          },
-          onWebResourceError: (error) {
-            debugPrint(
-              '[AdsCheckoutPage] webResourceError: '
-              '${error.errorCode} ${error.description}',
-            );
-            if (mounted) {
-              AppSnackBar.error(
-                  context, 'Payment page error: ${error.description}');
-            }
-          },
-          onNavigationRequest: (request) {
-            final url = request.url;
-            debugPrint('[AdsCheckoutPage] navigationRequest: $url');
-
-            if (_isClose(url)) {
-              debugPrint('[AdsCheckoutPage] Paystack close detected — popping');
-              if (mounted) Navigator.of(context).pop();
-              return NavigationDecision.prevent;
-            }
-
-            if (_isSuccess(url)) {
-              debugPrint('[AdsCheckoutPage] payment success detected — url=$url');
-              widget.onSuccess();
-              if (mounted) Navigator.of(context).pop();
-              return NavigationDecision.prevent;
-            }
-
-            return NavigationDecision.navigate;
-          },
-        ),
-      )
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageStarted: (_) { if (mounted) setState(() => _loading = true); },
+        onPageFinished: (_) { if (mounted) setState(() => _loading = false); },
+        onWebResourceError: (error) {
+          if (mounted) {
+            AppSnackBar.error(context, 'Payment page error: ${error.description}');
+          }
+        },
+        onNavigationRequest: (request) {
+          final url = request.url;
+          if (_isClose(url)) {
+            if (mounted) Navigator.of(context).pop();
+            return NavigationDecision.prevent;
+          }
+          if (_isSuccess(url)) {
+            widget.onSuccess();
+            if (mounted) Navigator.of(context).pop();
+            return NavigationDecision.prevent;
+          }
+          return NavigationDecision.navigate;
+        },
+      ))
       ..loadRequest(Uri.parse(widget.authorizationUrl));
+  }
+
+  Future<void> _launchWebPayment() async {
+    await launchUrl(
+      Uri.parse(widget.authorizationUrl),
+      mode: LaunchMode.externalApplication,
+    );
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final showAmounts = widget.amountGhs > 0;
 
+    // ── Web: browser-tab payment flow ─────────────────────────────────────────
+    if (kIsWeb) {
+      return Scaffold(
+        backgroundColor: ext.homeBackground,
+        appBar: AppBar(
+          backgroundColor: ext.homeBackground,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: Text(
+            'Complete Payment',
+            style: TextStyle(color: ext.greetingColor, fontSize: 17.sp, fontWeight: FontWeight.w700),
+          ),
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 28.w),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.open_in_new_rounded, size: 52.sp, color: ext.accentGold),
+                SizedBox(height: 20.h),
+                Text(
+                  'Payment opened in a new tab',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: ext.greetingColor, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 10.h),
+                Text(
+                  'Complete your payment in the browser tab that just opened, then tap the button below.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp, height: 1.5),
+                ),
+                SizedBox(height: 32.h),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ext.accentGold,
+                      foregroundColor: Colors.black,
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                    ),
+                    onPressed: () {
+                      widget.onSuccess();
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Payment complete', style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                TextButton(
+                  onPressed: _launchWebPayment,
+                  child: Text(
+                    'Reopen payment page',
+                    style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ── Mobile: in-app WebView ────────────────────────────────────────────────
     return Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
@@ -117,24 +172,20 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         ),
         title: Text(
           'Complete Payment',
-          style: TextStyle(
-            color: ext.greetingColor,
-            fontSize: 17.sp,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(color: ext.greetingColor, fontSize: 17.sp, fontWeight: FontWeight.w700),
         ),
         centerTitle: false,
       ),
       body: Stack(
         children: [
-          WebViewWidget(controller: _controller),
+          WebViewWidget(controller: _controller!),
           if (_loading)
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   CircularProgressIndicator(color: ext.accentGold),
-                  if (showAmounts) ...[
+                  if (widget.amountGhs > 0) ...[
                     SizedBox(height: 20.h),
                     _PaymentInfoCard(
                       amountGhs: widget.amountGhs,

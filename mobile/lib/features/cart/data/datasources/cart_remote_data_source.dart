@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart' as dio;
+import 'package:flutter/foundation.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
 
@@ -151,6 +151,14 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
 
   @override
   Future<void> downloadImage(String url) async {
+    // On web, open the image URL directly in a new browser tab — the browser
+    // handles the download. saver_gallery and permission_handler are not
+    // supported on web.
+    if (kIsWeb) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      return;
+    }
+
     try {
       await [Permission.storage, Permission.photos].request();
       final response = await dio.Dio().get(

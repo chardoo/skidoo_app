@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
@@ -150,8 +151,8 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── App bar ──────────────────────────────────────────────────
-            _FeedAppBar(ext: ext),
+            // ── App bar — hidden on web (sidebar handles logo + auth) ────
+            if (!kIsWeb) _FeedAppBar(ext: ext),
 
             // ── Feed ─────────────────────────────────────────────────────
             Expanded(
@@ -235,7 +236,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                     ),
                   );
 
-                  if (isTablet(context)) {
+                  if (!kIsWeb && isTablet(context)) {
                     return Align(
                       alignment: Alignment.topCenter,
                       child: ConstrainedBox(
@@ -277,46 +278,52 @@ class _FeedAppBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Logo
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 28.w,
-                height: 28.h,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      ext.accentGold,
-                      const Color(0xFFFF6B35),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          // Logo — Flexible so it can shrink on narrow viewports (e.g. web)
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 28.w,
+                  height: 28.h,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        ext.accentGold,
+                        const Color(0xFFFF6B35),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(7.r),
                   ),
-                  borderRadius: BorderRadius.circular(7.r),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'S',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16.sp,
+                  alignment: Alignment.center,
+                  child: Text(
+                    'S',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16.sp,
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(width: 8.w),
-              Text(
-                'SKIDDO',
-                style: TextStyle(
-                  color: ext.logoTextColor,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 20.sp,
-                  letterSpacing: 3,
+                SizedBox(width: 8.w),
+                Flexible(
+                  child: Text(
+                    'SKIDDO',
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    style: TextStyle(
+                      color: ext.logoTextColor,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 20.sp,
+                      letterSpacing: 3,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ), // Flexible
 
           // Right: sign-up + log-in CTAs
           Row(

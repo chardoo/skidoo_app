@@ -7,8 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
-import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
-import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart';
+import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart' show EventReaction;
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
@@ -24,9 +23,6 @@ part 'discovery_state.dart';
 
 const _pageSize = 20;
 
-/// How long to keep a WS connection alive after a card leaves the viewport.
-const _disconnectDelay = Duration(seconds: 30);
-
 class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   final GetRandomImagesUseCase _getRandomImagesUseCase;
   final GetEventReactionsBatchUseCase _getReactionsBatch;
@@ -34,16 +30,16 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   final AuthService _authService;
   final ClientSavedDataSource _savedDs;
 
-  // ── Per-event WebSocket sessions ──────────────────────────────────────────
-  final Map<String, ChatWebSocketService> _activeSessions = {};
-  final Map<String, StreamSubscription<LikeUpdate>> _likeSubscriptions = {};
-  final Map<String, StreamSubscription> _inviteSubscriptions = {};
-  final Map<String, Timer> _disconnectTimers = {};
-  // Guards against duplicate concurrent connect attempts for the same event.
-  final Set<String> _connecting = {};
-
   // Room cache populated by the batch prefetch — keyed by event ID.
   final Map<String, ChatRoom> _roomCache = {};
+
+  // Tracks rooms already subscribed on the shared WS this session.
+  // When the WS reconnects, this set is cleared so rooms re-subscribe.
+  final Set<String> _subscribedRoomIds = {};
+
+  // Listens to like_update frames from the shared WS.
+  StreamSubscription<LikeUpdate>? _likeUpdateSub;
+  StreamSubscription<bool>? _wsConnectionSub;
 
   // Tracks all in-flight prefetch work so cache-miss paths can await it
   // instead of immediately firing a redundant single-ID batch call.
@@ -77,6 +73,17 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     on<DiscoveryEventVisible>(_onEventVisible);
     on<DiscoveryEventHidden>(_onEventHidden);
     on<DiscoveryEventHideRequested>(_onHideRequested);
+
+    // Chat/WS features are not supported on web (CORS + no WS access).
+    if (!kIsWeb) {
+      _setupLikeListener();
+      _wsConnectionSub = _bgService.connectionEvents.listen((connected) {
+        if (connected && !isClosed) {
+          _subscribedRoomIds.clear(); // server resets subscriptions on reconnect
+          _setupLikeListener();
+        }
+      });
+    }
     on<DiscoveryEventHideCommitted>(_onHideCommitted);
     on<DiscoveryEventHideUndone>(_onHideUndone);
     on<_DiscoveryLikeUpdateReceived>(_onReactionUpdated);
@@ -103,6 +110,14 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   }
 
   static const _hiddenIdsKey = 'discovery_hidden_event_ids';
+
+  void _setupLikeListener() {
+    if (kIsWeb) return;
+    _likeUpdateSub?.cancel();
+    _likeUpdateSub = _bgService.sharedWs.likeUpdates.listen((update) {
+      if (!isClosed) add(_DiscoveryLikeUpdateReceived(update));
+    });
+  }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -138,7 +153,9 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   /// Batch-fetches rooms for [events] and stores them in [_roomCache].
   /// Silently ignores errors — WS connect will fall back to single fetch.
   void _prefetchRooms(List<EventDiscovery> events) {
+    if (kIsWeb) return; // chat API not supported on web
     if (events.isEmpty) return;
+    if (_currentUserId == null) return; // unauthenticated — skip
     final ids = events.map((e) => e.id).toList();
     final futures = <Future<void>>[];
     // Chunk into batches of 20 (backend limit).
@@ -295,86 +312,36 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
   Future<void> _onEventVisible(
       DiscoveryEventVisible event, Emitter<DiscoveryState> emit) async {
+    if (kIsWeb) return; // chat API not supported on web
+    if (_currentUserId == null) return; // unauthenticated — skip
     final id = event.eventId;
 
-    // Cancel any pending disconnect timer — user is back on this card.
-    _disconnectTimers[id]?.cancel();
-    _disconnectTimers.remove(id);
+    // Already subscribed on the shared WS — nothing to do.
+    if (_subscribedRoomIds.contains(id)) return;
 
-    // Already connected or connection in progress — nothing to do.
-    if ((_activeSessions[id]?.isConnected ?? false) || _connecting.contains(id)) {
-      return;
+    // Prefer the batch-prefetched cache. If the prefetch is still in-flight
+    // (card became visible before the HTTP response landed), wait for it so
+    // we avoid firing a redundant single-ID batch call.
+    ChatRoom? room = _roomCache[id];
+    if (room == null) {
+      await _prefetchFuture;
+      room = _roomCache[id];
     }
-
-    _connecting.add(id);
-    try {
-      // Prefer the batch-prefetched cache. If the prefetch is still in-flight
-      // (card became visible before the HTTP response landed), wait for it to
-      // finish — this prevents N single-ID batch calls racing the bulk fetch.
-      ChatRoom? room = _roomCache[id];
-      if (room == null) {
-        await _prefetchFuture;
-        room = _roomCache[id];
-      }
-      // Last resort: truly missing from the feed batch (shouldn't happen in
-      // practice but guards against edge cases like load-more race).
-      if (room == null) {
-        final map = await _getEventRoomsBatch([id]);
-        room = map[id];
-        if (room != null) _roomCache[id] = room;
-      }
-      if (room == null) return;
-      // Bloc might have been closed while we were awaiting.
-      if (isClosed) return;
-
-      final ws = ChatWebSocketService(_authService);
-      await ws.connectToRoom(room.id);
-      if (isClosed) {
-        ws.disconnect();
-        return;
-      }
-
-      _activeSessions[id] = ws;
-
-      // Subscribe and forward updates into the BLoC event stream.
-      final sub = ws.likeUpdates.listen((update) {
-        if (!isClosed) add(_DiscoveryLikeUpdateReceived(update));
-      });
-      _likeSubscriptions[id]?.cancel();
-      _likeSubscriptions[id] = sub;
-
-      // Forward group invites to the persistent relay so ChatRoomsBloc sees
-      // them regardless of which WS instance the server delivers them through.
-      _inviteSubscriptions[id]?.cancel();
-      _inviteSubscriptions[id] = ws.groupInviteEvents.listen((event) {
-        _bgService.reportGroupInvite(event.room);
-      });
-    } catch (_) {
-      // Network/auth failure — silently skip; no WS for this card.
-    } finally {
-      _connecting.remove(id);
+    if (room == null) {
+      final map = await _getEventRoomsBatch([id]);
+      room = map[id];
+      if (room != null) _roomCache[id] = room;
     }
+    if (room == null || isClosed) return;
+
+    // Subscribe on the single shared connection — no new WS opened.
+    _bgService.sharedWs.subscribeRoom(room.id);
+    _subscribedRoomIds.add(id);
   }
 
   void _onEventHidden(
       DiscoveryEventHidden event, Emitter<DiscoveryState> emit) {
-    final id = event.eventId;
-
-    // Cancel any existing timer and start a fresh one.
-    _disconnectTimers[id]?.cancel();
-    _disconnectTimers[id] = Timer(_disconnectDelay, () {
-      _tearDownSession(id);
-    });
-  }
-
-  void _tearDownSession(String eventId) {
-    _likeSubscriptions[eventId]?.cancel();
-    _likeSubscriptions.remove(eventId);
-    _inviteSubscriptions[eventId]?.cancel();
-    _inviteSubscriptions.remove(eventId);
-    _activeSessions[eventId]?.disconnect();
-    _activeSessions.remove(eventId);
-    _disconnectTimers.remove(eventId);
+    // Unified WS — no per-room connections to tear down.
   }
 
   // ── Real-time like_update from another device ─────────────────────────────
@@ -453,75 +420,43 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     );
     emit(state.copyWith(events: optimistic));
 
-    // Use the persistent session if available, otherwise open a temp one.
-    final existingWs = _activeSessions[event.eventId];
-    final bool useTemp = existingWs == null || !existingWs.isConnected;
+    // On web, WS reactions are not supported — keep the optimistic update only.
+    if (kIsWeb) return;
 
-    try {
-      ChatWebSocketService ws;
-      if (useTemp) {
-        ChatRoom? room = _roomCache[event.eventId];
-        if (room == null) {
-          await _prefetchFuture;
-          room = _roomCache[event.eventId];
-        }
-        if (room == null) {
-          final map = await _getEventRoomsBatch([event.eventId]);
-          room = map[event.eventId];
-          if (room != null) _roomCache[event.eventId] = room;
-        }
-        if (room == null) throw Exception('room not found for ${event.eventId}');
-        ws = ChatWebSocketService(_authService);
-        await ws.connectToRoom(room.id);
-      } else {
-        ws = existingWs;
-      }
-
-      // Subscribe before sending to avoid missing the echo.
-      final updateFuture = ws.likeUpdates
-          .where((u) => u.eventId == event.eventId)
-          .first
-          .timeout(const Duration(seconds: 5));
-
-      switch (action) {
-        case 'like':
-          ws.sendLike(event.eventId);
-        case 'unlike':
-          ws.sendUnlike(event.eventId);
-        case 'dislike':
-          ws.sendDislike(event.eventId);
-        case 'undislike':
-          ws.sendUndislike(event.eventId);
-      }
-
-      final update = await updateFuture;
-      if (useTemp) ws.disconnect();
-
-      // Confirm with server data (the persistent listener handles the same
-      // update for other devices; this path handles the current user's echo).
-      final confirmedIdx =
-          state.events.indexWhere((e) => e.id == event.eventId);
-      if (confirmedIdx != -1) {
-        final confirmedReaction =
-            update.liked ? 'like' : update.disliked ? 'dislike' : null;
-        final confirmed = List<EventDiscovery>.from(state.events);
-        confirmed[confirmedIdx] = confirmed[confirmedIdx].copyWith(
-          likes: update.likes,
-          dislikes: update.dislikes,
-          userReaction: confirmedReaction,
-          clearReaction: confirmedReaction == null,
-        );
-        emit(state.copyWith(events: confirmed));
-      }
-    } catch (_) {
-      // Revert optimistic update on failure.
-      final revertIdx =
-          state.events.indexWhere((e) => e.id == event.eventId);
+    // Resolve the room (needed for room_id in the WS payload).
+    ChatRoom? room = _roomCache[event.eventId];
+    if (room == null) {
+      await _prefetchFuture;
+      room = _roomCache[event.eventId];
+    }
+    if (room == null) {
+      final map = await _getEventRoomsBatch([event.eventId]);
+      room = map[event.eventId];
+      if (room != null) _roomCache[event.eventId] = room;
+    }
+    if (room == null) {
+      // Revert optimistic update — can't route without room_id.
+      final revertIdx = state.events.indexWhere((e) => e.id == event.eventId);
       if (revertIdx != -1) {
         final reverted = List<EventDiscovery>.from(state.events);
         reverted[revertIdx] = current;
         emit(state.copyWith(events: reverted));
       }
+      return;
+    }
+
+    // Send on the single shared connection. The global _likeUpdateSub
+    // receives the server echo and calls _onReactionUpdated to confirm.
+    final ws = _bgService.sharedWs;
+    switch (action) {
+      case 'like':
+        ws.sendLike(event.eventId, roomId: room.id);
+      case 'unlike':
+        ws.sendUnlike(event.eventId, roomId: room.id);
+      case 'dislike':
+        ws.sendDislike(event.eventId, roomId: room.id);
+      case 'undislike':
+        ws.sendUndislike(event.eventId, roomId: room.id);
     }
   }
 
@@ -589,15 +524,18 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   // ── Save / unsave ─────────────────────────────────────────────────────────
 
   void _loadSavedItemsInBackground() {
-    _savedDs.listSaved(assetType: 'event').then((items) {
-      if (isClosed) return;
-      final recordIds = <String, String>{
-        for (final i in items) i.assetId: i.savedItemId,
-      };
-      add(_DiscoverySavedItemsLoaded(recordIds));
-    }).catchError((_) {
-      // Silently ignore — saved indicators simply won't be pre-populated.
-    });
+    _authService.getToken().then((token) {
+      if (token.isEmpty || isClosed) return;
+      _savedDs.listSaved(assetType: 'event').then((items) {
+        if (isClosed) return;
+        final recordIds = <String, String>{
+          for (final i in items) i.assetId: i.savedItemId,
+        };
+        add(_DiscoverySavedItemsLoaded(recordIds));
+      }).catchError((_) {
+        // Silently ignore — saved indicators simply won't be pre-populated.
+      });
+    }).catchError((_) {});
   }
 
   void _onSavedItemsLoaded(
@@ -661,13 +599,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
   @override
   Future<void> close() {
-    for (final id in _activeSessions.keys.toList()) {
-      _tearDownSession(id);
-    }
-    for (final t in _disconnectTimers.values) {
-      t.cancel();
-    }
-    _disconnectTimers.clear();
+    _likeUpdateSub?.cancel();
+    _wsConnectionSub?.cancel();
     return super.close();
   }
 }

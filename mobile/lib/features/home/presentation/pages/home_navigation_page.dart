@@ -19,6 +19,7 @@ import 'package:skidoo_app/features/user_profile/presentation/pages/account_page
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/common/widgets/feed_launch_overlay.dart';
 import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
+import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 
 class HomeNavigationPage extends StatefulWidget {
@@ -204,7 +205,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                       onSearchOpen: _openSearch,
                       onSearchClose: _closeSearch,
                       onSearchChanged: _onSearchChanged,
-                      onQrScan: _openQrScan,
+                      onQrScan: kIsWeb ? null : _openQrScan,
                       onAvatarTap: () {
                         final discoveryBloc = context.read<DiscoveryBloc>();
                         Navigator.of(context).push(

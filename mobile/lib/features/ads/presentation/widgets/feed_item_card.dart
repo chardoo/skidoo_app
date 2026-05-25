@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:skidoo_app/core/config/chat_config.dart';
@@ -470,6 +472,11 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
   }
 
   Future<void> _handleShare() async {
+    if (kIsWeb) {
+      final ext = Theme.of(context).extension<AppThemeExtension>()!;
+      GetAppSheet.show(context, ext: ext);
+      return;
+    }
     final text =
         widget.data.title.isNotEmpty ? widget.data.title : 'Check this out';
     await Share.share(text, subject: widget.data.title);

@@ -48,14 +48,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   final E2eeService _e2ee;
   final ChatKeyDataSource _keyDs;
 
-  // Per-room WS for event comment sessions — owned by this bloc instance.
-  // null for all other room types, which use the shared singleton below.
-  ChatWebSocketService? _eventRoomWs;
-  bool _isEventRoom = false;
-
-  // For event rooms: use the dedicated per-room connection.
-  // For all other rooms: use the shared singleton owned by ChatBackgroundService.
-  ChatWebSocketService get _ws => _eventRoomWs ?? _bgService.sharedWs;
+  // All rooms use the single shared connection owned by ChatBackgroundService.
+  ChatWebSocketService get _ws => _bgService.sharedWs;
 
   String? _currentRoomId;
   String _myUserId = '';
@@ -193,15 +187,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     final roomType = event.room?.type;
     final isDm = roomType == RoomType.direct;
-    _isEventRoom = roomType == RoomType.event || roomType == RoomType.eventPrivate;
 
-    if (_isEventRoom) {
-      // Event comment rooms use a dedicated per-room WS — the background
-      // service never subscribes to them, so no pause/resume needed.
-      _eventRoomWs = ChatWebSocketService(_authService);
-    } else {
-      _bgService.pause(event.roomId);
-    }
+    _bgService.pause(event.roomId);
 
     // For non-DM shared-WS rooms (global, group, photo…): attach WS listeners
     // NOW, before the REST history fetch. Messages and admin events that arrive
@@ -211,7 +198,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // DM rooms must wait until after _deriveKeyFromHistory establishes the
     // session key; otherwise messages received before E2EE is ready are
     // decrypted with a null key → blank content → permanent loss.
-    if (!isDm && !_isEventRoom) {
+    if (!isDm) {
       _connectWsInBackground(event.roomId);
     }
 
@@ -245,7 +232,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // never shows a spurious "Connecting…" label for rooms that are already live.
     // Event rooms always need their own per-room WS connection, so they start in
     // the connecting state.
-    final bool wsAlreadyConnected = !_isEventRoom && _ws.isConnected;
+    final bool wsAlreadyConnected = _ws.isConnected;
     emit(ChatRoomState(
       messages: cached.isNotEmpty ? _sorted(cached) : const [],
       isLoadingHistory: cached.isEmpty,
@@ -354,28 +341,28 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       // DM: must wait until after _deriveKeyFromHistory stores the session key;
       // otherwise _onKeyBundlesReceived finds no stored key and runs proactive
       // X3DH, overwriting the correct key with a mismatched one.
-      // Event rooms: per-room WS is instantiated here (no prior setup).
-      // Non-DM/non-event rooms already attached listeners before the REST fetch
-      // (line above); calling _connectWsInBackground again would cancel those
-      // listeners and briefly leave the room with no active subscription.
-      if (_isDirectRoom || _isEventRoom) {
+      // Non-DM rooms already attached listeners before the REST fetch (line above);
+      // calling _connectWsInBackground again would cancel those listeners and
+      // briefly leave the room with no active subscription.
+      if (_isDirectRoom) {
         _connectWsInBackground(event.roomId);
       }
     }
   }
 
   void _connectWsInBackground(String roomId) {
-    debugPrint('[ChatBloc] _connectWsInBackground for room: $roomId isEventRoom: $_isEventRoom');
+    if (kIsWeb) {
+      // WebSocket not available on web — mark as connected so the UI doesn't
+      // get stuck on the "Connecting…" indicator while REST history loads.
+      if (!isClosed) add(const _WsConnected());
+      return;
+    }
+    debugPrint('[ChatBloc] _connectWsInBackground for room: $roomId');
     _cancelWsSubscriptions();
     _wsConnectionSub?.cancel();
     _wsConnectionSub = null;
 
-    if (_isEventRoom) {
-      _connectEventRoomWs(roomId);
-      return;
-    }
-
-    // Shared connection path — wait for ChatBackgroundService.
+    // Always use the shared connection owned by ChatBackgroundService.
     if (_ws.isConnected) {
       // Explicitly subscribe so the server delivers messages for this room
       // even if the background service hasn't subscribed it yet (e.g. photo
@@ -393,21 +380,6 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.subscribeRoom(roomId);
       _setupWsListeners(roomId);
       if (!isClosed) add(const _WsConnected());
-    });
-  }
-
-  void _connectEventRoomWs(String roomId) {
-    Future(() async {
-      try {
-        await _eventRoomWs!.connectToRoom(roomId);
-        if (isClosed) return;
-        _setupWsListeners(roomId);
-        add(const _WsConnected());
-      } catch (e) {
-        if (isClosed) return;
-        debugPrint('[ChatBloc] event room WS connect failed: $e');
-        add(_WsFailed(e.toString()));
-      }
     });
   }
 
@@ -2290,13 +2262,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsConnectionSub = null;
     _cancelWsSubscriptions();
     emit(state.copyWith(isConnected: false, isConnecting: false));
-    if (_isEventRoom) {
-      _eventRoomWs?.disconnect();
-      _eventRoomWs = null;
-    } else {
-      // Do NOT disconnect the shared WS — it is owned by ChatBackgroundService.
-      if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
-    }
+    // Do NOT disconnect the shared WS — it is owned by ChatBackgroundService.
+    if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
   }
 
   @override
@@ -2304,13 +2271,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _otpkPollTimer?.cancel();
     _wsConnectionSub?.cancel();
     _cancelWsSubscriptions();
-    if (_isEventRoom) {
-      _eventRoomWs?.disconnect();
-      _eventRoomWs = null;
-    } else {
-      // Do NOT disconnect the shared WS — it is owned by ChatBackgroundService.
-      if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
-    }
+    // Do NOT disconnect the shared WS — it is owned by ChatBackgroundService.
+    if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
     return super.close();
   }
 

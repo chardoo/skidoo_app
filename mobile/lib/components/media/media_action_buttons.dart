@@ -1,12 +1,15 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/gallery/data/datasources/overlay_remote_data_source.dart';
 import 'package:skidoo_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
@@ -118,6 +121,11 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
   // ── Core: fetch overlay → temp file → share sheet ─────────────────────────
 
   Future<void> _handleAction({required bool isDownload}) async {
+    if (kIsWeb && !isDownload) {
+      final ext = Theme.of(context).extension<AppThemeExtension>()!;
+      GetAppSheet.show(context, ext: ext);
+      return;
+    }
     if (_downloading || _sharing) return;
     setState(() {
       if (isDownload) {

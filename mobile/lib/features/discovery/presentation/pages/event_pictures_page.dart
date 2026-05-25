@@ -1,10 +1,12 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/components/media/media_action_buttons.dart';
+import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
@@ -674,11 +676,18 @@ class _FeedCardState extends State<_FeedCard> {
             axis: Axis.vertical,
             showDownload: false,
             showComment: widget.entry.commentsAllowed,
-            onSend: () => GalleryShareSheet.show(
-              context,
-              imageUrl: pic.url,
-              photoLabel: eventName,
-            ),
+            onSend: () {
+              if (kIsWeb) {
+                final ext = Theme.of(context).extension<AppThemeExtension>()!;
+                GetAppSheet.show(context, ext: ext);
+                return;
+              }
+              GalleryShareSheet.show(
+                context,
+                imageUrl: pic.url,
+                photoLabel: eventName,
+              );
+            },
           ),
         ),
 

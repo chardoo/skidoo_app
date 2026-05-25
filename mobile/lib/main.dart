@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:skidoo_app/app.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
@@ -8,6 +10,11 @@ import 'package:skidoo_app/services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // On web, Flutter 3.22+ no longer generates AssetManifest.json (only the
+  // binary AssetManifest.bin). google_fonts still checks for the JSON file
+  // first — allow CDN fetching so it can fall back cleanly without errors.
+  if (kIsWeb) GoogleFonts.config.allowRuntimeFetching = true;
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
@@ -30,14 +37,17 @@ void main() async {
   // they all race together so the critical path is only as long as the slowest
   // one rather than the sum of all four.
   final results = await Future.wait([
-    // [0] Jailbreak / root detection
-    Future<bool>(() async {
-      try {
-        return await FlutterJailbreakDetection.jailbroken;
-      } catch (_) {
-        return false; // simulator or plugin unavailable — treat as safe
-      }
-    }),
+    // [0] Jailbreak / root detection (skip on web — plugin not supported)
+    if (kIsWeb)
+      Future<bool>.value(false)
+    else
+      Future<bool>(() async {
+        try {
+          return await FlutterJailbreakDetection.jailbroken;
+        } catch (_) {
+          return false; // simulator or plugin unavailable — treat as safe
+        }
+      }),
     // [1] Auth token (one Keychain read)
     authService.getToken(),
     // [2] Token expiration string (one Keychain read — avoids isTokenExpired()

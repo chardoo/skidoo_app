@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -1029,10 +1030,18 @@ class _FaceRecognitionCard extends StatelessWidget {
             title: 'Face Recognition',
             subtitle: 'Train model to find you in event photos',
             ext: ext,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                  builder: (_) => const FaceRecognitionPage()),
-            ),
+            onTap: () {
+              if (kIsWeb) {
+                AppSnackBar.info(
+                  context,
+                  'Face recognition is only available on the mobile app.',
+                );
+                return;
+              }
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FaceRecognitionPage()),
+              );
+            },
           ),
           SizedBox(height: 4.h),
         ],

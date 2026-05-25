@@ -30,7 +30,7 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
     // bleed into the new session.
     if (previousUserId.isNotEmpty && previousUserId != user.id) {
       await Future.wait([
-        _chatDb.clearAll(),
+        _chatDb.clearAll().catchError((_) {}),
         _e2ee.clearAllKeys(),
       ]);
     }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
@@ -34,6 +35,10 @@ class HomePage extends StatelessWidget {
   /// Fires (incremented) by `HomeNavigationPage` on every deliberate tap so
   /// `_HomeViewState` can show the bottom nav and start its auto-hide timer.
   static final homeTapSignal = ValueNotifier<int>(0);
+
+  /// Tracks the active tab index on web so the [WebSidebar] can highlight
+  /// the correct item without being coupled to [_HomeViewState].
+  static final webSelectedTab = ValueNotifier<int>(0);
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +115,7 @@ class _HomeViewState extends State<_HomeView> {
   void _onHomeTap() {}
 
   void _changeTab(int index) {
+    if (kIsWeb) HomePage.webSelectedTab.value = index;
     VideoPauseNotifier.pauseAll();
     _downAccum = 0;
     _chromeTimer?.cancel();
@@ -182,7 +188,7 @@ class _HomeViewState extends State<_HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    if (isTablet(context)) {
+    if (!kIsWeb && isTablet(context)) {
       return _buildTabletLayout(context);
     }
     return _buildPhoneLayout(context);
@@ -198,12 +204,12 @@ class _HomeViewState extends State<_HomeView> {
           index: _selectedTab,
           children: const [
             HomeNavigationPage(),
-            ChatRoomsPage(),
+            if (kIsWeb) _WebMessagesDisabled() else ChatRoomsPage(),
             GalleryPage(),
             PhotographersPage(),
           ],
         ),
-        bottomNavigationBar: AnimatedSlide(
+        bottomNavigationBar: kIsWeb ? null : AnimatedSlide(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
           offset: _navBarVisible ? Offset.zero : const Offset(0, 1),
@@ -294,6 +300,57 @@ class _HomeViewState extends State<_HomeView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Web: Messages unavailable placeholder ─────────────────────────────────────
+
+class _WebMessagesDisabled extends StatelessWidget {
+  const _WebMessagesDisabled();
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    return Scaffold(
+      backgroundColor: ext.homeBackground,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.phone_iphone_rounded,
+                  size: 56,
+                  color: ext.searchHintColor.withValues(alpha: 0.4),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Messages are available on the app',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: ext.searchHintColor,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Download the SKIDDO app to send and receive messages.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: ext.searchHintColor.withValues(alpha: 0.55),
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -7,19 +8,32 @@ import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/customThemeData.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
 import 'package:skidoo_app/core/navigation/app_navigator.dart';
+import 'package:skidoo_app/core/navigation/web_route_observer.dart';
+import 'package:skidoo_app/core/common/widgets/web_sidebar.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/interests_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+// ── Web layout constants ──────────────────────────────────────────────────────
+
+/// Width of the main content column on web (≈ iPhone 15 Pro Max).
+const double _kWebColumnWidth = 480;
+
+/// Below this viewport width the left sidebar won't fit — switch to top nav.
+const double _kWebMobileBreakpoint = 240 + _kWebColumnWidth; // sidebar + content
+
+// ── Root application widget ───────────────────────────────────────────────────
 
 class MyApp extends StatelessWidget {
   final String token;
 
   /// True when [FlutterJailbreakDetection] flagged the device as rooted /
-  /// jailbroken.  The app will show a non-bypassable security warning before
-  /// allowing further use.
+  /// jailbroken.
   final bool isDeviceCompromised;
 
   const MyApp({
@@ -35,41 +49,281 @@ class MyApp extends StatelessWidget {
         BlocProvider.value(value: sl<CartBloc>()),
         BlocProvider.value(value: sl<ThemeCubit>()),
       ],
-      child: ScreenUtilInit(
-        designSize: const Size(390, 844),
-        minTextAdapt: true,
-        splitScreenMode: true,
-        builder: (context, child) => BlocBuilder<ThemeCubit, ThemeMode>(
-          builder: (context, themeMode) => MaterialApp(
-            navigatorKey: AppNavigator.navigatorKey,
-            debugShowCheckedModeBanner: false,
-            theme: Styles.light,
-            darkTheme: Styles.dark,
-            themeMode: themeMode,
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, themeMode) => kIsWeb
+            ? _WebApp(
+                token: token,
+                isDeviceCompromised: isDeviceCompromised,
+                themeMode: themeMode,
+              )
+            : _MobileApp(
+                token: token,
+                isDeviceCompromised: isDeviceCompromised,
+                themeMode: themeMode,
+              ),
+      ),
+    );
+  }
+}
+
+// ── Mobile branch ─────────────────────────────────────────────────────────────
+
+class _MobileApp extends StatelessWidget {
+  const _MobileApp({
+    required this.token,
+    required this.isDeviceCompromised,
+    required this.themeMode,
+  });
+
+  final String token;
+  final bool isDeviceCompromised;
+  final ThemeMode themeMode;
+
+  @override
+  Widget build(BuildContext context) {
+    return ScreenUtilInit(
+      designSize: const Size(390, 844),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (_, __) => _AppMaterial(
+        token: token,
+        isDeviceCompromised: isDeviceCompromised,
+        themeMode: themeMode,
+      ),
+    );
+  }
+}
+
+// ── Web branch ────────────────────────────────────────────────────────────────
+
+/// Web root: configures ScreenUtil synchronously in [initState] so that the
+/// [ScreenUtil] singleton is ready before the first [build] frame — preventing
+/// the [LateInitializationError] that [ScreenUtilInit]'s [LayoutBuilder]
+/// approach causes on web.
+class _WebApp extends StatefulWidget {
+  const _WebApp({
+    required this.token,
+    required this.isDeviceCompromised,
+    required this.themeMode,
+  });
+
+  final String token;
+  final bool isDeviceCompromised;
+  final ThemeMode themeMode;
+
+  @override
+  State<_WebApp> createState() => _WebAppState();
+}
+
+class _WebAppState extends State<_WebApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _configureScreenUtil();
+    // Seed the route observer so the sidebar shows the correct state immediately.
+    WebRouteObserver.currentRouteName.value = widget.token.isEmpty
+        ? DiscoveryPage.routeName
+        : HomePage.routeName;
+  }
+
+  @override
+  void didChangeMetrics() => _configureScreenUtil();
+
+  /// Initialise ScreenUtil with [_kWebColumnWidth] as the logical width so
+  /// that all `.w` / `.h` / `.sp` extensions scale against the 480 dp column
+  /// rather than the full browser viewport.
+  void _configureScreenUtil() {
+    final view = WidgetsBinding.instance.platformDispatcher.implicitView;
+    final dpr = view?.devicePixelRatio ?? 1.0;
+    final logicalH =
+        view != null ? view.physicalSize.height / dpr : 844.0;
+
+    ScreenUtil.configure(
+      data: MediaQueryData(
+        size: Size(_kWebColumnWidth, logicalH),
+        devicePixelRatio: dpr,
+      ),
+      designSize: const Size(390, 844),
+      minTextAdapt: true,
+      splitScreenMode: false,
+    );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _AppMaterial(
+      token: widget.token,
+      isDeviceCompromised: widget.isDeviceCompromised,
+      themeMode: widget.themeMode,
+    );
+  }
+}
+
+// ── Shared MaterialApp shell ──────────────────────────────────────────────────
+
+class _AppMaterial extends StatelessWidget {
+  const _AppMaterial({
+    required this.token,
+    required this.isDeviceCompromised,
+    required this.themeMode,
+  });
+
+  final String token;
+  final bool isDeviceCompromised;
+  final ThemeMode themeMode;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      color: Colors.transparent,
+      navigatorKey: AppNavigator.navigatorKey,
+      debugShowCheckedModeBanner: false,
+      theme: Styles.light,
+      darkTheme: Styles.dark,
+      themeMode: themeMode,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('de'),
+      ],
+      // On web: sidebar + centred 480 dp column.
+      // On mobile: no wrapper — ScreenUtilInit already wraps the navigator.
+      builder: kIsWeb ? _webLayoutBuilder : null,
+      navigatorObservers: kIsWeb ? [WebRouteObserver.instance] : [],
+      initialRoute: token.isEmpty
+          ? DiscoveryPage.routeName
+          : HomePage.routeName,
+      routes: {
+        DiscoveryPage.routeName: (_) => isDeviceCompromised
+            ? const _SecurityWarningPage()
+            : const DiscoveryPage(),
+        LoginPage.routeName: (_) => const LoginPage(),
+        SignUpPage.routeName: (_) => const SignUpPage(),
+        HomePage.routeName: (_) => isDeviceCompromised
+            ? const _SecurityWarningPage()
+            : const HomePage(),
+        InterestsPage.routeName: (_) => const InterestsPage(),
+      },
+    );
+  }
+
+  /// Web layout — adapts to viewport width:
+  ///   ≥ 720 px (desktop): left sidebar + centred 480 dp column + download button
+  ///   <  720 px (mobile):  horizontally-scrollable top nav bar + full-width content
+  static Widget _webLayoutBuilder(BuildContext ctx, Widget? child) {
+    final bg = Theme.of(ctx).scaffoldBackgroundColor;
+    final isMobileWeb = MediaQuery.of(ctx).size.width < _kWebMobileBreakpoint;
+
+    return DefaultTextStyle(
+      style: DefaultTextStyle.of(ctx).style.copyWith(decoration: TextDecoration.none),
+      child: ColoredBox(
+        color: bg,
+        child: isMobileWeb
+            // ── Mobile web: top nav + full-width content ────────────────────
+            ? Column(
+                children: [
+                  const WebTopNav(),
+                  Expanded(child: ClipRect(child: child!)),
+                ],
+              )
+            // ── Desktop web: sidebar + centred column + download button ─────
+            : Stack(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const WebSidebar(),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: SizedBox(
+                            width: _kWebColumnWidth,
+                            height: double.infinity,
+                            child: ClipRect(child: child!),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Positioned(
+                    top: 16,
+                    right: 24,
+                    child: _DownloadAppButton(),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+// ── Download app button (web top-right) ──────────────────────────────────────
+
+class _DownloadAppButton extends StatefulWidget {
+  const _DownloadAppButton();
+
+  @override
+  State<_DownloadAppButton> createState() => _DownloadAppButtonState();
+}
+
+class _DownloadAppButtonState extends State<_DownloadAppButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => launchUrl(
+          // Replace with real App Store / Play Store URL when available.
+          Uri.parse('https://skidoo.app'),
+          mode: LaunchMode.externalApplication,
+        ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: _hovered
+                ? ext.accentGold.withValues(alpha: 0.90)
+                : ext.accentGold,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
             ],
-            supportedLocales: const [
-              Locale('en'),
-              Locale('de'),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.download_rounded, color: Colors.black, size: 16),
+              SizedBox(width: 6),
+              Text(
+                'Get the app',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
-            initialRoute: token.isEmpty
-                ? DiscoveryPage.routeName
-                : HomePage.routeName,
-            routes: {
-              DiscoveryPage.routeName: (_) => isDeviceCompromised
-                  ? const _SecurityWarningPage()
-                  : const DiscoveryPage(),
-              LoginPage.routeName: (_) => const LoginPage(),
-              SignUpPage.routeName: (_) => const SignUpPage(),
-              HomePage.routeName: (_) => isDeviceCompromised
-                  ? const _SecurityWarningPage()
-                  : const HomePage(),
-              InterestsPage.routeName: (_) => const InterestsPage(),
-            },
           ),
         ),
       ),
@@ -79,8 +333,6 @@ class MyApp extends StatelessWidget {
 
 // ── Security warning page ─────────────────────────────────────────────────────
 
-/// Shown when jailbreak / root is detected.  The user must acknowledge the
-/// risk before proceeding — this keeps usage intentional and auditable.
 class _SecurityWarningPage extends StatelessWidget {
   const _SecurityWarningPage();
 
@@ -133,7 +385,6 @@ class _SecurityWarningPage extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    // User acknowledges the risk — navigate into the app.
                     Navigator.of(context).pushReplacementNamed(
                       DiscoveryPage.routeName,
                     );
