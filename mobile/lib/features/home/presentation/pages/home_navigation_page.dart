@@ -25,6 +25,10 @@ import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 class HomeNavigationPage extends StatefulWidget {
   const HomeNavigationPage({super.key});
 
+  /// Web-only bridge: the sidebar writes a search query here; this page
+  /// listens and dispatches to HomeBloc so the content area shows results.
+  static final webSearchQuery = ValueNotifier<String>('');
+
   @override
   State<HomeNavigationPage> createState() => _HomeNavigationPageState();
 }
@@ -44,9 +48,27 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   Timer? _chromeTimer;
 
   @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) HomeNavigationPage.webSearchQuery.addListener(_onWebSearchQuery);
+  }
+
+  @override
   void dispose() {
+    if (kIsWeb) HomeNavigationPage.webSearchQuery.removeListener(_onWebSearchQuery);
     _chromeTimer?.cancel();
     super.dispose();
+  }
+
+  /// Called when the sidebar writes a query to [HomeNavigationPage.webSearchQuery].
+  void _onWebSearchQuery() {
+    final q = HomeNavigationPage.webSearchQuery.value;
+    if (q.isEmpty) return;
+    _openSearch();
+    _onSearchChanged(q);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) HomeNavigationPage.webSearchQuery.value = '';
+    });
   }
 
   void _measureHeaderHeight() {
@@ -73,6 +95,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     setState(() {
       _isSearchOpen = true;
       _headerVisible = true;
+      _selectedTab = 0; // always show For You when searching
     });
   }
 
@@ -174,7 +197,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     final userState = context.watch<UserProfileBloc>().state;
     final userName = userState.name.isNotEmpty ? userState.name : 'User';
 
-    // ── Web: permanent header + Column layout (no auto-hide) ─────────────────
+    // ── Web: compact top bar (tabs + avatar) + Column layout ─────────────────
     if (kIsWeb) {
       return FeedLaunchOverlay(
         child: Scaffold(
@@ -182,34 +205,93 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Search + avatar header — always visible on desktop ──────────
-              HomeHeaderWidget(
-                userName: userName,
-                userInitial: userName[0].toUpperCase(),
-                isSearchOpen: _isSearchOpen,
-                onSearchOpen: _openSearch,
-                onSearchClose: _closeSearch,
-                onSearchChanged: _onSearchChanged,
-                onQrScan: null,
-                onAvatarTap: () {
-                  final discoveryBloc = context.read<DiscoveryBloc>();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => BlocProvider.value(
-                        value: discoveryBloc,
-                        child: const AccountPage(),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              // ── For You / Following tabs ────────────────────────────────────
-              if (!_isSearchOpen)
-                _FeedTabBar(
-                  ext: ext,
-                  selectedTab: _selectedTab,
-                  onTabChanged: (i) => setState(() => _selectedTab = i),
+              // ── Compact top bar: tabs + avatar, or search-open state ────────
+              SizedBox(
+                height: 54,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+                  child: Row(
+                    children: [
+                      if (_isSearchOpen) ...[
+                        Icon(Icons.search_rounded, size: 16, color: ext.accentGold),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Search results',
+                          style: TextStyle(
+                            color: ext.greetingColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: _closeSearch,
+                            child: Icon(Icons.close_rounded,
+                                color: ext.searchHintColor, size: 20),
+                          ),
+                        ),
+                      ] else ...[
+                        _PillTab(
+                          label: 'For You',
+                          active: _selectedTab == 0,
+                          ext: ext,
+                          onTap: () => setState(() => _selectedTab = 0),
+                        ),
+                        const SizedBox(width: 8),
+                        _PillTab(
+                          label: 'Following',
+                          active: _selectedTab == 1,
+                          ext: ext,
+                          onTap: () => setState(() => _selectedTab = 1),
+                        ),
+                        const Spacer(),
+                        // Profile avatar
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () {
+                              final discoveryBloc = context.read<DiscoveryBloc>();
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => BlocProvider.value(
+                                    value: discoveryBloc,
+                                    child: const AccountPage(),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 16,
+                                backgroundColor: ext.glassFill,
+                                child: Text(
+                                  userName[0].toUpperCase(),
+                                  style: TextStyle(
+                                    color: ext.glassIcon,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
+              ),
               // ── Feed content ────────────────────────────────────────────────
               Expanded(
                 child: NotificationListener<ScrollNotification>(

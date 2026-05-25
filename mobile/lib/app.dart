@@ -29,12 +29,6 @@ const double _kWebColumnWidth = 480;
 /// Below this viewport width the left sidebar won't fit — switch to top nav.
 const double _kWebMobileBreakpoint = 240 + _kWebColumnWidth; // sidebar + content
 
-/// Maximum width of the external reactions / comments panel.
-/// The panel grows dynamically from 0 → this value as the viewport expands.
-const double _kWebReactionsPanelW = 280.0;
-
-/// Width of the desktop sidebar — must stay in sync with WebSidebar._kSidebarWidth.
-const double _kWebSidebarW = 240.0;
 
 // ── Root application widget ───────────────────────────────────────────────────
 
@@ -226,8 +220,8 @@ class _AppMaterial extends StatelessWidget {
                   ? const _SecurityWarningPage()
                   : const HomePage(),
             ),
-        InterestsPage.routeName: (_) => _AuthGuard(
-              child: const InterestsPage(),
+        InterestsPage.routeName: (_) => const _AuthGuard(
+              child: InterestsPage(),
             ),
       },
       onUnknownRoute: (settings) => MaterialPageRoute(
@@ -246,16 +240,14 @@ class _AppMaterial extends StatelessWidget {
   /// expands beyond the sidebar + card width. The card's own LayoutBuilder
   /// switches to the external panel layout once it has ≥ 60 px of spare room
   /// (viewport ≈ 780 px — any laptop at a normal, non-tiny window size).
-  /// When the panel is ≥ 240 px wide, the inline comment thread opens beside
-  /// the reactions column instead of replacing it.
+  /// Desktop layout: sidebar (240 px) + full remaining width for content.
+  /// The card inside fixes itself to 480 px; reactions and comments fill the
+  /// rest — identical to TikTok's web layout.
+  /// Mobile web (< 720 px): top nav + full-width content (no sidebar).
   static Widget _webLayoutBuilder(BuildContext ctx, Widget? child) {
     final bg = Theme.of(ctx).scaffoldBackgroundColor;
     final viewportW = MediaQuery.of(ctx).size.width;
     final isMobileWeb = viewportW < _kWebMobileBreakpoint;
-    // Grow from 480 px (card only) up to 760 px (card + panel) as viewport expands.
-    // Clamped so it never exceeds available space after the sidebar.
-    final contentW = (viewportW - _kWebSidebarW)
-        .clamp(_kWebColumnWidth, _kWebColumnWidth + _kWebReactionsPanelW);
 
     return DefaultTextStyle(
       style: DefaultTextStyle.of(ctx).style.copyWith(decoration: TextDecoration.none),
@@ -269,23 +261,14 @@ class _AppMaterial extends StatelessWidget {
                   Expanded(child: ClipRect(child: child!)),
                 ],
               )
-            // ── Desktop web: sidebar + centred column + download button ─────
+            // ── Desktop web: sidebar + full remaining width + download btn ──
             : Stack(
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const WebSidebar(),
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.topCenter,
-                          child: SizedBox(
-                            width: contentW,
-                            height: double.infinity,
-                            child: ClipRect(child: child!),
-                          ),
-                        ),
-                      ),
+                      Expanded(child: ClipRect(child: child!)),
                     ],
                   ),
                   const Positioned(

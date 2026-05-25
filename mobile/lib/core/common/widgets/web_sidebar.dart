@@ -8,6 +8,7 @@ import 'package:skidoo_app/features/auth/presentation/widgets/login_bottom_sheet
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
+import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
 const double _kSidebarWidth = 240.0;
@@ -122,6 +123,80 @@ class _SidebarShell extends StatelessWidget {
   }
 }
 
+// ── Sidebar search field ──────────────────────────────────────────────────────
+
+/// Compact search field at the top of the logged-in sidebar.
+/// Submitting a query writes to [HomeNavigationPage.webSearchQuery] so the
+/// content area opens its search overlay without needing BLoC access here.
+class _SidebarSearchField extends StatefulWidget {
+  const _SidebarSearchField({required this.ext});
+  final AppThemeExtension ext;
+
+  @override
+  State<_SidebarSearchField> createState() => _SidebarSearchFieldState();
+}
+
+class _SidebarSearchFieldState extends State<_SidebarSearchField> {
+  final _ctrl = TextEditingController();
+  final _focus = FocusNode();
+
+  void _submit() {
+    final q = _ctrl.text.trim();
+    if (q.isEmpty) return;
+    _ctrl.clear();
+    _focus.unfocus();
+    HomeNavigationPage.webSearchQuery.value = q;
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: widget.ext.glassFill,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: widget.ext.glassBorder, width: 1.0),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 10),
+            Icon(Icons.search_rounded, color: widget.ext.glassIcon, size: 16),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _ctrl,
+                focusNode: _focus,
+                style: TextStyle(color: widget.ext.greetingColor, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Search events',
+                  hintStyle: TextStyle(
+                      color: widget.ext.searchHintColor, fontSize: 13),
+                  border: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _submit(),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Logged-out nav ────────────────────────────────────────────────────────────
 
 class _LoggedOutNav extends StatelessWidget {
@@ -214,6 +289,7 @@ class _LoggedInNav extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _SidebarSearchField(ext: ext),
         _NavItem(
           icon: Icons.home_rounded,
           label: 'Home',
