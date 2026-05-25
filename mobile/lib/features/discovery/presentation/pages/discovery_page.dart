@@ -187,13 +187,12 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                     },
                     child: ListView.builder(
                       controller: _scrollCtrl,
-                      // AlwaysScrollableScrollPhysics ensures the list stays
-                      // smoothly bounceable even when content is shorter than
-                      // the viewport (e.g. only 3–4 cards returned).
-                      physics: const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      ),
-                      cacheExtent: 800,
+                      physics: kIsWeb
+                          ? const ClampingScrollPhysics()
+                          : const BouncingScrollPhysics(
+                              parent: AlwaysScrollableScrollPhysics(),
+                            ),
+                      cacheExtent: kIsWeb ? 2400 : 800,
                       // No padding — cards are edge-to-edge
                       padding: EdgeInsets.zero,
                       itemCount: state.events.length +

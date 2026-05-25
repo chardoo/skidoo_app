@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -199,6 +200,7 @@ class _AppMaterial extends StatelessWidget {
         Locale('en'),
         Locale('de'),
       ],
+      scrollBehavior: kIsWeb ? const _WebScrollBehavior() : null,
       // On web: sidebar + centred 480 dp column.
       // On mobile: no wrapper — ScreenUtilInit already wraps the navigator.
       builder: kIsWeb ? _webLayoutBuilder : null,
@@ -339,6 +341,31 @@ class _DownloadAppButtonState extends State<_DownloadAppButton> {
       ),
     );
   }
+}
+
+// ── Web scroll behaviour ──────────────────────────────────────────────────────
+
+/// Enables mouse and trackpad dragging (Flutter web only enables touch by
+/// default) and removes the Android overscroll glow that looks wrong in a
+/// browser. Physics are left to each scroll view — see [kWebScrollPhysics].
+class _WebScrollBehavior extends MaterialScrollBehavior {
+  const _WebScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) =>
+      child; // No glow / stretch on web.
 }
 
 // ── Auth route guard ─────────────────────────────────────────────────────────

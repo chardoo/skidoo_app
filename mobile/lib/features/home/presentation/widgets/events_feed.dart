@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -470,8 +471,10 @@ class _EventsFeedState extends State<EventsFeed> {
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOut,
             builder: (context, pad, _) => ListView.builder(
-            physics: const BouncingScrollPhysics(),
-            cacheExtent: 1500,
+            physics: kIsWeb
+                ? const ClampingScrollPhysics()
+                : const BouncingScrollPhysics(),
+            cacheExtent: kIsWeb ? 2400 : 1500,
             padding: EdgeInsets.only(top: pad),
             itemCount: virtualItems.length,
             itemBuilder: (context, index) {
