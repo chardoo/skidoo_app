@@ -255,21 +255,6 @@ class _AppMaterial extends StatelessWidget {
         color: bg,
         child: Column(
           children: [
-            // ── DEPLOY TEST BANNER — remove once deployment is confirmed ──────
-            Container(
-              width: double.infinity,
-              color: const Color(0xFFFFD600),
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: const Text(
-                '🚀 NEW BUILD DEPLOYED — remove this banner after confirming',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
             Expanded(
               child: isMobileWeb
             // ── Mobile web: top nav + full-width content ────────────────────
