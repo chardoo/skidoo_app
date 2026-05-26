@@ -15,7 +15,7 @@ if (keystoreFile.exists()) {
 }
 
 android {
-    namespace = "com.example.skidoo_app"
+    namespace = "com.skidoo.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.skidoo_app"
+        applicationId = "com.skidoo.app"
         // google_ml_kit requires minSdk 21; camera requires 21
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
