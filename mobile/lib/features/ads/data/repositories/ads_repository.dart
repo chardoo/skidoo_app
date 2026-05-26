@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:skidoo_app/API/dio_client_service.dart';
+import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/models/ad.dart';
