@@ -440,7 +440,17 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
           Positioned.fill(
             child: ColoredBox(
               color: ext.homeBackground,
-              child: _buildSearchOverlay(context, ext, homeState),
+              // On web: pin results to the left in a 480 px column so they
+              // don't stretch across the wide desktop viewport.
+              child: kIsWeb
+                  ? Align(
+                      alignment: Alignment.topLeft,
+                      child: SizedBox(
+                        width: 480,
+                        child: _buildSearchOverlay(context, ext, homeState),
+                      ),
+                    )
+                  : _buildSearchOverlay(context, ext, homeState),
             ),
           ),
       ],
