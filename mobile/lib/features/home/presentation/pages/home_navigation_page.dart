@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -244,6 +245,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                           onTap: () => setState(() => _selectedTab = 1),
                         ),
                         const Spacer(),
+                        const _WebGetAppButton(),
+                        const SizedBox(width: 12),
                         // Profile avatar
                         MouseRegion(
                           cursor: SystemMouseCursors.click,
@@ -570,6 +573,60 @@ class _PillTab extends StatelessWidget {
             fontSize: 12,
             fontWeight: active ? FontWeight.w700 : FontWeight.w500,
             letterSpacing: 0.3,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Get the app button — shown in the web top bar ─────────────────────────────
+
+class _WebGetAppButton extends StatefulWidget {
+  const _WebGetAppButton();
+
+  @override
+  State<_WebGetAppButton> createState() => _WebGetAppButtonState();
+}
+
+class _WebGetAppButtonState extends State<_WebGetAppButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => launchUrl(
+          Uri.parse('https://skidoo.app'),
+          mode: LaunchMode.externalApplication,
+        ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: _hovered
+                ? ext.accentGold.withValues(alpha: 0.90)
+                : ext.accentGold,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.download_rounded, color: Colors.black, size: 14),
+              SizedBox(width: 5),
+              Text(
+                'Get the app',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ),
       ),

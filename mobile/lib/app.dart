@@ -12,14 +12,12 @@ import 'package:skidoo_app/core/theme/theme_cubit.dart';
 import 'package:skidoo_app/core/navigation/app_navigator.dart';
 import 'package:skidoo_app/core/navigation/web_route_observer.dart';
 import 'package:skidoo_app/core/common/widgets/web_sidebar.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/interests_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 // ── Web layout constants ──────────────────────────────────────────────────────
 
@@ -264,87 +262,16 @@ class _AppMaterial extends StatelessWidget {
                   Expanded(child: ClipRect(child: child!)),
                 ],
               )
-            // ── Desktop web: sidebar + full remaining width + download btn ──
-            : Stack(
+            // ── Desktop web: sidebar + full remaining width ─────────────
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const WebSidebar(),
-                      Expanded(child: ClipRect(child: child!)),
-                    ],
-                  ),
-                  const Positioned(
-                    top: 16,
-                    right: 80,
-                    child: _DownloadAppButton(),
-                  ),
+                  const WebSidebar(),
+                  Expanded(child: ClipRect(child: child!)),
                 ],
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Download app button (web top-right) ──────────────────────────────────────
-
-class _DownloadAppButton extends StatefulWidget {
-  const _DownloadAppButton();
-
-  @override
-  State<_DownloadAppButton> createState() => _DownloadAppButtonState();
-}
-
-class _DownloadAppButtonState extends State<_DownloadAppButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: () => launchUrl(
-          // Replace with real App Store / Play Store URL when available.
-          Uri.parse('https://skidoo.app'),
-          mode: LaunchMode.externalApplication,
-        ),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          decoration: BoxDecoration(
-            color: _hovered
-                ? ext.accentGold.withValues(alpha: 0.90)
-                : ext.accentGold,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.download_rounded, color: Colors.black, size: 16),
-              SizedBox(width: 6),
-              Text(
-                'Get the app',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
