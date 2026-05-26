@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -30,7 +31,7 @@ class _PhotographersPageState extends State<PhotographersPage> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: NestedScrollView(
+      body: _webWrap(NestedScrollView(
         headerSliverBuilder: (context, _) => [
           SliverAppBar(
             automaticallyImplyLeading: false,
@@ -119,35 +120,39 @@ class _PhotographersPageState extends State<PhotographersPage> {
                   message: 'No creators found.',
                 );
               }
-              return Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
-                  child: ListView.builder(
-                    padding: EdgeInsets.only(top: 4.h, bottom: 24.h),
-                    itemCount: state.photographers.length,
-                    itemBuilder: (context, index) {
-                      final p = state.photographers[index];
-                      return PhotographerCard(
-                        photographer: p,
-                        onTap: () {
-                          final homeBloc = context.read<HomeBloc>();
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => BlocProvider.value(
-                              value: homeBloc,
-                              child: PhotographerProfilePage(photographer: p),
-                            ),
-                          ));
-                        },
-                      );
+              return ListView.builder(
+                padding: EdgeInsets.only(top: 4.h, bottom: 24.h),
+                itemCount: state.photographers.length,
+                itemBuilder: (context, index) {
+                  final p = state.photographers[index];
+                  return PhotographerCard(
+                    photographer: p,
+                    onTap: () {
+                      final homeBloc = context.read<HomeBloc>();
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => BlocProvider.value(
+                          value: homeBloc,
+                          child: PhotographerProfilePage(photographer: p),
+                        ),
+                      ));
                     },
-                  ),
-                ),
+                  );
+                },
               );
             },
           ),
         ),
-      ),
+      )),
     );
   }
+
+  static Widget _webWrap(Widget child) => kIsWeb
+      ? Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: child,
+          ),
+        )
+      : child;
 }
