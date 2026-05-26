@@ -440,22 +440,24 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
             ),
           ),
         if (_isSearchOpen)
-          Positioned.fill(
-            child: ColoredBox(
-              color: ext.homeBackground,
-              // On web: pin results to the left in a 480 px column so they
-              // don't stretch across the wide desktop viewport.
-              child: kIsWeb
-                  ? Align(
-                      alignment: Alignment.topLeft,
-                      child: SizedBox(
-                        width: 480,
-                        child: _buildSearchOverlay(context, ext, homeState),
-                      ),
-                    )
-                  : _buildSearchOverlay(context, ext, homeState),
+          if (kIsWeb)
+            Positioned(
+              top: 0,
+              left: 0,
+              bottom: 0,
+              width: 480,
+              child: ColoredBox(
+                color: ext.homeBackground,
+                child: _buildSearchOverlay(context, ext, homeState),
+              ),
+            )
+          else
+            Positioned.fill(
+              child: ColoredBox(
+                color: ext.homeBackground,
+                child: _buildSearchOverlay(context, ext, homeState),
+              ),
             ),
-          ),
       ],
     );
   }

@@ -294,6 +294,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
   bool _initFired = false;
   bool _muted = true;
   bool _chatLoading = false;
+  bool _manuallyPaused = false;
 
   @override
   void initState() {
@@ -347,11 +348,24 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
 
   void _syncPlayback() {
     if (_videoCtrl == null || !_videoReady) return;
-    if (_screenActive) {
+    if (_screenActive && !_manuallyPaused) {
       if (!_videoCtrl!.value.isPlaying) _videoCtrl!.play();
     } else {
       if (_videoCtrl!.value.isPlaying) _videoCtrl!.pause();
     }
+  }
+
+  void _toggleVideoPlayback() {
+    if (_videoCtrl == null || !_videoReady) return;
+    setState(() {
+      if (_videoCtrl!.value.isPlaying) {
+        _videoCtrl!.pause();
+        _manuallyPaused = true;
+      } else {
+        _videoCtrl!.play();
+        _manuallyPaused = false;
+      }
+    });
   }
 
   Future<void> _initVideo(String url) async {
@@ -586,6 +600,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
                     videoCtrl: _videoCtrl,
                     videoReady: _videoReady,
                     ext: ext,
+                    onVideoTap: _videoReady ? _toggleVideoPlayback : null,
                   ),
 
                 // Bottom gradient
@@ -614,24 +629,31 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
                 ),
 
                 // Mute toggle for single video
-                if (_videoReady && d.mediaIsVideo && d.mediaList.length <= 1)
+                if (_videoReady &&
+                    (d.mediaList.length == 1
+                        ? d.mediaList[0].isVideo
+                        : (d.mediaList.isEmpty && d.mediaIsVideo)))
                   Positioned(
                     bottom: 60.h,
                     right: 14.w,
-                    child: GestureDetector(
-                      onTap: _toggleMute,
-                      child: Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: const BoxDecoration(
-                          color: Colors.black45,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _muted
-                              ? Icons.volume_off_rounded
-                              : Icons.volume_up_rounded,
-                          color: Colors.white,
-                          size: 18.sp,
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: _toggleMute,
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: const BoxDecoration(
+                            color: Colors.black45,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _muted
+                                ? Icons.volume_off_rounded
+                                : Icons.volume_up_rounded,
+                            color: Colors.white,
+                            size: 18.sp,
+                          ),
                         ),
                       ),
                     ),
@@ -719,15 +741,18 @@ class _MediaBackground extends StatelessWidget {
     required this.videoCtrl,
     required this.videoReady,
     required this.ext,
+    this.onVideoTap,
   });
   final FeedItemData data;
   final VideoPlayerController? videoCtrl;
   final bool videoReady;
   final AppThemeExtension ext;
+  final VoidCallback? onVideoTap;
 
   @override
   Widget build(BuildContext context) {
-    if (data.mediaIsVideo) {
+    if (data.mediaIsVideo ||
+        (data.mediaList.length == 1 && data.mediaList[0].isVideo)) {
       if (videoReady && videoCtrl != null) {
         final w = videoCtrl!.value.size.width > 0
             ? videoCtrl!.value.size.width
@@ -735,15 +760,50 @@ class _MediaBackground extends StatelessWidget {
         final h = videoCtrl!.value.size.height > 0
             ? videoCtrl!.value.size.height
             : 1.0;
-        return ColoredBox(
-          color: const Color(0xFF0A0A0A),
-          child: SizedBox.expand(
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: SizedBox(
-                  width: w, height: h, child: VideoPlayer(videoCtrl!)),
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // Video
+            ColoredBox(
+              color: const Color(0xFF0A0A0A),
+              child: SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                      width: w, height: h, child: VideoPlayer(videoCtrl!)),
+                ),
+              ),
             ),
-          ),
+            // Play/pause icon overlay
+            ValueListenableBuilder<VideoPlayerValue>(
+              valueListenable: videoCtrl!,
+              builder: (_, value, __) => IgnorePointer(
+                child: AnimatedOpacity(
+                  opacity: value.isPlaying ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 250),
+                  child: const ColoredBox(
+                    color: Colors.black26,
+                    child: Center(
+                      child: Icon(Icons.play_arrow_rounded,
+                          color: Colors.white70, size: 48),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Full-area tap target for play/pause
+            if (onVideoTap != null)
+              Positioned.fill(
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onVideoTap,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ),
+          ],
         );
       }
       return const ColoredBox(

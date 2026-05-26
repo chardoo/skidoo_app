@@ -434,21 +434,30 @@ class _MessageVideoState extends State<_MessageVideo>
 
     final aspect = _ctrl.value.aspectRatio;
 
-    return GestureDetector(
-      onTap: _togglePlay,
-      child: AspectRatio(
-        aspectRatio: aspect,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            VideoPlayer(_ctrl),
+    return AspectRatio(
+      aspectRatio: aspect,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 0: Video
+          VideoPlayer(_ctrl),
 
-            // Dark scrim + play/pause icon overlay
-            ValueListenableBuilder<VideoPlayerValue>(
-              valueListenable: _ctrl,
-              builder: (_, value, __) {
-                final playing = value.isPlaying;
-                return AnimatedOpacity(
+          // 1: Full-area play/pause tap target (stable, never rebuilt)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _togglePlay,
+              child: const SizedBox.expand(),
+            ),
+          ),
+
+          // 2: Play/pause icon overlay (IgnorePointer — taps fall through to layer 1)
+          ValueListenableBuilder<VideoPlayerValue>(
+            valueListenable: _ctrl,
+            builder: (_, value, __) {
+              final playing = value.isPlaying;
+              return IgnorePointer(
+                child: AnimatedOpacity(
                   opacity: playing ? 0.0 : 1.0,
                   duration: const Duration(milliseconds: 200),
                   child: Container(
@@ -460,40 +469,45 @@ class _MessageVideoState extends State<_MessageVideo>
                       size: 48.sp,
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
+          ),
 
-            // Mute toggle — top-right corner
-            Positioned(
-              top: 8.h,
-              right: 8.w,
-              child: GestureDetector(
-                onTap: _toggleMute,
-                child: Container(
-                  width: 30.w,
-                  height: 30.w,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    _muted
-                        ? Icons.volume_off_rounded
-                        : Icons.volume_up_rounded,
-                    color: Colors.white,
-                    size: 16.sp,
-                  ),
+          // 3: Mute toggle — opaque, absorbs its tap area
+          Positioned(
+            top: 8.h,
+            right: 8.w,
+            child: GestureDetector(
+              onTap: _toggleMute,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: 30.w,
+                height: 30.w,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  _muted
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
+                  color: Colors.white,
+                  size: 16.sp,
                 ),
               ),
             ),
+          ),
 
-            // Progress bar — bottom edge
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
+          // 4: Progress bar — absorbs its area so scrubbing never triggers play/pause
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {},
               child: VideoProgressIndicator(
                 _ctrl,
                 allowScrubbing: true,
@@ -505,8 +519,8 @@ class _MessageVideoState extends State<_MessageVideo>
                 padding: EdgeInsets.zero,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

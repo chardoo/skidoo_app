@@ -257,22 +257,40 @@ class _FullscreenVideoState extends State<_FullscreenVideo>
       builder: (context, value, _) {
         final isPlaying = value.isPlaying;
 
-        return GestureDetector(
-          onTap: _togglePlayback,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Video centered and contained.
-              Center(
-                child: AspectRatio(
-                  aspectRatio: value.size.width / value.size.height,
-                  child: VideoPlayer(_ctrl),
+        // Stack ordering matters for hit-testing: later children are checked
+        // first. Mute button and progress bar (indices 3, 4) sit ABOVE the
+        // Positioned.fill play/pause GestureDetector (index 1) so their
+        // opaque hit areas absorb taps cleanly — tapping mute never also
+        // toggles playback, and scrubbing the progress bar never pauses.
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // 0: Video
+            Center(
+              child: AspectRatio(
+                aspectRatio: value.size.width > 0 && value.size.height > 0
+                    ? value.size.width / value.size.height
+                    : 9 / 16,
+                child: VideoPlayer(_ctrl),
+              ),
+            ),
+
+            // 1: Full-area play/pause tap target
+            Positioned.fill(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _togglePlayback,
+                  child: const SizedBox.expand(),
                 ),
               ),
+            ),
 
-              // Pause indicator.
-              if (!isPlaying)
-                Container(
+            // 2: Pause indicator (IgnorePointer — taps fall through to layer 1)
+            if (!isPlaying)
+              IgnorePointer(
+                child: Container(
                   width: 64.w,
                   height: 64.w,
                   decoration: const BoxDecoration(
@@ -282,13 +300,17 @@ class _FullscreenVideoState extends State<_FullscreenVideo>
                   child: Icon(Icons.play_arrow_rounded,
                       color: Colors.white, size: 34.sp),
                 ),
+              ),
 
-              // Mute toggle — top right.
-              Positioned(
-                top: 80.h,
-                right: 16.w,
+            // 3: Mute toggle — opaque, absorbs its tap area
+            Positioned(
+              top: 80.h,
+              right: 16.w,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
                 child: GestureDetector(
                   onTap: _toggleMute,
+                  behavior: HitTestBehavior.opaque,
                   child: Container(
                     width: 38.w,
                     height: 38.w,
@@ -307,12 +329,17 @@ class _FullscreenVideoState extends State<_FullscreenVideo>
                   ),
                 ),
               ),
+            ),
 
-              // Progress bar at the bottom.
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 36.h,
+            // 4: Progress bar — opaque container absorbs its area so
+            //    tapping/scrubbing here never triggers play/pause
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 36.h,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {}, // absorb tap so play/pause layer doesn't fire
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
                   child: Column(
@@ -330,25 +357,22 @@ class _FullscreenVideoState extends State<_FullscreenVideo>
                       ),
                       SizedBox(height: 6.h),
                       Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(_fmt(value.position),
                               style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 11.sp)),
+                                  color: Colors.white70, fontSize: 11.sp)),
                           Text(_fmt(value.duration),
                               style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 11.sp)),
+                                  color: Colors.white70, fontSize: 11.sp)),
                         ],
                       ),
                     ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );

@@ -293,15 +293,15 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
       );
     }
 
-    // The Stack has TWO levels:
-    //  1. ValueListenableBuilder<VideoPlayerValue> — rebuilds every frame for
-    //     the video, progress bar, and play/pause overlay.
-    //  2. Mute button — lives OUTSIDE that listener so its GestureDetector
-    //     is never destroyed mid-tap (which was silently eating all taps).
+    // Three-layer Stack:
+    //  1. ValueListenableBuilder — per-frame video rendering + overlays (no hit targets)
+    //  2. Positioned.fill GestureDetector — stable play/pause tap target (never rebuilt)
+    //  3. Positioned mute button — stable, sits ABOVE play/pause so its opaque hit area
+    //     absorbs mute taps cleanly without leaking through to the play/pause layer.
     return Stack(
       fit: StackFit.expand,
       children: [
-        // ── Per-frame video layer ─────────────────────────────────────────
+        // ── Per-frame video layer (NO interactive widgets) ────────────────
         ValueListenableBuilder<VideoPlayerValue>(
           valueListenable: _ctrl,
           builder: (context, value, _) {
@@ -311,25 +311,22 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
             return Stack(
               fit: StackFit.expand,
               children: [
-                GestureDetector(
-                  onTap: _togglePlayback,
-                  child: ColoredBox(
-                    color: const Color(0xFF0A0A0A),
-                    child: SizedBox.expand(
-                      child: ColorFiltered(
-                        colorFilter: const ColorFilter.matrix(<double>[
-                          1.18, -0.06, -0.06, 0, 18,
-                          -0.05,  1.16, -0.05, 0, 18,
-                          -0.05, -0.05,  1.20, 0, 18,
-                          0,     0,     0,     1, 0,
-                        ]),
-                        child: FittedBox(
-                          fit: BoxFit.contain,
-                          child: SizedBox(
-                            width: w,
-                            height: h,
-                            child: VideoPlayer(_ctrl),
-                          ),
+                ColoredBox(
+                  color: const Color(0xFF0A0A0A),
+                  child: SizedBox.expand(
+                    child: ColorFiltered(
+                      colorFilter: const ColorFilter.matrix(<double>[
+                        1.18, -0.06, -0.06, 0, 18,
+                        -0.05,  1.16, -0.05, 0, 18,
+                        -0.05, -0.05,  1.20, 0, 18,
+                        0,     0,     0,     1, 0,
+                      ]),
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: SizedBox(
+                          width: w,
+                          height: h,
+                          child: VideoPlayer(_ctrl),
                         ),
                       ),
                     ),
@@ -380,29 +377,44 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
           },
         ),
 
-        // ── Mute button — stable widget, never rebuilt by video frames ────
+        // ── Play/pause tap target — stable, never rebuilt by video frames ──
+        Positioned.fill(
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _togglePlayback,
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+
+        // ── Mute button — stable, ABOVE play/pause (opaque absorbs its area) ─
         Positioned(
           bottom: 10.h,
           right: 10.w,
-          child: ValueListenableBuilder<bool>(
-            valueListenable: _muted,
-            builder: (_, muted, __) => GestureDetector(
-              onTap: _toggleMute,
-                behavior: HitTestBehavior.translucent,
-              child: Container(
-                width: 34.w,
-                height: 34.w,
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white24, width: 1),
-                ),
-                child: Icon(
-                  muted
-                      ? Icons.volume_off_rounded
-                      : Icons.volume_up_rounded,
-                  color: Colors.white,
-                  size: 17.sp,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _muted,
+              builder: (_, muted, __) => GestureDetector(
+                onTap: _toggleMute,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 34.w,
+                  height: 34.w,
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white24, width: 1),
+                  ),
+                  child: Icon(
+                    muted
+                        ? Icons.volume_off_rounded
+                        : Icons.volume_up_rounded,
+                    color: Colors.white,
+                    size: 17.sp,
+                  ),
                 ),
               ),
             ),
