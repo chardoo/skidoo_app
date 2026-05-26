@@ -451,56 +451,63 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       const cardW = _kWebColumnWidth; // 480
 
       if (isWide) {
-        // ── Desktop: image full-width, reactions/comments to the right ──────
+        // ── Desktop: card centred, reactions snug to its right ──────────────
         final mediaH = _computeMediaHeight(cardW, screenH);
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Card column (header + image + caption + divider) ───────────
-            SizedBox(
-              width: cardW,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _PostHeader(
-                    event: widget.event,
-                    ext: ext,
-                    isOwner: widget.isOwner,
-                    isAuthenticated: widget.isAuthenticated,
-                    onPhotographerTap: () => _openPhotographerProfile(context),
-                    onHide: widget.onHide,
-                    onLoginRequired: widget.onTap,
-                    onImage: false,
-                  ),
-                  SizedBox(
-                    height: mediaH,
-                    child: _buildMediaStack(context, ext, pics, cardW, mediaH),
-                  ),
-                  CardDescriptionText(
-                    event: widget.event,
-                    ext: ext,
-                    expanded: _descExpanded,
-                    onToggle: () =>
-                        setState(() => _descExpanded = !_descExpanded),
-                  ),
-                  SizedBox(height: 6.h),
-                  Divider(
-                    height: 1,
-                    thickness: 0.5,
-                    color: ext.searchHintColor.withValues(alpha: 0.1),
-                  ),
-                ],
+        const reactionsW = 64.0;
+        const commentsW = 340.0;
+        final rightW = _webCommentsOpen ? reactionsW + commentsW : reactionsW;
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Card column (header + image + caption + divider) ──────────
+              SizedBox(
+                width: cardW,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _PostHeader(
+                      event: widget.event,
+                      ext: ext,
+                      isOwner: widget.isOwner,
+                      isAuthenticated: widget.isAuthenticated,
+                      onPhotographerTap: () => _openPhotographerProfile(context),
+                      onHide: widget.onHide,
+                      onLoginRequired: widget.onTap,
+                      onImage: false,
+                    ),
+                    SizedBox(
+                      height: mediaH,
+                      child: _buildMediaStack(context, ext, pics, cardW, mediaH),
+                    ),
+                    CardDescriptionText(
+                      event: widget.event,
+                      ext: ext,
+                      expanded: _descExpanded,
+                      onToggle: () =>
+                          setState(() => _descExpanded = !_descExpanded),
+                    ),
+                    SizedBox(height: 6.h),
+                    Divider(
+                      height: 1,
+                      thickness: 0.5,
+                      color: ext.searchHintColor.withValues(alpha: 0.1),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            // ── External reactions / comments panel ────────────────────────
-            Expanded(
-              child: SizedBox(
+              // ── Reactions (always 64 px) + optional comments panel ────────
+              SizedBox(
+                width: rightW,
                 height: mediaH,
                 child: _buildWebRightPanel(context, ext, commentsEnabled,
                     isExternalPanel: true),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       }
 
