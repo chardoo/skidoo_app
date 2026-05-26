@@ -30,8 +30,8 @@ class MyTextField extends StatelessWidget {
   final Function()? ontap;
   final Function(String val)? onChanged;
   final Function()? onEditingComplete;
-  String? Function(String?)? validator;
-   String? Function(String?)? onSubmited;
+  final String? Function(String?)? validator;
+  final String? Function(String?)? onSubmited;
   @override
   Widget build(BuildContext context) {
     return TextFormField(

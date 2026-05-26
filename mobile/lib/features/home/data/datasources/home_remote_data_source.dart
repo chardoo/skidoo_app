@@ -151,7 +151,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
           _dbg('  progress ${envelope['processed']}/${envelope['total']}',
               t0, DateTime.now());
         } else if (type == 'done') {
-          final chunkLag = tFirstChunk!.difference(t0).inMilliseconds;
+          final chunkLag = tFirstChunk.difference(t0).inMilliseconds;
           final photoLag = tFirstPhoto?.difference(t0).inMilliseconds ?? -1;
           _dbg('DONE  total=${envelope['total']}  '
               'photos_yielded=$photoIndex  '

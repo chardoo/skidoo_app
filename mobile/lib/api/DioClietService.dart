@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';

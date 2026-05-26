@@ -12,7 +12,7 @@ class PasswordField extends StatefulWidget {
 
   final TextEditingController _pwdController;
   final Function(String val)? onChanged;
- String? Function(String?)? onSubmited;
+  final String? Function(String?)? onSubmited;
     final String label;
   final String? placeholder;
   @override
