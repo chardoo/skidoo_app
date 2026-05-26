@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
@@ -140,29 +139,23 @@ class _SidebarSearchField extends StatefulWidget {
 class _SidebarSearchFieldState extends State<_SidebarSearchField> {
   final _ctrl = TextEditingController();
   final _focus = FocusNode();
-  Timer? _debounce;
 
   void _submit() {
     final q = _ctrl.text.trim();
     if (q.isEmpty) return;
-    _debounce?.cancel();
     _ctrl.clear();
     _focus.unfocus();
     HomeNavigationPage.dispatchSearch(q);
   }
 
   void _onChanged(String value) {
-    _debounce?.cancel();
     final q = value.trim();
     if (q.isEmpty) return;
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      HomeNavigationPage.dispatchSearch(q);
-    });
+    HomeNavigationPage.dispatchSearch(q);
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _ctrl.dispose();
     _focus.dispose();
     super.dispose();
