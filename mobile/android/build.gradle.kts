@@ -33,27 +33,24 @@ subprojects {
 }
 
 // Fix JVM-target mismatches between Java and Kotlin compile tasks.
-// AGP 8+ rejects mismatched targets as a hard error (e.g. flutter_jailbreak_detection
-// has Java=1.8 / Kotlin=18; share_plus has Java=17 / Kotlin=1.8).
-// Rather than forcing a single version on all plugins (which breaks ones with a
-// low compileSdkVersion like google_mlkit_commons at sdk=29), we read each
-// project's declared Java targetCompatibility and set Kotlin's jvmTarget to match.
+// AGP 8+ rejects mismatched targets as a hard error. Kotlin 2.1.0 defaults to
+// jvmTarget=17 but many plugins leave Java at sourceCompatibility=1.8
+// (e.g. flutter_jailbreak_detection). Forcing Java up to 17 is the reliable
+// fix — the plugin's own afterEvaluate may run after ours and set Kotlin to 17
+// anyway, so pulling Kotlin down is fragile. D8/R8 desugar Java 17 bytecode
+// to any minSdk, so this is safe regardless of Android API level.
 subprojects {
     afterEvaluate {
         val android = extensions.findByName("android")
             as? com.android.build.gradle.LibraryExtension ?: return@afterEvaluate
-        // Some plugins (e.g. camera_android) set targetCompatibility inside their
-        // own afterEvaluate, which runs after ours — the Property is not yet
-        // finalized at this point and throws IllegalStateException.  Skip those
-        // projects; their Kotlin/Java targets will already be aligned by the
-        // plugin itself.
-        val javaTarget = try {
-            android.compileOptions.targetCompatibility?.toString()
-        } catch (_: IllegalStateException) {
-            null
-        } ?: return@afterEvaluate
+        try {
+            android.compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        } catch (_: Exception) { }
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-            kotlinOptions { jvmTarget = javaTarget }
+            kotlinOptions { jvmTarget = "17" }
         }
     }
 }
