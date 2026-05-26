@@ -276,7 +276,7 @@ class _AppMaterial extends StatelessWidget {
                   ),
                   const Positioned(
                     top: 16,
-                    right: 24,
+                    right: 80,
                     child: _DownloadAppButton(),
                   ),
                 ],

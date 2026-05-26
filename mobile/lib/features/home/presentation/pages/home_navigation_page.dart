@@ -25,9 +25,11 @@ import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 class HomeNavigationPage extends StatefulWidget {
   const HomeNavigationPage({super.key});
 
-  /// Web-only bridge: the sidebar writes a search query here; this page
-  /// listens and dispatches to HomeBloc so the content area shows results.
-  static final webSearchQuery = ValueNotifier<String>('');
+  /// Web-only: sidebar calls [dispatchSearch] to trigger a live search.
+  /// Using a callback instead of ValueNotifier avoids the "same value silently
+  /// dropped" edge case that broke debounced keystrokes.
+  static void Function(String query)? _webSearchHandler;
+  static void dispatchSearch(String query) => _webSearchHandler?.call(query);
 
   @override
   State<HomeNavigationPage> createState() => _HomeNavigationPageState();
@@ -50,25 +52,20 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) HomeNavigationPage.webSearchQuery.addListener(_onWebSearchQuery);
+    if (kIsWeb) {
+      HomeNavigationPage._webSearchHandler = (q) {
+        if (!mounted || q.isEmpty) return;
+        _openSearch();
+        _onSearchChanged(q);
+      };
+    }
   }
 
   @override
   void dispose() {
-    if (kIsWeb) HomeNavigationPage.webSearchQuery.removeListener(_onWebSearchQuery);
+    if (kIsWeb) HomeNavigationPage._webSearchHandler = null;
     _chromeTimer?.cancel();
     super.dispose();
-  }
-
-  /// Called when the sidebar writes a query to [HomeNavigationPage.webSearchQuery].
-  void _onWebSearchQuery() {
-    final q = HomeNavigationPage.webSearchQuery.value;
-    if (q.isEmpty) return;
-    _openSearch();
-    _onSearchChanged(q);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) HomeNavigationPage.webSearchQuery.value = '';
-    });
   }
 
   void _measureHeaderHeight() {

@@ -148,7 +148,7 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
     _debounce?.cancel();
     _ctrl.clear();
     _focus.unfocus();
-    HomeNavigationPage.webSearchQuery.value = q;
+    HomeNavigationPage.dispatchSearch(q);
   }
 
   void _onChanged(String value) {
@@ -156,7 +156,7 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
     final q = value.trim();
     if (q.isEmpty) return;
     _debounce = Timer(const Duration(milliseconds: 300), () {
-      HomeNavigationPage.webSearchQuery.value = q;
+      HomeNavigationPage.dispatchSearch(q);
     });
   }
 
