@@ -1,5 +1,6 @@
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -353,7 +354,7 @@ class _MessageVideoState extends State<_MessageVideo>
     if (_initialized && _ctrl.value.isPlaying) _ctrl.pause();
   });
   bool _initialized = false;
-  bool _muted = true;
+  bool _muted = kIsWeb;
 
   @override
   void initState() {
@@ -362,7 +363,7 @@ class _MessageVideoState extends State<_MessageVideo>
     _pauseSub; // eagerly initialize the late field
     _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
       ..setLooping(true)
-      ..setVolume(0)
+      ..setVolume(kIsWeb ? 0.0 : 1.0)
       ..initialize().then((_) {
         if (mounted) setState(() => _initialized = true);
       }).catchError((Object e) {

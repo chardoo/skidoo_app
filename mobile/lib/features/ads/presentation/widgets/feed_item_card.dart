@@ -292,7 +292,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
   bool _saved = false;
   bool _bodyExpanded = false;
   bool _initFired = false;
-  bool _muted = true;
+  bool _muted = kIsWeb;
   bool _chatLoading = false;
   bool _manuallyPaused = false;
 
@@ -372,7 +372,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
     final ctrl = VideoPlayerController.networkUrl(Uri.parse(url));
     try {
       await ctrl.initialize();
-      await ctrl.setVolume(0);
+      await ctrl.setVolume(kIsWeb ? 0.0 : 1.0);
       await ctrl.setLooping(true);
       if (mounted) {
         setState(() {
