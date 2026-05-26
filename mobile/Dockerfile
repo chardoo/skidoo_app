@@ -4,6 +4,9 @@ FROM debian:bookworm-slim AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH="/flutter/bin:${PATH}"
+# Render runs Docker rootless — tar can't chown extracted files.
+# GNU tar respects this env var and skips ownership changes.
+ENV TAR_OPTIONS="--no-same-owner"
 
 # System deps Flutter needs to run on Linux.
 RUN apt-get update && apt-get install -y --no-install-recommends \
