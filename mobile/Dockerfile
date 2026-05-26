@@ -1,17 +1,31 @@
 # ── Stage 1: Flutter web build ────────────────────────────────────────────────
-# Builds the Flutter web app inside Docker so the server only needs Docker+Git.
-FROM ghcr.io/cirruslabs/flutter:stable AS builder
+# Uses the official Flutter git repo — no third-party Docker registry needed.
+FROM debian:bookworm-slim AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH="/flutter/bin:${PATH}"
+
+# System deps Flutter needs to run on Linux.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl git unzip xz-utils ca-certificates libglu1-mesa \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone the latest stable Flutter SDK.
+# --depth 1 keeps the download small; --branch stable pins to the stable channel.
+RUN git clone --depth 1 --branch stable \
+        https://github.com/flutter/flutter.git /flutter \
+    && flutter precache --web \
+    && flutter --version
 
 WORKDIR /app
 
-# Copy dependency manifests first — lets Docker cache the pub get layer
-# and skip it on rebuilds where only Dart source files changed.
+# Copy dependency files first so Docker can cache the pub-get layer.
+# This layer only rebuilds when pubspec.yaml / pubspec.lock actually change.
 COPY mobile/pubspec.yaml mobile/pubspec.lock ./
 RUN flutter pub get
 
-# Copy the rest of the app source.
+# Copy the rest of the app source and build.
 COPY mobile/ .
-
 RUN flutter build web --release
 
 # ── Stage 2: nginx static server ──────────────────────────────────────────────

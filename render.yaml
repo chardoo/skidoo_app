@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: skidoo-web
+    runtime: docker
+    dockerfilePath: ./mobile/Dockerfile
+    dockerContext: .
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /
