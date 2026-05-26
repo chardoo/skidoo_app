@@ -20,12 +20,8 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     defaultConfig {
@@ -66,4 +62,13 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// KGP 2.2+ removed kotlinOptions; use compilerOptions to lock jvmTarget so it
+// matches the Java 17 compileOptions above (the Flutter Gradle plugin otherwise
+// overrides it to 18, which AGP 8+ rejects as a mismatch).
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
