@@ -7,7 +7,6 @@ import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/models/chat/like_update.dart' show LikeUpdate, PictureLikeUpdate;
 import 'package:skidoo_app/services/auth_service.dart';
-import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 // ── Server-push events ────────────────────────────────────────────────────────
@@ -369,7 +368,7 @@ class ChatWebSocketService {
     _senderKeyDistController = StreamController<WsSenderKeyDistributionEvent>.broadcast();
 
     try {
-      _channel = IOWebSocketChannel.connect(uri);
+      _channel = WebSocketChannel.connect(uri);
       await _channel!.ready.timeout(
         const Duration(seconds: 15),
         onTimeout: () => throw TimeoutException('WebSocket handshake timed out'),

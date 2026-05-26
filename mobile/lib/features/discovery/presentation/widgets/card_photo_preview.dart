@@ -276,7 +276,12 @@ class _SliderVideoItemState extends State<_SliderVideoItem>
     });
   }
 
-  void _toggleMute() => _muted.value = !_muted.value;
+  void _toggleMute() {
+    _muted.value = !_muted.value;
+    // Belt-and-suspenders: also update this controller directly so the volume
+    // change is guaranteed to apply even if the listener fires on a microtask.
+    if (_initialized) _ctrl.setVolume(_muted.value ? 0.0 : 1.0);
+  }
 
   @override
   Widget build(BuildContext context) {

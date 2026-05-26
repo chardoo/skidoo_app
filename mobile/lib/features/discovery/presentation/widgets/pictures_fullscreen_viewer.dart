@@ -252,129 +252,134 @@ class _FullscreenVideoState extends State<_FullscreenVideo>
       );
     }
 
-    return ValueListenableBuilder<VideoPlayerValue>(
-      valueListenable: _ctrl,
-      builder: (context, value, _) {
-        final isPlaying = value.isPlaying;
-
-        // Stack ordering matters for hit-testing: later children are checked
-        // first. Mute button and progress bar (indices 3, 4) sit ABOVE the
-        // Positioned.fill play/pause GestureDetector (index 1) so their
-        // opaque hit areas absorb taps cleanly — tapping mute never also
-        // toggles playback, and scrubbing the progress bar never pauses.
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            // 0: Video
-            Center(
-              child: AspectRatio(
-                aspectRatio: value.size.width > 0 && value.size.height > 0
-                    ? value.size.width / value.size.height
-                    : 9 / 16,
-                child: VideoPlayer(_ctrl),
-              ),
-            ),
-
-            // 1: Full-area play/pause tap target
-            Positioned.fill(
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _togglePlayback,
-                  child: const SizedBox.expand(),
-                ),
-              ),
-            ),
-
-            // 2: Pause indicator (IgnorePointer — taps fall through to layer 1)
-            if (!isPlaying)
-              IgnorePointer(
-                child: Container(
-                  width: 64.w,
-                  height: 64.w,
-                  decoration: const BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
+    // Outer Stack keeps the mute button STABLE (never rebuilt by video frames).
+    // ValueListenableBuilder handles per-frame video state without recreating
+    // the mute GestureDetector — eliminates any chance of a tap being lost
+    // mid-gesture when a position update triggers a rebuild.
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // 0: Per-frame video layer — play/pause and progress bar live here
+        ValueListenableBuilder<VideoPlayerValue>(
+          valueListenable: _ctrl,
+          builder: (context, value, _) {
+            final isPlaying = value.isPlaying;
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                // Video
+                Center(
+                  child: AspectRatio(
+                    aspectRatio: value.size.width > 0 && value.size.height > 0
+                        ? value.size.width / value.size.height
+                        : 9 / 16,
+                    child: VideoPlayer(_ctrl),
                   ),
-                  child: Icon(Icons.play_arrow_rounded,
-                      color: Colors.white, size: 34.sp),
                 ),
-              ),
 
-            // 3: Mute toggle — opaque, absorbs its tap area
-            Positioned(
-              top: 80.h,
-              right: 16.w,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: _toggleMute,
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    width: 38.w,
-                    height: 38.w,
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24, width: 1),
-                    ),
-                    child: Icon(
-                      _muted
-                          ? Icons.volume_off_rounded
-                          : Icons.volume_up_rounded,
-                      color: Colors.white,
-                      size: 18.sp,
+                // Full-area play/pause tap target
+                Positioned.fill(
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _togglePlayback,
+                      child: const SizedBox.expand(),
                     ),
                   ),
                 ),
-              ),
-            ),
 
-            // 4: Progress bar — opaque container absorbs its area so
-            //    tapping/scrubbing here never triggers play/pause
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 36.h,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {}, // absorb tap so play/pause layer doesn't fire
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      VideoProgressIndicator(
-                        _ctrl,
-                        allowScrubbing: true,
-                        colors: const VideoProgressColors(
-                          playedColor: Color(0xFFF5A623),
-                          bufferedColor: Colors.white24,
-                          backgroundColor: Colors.white12,
-                        ),
-                        padding: EdgeInsets.zero,
+                // Pause indicator (IgnorePointer — taps fall through to play/pause)
+                if (!isPlaying)
+                  IgnorePointer(
+                    child: Container(
+                      width: 64.w,
+                      height: 64.w,
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
                       ),
-                      SizedBox(height: 6.h),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Icon(Icons.play_arrow_rounded,
+                          color: Colors.white, size: 34.sp),
+                    ),
+                  ),
+
+                // Progress bar — opaque wrapper absorbs its area
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 36.h,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {},
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(_fmt(value.position),
-                              style: TextStyle(
-                                  color: Colors.white70, fontSize: 11.sp)),
-                          Text(_fmt(value.duration),
-                              style: TextStyle(
-                                  color: Colors.white70, fontSize: 11.sp)),
+                          VideoProgressIndicator(
+                            _ctrl,
+                            allowScrubbing: true,
+                            colors: const VideoProgressColors(
+                              playedColor: Color(0xFFF5A623),
+                              bufferedColor: Colors.white24,
+                              backgroundColor: Colors.white12,
+                            ),
+                            padding: EdgeInsets.zero,
+                          ),
+                          SizedBox(height: 6.h),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(_fmt(value.position),
+                                  style: TextStyle(
+                                      color: Colors.white70, fontSize: 11.sp)),
+                              Text(_fmt(value.duration),
+                                  style: TextStyle(
+                                      color: Colors.white70, fontSize: 11.sp)),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
+                ),
+              ],
+            );
+          },
+        ),
+
+        // 1: Mute toggle — STABLE, rebuilt only when _muted changes via setState,
+        //    not on every video frame. Sits above ValueListenableBuilder so its
+        //    opaque hit area absorbs mute taps before play/pause can fire.
+        Positioned(
+          top: 80.h,
+          right: 16.w,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: _toggleMute,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: 38.w,
+                height: 38.w,
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24, width: 1),
+                ),
+                child: Icon(
+                  _muted
+                      ? Icons.volume_off_rounded
+                      : Icons.volume_up_rounded,
+                  color: Colors.white,
+                  size: 18.sp,
                 ),
               ),
             ),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 
