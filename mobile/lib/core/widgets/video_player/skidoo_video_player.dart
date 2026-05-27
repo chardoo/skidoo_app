@@ -50,7 +50,7 @@ class SkidooVideoPlayer extends StatefulWidget {
     this.width,
     this.height,
     this.aspectRatio,
-    this.fit = BoxFit.cover,
+    this.fit = BoxFit.contain,
     // ── Playback ───────────────────────────────────────────────────────────
     this.autoPlay = false,
     this.loop = true,
@@ -74,7 +74,7 @@ class SkidooVideoPlayer extends StatefulWidget {
   /// Desired aspect ratio (width ÷ height). E.g. `16 / 9` or `9 / 16`.
   final double? aspectRatio;
 
-  /// How the video fits its bounding box. Defaults to [BoxFit.cover].
+  /// How the video fits its bounding box. Defaults to [BoxFit.contain].
   final BoxFit fit;
 
   /// Begin playback as soon as the media is loaded. Defaults to false.

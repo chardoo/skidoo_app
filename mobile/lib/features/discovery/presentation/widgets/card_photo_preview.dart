@@ -185,7 +185,7 @@ class _SliderVideoItemState extends State<_SliderVideoItem> {
         isActive: _isSlideActive && _isCardActive,
         autoPlay: true,
         loop: true,
-        fit: BoxFit.cover,
+        fit: BoxFit.contain,
         showControls: true,
         backgroundColor: Colors.black,
         listenToPauseNotifier: true,
