@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/material.dart';
 // ignore: depend_on_referenced_packages
@@ -131,6 +132,15 @@ class Styles {
       extensions: [
         isDarkTheme ? AppThemeExtension.dark : AppThemeExtension.light,
       ],
+      // ── Web: instant fade instead of mobile slide / zoom ─────────────────
+      pageTransitionsTheme: kIsWeb
+          ? PageTransitionsTheme(
+              builders: {
+                for (final p in TargetPlatform.values)
+                  p: const _WebFadeTransitionBuilder(),
+              },
+            )
+          : const PageTransitionsTheme(),
       scaffoldBackgroundColor: isDarkTheme
           ? const Color.fromARGB(255, 10, 13, 17)
           : const Color(0xFFF2F2F7),
@@ -147,6 +157,29 @@ class Styles {
         surface: isDarkTheme ? const Color(0xFF1A1D24) : Colors.white,
         onSurface: isDarkTheme ? Colors.white : Colors.black,
       ),
+    );
+  }
+}
+
+// ── Web page transition: quick fade (no mobile-style slide) ───────────────────
+
+class _WebFadeTransitionBuilder extends PageTransitionsBuilder {
+  const _WebFadeTransitionBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOut,
+      ),
+      child: child,
     );
   }
 }
