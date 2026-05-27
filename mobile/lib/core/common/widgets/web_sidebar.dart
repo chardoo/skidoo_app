@@ -126,8 +126,13 @@ class _SidebarShell extends StatelessWidget {
 // ── Sidebar search field ──────────────────────────────────────────────────────
 
 /// Compact search field at the top of the logged-in sidebar.
-/// Submitting a query writes to [HomeNavigationPage.webSearchQuery] so the
-/// content area opens its search overlay without needing BLoC access here.
+///
+/// Implements a typeahead dropdown that overlays the nav items below:
+///   • Results appear from the 2nd character onwards (no Enter needed).
+///   • The dropdown is an [OverlayEntry] anchored via [CompositedTransformFollower]
+///     so it sits directly below the field and floats over the nav items.
+///   • Selecting an event dispatches [HomeNavigationPage.dispatchEventTap],
+///     which opens the inline photo panel in the content area.
 class _SidebarSearchField extends StatefulWidget {
   const _SidebarSearchField({required this.ext});
   final AppThemeExtension ext;
@@ -139,65 +144,314 @@ class _SidebarSearchField extends StatefulWidget {
 class _SidebarSearchFieldState extends State<_SidebarSearchField> {
   final _ctrl = TextEditingController();
   final _focus = FocusNode();
+  final _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
 
-  void _submit() {
-    final q = _ctrl.text.trim();
-    if (q.isEmpty) return;
-    _ctrl.clear();
-    _focus.unfocus();
-    HomeNavigationPage.dispatchSearch(q);
-  }
-
-  void _onChanged(String value) {
-    final q = value.trim();
-    if (q.isEmpty) return;
-    HomeNavigationPage.dispatchSearch(q);
+  @override
+  void initState() {
+    super.initState();
+    HomeNavigationPage.webEventResults.addListener(_onResultsChanged);
+    _focus.addListener(_onFocusChanged);
+    _ctrl.addListener(_onControllerChanged);
   }
 
   @override
   void dispose() {
+    HomeNavigationPage.webEventResults.removeListener(_onResultsChanged);
+    _focus.removeListener(_onFocusChanged);
+    _ctrl.removeListener(_onControllerChanged);
+    _removeOverlay();
     _ctrl.dispose();
     _focus.dispose();
     super.dispose();
   }
 
+  // ── Event handlers ──────────────────────────────────────────────────────────
+
+  void _onResultsChanged() => _syncOverlay();
+
+  void _onControllerChanged() {
+    // Trigger rebuild so the clear-X button appears/disappears.
+    if (mounted) setState(() {});
+  }
+
+  void _onFocusChanged() {
+    if (!_focus.hasFocus) {
+      // Delay removal so that a tap on a dropdown item fires before it disappears.
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted && !_focus.hasFocus) _removeOverlay();
+      });
+    } else {
+      _syncOverlay();
+    }
+  }
+
+  void _onChanged(String value) {
+    final q = value.trim();
+    if (q.length < 2) {
+      // Query too short — clear results and hide dropdown.
+      if (HomeNavigationPage.webEventResults.value.isNotEmpty) {
+        HomeNavigationPage.webEventResults.value = [];
+      }
+      _removeOverlay();
+      return;
+    }
+    HomeNavigationPage.dispatchSearch(q);
+  }
+
+  void _clearSearch() {
+    _ctrl.clear();
+    HomeNavigationPage.webEventResults.value = [];
+    _removeOverlay();
+  }
+
+  void _onEventSelected(String eventId, String eventName) {
+    _ctrl.clear();
+    HomeNavigationPage.webEventResults.value = [];
+    _removeOverlay();
+    HomeNavigationPage.dispatchEventTap(eventId, eventName);
+  }
+
+  // ── Overlay management ──────────────────────────────────────────────────────
+
+  void _syncOverlay() {
+    final results = HomeNavigationPage.webEventResults.value;
+    final q = _ctrl.text.trim();
+    if (results.isNotEmpty && q.length >= 2 && _focus.hasFocus) {
+      _showOverlay(results);
+    } else {
+      _removeOverlay();
+    }
+  }
+
+  void _showOverlay(List<dynamic> results) {
+    _removeOverlay();
+    if (!mounted) return;
+
+    _overlayEntry = OverlayEntry(
+      builder: (_) => _SidebarTypeaheadDropdown(
+        layerLink: _layerLink,
+        ext: widget.ext,
+        onSelect: _onEventSelected,
+      ),
+    );
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  // ── Build ───────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
+    final hasText = _ctrl.text.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-      child: Container(
-        height: 40,
-        decoration: BoxDecoration(
-          color: widget.ext.glassFill,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: widget.ext.glassBorder, width: 1.0),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 10),
-            Icon(Icons.search_rounded, color: widget.ext.glassIcon, size: 16),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _ctrl,
-                focusNode: _focus,
-                style: TextStyle(color: widget.ext.greetingColor, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'Search events',
-                  hintStyle: TextStyle(
-                      color: widget.ext.searchHintColor, fontSize: 13),
-                  border: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
+      child: CompositedTransformTarget(
+        link: _layerLink,
+        child: Container(
+          height: 40,
+          decoration: BoxDecoration(
+            color: widget.ext.glassFill,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: widget.ext.glassBorder, width: 1.0),
+          ),
+          child: Row(
+            children: [
+              const SizedBox(width: 10),
+              Icon(Icons.search_rounded, color: widget.ext.glassIcon, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _ctrl,
+                  focusNode: _focus,
+                  style: TextStyle(
+                      color: widget.ext.greetingColor, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Search events',
+                    hintStyle: TextStyle(
+                        color: widget.ext.searchHintColor, fontSize: 13),
+                    border: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  textInputAction: TextInputAction.search,
+                  onChanged: _onChanged,
+                  onSubmitted: (_) {
+                    // Keep dropdown open on Enter — user can click a result.
+                  },
                 ),
-                textInputAction: TextInputAction.search,
-                onChanged: _onChanged,
-                onSubmitted: (_) => _submit(),
+              ),
+              // Clear button — shown when field has text.
+              if (hasText)
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: _clearSearch,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Icon(Icons.close_rounded,
+                          color: widget.ext.searchHintColor, size: 14),
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(width: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Typeahead dropdown overlay ────────────────────────────────────────────────
+
+/// Floating event-suggestion panel anchored below [_SidebarSearchField].
+/// Positioned via [CompositedTransformFollower] so it always tracks the
+/// search field even when the sidebar scrolls.
+class _SidebarTypeaheadDropdown extends StatelessWidget {
+  const _SidebarTypeaheadDropdown({
+    required this.layerLink,
+    required this.ext,
+    required this.onSelect,
+  });
+
+  final LayerLink layerLink;
+  final AppThemeExtension ext;
+  final void Function(String eventId, String eventName) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<List<dynamic>>(
+      valueListenable: HomeNavigationPage.webEventResults,
+      builder: (context, events, _) {
+        if (events.isEmpty) return const SizedBox.shrink();
+
+        return CompositedTransformFollower(
+          link: layerLink,
+          showWhenUnlinked: false,
+          // Anchor the dropdown's top-left to the search field's bottom-left.
+          targetAnchor: Alignment.bottomLeft,
+          followerAnchor: Alignment.topLeft,
+          offset: const Offset(0, 4),
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              // Match the usable width inside the sidebar padding (240 - 24).
+              width: _kSidebarWidth - 24,
+              constraints: const BoxConstraints(maxHeight: 300),
+              decoration: BoxDecoration(
+                color: ext.homeBackground,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: ext.searchHintColor.withValues(alpha: 0.15)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  shrinkWrap: true,
+                  itemCount: events.length,
+                  itemBuilder: (context, i) => _TypeaheadItem(
+                    event: events[i],
+                    ext: ext,
+                    onTap: () => onSelect(
+                      '${events[i].id}',
+                      '${events[i].eventName}',
+                    ),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(width: 8),
-          ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TypeaheadItem extends StatefulWidget {
+  const _TypeaheadItem({
+    required this.event,
+    required this.ext,
+    required this.onTap,
+  });
+  final dynamic event;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+
+  @override
+  State<_TypeaheadItem> createState() => _TypeaheadItemState();
+}
+
+class _TypeaheadItemState extends State<_TypeaheadItem> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          color: _hovered
+              ? widget.ext.accentGold.withValues(alpha: 0.08)
+              : Colors.transparent,
+          child: Row(
+            children: [
+              Icon(Icons.event_rounded,
+                  color: widget.ext.searchHintColor.withValues(alpha: 0.7),
+                  size: 14),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${widget.event.eventName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: widget.ext.greetingColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if ('${widget.event.photographer}'.isNotEmpty)
+                      Text(
+                        '${widget.event.photographer}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: widget.ext.searchHintColor,
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  color: widget.ext.searchHintColor.withValues(alpha: 0.4),
+                  size: 14),
+            ],
+          ),
         ),
       ),
     );

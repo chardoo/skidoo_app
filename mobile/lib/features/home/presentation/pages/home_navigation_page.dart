@@ -27,11 +27,22 @@ import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 class HomeNavigationPage extends StatefulWidget {
   const HomeNavigationPage({super.key});
 
-  /// Web-only: sidebar calls [dispatchSearch] to trigger a live search.
+  /// Web-only: sidebar calls [dispatchSearch] to dispatch a BLoC event search.
   /// Using a callback instead of ValueNotifier avoids the "same value silently
   /// dropped" edge case that broke debounced keystrokes.
   static void Function(String query)? _webSearchHandler;
   static void dispatchSearch(String query) => _webSearchHandler?.call(query);
+
+  /// Web-only: mirrors the live event search results so the sidebar typeahead
+  /// dropdown can display them without needing BLoC access.
+  static final webEventResults = ValueNotifier<List<dynamic>>([]);
+
+  /// Web-only: called by the sidebar when the user picks an event from the
+  /// typeahead dropdown. Opens the inline photo-results panel in the content
+  /// area and fetches the event's photos.
+  static void Function(String eventId, String eventName)? _webEventTapHandler;
+  static void dispatchEventTap(String eventId, String eventName) =>
+      _webEventTapHandler?.call(eventId, eventName);
 
   @override
   State<HomeNavigationPage> createState() => _HomeNavigationPageState();
@@ -59,17 +70,32 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   void initState() {
     super.initState();
     if (kIsWeb) {
+      // Typeahead: only dispatch the BLoC event search — don't open the content
+      // overlay. The sidebar dropdown shows suggestions; the inline photos panel
+      // only opens after the user taps an event (via _webEventTapHandler).
       HomeNavigationPage._webSearchHandler = (q) {
         if (!mounted || q.isEmpty) return;
-        _openSearch();
-        _onSearchChanged(q);
+        context.read<HomeBloc>().add(HomeEventSearched(q));
+      };
+      HomeNavigationPage._webEventTapHandler = (eventId, eventName) {
+        if (!mounted) return;
+        context.read<HomeBloc>().add(
+            HomeImagesSearched(eventId: eventId, eventName: eventName));
+        setState(() {
+          _isSearchOpen = true;
+          _showPhotosInline = true;
+          _inlineEventName = eventName;
+        });
       };
     }
   }
 
   @override
   void dispose() {
-    if (kIsWeb) HomeNavigationPage._webSearchHandler = null;
+    if (kIsWeb) {
+      HomeNavigationPage._webSearchHandler = null;
+      HomeNavigationPage._webEventTapHandler = null;
+    }
     _chromeTimer?.cancel();
     super.dispose();
   }
@@ -110,6 +136,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       _showPhotosInline = false;
       _inlineEventName = '';
     });
+    HomeNavigationPage.webEventResults.value = [];
     context.read<HomeBloc>().add(const HomeSearchClosed());
   }
 
@@ -204,6 +231,14 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
     // ── Web: compact top bar (tabs + avatar) + Column layout ─────────────────
     if (kIsWeb) {
+      // Keep webEventResults in sync with BLoC state so the sidebar typeahead
+      // dropdown can display results without direct BLoC access.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          HomeNavigationPage.webEventResults.value = homeState.events;
+        }
+      });
+
       return FeedLaunchOverlay(
         child: Scaffold(
           backgroundColor: ext.homeBackground,
