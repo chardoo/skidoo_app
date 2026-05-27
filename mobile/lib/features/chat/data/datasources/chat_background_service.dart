@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart'
-    show ChatWebSocketService, WsGroupInviteEvent;
+    show ChatWebSocketService, WsGroupInviteEvent, WsUserJoinedEvent;
 import 'package:skidoo_app/features/chat/data/local/chat_database.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
@@ -36,8 +36,15 @@ class ChatBackgroundService {
 
   StreamSubscription<ChatMessage>? _msgSub;
   StreamSubscription<WsGroupInviteEvent>? _groupInviteSub;
+  StreamSubscription<WsUserJoinedEvent>? _userJoinedSub;
 
   final Map<String, ChatRoom> _rooms = {};
+
+  // Per-room encryption flag.  Defaults to true (mobile-only assumed).
+  // Set to false when a web participant is detected — either from the initial
+  // `connected` handshake or from a live `user_joined` with client_type=web.
+  // Reset to true on reconnect if no web clients appear in the new handshake.
+  final Map<String, bool> _roomCanEncrypt = {};
 
   // Rooms whose connection is temporarily handed to ChatRoomBloc.
   // Messages for paused rooms are silently dropped (the bloc handles them).
@@ -65,6 +72,11 @@ class ChatBackgroundService {
 
   /// The shared singleton WS — ChatRoomBloc reads streams from here.
   ChatWebSocketService get sharedWs => _sharedWs;
+
+  /// Returns true when all known participants in [roomId] are on mobile.
+  /// Returns false if any web client has been detected in the room.
+  /// Defaults to true when the room hasn't appeared in a handshake yet.
+  bool canEncryptRoom(String roomId) => _roomCanEncrypt[roomId] ?? true;
 
   /// Emits true on connect, false on drop. Never closed while the service lives.
   Stream<bool> get connectionEvents => _connectionController.stream;
@@ -115,11 +127,14 @@ class ChatBackgroundService {
     _reconnectTimer?.cancel();
     _msgSub?.cancel();
     _groupInviteSub?.cancel();
+    _userJoinedSub?.cancel();
     _sharedWs.disconnect();
     _msgSub = null;
     _groupInviteSub = null;
+    _userJoinedSub = null;
     _rooms.clear();
     _paused.clear();
+    _roomCanEncrypt.clear();
     _connected = false;
     _connecting = false;
     _reconnectAttempts = 0;
@@ -153,6 +168,26 @@ class ChatBackgroundService {
       // Notify ChatRoomBloc (and any other listener) that the WS is up.
       _connectionController.add(true);
 
+      // ── Populate per-room encryption flags from the `connected` handshake ──
+      // The server lists every room the user belongs to, along with participant
+      // client_type.  We reset the map on every reconnect so rooms where a web
+      // client later left are re-evaluated with fresh data.
+      _roomCanEncrypt.clear();
+      _sharedWs.connectedEvents.listen((event) {
+        for (final room in event.rooms) {
+          final roomId = room['room_id'] as String? ?? '';
+          if (roomId.isEmpty) continue;
+          final participants = (room['participants'] as List?) ?? [];
+          final hasWeb = participants.any(
+            (p) => (p as Map<String, dynamic>?)?['client_type'] == 'web',
+          );
+          _roomCanEncrypt[roomId] = !hasWeb;
+          if (hasWeb) {
+            debugPrint('[BgChat] room $roomId has web participant — E2EE disabled');
+          }
+        }
+      });
+
       final gen = ++_generation;
       _msgSub = _sharedWs.messages.listen(
         (msg) {
@@ -177,6 +212,15 @@ class ChatBackgroundService {
         debugPrint('[BgChat] group_invite via sharedWs — roomId=${event.room.id}');
         reportGroupInvite(event.room);
       });
+
+      // ── Downgrade encryption when a web client joins a live room ──────────
+      _userJoinedSub?.cancel();
+      _userJoinedSub = _sharedWs.userJoinedEvents.listen((event) {
+        if (event.clientType == 'web') {
+          _roomCanEncrypt[event.roomId] = false;
+          debugPrint('[BgChat] web client joined room ${event.roomId} — E2EE disabled');
+        }
+      });
     } catch (e) {
       _connected = false;
       _connecting = false;
@@ -193,6 +237,8 @@ class ChatBackgroundService {
     _msgSub = null;
     _groupInviteSub?.cancel();
     _groupInviteSub = null;
+    _userJoinedSub?.cancel();
+    _userJoinedSub = null;
 
     if (_sharedWs.hadFatalClose) {
       debugPrint('[BgChat] fatal close — will not reconnect');

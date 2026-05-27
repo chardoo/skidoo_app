@@ -771,10 +771,17 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   }) async {
     final hasText = content != null && content.isNotEmpty;
 
-    // Web: encryption not supported — send everything as plaintext.
-    if (kIsWeb) {
+    // Send plaintext when:
+    //   • Running on web (encryption never supported in the browser), OR
+    //   • A web participant is present in this room (mobile must downgrade so
+    //     the web client can read the messages).
+    final roomId = _currentRoomId;
+    final hasWebParticipant =
+        !kIsWeb && roomId != null && !_bgService.canEncryptRoom(roomId);
+    if (kIsWeb || hasWebParticipant) {
+      debugPrint('[E2EE] send plaintext — kIsWeb=$kIsWeb hasWebParticipant=$hasWebParticipant');
       _ws.send(content, imageUrl: imageUrl, isVideo: isVideo,
-          replyToId: replyToId, roomId: _currentRoomId);
+          replyToId: replyToId, roomId: roomId);
       return;
     }
 

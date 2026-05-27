@@ -170,11 +170,14 @@ class WsUserJoinedEvent {
   final String userId;
   final String userName;
   final String userRole;
+  /// 'mobile', 'web', or '' when the server didn't include the field.
+  final String clientType;
   const WsUserJoinedEvent({
     required this.roomId,
     required this.userId,
     required this.userName,
     required this.userRole,
+    this.clientType = '',
   });
 }
 
@@ -335,7 +338,10 @@ class ChatWebSocketService {
         .replaceFirst('http://', 'ws://');
     final token = await _authService.getToken();
     final uri = Uri.parse('$wsBase/chat/ws/me').replace(
-      queryParameters: token.isNotEmpty ? {'token': token} : null,
+      queryParameters: {
+        if (token.isNotEmpty) 'token': token,
+        'client_type': kIsWeb ? 'web' : 'mobile',
+      },
     );
 
     await _doConnect(uri);
@@ -467,6 +473,7 @@ class ChatWebSocketService {
                 userId: json['user_id'] as String,
                 userName: json['user_name'] as String? ?? '',
                 userRole: json['user_role'] as String? ?? '',
+                clientType: json['client_type'] as String? ?? '',
               ));
             }
           } else if (type == 'admin_granted') {
