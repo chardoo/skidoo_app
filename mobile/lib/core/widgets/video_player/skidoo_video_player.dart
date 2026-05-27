@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -258,6 +257,8 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
       _muted = !_muted;
       _player.setVolume(_muted ? 0 : 100);
     });
+    // Persist so the next video opens in the same mute state.
+    VideoMutePreference.muted = _muted;
   }
 
   void _seekBy(Duration delta) {
@@ -701,6 +702,8 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
       _muted = !_muted;
       _player.setVolume(_muted ? 0 : 100);
     });
+    // Persist so the next video opens in the same mute state.
+    VideoMutePreference.muted = _muted;
   }
 
   void _seekBy(Duration delta) {
