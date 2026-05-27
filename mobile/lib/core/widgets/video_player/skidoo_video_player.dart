@@ -735,14 +735,13 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
           fit: StackFit.expand,
           children: [
             // ── Video ───────────────────────────────────────────────────────
-            ClipRect(
-              child: Video(
-                controller: _controller,
-                fit: BoxFit.contain,
-                fill: Colors.black,
-                alignment: Alignment.center,
-                controls: NoVideoControls,
-              ),
+            Video(
+              controller: _controller,
+              fit: BoxFit.contain,
+              fill: Colors.black,
+              alignment: Alignment.center,
+              clipBehavior: Clip.hardEdge,
+              controls: NoVideoControls,
             ),
 
             // ── Controls overlay ────────────────────────────────────────────
