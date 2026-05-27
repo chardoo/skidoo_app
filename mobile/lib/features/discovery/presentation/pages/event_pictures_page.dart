@@ -82,7 +82,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final pics = event.pictures;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: Colors.transparent,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(
@@ -219,6 +219,18 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
               ),
             ),
         ],
+      ),
+    );
+    return _webWrap(ext, page);
+  }
+
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }

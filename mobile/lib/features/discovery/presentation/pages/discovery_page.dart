@@ -148,7 +148,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: ext.homeBackground,
       body: SafeArea(
         child: Column(
@@ -266,6 +266,18 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
             ),
           ],
         ),
+      ),
+    );
+    return _webWrap(ext, page);
+  }
+
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }

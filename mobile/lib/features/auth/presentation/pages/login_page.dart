@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
@@ -73,7 +74,7 @@ class _LoginViewState extends State<_LoginView>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: _kBg,
       body: BlocConsumer<LoginBloc, LoginState>(
         listener: (context, state) {
@@ -277,6 +278,18 @@ class _LoginViewState extends State<_LoginView>
             ],
           );
         },
+      ),
+    );
+    return _webWrap(page);
+  }
+
+  static Widget _webWrap(Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: _kBg,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }

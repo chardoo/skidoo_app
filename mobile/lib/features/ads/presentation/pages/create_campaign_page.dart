@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -330,7 +331,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
@@ -373,6 +374,18 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
             ext: ext,
           ),
         ],
+      ),
+    );
+    return _webWrap(ext, page);
+  }
+
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }

@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:skidoo_app/core/common/customButtom.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
@@ -59,7 +61,8 @@ class _CartView extends StatelessWidget {
         }
       },
       builder: (context, state) {
-        return Scaffold(
+        final ext = Theme.of(context).extension<AppThemeExtension>()!;
+        final page = Scaffold(
           appBar: AppBar(
             title: Text(
               'My Cart',
@@ -118,7 +121,19 @@ class _CartView extends StatelessWidget {
                     )
               : null,
         );
+        return _webWrap(ext, page);
       },
+    );
+  }
+
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
+      ),
     );
   }
 }

@@ -41,7 +41,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
@@ -168,6 +168,18 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
             ),
           ),
         ],
+      ),
+    );
+    return _webWrap(page);
+  }
+
+  static Widget _webWrap(Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: Colors.black,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }

@@ -68,7 +68,7 @@ class _AccountView extends StatelessWidget {
         }
       },
       builder: (context, state) {
-        return Scaffold(
+        final page = Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
             elevation: 0,
@@ -181,7 +181,19 @@ class _AccountView extends StatelessWidget {
                 ),
               ),
         );
+        return _webWrap(ext, page);
       },
+    );
+  }
+
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
+      ),
     );
   }
 }

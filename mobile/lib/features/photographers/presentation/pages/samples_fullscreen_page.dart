@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
@@ -36,7 +37,7 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
@@ -106,6 +107,18 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
             ),
           ),
         ],
+      ),
+    );
+    return _webWrap(page);
+  }
+
+  static Widget _webWrap(Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: Colors.black,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }

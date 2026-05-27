@@ -59,7 +59,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget build(BuildContext context) {
     if (kIsWeb) {
       final ext = Theme.of(context).extension<AppThemeExtension>()!;
-      return Scaffold(
+      final page = Scaffold(
         backgroundColor: ext.homeBackground,
         appBar: AppBar(
           backgroundColor: ext.homeBackground,
@@ -116,14 +116,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
           ),
         ),
       );
+      return _webWrap(ext, page);
     }
 
-    return Scaffold(
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final page = Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.checkoutTitle),
         leading: BackButton(onPressed: () => Navigator.of(context).pop()),
       ),
       body: WebViewWidget(controller: _controller!),
+    );
+    return _webWrap(ext, page);
+  }
+
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
+      ),
     );
   }
 }

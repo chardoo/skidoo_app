@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
@@ -173,7 +174,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
     final hasFilters =
         _selectedEventType != null || _locationCtrl.text.trim().isNotEmpty;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
@@ -296,6 +297,18 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                     ),
                   );
                 }),
+    );
+    return _webWrap(ext, page);
+  }
+
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
+      ),
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -182,7 +183,7 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
       currentUserId = context.read<DiscoveryBloc>().state.currentUserId;
     } catch (_) {}
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -298,6 +299,18 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
                         ),
                       ),
                     ),
+    );
+    return _webWrap(ext, page);
+  }
+
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
+      ),
     );
   }
 }

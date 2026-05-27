@@ -95,7 +95,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
 
     // ── Web: browser-tab payment flow ─────────────────────────────────────────
     if (kIsWeb) {
-      return Scaffold(
+      final page = Scaffold(
         backgroundColor: ext.homeBackground,
         appBar: AppBar(
           backgroundColor: ext.homeBackground,
@@ -158,10 +158,11 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
           ),
         ),
       );
+      return _webWrap(ext, page);
     }
 
     // ── Mobile: in-app WebView ────────────────────────────────────────────────
-    return Scaffold(
+    final mobilePage = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
@@ -198,6 +199,18 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
               ),
             ),
         ],
+      ),
+    );
+    return _webWrap(ext, mobilePage);
+  }
+
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }

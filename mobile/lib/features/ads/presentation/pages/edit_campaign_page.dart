@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -195,7 +196,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
@@ -426,6 +427,18 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
             ),
           ),
         ],
+      ),
+    );
+    return _webWrap(ext, page);
+  }
+
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }

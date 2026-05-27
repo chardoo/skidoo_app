@@ -95,7 +95,7 @@ class _SignUpViewState extends State<_SignUpView>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: _kBg,
       body: BlocConsumer<SignUpBloc, SignUpState>(
         listener: (context, state) {
@@ -317,6 +317,18 @@ class _SignUpViewState extends State<_SignUpView>
             ],
           );
         },
+      ),
+    );
+    return _webWrap(page);
+  }
+
+  static Widget _webWrap(Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: _kBg,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }

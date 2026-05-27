@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
@@ -8,6 +9,8 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/interests/interests_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/widgets/loader.dart';
+
+const _kBg = Color(0xFF0A0D11);
 
 class InterestsPage extends StatelessWidget {
   static const routeName = '/interests';
@@ -49,7 +52,7 @@ class _InterestsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final page = Scaffold(
       body: BlocConsumer<InterestsBloc, InterestsState>(
         listener: (context, state) {
           if (state.isSuccess) {
@@ -158,6 +161,18 @@ class _InterestsView extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+    return _webWrap(page);
+  }
+
+  static Widget _webWrap(Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: _kBg,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }

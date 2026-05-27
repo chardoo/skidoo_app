@@ -29,9 +29,9 @@ class _PhotographersPageState extends State<PhotographersPage> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: Colors.transparent,
-      body: _webWrap(NestedScrollView(
+      body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
           SliverAppBar(
             automaticallyImplyLeading: false,
@@ -142,17 +142,19 @@ class _PhotographersPageState extends State<PhotographersPage> {
             },
           ),
         ),
-      )),
+      ),
     );
+    return _webWrap(ext, page);
   }
 
-  static Widget _webWrap(Widget child) => kIsWeb
-      ? Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: child,
-          ),
-        )
-      : child;
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
+      ),
+    );
+  }
 }

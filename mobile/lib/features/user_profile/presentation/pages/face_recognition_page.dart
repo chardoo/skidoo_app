@@ -75,7 +75,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final canAdd = _selfies.length < _maxSelfies && !_uploading;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
@@ -192,6 +192,18 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
             ),
           ],
         ),
+      ),
+    );
+    return _webWrap(ext, page);
+  }
+
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }
