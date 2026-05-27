@@ -123,9 +123,16 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   bool _tickerEnabled = true;
   bool _appActive = true;
 
+  // Video pixel dimensions — populated from the player stream once media loads.
+  // Used to compute the exact aspect ratio for reliable centering.
+  int? _videoW;
+  int? _videoH;
+
   Timer? _hideTimer;
   StreamSubscription<void>? _pauseSub;
   StreamSubscription<bool>? _playingSub;
+  StreamSubscription<int?>? _widthSub;
+  StreamSubscription<int?>? _heightSub;
 
   /// Resolve initial mute state:
   /// - explicit [widget.initiallyMuted] wins if provided
@@ -140,6 +147,23 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
 
     _player = Player();
     _controller = VideoController(_player);
+
+    // Capture initial dimensions if already available (e.g. reused player).
+    _videoW = _player.state.width;
+    _videoH = _player.state.height;
+
+    // Track dimension changes so we can use AspectRatio + Center for reliable
+    // centering once the actual video size is known.
+    _widthSub = _player.stream.width.listen((w) {
+      if (mounted && w != null && w > 0 && w != _videoW) {
+        setState(() => _videoW = w);
+      }
+    });
+    _heightSub = _player.stream.height.listen((h) {
+      if (mounted && h != null && h > 0 && h != _videoH) {
+        setState(() => _videoH = h);
+      }
+    });
 
     _player.setVolume(_muted ? 0 : 100);
     _player.setPlaylistMode(
@@ -308,16 +332,45 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     WidgetsBinding.instance.removeObserver(this);
     _pauseSub?.cancel();
     _playingSub?.cancel();
+    _widthSub?.cancel();
+    _heightSub?.cancel();
     _hideTimer?.cancel();
     _player.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // ClipRect prevents the texture from bleeding outside its allocated box.
-    // alignment: center ensures the frame is centred when contain-fit letterboxes.
-    final video = ClipRect(
+  /// Builds the video surface.
+  ///
+  /// For [BoxFit.contain] we use Flutter's own [AspectRatio] + [Center] once
+  /// the video's pixel dimensions are known — this is far more reliable than
+  /// relying on the [Video] widget's internal fit/alignment rendering, which
+  /// can be off-centre on certain platforms.
+  ///
+  /// For [BoxFit.cover] (thumbnails) we delegate directly to [Video.fit].
+  Widget _buildVideoSurface() {
+    final w = _videoW;
+    final h = _videoH;
+
+    // Contain: use AspectRatio + Center — no platform surprises.
+    if (widget.fit == BoxFit.contain && w != null && h != null && h > 0) {
+      return ColoredBox(
+        color: widget.backgroundColor,
+        child: Center(
+          child: AspectRatio(
+            aspectRatio: w / h,
+            child: Video(
+              controller: _controller,
+              fit: BoxFit.fill, // fills the exactly-sized AspectRatio box
+              fill: widget.backgroundColor,
+              controls: NoVideoControls,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Cover / unknown dimensions — let Video handle it with ClipRect guard.
+    return ClipRect(
       child: Video(
         controller: _controller,
         fit: widget.fit,
@@ -326,6 +379,11 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
         controls: NoVideoControls,
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final video = _buildVideoSurface();
 
     // ── Sizing ─────────────────────────────────────────────────────────────
     Widget sized;
@@ -338,8 +396,6 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     } else if (widget.height != null) {
       sized = SizedBox(height: widget.height, child: video);
     } else {
-      // No explicit dimensions — expand to fill parent so the Video widget
-      // always has a well-defined box to centre the frame within.
       sized = SizedBox.expand(child: video);
     }
 
@@ -634,6 +690,11 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
   bool _controlsVisible = true;
   Timer? _hideTimer;
 
+  int? _videoW;
+  int? _videoH;
+  StreamSubscription<int?>? _widthSub;
+  StreamSubscription<int?>? _heightSub;
+
   @override
   void initState() {
     super.initState();
@@ -642,6 +703,20 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
 
     _player = Player();
     _controller = VideoController(_player);
+
+    _videoW = _player.state.width;
+    _videoH = _player.state.height;
+
+    _widthSub = _player.stream.width.listen((w) {
+      if (mounted && w != null && w > 0 && w != _videoW) {
+        setState(() => _videoW = w);
+      }
+    });
+    _heightSub = _player.stream.height.listen((h) {
+      if (mounted && h != null && h > 0 && h != _videoH) {
+        setState(() => _videoH = h);
+      }
+    });
 
     _player.setVolume(_muted ? 0 : 100);
     _player.setPlaylistMode(
@@ -723,6 +798,8 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
+    _widthSub?.cancel();
+    _heightSub?.cancel();
     _player.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -741,16 +818,30 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // ── Video ───────────────────────────────────────────────────────
-            Video(
-              controller: _controller,
-              fit: BoxFit.contain,
-              fill: Colors.black,
-              alignment: Alignment.center,
-              filterQuality: FilterQuality.high,
-              // clipBehavior: Clip.hardEdge,
-              controls: NoVideoControls,
-            ),
+            // ── Video — AspectRatio + Center for reliable centering ──────────
+            Builder(builder: (_) {
+              final w = _videoW;
+              final h = _videoH;
+              if (w != null && h != null && h > 0) {
+                return ColoredBox(
+                  color: Colors.black,
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: w / h,
+                      child: Video(
+                        controller: _controller,
+                        fit: BoxFit.fill,
+                        fill: Colors.black,
+                        filterQuality: FilterQuality.high,
+                        controls: NoVideoControls,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              // Dimensions not yet known — show background while loading.
+              return const ColoredBox(color: Colors.black);
+            }),
 
             // ── Controls overlay ────────────────────────────────────────────
             AnimatedOpacity(
