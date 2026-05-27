@@ -1,12 +1,10 @@
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
-import 'package:video_player/video_player.dart';
+import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
 
 /// Returns true when [url] points to a video, using both explicit path
 /// patterns (Cloudinary /video/upload/) and file extensions as fallback.
@@ -339,194 +337,25 @@ class _MessageImage extends StatelessWidget {
 
 // ── Video attachment ──────────────────────────────────────────────────────────
 
-class _MessageVideo extends StatefulWidget {
+/// Thin wrapper: shows [SkidooVideoPlayer] inside a chat bubble.
+/// Uses the video's natural aspect ratio and shows full controls.
+class _MessageVideo extends StatelessWidget {
   const _MessageVideo({required this.videoUrl});
   final String videoUrl;
 
   @override
-  State<_MessageVideo> createState() => _MessageVideoState();
-}
-
-class _MessageVideoState extends State<_MessageVideo>
-    with WidgetsBindingObserver {
-  late VideoPlayerController _ctrl;
-  late final _pauseSub = VideoPauseNotifier.listen(() {
-    if (_initialized && _ctrl.value.isPlaying) _ctrl.pause();
-  });
-  bool _initialized = false;
-  bool _muted = kIsWeb;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _pauseSub; // eagerly initialize the late field
-    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
-      ..setLooping(true)
-      ..setVolume(kIsWeb ? 0.0 : 1.0)
-      ..initialize().then((_) {
-        if (mounted) setState(() => _initialized = true);
-      }).catchError((Object e) {
-        debugPrint('[VIDEO] init error for ${widget.videoUrl}: $e');
-      });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Pause when the chat tab is hidden behind IndexedStack.
-    if (!TickerMode.valuesOf(context).enabled) {
-      if (_initialized && _ctrl.value.isPlaying) _ctrl.pause();
-    }
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!_initialized) return;
-    switch (state) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.hidden:
-        if (_ctrl.value.isPlaying) _ctrl.pause();
-      default:
-        break;
-    }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _pauseSub.cancel();
-    _ctrl
-      ..pause()
-      ..dispose();
-    super.dispose();
-  }
-
-  void _togglePlay() {
-    setState(() {
-      if (_ctrl.value.isPlaying) {
-        _ctrl.pause();
-      } else {
-        _ctrl.play();
-      }
-    });
-  }
-
-  void _toggleMute() {
-    setState(() {
-      _muted = !_muted;
-      _ctrl.setVolume(_muted ? 0 : 1);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // Show a fixed-height loading placeholder while initializing.
-    if (!_initialized) {
-      return Container(
-        height: 200.h,
-        color: Colors.black,
-        alignment: Alignment.center,
-        child: const CircularProgressIndicator(
-            strokeWidth: 2, color: Colors.white54),
-      );
-    }
-
-    final aspect = _ctrl.value.aspectRatio;
-
-    return AspectRatio(
-      aspectRatio: aspect,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 0: Video
-          VideoPlayer(_ctrl),
-
-          // 1: Full-area play/pause tap target (stable, never rebuilt)
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _togglePlay,
-              child: const SizedBox.expand(),
-            ),
-          ),
-
-          // 2: Play/pause icon overlay (IgnorePointer — taps fall through to layer 1)
-          ValueListenableBuilder<VideoPlayerValue>(
-            valueListenable: _ctrl,
-            builder: (_, value, __) {
-              final playing = value.isPlaying;
-              return IgnorePointer(
-                child: AnimatedOpacity(
-                  opacity: playing ? 0.0 : 1.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      Icons.play_circle_fill_rounded,
-                      color: Colors.white,
-                      size: 48.sp,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // 3: Mute toggle — opaque, absorbs its tap area
-          Positioned(
-            top: 8.h,
-            right: 8.w,
-            child: GestureDetector(
-              onTap: _toggleMute,
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                width: 30.w,
-                height: 30.w,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  _muted
-                      ? Icons.volume_off_rounded
-                      : Icons.volume_up_rounded,
-                  color: Colors.white,
-                  size: 16.sp,
-                ),
-              ),
-            ),
-          ),
-
-          // 4: Progress bar — absorbs its area so scrubbing never triggers play/pause
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {},
-              child: VideoProgressIndicator(
-                _ctrl,
-                allowScrubbing: true,
-                colors: const VideoProgressColors(
-                  playedColor: Colors.white,
-                  bufferedColor: Colors.white24,
-                  backgroundColor: Colors.transparent,
-                ),
-                padding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return SkidooVideoPlayer(
+      url: videoUrl,
+      showControls: true,
+      autoPlay: false,
+      loop: false,
+      fit: BoxFit.contain,
+      backgroundColor: Colors.black,
+      borderRadius: BorderRadius.circular(12),
     );
   }
 }
-
 // ── Timestamp + read indicator ────────────────────────────────────────────────
 
 class _Timestamp extends StatelessWidget {

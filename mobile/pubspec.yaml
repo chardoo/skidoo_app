@@ -66,7 +66,12 @@ dependencies:
   easy_autocomplete: ^1.6.0
   intl: ^0.20.2
 
-  # Video
+  # Video — media_kit: hardware-accelerated playback, 4K support, all platforms
+  media_kit: ^1.1.11
+  media_kit_video: ^1.2.4
+  media_kit_libs_android_video: ^1.0.8   # Android native (libmpv)
+  media_kit_libs_ios_video: ^1.0.8       # iOS native (libmpv)
+  # video_player kept temporarily — remove once all callers are migrated
   video_player: ^2.9.1
 
   # QR / Barcode

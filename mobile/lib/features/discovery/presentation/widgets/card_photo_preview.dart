@@ -1,10 +1,8 @@
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:video_player/video_player.dart';
+import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
 
 /// Full-width swipeable photo/video carousel — Instagram / TikTok style.
 class PostPhotoCarousel extends StatefulWidget {
@@ -129,6 +127,8 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
 }
 
 // ── Inline video player for the feed carousel ─────────────────────────────────
+/// Thin stateful wrapper that listens to [activeIndex] and [activeCardIndex]
+/// notifiers and forwards an [isActive] flag to [SkidooVideoPlayer].
 
 class _SliderVideoItem extends StatefulWidget {
   const _SliderVideoItem({
@@ -143,8 +143,6 @@ class _SliderVideoItem extends StatefulWidget {
   final String url;
   final int index;
   final ValueNotifier<int> activeIndex;
-  /// Called when the user taps while video is not yet initialized, or when
-  /// the card's outer gesture (open EventPicturesPage) should fire.
   final VoidCallback onTap;
   final int cardIndex;
   final ValueNotifier<int>? activeCardIndex;
@@ -153,289 +151,53 @@ class _SliderVideoItem extends StatefulWidget {
   State<_SliderVideoItem> createState() => _SliderVideoItemState();
 }
 
-class _SliderVideoItemState extends State<_SliderVideoItem>
-    with WidgetsBindingObserver {
-  /// Shared mute state across all feed carousel videos.
-  /// On web we start muted — mobile browsers block audio for auto-playing video.
-  /// The user taps the mute button once to enable audio for the whole session.
-  static final _muted = ValueNotifier<bool>(kIsWeb);
-
-  late final VideoPlayerController _ctrl;
-  bool _initialized = false;
-  bool _manuallyPaused = false;
-  /// Tracks whether this widget is on-screen (not hidden by IndexedStack /
-  /// Offstage). Updated via TickerMode which IndexedStack flips for hidden tabs.
-  bool _screenActive = true;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    // Do NOT pass VideoPlayerOptions(mixWithOthers: true) — that forces the
-    // iOS audio session into the .ambient category which is silenced by the
-    // ringer switch. The default .playback category plays regardless.
-    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..setLooping(true)
-      ..initialize().then((_) {
-        if (!mounted) return;
-        // On web, always start muted so play() succeeds on mobile browsers
-        // (iOS/Android block autoplay with audio). If the user had already
-        // unmuted a previous card, try to restore volume after play() starts —
-        // setting muted=false on an already-playing video doesn't require a
-        // user gesture on iOS, unlike calling play() on an unmuted video.
-        _ctrl.setVolume(kIsWeb ? 0.0 : (_muted.value ? 0.0 : 1.0));
-        setState(() => _initialized = true);
-        _syncPlayback();
-        if (kIsWeb && !_muted.value) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _ctrl.setVolume(1.0);
-          });
-        }
-      });
-    widget.activeIndex.addListener(_syncPlayback);
-    widget.activeCardIndex?.addListener(_syncPlayback);
-    _muted.addListener(_onMuteChanged);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // TickerMode is disabled by IndexedStack / Offstage when the tab is hidden.
-    // Use it as a reliable "is my tab visible?" signal.
-    final active = TickerMode.valuesOf(context).enabled;
-    if (active != _screenActive) {
-      _screenActive = active;
-      _syncPlayback();
-    }
-  }
-
-  /// App lifecycle — pause when backgrounded, resume when foregrounded.
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    switch (state) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.hidden:
-        if (_initialized && _ctrl.value.isPlaying) _ctrl.pause();
-      case AppLifecycleState.resumed:
-        _syncPlayback();
-      case AppLifecycleState.detached:
-        break;
-    }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    widget.activeIndex.removeListener(_syncPlayback);
-    widget.activeCardIndex?.removeListener(_syncPlayback);
-    _muted.removeListener(_onMuteChanged);
-    _ctrl
-      ..pause()
-      ..dispose();
-    super.dispose();
-  }
-
-  /// True when this slide is the active page within the carousel.
-  bool get _isActive => widget.activeIndex.value == widget.index;
-
-  /// True when this card is the one centred in the feed, or when no feed
-  /// controller is provided (legacy/standalone use).
+class _SliderVideoItemState extends State<_SliderVideoItem> {
+  bool get _isSlideActive => widget.activeIndex.value == widget.index;
   bool get _isCardActive =>
       widget.activeCardIndex == null ||
       widget.activeCardIndex!.value == widget.cardIndex;
 
-  void _onMuteChanged() {
-    if (!_initialized) return;
-    _ctrl.setVolume(_muted.value ? 0.0 : 1.0);
+  @override
+  void initState() {
+    super.initState();
+    widget.activeIndex.addListener(_onNotifier);
+    widget.activeCardIndex?.addListener(_onNotifier);
   }
 
-  void _syncPlayback() {
-    if (!_initialized) return;
-    if (_isActive && _isCardActive && _screenActive && !_manuallyPaused) {
-      if (!_ctrl.value.isPlaying) _ctrl.play();
-    } else {
-      if (_ctrl.value.isPlaying) _ctrl.pause();
-      if (!_isActive) _manuallyPaused = false;
-    }
-  }
+  void _onNotifier() => setState(() {});
 
-  void _togglePlayback() {
-    if (!_initialized) {
-      widget.onTap();
-      return;
-    }
-    setState(() {
-      if (_ctrl.value.isPlaying) {
-        _ctrl.pause();
-        _manuallyPaused = true;
-      } else {
-        _ctrl.play();
-        _manuallyPaused = false;
-      }
-    });
-  }
-
-  void _toggleMute() {
-    _muted.value = !_muted.value;
-    // Belt-and-suspenders: also update this controller directly so the volume
-    // change is guaranteed to apply even if the listener fires on a microtask.
-    if (_initialized) _ctrl.setVolume(_muted.value ? 0.0 : 1.0);
+  @override
+  void dispose() {
+    widget.activeIndex.removeListener(_onNotifier);
+    widget.activeCardIndex?.removeListener(_onNotifier);
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_initialized) {
-      return GestureDetector(
-        onTap: widget.onTap,
-        child: const ColoredBox(
-          color: Color(0xFF0A0A0A),
-          child: Center(
-            child: CircularProgressIndicator(
-                color: Colors.white30, strokeWidth: 2),
-          ),
-        ),
-      );
-    }
-
-    // Three-layer Stack:
-    //  1. ValueListenableBuilder — per-frame video rendering + overlays (no hit targets)
-    //  2. Positioned.fill GestureDetector — stable play/pause tap target (never rebuilt)
-    //  3. Positioned mute button — stable, sits ABOVE play/pause so its opaque hit area
-    //     absorbs mute taps cleanly without leaking through to the play/pause layer.
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // ── Per-frame video layer (NO interactive widgets) ────────────────
-        ValueListenableBuilder<VideoPlayerValue>(
-          valueListenable: _ctrl,
-          builder: (context, value, _) {
-            final isPlaying = value.isPlaying;
-            final w = value.size.width > 0 ? value.size.width : 1.0;
-            final h = value.size.height > 0 ? value.size.height : 1.0;
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                ColoredBox(
-                  color: const Color(0xFF0A0A0A),
-                  child: SizedBox.expand(
-                    child: ColorFiltered(
-                      colorFilter: const ColorFilter.matrix(<double>[
-                        1.18, -0.06, -0.06, 0, 18,
-                        -0.05,  1.16, -0.05, 0, 18,
-                        -0.05, -0.05,  1.20, 0, 18,
-                        0,     0,     0,     1, 0,
-                      ]),
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: SizedBox(
-                          width: w,
-                          height: h,
-                          child: VideoPlayer(_ctrl),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                IgnorePointer(
-                  child: AnimatedOpacity(
-                    opacity: isPlaying ? 0.0 : 1.0,
-                    duration: const Duration(milliseconds: 250),
-                    child: ColoredBox(
-                      color: Colors.black38,
-                      child: Center(
-                        child: Container(
-                          width: 64.w,
-                          height: 64.w,
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: Colors.white54, width: 1.5),
-                          ),
-                          child: Icon(Icons.play_arrow_rounded,
-                              color: Colors.white, size: 34.sp),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: IgnorePointer(
-                    child: VideoProgressIndicator(
-                      _ctrl,
-                      allowScrubbing: false,
-                      colors: const VideoProgressColors(
-                        playedColor: Color(0xFFF5A623),
-                        bufferedColor: Colors.white24,
-                        backgroundColor: Colors.white12,
-                      ),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-
-        // ── Play/pause tap target — stable, never rebuilt by video frames ──
-        Positioned.fill(
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _togglePlayback,
-              child: const SizedBox.expand(),
-            ),
-          ),
-        ),
-
-        // ── Mute button — stable, ABOVE play/pause (opaque absorbs its area) ─
-        Positioned(
-          bottom: 10.h,
-          right: 10.w,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: ValueListenableBuilder<bool>(
-              valueListenable: _muted,
-              builder: (_, muted, __) => GestureDetector(
-                onTap: _toggleMute,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  width: 34.w,
-                  height: 34.w,
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white24, width: 1),
-                  ),
-                  child: Icon(
-                    muted
-                        ? Icons.volume_off_rounded
-                        : Icons.volume_up_rounded,
-                    color: Colors.white,
-                    size: 17.sp,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+    return GestureDetector(
+      // Outer tap fires the card's own tap (e.g. open EventPicturesPage)
+      // only when the video is not yet considered "tapped" by the player.
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.translucent,
+      child: SkidooVideoPlayer(
+        url: widget.url,
+        isActive: _isSlideActive && _isCardActive,
+        autoPlay: true,
+        loop: true,
+        fit: BoxFit.cover,
+        showControls: true,
+        backgroundColor: Colors.black,
+        listenToPauseNotifier: true,
+      ),
     );
   }
 }
 
 // ── Locked overlay ────────────────────────────────────────────────────────────
-
 class _LockedOverlay extends StatelessWidget {
   const _LockedOverlay({required this.remaining});
   final int remaining;
-
   @override
   Widget build(BuildContext context) {
     return ClipRect(
@@ -448,8 +210,8 @@ class _LockedOverlay extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 56.w,
-                height: 56.w,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withValues(alpha: 0.12),
@@ -457,27 +219,19 @@ class _LockedOverlay extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.3), width: 1.5),
                 ),
                 alignment: Alignment.center,
-                child: Icon(Icons.lock_rounded,
-                    color: Colors.white, size: 24.sp),
+                child: const Icon(Icons.lock_rounded,
+                    color: Colors.white, size: 24),
               ),
-              SizedBox(height: 12.h),
-              Text(
-                '+$remaining more photos',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                'Sign in to unlock',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12.sp,
-                ),
-              ),
+              const SizedBox(height: 12),
+              Text('+$remaining more photos',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3)),
+              const SizedBox(height: 4),
+              const Text('Sign in to unlock',
+                  style: TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
         ),
@@ -487,11 +241,9 @@ class _LockedOverlay extends StatelessWidget {
 }
 
 // ── Gradient placeholder ──────────────────────────────────────────────────────
-
 class CardGradientPlaceholder extends StatelessWidget {
   const CardGradientPlaceholder({super.key, required this.name});
   final String name;
-
   static const _palette = [
     [Color(0xFF1a1a2e), Color(0xFF16213e)],
     [Color(0xFF0f3460), Color(0xFF533483)],
@@ -500,111 +252,29 @@ class CardGradientPlaceholder extends StatelessWidget {
     [Color(0xFF1a0000), Color(0xFF4d0000)],
     [Color(0xFF002200), Color(0xFF004d00)],
   ];
-
   @override
   Widget build(BuildContext context) {
     final idx = name.isEmpty ? 0 : name.codeUnitAt(0) % _palette.length;
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: _palette[idx],
-        ),
-      ),
+          gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: _palette[idx])),
       alignment: Alignment.center,
       child: Text(
-        name.isNotEmpty ? name[0].toUpperCase() : '?',
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.08),
-          fontSize: 120.sp,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
+          name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.08),
+              fontSize: 120,
+              fontWeight: FontWeight.w900)),
     );
   }
 }
 
 class CardEmptyTile extends StatelessWidget {
   const CardEmptyTile({super.key});
-
   @override
   Widget build(BuildContext context) =>
       Container(color: const Color(0xFF111111));
 }
-
-// ── Owner viewfinder overlay ──────────────────────────────────────────────────
-// Camera SLR/DSLR viewfinder focus brackets — the classic L-shaped corner
-// markers every photographer recognises. Metaphor: the camera was pointed at
-// YOU. No social app uses this; it is purely photographic in origin.
-
-// class _OwnerCornerRibbon extends StatelessWidget {
-//   const _OwnerCornerRibbon();
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Positioned.fill(
-//       child: IgnorePointer(
-//         child: CustomPaint(painter: _ViewfinderPainter()),
-//       ),
-//     );
-//   }
-// }
-
-// class _ViewfinderPainter extends CustomPainter {
-//   // Warm amber that reads clearly on both bright and dark images.
-//   static const _color = Color(0xFFFFD166);
-//   static const _stroke = 2.2;
-//   // How far each bracket arm extends from the corner.
-//   static const _arm = 22.0;
-//   // Inset from the image edge so the brackets sit just inside.
-//   static const _margin = 10.0;
-
-//   @override
-//   void paint(Canvas canvas, Size size) {
-//     final paint = Paint()
-//       ..color = _color
-//       ..strokeWidth = _stroke
-//       ..strokeCap = StrokeCap.square
-//       ..style = PaintingStyle.stroke;
-
-//     final w = size.width;
-//     final h = size.height;
-//     const m = _margin;
-//     const a = _arm;
-
-//     // ── top-left ─────────────────────────────────────────────────────────────
-//     canvas.drawLine(const Offset(m, m + a), const Offset(m, m), paint);        // vertical
-//     canvas.drawLine(const Offset(m, m), const Offset(m + a, m), paint);        // horizontal
-
-//     // ── top-right ────────────────────────────────────────────────────────────
-//     canvas.drawLine(Offset(w - m - a, m), Offset(w - m, m), paint);
-//     canvas.drawLine(Offset(w - m, m), Offset(w - m, m + a), paint);
-
-//     // ── bottom-left ───────────────────────────────────────────────────────────
-//     canvas.drawLine(Offset(m, h - m - a), Offset(m, h - m), paint);
-//     canvas.drawLine(Offset(m, h - m), Offset(m + a, h - m), paint);
-
-//     // ── bottom-right ──────────────────────────────────────────────────────────
-//     canvas.drawLine(Offset(w - m - a, h - m), Offset(w - m, h - m), paint);
-//     canvas.drawLine(Offset(w - m, h - m - a), Offset(w - m, h - m), paint);
-
-//     // ── "YOU ARE IN THIS FRAME" label — top centre, above the brackets ──────
-//     final tp = TextPainter(
-//       text: const TextSpan(
-//         text: "YOU ARE IN THIS FRAME",
-//         style: TextStyle(
-//           color: _color,
-//           fontSize: 9,
-//           fontWeight: FontWeight.w700,
-//           letterSpacing: 2.0,
-//         ),
-//       ),
-//       textDirection: TextDirection.ltr,
-//     )..layout();
-//     tp.paint(canvas, Offset((w - tp.width) / 2, m + 6));
-//   }
-
-//   @override
-//   bool shouldRepaint(_ViewfinderPainter old) => false;
-// }

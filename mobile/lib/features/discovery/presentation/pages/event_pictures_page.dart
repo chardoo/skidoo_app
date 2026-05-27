@@ -13,8 +13,8 @@ import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_s
 import 'package:skidoo_app/features/photo_comments/data/photo_comment_remote_data_source.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/models/photo_comment/photo_comment.dart';
-import 'package:video_player/video_player.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
 
 // ── Flat entry: one picture + its parent event metadata ──────────────────────
 
@@ -371,64 +371,26 @@ class _PhotoTile extends StatelessWidget {
 }
 
 // ── Video thumbnail tile ──────────────────────────────────────────────────────
-// Initialises a VideoPlayerController, seeks to frame 0, and freezes it there
-// so the masonry shows a real video frame rather than a broken-image fallback.
+/// Shows the first video frame (paused, no controls) as a grid thumbnail
+/// with a play badge overlay.
 
-class _VideoThumbTile extends StatefulWidget {
+class _VideoThumbTile extends StatelessWidget {
   const _VideoThumbTile({required this.url});
   final String url;
-
-  @override
-  State<_VideoThumbTile> createState() => _VideoThumbTileState();
-}
-
-class _VideoThumbTileState extends State<_VideoThumbTile> {
-  late final VideoPlayerController _ctrl;
-  bool _ready = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..setVolume(0)
-      ..initialize().then((_) async {
-        if (!mounted) return;
-        // Seek to first frame and stay paused — thumbnail only.
-        await _ctrl.seekTo(Duration.zero);
-        await _ctrl.pause();
-        if (mounted) setState(() => _ready = true);
-      }).catchError((_) {
-        if (mounted) setState(() => _ready = false);
-      });
-  }
-
-  @override
-  void dispose() {
-    _ctrl
-      ..pause()
-      ..dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (_ready)
-          FittedBox(
-            fit: BoxFit.cover,
-            clipBehavior: Clip.hardEdge,
-            child: SizedBox(
-              width: _ctrl.value.size.width,
-              height: _ctrl.value.size.height,
-              child: VideoPlayer(_ctrl),
-            ),
-          )
-        else
-          const ColoredBox(color: Color(0xFF141414)),
-
-        // Play badge — always visible over the thumbnail
+        SkidooVideoPlayer(
+          url: url,
+          autoPlay: false,
+          showControls: false,
+          fit: BoxFit.cover,
+          backgroundColor: const Color(0xFF141414),
+        ),
+        // Play badge
         Center(
           child: Container(
             width: 36.w,
@@ -955,6 +917,8 @@ class _PhotoBackground extends StatelessWidget {
 }
 
 // ── Video background ──────────────────────────────────────────────────────────
+/// Full-screen video for the event viewer carousel. Plays only when this
+/// page is the active one (activeIndex == index).
 
 class _VideoBackground extends StatefulWidget {
   const _VideoBackground({
@@ -971,178 +935,32 @@ class _VideoBackground extends StatefulWidget {
   State<_VideoBackground> createState() => _VideoBackgroundState();
 }
 
-class _VideoBackgroundState extends State<_VideoBackground>
-    with WidgetsBindingObserver {
-  late final VideoPlayerController _ctrl;
-  bool _initialized = false;
-  bool _manualPause = false;
-  bool _muted = kIsWeb; // start muted on web — mobile browsers block audio autoplay
-  bool _screenActive = true;
-  bool _tabActive = true;
-
-  bool get _isActive => widget.activeIndex.value == widget.index;
-
+class _VideoBackgroundState extends State<_VideoBackground> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..setLooping(true)
-      ..initialize().then((_) {
-        if (!mounted) return;
-        _ctrl.setVolume(_muted ? 0.0 : 1.0);
-        setState(() => _initialized = true);
-        _syncPlayback();
-      });
-    widget.activeIndex.addListener(_syncPlayback);
+    widget.activeIndex.addListener(_onIndexChanged);
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final tickersEnabled = TickerMode.valuesOf(context).enabled;
-    if (_tabActive != tickersEnabled) {
-      _tabActive = tickersEnabled;
-      _syncPlayback();
-    }
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    final active = state == AppLifecycleState.resumed;
-    if (_screenActive != active) {
-      _screenActive = active;
-      _syncPlayback();
-    }
-  }
+  void _onIndexChanged() => setState(() {});
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    widget.activeIndex.removeListener(_syncPlayback);
-    _ctrl
-      ..pause()
-      ..dispose();
+    widget.activeIndex.removeListener(_onIndexChanged);
     super.dispose();
-  }
-
-  void _syncPlayback() {
-    if (!_initialized) return;
-    if (_isActive && !_manualPause && _screenActive && _tabActive) {
-      if (!_ctrl.value.isPlaying) _ctrl.play();
-    } else {
-      if (_ctrl.value.isPlaying) _ctrl.pause();
-      if (!_isActive) _manualPause = false;
-    }
-  }
-
-  void _togglePlayback() {
-    if (!_initialized) return;
-    setState(() {
-      if (_ctrl.value.isPlaying) {
-        _ctrl.pause();
-        _manualPause = true;
-      } else {
-        _ctrl.play();
-        _manualPause = false;
-      }
-    });
-  }
-
-  void _toggleMute() {
-    setState(() {
-      _muted = !_muted;
-      _ctrl.setVolume(_muted ? 0.0 : 1.0);
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_initialized) {
-      return const ColoredBox(
-        color: Color(0xFF0D0D0D),
-        child: Center(
-          child: CircularProgressIndicator(color: Colors.white24, strokeWidth: 2),
-        ),
-      );
-    }
-
-    return ValueListenableBuilder<VideoPlayerValue>(
-      valueListenable: _ctrl,
-      builder: (_, value, __) {
-        final isPlaying = value.isPlaying;
-        final w = value.size.width > 0 ? value.size.width : 9.0;
-        final h = value.size.height > 0 ? value.size.height : 16.0;
-        final duration = value.duration.inMilliseconds;
-        final position = value.position.inMilliseconds;
-        final progress =
-            duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0;
-
-        return GestureDetector(
-          onTap: _togglePlayback,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              SizedBox.expand(
-                child: FittedBox(
-                  fit: BoxFit.cover,
-                  child: SizedBox(
-                      width: w, height: h, child: VideoPlayer(_ctrl)),
-                ),
-              ),
-              if (!isPlaying)
-                Center(
-                  child: Container(
-                    width: 64.w,
-                    height: 64.w,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white38, width: 1.5),
-                    ),
-                    child: Icon(Icons.play_arrow_rounded,
-                        color: Colors.white, size: 34.sp),
-                  ),
-                ),
-              Positioned(
-                top: MediaQuery.paddingOf(context).top + 10.h,
-                right: 14.w,
-                child: GestureDetector(
-                  onTap: _toggleMute,
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    width: 36.w,
-                    height: 36.w,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15), width: 1),
-                    ),
-                    child: Icon(
-                      _muted
-                          ? Icons.volume_off_rounded
-                          : Icons.volume_up_rounded,
-                      color: Colors.white,
-                      size: 16.sp,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 0, right: 0, bottom: 0,
-                child: LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: Colors.white12,
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(Color(0xFFF5A623)),
-                  minHeight: 2,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+    return SkidooVideoPlayer(
+      url: widget.url,
+      isActive: widget.activeIndex.value == widget.index,
+      autoPlay: true,
+      loop: true,
+      fit: BoxFit.contain,
+      backgroundColor: Colors.black,
+      showControls: true,
+      allowFullscreen: true,
     );
   }
 }

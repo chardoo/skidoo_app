@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
-import 'package:video_player/video_player.dart';
 
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
@@ -27,7 +26,7 @@ import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart'
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/report_sheet.dart';
-import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
+import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model — same shape for ads and requests, mirrors EventDiscovery fields
@@ -279,10 +278,6 @@ class FeedItemCard extends StatefulWidget {
 }
 
 class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver {
-  VideoPlayerController? _videoCtrl;
-  bool _videoReady = false;
-  bool _screenActive = true;
-  StreamSubscription<void>? _pauseSub;
 
   final PageController _pageCtrl = PageController();
   int _currentPage = 0;
@@ -292,28 +287,16 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
   bool _saved = false;
   bool _bodyExpanded = false;
   bool _initFired = false;
-  bool _muted = kIsWeb;
   bool _chatLoading = false;
-  bool _manuallyPaused = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _pauseSub = VideoPauseNotifier.listen(() {
-      if (_videoCtrl != null && _videoCtrl!.value.isPlaying) _videoCtrl!.pause();
-    });
     _pageCtrl.addListener(() {
       final page = _pageCtrl.page?.round() ?? 0;
       if (page != _currentPage && mounted) setState(() => _currentPage = page);
     });
-    final d = widget.data;
-    // Only init video for single-media video items
-    if (d.mediaList.length == 1 && d.mediaList[0].isVideo) {
-      _initVideo(d.mediaList[0].url);
-    } else if (d.mediaList.isEmpty && d.mediaIsVideo && d.mediaUrl != null) {
-      _initVideo(d.mediaUrl!);
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _initFired) return;
       _initFired = true;
@@ -322,87 +305,10 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final active = TickerMode.valuesOf(context).enabled;
-    if (active != _screenActive) {
-      _screenActive = active;
-      _syncPlayback();
-    }
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_videoCtrl == null) return;
-    switch (state) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.hidden:
-        if (_videoCtrl!.value.isPlaying) _videoCtrl!.pause();
-      case AppLifecycleState.resumed:
-        _syncPlayback();
-      case AppLifecycleState.detached:
-        break;
-    }
-  }
-
-  void _syncPlayback() {
-    if (_videoCtrl == null || !_videoReady) return;
-    if (_screenActive && !_manuallyPaused) {
-      if (!_videoCtrl!.value.isPlaying) _videoCtrl!.play();
-    } else {
-      if (_videoCtrl!.value.isPlaying) _videoCtrl!.pause();
-    }
-  }
-
-  void _toggleVideoPlayback() {
-    if (_videoCtrl == null || !_videoReady) return;
-    setState(() {
-      if (_videoCtrl!.value.isPlaying) {
-        _videoCtrl!.pause();
-        _manuallyPaused = true;
-      } else {
-        _videoCtrl!.play();
-        _manuallyPaused = false;
-      }
-    });
-  }
-
-  Future<void> _initVideo(String url) async {
-    final ctrl = VideoPlayerController.networkUrl(Uri.parse(url));
-    try {
-      await ctrl.initialize();
-      await ctrl.setVolume(kIsWeb ? 0.0 : 1.0);
-      await ctrl.setLooping(true);
-      if (mounted) {
-        setState(() {
-          _videoCtrl = ctrl;
-          _videoReady = true;
-        });
-        _syncPlayback();
-      } else {
-        ctrl.dispose();
-      }
-    } catch (_) {
-      ctrl.dispose();
-    }
-  }
-
-  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _pauseSub?.cancel();
-    _videoCtrl?.pause();
-    _videoCtrl?.dispose();
     _pageCtrl.dispose();
     super.dispose();
-  }
-
-  void _toggleMute() {
-    if (_videoCtrl == null) return;
-    final nowMuted = !_muted;
-    _videoCtrl!.setVolume(nowMuted ? 0.0 : 1.0);
-    setState(() => _muted = nowMuted);
   }
 
   void _handleLike() {
@@ -593,15 +499,8 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
                     creatorName: d.creatorName,
                   )
                 else
-                  // Single video (controller already initialised from mediaList[0].url)
-                  // or no mediaList at all (falls back to legacy data.mediaUrl).
-                  _MediaBackground(
-                    data: d,
-                    videoCtrl: _videoCtrl,
-                    videoReady: _videoReady,
-                    ext: ext,
-                    onVideoTap: _videoReady ? _toggleVideoPlayback : null,
-                  ),
+                  // Single video or legacy mediaUrl
+                  _MediaBackground(data: d, ext: ext),
 
                 // Bottom gradient
                 Positioned(
@@ -627,37 +526,6 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
                   right: 14.w,
                   child: _FooterOverlay(data: d),
                 ),
-
-                // Mute toggle for single video
-                if (_videoReady &&
-                    (d.mediaList.length == 1
-                        ? d.mediaList[0].isVideo
-                        : (d.mediaList.isEmpty && d.mediaIsVideo)))
-                  Positioned(
-                    bottom: 60.h,
-                    right: 14.w,
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: _toggleMute,
-                        behavior: HitTestBehavior.opaque,
-                        child: Container(
-                          padding: const EdgeInsets.all(7),
-                          decoration: const BoxDecoration(
-                            color: Colors.black45,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            _muted
-                                ? Icons.volume_off_rounded
-                                : Icons.volume_up_rounded,
-                            color: Colors.white,
-                            size: 18.sp,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
 
                 // Page dots for multi-image (Instagram-style)
                 if (d.mediaList.length > 1)
@@ -732,78 +600,33 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
 }
 
 // ── Media background ──────────────────────────────────────────────────────────
-// Uses the same blur + colour-corrected contained-image technique as
-// PostPhotoCarousel for images, and a VideoPlayer for video.
+/// Renders either a [SkidooVideoPlayer] for video items or a blurred image
+/// background for photo items.
 
 class _MediaBackground extends StatelessWidget {
-  const _MediaBackground({
-    required this.data,
-    required this.videoCtrl,
-    required this.videoReady,
-    required this.ext,
-    this.onVideoTap,
-  });
+  const _MediaBackground({required this.data, required this.ext});
+
   final FeedItemData data;
-  final VideoPlayerController? videoCtrl;
-  final bool videoReady;
   final AppThemeExtension ext;
-  final VoidCallback? onVideoTap;
 
   @override
   Widget build(BuildContext context) {
-    if (data.mediaIsVideo ||
-        (data.mediaList.length == 1 && data.mediaList[0].isVideo)) {
-      if (videoReady && videoCtrl != null) {
-        final w = videoCtrl!.value.size.width > 0
-            ? videoCtrl!.value.size.width
-            : 1.0;
-        final h = videoCtrl!.value.size.height > 0
-            ? videoCtrl!.value.size.height
-            : 1.0;
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            // Video
-            ColoredBox(
-              color: const Color(0xFF0A0A0A),
-              child: SizedBox.expand(
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  child: SizedBox(
-                      width: w, height: h, child: VideoPlayer(videoCtrl!)),
-                ),
-              ),
-            ),
-            // Play/pause icon overlay
-            ValueListenableBuilder<VideoPlayerValue>(
-              valueListenable: videoCtrl!,
-              builder: (_, value, __) => IgnorePointer(
-                child: AnimatedOpacity(
-                  opacity: value.isPlaying ? 0.0 : 1.0,
-                  duration: const Duration(milliseconds: 250),
-                  child: const ColoredBox(
-                    color: Colors.black26,
-                    child: Center(
-                      child: Icon(Icons.play_arrow_rounded,
-                          color: Colors.white70, size: 48),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            // Full-area tap target for play/pause
-            if (onVideoTap != null)
-              Positioned.fill(
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: onVideoTap,
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-              ),
-          ],
+    final d = data;
+
+    // ── Video ──────────────────────────────────────────────────────────────
+    if (d.mediaIsVideo ||
+        (d.mediaList.length == 1 && d.mediaList[0].isVideo)) {
+      final url = d.mediaList.isNotEmpty ? d.mediaList[0].url : d.mediaUrl;
+      if (url != null && url.isNotEmpty) {
+        return SkidooVideoPlayer(
+          url: url,
+          autoPlay: true,
+          loop: true,
+          fit: BoxFit.contain,
+          backgroundColor: const Color(0xFF0A0A0A),
+          showControls: true,
+          allowFullscreen: true,
+          listenToPauseNotifier: true,
         );
       }
       return const ColoredBox(
@@ -819,6 +642,7 @@ class _MediaBackground extends StatelessWidget {
       );
     }
 
+    // ── Image (legacy mediaUrl path) ────────────────────────────────────────
     final url = data.mediaUrl;
     if (url == null || url.isEmpty) {
       return CardGradientPlaceholder(
@@ -835,10 +659,8 @@ class _MediaBackground extends StatelessWidget {
             imageUrl: url,
             fit: BoxFit.cover,
             filterQuality: FilterQuality.low,
-            placeholder: (_, __) =>
-                const ColoredBox(color: Color(0xFF111111)),
-            errorWidget: (_, __, ___) =>
-                const ColoredBox(color: Color(0xFF111111)),
+            placeholder: (_, __) => const ColoredBox(color: Color(0xFF111111)),
+            errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
           ),
         ),
         const ColoredBox(color: Color(0x55000000)),
@@ -854,8 +676,7 @@ class _MediaBackground extends StatelessWidget {
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
             placeholder: (_, __) => const SizedBox.shrink(),
-            errorWidget: (_, __, ___) =>
-                const ColoredBox(color: Color(0xFF111111)),
+            errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
           ),
         ),
       ],

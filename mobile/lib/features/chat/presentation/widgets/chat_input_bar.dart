@@ -7,7 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:video_player/video_player.dart';
+import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
 
 class ChatInputBar extends StatelessWidget {
   const ChatInputBar({
@@ -400,24 +400,6 @@ class _StagedVideoPreview extends StatefulWidget {
 }
 
 class _StagedVideoPreviewState extends State<_StagedVideoPreview> {
-  late VideoPlayerController _ctrl;
-  bool _initialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = VideoPlayerController.file(File(widget.filePath))
-      ..initialize().then((_) {
-        if (mounted) setState(() => _initialized = true);
-      });
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -433,17 +415,13 @@ class _StagedVideoPreviewState extends State<_StagedVideoPreview> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (_initialized)
-                    FittedBox(
-                      fit: BoxFit.cover,
-                      child: SizedBox(
-                        width: _ctrl.value.size.width,
-                        height: _ctrl.value.size.height,
-                        child: VideoPlayer(_ctrl),
-                      ),
-                    )
-                  else
-                    Container(color: Colors.black),
+                  SkidooVideoPlayer(
+                    url: 'file://${widget.filePath}',
+                    autoPlay: false,
+                    showControls: false,
+                    fit: BoxFit.cover,
+                    backgroundColor: Colors.black,
+                  ),
                   Container(color: Colors.black.withValues(alpha: 0.35)),
                   const Center(
                     child: Icon(Icons.play_circle_fill_rounded,
