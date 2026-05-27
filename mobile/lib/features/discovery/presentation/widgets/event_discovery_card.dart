@@ -471,17 +471,36 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
 
       if (isWide) {
         // ── Desktop: card+reactions centred; comments grow right without
-        //    shifting the card. leftPad is constant regardless of comment state.
+        //    shifting the card when there is enough room. On narrower viewports
+        //    (e.g. the Following feed which is capped at 720 px) leftPad shrinks
+        //    so the comment panel is never clipped off-screen.
         final mediaH = _computeMediaHeight(cardW, screenH);
         const reactionsW = 64.0;
         const commentsW = 340.0;
-        final leftPad =
+
+        // Centering pad when comments are closed.
+        final basePad =
             ((cons.maxWidth - cardW - reactionsW) / 2).clamp(0.0, double.infinity);
+
+        // If opening comments would overflow the available width, reduce leftPad
+        // so all three columns (card + reactions + comments) fit on screen.
+        final leftPad = (!_webCommentsOpen ||
+                basePad + cardW + reactionsW + commentsW <= cons.maxWidth)
+            ? basePad
+            : ((cons.maxWidth - cardW - reactionsW - commentsW) / 2)
+                .clamp(0.0, double.infinity);
+
+        // Effective comments width — capped to whatever space remains after the
+        // card and reactions columns (prevents overflow when viewport is narrow).
+        final effectiveCommentsW = _webCommentsOpen
+            ? (cons.maxWidth - leftPad - cardW - reactionsW)
+                .clamp(0.0, commentsW)
+            : commentsW;
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Fixed left spacer — keeps card centred ─────────────────────
+            // ── Left spacer — centres card (shrinks when comments open) ───
             SizedBox(width: leftPad),
             // ── Card column (header + image + caption + divider) ───────────
             SizedBox(
@@ -526,10 +545,10 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               child: _buildWebRightPanel(context, ext, commentsEnabled,
                   isExternalPanel: true, reactionsOnly: true),
             ),
-            // ── Comments panel — grows to the right, card never moves ─────
+            // ── Comments panel — fills available space up to commentsW ─────
             if (_webCommentsOpen)
               SizedBox(
-                width: commentsW,
+                width: effectiveCommentsW,
                 height: mediaH,
                 child: EventCommentInlinePanel(
                   event: widget.event,

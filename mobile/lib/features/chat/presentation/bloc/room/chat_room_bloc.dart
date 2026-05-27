@@ -260,18 +260,22 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           .firstOrNull;
       debugPrint('[E2EE] DM — recipientId: $_recipientId');
 
-      // Publish bundle in the background only if login hasn't already done so.
-      // _e2ee.bundlePublished is a singleton flag set by LoginUseCase, so it
-      // persists across all ChatRoomBloc factory instances in the same session.
-      if (!_e2ee.bundlePublished) {
-        _publishBundleInBackground();
-      }
+      // E2EE (key exchange + encryption) is not supported on web — messages are
+      // sent and received as plaintext in the browser.
+      if (!kIsWeb) {
+        // Publish bundle in the background only if login hasn't already done so.
+        // _e2ee.bundlePublished is a singleton flag set by LoginUseCase, so it
+        // persists across all ChatRoomBloc factory instances in the same session.
+        if (!_e2ee.bundlePublished) {
+          _publishBundleInBackground();
+        }
 
-      _otpkPollTimer?.cancel();
-      _otpkPollTimer = Timer.periodic(
-        const Duration(seconds: 60),
-        (_) => _replenishOtpksIfNeeded(),
-      );
+        _otpkPollTimer?.cancel();
+        _otpkPollTimer = Timer.periodic(
+          const Duration(seconds: 60),
+          (_) => _replenishOtpksIfNeeded(),
+        );
+      }
     } else {
       _isDirectRoom = false;
       _recipientId = null;
@@ -314,21 +318,23 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         // pendingShareUrl is preserved via copyWith (not cleared here)
       ));
 
-      // Scan REST history for X3DH headers BEFORE the WS connects.
-      // REST messages still carry is_encrypted=true and the full X3DH header.
-      // Processing them here stores the correct session key so that the guard
-      // in _onKeyBundlesReceived (loadSessionKey != null) skips
-      // _setupE2EESession — which would otherwise store a wrong proactive key.
-      // Previously-processed messages are cached as is_encrypted=false and are
-      // filtered out by knownIds, so their already-deleted OTPKs are never
-      // re-used for a second (wrong) derivation.
-      if (_isDirectRoom && _currentRoomId != null) {
-        await _deriveKeyFromHistory(emit);
-      }
+      if (!kIsWeb) {
+        // Scan REST history for X3DH headers BEFORE the WS connects.
+        // REST messages still carry is_encrypted=true and the full X3DH header.
+        // Processing them here stores the correct session key so that the guard
+        // in _onKeyBundlesReceived (loadSessionKey != null) skips
+        // _setupE2EESession — which would otherwise store a wrong proactive key.
+        // Previously-processed messages are cached as is_encrypted=false and are
+        // filtered out by knownIds, so their already-deleted OTPKs are never
+        // re-used for a second (wrong) derivation.
+        if (_isDirectRoom && _currentRoomId != null) {
+          await _deriveKeyFromHistory(emit);
+        }
 
-      // Group rooms: fetch peer sender keys and distribute our own.
-      if (_isGroupRoom && _currentRoomId != null) {
-        await _setupGroupE2EE(_currentRoomId!, emit);
+        // Group rooms: fetch peer sender keys and distribute our own.
+        if (_isGroupRoom && _currentRoomId != null) {
+          await _setupGroupE2EE(_currentRoomId!, emit);
+        }
       }
     } catch (e) {
       emit(state.copyWith(
@@ -351,12 +357,6 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   }
 
   void _connectWsInBackground(String roomId) {
-    if (kIsWeb) {
-      // WebSocket not available on web — mark as connected so the UI doesn't
-      // get stuck on the "Connecting…" indicator while REST history loads.
-      if (!isClosed) add(const _WsConnected());
-      return;
-    }
     debugPrint('[ChatBloc] _connectWsInBackground for room: $roomId');
     _cancelWsSubscriptions();
     _wsConnectionSub?.cancel();
@@ -771,6 +771,13 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   }) async {
     final hasText = content != null && content.isNotEmpty;
 
+    // Web: encryption not supported — send everything as plaintext.
+    if (kIsWeb) {
+      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo,
+          replyToId: replyToId, roomId: _currentRoomId);
+      return;
+    }
+
     debugPrint('[E2EE] send — isDirectRoom: $_isDirectRoom, recipientId: $_recipientId, needsRekey: $_needsRekey');
 
     if (_isGroupRoom) {
@@ -976,10 +983,19 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           ' myUserId=$_myUserId');
     }
 
+    // On web: encrypted messages from mobile clients cannot be decrypted.
+    // Replace ciphertext with a human-readable notice so the UI stays clean.
+    if (kIsWeb && msg.isEncrypted) {
+      msg = msg.copyWith(
+        content: '🔒 Encrypted message — open in the app to read',
+        isEncrypted: false,
+      );
+    }
+
     // Decrypt group E2EE messages using the sender's SenderKey.
     // Own echoes (senderId == _myUserId) are decrypted with our own sender key
     // so the plaintext matches the optimistic placeholder and replaces it.
-    if (_isGroupRoom && msg.isEncrypted && msg.content.isNotEmpty &&
+    if (!kIsWeb && _isGroupRoom && msg.isEncrypted && msg.content.isNotEmpty &&
         msg.iv != null && _currentRoomId != null) {
       final isOwnEcho = msg.senderId == _myUserId;
       final senderKey = isOwnEcho
@@ -1008,10 +1024,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       }
     }
 
-    // Decrypt E2EE messages — only in direct rooms, never in global/event/photo rooms.
-    // The server stores the ciphertext in the `content` field when is_encrypted=true
-    // (there is no separate `ciphertext` field in the forwarded/echoed message).
-    final shouldDecrypt = _isDirectRoom && msg.isEncrypted && msg.content.isNotEmpty && msg.iv != null && _currentRoomId != null;
+    // Decrypt E2EE messages — only in direct rooms, never in global/event/photo rooms,
+    // and never on web (no E2EE key material available in the browser).
+    final shouldDecrypt = !kIsWeb && _isDirectRoom && msg.isEncrypted && msg.content.isNotEmpty && msg.iv != null && _currentRoomId != null;
     debugPrint('[ChatRoomBloc] _onReceived decrypt-gate:'
         ' isDirectRoom=$_isDirectRoom'
         ' isEncrypted=${msg.isEncrypted}'

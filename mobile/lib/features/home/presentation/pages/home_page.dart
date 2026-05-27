@@ -241,7 +241,7 @@ class _HomeViewState extends State<_HomeView> {
           index: _selectedTab,
           children: const [
             HomeNavigationPage(),
-            if (kIsWeb) _WebMessagesDisabled() else ChatRoomsPage(),
+            ChatRoomsPage(),
             GalleryPage(),
             PhotographersPage(),
           ],
@@ -342,53 +342,3 @@ class _HomeViewState extends State<_HomeView> {
   }
 }
 
-// ── Web: Messages unavailable placeholder ─────────────────────────────────────
-
-class _WebMessagesDisabled extends StatelessWidget {
-  const _WebMessagesDisabled();
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return Scaffold(
-      backgroundColor: ext.homeBackground,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.phone_iphone_rounded,
-                  size: 56,
-                  color: ext.searchHintColor.withValues(alpha: 0.4),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Messages are available on the app',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: ext.searchHintColor,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Download the SKIDDO app to send and receive messages.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: ext.searchHintColor.withValues(alpha: 0.55),
-                    fontSize: 14,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

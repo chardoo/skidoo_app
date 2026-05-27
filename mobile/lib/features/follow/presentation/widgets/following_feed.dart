@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -210,7 +211,10 @@ class _FollowingFeedState extends State<FollowingFeed> {
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
+            // On web the card centres itself and the inline comment panel
+            // grows to the right — removing the 720 px cap prevents the
+            // panel from being clipped on laptop/desktop viewports.
+            constraints: const BoxConstraints(maxWidth: kIsWeb ? double.infinity : 720),
             child: TweenAnimationBuilder<double>(
               tween: Tween(end: widget.topPadding),
               duration: const Duration(milliseconds: 200),
