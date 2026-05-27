@@ -14,10 +14,10 @@ name: Deploy iOS
 #
 # ─────────────────────────────────────────────────────────────────────────────
 
+# iOS deployment is disabled until signing is configured.
+# Run manually via workflow_dispatch when ready.
+# (macOS runners cost 10× more minutes — kept off auto-trigger intentionally)
 on:
-  push:
-    branches: [main]
-    paths: ['mobile/**']
   workflow_dispatch:
 
 defaults:
