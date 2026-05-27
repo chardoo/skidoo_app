@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/responsive.dart';
@@ -72,6 +73,10 @@ class _HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<_HomeView> {
+  // SharedPreferences key used to persist the active tab on web so that a
+  // page refresh restores the user to the same section they were viewing.
+  static const _kWebTabKey = 'home.selected_tab';
+
   int _selectedTab = 0;
   // Tab 0 starts with chrome hidden — shows only on deliberate tap.
   bool _navBarVisible = false;
@@ -93,6 +98,26 @@ class _HomeViewState extends State<_HomeView> {
     super.initState();
     HomePage.tabRequest.addListener(_onTabRequest);
     HomePage.homeTapSignal.addListener(_onHomeTap);
+    // On web: restore the tab the user was viewing before the last refresh.
+    // Deferred to post-frame so Navigator/BLoC providers are fully ready.
+    if (kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _restoreWebTab());
+    }
+  }
+
+  /// Reads the last-used tab from SharedPreferences and switches to it.
+  /// Called once on first frame (web only). No-ops silently on any error.
+  Future<void> _restoreWebTab() async {
+    if (!mounted) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getInt(_kWebTabKey) ?? 0;
+      if (mounted && saved != _selectedTab) {
+        _changeTab(saved);
+      }
+    } catch (_) {
+      // SharedPreferences unavailable — stay on tab 0.
+    }
   }
 
   @override
@@ -123,6 +148,10 @@ class _HomeViewState extends State<_HomeView> {
             route.settings.name == HomePage.routeName || route.isFirst,
       );
       HomePage.webSelectedTab.value = index;
+      // Persist for page-refresh recovery (fire-and-forget).
+      SharedPreferences.getInstance()
+          .then((p) => p.setInt(_kWebTabKey, index))
+          .ignore();
     }
     VideoPauseNotifier.pauseAll();
     _downAccum = 0;
