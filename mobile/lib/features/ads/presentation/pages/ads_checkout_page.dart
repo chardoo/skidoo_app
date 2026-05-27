@@ -101,7 +101,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         appBar: AppBar(
           backgroundColor: ext.homeBackground,
           elevation: 0,
-          leading: IconButton(
+          leading: kIsWeb ? null : IconButton(
             icon: Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -168,7 +168,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: IconButton(
+        leading: kIsWeb ? null : IconButton(
           icon: Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
           onPressed: () => Navigator.of(context).pop(),
         ),

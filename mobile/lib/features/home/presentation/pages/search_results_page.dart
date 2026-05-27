@@ -19,6 +19,7 @@ import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SearchResultsPage extends StatefulWidget {
   static const routeName = '/searchresults';
@@ -314,7 +315,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground, width: kWebColumnWidthWide);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
   /// On web desktop, centre the page in a 480 dp column so it matches the
@@ -327,7 +328,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       return AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
+        leading: kIsWeb ? null : IconButton(
           icon: Icon(Icons.close_rounded, color: ext.greetingColor),
           onPressed: _exitSelectionMode,
         ),
@@ -370,8 +371,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
-      leading:
-          BackButton(onPressed: () => Navigator.of(ctx).pop(), color: ext.greetingColor),
+      leading: kIsWeb ? null : BackButton(onPressed: () => Navigator.of(ctx).pop(), color: ext.greetingColor),
       title: Text(
         AppLocalizations.of(ctx)!.searchResultsTitle,
         style: TextStyle(

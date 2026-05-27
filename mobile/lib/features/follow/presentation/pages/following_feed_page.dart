@@ -11,6 +11,7 @@ import 'package:skidoo_app/features/follow/data/follow_repository.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class FollowingFeedPage extends StatefulWidget {
   const FollowingFeedPage({super.key});
@@ -189,7 +190,7 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
+        leading: kIsWeb ? null : IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: ext.greetingColor, size: 20.sp),
           onPressed: () => Navigator.of(context).pop(),

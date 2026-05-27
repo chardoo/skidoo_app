@@ -97,7 +97,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             elevation: 0,
-            leading: IconButton(
+            leading: kIsWeb ? null : IconButton(
               icon: Icon(Icons.arrow_back_ios_new_rounded,
                   color: ext.greetingColor, size: 18.sp),
               onPressed: () => Navigator.of(context).pop(),

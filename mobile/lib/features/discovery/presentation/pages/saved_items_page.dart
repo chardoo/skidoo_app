@@ -11,6 +11,7 @@ import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.d
 import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SavedItemsPage extends StatefulWidget {
   static const routeName = '/saved-items';
@@ -202,7 +203,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
             fontSize: 18.sp,
           ),
         ),
-        leading: IconButton(
+        leading: kIsWeb ? null : IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: ext.greetingColor, size: 18.sp),
           onPressed: () => Navigator.of(context).pop(),

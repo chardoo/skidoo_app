@@ -30,6 +30,7 @@ import 'package:skidoo_app/models/photographer/photographer_sample.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
 import 'package:skidoo_app/features/follow/data/follow_repository.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class PhotographerProfilePage extends StatefulWidget {
   const PhotographerProfilePage({super.key, required this.photographer});
@@ -130,7 +131,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
             pinned: true,
             forceElevated: innerBoxIsScrolled,
             backgroundColor: ext.homeBackground,
-            leading: IconButton(
+            leading: kIsWeb ? null : IconButton(
               icon: Icon(Icons.arrow_back_ios_rounded,
                   color: ext.greetingColor, size: 20.sp),
               onPressed: () => Navigator.of(context).pop(),
@@ -303,7 +304,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground, width: kWebColumnWidthWide);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
   /// On web desktop, centre the page in a 480 dp column so fonts and spacing

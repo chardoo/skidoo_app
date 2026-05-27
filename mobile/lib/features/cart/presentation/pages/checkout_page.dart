@@ -67,7 +67,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           elevation: 0,
           title: Text(AppLocalizations.of(context)!.checkoutTitle,
               style: TextStyle(color: ext.greetingColor, fontSize: 17.sp, fontWeight: FontWeight.w700)),
-          leading: BackButton(onPressed: () => Navigator.of(context).pop()),
+          leading: kIsWeb ? null : BackButton(onPressed: () => Navigator.of(context).pop()),
         ),
         body: SafeArea(
           child: Padding(
@@ -124,7 +124,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final page = Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.checkoutTitle),
-        leading: BackButton(onPressed: () => Navigator.of(context).pop()),
+        leading: kIsWeb ? null : BackButton(onPressed: () => Navigator.of(context).pop()),
       ),
       body: WebViewWidget(controller: _controller!),
     );

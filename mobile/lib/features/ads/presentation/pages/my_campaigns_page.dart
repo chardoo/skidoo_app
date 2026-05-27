@@ -8,6 +8,7 @@ import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/edit_campaign_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class MyCampaignsPage extends StatefulWidget {
   const MyCampaignsPage({super.key});
@@ -375,7 +376,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: IconButton(
+        leading: kIsWeb ? null : IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: ext.greetingColor, size: 20.sp),
           onPressed: () => Navigator.of(context).pop(),

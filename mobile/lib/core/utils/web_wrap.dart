@@ -5,13 +5,13 @@ import 'package:flutter/material.dart';
 const double kWebColumnWidth = 480;
 
 /// Wider column width used on content-heavy pages (gallery, search, profiles).
-const double kWebColumnWidthWide = 600;
+const double kWebColumnWidthWide = 650;
 
 /// Constrains [child] to a centred column on web.
 ///
-/// [width] defaults to [kWebColumnWidth] (480). Pass [kWebColumnWidthWide]
-/// (600) for pages that benefit from extra horizontal space (gallery,
-/// search results, photographer profiles, etc.).
+/// [width] defaults to [kWebColumnWidthWide] (650). Use [kWebColumnWidth]
+/// (480) for pages that should stay narrow — currently only the discovery
+/// home page.
 ///
 /// On non-web platforms the child is returned unchanged.
 /// [backgroundColor] fills the area outside the column so the page has a
@@ -25,7 +25,7 @@ const double kWebColumnWidthWide = 600;
 Widget webWrap(
   Widget child, {
   required Color backgroundColor,
-  double width = kWebColumnWidth,
+  double width = kWebColumnWidthWide,
 }) {
   if (!kIsWeb) return child;
   return ColoredBox(

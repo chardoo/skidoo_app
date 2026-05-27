@@ -10,6 +10,7 @@ import 'package:skidoo_app/features/admin/data/repositories/app_config_repositor
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -336,7 +337,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: IconButton(
+        leading: kIsWeb ? null : IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: ext.greetingColor, size: 20.sp),
           onPressed: () => Navigator.of(context).pop(),

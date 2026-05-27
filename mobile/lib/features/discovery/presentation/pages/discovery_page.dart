@@ -269,7 +269,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return webWrap(page, backgroundColor: ext.homeBackground, width: kWebColumnWidth);
   }
 
 }

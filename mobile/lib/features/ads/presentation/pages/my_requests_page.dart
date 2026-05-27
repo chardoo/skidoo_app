@@ -7,6 +7,7 @@ import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/create_campaign_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class MyRequestsPage extends StatefulWidget {
   const MyRequestsPage({super.key});
@@ -204,7 +205,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: IconButton(
+        leading: kIsWeb ? null : IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: ext.greetingColor, size: 20.sp),
           onPressed: () => Navigator.of(context).pop(),
