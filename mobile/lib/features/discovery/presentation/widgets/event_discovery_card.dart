@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -178,24 +179,41 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     });
   }
 
+  /// Resolves the pixel dimensions of a network image.
+  ///
+  /// Uses [CachedNetworkImageProvider] so the image data is read from the
+  /// disk cache when available (avoids a redundant network round-trip and is
+  /// more reliable than bare [NetworkImage]).
+  ///
+  /// A 6-second timeout prevents a broken/slow image URL from blocking the
+  /// card height calculation indefinitely — the caller's fallback height fires
+  /// instead.
   static Future<Size?> _resolveNetworkImageSize(String url) {
     final completer = Completer<Size?>();
-    NetworkImage(url).resolve(const ImageConfiguration()).addListener(
-      ImageStreamListener(
-        (info, _) {
-          if (!completer.isCompleted) {
-            completer.complete(Size(
-              info.image.width.toDouble(),
-              info.image.height.toDouble(),
-            ));
-          }
-        },
-        onError: (_, __) {
-          if (!completer.isCompleted) completer.complete(null);
-        },
-      ),
-    );
-    return completer.future;
+    try {
+      CachedNetworkImageProvider(url)
+          .resolve(const ImageConfiguration())
+          .addListener(
+            ImageStreamListener(
+              (info, _) {
+                if (!completer.isCompleted) {
+                  completer.complete(Size(
+                    info.image.width.toDouble(),
+                    info.image.height.toDouble(),
+                  ));
+                }
+              },
+              onError: (_, __) {
+                if (!completer.isCompleted) completer.complete(null);
+              },
+            ),
+          );
+    } catch (_) {
+      if (!completer.isCompleted) completer.complete(null);
+    }
+    // 6 s safety net — broken / very slow URLs fall back to the default height.
+    return completer.future
+        .timeout(const Duration(seconds: 6), onTimeout: () => null);
   }
 
   /// Computes the media area height using the image's natural aspect ratio.

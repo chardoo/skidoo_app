@@ -146,7 +146,15 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     _muted = _startMuted;
 
     _player = Player();
-    _controller = VideoController(_player);
+    // Hardware acceleration enables 4K/HDR decoding via libmpv on native and
+    // GPU compositing on web. It is the default but we make it explicit so the
+    // config is easy to find and extend (e.g. add hwdec/bufferSize later).
+    _controller = VideoController(
+      _player,
+      configuration: const VideoControllerConfiguration(
+        enableHardwareAcceleration: true,
+      ),
+    );
 
     // Capture initial dimensions if already available (e.g. reused player).
     _videoW = _player.state.width;
@@ -362,6 +370,7 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
               controller: _controller,
               fit: BoxFit.fill, // fills the exactly-sized AspectRatio box
               fill: widget.backgroundColor,
+              filterQuality: FilterQuality.high,
               controls: NoVideoControls,
             ),
           ),
@@ -376,6 +385,7 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
         fit: widget.fit,
         fill: widget.backgroundColor,
         alignment: Alignment.center,
+        filterQuality: FilterQuality.high,
         controls: NoVideoControls,
       ),
     );
@@ -396,7 +406,13 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     } else if (widget.height != null) {
       sized = SizedBox(height: widget.height, child: video);
     } else {
-      sized = SizedBox.expand(child: video);
+      // No explicit size — use the video's natural aspect ratio so the widget
+      // sizes itself correctly in Columns, ListViews, etc.
+      // Falls back to 16:9 while dimensions are still loading.
+      final ratio = (_videoW != null && _videoH != null && _videoH! > 0)
+          ? _videoW! / _videoH!
+          : 16 / 9;
+      sized = AspectRatio(aspectRatio: ratio, child: video);
     }
 
     // ── Controls overlay ───────────────────────────────────────────────────
@@ -702,7 +718,12 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
     _muted = widget.muted;
 
     _player = Player();
-    _controller = VideoController(_player);
+    _controller = VideoController(
+      _player,
+      configuration: const VideoControllerConfiguration(
+        enableHardwareAcceleration: true,
+      ),
+    );
 
     _videoW = _player.state.width;
     _videoH = _player.state.height;
