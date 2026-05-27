@@ -191,10 +191,11 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                   EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
               child: Row(
                 children: [
-                  _CircleIconBtn(
-                    icon: Icons.arrow_back_ios_new_rounded,
-                    onTap: () => Navigator.of(context).pop(null),
-                  ),
+                  if (!kIsWeb)
+                    _CircleIconBtn(
+                      icon: Icons.arrow_back_ios_new_rounded,
+                      onTap: () => Navigator.of(context).pop(null),
+                    ),
                   const Spacer(),
                   Text(
                     'Take a Selfie',

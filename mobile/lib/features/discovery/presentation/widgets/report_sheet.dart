@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart' as dio;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
@@ -103,11 +104,12 @@ class _ReportSheetState extends State<ReportSheet> {
               padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 12.h),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Icon(Icons.arrow_back_ios_new_rounded,
-                        color: ext.greetingColor, size: 18.sp),
-                  ),
+                  if (!kIsWeb)
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Icon(Icons.arrow_back_ios_new_rounded,
+                          color: ext.greetingColor, size: 18.sp),
+                    ),
                   SizedBox(width: 12.w),
                   Text(
                     'Why are you reporting this?',

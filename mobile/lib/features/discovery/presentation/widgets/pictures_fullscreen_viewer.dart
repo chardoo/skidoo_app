@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -72,19 +73,20 @@ class _PicturesFullscreenViewerState extends State<PicturesFullscreenViewer> {
                     horizontal: 12.w, vertical: 8.h),
                 child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Container(
-                        width: 36.w,
-                        height: 36.w,
-                        decoration: const BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
+                    if (!kIsWeb)
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          width: 36.w,
+                          height: 36.w,
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.close,
+                              color: Colors.white, size: 20.sp),
                         ),
-                        child: Icon(Icons.close,
-                            color: Colors.white, size: 20.sp),
                       ),
-                    ),
                     const Spacer(),
                     Container(
                       padding: EdgeInsets.symmetric(
