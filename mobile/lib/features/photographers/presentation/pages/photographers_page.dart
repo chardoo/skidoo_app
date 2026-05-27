@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -31,7 +30,7 @@ class _PhotographersPageState extends State<PhotographersPage> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: _webWrap(NestedScrollView(
+      body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
           SliverAppBar(
             automaticallyImplyLeading: false,
@@ -142,17 +141,7 @@ class _PhotographersPageState extends State<PhotographersPage> {
             },
           ),
         ),
-      )),
+      ),
     );
   }
-
-  static Widget _webWrap(Widget child) => kIsWeb
-      ? Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: child,
-          ),
-        )
-      : child;
 }

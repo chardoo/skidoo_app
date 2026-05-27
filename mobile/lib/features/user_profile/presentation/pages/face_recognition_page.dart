@@ -80,11 +80,14 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_rounded,
-              color: ext.greetingColor, size: 18.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb
+            ? null
+            : IconButton(
+                icon: Icon(Icons.arrow_back_ios_rounded,
+                    color: ext.greetingColor, size: 18.sp),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+        automaticallyImplyLeading: !kIsWeb,
         title: Text(
           'Face Recognition',
           style: TextStyle(

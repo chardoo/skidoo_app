@@ -100,10 +100,8 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         appBar: AppBar(
           backgroundColor: ext.homeBackground,
           elevation: 0,
-          leading: IconButton(
-            icon: Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+          leading: null,
+          automaticallyImplyLeading: false,
           title: Text(
             'Complete Payment',
             style: TextStyle(color: ext.greetingColor, fontSize: 17.sp, fontWeight: FontWeight.w700),

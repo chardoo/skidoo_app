@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
@@ -365,8 +367,10 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
-      leading:
-          BackButton(onPressed: () => Navigator.of(ctx).pop(), color: ext.greetingColor),
+      leading: kIsWeb
+          ? null
+          : BackButton(onPressed: () => Navigator.of(ctx).pop(), color: ext.greetingColor),
+      automaticallyImplyLeading: !kIsWeb,
       title: Text(
         AppLocalizations.of(ctx)!.searchResultsTitle,
         style: TextStyle(

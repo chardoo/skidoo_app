@@ -262,12 +262,20 @@ class _AppMaterial extends StatelessWidget {
                   Expanded(child: ClipRect(child: child!)),
                 ],
               )
-            // ── Desktop web: sidebar + full remaining width ─────────────
+            // ── Desktop web: sidebar + centred 480 dp phone column ─────
             : Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const WebSidebar(),
-                  Expanded(child: ClipRect(child: child!)),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: SizedBox(
+                        width: _kWebColumnWidth,
+                        child: ClipRect(child: child!),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

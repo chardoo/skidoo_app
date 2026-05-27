@@ -74,6 +74,7 @@ class _AccountView extends StatelessWidget {
             elevation: 0,
             centerTitle: true,
             backgroundColor: Colors.transparent,
+            automaticallyImplyLeading: !kIsWeb,
             title: Text(
               AppLocalizations.of(context)!.accountTitle,
               style: TextStyle(

@@ -94,12 +94,13 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                       EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                            color: Colors.white),
-                        iconSize: 22.sp,
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
+                      if (!kIsWeb)
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                              color: Colors.white),
+                          iconSize: 22.sp,
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
                       const Spacer(),
                       if (widget.photo.eventName.isNotEmpty)
                         Flexible(

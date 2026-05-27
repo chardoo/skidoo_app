@@ -23,8 +23,7 @@ class GalleryPage extends StatelessWidget {
         backgroundColor: ext.cardSurface,
         onRefresh: () async =>
             context.read<GalleryBloc>().add(const GalleryLoadRequested()),
-        child: _webWrap(
-          NestedScrollView(
+        child: NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
               SliverAppBar(
                 automaticallyImplyLeading: false,
@@ -115,28 +114,17 @@ class GalleryPage extends StatelessWidget {
                 );
               },
             ),
-          ),
         ),
       ),
     );
   }
 
-  // On web the grid is constrained to 800 px — 3 columns (~250 px each).
+  // On web the column is globally constrained to 480 px — use 2 columns.
   // On mobile use viewport width as before.
   int _columnCount(BuildContext context) {
-    if (kIsWeb) return 3;
+    if (kIsWeb) return 2;
     final w = MediaQuery.sizeOf(context).width;
     if (w >= 600) return 3;
     return 2;
   }
-
-  static Widget _webWrap(Widget child) => kIsWeb
-      ? Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: child,
-          ),
-        )
-      : child;
 }
