@@ -295,6 +295,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
       await _markAsRead(event.roomId);
       _bgService.onUnreadUpdate?.call();
+      _bgService.onRoomRead?.call(event.roomId);
 
       final knownIds = state.messages.map((m) => m.id).toSet();
       final incoming = fresh.where((m) => !knownIds.contains(m.id)).toList();
@@ -1201,6 +1202,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // any message BgService saves between now and here must stay unread.
     if (!isClosed && roomId != null) {
       await _markAsRead(roomId).catchError((_) {});
+      _bgService.onRoomRead?.call(roomId);
     }
     _bgService.onUnreadUpdate?.call();
   }

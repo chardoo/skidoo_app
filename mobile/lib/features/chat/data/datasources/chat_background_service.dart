@@ -23,6 +23,20 @@ class ChatBackgroundService {
 
   void Function()? onUnreadUpdate;
 
+  /// Called (with the room ID) when ChatRoomBloc marks a room as fully read.
+  /// ChatRoomsBloc uses this to zero the unread badge without a DB round-trip.
+  void Function(String roomId)? onRoomRead;
+
+  // Broadcasts every background-received message (after optional decrypt) so
+  // subscribers can update in-memory state without touching the local DB.
+  // Never closed — lives for the entire app session (service is a singleton).
+  final _bgMsgController = StreamController<ChatMessage>.broadcast();
+
+  /// Raw stream of messages received in the background (rooms not currently open).
+  /// Use this instead of the DB-backed unread/lastMessage queries on platforms
+  /// where SQLite is unavailable (e.g. web).
+  Stream<ChatMessage> get backgroundMessages => _bgMsgController.stream;
+
   // Persistent relay for group invites — never closed, survives WS reconnects.
   // All WS instances (shared + DiscoveryBloc per-event) funnel invites here so
   // ChatRoomsBloc can subscribe once without any reconnect management.
@@ -135,6 +149,8 @@ class ChatBackgroundService {
     _rooms.clear();
     _paused.clear();
     _roomCanEncrypt.clear();
+    onUnreadUpdate = null;
+    onRoomRead = null;
     _connected = false;
     _connecting = false;
     _reconnectAttempts = 0;
@@ -271,7 +287,8 @@ class ChatBackgroundService {
         msg = await _tryDecrypt(msg);
       }
       await _db.upsertMessages([msg]);
-      debugPrint('[BgChat] upserted msg ${msg.id} — firing onUnreadUpdate');
+      debugPrint('[BgChat] upserted msg ${msg.id} — firing backgroundMessages + onUnreadUpdate');
+      if (!_bgMsgController.isClosed) _bgMsgController.add(msg);
       onUnreadUpdate?.call();
     } catch (e) {
       debugPrint('[BgChat] _onMessage error: $e');

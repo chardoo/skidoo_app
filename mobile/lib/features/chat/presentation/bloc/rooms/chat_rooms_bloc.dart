@@ -6,6 +6,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
@@ -24,6 +25,7 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
   final AuthService _authService;
 
   StreamSubscription<ChatRoom>? _groupInviteSub;
+  StreamSubscription<ChatMessage>? _bgMsgSub;
 
   ChatRoomsBloc({
     required GetMyRoomsUseCase getMyRooms,
@@ -53,10 +55,23 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     on<ChatRoomsAcceptInvite>(_onAcceptInvite, transformer: concurrent());
     on<ChatRoomsDeclineInvite>(_onDeclineInvite, transformer: concurrent());
     on<ChatRoomsGroupInviteReceived>(_onGroupInviteReceived, transformer: concurrent());
+    on<_ChatRoomsMessageArrived>(_onMessageArrived, transformer: concurrent());
+    on<_ChatRoomsRoomRead>(_onRoomRead, transformer: concurrent());
 
     // Wire background service → bloc so new background messages update the badge.
     _bgService.onUnreadUpdate = () {
       if (!isClosed) add(const ChatRoomsRefreshUnread());
+    };
+
+    // Direct message stream: updates unreadCounts and lastMessageAt in-memory,
+    // bypassing the DB.  Essential on web where SQLite is unavailable.
+    _bgMsgSub = _bgService.backgroundMessages.listen((msg) {
+      if (!isClosed) add(_ChatRoomsMessageArrived(msg.roomId, msg.createdAt));
+    });
+
+    // Badge-clear signal: ChatRoomBloc fires this when a room is opened.
+    _bgService.onRoomRead = (roomId) {
+      if (!isClosed) add(_ChatRoomsRoomRead(roomId));
     };
 
     // Subscribe to the persistent relay — one subscription, no reconnect
@@ -72,6 +87,7 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
   @override
   Future<void> close() {
     _groupInviteSub?.cancel();
+    _bgMsgSub?.cancel();
     return super.close();
   }
 
@@ -185,6 +201,10 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     ChatRoomsRefreshUnread event,
     Emitter<ChatRoomsState> emit,
   ) async {
+    // On web, SQLite is not available: getUnreadCounts/getLastMessageTimes always
+    // return empty maps, which would wipe the in-memory state maintained by
+    // _onMessageArrived. Skip the DB round-trip entirely on web.
+    if (kIsWeb) return;
     try {
       final results = await Future.wait([
         _getUnreadCounts(),
@@ -195,6 +215,30 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
         lastMessageAt: results[1] as Map<String, DateTime>,
       ));
     } catch (_) {}
+  }
+
+  /// Increments the unread badge and updates sort-order for [roomId] without
+  /// touching the DB.  Works on all platforms; is the sole update path on web.
+  void _onMessageArrived(
+    _ChatRoomsMessageArrived event,
+    Emitter<ChatRoomsState> emit,
+  ) {
+    final counts = Map<String, int>.from(state.unreadCounts);
+    counts[event.roomId] = (counts[event.roomId] ?? 0) + 1;
+    final times = Map<String, DateTime>.from(state.lastMessageAt);
+    times[event.roomId] = event.arrivedAt;
+    emit(state.copyWith(unreadCounts: counts, lastMessageAt: times));
+  }
+
+  /// Clears the unread badge for [roomId] when the user opens the room.
+  void _onRoomRead(
+    _ChatRoomsRoomRead event,
+    Emitter<ChatRoomsState> emit,
+  ) {
+    if (!state.unreadCounts.containsKey(event.roomId)) return;
+    final counts = Map<String, int>.from(state.unreadCounts)
+      ..remove(event.roomId);
+    emit(state.copyWith(unreadCounts: counts));
   }
 
   Future<void> _onAcceptInvite(
