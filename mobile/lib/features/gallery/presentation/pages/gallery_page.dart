@@ -118,7 +118,7 @@ class GalleryPage extends StatelessWidget {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return webWrap(page, backgroundColor: ext.homeBackground, width: kWebColumnWidthWide);
   }
 
   // On web the grid is constrained to 3 columns (~160 px each at 480 px wide).

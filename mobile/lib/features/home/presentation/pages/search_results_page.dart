@@ -314,7 +314,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return webWrap(page, backgroundColor: ext.homeBackground, width: kWebColumnWidthWide);
   }
 
   /// On web desktop, centre the page in a 480 dp column so it matches the

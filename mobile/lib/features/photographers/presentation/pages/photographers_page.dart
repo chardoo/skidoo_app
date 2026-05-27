@@ -144,7 +144,7 @@ class _PhotographersPageState extends State<PhotographersPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return webWrap(page, backgroundColor: ext.homeBackground, width: kWebColumnWidthWide);
   }
 
 }
