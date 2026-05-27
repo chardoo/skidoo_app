@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -130,14 +129,11 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
             pinned: true,
             forceElevated: innerBoxIsScrolled,
             backgroundColor: ext.homeBackground,
-            leading: kIsWeb
-                ? null
-                : IconButton(
-                    icon: Icon(Icons.arrow_back_ios_rounded,
-                        color: ext.greetingColor, size: 20.sp),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-            automaticallyImplyLeading: !kIsWeb,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back_ios_rounded,
+                  color: ext.greetingColor, size: 20.sp),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
             flexibleSpace: FlexibleSpaceBar(
               background: PhotographerProfileHeader(photographer: p, ext: ext),
             ),

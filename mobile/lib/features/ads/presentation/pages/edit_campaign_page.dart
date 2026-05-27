@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -201,14 +200,11 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb
-            ? null
-            : IconButton(
-                icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    color: ext.greetingColor, size: 20.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-        automaticallyImplyLeading: !kIsWeb,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: ext.greetingColor, size: 20.sp),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
           'Edit Campaign',
           style: TextStyle(

@@ -115,15 +115,7 @@ class _HomeViewState extends State<_HomeView> {
   void _onHomeTap() {}
 
   void _changeTab(int index) {
-    if (kIsWeb) {
-      // Pop any sub-pages (SearchResults, EventPictures, AccountPage, etc.)
-      // that were pushed on top of HomePage before switching tabs.
-      Navigator.of(context).popUntil(
-        (route) =>
-            route.settings.name == HomePage.routeName || route.isFirst,
-      );
-      HomePage.webSelectedTab.value = index;
-    }
+    if (kIsWeb) HomePage.webSelectedTab.value = index;
     VideoPauseNotifier.pauseAll();
     _downAccum = 0;
     _chromeTimer?.cancel();

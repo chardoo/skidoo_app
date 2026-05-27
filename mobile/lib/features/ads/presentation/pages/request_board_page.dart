@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
@@ -179,14 +178,11 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb
-            ? null
-            : IconButton(
-                icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    color: ext.greetingColor, size: 20.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-        automaticallyImplyLeading: !kIsWeb,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: ext.greetingColor, size: 20.sp),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
           'Request Board',
           style: TextStyle(

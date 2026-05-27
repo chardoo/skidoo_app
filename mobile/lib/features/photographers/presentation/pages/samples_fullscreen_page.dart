@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
@@ -72,21 +71,20 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
             right: 0,
             child: Row(
               children: [
-                if (!kIsWeb)
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      margin: EdgeInsets.only(left: 16.w),
-                      width: 36.w,
-                      height: 36.h,
-                      decoration: const BoxDecoration(
-                        color: Colors.black54,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.close_rounded,
-                          color: Colors.white, size: 20),
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    margin: EdgeInsets.only(left: 16.w),
+                    width: 36.w,
+                    height: 36.h,
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
                     ),
+                    child: const Icon(Icons.close_rounded,
+                        color: Colors.white, size: 20),
                   ),
+                ),
                 const Spacer(),
                 Container(
                   margin: EdgeInsets.only(right: 16.w),

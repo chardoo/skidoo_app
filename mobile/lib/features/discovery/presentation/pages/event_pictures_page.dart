@@ -96,14 +96,11 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             elevation: 0,
-            leading: kIsWeb
-              ? null
-              : IconButton(
-                  icon: Icon(Icons.arrow_back_ios_new_rounded,
-                      color: ext.greetingColor, size: 18.sp),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-          automaticallyImplyLeading: !kIsWeb,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new_rounded,
+                  color: ext.greetingColor, size: 18.sp),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -508,29 +505,28 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
             ),
           ),
 
-          // Back button — hidden on web (sidebar nav handles navigation)
-          if (!kIsWeb)
-            SafeArea(
-              child: Padding(
-                padding: EdgeInsets.only(left: 14.w, top: 10.h),
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    width: 36.w,
-                    height: 36.w,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15), width: 1),
-                    ),
-                    child: Icon(Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white, size: 16.sp),
+          // Back button
+          SafeArea(
+            child: Padding(
+              padding: EdgeInsets.only(left: 14.w, top: 10.h),
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 36.w,
+                  height: 36.w,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.15), width: 1),
                   ),
+                  child: Icon(Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white, size: 16.sp),
                 ),
               ),
             ),
+          ),
         ],
       ),
     );
