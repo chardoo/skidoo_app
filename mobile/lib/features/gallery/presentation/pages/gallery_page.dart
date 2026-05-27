@@ -8,6 +8,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/features/gallery/presentation/bloc/gallery_bloc.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_image_widget.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class GalleryPage extends StatelessWidget {
   const GalleryPage({super.key});
@@ -117,7 +118,7 @@ class GalleryPage extends StatelessWidget {
         ),
       ),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
   // On web the grid is constrained to 3 columns (~160 px each at 480 px wide).
@@ -129,14 +130,4 @@ class GalleryPage extends StatelessWidget {
     return 2;
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }

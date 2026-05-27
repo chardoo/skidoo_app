@@ -12,6 +12,7 @@ import 'package:skidoo_app/features/auth/presentation/bloc/signup/signup_bloc.da
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/auth_text_field.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 const _kOrange      = Color(0xFFFF8303);
@@ -319,19 +320,9 @@ class _SignUpViewState extends State<_SignUpView>
         },
       ),
     );
-    return _webWrap(page);
+    return webWrap(page, backgroundColor: _kBg);
   }
 
-  static Widget _webWrap(Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: _kBg,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }
 
 // ── Face capture section ───────────────────────────────────────────────────────

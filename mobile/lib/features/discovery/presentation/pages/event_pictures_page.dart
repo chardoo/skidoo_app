@@ -14,6 +14,7 @@ import 'package:skidoo_app/features/photo_comments/data/photo_comment_remote_dat
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/models/photo_comment/photo_comment.dart';
 import 'package:video_player/video_player.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 // ── Flat entry: one picture + its parent event metadata ──────────────────────
 
@@ -221,19 +222,9 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
         ],
       ),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }
 
 // ── Masonry grid (2-column) ───────────────────────────────────────────────────

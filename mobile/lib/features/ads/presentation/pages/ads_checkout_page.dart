@@ -6,6 +6,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class AdsCheckoutPage extends StatefulWidget {
   const AdsCheckoutPage({
@@ -158,7 +159,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
           ),
         ),
       );
-      return _webWrap(ext, page);
+      return webWrap(page, backgroundColor: ext.homeBackground);
     }
 
     // ── Mobile: in-app WebView ────────────────────────────────────────────────
@@ -201,19 +202,9 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         ],
       ),
     );
-    return _webWrap(ext, mobilePage);
+    return webWrap(mobilePage, backgroundColor: ext.homeBackground);
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }
 
 // ── Payment amount info card shown while WebView loads ────────────────────────

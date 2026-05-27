@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -30,6 +29,7 @@ import 'package:skidoo_app/models/photographer/photographer_event.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
 import 'package:skidoo_app/features/follow/data/follow_repository.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class PhotographerProfilePage extends StatefulWidget {
   const PhotographerProfilePage({super.key, required this.photographer});
@@ -303,21 +303,11 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
         ),
       ),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
   /// On web desktop, centre the page in a 480 dp column so fonts and spacing
   /// stay phone-sized rather than stretching across the full viewport.
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }
 
 // ── Samples tab ───────────────────────────────────────────────────────────────

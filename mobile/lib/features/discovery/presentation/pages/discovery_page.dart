@@ -14,6 +14,7 @@ import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.d
 import 'package:skidoo_app/features/discovery/presentation/widgets/event_discovery_card.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class DiscoveryPage extends StatelessWidget {
   static const routeName = '/discovery';
@@ -268,19 +269,9 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
         ),
       ),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }
 
 // ── Feed app bar ──────────────────────────────────────────────────────────────

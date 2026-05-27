@@ -8,6 +8,7 @@ import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class CheckoutPage extends StatefulWidget {
   final String url;
@@ -116,7 +117,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           ),
         ),
       );
-      return _webWrap(ext, page);
+      return webWrap(page, backgroundColor: ext.homeBackground);
     }
 
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
@@ -127,17 +128,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       ),
       body: WebViewWidget(controller: _controller!),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }

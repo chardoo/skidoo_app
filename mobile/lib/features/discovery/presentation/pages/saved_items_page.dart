@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,6 +10,7 @@ import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class SavedItemsPage extends StatefulWidget {
   static const routeName = '/saved-items';
@@ -218,19 +218,9 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
       ),
       body: _buildBody(ext),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 
   Widget _buildBody(AppThemeExtension ext) {
     if (_loading) {

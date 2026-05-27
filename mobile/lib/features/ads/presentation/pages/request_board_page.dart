@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
@@ -13,6 +12,7 @@ import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/feed_item_card.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 const _eventTypes = [
   'Wedding', 'Birthday', 'Corporate', 'Concert',
@@ -298,19 +298,9 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                   );
                 }),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }
 
 // ── Filter bottom sheet ───────────────────────────────────────────────────────

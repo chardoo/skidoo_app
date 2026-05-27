@@ -9,6 +9,7 @@ import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class FaceRecognitionPage extends StatefulWidget {
   const FaceRecognitionPage({super.key});
@@ -194,19 +195,9 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
         ),
       ),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }
 
 // ── Grid tiles ────────────────────────────────────────────────────────────────

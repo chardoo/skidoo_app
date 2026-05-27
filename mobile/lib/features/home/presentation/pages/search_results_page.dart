@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter/services.dart';
@@ -19,6 +18,7 @@ import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class SearchResultsPage extends StatefulWidget {
   static const routeName = '/searchresults';
@@ -314,21 +314,11 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         ),
       ),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
   /// On web desktop, centre the page in a 480 dp column so it matches the
   /// phone-sized layout used across the app — fonts and spacing stay correct.
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 
   // ── AppBar ─────────────────────────────────────────────────────────────────
 

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,6 +10,7 @@ import 'package:skidoo_app/features/discovery/presentation/widgets/event_discove
 import 'package:skidoo_app/features/follow/data/follow_repository.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class FollowingFeedPage extends StatefulWidget {
   const FollowingFeedPage({super.key});
@@ -300,17 +300,7 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
                       ),
                     ),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }

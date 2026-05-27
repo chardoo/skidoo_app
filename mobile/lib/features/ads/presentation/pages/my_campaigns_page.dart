@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
@@ -8,6 +7,7 @@ import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/edit_campaign_page.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class MyCampaignsPage extends StatefulWidget {
   const MyCampaignsPage({super.key});
@@ -424,19 +424,9 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                       ),
                     ),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }
 
 // ── Campaign tile ─────────────────────────────────────────────────────────────

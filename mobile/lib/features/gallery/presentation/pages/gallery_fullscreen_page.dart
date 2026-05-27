@@ -8,6 +8,7 @@ import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class GalleryFullscreenPage extends StatefulWidget {
   final Photo photo;
@@ -170,17 +171,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
         ],
       ),
     );
-    return _webWrap(page);
+    return webWrap(page, backgroundColor: Colors.black);
   }
 
-  static Widget _webWrap(Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: Colors.black,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }

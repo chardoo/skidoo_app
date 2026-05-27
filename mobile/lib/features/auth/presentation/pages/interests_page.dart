@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
@@ -9,6 +8,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/interests/interests_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/widgets/loader.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 const _kBg = Color(0xFF0A0D11);
 
@@ -163,17 +163,7 @@ class _InterestsView extends StatelessWidget {
         },
       ),
     );
-    return _webWrap(page);
+    return webWrap(page, backgroundColor: _kBg);
   }
 
-  static Widget _webWrap(Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: _kBg,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }

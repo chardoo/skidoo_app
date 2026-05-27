@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,6 +9,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
 import 'package:skidoo_app/features/ads/models/ad_set.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -429,19 +429,9 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
         ],
       ),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }
 
 // ── Per-adset mutable state ───────────────────────────────────────────────────

@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,6 +9,7 @@ import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -376,19 +376,9 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
         ],
       ),
     );
-    return _webWrap(ext, page);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 
   Widget _buildStep(BuildContext context, AppThemeExtension ext) {
     switch (_step) {

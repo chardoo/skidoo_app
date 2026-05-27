@@ -18,6 +18,7 @@ import 'package:skidoo_app/features/user_profile/presentation/pages/face_recogni
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/saved_items_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 String _resolveErrorMessage(String key, AppLocalizations l10n) => switch (key) {
       'accountAnonymousModeUpdateFailed' => l10n.accountAnonymousModeUpdateFailed,
@@ -181,21 +182,11 @@ class _AccountView extends StatelessWidget {
                 ),
               ),
         );
-        return _webWrap(ext, page);
+        return webWrap(page, backgroundColor: ext.homeBackground);
       },
     );
   }
 
-  static Widget _webWrap(AppThemeExtension ext, Widget child) {
-    if (!kIsWeb) return child;
-    return ColoredBox(
-      color: ext.homeBackground,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: SizedBox(width: 480, child: child),
-      ),
-    );
-  }
 }
 
 // ── Edit Profile card ──────────────────────────────────────────────────────────
