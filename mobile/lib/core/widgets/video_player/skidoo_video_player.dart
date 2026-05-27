@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:skidoo_app/core/utils/video_mute_preference.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
 
 export 'package:media_kit/media_kit.dart' show PlaylistMode;
@@ -127,7 +128,10 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   StreamSubscription<void>? _pauseSub;
   StreamSubscription<bool>? _playingSub;
 
-  bool get _startMuted => widget.initiallyMuted ?? kIsWeb;
+  /// Resolve initial mute state:
+  /// - explicit [widget.initiallyMuted] wins if provided
+  /// - otherwise use the global session preference (updated by user toggles)
+  bool get _startMuted => widget.initiallyMuted ?? VideoMutePreference.muted;
 
   @override
   void initState() {
@@ -740,7 +744,8 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
               fit: BoxFit.contain,
               fill: Colors.black,
               alignment: Alignment.center,
-              clipBehavior: Clip.hardEdge,
+              filterQuality: FilterQuality.high,
+              // clipBehavior: Clip.hardEdge,
               controls: NoVideoControls,
             ),
 
