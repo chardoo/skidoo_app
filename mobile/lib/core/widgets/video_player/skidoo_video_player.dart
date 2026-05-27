@@ -187,6 +187,13 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
       _pauseSub = VideoPauseNotifier.listen(_onGlobalPause);
     }
 
+    // Mirror global mute-preference changes in real-time — when any other
+    // player unmutes (or mutes), this player immediately follows suit.
+    // Only active when initiallyMuted is null (not an explicit override).
+    if (widget.initiallyMuted == null) {
+      VideoMutePreference.notifier.addListener(_onGlobalMuteChanged);
+    }
+
     // Auto-hide controls once playing starts; re-show when paused.
     _playingSub = _player.stream.playing.listen((playing) {
       if (!mounted) return;
@@ -245,6 +252,19 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
       _player.pause();
       _manuallyPaused = true;
     }
+  }
+
+  /// Called when any other player writes to [VideoMutePreference].
+  /// Syncs this player's volume immediately so all active players share
+  /// the same mute state without needing to be re-created.
+  void _onGlobalMuteChanged() {
+    if (!mounted) return;
+    final globalMuted = VideoMutePreference.muted;
+    if (_muted == globalMuted) return; // already in sync — nothing to do
+    setState(() {
+      _muted = globalMuted;
+      _player.setVolume(_muted ? 0 : 100);
+    });
   }
 
   void _syncPlayback() {
@@ -338,6 +358,9 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (widget.initiallyMuted == null) {
+      VideoMutePreference.notifier.removeListener(_onGlobalMuteChanged);
+    }
     _pauseSub?.cancel();
     _playingSub?.cancel();
     _widthSub?.cancel();
