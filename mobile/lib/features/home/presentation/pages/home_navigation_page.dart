@@ -11,6 +11,7 @@ import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
+import 'package:skidoo_app/features/home/presentation/widgets/web_search_photos_panel.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/events_feed.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/home_empty_state.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/home_header_widget.dart';
@@ -39,6 +40,10 @@ class HomeNavigationPage extends StatefulWidget {
 class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool _isSearchOpen = false;
   int _selectedTab = 0; // 0 = For You, 1 = Following
+
+  // Web desktop: show photo results inline (no Navigator push).
+  bool _showPhotosInline = false;
+  String _inlineEventName = '';
 
   bool _headerVisible = false;
   double _headerDownAccum = 0;
@@ -102,6 +107,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     setState(() {
       _isSearchOpen = false;
       _headerVisible = false;
+      _showPhotosInline = false;
+      _inlineEventName = '';
     });
     context.read<HomeBloc>().add(const HomeSearchClosed());
   }
@@ -440,24 +447,24 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
             ),
           ),
         if (_isSearchOpen)
-          if (kIsWeb)
-            Positioned(
-              top: 0,
-              left: 0,
-              bottom: 0,
-              width: 480,
-              child: ColoredBox(
-                color: ext.homeBackground,
-                child: _buildSearchOverlay(context, ext, homeState),
-              ),
-            )
-          else
-            Positioned.fill(
-              child: ColoredBox(
-                color: ext.homeBackground,
-                child: _buildSearchOverlay(context, ext, homeState),
-              ),
+          Positioned.fill(
+            child: ColoredBox(
+              color: ext.homeBackground,
+              child: _showPhotosInline
+                  // ── Web desktop: inline photo results panel ────────────────
+                  ? WebSearchPhotosPanel(
+                      ext: ext,
+                      eventName: _inlineEventName,
+                      onBack: () => setState(() {
+                        _showPhotosInline = false;
+                        _inlineEventName = '';
+                      }),
+                      onClose: _closeSearch,
+                    )
+                  // ── Event suggestion list (all platforms) ──────────────────
+                  : _buildSearchOverlay(context, ext, homeState),
             ),
+          ),
       ],
     );
   }
@@ -479,14 +486,23 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                 eventId: event.id,
                 eventName: event.eventName,
               ));
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => BlocProvider.value(
-                value: context.read<HomeBloc>(),
-                child: const SearchResultsPage(),
+          if (kIsWeb) {
+            // Desktop/laptop web: show photos inline — no page transition.
+            setState(() {
+              _showPhotosInline = true;
+              _inlineEventName = '${event.eventName}';
+            });
+          } else {
+            // Mobile: navigate to the full SearchResultsPage.
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => BlocProvider.value(
+                  value: context.read<HomeBloc>(),
+                  child: const SearchResultsPage(),
+                ),
               ),
-            ),
-          );
+            );
+          }
         },
       );
     }
