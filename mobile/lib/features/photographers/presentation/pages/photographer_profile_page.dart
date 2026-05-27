@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -119,7 +120,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final p = widget.photographer;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: ext.homeBackground,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
@@ -300,6 +301,20 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
             ),
           ],
         ),
+      ),
+    );
+    return _webWrap(ext, page);
+  }
+
+  /// On web desktop, centre the page in a 480 dp column so fonts and spacing
+  /// stay phone-sized rather than stretching across the full viewport.
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }

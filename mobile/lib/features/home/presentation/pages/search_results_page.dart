@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter/services.dart';
@@ -190,7 +191,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return BlocListener<HomeBloc, HomeState>(
+    final page = BlocListener<HomeBloc, HomeState>(
       listenWhen: (prev, curr) =>
           prev.savedFreeCount != curr.savedFreeCount ||
           prev.errorMessage != curr.errorMessage ||
@@ -311,6 +312,20 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
             },
           ),
         ),
+      ),
+    );
+    return _webWrap(ext, page);
+  }
+
+  /// On web desktop, centre the page in a 480 dp column so it matches the
+  /// phone-sized layout used across the app — fonts and spacing stay correct.
+  static Widget _webWrap(AppThemeExtension ext, Widget child) {
+    if (!kIsWeb) return child;
+    return ColoredBox(
+      color: ext.homeBackground,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(width: 480, child: child),
       ),
     );
   }
