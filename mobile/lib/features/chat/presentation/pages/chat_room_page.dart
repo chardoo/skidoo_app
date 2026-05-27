@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -438,7 +439,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: IconButton(
+        leading: kIsWeb ? null : IconButton(
           icon: Icon(Icons.arrow_back_ios_rounded,
               color: ext.greetingColor, size: 18.sp),
           onPressed: () => Navigator.of(context).pop(),

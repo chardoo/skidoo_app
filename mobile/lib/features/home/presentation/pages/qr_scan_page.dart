@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -58,7 +59,7 @@ class _QrScanPageState extends State<QrScanPage> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
-        leading: IconButton(
+        leading: kIsWeb ? null : IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: Colors.white, size: 20.sp),
           onPressed: () => Navigator.of(context).pop(),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
@@ -29,7 +30,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.forgotPasswordTitle),
-        leading: BackButton(
+        leading: kIsWeb ? null : BackButton(
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),

@@ -310,11 +310,16 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
 
   @override
   Widget build(BuildContext context) {
-    final video = Video(
-      controller: _controller,
-      fit: widget.fit,
-      fill: widget.backgroundColor,
-      controls: NoVideoControls,
+    // ClipRect prevents the texture from bleeding outside its allocated box.
+    // alignment: center ensures the frame is centred when contain-fit letterboxes.
+    final video = ClipRect(
+      child: Video(
+        controller: _controller,
+        fit: widget.fit,
+        fill: widget.backgroundColor,
+        alignment: Alignment.center,
+        controls: NoVideoControls,
+      ),
     );
 
     // ── Sizing ─────────────────────────────────────────────────────────────
@@ -328,7 +333,9 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     } else if (widget.height != null) {
       sized = SizedBox(height: widget.height, child: video);
     } else {
-      sized = video; // fills parent constraints
+      // No explicit dimensions — expand to fill parent so the Video widget
+      // always has a well-defined box to centre the frame within.
+      sized = SizedBox.expand(child: video);
     }
 
     // ── Controls overlay ───────────────────────────────────────────────────
@@ -728,11 +735,14 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
           fit: StackFit.expand,
           children: [
             // ── Video ───────────────────────────────────────────────────────
-            Video(
-              controller: _controller,
-              fit: BoxFit.contain,
-              fill: Colors.black,
-              controls: NoVideoControls,
+            ClipRect(
+              child: Video(
+                controller: _controller,
+                fit: BoxFit.contain,
+                fill: Colors.black,
+                alignment: Alignment.center,
+                controls: NoVideoControls,
+              ),
             ),
 
             // ── Controls overlay ────────────────────────────────────────────
