@@ -60,10 +60,11 @@ class _SidebarShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Material(
+      color: ext.homeBackground,
+      child: SizedBox(
       width: _kSidebarWidth,
       height: double.infinity,
-      color: ext.homeBackground,
       child: DecoratedBox(
         decoration: BoxDecoration(
           border: Border(
@@ -124,6 +125,7 @@ class _SidebarShell extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
