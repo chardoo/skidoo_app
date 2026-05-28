@@ -236,6 +236,12 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
     _removeOverlay();
     if (!mounted) return;
 
+    // The sidebar lives in MaterialApp.builder — above the Navigator — so
+    // Overlay.of(context) finds nothing. Use the Navigator's own overlay via
+    // the global key instead.
+    final overlay = AppNavigator.navigatorKey.currentState?.overlay;
+    if (overlay == null) return;
+
     _overlayEntry = OverlayEntry(
       builder: (_) => _SidebarTypeaheadDropdown(
         layerLink: _layerLink,
@@ -243,7 +249,7 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
         onSelect: _onEventSelected,
       ),
     );
-    Overlay.of(context).insert(_overlayEntry!);
+    overlay.insert(_overlayEntry!);
   }
 
   void _removeOverlay() {
