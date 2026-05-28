@@ -32,16 +32,19 @@ class WebSidebar extends StatelessWidget {
       builder: (context, _) {
         final selectedTab = HomePage.webSelectedTab.value;
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
-        // Use the reactive auth flag rather than checking the route name.
-        // Previously this was `routeName == HomePage.routeName`, which showed
-        // the logged-out nav when authenticated users are on /discovery.
         final isLoggedIn = AuthService.isAuthenticated.value;
+        // Show the full tab nav only when the user is inside /home.
+        // On /discovery (whether logged in or out) render the same minimal
+        // sidebar so the content column width and reactions layout are
+        // identical in both states.
+        final routeName = WebRouteObserver.currentRouteName.value;
+        final isOnHome = routeName == HomePage.routeName;
 
         return _SidebarShell(
           ext: ext,
-          child: isLoggedIn
+          child: isLoggedIn && isOnHome
               ? _LoggedInNav(ext: ext, selectedTab: selectedTab)
-              : _LoggedOutNav(ext: ext),
+              : _DiscoveryModeNav(ext: ext, isLoggedIn: isLoggedIn),
         );
       },
     );
@@ -461,11 +464,16 @@ class _TypeaheadItemState extends State<_TypeaheadItem> {
   }
 }
 
-// ── Logged-out nav ────────────────────────────────────────────────────────────
+// ── Discovery-mode nav (shown on /discovery for both logged-in and guests) ────
+//
+// Logged-in users on /discovery see the same minimal sidebar as guests so that
+// the content column width and reactions layout are identical in both states.
+// The only visual difference is the auth buttons: Logout vs Sign up / Log in.
 
-class _LoggedOutNav extends StatelessWidget {
-  const _LoggedOutNav({required this.ext});
+class _DiscoveryModeNav extends StatelessWidget {
+  const _DiscoveryModeNav({required this.ext, required this.isLoggedIn});
   final AppThemeExtension ext;
+  final bool isLoggedIn;
 
   @override
   Widget build(BuildContext context) {
@@ -507,35 +515,53 @@ class _LoggedOutNav extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
-        // Sign up
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _TextActionButton(
-            label: 'Sign up',
-            ext: ext,
-            onTap: () => AppNavigator.navigatorKey.currentState
-                ?.pushNamed(SignUpPage.routeName),
+        if (isLoggedIn) ...[
+          // Logged in on Discovery — single Log out action
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            child: _TextActionButton(
+              label: 'Log out',
+              ext: ext,
+              onTap: () async {
+                await sl<AuthService>().removeToken();
+                AppNavigator.navigatorKey.currentState
+                    ?.pushNamedAndRemoveUntil(
+                  DiscoveryPage.routeName,
+                  (route) => false,
+                );
+              },
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
+        ] else ...[
+          // Guest — Sign up + Log in
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _TextActionButton(
+              label: 'Sign up',
+              ext: ext,
+              onTap: () => AppNavigator.navigatorKey.currentState
+                  ?.pushNamed(SignUpPage.routeName),
+            ),
+          ),
+          const SizedBox(height: 8),
 
-        // Log in
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          child: _PrimaryButton(
-            label: 'Log in',
-            ext: ext,
-            onTap: () {
-              final ctx = AppNavigator.navigatorKey.currentContext;
-              if (ctx == null) return;
-              showLoginSheet(
-                ctx,
-                onLoginSuccess: () => AppNavigator.navigatorKey.currentState
-                    ?.pushReplacementNamed(HomePage.routeName),
-              );
-            },
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            child: _PrimaryButton(
+              label: 'Log in',
+              ext: ext,
+              onTap: () {
+                final ctx = AppNavigator.navigatorKey.currentContext;
+                if (ctx == null) return;
+                showLoginSheet(
+                  ctx,
+                  onLoginSuccess: () => AppNavigator.navigatorKey.currentState
+                      ?.pushReplacementNamed(HomePage.routeName),
+                );
+              },
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -974,10 +1000,13 @@ class WebTopNav extends StatelessWidget {
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
         final isLoggedIn = AuthService.isAuthenticated.value;
 
+        final routeName = WebRouteObserver.currentRouteName.value;
+        final isOnHome = routeName == HomePage.routeName;
         return _TopNavBar(
           ext: ext,
           isLoggedIn: isLoggedIn,
           selectedTab: selectedTab,
+          isOnHome: isOnHome,
         );
       },
     );
@@ -989,11 +1018,13 @@ class _TopNavBar extends StatelessWidget {
     required this.ext,
     required this.isLoggedIn,
     required this.selectedTab,
+    required this.isOnHome,
   });
 
   final AppThemeExtension ext;
   final bool isLoggedIn;
   final int selectedTab;
+  final bool isOnHome;
 
   @override
   Widget build(BuildContext context) {
@@ -1070,7 +1101,7 @@ class _TopNavBar extends StatelessWidget {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Row(
-                      children: isLoggedIn
+                      children: isLoggedIn && isOnHome
                           ? _loggedInPills()
                           : _loggedOutPills(),
                     ),

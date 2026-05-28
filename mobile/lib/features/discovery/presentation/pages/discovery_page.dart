@@ -242,6 +242,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                                   onTap: () => _onCardTap(context, ev),
                                   isOwner: state.currentUserId != null &&
                                       state.currentUserId == ev.photographerId,
+                                  isAuthenticated: (state.currentUserId ?? '').isNotEmpty,
                                   onHide: () => _onHide(ev.id),
                                 ),
                               ),
