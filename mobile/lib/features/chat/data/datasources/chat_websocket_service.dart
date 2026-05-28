@@ -534,12 +534,15 @@ class ChatWebSocketService {
               ));
             }
           } else {
-            debugPrint('[WS] routing as ChatMessage: type=$type id=${json['id']} roomId=${json['room_id']} senderId=${json['sender_id']} isEncrypted=${json['is_encrypted']} contentLen=${json['content']?.toString().length}');
+            // All unmatched types (including 'message' from server) are treated
+            // as chat messages.  On web, sender_role may be absent — handled by
+            // the nullable cast in ChatMessage.fromJson (defaults to '').
+            debugPrint('[WS] routing as ChatMessage: type=$type id=${json['id']} roomId=${json['room_id']} senderId=${json['sender_id']} role=${json['sender_role']} isEncrypted=${json['is_encrypted']} contentLen=${json['content']?.toString().length}');
             _msgController?.add(ChatMessage.fromJson(json));
           }
-        } catch (e) {
+        } catch (e, st) {
           final rawStr = raw is String ? raw : raw.toString();
-          debugPrint('[WS] frame parse error: $e  raw=${rawStr.length > 200 ? rawStr.substring(0, 200) : rawStr}');
+          debugPrint('[WS] frame parse error: $e\n$st\n  raw=${rawStr.length > 300 ? rawStr.substring(0, 300) : rawStr}');
         }
       },
       onError: (e) {

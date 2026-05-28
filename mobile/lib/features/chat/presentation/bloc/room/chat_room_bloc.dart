@@ -195,10 +195,15 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // during the network round-trips are queued in the BLoC event queue and
     // processed after _onJoined completes — nothing is dropped.
     //
-    // DM rooms must wait until after _deriveKeyFromHistory establishes the
-    // session key; otherwise messages received before E2EE is ready are
+    // DM rooms on mobile must wait until after _deriveKeyFromHistory establishes
+    // the session key; otherwise messages received before E2EE is ready are
     // decrypted with a null key → blank content → permanent loss.
-    if (!isDm) {
+    //
+    // DM rooms on web: E2EE is never used (kIsWeb guard below skips the whole
+    // E2EE setup block), so we attach listeners early — same as non-DM rooms.
+    // Without this, WS messages that arrive during the REST fetch are dropped
+    // by the paused background service and permanently lost (no SQLite on web).
+    if (!isDm || kIsWeb) {
       _connectWsInBackground(event.roomId);
     }
 
@@ -345,13 +350,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             state.messages.isEmpty ? 'Could not load messages.' : null,
       ));
     } finally {
-      // DM: must wait until after _deriveKeyFromHistory stores the session key;
-      // otherwise _onKeyBundlesReceived finds no stored key and runs proactive
-      // X3DH, overwriting the correct key with a mismatched one.
-      // Non-DM rooms already attached listeners before the REST fetch (line above);
-      // calling _connectWsInBackground again would cancel those listeners and
-      // briefly leave the room with no active subscription.
-      if (_isDirectRoom) {
+      // Mobile DMs: attach WS listeners only AFTER _deriveKeyFromHistory has
+      // stored the session key, so _onKeyBundlesReceived doesn't overwrite it
+      // with a wrong proactive key. Non-DM rooms (and web DMs, which skip E2EE
+      // entirely) already called _connectWsInBackground above; re-calling here
+      // would cancel valid subscriptions and briefly leave no active listener.
+      if (_isDirectRoom && !kIsWeb) {
         _connectWsInBackground(event.roomId);
       }
     }

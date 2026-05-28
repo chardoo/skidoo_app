@@ -132,7 +132,10 @@ class ChatMessage {
       roomId: json['room_id'] as String,
       senderId: json['sender_id'] as String,
       senderName: json['sender_name'] as String? ?? '',
-      senderRole: json['sender_role'] as String,
+      // sender_role can be absent/null in some server frames (e.g. web clients
+      // whose role isn't tracked); default to '' rather than throwing a
+      // TypeError that silently drops the WS message.
+      senderRole: json['sender_role'] as String? ?? '',
       content: json['content'] as String? ?? '',
       imageUrl: imageUrl,
       isVideo: isVideoFlag || isVideoByExt,
