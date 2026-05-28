@@ -25,6 +25,8 @@ class MessageBubble extends StatelessWidget {
     required this.isMe,
     this.onUserTap,
     this.onLongPress,
+    this.readCount = 0,
+    this.totalOthers = 0,
   });
 
   final ChatMessage message;
@@ -33,6 +35,12 @@ class MessageBubble extends StatelessWidget {
 
   /// Called when user long-presses to initiate a reply.
   final VoidCallback? onLongPress;
+
+  /// How many non-sender participants have read this message.
+  final int readCount;
+
+  /// Total non-sender participants in the room (1 for DM, N-1 for group).
+  final int totalOthers;
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +183,12 @@ class MessageBubble extends StatelessWidget {
                                 ),
                               SizedBox(height: 3.h),
                               _Timestamp(
-                                  message: message, isMe: isMe, ext: ext),
+                                message: message,
+                                isMe: isMe,
+                                ext: ext,
+                                readCount: readCount,
+                                totalOthers: totalOthers,
+                              ),
                             ],
                           ),
                         )
@@ -363,16 +376,65 @@ class _Timestamp extends StatelessWidget {
     required this.message,
     required this.isMe,
     required this.ext,
+    this.readCount = 0,
+    this.totalOthers = 0,
   });
   final ChatMessage message;
   final bool isMe;
   final AppThemeExtension ext;
+  final int readCount;
+  final int totalOthers;
 
   @override
   Widget build(BuildContext context) {
     final h = message.createdAt.hour.toString().padLeft(2, '0');
     final m = message.createdAt.minute.toString().padLeft(2, '0');
     final timeStr = '$h:$m';
+
+    // Read-status logic (only for my sent messages with known participant count).
+    Widget? readIndicator;
+    if (isMe && totalOthers > 0 && !message.isLocal) {
+      final allRead = readCount >= totalOthers;
+      final someRead = readCount > 0;
+      if (totalOthers == 1) {
+        // DM: single/double tick, coloured when read.
+        readIndicator = Icon(
+          allRead ? Icons.done_all_rounded : Icons.done_rounded,
+          size: 11.sp,
+          color: allRead ? ext.accentGold : Colors.white70,
+        );
+      } else {
+        // Group: double tick when all read; "Read by N" when partial; single tick when none.
+        if (allRead) {
+          readIndicator = Icon(
+            Icons.done_all_rounded,
+            size: 11.sp,
+            color: ext.accentGold,
+          );
+        } else if (someRead) {
+          readIndicator = Text(
+            'Read by $readCount',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 9.sp,
+            ),
+          );
+        } else {
+          readIndicator = Icon(
+            Icons.done_rounded,
+            size: 11.sp,
+            color: Colors.white70,
+          );
+        }
+      }
+    } else if (isMe) {
+      // Fallback when participant count is unknown or message is local (pending).
+      readIndicator = Icon(
+        message.isLocal ? Icons.access_time_rounded : Icons.done_all_rounded,
+        size: 11.sp,
+        color: Colors.white70,
+      );
+    }
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -395,15 +457,9 @@ class _Timestamp extends StatelessWidget {
             ),
           ),
         ],
-        if (isMe) ...[
+        if (readIndicator != null) ...[
           SizedBox(width: 3.w),
-          Icon(
-            message.isLocal
-                ? Icons.access_time_rounded
-                : Icons.done_all_rounded,
-            size: 11.sp,
-            color: Colors.white70,
-          ),
+          readIndicator,
         ],
       ],
     );

@@ -707,10 +707,15 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                               }
                             }
 
+                            final totalOthers = (state.room?.participants ?? [])
+                                .where((p) => p.userId != msg.senderId)
+                                .length;
                             final bubble = MessageBubble(
                               key: ValueKey(msg.id),
                               message: msg,
                               isMe: isMe,
+                              readCount: msg.readBy.length,
+                              totalOthers: totalOthers,
                               onUserTap: isMe
                                   ? null
                                   : () => _onUserTap(context, msg),

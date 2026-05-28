@@ -751,9 +751,14 @@ class _MessageList extends StatelessWidget {
         final msg = state.messages[index];
         final isMe = msg.senderId == state.myUserId;
         final shouldAnimate = animateIds.remove(msg.id);
+        final totalOthers = (state.room?.participants ?? [])
+            .where((p) => p.userId != msg.senderId)
+            .length;
         final bubble = MessageBubble(
           message: msg,
           isMe: isMe,
+          readCount: msg.readBy.length,
+          totalOthers: totalOthers,
           onLongPress: () =>
               context.read<ChatRoomBloc>().add(ChatRoomReplySet(msg)),
         );

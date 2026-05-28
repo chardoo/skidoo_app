@@ -11,7 +11,7 @@ import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service
     show ChatWebSocketService, WsAdminGrantedEvent, WsAdminRevokedEvent,
         WsKeyBundlesEvent, WsKeyRotationEvent, WsMessageDeletedEvent,
         WsMessageEditedEvent, WsParticipantKeyAvailable,
-        WsParticipantRemovedEvent, WsRoomDeletedEvent,
+        WsParticipantRemovedEvent, WsReadReceiptEvent, WsRoomDeletedEvent,
         WsRoomSettingsUpdatedEvent, WsSenderKeyDistributionEvent,
         WsUserJoinedEvent;
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
@@ -87,6 +87,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   StreamSubscription<WsRoomDeletedEvent>? _wsRoomDeletedSub;
   StreamSubscription<WsSenderKeyDistributionEvent>? _wsSenderKeyDistSub;
   StreamSubscription? _wsParticipantLeftSub;
+  StreamSubscription<WsReadReceiptEvent>? _wsReadReceiptSub;
   // Waits for ChatBackgroundService to signal the WS is (re)connected.
   StreamSubscription<bool>? _wsConnectionSub;
   Timer? _otpkPollTimer;
@@ -175,6 +176,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_RoomDeleted>(_onRoomDeleted);
     on<_GroupSenderKeyReceived>(_onGroupSenderKeyReceived);
     on<_ParticipantLeft>(_onParticipantLeft);
+    on<_ReadReceiptReceived>(_onReadReceiptReceived);
   }
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -324,6 +326,15 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         // pendingShareUrl is preserved via copyWith (not cleared here)
       ));
 
+      // Send bulk ack for all loaded messages so the server can notify senders
+      // that we've read their messages.
+      final latestMessage = merged
+          .where((m) => !m.isLocal && m.senderId != _myUserId)
+          .firstOrNull;
+      if (latestMessage != null) {
+        _ws.sendAck(event.roomId, latestMessage.id);
+      }
+
       if (!kIsWeb) {
         // Scan REST history for X3DH headers BEFORE the WS connects.
         // REST messages still carry is_encrypted=true and the full X3DH header.
@@ -405,6 +416,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsRoomDeletedSub?.cancel();
     _wsSenderKeyDistSub?.cancel();
     _wsParticipantLeftSub?.cancel();
+    _wsReadReceiptSub?.cancel();
     _wsMsgSub = null;
     _wsLikeSub = null;
     _wsPicLikeSub = null;
@@ -421,6 +433,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsRoomDeletedSub = null;
     _wsSenderKeyDistSub = null;
     _wsParticipantLeftSub = null;
+    _wsReadReceiptSub = null;
   }
 
   void _setupWsListeners(String roomId) {
@@ -559,6 +572,18 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       (event) {
         if (!isClosed && event.roomId == roomId) {
           add(_ParticipantLeft(event.userId));
+        }
+      },
+    );
+
+    _wsReadReceiptSub = _ws.readReceiptEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId && event.readerId != _myUserId) {
+          add(_ReadReceiptReceived(
+            readerId: event.readerId,
+            upToMessageId: event.upToMessageId,
+            messageId: event.messageId,
+          ));
         }
       },
     );
@@ -1210,6 +1235,10 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     if (!isClosed && roomId != null) {
       await _markAsRead(roomId).catchError((_) {});
       _bgService.onRoomRead?.call(roomId);
+      // Ack this message so the sender sees their read receipt.
+      if (msg.senderId != _myUserId && !msg.isLocal) {
+        _ws.sendAck(roomId, msg.id);
+      }
     }
     _bgService.onUnreadUpdate?.call();
   }
@@ -1973,6 +2002,30 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     if (_isGroupRoom && _currentRoomId != null) {
       _rekeyGroup(_currentRoomId!).catchError((_) {});
     }
+  }
+
+  void _onReadReceiptReceived(
+    _ReadReceiptReceived event,
+    Emitter<ChatRoomState> emit,
+  ) {
+    final upToId = event.upToMessageId;
+    final singleId = event.messageId;
+    final readerId = event.readerId;
+
+    // Find the timestamp of the upTo message for bulk-ack range comparison.
+    final upToMsg = upToId != null
+        ? state.messages.where((m) => m.id == upToId).firstOrNull
+        : null;
+
+    final updated = state.messages.map((msg) {
+      if (msg.readBy.contains(readerId)) return msg;
+      final shouldMark = upToMsg != null
+          ? !msg.createdAt.isAfter(upToMsg.createdAt)
+          : singleId != null && msg.id == singleId;
+      return shouldMark ? msg.copyWith(readBy: [...msg.readBy, readerId]) : msg;
+    }).toList();
+
+    emit(state.copyWith(messages: updated));
   }
 
   // ── Group E2EE helpers ────────────────────────────────────────────────────

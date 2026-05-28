@@ -217,11 +217,15 @@ class _AppMaterial extends StatelessWidget {
       // the sidebar/navbar when they want chat, gallery, or photographers.
       initialRoute: DiscoveryPage.routeName,
       routes: {
-        DiscoveryPage.routeName: (_) => isDeviceCompromised
-            ? const _SecurityWarningPage()
-            : const DiscoveryPage(),
-        LoginPage.routeName: (_) => const LoginPage(),
-        SignUpPage.routeName: (_) => const SignUpPage(),
+        // On web, guest-only pages redirect authenticated users to /home so
+        // that pressing browser Back never lands on the unauthenticated UI.
+        DiscoveryPage.routeName: (_) => _GuestGuard(
+              child: isDeviceCompromised
+                  ? const _SecurityWarningPage()
+                  : const DiscoveryPage(),
+            ),
+        LoginPage.routeName: (_) => const _GuestGuard(child: LoginPage()),
+        SignUpPage.routeName: (_) => const _GuestGuard(child: SignUpPage()),
         HomePage.routeName: (_) => _AuthGuard(
               child: isDeviceCompromised
                   ? const _SecurityWarningPage()
@@ -358,6 +362,59 @@ class _AuthGuardState extends State<_AuthGuard> {
         return widget.child;
       },
     );
+  }
+}
+
+// ── Guest route guard ─────────────────────────────────────────────────────────
+
+/// Inverse of [_AuthGuard]: protects pages that must only be visible to
+/// **unauthenticated** users (Discovery, Login, Sign-up).
+///
+/// On web, if [AuthService.isAuthenticated] is already true (seeded
+/// synchronously at startup before the first frame), the user is immediately
+/// redirected to [HomePage] — preventing them from landing on the guest UI
+/// when they press the browser Back button from an authenticated session.
+///
+/// On mobile the guard is a no-op; the native back-stack never surfaces the
+/// guest pages once the user is inside the authenticated area.
+class _GuestGuard extends StatefulWidget {
+  const _GuestGuard({required this.child});
+  final Widget child;
+
+  @override
+  State<_GuestGuard> createState() => _GuestGuardState();
+}
+
+class _GuestGuardState extends State<_GuestGuard> {
+  /// Captured once in [initState] so repeated [build] calls are idempotent.
+  late final bool _shouldRedirect;
+
+  @override
+  void initState() {
+    super.initState();
+    // Redirect only on web and only when the user is already authenticated.
+    // AuthService.isAuthenticated is seeded from Secure Storage before runApp
+    // so this is a synchronous, zero-latency check — no frame flash.
+    _shouldRedirect = kIsWeb && AuthService.isAuthenticated.value;
+    if (_shouldRedirect) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            HomePage.routeName,
+            (route) => false,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_shouldRedirect) {
+      // Show neutral background while the post-frame redirect fires.
+      return const Scaffold(backgroundColor: Color(0xFF0D0D0D));
+    }
+    return widget.child;
   }
 }
 

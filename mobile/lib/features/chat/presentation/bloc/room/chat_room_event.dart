@@ -256,3 +256,15 @@ class _ParticipantLeft extends ChatRoomEvent {
   final String userId;
   const _ParticipantLeft(this.userId);
 }
+
+/// WS broadcast: another participant acknowledged reading messages.
+class _ReadReceiptReceived extends ChatRoomEvent {
+  final String readerId;
+  final String? upToMessageId;
+  final String? messageId;
+  const _ReadReceiptReceived({
+    required this.readerId,
+    this.upToMessageId,
+    this.messageId,
+  });
+}

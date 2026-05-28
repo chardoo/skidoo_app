@@ -46,6 +46,10 @@ class ChatMessage {
   final DateTime createdAt;
   final bool isRead;
 
+  /// IDs of participants (other than the sender) who have read this message.
+  /// Populated from REST `read_by` array and updated live via `read_receipt` WS events.
+  final List<String> readBy;
+
   /// True for messages added optimistically before server confirms.
   final bool isLocal;
 
@@ -103,6 +107,7 @@ class ChatMessage {
     this.replyPreview,
     required this.createdAt,
     this.isRead = false,
+    this.readBy = const [],
     this.isLocal = false,
     this.isEncrypted = false,
     this.iv,
@@ -143,6 +148,9 @@ class ChatMessage {
       replyPreview: preview,
       createdAt: DateTime.parse(json['created_at'] as String),
       isRead: (json['is_read'] as bool?) ?? false,
+      readBy: (json['read_by'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
       isEncrypted: (json['is_encrypted'] as bool?) ?? false,
       iv: json['iv'] as String?,
       ephemeralKey: json['ephemeral_key'] as String?,
@@ -195,6 +203,7 @@ class ChatMessage {
     String? id,
     String? senderName,
     bool? isRead,
+    List<String>? readBy,
     bool? isLocal,
     String? imageUrl,
     bool? isVideo,
@@ -216,6 +225,7 @@ class ChatMessage {
       replyPreview: replyPreview,
       createdAt: createdAt,
       isRead: isRead ?? this.isRead,
+      readBy: readBy ?? this.readBy,
       isLocal: isLocal ?? this.isLocal,
       isEncrypted: isEncrypted ?? this.isEncrypted,
       iv: iv,

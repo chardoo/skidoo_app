@@ -150,6 +150,22 @@ class WsRoomDeletedEvent {
   const WsRoomDeletedEvent({required this.roomId, required this.deletedBy});
 }
 
+/// Broadcast when another participant reads messages in this room.
+class WsReadReceiptEvent {
+  final String roomId;
+  final String readerId;
+  /// Set for bulk acks — all messages up to and including this ID are read.
+  final String? upToMessageId;
+  /// Set for single-message acks.
+  final String? messageId;
+  const WsReadReceiptEvent({
+    required this.roomId,
+    required this.readerId,
+    this.upToMessageId,
+    this.messageId,
+  });
+}
+
 /// Pushed directly to a member when another member distributes their group
 /// sender key (on join or after a re-key triggered by a member departure).
 class WsSenderKeyDistributionEvent {
@@ -217,6 +233,7 @@ class ChatWebSocketService {
   StreamController<WsParticipantLeftEvent>? _participantLeftController;
   StreamController<WsRoomDeletedEvent>? _roomDeletedController;
   StreamController<WsSenderKeyDistributionEvent>? _senderKeyDistController;
+  StreamController<WsReadReceiptEvent>? _readReceiptController;
   StreamSubscription? _sub;
 
   /// Emits the initial server handshake (userId + room list).
@@ -290,6 +307,10 @@ class ChatWebSocketService {
   /// Emits when another member distributes their group sender key to us.
   Stream<WsSenderKeyDistributionEvent> get senderKeyDistributionEvents =>
       _senderKeyDistController?.stream ?? const Stream.empty();
+
+  /// Emits when another participant acknowledges reading messages in this room.
+  Stream<WsReadReceiptEvent> get readReceiptEvents =>
+      _readReceiptController?.stream ?? const Stream.empty();
 
   bool _connected = false;
   bool get isConnected => _connected;
@@ -372,6 +393,7 @@ class ChatWebSocketService {
     _participantLeftController = StreamController<WsParticipantLeftEvent>.broadcast();
     _roomDeletedController = StreamController<WsRoomDeletedEvent>.broadcast();
     _senderKeyDistController = StreamController<WsSenderKeyDistributionEvent>.broadcast();
+    _readReceiptController = StreamController<WsReadReceiptEvent>.broadcast();
 
     try {
       _channel = WebSocketChannel.connect(uri);
@@ -533,6 +555,15 @@ class ChatWebSocketService {
                 encryptedKey: json['message'] as String,
               ));
             }
+          } else if (type == 'read_receipt') {
+            if (json['room_id'] is String && json['reader_id'] is String) {
+              _readReceiptController?.add(WsReadReceiptEvent(
+                roomId: json['room_id'] as String,
+                readerId: json['reader_id'] as String,
+                upToMessageId: json['up_to_message_id'] as String?,
+                messageId: json['message_id'] as String?,
+              ));
+            }
           } else {
             // All unmatched types (including 'message' from server) are treated
             // as chat messages.  On web, sender_role may be absent — handled by
@@ -644,6 +675,16 @@ class ChatWebSocketService {
   void sendPictureUnlike(String pictureId, {String? roomId}) =>
       _sendRaw({'type': 'picture_unlike', 'picture_id': pictureId, if (roomId != null) 'room_id': roomId});
 
+  /// Acknowledge reading all messages up to [upToMessageId] in [roomId].
+  /// The server broadcasts a `read_receipt` event to all other room members.
+  void sendAck(String roomId, String upToMessageId) {
+    _sendRaw({
+      'type': 'ack',
+      'room_id': roomId,
+      'up_to_message_id': upToMessageId,
+    });
+  }
+
   void _sendRaw(Map<String, dynamic> data) {
     if (!_connected || _channel == null) return;
     // Every outbound event must include room_id per the global-endpoint protocol.
@@ -676,6 +717,7 @@ class ChatWebSocketService {
     _participantLeftController?.close();
     _roomDeletedController?.close();
     _senderKeyDistController?.close();
+    _readReceiptController?.close();
     _connectedController = null;
     _msgController = null;
     _likeController = null;
@@ -694,6 +736,7 @@ class ChatWebSocketService {
     _participantLeftController = null;
     _roomDeletedController = null;
     _senderKeyDistController = null;
+    _readReceiptController = null;
   }
 
   /// Gracefully close the connection.

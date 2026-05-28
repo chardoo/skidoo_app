@@ -1389,9 +1389,11 @@ class _WebReactionsColumn extends StatelessWidget {
         color: ext.homeBackground,
         border: border,
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
           _WebActionBtn(
             icon: liked
                 ? Icons.favorite_rounded
@@ -1451,6 +1453,7 @@ class _WebReactionsColumn extends StatelessWidget {
             onTap: onShare,
           ),
         ],
+        ),
       ),
     );
   }

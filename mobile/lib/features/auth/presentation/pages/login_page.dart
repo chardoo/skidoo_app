@@ -10,7 +10,7 @@ import 'package:skidoo_app/features/auth/presentation/pages/interests_page.dart'
 import 'package:skidoo_app/features/auth/presentation/widgets/auth_text_field.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
+import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
@@ -84,10 +84,11 @@ class _LoginViewState extends State<_LoginView>
             // level ChatRoomsBloc (which may have started unauthenticated)
             // connects to the WS and populates the unread-count badge.
             context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
-            Navigator.of(context).pushReplacementNamed(
+            Navigator.of(context).pushNamedAndRemoveUntil(
               state.needsInterests
                   ? InterestsPage.routeName
-                  : DiscoveryPage.routeName,
+                  : HomePage.routeName,
+              (route) => false,
             );
           }
           if (state.errorMessage != null && !state.isLoading) {
