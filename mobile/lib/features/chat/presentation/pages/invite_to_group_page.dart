@@ -10,6 +10,7 @@ import 'package:skidoo_app/features/chat/data/datasources/user_search_data_sourc
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/models/chat/shareable_user.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 /// Lets an existing group member search for and invite new users to [room].
 class InviteToGroupPage extends StatefulWidget {
@@ -124,7 +125,7 @@ class _InviteToGroupPageState extends State<InviteToGroupPage> {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final canInvite = _selected.isNotEmpty && !_isInviting;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
@@ -213,6 +214,7 @@ class _InviteToGroupPageState extends State<InviteToGroupPage> {
         ],
       ),
     );
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 }
 

@@ -7,6 +7,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/chat/data/datasources/user_search_data_source.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/models/chat/shareable_user.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class CreateGroupPage extends StatefulWidget {
   const CreateGroupPage({super.key});
@@ -103,7 +104,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
@@ -172,6 +173,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
         ],
       ),
     );
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 }
 

@@ -19,6 +19,7 @@ import 'package:skidoo_app/features/chat/presentation/widgets/message_entrance.d
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/services/notification_prefs_service.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 /// Displays the messages for [room].
 /// Use the [ChatRoomPage.global] constructor to join the global chat room.
@@ -83,34 +84,40 @@ class _GlobalRoomInitializerState extends State<_GlobalRoomInitializer> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     if (_loading) {
-      return Scaffold(
+      return webWrap(
+        Scaffold(
+          backgroundColor: ext.homeBackground,
+          body: Center(child: CircularProgressIndicator(color: ext.accentGold)),
+        ),
         backgroundColor: ext.homeBackground,
-        body: Center(child: CircularProgressIndicator(color: ext.accentGold)),
       );
     }
     if (_error != null) {
-      return Scaffold(
-        backgroundColor: ext.homeBackground,
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline_rounded,
-                  color: Colors.redAccent, size: 48.sp),
-              SizedBox(height: 8.h),
-              Text(_error!,
-                  style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
-                  textAlign: TextAlign.center),
-              TextButton(
-                onPressed: () {
-                  setState(() { _loading = true; _error = null; });
-                  _load();
-                },
-                child: Text(AppLocalizations.of(context)!.photographerProfileRetry, style: TextStyle(color: ext.accentGold)),
-              ),
-            ],
+      return webWrap(
+        Scaffold(
+          backgroundColor: ext.homeBackground,
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error_outline_rounded,
+                    color: Colors.redAccent, size: 48.sp),
+                SizedBox(height: 8.h),
+                Text(_error!,
+                    style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+                    textAlign: TextAlign.center),
+                TextButton(
+                  onPressed: () {
+                    setState(() { _loading = true; _error = null; });
+                    _load();
+                  },
+                  child: Text(AppLocalizations.of(context)!.photographerProfileRetry, style: TextStyle(color: ext.accentGold)),
+                ),
+              ],
+            ),
           ),
         ),
+        backgroundColor: ext.homeBackground,
       );
     }
     return _ChatRoomView(room: _room!);
@@ -340,7 +347,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(AppLocalizations.of(context)!.chatRoomDelete,
-                style: TextStyle(
+                style: const TextStyle(
                     color: Colors.redAccent, fontWeight: FontWeight.bold)),
           ),
         ],
@@ -434,7 +441,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
@@ -803,6 +810,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
         ),
       ),
     );
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 }
 

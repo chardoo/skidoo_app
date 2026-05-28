@@ -7,6 +7,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/invite_to_group_page.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 /// WhatsApp-style group info page.
 ///
@@ -19,7 +20,7 @@ class GroupInfoPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
@@ -204,6 +205,7 @@ class GroupInfoPage extends StatelessWidget {
         },
       ),
     );
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
   void _confirmLeave(BuildContext context, AppThemeExtension ext) {

@@ -6,6 +6,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/common/customButtom.dart';
 import 'package:skidoo_app/core/common/textfield.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class ForgetPasswordPage extends StatefulWidget {
   static const routeName = '/forgotPassword';
@@ -27,7 +28,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final page = Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.forgotPasswordTitle),
         leading: kIsWeb ? null : BackButton(
@@ -78,5 +79,8 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
         ),
       ),
     );
+    return webWrap(page,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        width: kWebColumnWidth);
   }
 }

@@ -9,6 +9,7 @@ import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart'
 import 'package:skidoo_app/features/chat/presentation/pages/create_group_page.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/room_tile.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class ChatRoomsPage extends StatelessWidget {
   const ChatRoomsPage({super.key});
@@ -39,7 +40,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final l10n = AppLocalizations.of(context)!;
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(
         backgroundColor: ext.accentGold,
@@ -272,6 +273,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
         ),
       ),
     );
+    return webWrap(page, backgroundColor: Colors.transparent);
   }
 
   void _openRoom(BuildContext context, ChatRoom room) {
