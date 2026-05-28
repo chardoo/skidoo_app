@@ -9,6 +9,7 @@ import 'package:skidoo_app/features/auth/presentation/pages/forget_password_page
 import 'package:skidoo_app/features/auth/presentation/pages/interests_page.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/auth_text_field.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 
@@ -79,6 +80,10 @@ class _LoginViewState extends State<_LoginView>
       body: BlocConsumer<LoginBloc, LoginState>(
         listener: (context, state) {
           if (state.isSuccess) {
+            // Reload rooms with the freshly-acquired auth token so the root-
+            // level ChatRoomsBloc (which may have started unauthenticated)
+            // connects to the WS and populates the unread-count badge.
+            context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
             Navigator.of(context).pushReplacementNamed(
               state.needsInterests
                   ? InterestsPage.routeName

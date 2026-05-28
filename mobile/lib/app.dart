@@ -16,6 +16,7 @@ import 'package:skidoo_app/features/auth/presentation/pages/interests_page.dart'
 import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 
@@ -49,6 +50,14 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider.value(value: sl<CartBloc>()),
         BlocProvider.value(value: sl<ThemeCubit>()),
+        // ChatRoomsBloc lives here (root level) so it is always alive regardless
+        // of which page is shown.  This ensures the WS background-message
+        // subscription (_bgMsgSub) keeps the unread-count badge up to date even
+        // when the user is on DiscoveryPage and has never visited /home.
+        BlocProvider(
+          create: (_) =>
+              sl<ChatRoomsBloc>()..add(const ChatRoomsLoadRequested()),
+        ),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) => kIsWeb

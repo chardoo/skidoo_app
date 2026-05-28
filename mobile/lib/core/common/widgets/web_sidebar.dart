@@ -27,12 +27,15 @@ class WebSidebar extends StatelessWidget {
       listenable: Listenable.merge([
         WebRouteObserver.currentRouteName,
         HomePage.webSelectedTab,
+        AuthService.isAuthenticated,
       ]),
       builder: (context, _) {
-        final routeName = WebRouteObserver.currentRouteName.value;
-        final isLoggedIn = routeName == HomePage.routeName;
         final selectedTab = HomePage.webSelectedTab.value;
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
+        // Use the reactive auth flag rather than checking the route name.
+        // Previously this was `routeName == HomePage.routeName`, which showed
+        // the logged-out nav when authenticated users are on /discovery.
+        final isLoggedIn = AuthService.isAuthenticated.value;
 
         return _SidebarShell(
           ext: ext,
@@ -964,12 +967,12 @@ class WebTopNav extends StatelessWidget {
       listenable: Listenable.merge([
         WebRouteObserver.currentRouteName,
         HomePage.webSelectedTab,
+        AuthService.isAuthenticated,
       ]),
       builder: (context, _) {
-        final routeName = WebRouteObserver.currentRouteName.value;
-        final isLoggedIn = routeName == HomePage.routeName;
         final selectedTab = HomePage.webSelectedTab.value;
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
+        final isLoggedIn = AuthService.isAuthenticated.value;
 
         return _TopNavBar(
           ext: ext,

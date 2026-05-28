@@ -12,6 +12,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///   visible to any JS on the page, so there is no meaningful security
 ///   difference between the two on that platform.
 class AuthService {
+  // ── Global auth state ────────────────────────────────────────────────────────
+  /// Synchronous, reactive indicator of whether the current session has a
+  /// valid token.  Updated by [setToken] (true) and [removeToken] (false).
+  /// Seeded from the persisted token in main.dart before [runApp] is called.
+  /// Used by the web sidebar to show the correct nav without an async check.
+  static final isAuthenticated = ValueNotifier<bool>(false);
+
   // ── Mobile backend ───────────────────────────────────────────────────────────
   static const _secure = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -73,7 +80,10 @@ class AuthService {
   }
 
   // ── Token ────────────────────────────────────────────────────────────────────
-  Future<void> setToken(String token) => _write(_kToken, token);
+  Future<void> setToken(String token) {
+    isAuthenticated.value = token.isNotEmpty;
+    return _write(_kToken, token);
+  }
 
   Future<String> getToken() async => await _read(_kToken) ?? '';
 
@@ -150,19 +160,22 @@ class AuthService {
 
   // ── Session teardown ──────────────────────────────────────────────────────────
   /// Deletes every auth key so non-auth preferences are untouched.
-  Future<void> removeToken() => Future.wait([
-        _delete(_kToken),
-        _delete(_kExpiration),
-        _delete(_kUniqueName),
-        _delete(_kEmail),
-        _delete(_kId),
-        _delete(_kName),
-        _delete(_kContact),
-        _delete(_kCountryCode),
-        _delete(_kLocale),
-        _delete(_kPreferredLanguage),
-        _delete(_kTimezone),
-        _delete(_kInterestTags),
-        _delete(_kRole),
-      ]);
+  Future<void> removeToken() {
+    isAuthenticated.value = false;
+    return Future.wait([
+      _delete(_kToken),
+      _delete(_kExpiration),
+      _delete(_kUniqueName),
+      _delete(_kEmail),
+      _delete(_kId),
+      _delete(_kName),
+      _delete(_kContact),
+      _delete(_kCountryCode),
+      _delete(_kLocale),
+      _delete(_kPreferredLanguage),
+      _delete(_kTimezone),
+      _delete(_kInterestTags),
+      _delete(_kRole),
+    ]);
+  }
 }

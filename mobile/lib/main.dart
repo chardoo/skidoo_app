@@ -74,6 +74,10 @@ void main() async {
   debugPrint('[Startup] all checks done — ${sw.elapsedMilliseconds}ms '
       '(token=${token.isNotEmpty} expired=$isExpired compromised=$isDeviceCompromised)');
 
+  // Seed the synchronous auth state before the first frame so the web
+  // sidebar immediately renders the correct nav without an async round-trip.
+  AuthService.isAuthenticated.value = !isExpired && token.isNotEmpty;
+
   runApp(MyApp(
     token: isExpired ? '' : token,
     isDeviceCompromised: isDeviceCompromised,

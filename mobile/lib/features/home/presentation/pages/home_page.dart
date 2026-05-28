@@ -55,10 +55,9 @@ class HomePage extends StatelessWidget {
             create: (_) => sl<UserProfileBloc>()
               ..add(const UserProfileLoadRequested())),
         BlocProvider.value(value: sl<CartBloc>()),
-        BlocProvider(
-          create: (_) =>
-              sl<ChatRoomsBloc>()..add(const ChatRoomsLoadRequested()),
-        ),
+        // ChatRoomsBloc is provided at the root level (app.dart) so that
+        // the unread-count badge works even when the user is on DiscoveryPage.
+        // Do NOT create a second instance here — use the inherited one.
       ],
       child: const _HomeView(),
     );
