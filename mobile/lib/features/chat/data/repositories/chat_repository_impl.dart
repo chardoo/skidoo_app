@@ -267,7 +267,8 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> markRoomAsRead(String roomId) => _db.markAllAsRead(roomId);
 
   @override
-  Future<String> uploadImage(File file) => _rest.uploadImage(file);
+  Future<String> uploadImage(File file, {String? mimeType}) =>
+      _rest.uploadImage(file, mimeType: mimeType);
 
   @override
   Future<EventReaction> getEventReaction(String eventId, String userId) =>

@@ -1,3 +1,4 @@
+import 'dart:convert' show base64Encode;
 import 'dart:io';
 import 'dart:ui';
 
@@ -7,9 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/gallery/data/datasources/overlay_remote_data_source.dart';
 import 'package:skidoo_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
@@ -118,87 +118,91 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
       widget.iconSize ??
       (widget.axis == Axis.vertical ? 20.sp : 22.sp);
 
-  // ── Core: fetch overlay → temp file → share sheet ─────────────────────────
+  // ── Core: fetch overlay → share / download ───────────────────────────────
 
   Future<void> _handleAction({required bool isDownload}) async {
-    if (kIsWeb && !isDownload) {
-      final ext = Theme.of(context).extension<AppThemeExtension>()!;
-      GetAppSheet.show(context, ext: ext);
-      return;
-    }
     if (_downloading || _sharing) return;
     setState(() {
-      if (isDownload) {
-        _downloading = true;
-      } else {
-        _sharing = true;
-      }
+      if (isDownload) _downloading = true; else _sharing = true;
     });
 
     // Capture the button's screen rect BEFORE any await so iOS knows where
     // to anchor the share popover (required by share_plus on iPhone/iPad).
+    // On web the share popover is browser-native — no origin needed.
     final key = isDownload ? _downloadKey : _shareKey;
     final box = key.currentContext?.findRenderObject() as RenderBox?;
-    final shareOrigin = box != null && box.hasSize
+    final shareOrigin = (!kIsWeb && box != null && box.hasSize)
         ? box.localToGlobal(Offset.zero) & box.size
         : null;
 
     debugPrint('[SHARE] ── _handleAction start ──────────────────────');
-    debugPrint('[SHARE] isDownload=$isDownload  shareOrigin=$shareOrigin');
+    debugPrint('[SHARE] isDownload=$isDownload kIsWeb=$kIsWeb shareOrigin=$shareOrigin');
     debugPrint('[SHARE] widget.imageId="${widget.imageId}"');
-    debugPrint('[SHARE] widget.pictureId="${widget.pictureId}"');
-    debugPrint('[SHARE] widget.photographerName="${widget.photographerName}"');
-    debugPrint('[SHARE] widget.eventName="${widget.eventName}"');
 
-    // Show the classy loading overlay.
     _showLoadingOverlay(isDownload: isDownload);
 
     try {
-      debugPrint('[SHARE] Calling GetOverlayImageUseCase with imageId="${widget.imageId}"');
       final OverlayResult result = await sl<GetOverlayImageUseCase>()(
         widget.imageId,
         widget.photographerName,
       );
 
-      debugPrint('[SHARE] Overlay API success — contentType="${result.contentType}" bytes=${result.bytes.length} ext="${result.fileExtension}"');
-
-      final dir = await getTemporaryDirectory();
-      // Sanitise imageId: strip any path separators so the temp filename is valid.
-      final safeId = widget.imageId.replaceAll('/', '_').replaceAll('\\', '_');
-      final filePath = '${dir.path}/overlay_$safeId.${result.fileExtension}';
-      debugPrint('[SHARE] Writing temp file to "$filePath"');
-      await File(filePath).writeAsBytes(result.bytes, flush: true);
-      debugPrint('[SHARE] Temp file written — exists=${await File(filePath).exists()} size=${await File(filePath).length()}');
+      debugPrint('[SHARE] Overlay API success — contentType="${result.contentType}" bytes=${result.bytes.length}');
 
       if (!mounted) return;
-      // Dismiss the loading overlay and reset button state before handing
-      // off to the OS — the share sheet opening is feedback enough.
       Navigator.of(context, rootNavigator: true).pop();
       setState(() { _downloading = false; _sharing = false; });
 
+      final safeId = widget.imageId.replaceAll('/', '_').replaceAll('\\', '_');
+      final filename = 'overlay_$safeId.${result.fileExtension}';
       final subject = widget.eventName.isNotEmpty ? widget.eventName : 'Photo';
       final text = widget.eventName.isNotEmpty
           ? 'Check out ${widget.eventName}!'
           : 'Check out this photo!';
 
-      debugPrint('[SHARE] Calling Share.shareXFiles — subject="$subject" mimeType="${result.contentType}" origin=$shareOrigin');
+      if (kIsWeb) {
+        // ── Web: use in-memory XFile — no temp file writes ──────────────────
+        final xFile = XFile.fromData(
+          result.bytes,
+          mimeType: result.contentType,
+          name: filename,
+        );
+        try {
+          // Web Share API Level 2 (Chrome/Edge/Safari) — shares a real file.
+          await Share.shareXFiles(
+            [xFile],
+            subject: subject,
+            text: isDownload ? null : text,
+          );
+        } catch (_) {
+          // Browser doesn't support Web Share API Level 2 — fall back to
+          // triggering a browser download via a data URI.
+          final dataUri =
+              'data:${result.contentType};base64,${base64Encode(result.bytes)}';
+          await launchUrl(
+            Uri.parse(dataUri),
+            mode: LaunchMode.externalApplication,
+          );
+        }
+        return;
+      }
+
+      // ── Mobile: write temp file → OS share sheet ─────────────────────────
+      final dir = await getTemporaryDirectory();
+      final filePath = '${dir.path}/$filename';
+      await File(filePath).writeAsBytes(result.bytes, flush: true);
+
       await Share.shareXFiles(
         [XFile(filePath, mimeType: result.contentType)],
         subject: subject,
         text: text,
         sharePositionOrigin: shareOrigin,
       );
-      debugPrint('[SHARE] Share sheet dismissed');
 
-      // Delete the temp file once the OS share sheet is dismissed so the
-      // branded image is never left on the device outside the app.
-      try {
-        await File(filePath).delete();
-        debugPrint('[SHARE] Temp file deleted');
-      } catch (_) {}
+      // Clean up after the OS share sheet closes.
+      try { await File(filePath).delete(); } catch (_) {}
     } catch (e, st) {
-      debugPrint('[SHARE] ERROR: $e');
-      debugPrint('[SHARE] Stack: $st');
+      debugPrint('[SHARE] ERROR: $e\n$st');
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
         setState(() { _downloading = false; _sharing = false; });

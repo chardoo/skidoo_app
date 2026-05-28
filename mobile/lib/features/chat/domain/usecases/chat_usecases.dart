@@ -261,7 +261,8 @@ class UploadChatImageUseCase {
   final ChatRepository _repo;
   UploadChatImageUseCase(this._repo);
 
-  Future<String> call(File file) => _repo.uploadImage(file);
+  Future<String> call(File file, {String? mimeType}) =>
+      _repo.uploadImage(file, mimeType: mimeType);
 }
 
 class GetEventReactionUseCase {

@@ -12,7 +12,11 @@ class ChatRoomState extends Equatable {
   final String? errorMessage;
 
   /// Local file path of a staged image/video waiting to be sent.
+  /// On web this is a blob URL; on mobile it is a local file path.
   final String? pendingImagePath;
+
+  /// Browser-reported MIME type for the staged file (web only; null on mobile).
+  final String? pendingMimeType;
 
   /// True when the staged pending file is a video (not a still image).
   final bool pendingIsVideo;
@@ -82,6 +86,7 @@ class ChatRoomState extends Equatable {
     this.isUploadingImage = false,
     this.errorMessage,
     this.pendingImagePath,
+    this.pendingMimeType,
     this.pendingIsVideo = false,
     this.replyingTo,
     this.eventLikes,
@@ -113,6 +118,7 @@ class ChatRoomState extends Equatable {
     String? errorMessage,
     bool clearError = false,
     String? pendingImagePath,
+    String? pendingMimeType,
     bool? pendingIsVideo,
     bool clearPendingImage = false,
     ChatMessage? replyingTo,
@@ -146,6 +152,7 @@ class ChatRoomState extends Equatable {
         isUploadingImage: isUploadingImage ?? this.isUploadingImage,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
         pendingImagePath: clearPendingImage ? null : (pendingImagePath ?? this.pendingImagePath),
+        pendingMimeType: clearPendingImage ? null : (pendingMimeType ?? this.pendingMimeType),
         pendingIsVideo: clearPendingImage ? false : (pendingIsVideo ?? this.pendingIsVideo),
         replyingTo: clearReply ? null : (replyingTo ?? this.replyingTo),
         eventLikes: eventLikes ?? this.eventLikes,
@@ -177,6 +184,7 @@ class ChatRoomState extends Equatable {
         isUploadingImage,
         errorMessage,
         pendingImagePath,
+        pendingMimeType,
         pendingIsVideo,
         replyingTo,
         eventLikes,

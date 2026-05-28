@@ -148,7 +148,9 @@ abstract class ChatRestDataSource {
   });
 
   /// POST /chat/upload-image — uploads [file] and returns the Cloudinary URL.
-  Future<String> uploadImage(File file);
+  /// [mimeType] overrides content-type detection; required on web where
+  /// [file.path] is a blob URL with no meaningful extension.
+  Future<String> uploadImage(File file, {String? mimeType});
 
   /// GET /chat/events/{eventId}/reaction?userId=<userId>
   /// Returns the user's current reaction and aggregate counts.
@@ -440,48 +442,66 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   }
 
   @override
-  Future<String> uploadImage(File file) async {
+  Future<String> uploadImage(File file, {String? mimeType}) async {
     return _wrap(() async {
-      // Get file extension and determine content type
-      final extension = file.path.split('.').last.toLowerCase();
+      // ── Content type ─────────────────────────────────────────────────────
+      // On web, file.path is a blob URL — extension-based detection fails.
+      // The caller should pass the browser's MIME type via [mimeType].
+      // On mobile, derive content type from the file extension as before.
       String contentType;
-      switch (extension) {
-        case 'jpg':
-        case 'jpeg':
-          contentType = 'image/jpeg';
-          break;
-        case 'png':
-          contentType = 'image/png';
-          break;
-        case 'webp':
-          contentType = 'image/webp';
-          break;
-        case 'gif':
-          contentType = 'image/gif';
-          break;
-        case 'mp4':
-          contentType = 'video/mp4';
-          break;
-        case 'mov':
-          contentType = 'video/quicktime';
-          break;
-        case 'avi':
-          contentType = 'video/x-msvideo';
-          break;
-        case 'mkv':
-          contentType = 'video/x-matroska';
-          break;
-        case 'webm':
-          contentType = 'video/webm';
-          break;
-        default:
-          throw Exception('Unsupported file type: $extension');
+      if (mimeType != null && mimeType.isNotEmpty) {
+        contentType = mimeType;
+      } else {
+        final extension = file.path.split('.').last.toLowerCase();
+        switch (extension) {
+          case 'jpg':
+          case 'jpeg':
+            contentType = 'image/jpeg';
+            break;
+          case 'png':
+            contentType = 'image/png';
+            break;
+          case 'webp':
+            contentType = 'image/webp';
+            break;
+          case 'gif':
+            contentType = 'image/gif';
+            break;
+          case 'mp4':
+            contentType = 'video/mp4';
+            break;
+          case 'mov':
+            contentType = 'video/quicktime';
+            break;
+          case 'avi':
+            contentType = 'video/x-msvideo';
+            break;
+          case 'mkv':
+            contentType = 'video/x-matroska';
+            break;
+          case 'webm':
+            contentType = 'video/webm';
+            break;
+          default:
+            // Web blob URLs reach here when mimeType was null — default to jpeg.
+            contentType = kIsWeb ? 'image/jpeg' : throw Exception('Unsupported file type: $extension');
+        }
       }
 
+      // ── Filename for the multipart upload ────────────────────────────────
+      // On web, the path is a blob URL (no useful name) — synthesise one.
+      final filename = kIsWeb
+          ? 'upload.${_extFromMime(contentType)}'
+          : file.uri.pathSegments.last;
+
+      // ── Multipart file ───────────────────────────────────────────────────
+      // On web, Dio 5.x internally wraps the blob URL in an XFile and reads
+      // it via the browser Fetch API, so fromFile works.  We also support
+      // fromBytes as a safe fallback path.
       final multipartFile = await dio_pkg.MultipartFile.fromFile(
         file.path,
-        filename: file.uri.pathSegments.last,
-         contentType: MediaType.parse(contentType)
+        filename: filename,
+        contentType: MediaType.parse(contentType),
       );
 
       final formData = dio_pkg.FormData.fromMap({
@@ -643,5 +663,23 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
       if (e is NetworkException || e is ServerException) rethrow;
       throw ServerException('Unexpected chat error: $e');
     }
+  }
+}
+
+/// Returns a simple file extension for a given MIME type.
+/// Used to synthesise a filename when uploading from a web blob URL.
+String _extFromMime(String mime) {
+  switch (mime) {
+    case 'image/jpeg': return 'jpg';
+    case 'image/png':  return 'png';
+    case 'image/webp': return 'webp';
+    case 'image/gif':  return 'gif';
+    case 'video/mp4':  return 'mp4';
+    case 'video/webm': return 'webm';
+    case 'video/quicktime': return 'mov';
+    default:
+      // e.g. 'image/jpeg' → 'jpeg', or fallback to raw type.
+      final sub = mime.split('/').last;
+      return sub == 'jpeg' ? 'jpg' : sub;
   }
 }

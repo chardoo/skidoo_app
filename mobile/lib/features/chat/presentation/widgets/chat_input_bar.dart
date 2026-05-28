@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MaxLengthEnforcement;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -32,8 +33,9 @@ class ChatInputBar extends StatelessWidget {
   final ChatMessage? replyingTo;
   final VoidCallback? onClearReply;
 
-  /// Called with the local file path and whether it is a video.
-  final void Function(String filePath, {bool isVideo})? onImagePicked;
+  /// Called with the local file path, optional MIME type, and whether it is a video.
+  /// On web [filePath] is a blob URL; [mimeType] is the browser-reported MIME type.
+  final void Function(String filePath, {String? mimeType, bool isVideo})? onImagePicked;
 
   /// Path of the staged local image/video waiting to be uploaded and sent.
   final String? pendingImagePath;
@@ -58,7 +60,8 @@ class ChatInputBar extends StatelessWidget {
       imageQuality: 85,
     );
     if (picked == null) return;
-    final size = await File(picked.path).length();
+    // XFile.length() works on all platforms (blob URL on web, file path on mobile).
+    final size = await picked.length();
     if (size > _maxBytes) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -66,14 +69,15 @@ class ChatInputBar extends StatelessWidget {
       );
       return;
     }
-    onImagePicked?.call(picked.path, isVideo: false);
+    onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: false);
   }
 
   Future<void> _pickVideo(BuildContext context) async {
     final picker = ImagePicker();
     final picked = await picker.pickVideo(source: ImageSource.gallery);
     if (picked == null) return;
-    final size = await File(picked.path).length();
+    // XFile.length() works on all platforms.
+    final size = await picked.length();
     if (size > _maxBytes) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,7 +85,7 @@ class ChatInputBar extends StatelessWidget {
       );
       return;
     }
-    onImagePicked?.call(picked.path, isVideo: true);
+    onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: true);
   }
 
   void _showMediaPicker(BuildContext context) {
@@ -330,12 +334,21 @@ class _StagedImagePreview extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                Image.file(
-                  File(filePath),
-                  width: 64.w,
-                  height: 64.w,
-                  fit: BoxFit.cover,
-                ),
+                // On web, filePath is a blob URL — Image.network handles it.
+                // On mobile, filePath is a local file path.
+                kIsWeb
+                    ? Image.network(
+                        filePath,
+                        width: 64.w,
+                        height: 64.w,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.file(
+                        File(filePath),
+                        width: 64.w,
+                        height: 64.w,
+                        fit: BoxFit.cover,
+                      ),
                 if (isUploading)
                   Container(
                     width: 64.w,
@@ -416,7 +429,9 @@ class _StagedVideoPreviewState extends State<_StagedVideoPreview> {
                 fit: StackFit.expand,
                 children: [
                   SkidooVideoPlayer(
-                    url: 'file://${widget.filePath}',
+                    // On web, filePath is a blob URL (no file:// prefix needed).
+                    // On mobile, add file:// so the video player resolves it.
+                    url: kIsWeb ? widget.filePath : 'file://${widget.filePath}',
                     autoPlay: false,
                     showControls: false,
                     fit: BoxFit.cover,

@@ -27,7 +27,10 @@ class ChatRoomMessageSent extends ChatRoomEvent {
 class ChatRoomImagePicked extends ChatRoomEvent {
   final String filePath;
   final bool isVideo;
-  const ChatRoomImagePicked(this.filePath, {this.isVideo = false});
+  /// Browser-reported MIME type (set on web; null on mobile where the
+  /// upload path derives content-type from the file extension).
+  final String? mimeType;
+  const ChatRoomImagePicked(this.filePath, {this.isVideo = false, this.mimeType});
 }
 
 /// Remove the staged image without sending.

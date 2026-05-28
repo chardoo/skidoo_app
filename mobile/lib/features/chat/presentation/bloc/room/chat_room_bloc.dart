@@ -645,6 +645,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     final content = event.content?.trim();
     final pendingPath = state.pendingImagePath;
+    final pendingMimeType = state.pendingMimeType;
     final pendingIsVideo = state.pendingIsVideo;
     final pendingUrl = state.pendingShareUrl;
     final hasText = content != null && content.isNotEmpty;
@@ -695,7 +696,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       ));
 
       try {
-        final imageUrl = await _uploadImage(File(pendingPath));
+        final imageUrl = await _uploadImage(File(pendingPath), mimeType: pendingMimeType);
         final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
 
         final optimistic = ChatMessage(
@@ -730,6 +731,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         emit(state.copyWith(
           isUploadingImage: false,
           pendingImagePath: pendingPath,
+          pendingMimeType: pendingMimeType,
           pendingIsVideo: pendingIsVideo,
           errorMessage: pendingIsVideo ? 'Failed to upload video.' : 'Failed to upload image.',
         ));
@@ -911,6 +913,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   ) {
     emit(state.copyWith(
       pendingImagePath: event.filePath,
+      pendingMimeType: event.mimeType,
       pendingIsVideo: event.isVideo,
     ));
   }

@@ -107,7 +107,8 @@ abstract class ChatRepository {
   Future<void> markRoomAsRead(String roomId);
 
   /// Upload an image file and return the hosted URL.
-  Future<String> uploadImage(File file);
+  /// [mimeType] is the MIME type; on web it comes from the browser File API.
+  Future<String> uploadImage(File file, {String? mimeType});
 
   /// GET /chat/events/{eventId}/reaction — user's reaction + aggregate counts.
   Future<EventReaction> getEventReaction(String eventId, String userId);

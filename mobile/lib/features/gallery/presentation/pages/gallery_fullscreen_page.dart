@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/components/media/media_action_buttons.dart';
-import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
@@ -152,18 +151,11 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                     axis: Axis.horizontal,
                     showLike: false,
                     showComment: false,
-                    onSend: () {
-                      if (kIsWeb) {
-                        final ext = Theme.of(context).extension<AppThemeExtension>()!;
-                        GetAppSheet.show(context, ext: ext);
-                        return;
-                      }
-                      GalleryShareSheet.show(
-                        context,
-                        imageUrl: widget.photo.url,
-                        photoLabel: widget.photo.eventName,
-                      );
-                    },
+                    onSend: () => GalleryShareSheet.show(
+                      context,
+                      imageUrl: widget.photo.url,
+                      photoLabel: widget.photo.eventName,
+                    ),
                   ),
                 ),
               ),

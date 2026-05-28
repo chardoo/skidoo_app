@@ -238,8 +238,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     _inputCtrl.clear();
   }
 
-  void _onImagePicked(String filePath, {bool isVideo = false}) {
-    _bloc.add(ChatRoomImagePicked(filePath, isVideo: isVideo));
+  void _onImagePicked(String filePath, {String? mimeType, bool isVideo = false}) {
+    _bloc.add(ChatRoomImagePicked(filePath, isVideo: isVideo, mimeType: mimeType));
   }
 
   void _onReply(ChatMessage msg) {
