@@ -15,7 +15,6 @@ import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.d
 import 'package:skidoo_app/features/discovery/presentation/widgets/event_discovery_card.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 class DiscoveryPage extends StatelessWidget {
   static const routeName = '/discovery';
@@ -170,8 +169,8 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   void _onCardTap(BuildContext context, EventDiscovery event) {
     showLoginSheet(
       context,
-      onLoginSuccess: () =>
-          Navigator.of(context).pushReplacementNamed(HomePage.routeName),
+      onLoginSuccess: () => Navigator.of(context)
+          .pushNamedAndRemoveUntil(HomePage.routeName, (route) => false),
     );
   }
 
@@ -325,7 +324,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
       ),
     ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground, width: kWebColumnWidth);
+    return page;
   }
 
 }
@@ -420,7 +419,8 @@ class _FeedAppBar extends StatelessWidget {
                 onTap: () => showLoginSheet(
                   context,
                   onLoginSuccess: () => Navigator.of(context)
-                      .pushReplacementNamed(HomePage.routeName),
+                      .pushNamedAndRemoveUntil(
+                          HomePage.routeName, (route) => false),
                 ),
                 child: Container(
                   padding: EdgeInsets.symmetric(
