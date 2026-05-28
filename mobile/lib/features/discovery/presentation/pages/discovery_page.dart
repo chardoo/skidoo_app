@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -43,6 +44,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   final _scrollCtrl = ScrollController();
   final _activeCardIndex = ValueNotifier<int>(0);
   final _cardKeys = <String, GlobalKey>{};
+  final _feedFocusNode = FocusNode();
   // Guard: only one _updateActiveCard per frame, no matter how many
   // ScrollUpdateNotifications fire between frames.
   bool _activeCardUpdateScheduled = false;
@@ -54,12 +56,18 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   void initState() {
     super.initState();
     _scrollCtrl.addListener(_onScroll);
+    if (kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _feedFocusNode.requestFocus();
+      });
+    }
   }
 
   @override
   void dispose() {
     _scrollCtrl.dispose();
     _activeCardIndex.dispose();
+    _feedFocusNode.dispose();
     super.dispose();
   }
 
@@ -116,6 +124,49 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
     }
   }
 
+  // ── Keyboard navigation (web desktop/laptop only) ────────────────────────
+
+  /// Scroll the card at [index] into view and update [_activeCardIndex].
+  void _scrollToCard(String eventId, int index) {
+    _activeCardIndex.value = index;
+    final key = _cardKeys[eventId];
+    final ctx = key?.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        alignment: 0.0, // align top of card with top of viewport
+      );
+    }
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final events = context.read<DiscoveryBloc>().state.events;
+    if (events.isEmpty) return KeyEventResult.ignored;
+    final current = _activeCardIndex.value;
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
+        event.logicalKey == LogicalKeyboardKey.keyJ) {
+      final next = (current + 1).clamp(0, events.length - 1);
+      if (next != current) _scrollToCard(events[next].id, next);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+        event.logicalKey == LogicalKeyboardKey.keyK) {
+      final prev = (current - 1).clamp(0, events.length - 1);
+      if (prev != current) _scrollToCard(events[prev].id, prev);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.space) {
+      if (current < events.length) _onCardTap(context, events[current]);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   void _onCardTap(BuildContext context, EventDiscovery event) {
     showLoginSheet(
       context,
@@ -151,10 +202,13 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
 
     final page = Scaffold(
       backgroundColor: ext.homeBackground,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      body: Focus(
+        focusNode: _feedFocusNode,
+        onKeyEvent: kIsWeb ? _handleKeyEvent : null,
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // ── App bar — hidden on web (sidebar handles logo + auth) ────
             if (!kIsWeb) _FeedAppBar(ext: ext),
 
@@ -269,6 +323,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
           ],
         ),
       ),
+    ),
     );
     return webWrap(page, backgroundColor: ext.homeBackground, width: kWebColumnWidth);
   }

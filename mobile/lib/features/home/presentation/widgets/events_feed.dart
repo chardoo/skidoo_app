@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
@@ -110,6 +111,8 @@ class EventsFeed extends StatefulWidget {
 class _EventsFeedState extends State<EventsFeed> {
   final _activeCardIndex = ValueNotifier<int>(0);
   final _cardKeys = <String, GlobalKey>{};
+  final _feedFocusNode = FocusNode();
+  final _scrollCtrl = ScrollController();
   final _repo = AdsRepository();
 
   // One ad per slot — fetched fresh from the server for each slot.
@@ -144,6 +147,11 @@ class _EventsFeedState extends State<EventsFeed> {
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _updateActiveCard());
     _fetchInitial();
+    if (kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _feedFocusNode.requestFocus();
+      });
+    }
   }
 
   @override
@@ -289,7 +297,52 @@ class _EventsFeedState extends State<EventsFeed> {
   @override
   void dispose() {
     _activeCardIndex.dispose();
+    _feedFocusNode.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  // ── Keyboard navigation (web desktop/laptop only) ─────────────────────────
+
+  /// Scroll the card at [index] into view and update [_activeCardIndex].
+  void _scrollToCard(String eventId, int index) {
+    _activeCardIndex.value = index;
+    final key = _cardKeys[eventId];
+    final ctx = key?.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        alignment: 0.0, // align top of card with top of viewport
+      );
+    }
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final events = widget.discoveryState.events;
+    if (events.isEmpty) return KeyEventResult.ignored;
+    final current = _activeCardIndex.value;
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
+        event.logicalKey == LogicalKeyboardKey.keyJ) {
+      final next = (current + 1).clamp(0, events.length - 1);
+      if (next != current) _scrollToCard(events[next].id, next);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+        event.logicalKey == LogicalKeyboardKey.keyK) {
+      final prev = (current - 1).clamp(0, events.length - 1);
+      if (prev != current) _scrollToCard(events[prev].id, prev);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.space) {
+      if (current < events.length) widget.onCardTap(events[current]);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   // ── Event card hide ───────────────────────────────────────────────────────
@@ -440,7 +493,10 @@ class _EventsFeedState extends State<EventsFeed> {
       state.isLoadingMore,
     );
 
-    return NotificationListener<ScrollNotification>(
+    return Focus(
+      focusNode: _feedFocusNode,
+      onKeyEvent: kIsWeb ? _handleKeyEvent : null,
+      child: NotificationListener<ScrollNotification>(
       onNotification: (notification) {
         if (notification is ScrollUpdateNotification) {
           final metrics = notification.metrics;
@@ -476,6 +532,7 @@ class _EventsFeedState extends State<EventsFeed> {
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOut,
             builder: (context, pad, _) => ListView.builder(
+            controller: _scrollCtrl,
             physics: kIsWeb
                 ? const ClampingScrollPhysics()
                 : const BouncingScrollPhysics(),
@@ -588,6 +645,7 @@ class _EventsFeedState extends State<EventsFeed> {
           ),
         ),
       ),
+    ),
     );
   }
 }
