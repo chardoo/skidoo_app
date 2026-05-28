@@ -123,9 +123,8 @@ class _WebAppState extends State<_WebApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _configureScreenUtil();
     // Seed the route observer so the sidebar shows the correct state immediately.
-    WebRouteObserver.currentRouteName.value = widget.token.isEmpty
-        ? DiscoveryPage.routeName
-        : HomePage.routeName;
+    // Both logged-in and logged-out users start on the Discovery page.
+    WebRouteObserver.currentRouteName.value = DiscoveryPage.routeName;
   }
 
   @override
@@ -204,9 +203,9 @@ class _AppMaterial extends StatelessWidget {
       // On mobile: no wrapper — ScreenUtilInit already wraps the navigator.
       builder: kIsWeb ? _webLayoutBuilder : null,
       navigatorObservers: kIsWeb ? [WebRouteObserver.instance] : [],
-      initialRoute: token.isEmpty
-          ? DiscoveryPage.routeName
-          : HomePage.routeName,
+      // Always land on Discovery — logged-in users navigate to /home from
+      // the sidebar/navbar when they want chat, gallery, or photographers.
+      initialRoute: DiscoveryPage.routeName,
       routes: {
         DiscoveryPage.routeName: (_) => isDeviceCompromised
             ? const _SecurityWarningPage()

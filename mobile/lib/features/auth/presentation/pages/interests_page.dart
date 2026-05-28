@@ -6,7 +6,7 @@ import 'package:skidoo_app/core/common/customButtom.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/interests/interests_bloc.dart';
-import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
+import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:skidoo_app/widgets/loader.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 
@@ -57,7 +57,7 @@ class _InterestsView extends StatelessWidget {
         listener: (context, state) {
           if (state.isSuccess) {
             Navigator.of(context)
-                .pushReplacementNamed(HomePage.routeName);
+                .pushReplacementNamed(DiscoveryPage.routeName);
           }
           if (state.errorMessage != null && !state.isLoading) {
             AppSnackBar.error(context, state.errorMessage!);
@@ -149,10 +149,10 @@ class _InterestsView extends StatelessWidget {
                   Center(
                     child: TextButton(
                       onPressed: () => Navigator.of(context)
-                          .pushReplacementNamed(HomePage.routeName),
+                          .pushReplacementNamed(DiscoveryPage.routeName),
                       child: Text(
                         AppLocalizations.of(context)!.interestsSkip,
-                        style: TextStyle(color: Colors.grey),
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     ),
                   ),
