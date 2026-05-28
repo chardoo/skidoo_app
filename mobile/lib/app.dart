@@ -19,6 +19,7 @@ import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 // ── Web layout constants ──────────────────────────────────────────────────────
 
@@ -367,7 +368,7 @@ class _SecurityWarningPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
       body: SafeArea(
         child: Padding(
@@ -429,5 +430,8 @@ class _SecurityWarningPage extends StatelessWidget {
         ),
       ),
     );
+    return webWrap(page,
+        backgroundColor: const Color(0xFF0D0D0D),
+        width: kWebColumnWidth);
   }
 }
