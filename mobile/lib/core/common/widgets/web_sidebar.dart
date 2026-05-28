@@ -60,72 +60,84 @@ class _SidebarShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The sidebar lives in MaterialApp.builder — above the Navigator — so
+    // it has no Overlay ancestor. We provide Material + a local Overlay so
+    // TextField (selection handles) and any other overlay-dependent widgets
+    // work correctly. The typeahead dropdown intentionally bypasses this
+    // local overlay and inserts into AppNavigator's overlay so it appears
+    // above all page content.
     return Material(
       color: ext.homeBackground,
       child: SizedBox(
-      width: _kSidebarWidth,
-      height: double.infinity,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(
-              color: ext.searchHintColor.withValues(alpha: 0.10),
-              width: 0.5,
-            ),
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Logo ──────────────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [ext.accentGold, const Color(0xFFFF6B35)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Text(
-                        'S',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                        ),
-                      ),
+        width: _kSidebarWidth,
+        height: double.infinity,
+        child: Overlay(
+          initialEntries: [
+            OverlayEntry(
+              builder: (_) => DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(
+                    right: BorderSide(
+                      color: ext.searchHintColor.withValues(alpha: 0.10),
+                      width: 0.5,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'SKIDDO',
-                      style: TextStyle(
-                        color: ext.logoTextColor,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 20,
-                        letterSpacing: 3,
+                  ),
+                ),
+                child: SafeArea(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Logo ────────────────────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Text(
+                                'S',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'SKIDDO',
+                              style: TextStyle(
+                                color: ext.logoTextColor,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 20,
+                                letterSpacing: 3,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+
+                      Expanded(child: child),
+
+                      // ── Footer ──────────────────────────────────────────
+                      _SidebarFooter(ext: ext),
+                    ],
+                  ),
                 ),
               ),
-
-              Expanded(child: child),
-
-              // ── Footer ────────────────────────────────────────────────────
-              _SidebarFooter(ext: ext),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
       ),
     );
   }
@@ -1031,7 +1043,7 @@ class _TopNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Material(
       color: ext.homeBackground,
       child: DecoratedBox(
         decoration: BoxDecoration(
