@@ -43,184 +43,119 @@ class CardInteractionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 7.h),
+      padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 10.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Like ────────────────────────────────────────────────────────
-          _AnimatedActionBtn(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              onLike();
-            },
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  switchInCurve: Curves.elasticOut,
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, anim) => ScaleTransition(
-                    scale: anim,
-                    child: child,
-                  ),
-                  child: Icon(
-                    liked
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    key: ValueKey(liked),
-                    color: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
-                    size: 26.sp,
-                  ),
+          // ── Glass pill: like · dislike · comment · share ─────────────────
+          _GlassPill(
+            ext: ext,
+            children: [
+              // Like
+              _AnimatedActionBtn(
+                onTap: () { HapticFeedback.lightImpact(); onLike(); },
+                child: _PillAction(
+                  icon: liked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  iconColor: liked
+                      ? const Color(0xFFFF3B5C)
+                      : ext.greetingColor,
+                  label: likeCount > 0 ? _fmt(likeCount) : null,
+                  labelColor: liked
+                      ? const Color(0xFFFF3B5C)
+                      : ext.searchHintColor,
+                  active: liked,
                 ),
-                if (likeCount > 0) ...[
-                  SizedBox(width: 5.w),
-                  Text(
-                    _fmt(likeCount),
-                    style: TextStyle(
-                      color: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          SizedBox(width: 14.w),
-
-          // ── Dislike ──────────────────────────────────────────────────────
-          _AnimatedActionBtn(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              onDislike();
-            },
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  switchInCurve: Curves.elasticOut,
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, anim) => ScaleTransition(
-                    scale: anim,
-                    child: child,
-                  ),
-                  child: Icon(
-                    disliked
-                        ? Icons.thumb_down_rounded
-                        : Icons.thumb_down_outlined,
-                    key: ValueKey(disliked),
-                    color: disliked
-                        ? const Color(0xFF5B6EF5)
-                        : ext.greetingColor,
-                    size: 24.sp,
-                  ),
-                ),
-                if (dislikeCount > 0) ...[
-                  SizedBox(width: 5.w),
-                  Text(
-                    _fmt(dislikeCount),
-                    style: TextStyle(
-                      color: disliked
-                          ? const Color(0xFF5B6EF5)
-                          : ext.greetingColor,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          SizedBox(width: 18.w),
-
-          // ── Comment ──────────────────────────────────────────────────────
-          if (commentsEnabled)
-            _AnimatedActionBtn(
-              onTap: onComment,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.mode_comment_outlined,
-                      color: ext.greetingColor, size: 24.sp),
-                  if (commentCount > 0) ...[
-                    SizedBox(width: 5.w),
-                    Text(
-                      _fmt(commentCount),
-                      style: TextStyle(
-                        color: ext.greetingColor,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
               ),
-            )
-          else
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.comments_disabled_outlined,
-                    color: ext.searchHintColor.withValues(alpha: 0.4),
-                    size: 24.sp),
-                if (commentCount > 0) ...[
-                  SizedBox(width: 5.w),
-                  Text(
-                    _fmt(commentCount),
-                    style: TextStyle(
-                      color: ext.searchHintColor.withValues(alpha: 0.4),
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
 
-          SizedBox(width: 18.w),
+              _PillDivider(ext: ext),
 
-          // ── Share (paper plane) ──────────────────────────────────────────
-          _AnimatedActionBtn(
-            onTap: onShare,
-            child: Icon(Icons.near_me_outlined,
-                color: ext.greetingColor, size: 24.sp),
+              // Dislike
+              _AnimatedActionBtn(
+                onTap: () { HapticFeedback.lightImpact(); onDislike(); },
+                child: _PillAction(
+                  icon: disliked
+                      ? Icons.thumb_down_rounded
+                      : Icons.thumb_down_outlined,
+                  iconColor: disliked
+                      ? const Color(0xFF5B6EF5)
+                      : ext.greetingColor,
+                  label: dislikeCount > 0 ? _fmt(dislikeCount) : null,
+                  labelColor: disliked
+                      ? const Color(0xFF5B6EF5)
+                      : ext.searchHintColor,
+                  active: disliked,
+                  iconSize: 22.sp,
+                ),
+              ),
+
+              _PillDivider(ext: ext),
+
+              // Comment
+              _AnimatedActionBtn(
+                onTap: onComment,
+                child: _PillAction(
+                  icon: commentsEnabled
+                      ? Icons.mode_comment_outlined
+                      : Icons.comments_disabled_outlined,
+                  iconColor: commentsEnabled
+                      ? ext.greetingColor
+                      : ext.searchHintColor.withValues(alpha: 0.4),
+                  label: commentCount > 0 ? _fmt(commentCount) : null,
+                  labelColor: ext.searchHintColor,
+                  iconSize: 22.sp,
+                ),
+              ),
+
+              _PillDivider(ext: ext),
+
+              // Share
+              _AnimatedActionBtn(
+                onTap: onShare,
+                child: _PillAction(
+                  icon: Icons.near_me_rounded,
+                  iconColor: ext.greetingColor,
+                  iconSize: 22.sp,
+                ),
+              ),
+            ],
           ),
 
           const Spacer(),
 
-          // ── Message (DM) — optional, shown before bookmark ────────────────
+          // ── Right side: optional DM + bookmark ───────────────────────────
           if (onMessage != null) ...[
-            SizedBox(width: 6.w),
             _AnimatedActionBtn(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                onMessage!();
-              },
-              child: Icon(
-                Icons.chat_bubble_outline_rounded,
-                color: ext.accentGold,
-                size: 24.sp,
+              onTap: () { HapticFeedback.lightImpact(); onMessage!(); },
+              child: Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: ext.accentGold.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: ext.accentGold.withValues(alpha: 0.35),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(
+                  Icons.send_rounded,
+                  color: ext.accentGold,
+                  size: 18.sp,
+                ),
               ),
             ),
+            SizedBox(width: 10.w),
           ],
 
-          // ── Bookmark ──────────────────────────────────────────────────────
+          // Bookmark
           _AnimatedActionBtn(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              onSave();
-            },
+            onTap: () { HapticFeedback.selectionClick(); onSave(); },
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
+              duration: const Duration(milliseconds: 260),
               switchInCurve: Curves.elasticOut,
-              transitionBuilder: (child, anim) => ScaleTransition(
-                scale: anim,
-                child: child,
-              ),
+              transitionBuilder: (child, anim) =>
+                  ScaleTransition(scale: anim, child: child),
               child: Icon(
                 saved
                     ? Icons.bookmark_rounded
@@ -240,6 +175,101 @@ class CardInteractionBar extends StatelessWidget {
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
     if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
     return '$n';
+  }
+}
+
+// ── Glass pill container ──────────────────────────────────────────────────────
+
+class _GlassPill extends StatelessWidget {
+  const _GlassPill({required this.ext, required this.children});
+  final AppThemeExtension ext;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 0),
+      decoration: BoxDecoration(
+        color: ext.glassFill,
+        borderRadius: BorderRadius.circular(50.r),
+        border: Border.all(color: ext.glassBorder, width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: children,
+      ),
+    );
+  }
+}
+
+// ── Single action inside the pill ─────────────────────────────────────────────
+
+class _PillAction extends StatelessWidget {
+  const _PillAction({
+    required this.icon,
+    required this.iconColor,
+    this.label,
+    this.labelColor,
+    this.iconSize,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String? label;
+  final Color? labelColor;
+  final double? iconSize;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 9.h),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            switchInCurve: Curves.elasticOut,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, anim) =>
+                ScaleTransition(scale: anim, child: child),
+            child: Icon(icon,
+                key: ValueKey(icon), color: iconColor, size: iconSize ?? 23.sp),
+          ),
+          if (label != null) ...[
+            SizedBox(width: 5.w),
+            Text(
+              label!,
+              style: TextStyle(
+                color: labelColor,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Thin divider between pill items ───────────────────────────────────────────
+
+class _PillDivider extends StatelessWidget {
+  const _PillDivider({required this.ext});
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 20.h,
+      child: VerticalDivider(
+        width: 1,
+        thickness: 0.6,
+        color: ext.glassBorder,
+      ),
+    );
   }
 }
 

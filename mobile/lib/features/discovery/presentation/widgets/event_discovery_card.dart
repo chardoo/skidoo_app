@@ -313,13 +313,18 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               bottom: 0,
               left: 0,
               right: 0,
-              height: 130.h,
+              height: 180.h,
               child: const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [Color(0xDD000000), Color(0x00000000)],
+                    stops: [0.0, 0.55, 1.0],
+                    colors: [
+                      Color(0xF0000000),
+                      Color(0x88000000),
+                      Color(0x00000000),
+                    ],
                   ),
                 ),
               ),
@@ -327,7 +332,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             Positioned(
               bottom: 14.h,
               left: 14.w,
-              right: kIsWeb ? 14.w : 60.w,
+              right: kIsWeb ? 14.w : 14.w,
               child: _ImageFooter(event: widget.event),
             ),
             if (_showHeartBurst)
@@ -638,16 +643,19 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── 0. Post header — above the photo (matches FeedItemCard) ───
-          _PostHeader(
-            event: widget.event,
-            ext: ext,
-            isOwner: widget.isOwner,
-            isAuthenticated: widget.isAuthenticated,
-            onPhotographerTap: () => _openPhotographerProfile(context),
-            onHide: widget.onHide,
-            onLoginRequired: widget.onTap,
-            onImage: false,
+          // ── 0. Post header ─────────────────────────────────────────────
+          Container(
+            color: ext.cardSurface,
+            child: _PostHeader(
+              event: widget.event,
+              ext: ext,
+              isOwner: widget.isOwner,
+              isAuthenticated: widget.isAuthenticated,
+              onPhotographerTap: () => _openPhotographerProfile(context),
+              onHide: widget.onHide,
+              onLoginRequired: widget.onTap,
+              onImage: false,
+            ),
           ),
 
           // ── 1. Photo area ──────────────────────────────────────────────
@@ -660,102 +668,111 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             },
           ),
 
-          // ── 2. Spacing ─────────────────────────────────────────────────
-          SizedBox(height: 6.h),
+          // ── 2. Interaction bar + caption on card surface ───────────────
+          Container(
+            color: ext.cardSurface,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Interaction bar
+                BlocBuilder<DiscoveryBloc, DiscoveryState>(
+                  buildWhen: (prev, next) =>
+                      prev.savedEventIds != next.savedEventIds,
+                  builder: (context, _) => CardInteractionBar(
+                    liked: _liked,
+                    disliked: _disliked,
+                    saved: _isSaved(context),
+                    likeCount: _likeCount,
+                    dislikeCount: _dislikeCount,
+                    commentCount: widget.event.commentCount,
+                    commentsEnabled:
+                        AppConfigRepository.current.commentsEnabled &&
+                            widget.event.commentsEnabled &&
+                            (widget.event.pictures.isEmpty ||
+                                widget.event.pictures[
+                                        _currentPage.clamp(
+                                            0,
+                                            widget.event.pictures.length - 1)]
+                                    .commentsEnabled),
+                    ext: ext,
+                    onLike: widget.isAuthenticated
+                        ? () {
+                            setState(() {
+                              if (!_liked && _disliked) {
+                                _disliked = false;
+                                _dislikeCount =
+                                    (_dislikeCount - 1).clamp(0, 999999999);
+                              }
+                              _liked = !_liked;
+                              _likeCount += _liked ? 1 : -1;
+                            });
+                            context.read<DiscoveryBloc>().add(
+                                  DiscoveryReactionToggled(widget.event.id,
+                                      isLike: true),
+                                );
+                          }
+                        : widget.onTap,
+                    onDislike: widget.isAuthenticated
+                        ? () {
+                            setState(() {
+                              if (!_disliked && _liked) {
+                                _liked = false;
+                                _likeCount =
+                                    (_likeCount - 1).clamp(0, 999999999);
+                              }
+                              _disliked = !_disliked;
+                              _dislikeCount += _disliked ? 1 : -1;
+                            });
+                            context.read<DiscoveryBloc>().add(
+                                  DiscoveryReactionToggled(widget.event.id,
+                                      isLike: false),
+                                );
+                          }
+                        : widget.onTap,
+                    onComment: widget.isAuthenticated
+                        ? (widget.onCommentTap ??
+                            () => _showCommentSheet(context, ext))
+                        : widget.onTap,
+                    onShare: widget.isAuthenticated
+                        ? () {
+                            final pics = widget.event.pictures;
+                            if (pics.isEmpty) return;
+                            final url = pics[
+                                    _currentPage.clamp(0, pics.length - 1)]
+                                .url;
+                            GalleryShareSheet.show(
+                              context,
+                              imageUrl: url,
+                              photoLabel: widget.event.eventName,
+                            );
+                          }
+                        : widget.onTap,
+                    onSave: widget.isAuthenticated
+                        ? () => context.read<DiscoveryBloc>().add(
+                              DiscoveryEventSaveToggled(widget.event.id),
+                            )
+                        : widget.onTap,
+                  ),
+                ),
 
-          // ── 3. Interaction bar ─────────────────────────────────────────
-          BlocBuilder<DiscoveryBloc, DiscoveryState>(
-            buildWhen: (prev, next) =>
-                prev.savedEventIds != next.savedEventIds,
-            builder: (context, _) => CardInteractionBar(
-              liked: _liked,
-              disliked: _disliked,
-              saved: _isSaved(context),
-              likeCount: _likeCount,
-              dislikeCount: _dislikeCount,
-              commentCount: widget.event.commentCount,
-              commentsEnabled: AppConfigRepository.current.commentsEnabled &&
-                  widget.event.commentsEnabled &&
-                  (widget.event.pictures.isEmpty ||
-                      widget.event.pictures[
-                              _currentPage.clamp(
-                                  0, widget.event.pictures.length - 1)]
-                          .commentsEnabled),
-              ext: ext,
-              onLike: widget.isAuthenticated
-                  ? () {
-                      setState(() {
-                        if (!_liked && _disliked) {
-                          _disliked = false;
-                          _dislikeCount =
-                              (_dislikeCount - 1).clamp(0, 999999999);
-                        }
-                        _liked = !_liked;
-                        _likeCount += _liked ? 1 : -1;
-                      });
-                      context.read<DiscoveryBloc>().add(
-                            DiscoveryReactionToggled(widget.event.id,
-                                isLike: true),
-                          );
-                    }
-                  : widget.onTap,
-              onDislike: widget.isAuthenticated
-                  ? () {
-                      setState(() {
-                        if (!_disliked && _liked) {
-                          _liked = false;
-                          _likeCount =
-                              (_likeCount - 1).clamp(0, 999999999);
-                        }
-                        _disliked = !_disliked;
-                        _dislikeCount += _disliked ? 1 : -1;
-                      });
-                      context.read<DiscoveryBloc>().add(
-                            DiscoveryReactionToggled(widget.event.id,
-                                isLike: false),
-                          );
-                    }
-                  : widget.onTap,
-              onComment: widget.isAuthenticated
-                  ? (widget.onCommentTap ??
-                      () => _showCommentSheet(context, ext))
-                  : widget.onTap,
-              onShare: widget.isAuthenticated
-                  ? () {
-                      final pics = widget.event.pictures;
-                      if (pics.isEmpty) return;
-                      final url =
-                          pics[_currentPage.clamp(0, pics.length - 1)].url;
-                      GalleryShareSheet.show(
-                        context,
-                        imageUrl: url,
-                        photoLabel: widget.event.eventName,
-                      );
-                    }
-                  : widget.onTap,
-              onSave: widget.isAuthenticated
-                  ? () => context.read<DiscoveryBloc>().add(
-                        DiscoveryEventSaveToggled(widget.event.id),
-                      )
-                  : widget.onTap,
+                // Caption
+                CardDescriptionText(
+                  event: widget.event,
+                  ext: ext,
+                  expanded: _descExpanded,
+                  onToggle: () =>
+                      setState(() => _descExpanded = !_descExpanded),
+                ),
+
+                SizedBox(height: 8.h),
+              ],
             ),
           ),
 
-          // ── 5. Caption ─────────────────────────────────────────────────
-          CardDescriptionText(
-            event: widget.event,
-            ext: ext,
-            expanded: _descExpanded,
-            onToggle: () => setState(() => _descExpanded = !_descExpanded),
-          ),
-
-          SizedBox(height: 6.h),
-
-          // ── 6. Thin divider ────────────────────────────────────────────
-          Divider(
-            height: 1,
-            thickness: 0.5,
-            color: ext.searchHintColor.withValues(alpha: 0.1),
+          // ── 3. Spacer between cards ────────────────────────────────────
+          Container(
+            height: 8.h,
+            color: ext.homeBackground,
           ),
         ],
       ),
@@ -834,9 +851,6 @@ class _PostHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = event.photographerName;
     final nameColor = onImage ? Colors.white : ext.greetingColor;
-    final subColor = onImage
-        ? Colors.white.withValues(alpha: 0.65)
-        : ext.searchHintColor;
     final iconColor = onImage ? Colors.white : ext.greetingColor;
     final textShadows = onImage
         ? const [
@@ -846,23 +860,23 @@ class _PostHeader extends StatelessWidget {
         : null;
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+      padding: EdgeInsets.fromLTRB(14.w, 10.h, 10.w, 10.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Creator avatar
+          // ── Avatar ─────────────────────────────────────────────────────
           GestureDetector(
             onTap: onPhotographerTap,
             child: _CreatorInitialsAvatar(
               name: name,
-              size: 36.w,
+              size: 40.w,
               onImage: onImage,
             ),
           ),
 
-          SizedBox(width: 9.w),
+          SizedBox(width: 10.w),
 
-          // Creator name + subtitle (tappable)
+          // ── Name + photographer badge ───────────────────────────────────
           Expanded(
             child: GestureDetector(
               onTap: onPhotographerTap,
@@ -889,26 +903,45 @@ class _PostHeader extends StatelessWidget {
                         ),
                       ),
                       if (isOwner) ...[
-                        SizedBox(width: 8.w),
+                        SizedBox(width: 6.w),
                         _OwnerPill(ext: ext),
                       ],
                     ],
                   ),
-                  Text(
-                    'Creator',
-                    style: TextStyle(
-                      color: subColor,
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w500,
-                      shadows: textShadows,
-                    ),
+                  SizedBox(height: 2.h),
+                  // "Photographer" chip with camera icon
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.camera_alt_rounded,
+                        size: 10.sp,
+                        color: ext.accentGold,
+                        shadows: textShadows != null
+                            ? const [Shadow(blurRadius: 4, color: Colors.black54)]
+                            : null,
+                      ),
+                      SizedBox(width: 3.w),
+                      Text(
+                        'Photographer',
+                        style: TextStyle(
+                          color: onImage
+                              ? Colors.white.withValues(alpha: 0.7)
+                              : ext.searchHintColor,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.1,
+                          shadows: textShadows,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ),
 
-          // Follow button — hidden for own posts
+          // ── Follow button — hidden for own posts ───────────────────────
           if (!isOwner) ...[
             SizedBox(width: 8.w),
             FollowButton(
@@ -919,11 +952,11 @@ class _PostHeader extends StatelessWidget {
             ),
           ],
 
-          // More options
+          // ── More options ───────────────────────────────────────────────
           GestureDetector(
             onTap: () => _showMoreOptions(context),
             child: Padding(
-              padding: EdgeInsets.only(left: 10.w),
+              padding: EdgeInsets.only(left: 8.w, right: 4.w),
               child: Icon(Icons.more_horiz_rounded,
                   color: iconColor, size: 22.sp),
             ),
@@ -1041,48 +1074,98 @@ class _CreatorInitialsAvatar extends StatelessWidget {
   }
 }
 
-// ── Image footer (event name + subtle location) ───────────────────────────────
+// ── Image footer (event name + photographer + photo count) ───────────────────
 
 class _ImageFooter extends StatelessWidget {
   const _ImageFooter({required this.event});
   final EventDiscovery event;
 
+  static const _shadows = [
+    Shadow(blurRadius: 16, color: Colors.black87),
+    Shadow(blurRadius: 6, color: Colors.black54),
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final count = event.pictures.length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        // ── Photo count pill ─────────────────────────────────────────────
+        if (count > 0)
+          Container(
+            margin: EdgeInsets.only(bottom: 8.h),
+            padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 3.h),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(20.r),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.18),
+                width: 0.6,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.photo_library_rounded,
+                    size: 10.sp, color: Colors.white70),
+                SizedBox(width: 4.w),
+                Text(
+                  '$count ${count == 1 ? 'photo' : 'photos'}',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // ── Event name ───────────────────────────────────────────────────
         Text(
           event.eventName,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.white,
-            fontSize: 20.sp,
+            fontSize: 21.sp,
             fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-            height: 1.2,
-            shadows: const [
-              Shadow(blurRadius: 12, color: Colors.black87),
-              Shadow(blurRadius: 4, color: Colors.black54),
-            ],
+            letterSpacing: -0.6,
+            height: 1.15,
+            shadows: _shadows,
           ),
         ),
-        SizedBox(height: 3.h),
-        Text(
-          event.photographerName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.1,
-            shadows: const [
-              Shadow(blurRadius: 8, color: Colors.black87),
-            ],
-          ),
+
+        SizedBox(height: 5.h),
+
+        // ── Photographer line ────────────────────────────────────────────
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.camera_alt_rounded,
+                size: 11.sp,
+                color: Colors.white60,
+                shadows: const [Shadow(blurRadius: 6, color: Colors.black87)]),
+            SizedBox(width: 4.w),
+            Flexible(
+              child: Text(
+                event.photographerName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.1,
+                  shadows: const [Shadow(blurRadius: 8, color: Colors.black87)],
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
