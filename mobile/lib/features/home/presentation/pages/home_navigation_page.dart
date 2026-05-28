@@ -11,6 +11,8 @@ import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
+import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
+import 'package:skidoo_app/features/chat/presentation/widgets/web_messages_panel.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/web_search_photos_panel.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/events_feed.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/home_empty_state.dart';
@@ -52,6 +54,9 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool _isSearchOpen = false;
   int _selectedTab = 0; // 0 = For You, 1 = Following
 
+  // Web desktop: messages overlay panel
+  bool _showMessagesPanel = false;
+
   // Web desktop: show photo results inline (no Navigator push).
   bool _showPhotosInline = false;
   String _inlineEventName = '';
@@ -79,8 +84,9 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       };
       HomeNavigationPage._webEventTapHandler = (eventId, eventName) {
         if (!mounted) return;
-        context.read<HomeBloc>().add(
-            HomeImagesSearched(eventId: eventId, eventName: eventName));
+        context
+            .read<HomeBloc>()
+            .add(HomeImagesSearched(eventId: eventId, eventName: eventName));
         setState(() {
           _isSearchOpen = true;
           _showPhotosInline = true;
@@ -103,8 +109,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   void _measureHeaderHeight() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final box =
-          _headerKey.currentContext?.findRenderObject() as RenderBox?;
+      final box = _headerKey.currentContext?.findRenderObject() as RenderBox?;
       if (box == null) return;
       final h = box.size.height;
       if (h != _headerHeight) setState(() => _headerHeight = h);
@@ -125,6 +130,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       _isSearchOpen = true;
       _headerVisible = true;
       _selectedTab = 0; // always show For You when searching
+      _showMessagesPanel = false; // close messages panel when search opens
     });
   }
 
@@ -240,109 +246,141 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       });
 
       return FeedLaunchOverlay(
-        child: Scaffold(
-          backgroundColor: ext.homeBackground,
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Compact top bar: tabs + avatar, or search-open state ────────
-              SizedBox(
-                height: 54,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                  child: Row(
-                    children: [
-                      if (_isSearchOpen) ...[
-                        Icon(Icons.search_rounded, size: 16, color: ext.accentGold),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Search results',
-                          style: TextStyle(
-                            color: ext.greetingColor,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Spacer(),
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            onTap: _closeSearch,
-                            child: Icon(Icons.close_rounded,
-                                color: ext.searchHintColor, size: 20),
-                          ),
-                        ),
-                      ] else ...[
-                        _PillTab(
-                          label: 'For You',
-                          active: _selectedTab == 0,
-                          ext: ext,
-                          onTap: () => setState(() => _selectedTab = 0),
-                        ),
-                        const SizedBox(width: 8),
-                        _PillTab(
-                          label: 'Following',
-                          active: _selectedTab == 1,
-                          ext: ext,
-                          onTap: () => setState(() => _selectedTab = 1),
-                        ),
-                        const Spacer(),
-                        const _WebGetAppButton(),
-                        const SizedBox(width: 12),
-                        // Profile avatar
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            onTap: () {
-                              final discoveryBloc = context.read<DiscoveryBloc>();
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => BlocProvider.value(
-                                    value: discoveryBloc,
-                                    child: const AccountPage(),
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: [ext.accentGold, const Color(0xFFFF6B35)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
+        child: Stack(
+          children: [
+            Scaffold(
+              backgroundColor: ext.homeBackground,
+              body: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Compact top bar: tabs + avatar, or search-open state ────────
+                  SizedBox(
+                    height: 54,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+                      child: Row(
+                        children: [
+                          if (_isSearchOpen) ...[
+                            Icon(Icons.search_rounded,
+                                size: 16, color: ext.accentGold),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Search results',
+                              style: TextStyle(
+                                color: ext.greetingColor,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Spacer(),
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: _closeSearch,
+                                child: Icon(Icons.close_rounded,
+                                    color: ext.searchHintColor, size: 20),
+                              ),
+                            ),
+                          ] else ...[
+                            _PillTab(
+                              label: 'For You',
+                              active: _selectedTab == 0,
+                              ext: ext,
+                              onTap: () => setState(() => _selectedTab = 0),
+                            ),
+                            const SizedBox(width: 8),
+                            _PillTab(
+                              label: 'Following',
+                              active: _selectedTab == 1,
+                              ext: ext,
+                              onTap: () => setState(() => _selectedTab = 1),
+                            ),
+                            const Spacer(),
+                            const _WebGetAppButton(),
+                            const SizedBox(width: 8),
+                            // Messages icon
+                            BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
+                              selector: (s) => s.unreadCounts.values
+                                  .fold(0, (sum, c) => sum + c),
+                              builder: (context, unread) =>
+                                  _WebMessageIconButton(
+                                isOpen: _showMessagesPanel,
+                                unreadCount: unread,
+                                onTap: () => setState(
+                                  () =>
+                                      _showMessagesPanel = !_showMessagesPanel,
                                 ),
                               ),
-                              child: CircleAvatar(
-                                radius: 16,
-                                backgroundColor: ext.glassFill,
-                                child: Text(
-                                  userName[0].toUpperCase(),
-                                  style: TextStyle(
-                                    color: ext.glassIcon,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 13,
+                            ),
+                            const SizedBox(width: 12),
+                            // Profile avatar
+                            MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () {
+                                  final discoveryBloc =
+                                      context.read<DiscoveryBloc>();
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => BlocProvider.value(
+                                        value: discoveryBloc,
+                                        child: const AccountPage(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        ext.accentGold,
+                                        const Color(0xFFFF6B35)
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: ext.glassFill,
+                                    child: Text(
+                                      userName[0].toUpperCase(),
+                                      style: TextStyle(
+                                        color: ext.glassIcon,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      ],
-                    ],
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
+                  // ── Feed content ────────────────────────────────────────────────
+                  Expanded(
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: _onScrollNotification,
+                      child:
+                          _buildBody(context, ext, homeState, discoveryState),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // ── Messages overlay panel ────────────────────────────────────────
+            if (_showMessagesPanel)
+              Positioned.fill(
+                child: WebMessagesPanel(
+                  onClose: () => setState(() => _showMessagesPanel = false),
                 ),
               ),
-              // ── Feed content ────────────────────────────────────────────────
-              Expanded(
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: _onScrollNotification,
-                  child: _buildBody(context, ext, homeState, discoveryState),
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
       );
     }
@@ -367,7 +405,9 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
             // Header + tab bar slide in/out from top (Transform.translate —
             // no layout shift).
             Positioned(
-              top: 0, left: 0, right: 0,
+              top: 0,
+              left: 0,
+              right: 0,
               child: AnimatedSlide(
                 offset: _headerVisible ? Offset.zero : const Offset(0, -1),
                 duration: const Duration(milliseconds: 200),
@@ -452,8 +492,9 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
           topPadding: _feedTopPadding,
           onCardTap: (event) => _openEventImages(context, event),
           onCommentTap: (event) => _openEventComments(context, event),
-          onLoadMore: () =>
-              context.read<DiscoveryBloc>().add(const DiscoveryLoadMoreRequested()),
+          onLoadMore: () => context
+              .read<DiscoveryBloc>()
+              .add(const DiscoveryLoadMoreRequested()),
         ),
         if (discoveryState.isLoading)
           Positioned.fill(
@@ -610,9 +651,8 @@ class _PillTab extends StatelessWidget {
         curve: Curves.easeOut,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
-          color: active
-              ? ext.accentGold.withValues(alpha: 0.92)
-              : ext.glassFill,
+          color:
+              active ? ext.accentGold.withValues(alpha: 0.92) : ext.glassFill,
           border: Border.all(
             color: active ? ext.accentGold : ext.glassBorder,
             width: 1.0,
@@ -680,6 +720,67 @@ class _WebGetAppButtonState extends State<_WebGetAppButton> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Web message icon button ───────────────────────────────────────────────────
+
+class _WebMessageIconButton extends StatefulWidget {
+  const _WebMessageIconButton({
+    required this.isOpen,
+    required this.unreadCount,
+    required this.onTap,
+  });
+
+  final bool isOpen;
+  final int unreadCount;
+  final VoidCallback onTap;
+
+  @override
+  State<_WebMessageIconButton> createState() => _WebMessageIconButtonState();
+}
+
+class _WebMessageIconButtonState extends State<_WebMessageIconButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: widget.isOpen
+                ? ext.accentGold.withValues(alpha: 0.15)
+                : _hovered
+                    ? ext.glassFill
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Badge(
+            isLabelVisible: widget.unreadCount > 0,
+            label: Text(
+              widget.unreadCount > 9 ? '9+' : '${widget.unreadCount}',
+              style: const TextStyle(fontSize: 9, color: Colors.white),
+            ),
+            backgroundColor: Colors.redAccent,
+            child: Icon(
+              widget.isOpen
+                  ? Icons.chat_bubble_rounded
+                  : Icons.chat_bubble_outline_rounded,
+              color: widget.isOpen ? ext.accentGold : ext.searchHintColor,
+              size: 20,
+            ),
           ),
         ),
       ),

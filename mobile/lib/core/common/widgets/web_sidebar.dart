@@ -555,8 +555,10 @@ class _DiscoveryModeNav extends StatelessWidget {
                 if (ctx == null) return;
                 showLoginSheet(
                   ctx,
-                  onLoginSuccess: () => AppNavigator.navigatorKey.currentState
-                      ?.pushReplacementNamed(HomePage.routeName),
+                  onLoginSuccess: () =>
+                      AppNavigator.navigatorKey.currentState
+                          ?.pushNamedAndRemoveUntil(
+                              HomePage.routeName, (route) => false),
                 );
               },
             ),
@@ -586,13 +588,6 @@ class _LoggedInNav extends StatelessWidget {
           active: selectedTab == 0,
           ext: ext,
           onTap: () => HomePage.tabRequest.value = 0,
-        ),
-        _NavItem(
-          icon: Icons.chat_bubble_outline_rounded,
-          label: 'Messages',
-          active: selectedTab == 1,
-          ext: ext,
-          onTap: () => HomePage.tabRequest.value = 1,
         ),
         _NavItem(
           icon: Icons.photo_library_outlined,
@@ -1139,7 +1134,8 @@ class _TopNavBar extends StatelessWidget {
                         ctx,
                         onLoginSuccess: () =>
                             AppNavigator.navigatorKey.currentState
-                                ?.pushReplacementNamed(HomePage.routeName),
+                                ?.pushNamedAndRemoveUntil(
+                                    HomePage.routeName, (route) => false),
                       );
                     },
                   ),
@@ -1172,14 +1168,6 @@ class _TopNavBar extends StatelessWidget {
           active: selectedTab == 0,
           ext: ext,
           onTap: () => HomePage.tabRequest.value = 0,
-        ),
-        const SizedBox(width: 6),
-        _TopNavPill(
-          icon: Icons.chat_bubble_outline_rounded,
-          label: 'Messages',
-          active: selectedTab == 1,
-          ext: ext,
-          onTap: () => HomePage.tabRequest.value = 1,
         ),
         const SizedBox(width: 6),
         _TopNavPill(
