@@ -269,9 +269,19 @@ class FeedItemData {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class FeedItemCard extends StatefulWidget {
-  const FeedItemCard({super.key, required this.data, this.onHide});
+  const FeedItemCard({
+    super.key,
+    required this.data,
+    this.onHide,
+    this.isAuthenticated = true,
+    this.onLoginRequired,
+  });
   final FeedItemData data;
   final VoidCallback? onHide;
+  /// Set false for guest/unauthenticated users — all interactive actions will
+  /// call [onLoginRequired] instead of performing the real action.
+  final bool isAuthenticated;
+  final VoidCallback? onLoginRequired;
 
   @override
   State<FeedItemCard> createState() => _FeedItemCardState();
@@ -311,7 +321,17 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
     super.dispose();
   }
 
+  /// Returns true and fires the login prompt when the user is not authenticated.
+  bool _requireAuth() {
+    if (!widget.isAuthenticated) {
+      widget.onLoginRequired?.call();
+      return true;
+    }
+    return false;
+  }
+
   void _handleLike() {
+    if (_requireAuth()) return;
     HapticFeedback.lightImpact();
     setState(() {
       _liked = !_liked;
@@ -320,6 +340,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
   }
 
   void _handleDislike() {
+    if (_requireAuth()) return;
     HapticFeedback.lightImpact();
     setState(() {
       _disliked = !_disliked;
@@ -328,11 +349,13 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
   }
 
   void _handleSave() {
+    if (_requireAuth()) return;
     HapticFeedback.selectionClick();
     setState(() => _saved = !_saved);
   }
 
   Future<void> _handleCtaTap() async {
+    if (_requireAuth()) return;
     final d = widget.data;
     // For requests: onCtaTap opens the chat — call it and stop.
     if (d.type == FeedItemType.request) {
@@ -349,6 +372,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
   }
 
   Future<void> _openChat() async {
+    if (_requireAuth()) return;
     final d = widget.data;
     if (d.creatorId.isEmpty || _chatLoading) return;
     HapticFeedback.lightImpact();
@@ -378,6 +402,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
   }
 
   void _handleComment() {
+    if (_requireAuth()) return;
     final d = widget.data;
     FeedCommentSheet.show(
       context,
@@ -392,6 +417,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
   }
 
   Future<void> _handleShare() async {
+    if (_requireAuth()) return;
     if (kIsWeb) {
       final ext = Theme.of(context).extension<AppThemeExtension>()!;
       GetAppSheet.show(context, ext: ext);
@@ -452,7 +478,12 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
                   ),
                 ),
                 SizedBox(width: 8.w),
-                FollowButton(photographerId: d.creatorId),
+                FollowButton(
+                  photographerId: d.creatorId,
+                  onLoginRequired: widget.isAuthenticated
+                      ? null
+                      : widget.onLoginRequired,
+                ),
                 SizedBox(width: 6.w),
                 GestureDetector(
                   onTap: () => _FeedItemMoreOptionsSheet.show(

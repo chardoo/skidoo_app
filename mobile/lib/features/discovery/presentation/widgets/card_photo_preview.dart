@@ -83,13 +83,14 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ── Blurred background so no black bars appear ────────────
+              // ── Blurred background — tiny decode, no detail needed ────
               ImageFiltered(
                 imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                 child: CachedNetworkImage(
                   imageUrl: pic.url,
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.low,
+                  memCacheWidth: 120,
                   placeholder: (_, __) =>
                       const ColoredBox(color: Color(0xFF111111)),
                   errorWidget: (_, __, ___) =>
@@ -98,7 +99,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
               ),
               // Dim the blur layer so it doesn't compete with the main image
               const ColoredBox(color: Color(0x55000000)),
-              // ── Sharp full image — never cropped ─────────────────────
+              // ── Sharp full image — cap at screen width to limit RAM ───
               ColorFiltered(
                 colorFilter: const ColorFilter.matrix(<double>[
                   1.18, -0.06, -0.06, 0, 18,
@@ -110,6 +111,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                   imageUrl: pic.url,
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
+                  memCacheWidth: 1080,
                   placeholder: (_, __) =>
                       const SizedBox.shrink(),
                   errorWidget: (_, __, ___) =>

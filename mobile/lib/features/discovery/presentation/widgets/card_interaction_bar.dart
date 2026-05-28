@@ -293,6 +293,7 @@ class FollowButton extends StatefulWidget {
     required this.photographerId,
     this.onImage = false,
     this.initialFollowing = false,
+    this.onLoginRequired,
   });
 
   /// The photographer/creator to follow or unfollow.
@@ -303,6 +304,10 @@ class FollowButton extends StatefulWidget {
 
   /// Seed state — set true when the viewer already follows this creator.
   final bool initialFollowing;
+
+  /// When set, tapping the button calls this instead of attempting to follow.
+  /// Use for unauthenticated users to show the login prompt.
+  final VoidCallback? onLoginRequired;
 
   @override
   State<FollowButton> createState() => _FollowButtonState();
@@ -336,6 +341,10 @@ class _FollowButtonState extends State<FollowButton>
   }
 
   Future<void> _toggle() async {
+    if (widget.onLoginRequired != null) {
+      widget.onLoginRequired!();
+      return;
+    }
     if (_loading || widget.photographerId.isEmpty) return;
     HapticFeedback.lightImpact();
     final willFollow = !_following;

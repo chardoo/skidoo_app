@@ -61,7 +61,10 @@ class EventDiscoveryCard extends StatefulWidget {
 class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     with SingleTickerProviderStateMixin {
   // ── Image dimension cache — shared across all card instances ────────────────
+  // Capped at 150 entries; oldest half evicted when the limit is hit to prevent
+  // unbounded growth during long feed sessions.
   static final Map<String, Size> _sizeCache = {};
+  static const int _sizeCacheLimit = 150;
 
   final _pageCtrl = PageController();
   int _currentPage = 0;
@@ -173,6 +176,11 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     }
     _resolveNetworkImageSize(url).then((size) {
       if (mounted && size != null) {
+        if (_sizeCache.length >= _sizeCacheLimit) {
+          // Evict the oldest 75 entries to keep memory bounded.
+          final keys = _sizeCache.keys.take(75).toList();
+          keys.forEach(_sizeCache.remove);
+        }
         _sizeCache[url] = size;
         setState(() => _imageSize = size);
       }
@@ -907,6 +915,7 @@ class _PostHeader extends StatelessWidget {
               photographerId: event.photographerId,
               onImage: onImage,
               initialFollowing: event.isFollowed,
+              onLoginRequired: isAuthenticated ? null : onLoginRequired,
             ),
           ],
 
