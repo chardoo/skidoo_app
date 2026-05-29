@@ -146,13 +146,22 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     _muted = _startMuted;
 
     _player = Player();
-    // Hardware acceleration enables 4K/HDR decoding via libmpv on native and
-    // GPU compositing on web. It is the default but we make it explicit so the
-    // config is easy to find and extend (e.g. add hwdec/bufferSize later).
+    // Use physical screen dimensions for the render buffer so the GPU
+    // allocates a full-resolution texture. This prevents the frame being
+    // upscaled from a smaller intermediate buffer on high-DPI screens.
+    final view = WidgetsBinding.instance.platformDispatcher.views.first;
+    final physW = view.physicalSize.width ~/ view.devicePixelRatio == 0
+        ? null
+        : view.physicalSize.width.round();
+    final physH = view.physicalSize.height ~/ view.devicePixelRatio == 0
+        ? null
+        : view.physicalSize.height.round();
     _controller = VideoController(
       _player,
-      configuration: const VideoControllerConfiguration(
+      configuration: VideoControllerConfiguration(
         enableHardwareAcceleration: true,
+        width: physW,
+        height: physH,
       ),
     );
 
@@ -741,10 +750,15 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
     _muted = widget.muted;
 
     _player = Player();
+    final view = WidgetsBinding.instance.platformDispatcher.views.first;
+    final physW = view.physicalSize.width.round();
+    final physH = view.physicalSize.height.round();
     _controller = VideoController(
       _player,
-      configuration: const VideoControllerConfiguration(
+      configuration: VideoControllerConfiguration(
         enableHardwareAcceleration: true,
+        width: physW > 0 ? physW : null,
+        height: physH > 0 ? physH : null,
       ),
     );
 

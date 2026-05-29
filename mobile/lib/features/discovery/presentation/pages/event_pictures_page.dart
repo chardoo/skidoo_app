@@ -1,6 +1,6 @@
 import 'dart:ui' show ImageFilter;
 
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -351,13 +351,10 @@ class _PhotoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CachedNetworkImage(
+    return SkidooImage(
       imageUrl: url,
       fit: BoxFit.cover,
-      memCacheWidth: 720,
-      filterQuality: FilterQuality.high,
       fadeInDuration: const Duration(milliseconds: 280),
-      fadeInCurve: Curves.easeOut,
       placeholder: (_, __) => const ColoredBox(color: Color(0xFF141414)),
       errorWidget: (_, __, ___) => ColoredBox(
         color: const Color(0xFF141414),
@@ -886,32 +883,27 @@ class _PhotoBackground extends StatelessWidget {
         // Blurred background fill so letterbox bars look intentional
         ImageFiltered(
           imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-          child: CachedNetworkImage(
+          child: SkidooImage(
             imageUrl: url,
             fit: BoxFit.cover,
-            memCacheWidth: 400,
-            filterQuality: FilterQuality.low,
+            isBlurBackground: true,
             placeholder: (_, __) => placeholder,
             errorWidget: (_, __, ___) => errorWidget,
           ),
         ),
         const ColoredBox(color: Color(0x55000000)),
-        // Full image, never cropped — vibrancy boost matches feed card
-        ColorFiltered(
+        // Full image — physical-pixel resolution, no cap
+        SkidooImage(
+          imageUrl: url,
+          fit: BoxFit.contain,
+          placeholder: (_, __) => placeholder,
+          errorWidget: (_, __, ___) => errorWidget,
           colorFilter: const ColorFilter.matrix(<double>[
             1.18, -0.06, -0.06, 0, 18,
             -0.05,  1.16, -0.05, 0, 18,
             -0.05, -0.05,  1.20, 0, 18,
             0,     0,     0,     1, 0,
           ]),
-          child: CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-            memCacheWidth: 1080,
-            placeholder: (_, __) => placeholder,
-            errorWidget: (_, __, ___) => errorWidget,
-          ),
         ),
       ],
     );

@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -32,11 +32,9 @@ class EventCardWidget extends StatelessWidget {
             children: [
               // ── Background image or gradient placeholder ───────────────
               photo.url.isNotEmpty
-                  ? CachedNetworkImage(
+                  ? SkidooImage(
                       imageUrl: photo.url,
                       fit: BoxFit.cover,
-                      memCacheWidth: 720,
-                      filterQuality: FilterQuality.high,
                       placeholder: (_, __) =>
                           _GradientPlaceholder(name: photo.eventName),
                       errorWidget: (_, __, ___) =>

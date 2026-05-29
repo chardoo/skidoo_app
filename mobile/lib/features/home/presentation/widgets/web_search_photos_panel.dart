@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -316,12 +316,10 @@ class _PhotoCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(10.r),
       child: Stack(
         children: [
-          CachedNetworkImage(
+          SkidooImage(
             imageUrl: photo.url,
             fit: BoxFit.cover,
             width: double.infinity,
-            memCacheWidth: 720,
-            filterQuality: FilterQuality.high,
             placeholder: (_, __) => Container(
               height: 150.h,
               color: ext.searchFieldFill,

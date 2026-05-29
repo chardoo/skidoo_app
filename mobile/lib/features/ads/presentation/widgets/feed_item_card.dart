@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -686,31 +686,26 @@ class _MediaBackground extends StatelessWidget {
       children: [
         ImageFiltered(
           imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: CachedNetworkImage(
+          child: SkidooImage(
             imageUrl: url,
             fit: BoxFit.cover,
-            filterQuality: FilterQuality.low,
-            memCacheWidth: 120,
+            isBlurBackground: true,
             placeholder: (_, __) => const ColoredBox(color: Color(0xFF111111)),
             errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
           ),
         ),
         const ColoredBox(color: Color(0x55000000)),
-        ColorFiltered(
+        SkidooImage(
+          imageUrl: url,
+          fit: BoxFit.contain,
+          placeholder: (_, __) => const SizedBox.shrink(),
+          errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
           colorFilter: const ColorFilter.matrix(<double>[
             1.18, -0.06, -0.06, 0, 18,
             -0.05,  1.16, -0.05, 0, 18,
             -0.05, -0.05,  1.20, 0, 18,
             0,     0,     0,     1, 0,
           ]),
-          child: CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-            memCacheWidth: 1080,
-            placeholder: (_, __) => const SizedBox.shrink(),
-            errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
-          ),
         ),
       ],
     );
@@ -1103,37 +1098,26 @@ class _SingleMediaFrame extends StatelessWidget {
       children: [
         ImageFiltered(
           imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: CachedNetworkImage(
+          child: SkidooImage(
             imageUrl: media.url,
             fit: BoxFit.cover,
-            filterQuality: FilterQuality.low,
-            memCacheWidth: 120,
+            isBlurBackground: true,
             placeholder: (_, __) => const ColoredBox(color: Color(0xFF111111)),
-            errorWidget: (ctx, url, err) {
-              debugPrint('[_SingleMediaFrame] CachedNetworkImage ERROR (bg): url=$url err=$err');
-              return const ColoredBox(color: Color(0xFF111111));
-            },
+            errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
           ),
         ),
         const ColoredBox(color: Color(0x55000000)),
-        ColorFiltered(
+        SkidooImage(
+          imageUrl: media.url,
+          fit: BoxFit.contain,
+          placeholder: (_, __) => const SizedBox.shrink(),
           colorFilter: const ColorFilter.matrix(<double>[
             1.18, -0.06, -0.06, 0, 18,
             -0.05,  1.16, -0.05, 0, 18,
             -0.05, -0.05,  1.20, 0, 18,
             0,     0,     0,     1, 0,
           ]),
-          child: CachedNetworkImage(
-            imageUrl: media.url,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-            memCacheWidth: 1080,
-            placeholder: (_, __) => const SizedBox.shrink(),
-            errorWidget: (ctx, url, err) {
-              debugPrint('[_SingleMediaFrame] CachedNetworkImage ERROR (fg): url=$url err=$err');
-              return const ColoredBox(color: Color(0xFF111111));
-            },
-          ),
+          errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
         ),
         if (media.isVideo)
           const Center(

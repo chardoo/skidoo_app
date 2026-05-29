@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter/services.dart';
@@ -439,12 +439,10 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                   child: _VideoThumbCard(url: photo.url, ext: ext),
                 )
               else
-                CachedNetworkImage(
+                SkidooImage(
                   imageUrl: photo.url,
                   fit: BoxFit.cover,
                   width: double.infinity,
-                  memCacheWidth: 720,
-                  filterQuality: FilterQuality.high,
                   placeholder: (_, __) => Container(
                     height: 150.h,
                     color: ext.searchFieldFill,

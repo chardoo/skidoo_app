@@ -1,5 +1,5 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/gallery/presentation/pages/gallery_fullscreen_page.dart';
@@ -32,12 +32,10 @@ class GalleryImageWidget extends StatelessWidget {
         child: Stack(
           children: [
             // ── Image ─────────────────────────────────────────────────────
-            CachedNetworkImage(
+            SkidooImage(
               imageUrl: photo.url,
               fit: BoxFit.cover,
               width: double.infinity,
-              memCacheWidth: 720,
-              filterQuality: FilterQuality.high,
               placeholder: (_, __) => Container(
                 height: 160.h,
                 color: ext.searchFieldFill,

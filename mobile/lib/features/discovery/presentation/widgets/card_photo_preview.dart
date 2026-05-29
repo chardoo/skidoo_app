@@ -1,6 +1,6 @@
 import 'dart:ui';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
 
@@ -83,14 +83,13 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ── Blurred background — tiny decode, no detail needed ────
+              // ── Blurred background — tiny decode, blur hides all detail ─
               ImageFiltered(
                 imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                child: CachedNetworkImage(
+                child: SkidooImage(
                   imageUrl: pic.url,
                   fit: BoxFit.cover,
-                  filterQuality: FilterQuality.low,
-                  memCacheWidth: 120,
+                  isBlurBackground: true,
                   placeholder: (_, __) =>
                       const ColoredBox(color: Color(0xFF111111)),
                   errorWidget: (_, __, ___) =>
@@ -99,24 +98,19 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
               ),
               // Dim the blur layer so it doesn't compete with the main image
               const ColoredBox(color: Color(0x55000000)),
-              // ── Sharp full image — cap at screen width to limit RAM ───
-              ColorFiltered(
+              // ── Sharp full image — physical-pixel resolution via DPR ──────
+              SkidooImage(
+                imageUrl: pic.url,
+                fit: BoxFit.contain,
+                placeholder: (_, __) => const SizedBox.shrink(),
+                errorWidget: (_, __, ___) =>
+                    const ColoredBox(color: Color(0xFF111111)),
                 colorFilter: const ColorFilter.matrix(<double>[
                   1.18, -0.06, -0.06, 0, 18,
                   -0.05,  1.16, -0.05, 0, 18,
                   -0.05, -0.05,  1.20, 0, 18,
                   0,     0,     0,     1, 0,
                 ]),
-                child: CachedNetworkImage(
-                  imageUrl: pic.url,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                  memCacheWidth: 1080,
-                  placeholder: (_, __) =>
-                      const SizedBox.shrink(),
-                  errorWidget: (_, __, ___) =>
-                      const ColoredBox(color: Color(0xFF111111)),
-                ),
               ),
               if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
               // if (pic.owner) const _OwnerCornerRibbon(),

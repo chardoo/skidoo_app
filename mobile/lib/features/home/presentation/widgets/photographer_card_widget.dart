@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -31,11 +31,9 @@ class PhotographerCardWidget extends StatelessWidget {
             children: [
               // ── Background: real image or gradient placeholder ─────────
               photographer.imageUrl != null
-                  ? CachedNetworkImage(
+                  ? SkidooImage(
                       imageUrl: photographer.imageUrl!,
                       fit: BoxFit.cover,
-                      memCacheWidth: 720,
-                      filterQuality: FilterQuality.high,
                       placeholder: (_, __) =>
                           _GradientPlaceholder(name: photographer.name),
                       errorWidget: (_, __, ___) =>
