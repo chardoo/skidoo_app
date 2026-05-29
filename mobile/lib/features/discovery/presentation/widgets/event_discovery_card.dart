@@ -308,6 +308,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     bool commentsEnabled, {
     required bool isExternalPanel,
     bool reactionsOnly = false,
+    double? mediaH,
   }) {
     // Shared reactions column — used standalone or as a narrow strip beside
     // the inline comment panel.
@@ -321,6 +322,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           commentsEnabled: commentsEnabled,
           ext: ext,
           isExternalPanel: isExternalPanel,
+          mediaH: mediaH,
           photographerName: widget.event.photographerName,
           photographerId: widget.event.photographerId,
           isFollowed: widget.event.isFollowed,
@@ -503,7 +505,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               width: reactionsW,
               height: mediaH,
               child: _buildWebRightPanel(context, ext, commentsEnabled,
-                  isExternalPanel: true, reactionsOnly: true),
+                  isExternalPanel: true, reactionsOnly: true, mediaH: mediaH),
             ),
             // ── Comments panel — fills available space up to commentsW ─────
             if (_webCommentsOpen)
@@ -1319,6 +1321,7 @@ class _WebReactionsColumn extends StatelessWidget {
     this.isAuthenticated = false,
     this.onPhotographerTap,
     this.onLoginRequired,
+    this.mediaH,
   });
 
   final bool liked;
@@ -1343,6 +1346,8 @@ class _WebReactionsColumn extends StatelessWidget {
   final bool isAuthenticated;
   final VoidCallback? onPhotographerTap;
   final VoidCallback? onLoginRequired;
+  // When provided, icon size and spacing scale with media height.
+  final double? mediaH;
 
   @override
   Widget build(BuildContext context) {
@@ -1356,7 +1361,15 @@ class _WebReactionsColumn extends StatelessWidget {
               width: 0.5,
             ),
           );
-    final iconSize = isExternalPanel ? 32.0 : null;
+
+    // Scale icon size and gap proportionally to the available media height.
+    // Small cards (≈380px) get compact 20px icons; tall cards cap at 28px.
+    // All values are slightly trimmed from the old fixed 32px.
+    final h = mediaH;
+    final iconSize = isExternalPanel
+        ? (h != null ? (h * 0.046).clamp(20.0, 28.0) : 28.0)
+        : null;
+    final gap = h != null ? (h * 0.038).clamp(12.0, 20.0) : 20.0;
 
     return Container(
       decoration: BoxDecoration(color: ext.homeBackground, border: border),
@@ -1377,7 +1390,7 @@ class _WebReactionsColumn extends StatelessWidget {
                 onTap: onPhotographerTap,
                 onLoginRequired: onLoginRequired,
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: gap),
             ],
 
             // ── Reactions ─────────────────────────────────────────────────────
@@ -1391,7 +1404,7 @@ class _WebReactionsColumn extends StatelessWidget {
               iconSize: iconSize,
               onTap: onLike,
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: gap),
             _WebActionBtn(
               icon: disliked
                   ? Icons.thumb_down_rounded
@@ -1403,7 +1416,7 @@ class _WebReactionsColumn extends StatelessWidget {
               iconSize: iconSize,
               onTap: onDislike,
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: gap),
             _WebActionBtn(
               icon: commentsEnabled
                   ? Icons.mode_comment_outlined
@@ -1418,7 +1431,7 @@ class _WebReactionsColumn extends StatelessWidget {
               iconSize: iconSize,
               onTap: onComment,
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: gap),
             _WebActionBtn(
               icon: saved
                   ? Icons.bookmark_rounded
@@ -1429,7 +1442,7 @@ class _WebReactionsColumn extends StatelessWidget {
               iconSize: iconSize,
               onTap: onSave,
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: gap),
             _WebActionBtn(
               icon: Icons.near_me_outlined,
               iconColor: ext.greetingColor,
