@@ -39,80 +39,57 @@ const _kEmojiCategories = <String, List<String>>{
   ],
 };
 
-// ── Public widget: emoji button that opens/closes the panel ──────────────────
+// ── Public widget: emoji toggle button ───────────────────────────────────────
 
-/// Drop-in emoji button for any input bar.
+/// Stateless emoji toggle button.
 ///
-/// Manages its own open/closed state and inserts the selected emoji into
-/// [controller] at the current cursor position. The [onToggle] callback lets
-/// the parent hide the software keyboard when the panel opens.
-class EmojiButton extends StatefulWidget {
+/// The panel itself is NOT rendered here — the parent widget renders
+/// [EmojiPickerPanel] as a sibling above its input row so it is never
+/// clipped or obscured by the keyboard or message list.
+class EmojiButton extends StatelessWidget {
   const EmojiButton({
     super.key,
-    required this.controller,
+    required this.isOpen,
+    required this.onToggle,
     required this.ext,
-    this.onToggle,
     this.iconSize,
   });
 
-  final TextEditingController controller;
+  final bool isOpen;
+  final VoidCallback onToggle;
   final AppThemeExtension ext;
-
-  /// Called with the new panel-open state so the parent can manage keyboard focus.
-  final ValueChanged<bool>? onToggle;
   final double? iconSize;
 
   @override
-  State<EmojiButton> createState() => _EmojiButtonState();
-}
-
-class _EmojiButtonState extends State<EmojiButton> {
-  bool _open = false;
-
-  void _toggle() {
-    setState(() => _open = !_open);
-    widget.onToggle?.call(_open);
-  }
-
-  void _insert(String emoji) {
-    final ctrl = widget.controller;
-    final sel = ctrl.selection;
-    final text = ctrl.text;
-    final start = sel.isValid ? sel.start.clamp(0, text.length) : text.length;
-    final end = sel.isValid ? sel.end.clamp(0, text.length) : text.length;
-    final newText = text.replaceRange(start, end, emoji);
-    ctrl.value = TextEditingValue(
-      text: newText,
-      selection: TextSelection.collapsed(offset: start + emoji.length),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (_open)
-          EmojiPickerPanel(
-            ext: widget.ext,
-            onEmojiSelected: _insert,
-          ),
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: _toggle,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
-              child: Text(
-                _open ? '⌨️' : '😊',
-                style: TextStyle(fontSize: widget.iconSize ?? 20.sp),
-              ),
-            ),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onToggle,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
+          child: Text(
+            isOpen ? '⌨️' : '😊',
+            style: TextStyle(fontSize: iconSize ?? 20.sp),
           ),
         ),
-      ],
+      ),
     );
   }
+}
+
+// ── Helper: insert emoji into a TextEditingController ────────────────────────
+
+void insertEmoji(TextEditingController ctrl, String emoji) {
+  final sel = ctrl.selection;
+  final text = ctrl.text;
+  final start = sel.isValid ? sel.start.clamp(0, text.length) : text.length;
+  final end = sel.isValid ? sel.end.clamp(0, text.length) : text.length;
+  final newText = text.replaceRange(start, end, emoji);
+  ctrl.value = TextEditingValue(
+    text: newText,
+    selection: TextSelection.collapsed(offset: start + emoji.length),
+  );
 }
 
 // ── Emoji picker panel ────────────────────────────────────────────────────────

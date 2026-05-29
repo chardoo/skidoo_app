@@ -35,9 +35,13 @@ class CommentInputBarWidget extends StatefulWidget {
 class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
   bool _emojiOpen = false;
 
-  void _onEmojiToggle(bool open) {
-    setState(() => _emojiOpen = open);
-    if (open) widget.focusNode.unfocus();
+  void _toggleEmoji() {
+    setState(() => _emojiOpen = !_emojiOpen);
+    if (_emojiOpen) {
+      widget.focusNode.unfocus();
+    } else {
+      widget.focusNode.requestFocus();
+    }
   }
 
   @override
@@ -47,6 +51,14 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // ── Emoji panel — rendered as sibling ABOVE the input row so it is
+        //    never clipped by the parent sheet or obscured by the keyboard.
+        if (_emojiOpen)
+          EmojiPickerPanel(
+            ext: ext,
+            onEmojiSelected: (emoji) => insertEmoji(widget.controller, emoji),
+          ),
+
         // ── Reply banner ─────────────────────────────────────────────────────
         if (widget.replyingToName != null)
           Container(
@@ -107,9 +119,9 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
             children: [
               // ── Emoji button ─────────────────────────────────────────────
               EmojiButton(
-                controller: widget.controller,
+                isOpen: _emojiOpen,
+                onToggle: _toggleEmoji,
                 ext: ext,
-                onToggle: _onEmojiToggle,
                 iconSize: 20.sp,
               ),
               SizedBox(width: 4.w),

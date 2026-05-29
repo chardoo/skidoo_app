@@ -11,7 +11,7 @@ import 'package:skidoo_app/core/widgets/emoji_panel.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
 
-class ChatInputBar extends StatelessWidget {
+class ChatInputBar extends StatefulWidget {
   const ChatInputBar({
     super.key,
     required this.controller,
@@ -54,42 +54,53 @@ class ChatInputBar extends StatelessWidget {
 
   static const _maxBytes = 50 * 1024 * 1024; // 50 MB
 
-  Future<void> _pickImage(BuildContext context) async {
+  @override
+  State<ChatInputBar> createState() => _ChatInputBarState();
+}
+
+class _ChatInputBarState extends State<ChatInputBar> {
+  bool _emojiOpen = false;
+
+  void _toggleEmoji() {
+    setState(() => _emojiOpen = !_emojiOpen);
+    if (_emojiOpen) FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  Future<void> _pickImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,
     );
     if (picked == null) return;
-    // XFile.length() works on all platforms (blob URL on web, file path on mobile).
     final size = await picked.length();
-    if (size > _maxBytes) {
-      if (!context.mounted) return;
+    if (size > ChatInputBar._maxBytes) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('File is too large. Maximum size is 50 MB.')),
       );
       return;
     }
-    onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: false);
+    widget.onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: false);
   }
 
-  Future<void> _pickVideo(BuildContext context) async {
+  Future<void> _pickVideo() async {
     final picker = ImagePicker();
     final picked = await picker.pickVideo(source: ImageSource.gallery);
     if (picked == null) return;
-    // XFile.length() works on all platforms.
     final size = await picked.length();
-    if (size > _maxBytes) {
-      if (!context.mounted) return;
+    if (size > ChatInputBar._maxBytes) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('File is too large. Maximum size is 50 MB.')),
       );
       return;
     }
-    onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: true);
+    widget.onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: true);
   }
 
-  void _showMediaPicker(BuildContext context) {
+  void _showMediaPicker() {
+    final ext = widget.ext;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -97,11 +108,11 @@ class ChatInputBar extends StatelessWidget {
         ext: ext,
         onPickImage: () {
           Navigator.of(context).pop();
-          _pickImage(context);
+          _pickImage();
         },
         onPickVideo: () {
           Navigator.of(context).pop();
-          _pickVideo(context);
+          _pickVideo();
         },
       ),
     );
@@ -109,36 +120,47 @@ class ChatInputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasStaged = pendingImagePath != null || pendingShareUrl != null;
+    final ext = widget.ext;
+    final hasStaged =
+        widget.pendingImagePath != null || widget.pendingShareUrl != null;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // ── Emoji panel — sibling above the input row so it's never clipped ─
+        if (_emojiOpen)
+          EmojiPickerPanel(
+            ext: ext,
+            onEmojiSelected: (emoji) =>
+                insertEmoji(widget.controller, emoji),
+          ),
+
         // ── Staged media preview ────────────────────────────────────────────
-        if (pendingImagePath != null)
-          pendingIsVideo
+        if (widget.pendingImagePath != null)
+          widget.pendingIsVideo
               ? _StagedVideoPreview(
-                  filePath: pendingImagePath!,
-                  isUploading: isUploadingImage,
+                  filePath: widget.pendingImagePath!,
+                  isUploading: widget.isUploadingImage,
                   ext: ext,
-                  onClear: onClearImage,
+                  onClear: widget.onClearImage,
                 )
               : _StagedImagePreview(
-                  filePath: pendingImagePath!,
-                  isUploading: isUploadingImage,
+                  filePath: widget.pendingImagePath!,
+                  isUploading: widget.isUploadingImage,
                   ext: ext,
-                  onClear: onClearImage,
+                  onClear: widget.onClearImage,
                 )
-        else if (pendingShareUrl != null)
+        else if (widget.pendingShareUrl != null)
           _StagedNetworkImagePreview(
-            imageUrl: pendingShareUrl!,
+            imageUrl: widget.pendingShareUrl!,
             ext: ext,
-            onClear: onClearImage,
+            onClear: widget.onClearImage,
           ),
 
         // ── Reply preview strip ─────────────────────────────────────────────
-        if (replyingTo != null)
-          _ReplyBar(message: replyingTo!, ext: ext, onClear: onClearReply),
+        if (widget.replyingTo != null)
+          _ReplyBar(
+              message: widget.replyingTo!, ext: ext, onClear: widget.onClearReply),
 
         // ── Main input row ──────────────────────────────────────────────────
         Container(
@@ -155,9 +177,9 @@ class ChatInputBar extends StatelessWidget {
             children: [
               // Media picker — disabled while uploading or already staged
               GestureDetector(
-                onTap: (isUploadingImage || hasStaged)
+                onTap: (widget.isUploadingImage || hasStaged)
                     ? null
-                    : () => _showMediaPicker(context),
+                    : _showMediaPicker,
                 child: Container(
                   width: 40.w,
                   height: 40.h,
@@ -168,7 +190,7 @@ class ChatInputBar extends StatelessWidget {
                   alignment: Alignment.center,
                   child: Icon(
                     Icons.attach_file_rounded,
-                    color: (isUploadingImage || hasStaged)
+                    color: (widget.isUploadingImage || hasStaged)
                         ? ext.searchHintColor.withValues(alpha: 0.4)
                         : ext.searchHintColor,
                     size: 20.sp,
@@ -179,7 +201,8 @@ class ChatInputBar extends StatelessWidget {
 
               // Emoji button
               EmojiButton(
-                controller: controller,
+                isOpen: _emojiOpen,
+                onToggle: _toggleEmoji,
                 ext: ext,
                 iconSize: 20.sp,
               ),
@@ -188,13 +211,20 @@ class ChatInputBar extends StatelessWidget {
               // Text input
               Expanded(
                 child: TextField(
-                  controller: controller,
-                  style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+                  controller: widget.controller,
+                  onTap: () {
+                    if (_emojiOpen) setState(() => _emojiOpen = false);
+                  },
+                  style:
+                      TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                   maxLines: 4,
                   minLines: 1,
                   maxLength: 1000,
                   maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                  buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
+                  buildCounter: (_,
+                          {required currentLength,
+                          required isFocused,
+                          maxLength}) =>
                       currentLength >= 900
                           ? Text(
                               '$currentLength/$maxLength',
@@ -210,7 +240,7 @@ class ChatInputBar extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: hasStaged
                         ? 'Add a caption… (optional)'
-                        : replyingTo != null
+                        : widget.replyingTo != null
                             ? 'Reply…'
                             : 'Type a message…',
                     hintStyle: TextStyle(
@@ -225,26 +255,26 @@ class ChatInputBar extends StatelessWidget {
                         horizontal: 16.w, vertical: 10.h),
                     isDense: true,
                   ),
-                  onSubmitted: (_) => onSend(),
+                  onSubmitted: (_) => widget.onSend(),
                 ),
               ),
               SizedBox(width: 8.w),
 
               // Send button
               GestureDetector(
-                onTap: isUploadingImage ? null : onSend,
+                onTap: widget.isUploadingImage ? null : widget.onSend,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   width: 44.w,
                   height: 44.h,
                   decoration: BoxDecoration(
-                    color: isUploadingImage
+                    color: widget.isUploadingImage
                         ? ext.accentGold.withValues(alpha: 0.4)
                         : ext.accentGold,
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
-                  child: isUploadingImage
+                  child: widget.isUploadingImage
                       ? SizedBox(
                           width: 18.w,
                           height: 18.w,
