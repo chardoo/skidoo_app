@@ -381,6 +381,13 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           commentsEnabled: commentsEnabled,
           ext: ext,
           isExternalPanel: isExternalPanel,
+          photographerName: widget.event.photographerName,
+          photographerId: widget.event.photographerId,
+          isFollowed: widget.event.isFollowed,
+          isOwner: widget.isOwner,
+          isAuthenticated: widget.isAuthenticated,
+          onPhotographerTap: () => _openPhotographerProfile(ctx),
+          onLoginRequired: widget.onTap,
           onLike: widget.isAuthenticated
               ? () {
                   setState(() {
@@ -513,22 +520,12 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           children: [
             // ── Left spacer — centres card (shrinks when comments open) ───
             SizedBox(width: leftPad),
-            // ── Card column (header + image + caption + divider) ───────────
+            // ── Card column (image + caption + divider, no header) ───────
             SizedBox(
               width: cardW,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _PostHeader(
-                    event: widget.event,
-                    ext: ext,
-                    isOwner: widget.isOwner,
-                    isAuthenticated: widget.isAuthenticated,
-                    onPhotographerTap: () => _openPhotographerProfile(context),
-                    onHide: widget.onHide,
-                    onLoginRequired: widget.onTap,
-                    onImage: false,
-                  ),
                   SizedBox(
                     height: mediaH,
                     child: _buildMediaStack(context, ext, pics, cardW, mediaH),
@@ -1008,12 +1005,11 @@ class _ImageFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final count = event.pictures.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Photographer · photo count
+        // Photographer line — no photo count
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1021,28 +1017,19 @@ class _ImageFooter extends StatelessWidget {
                 size: 11.sp, color: Colors.white60,
                 shadows: _soft),
             SizedBox(width: 4.w),
-            Text(
-              event.photographerName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w500,
-                shadows: _soft,
-              ),
-            ),
-            if (count > 0) ...[
-              Text(
-                '  ·  $count ${count == 1 ? 'photo' : 'photos'}',
+            Flexible(
+              child: Text(
+                event.photographerName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white38,
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w400,
+                  color: Colors.white70,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
                   shadows: _soft,
                 ),
               ),
-            ],
+            ),
           ],
         ),
         SizedBox(height: 4.h),
@@ -1333,6 +1320,13 @@ class _WebReactionsColumn extends StatelessWidget {
     required this.onComment,
     required this.onShare,
     required this.onSave,
+    this.photographerName = '',
+    this.photographerId = '',
+    this.isFollowed = false,
+    this.isOwner = false,
+    this.isAuthenticated = false,
+    this.onPhotographerTap,
+    this.onLoginRequired,
   });
 
   final bool liked;
@@ -1343,20 +1337,24 @@ class _WebReactionsColumn extends StatelessWidget {
   final int commentCount;
   final bool commentsEnabled;
   final AppThemeExtension ext;
-  /// True when this column lives outside/to-the-right of the 480px card column.
   final bool isExternalPanel;
   final VoidCallback onLike;
   final VoidCallback onDislike;
-  /// Null when comments are disabled (authenticated user, comments turned off).
   final VoidCallback? onComment;
   final VoidCallback onShare;
   final VoidCallback onSave;
+  // Photographer badge shown at the bottom of the external panel (web desktop).
+  final String photographerName;
+  final String photographerId;
+  final bool isFollowed;
+  final bool isOwner;
+  final bool isAuthenticated;
+  final VoidCallback? onPhotographerTap;
+  final VoidCallback? onLoginRequired;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // External panel: no left border — it's already visually separate.
-    // Internal (narrow) panel: keep the subtle left divider.
     final border = isExternalPanel
         ? null
         : Border(
@@ -1366,80 +1364,195 @@ class _WebReactionsColumn extends StatelessWidget {
               width: 0.5,
             ),
           );
-    // External panel gets slightly larger icons since the space is ~280px wide.
-    final iconSize = isExternalPanel ? 32.0 : null; // null → default 28.sp
+    final iconSize = isExternalPanel ? 32.0 : null;
 
     return Container(
-      decoration: BoxDecoration(
-        color: ext.homeBackground,
-        border: border,
-      ),
+      decoration: BoxDecoration(color: ext.homeBackground, border: border),
       child: Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-          _WebActionBtn(
-            icon: liked
-                ? Icons.favorite_rounded
-                : Icons.favorite_border_rounded,
-            iconColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
-            count: likeCount,
-            countColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
-            iconSize: iconSize,
-            onTap: onLike,
-          ),
-          const SizedBox(height: 28),
-          _WebActionBtn(
-            icon: disliked
-                ? Icons.thumb_down_rounded
-                : Icons.thumb_down_outlined,
-            iconColor:
-                disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
-            count: dislikeCount,
-            countColor:
-                disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
-            iconSize: iconSize,
-            onTap: onDislike,
-          ),
-          const SizedBox(height: 28),
-          _WebActionBtn(
-            icon: commentsEnabled
-                ? Icons.mode_comment_outlined
-                : Icons.comments_disabled_outlined,
-            iconColor: commentsEnabled
-                ? ext.greetingColor
-                : ext.searchHintColor.withValues(alpha: 0.4),
-            count: commentCount,
-            countColor: commentsEnabled
-                ? ext.greetingColor
-                : ext.searchHintColor.withValues(alpha: 0.4),
-            iconSize: iconSize,
-            onTap: onComment,
-          ),
-          const SizedBox(height: 28),
-          _WebActionBtn(
-            icon: saved
-                ? Icons.bookmark_rounded
-                : Icons.bookmark_border_rounded,
-            iconColor: saved ? ext.accentGold : ext.greetingColor,
-            count: null,
-            countColor: ext.greetingColor,
-            iconSize: iconSize,
-            onTap: onSave,
-          ),
-          const SizedBox(height: 28),
-          _WebActionBtn(
-            icon: Icons.near_me_outlined,
-            iconColor: ext.greetingColor,
-            count: null,
-            countColor: ext.greetingColor,
-            iconSize: iconSize,
-            onTap: onShare,
-          ),
-        ],
+            // ── Photographer badge — external panel only (TikTok creator pin) ─
+            if (isExternalPanel && photographerName.isNotEmpty) ...[
+              _WebCreatorPin(
+                name: photographerName,
+                photographerId: photographerId,
+                isFollowed: isFollowed,
+                isOwner: isOwner,
+                isAuthenticated: isAuthenticated,
+                ext: ext,
+                onTap: onPhotographerTap,
+                onLoginRequired: onLoginRequired,
+              ),
+              const SizedBox(height: 28),
+            ],
+
+            // ── Reactions ─────────────────────────────────────────────────────
+            _WebActionBtn(
+              icon: liked
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              iconColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
+              count: likeCount,
+              countColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
+              iconSize: iconSize,
+              onTap: onLike,
+            ),
+            const SizedBox(height: 28),
+            _WebActionBtn(
+              icon: disliked
+                  ? Icons.thumb_down_rounded
+                  : Icons.thumb_down_outlined,
+              iconColor: disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
+              count: dislikeCount,
+              countColor:
+                  disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
+              iconSize: iconSize,
+              onTap: onDislike,
+            ),
+            const SizedBox(height: 28),
+            _WebActionBtn(
+              icon: commentsEnabled
+                  ? Icons.mode_comment_outlined
+                  : Icons.comments_disabled_outlined,
+              iconColor: commentsEnabled
+                  ? ext.greetingColor
+                  : ext.searchHintColor.withValues(alpha: 0.4),
+              count: commentCount,
+              countColor: commentsEnabled
+                  ? ext.greetingColor
+                  : ext.searchHintColor.withValues(alpha: 0.4),
+              iconSize: iconSize,
+              onTap: onComment,
+            ),
+            const SizedBox(height: 28),
+            _WebActionBtn(
+              icon: saved
+                  ? Icons.bookmark_rounded
+                  : Icons.bookmark_border_rounded,
+              iconColor: saved ? ext.accentGold : ext.greetingColor,
+              count: null,
+              countColor: ext.greetingColor,
+              iconSize: iconSize,
+              onTap: onSave,
+            ),
+            const SizedBox(height: 28),
+            _WebActionBtn(
+              icon: Icons.near_me_outlined,
+              iconColor: ext.greetingColor,
+              count: null,
+              countColor: ext.greetingColor,
+              iconSize: iconSize,
+              onTap: onShare,
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+// ── Web creator pin (avatar + name + follow, shown in the reactions column) ────
+
+class _WebCreatorPin extends StatelessWidget {
+  const _WebCreatorPin({
+    required this.name,
+    required this.photographerId,
+    required this.isFollowed,
+    required this.isOwner,
+    required this.isAuthenticated,
+    required this.ext,
+    this.onTap,
+    this.onLoginRequired,
+  });
+
+  final String name;
+  final String photographerId;
+  final bool isFollowed;
+  final bool isOwner;
+  final bool isAuthenticated;
+  final AppThemeExtension ext;
+  final VoidCallback? onTap;
+  final VoidCallback? onLoginRequired;
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Avatar
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: onTap,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: ext.accentGold.withValues(alpha: 0.35),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(2.5),
+              child: Container(
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFFFAB40), Color(0xFFFF6B35)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        // Abbreviated name
+        SizedBox(
+          width: 56,
+          child: Text(
+            name.split(' ').first,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: ext.searchHintColor,
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        // Follow button (hidden for own posts)
+        if (!isOwner)
+          FollowButton(
+            photographerId: photographerId,
+            initialFollowing: isFollowed,
+            onLoginRequired: isAuthenticated ? null : onLoginRequired,
+          ),
+      ],
     );
   }
 }
