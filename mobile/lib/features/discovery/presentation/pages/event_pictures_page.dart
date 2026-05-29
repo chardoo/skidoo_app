@@ -908,6 +908,7 @@ class _PhotoBackground extends StatelessWidget {
             imageUrl: url,
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
+            memCacheWidth: 1080,
             placeholder: (_, __) => placeholder,
             errorWidget: (_, __, ___) => errorWidget,
           ),

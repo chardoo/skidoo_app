@@ -690,6 +690,7 @@ class _MediaBackground extends StatelessWidget {
             imageUrl: url,
             fit: BoxFit.cover,
             filterQuality: FilterQuality.low,
+            memCacheWidth: 120,
             placeholder: (_, __) => const ColoredBox(color: Color(0xFF111111)),
             errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
           ),
@@ -706,6 +707,7 @@ class _MediaBackground extends StatelessWidget {
             imageUrl: url,
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
+            memCacheWidth: 1080,
             placeholder: (_, __) => const SizedBox.shrink(),
             errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
           ),
@@ -1105,6 +1107,7 @@ class _SingleMediaFrame extends StatelessWidget {
             imageUrl: media.url,
             fit: BoxFit.cover,
             filterQuality: FilterQuality.low,
+            memCacheWidth: 120,
             placeholder: (_, __) => const ColoredBox(color: Color(0xFF111111)),
             errorWidget: (ctx, url, err) {
               debugPrint('[_SingleMediaFrame] CachedNetworkImage ERROR (bg): url=$url err=$err');
@@ -1124,6 +1127,7 @@ class _SingleMediaFrame extends StatelessWidget {
             imageUrl: media.url,
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
+            memCacheWidth: 1080,
             placeholder: (_, __) => const SizedBox.shrink(),
             errorWidget: (ctx, url, err) {
               debugPrint('[_SingleMediaFrame] CachedNetworkImage ERROR (fg): url=$url err=$err');

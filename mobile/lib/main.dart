@@ -13,6 +13,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized(); // must be after WidgetsFlutterBinding
 
+  // Cap Flutter's decoded-image cache to prevent OOM crashes on photo feeds.
+  // The default (1000 images / unbounded bytes) is dangerously high for an app
+  // that renders full-res photos — each decoded image can be 10–30 MB.
+  // 50 images × ~2 MB avg decoded ≈ 100 MB; well under iOS's 2 GB hard limit.
+  if (!kIsWeb) {
+    PaintingBinding.instance.imageCache.maximumSize = 50;
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 100 * 1024 * 1024;
+  }
+
   // On web, Flutter 3.22+ no longer generates AssetManifest.json (only the
   // binary AssetManifest.bin). google_fonts still checks for the JSON file
   // first — allow CDN fetching so it can fall back cleanly without errors.

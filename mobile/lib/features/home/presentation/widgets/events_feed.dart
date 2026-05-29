@@ -536,7 +536,11 @@ class _EventsFeedState extends State<EventsFeed> {
             physics: kIsWeb
                 ? const ClampingScrollPhysics()
                 : const BouncingScrollPhysics(),
-            cacheExtent: kIsWeb ? 2400 : 1500,
+            // Keep fewer offscreen cards live on mobile — large cacheExtent
+            // forces Flutter to decode images for items far off-screen, which
+            // is the primary driver of OOM crashes on long feeds.
+            cacheExtent: kIsWeb ? 2400 : 300,
+            addAutomaticKeepAlives: false,
             padding: EdgeInsets.only(top: pad),
             itemCount: virtualItems.length,
             itemBuilder: (context, index) {
