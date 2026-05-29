@@ -463,20 +463,14 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             // ── Left spacer — centres card (shrinks when comments open) ───
             SizedBox(width: leftPad),
             // ── Card column (image + caption, rounded card) ───────────
-            Container(
+            SizedBox(
               width: cardW,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.18),
-                    blurRadius: 18,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+              child: Material(
+                color: ext.cardSurface,
+                borderRadius: BorderRadius.circular(14),
+                clipBehavior: Clip.antiAlias,
+                elevation: 6,
+                shadowColor: Colors.black.withValues(alpha: 0.22),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -485,17 +479,14 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                       child: _buildMediaStack(
                           context, ext, pics, cardW, mediaH),
                     ),
-                    Container(
-                      color: ext.cardSurface,
-                      child: CardDescriptionText(
-                        event: widget.event,
-                        ext: ext,
-                        expanded: _descExpanded,
-                        onToggle: () =>
-                            setState(() => _descExpanded = !_descExpanded),
-                      ),
+                    CardDescriptionText(
+                      event: widget.event,
+                      ext: ext,
+                      expanded: _descExpanded,
+                      onToggle: () =>
+                          setState(() => _descExpanded = !_descExpanded),
                     ),
-                    Container(color: ext.cardSurface, height: 8),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
