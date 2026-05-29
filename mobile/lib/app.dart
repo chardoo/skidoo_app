@@ -213,9 +213,14 @@ class _AppMaterial extends StatelessWidget {
       // On mobile: no wrapper — ScreenUtilInit already wraps the navigator.
       builder: kIsWeb ? _webLayoutBuilder : null,
       navigatorObservers: kIsWeb ? [WebRouteObserver.instance] : [],
-      // Returning users (valid stored token) go straight to /home.
-      // New / logged-out users land on Discovery (the guest feed).
-      initialRoute: token.isNotEmpty ? HomePage.routeName : DiscoveryPage.routeName,
+      // Web: always start at Discovery so a hard-refresh (⇧⌘R) gives a clean
+      // slate. _GuestGuard redirects authenticated users to /home immediately.
+      //
+      // Native iOS/Android: returning users (valid token) skip straight to
+      // /home — no flash of the guest feed on every cold start.
+      initialRoute: (!kIsWeb && token.isNotEmpty)
+          ? HomePage.routeName
+          : DiscoveryPage.routeName,
       routes: {
         // On web, guest-only pages redirect authenticated users to /home so
         // that pressing browser Back never lands on the unauthenticated UI.
