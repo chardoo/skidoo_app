@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/utils/skidoo_filters.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
@@ -105,12 +106,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                 placeholder: (_, __) => const SizedBox.shrink(),
                 errorWidget: (_, __, ___) =>
                     const ColoredBox(color: Color(0xFF111111)),
-                colorFilter: const ColorFilter.matrix(<double>[
-                  1.18, -0.06, -0.06, 0, 18,
-                  -0.05,  1.16, -0.05, 0, 18,
-                  -0.05, -0.05,  1.20, 0, 18,
-                  0,     0,     0,     1, 0,
-                ]),
+                colorFilter: SkidooFilters.vibrant,
               ),
               if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
               // if (pic.owner) const _OwnerCornerRibbon(),
@@ -185,6 +181,8 @@ class _SliderVideoItemState extends State<_SliderVideoItem> {
         showControls: true,
         backgroundColor: Colors.black,
         listenToPauseNotifier: true,
+        // Grade feed video to match the photo look.
+        colorFilter: SkidooFilters.vibrant,
       ),
     );
   }

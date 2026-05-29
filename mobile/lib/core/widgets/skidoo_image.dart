@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
 
 /// High-quality drop-in for [CachedNetworkImage].
 ///
@@ -56,8 +57,20 @@ class SkidooImage extends StatelessWidget {
   }
 
   Widget _image(BuildContext context, double availableWidth) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final logical = logicalWidth ?? availableWidth;
+
+    // Cloudinary-optimise the delivery URL: AVIF/WebP, best quality, retina
+    // DPR, sized to the display, and gently sharpened. Blur backdrops request
+    // a tiny version since the blur destroys all detail anyway.
+    final optimisedUrl = isBlurBackground
+        ? CloudinaryTransform.image(imageUrl,
+            displayWidth: 80, devicePixelRatio: 1.0, sharpen: false)
+        : CloudinaryTransform.image(imageUrl,
+            displayWidth: logical, devicePixelRatio: dpr);
+
     final img = CachedNetworkImage(
-      imageUrl: imageUrl,
+      imageUrl: optimisedUrl,
       fit: fit,
       width: width,
       height: height,

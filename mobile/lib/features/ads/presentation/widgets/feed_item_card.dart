@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:skidoo_app/core/utils/skidoo_filters.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -666,6 +667,7 @@ class _MediaBackground extends StatelessWidget {
           showControls: true,
           allowFullscreen: true,
           listenToPauseNotifier: true,
+          colorFilter: SkidooFilters.vibrant,
         );
       }
       return const ColoredBox(
@@ -708,12 +710,7 @@ class _MediaBackground extends StatelessWidget {
           fit: BoxFit.contain,
           placeholder: (_, __) => const SizedBox.shrink(),
           errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
-          colorFilter: const ColorFilter.matrix(<double>[
-            1.18, -0.06, -0.06, 0, 18,
-            -0.05,  1.16, -0.05, 0, 18,
-            -0.05, -0.05,  1.20, 0, 18,
-            0,     0,     0,     1, 0,
-          ]),
+          colorFilter: SkidooFilters.vibrant,
         ),
       ],
     );
@@ -1119,12 +1116,7 @@ class _SingleMediaFrame extends StatelessWidget {
           imageUrl: media.url,
           fit: BoxFit.contain,
           placeholder: (_, __) => const SizedBox.shrink(),
-          colorFilter: const ColorFilter.matrix(<double>[
-            1.18, -0.06, -0.06, 0, 18,
-            -0.05,  1.16, -0.05, 0, 18,
-            -0.05, -0.05,  1.20, 0, 18,
-            0,     0,     0,     1, 0,
-          ]),
+          colorFilter: SkidooFilters.vibrant,
           errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
         ),
         if (media.isVideo)

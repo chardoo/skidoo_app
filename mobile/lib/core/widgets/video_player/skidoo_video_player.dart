@@ -63,6 +63,8 @@ class SkidooVideoPlayer extends StatefulWidget {
     // ── Coordination ──────────────────────────────────────────────────────
     this.isActive = true,
     this.listenToPauseNotifier = true,
+    // ── Look ────────────────────────────────────────────────────────────────
+    this.colorFilter,
   });
 
   /// Network URL (`https://…`) or local path (`file:///…`) of the video.
@@ -105,6 +107,11 @@ class SkidooVideoPlayer extends StatefulWidget {
 
   /// Subscribe to [VideoPauseNotifier.pauseAll]. Defaults to true.
   final bool listenToPauseNotifier;
+
+  /// Optional colour grade applied to the video surface (e.g.
+  /// [SkidooFilters.vibrant]) so feed video matches the photo grading.
+  /// Null leaves the video ungraded — used for chat where fidelity matters.
+  final ColorFilter? colorFilter;
 
   @override
   State<SkidooVideoPlayer> createState() => _SkidooVideoPlayerState();
@@ -155,6 +162,26 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
 
   void _initPlayer() {
     final player = Player();
+
+    // ── Native libmpv quality tuning ───────────────────────────────────────
+    // Raise the scaler quality so upscaled video looks crisp (not soft/blocky)
+    // the way it does in Instagram / TikTok. Only applies on native platforms
+    // where the player is backed by libmpv; a no-op on web.
+    final platform = player.platform;
+    if (platform is NativePlayer) {
+      () async {
+        try {
+          await platform.setProperty('scale', 'ewa_lanczos'); // sharp upscale
+          await platform.setProperty('cscale', 'ewa_lanczos'); // chroma upscale
+          await platform.setProperty('dscale', 'mitchell'); // smooth downscale
+          await platform.setProperty('dither-depth', 'auto');
+          await platform.setProperty('hwdec', 'auto-safe'); // hw decode for 4K
+          await platform.setProperty('vd-lavc-threads', '0'); // auto threads
+        } catch (_) {
+          // Property unsupported on this build of libmpv — ignore.
+        }
+      }();
+    }
 
     // Width-only render buffer: matches the physical screen width for
     // pixel-perfect rendering without allocating a full-screen-height GPU
@@ -428,7 +455,11 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
 
   @override
   Widget build(BuildContext context) {
-    final video = _buildVideoSurface();
+    Widget video = _buildVideoSurface();
+    // Apply the optional colour grade so feed video matches the photo look.
+    if (widget.colorFilter != null) {
+      video = ColorFiltered(colorFilter: widget.colorFilter!, child: video);
+    }
 
     // ── Sizing ─────────────────────────────────────────────────────────────
     Widget sized;

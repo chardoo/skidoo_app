@@ -1,5 +1,6 @@
 import 'dart:ui' show ImageFilter;
 
+import 'package:skidoo_app/core/utils/skidoo_filters.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -1049,12 +1050,7 @@ class _PhotoBackground extends StatelessWidget {
           fit: BoxFit.contain,
           placeholder: (_, __) => placeholder,
           errorWidget: (_, __, ___) => errorWidget,
-          colorFilter: const ColorFilter.matrix(<double>[
-            1.18, -0.06, -0.06, 0, 18,
-            -0.05,  1.16, -0.05, 0, 18,
-            -0.05, -0.05,  1.20, 0, 18,
-            0,     0,     0,     1, 0,
-          ]),
+          colorFilter: SkidooFilters.vibrant,
         ),
       ],
     );
