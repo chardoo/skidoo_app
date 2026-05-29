@@ -1,9 +1,9 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/components/comments/comment_input_bar_widget.dart';
+import 'package:skidoo_app/core/widgets/emoji_panel.dart';
 import 'package:skidoo_app/components/comments/comment_row_data.dart';
 import 'package:skidoo_app/components/comments/comment_sheet_shell.dart';
 import 'package:skidoo_app/components/comments/threaded_comment_widget.dart';
@@ -534,28 +534,22 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor =
-        (isDark ? Colors.white : Colors.black).withValues(alpha: 0.10);
+    final dividerColor = (isDark ? Colors.white : Colors.black)
+        .withValues(alpha: 0.10);
 
-    // Frosted glass panel for external (desktop) placement; solid card for
-    // the narrow inside-card variant.
-    Widget panel = Container(
+    return Container(
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.black.withValues(alpha: widget.isExternalPanel ? 0.55 : 1.0)
-            : Colors.white.withValues(alpha: widget.isExternalPanel ? 0.72 : 1.0),
-        border: widget.isExternalPanel
-            ? null
-            : Border(left: BorderSide(color: borderColor, width: 0.5)),
-        boxShadow: widget.isExternalPanel
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.10),
-                  blurRadius: 20,
-                  offset: const Offset(-3, 0),
-                ),
-              ]
-            : null,
+        color: ext.cardSurface,
+        border: Border(
+          left: BorderSide(color: dividerColor, width: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
+            blurRadius: 28,
+            offset: const Offset(-6, 0),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -584,7 +578,6 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                       )
                     : Column(
                         children: [
-                          // Syncing bar
                           BlocBuilder<ChatRoomBloc, ChatRoomState>(
                             buildWhen: (p, c) =>
                                 p.isSyncing != c.isSyncing,
@@ -598,7 +591,6 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                                 : const SizedBox.shrink(),
                           ),
 
-                          // Comments list with bottom-fade overlay
                           Expanded(
                             child: Stack(
                               children: [
@@ -624,7 +616,7 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                                     return ListView.builder(
                                       controller: _scrollCtrl,
                                       padding: EdgeInsets.fromLTRB(
-                                          12.w, 12.h, 12.w, 8.h),
+                                          10.w, 12.h, 10.w, 12.h),
                                       itemCount:
                                           threaded.topLevel.length +
                                               (state.isLoadingMore
@@ -650,8 +642,6 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                                         final replies = threaded
                                                 .repliesMap[msg.id] ??
                                             [];
-                                        // Each top-level thread sits in a
-                                        // subtle card bubble for visual depth.
                                         return _CommentCard(
                                           ext: ext,
                                           isDark: isDark,
@@ -685,13 +675,12 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                                   },
                                 ),
 
-                                // Scroll-fade: softens the hard clip at the
-                                // list's bottom edge above the input bar.
+                                // Soft fade at the bottom of the list
                                 Positioned(
                                   bottom: 0,
                                   left: 0,
                                   right: 0,
-                                  height: 32,
+                                  height: 28,
                                   child: IgnorePointer(
                                     child: DecoratedBox(
                                       decoration: BoxDecoration(
@@ -699,18 +688,9 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
                                           colors: [
-                                            (isDark
-                                                    ? Colors.black
-                                                    : Colors.white)
+                                            ext.cardSurface
                                                 .withValues(alpha: 0),
-                                            (isDark
-                                                    ? Colors.black
-                                                    : Colors.white)
-                                                .withValues(
-                                                    alpha: widget
-                                                            .isExternalPanel
-                                                        ? 0.55
-                                                        : 1.0),
+                                            ext.cardSurface,
                                           ],
                                         ),
                                       ),
@@ -721,8 +701,8 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                             ),
                           ),
 
-                          // Input bar — includes emoji button
-                          CommentInputBarWidget(
+                          // Web-native input bar with emoji
+                          _WebCommentInput(
                             controller: _inputCtrl,
                             focusNode: _focusNode,
                             onSend: _send,
@@ -738,23 +718,10 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
         ],
       ),
     );
-
-    // Wrap external-panel variant in a backdrop blur so the background
-    // (home feed behind the panel) gets a frosted-glass treatment.
-    if (widget.isExternalPanel) {
-      panel = ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: panel,
-        ),
-      );
-    }
-
-    return panel;
   }
 }
 
-// ── Comment card bubble — wraps each thread on web desktop ───────────────────
+// ── Comment card bubble — wraps each thread in a visible elevated card ────────
 
 class _CommentCard extends StatefulWidget {
   const _CommentCard({
@@ -775,31 +742,246 @@ class _CommentCardState extends State<_CommentCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = widget.isDark;
+    final ext = widget.ext;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 120),
         margin: EdgeInsets.only(bottom: 8.h),
-        padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 8.h),
+        padding: EdgeInsets.fromLTRB(12.w, 11.h, 12.w, 9.h),
         decoration: BoxDecoration(
+          // Use the dedicated field-fill colour — clearly distinct from
+          // cardSurface (the panel background) on both dark and light themes.
           color: _hovered
-              ? (isDark
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : Colors.black.withValues(alpha: 0.03))
-              : (isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.black.withValues(alpha: 0.02)),
+              ? ext.searchHintColor.withValues(alpha: 0.10)
+              : ext.searchFieldFill,
           borderRadius: BorderRadius.circular(12.r),
           border: Border.all(
-            color: (isDark ? Colors.white : Colors.black)
-                .withValues(alpha: _hovered ? 0.10 : 0.06),
+            color: ext.glassBorder.withValues(alpha: _hovered ? 0.22 : 0.12),
             width: 0.8,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: widget.isDark ? 0.18 : 0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: widget.child,
       ),
+    );
+  }
+}
+
+// ── Web-native comment input bar — emoji + text field + send ─────────────────
+
+class _WebCommentInput extends StatefulWidget {
+  const _WebCommentInput({
+    required this.controller,
+    required this.focusNode,
+    required this.onSend,
+    required this.ext,
+    this.replyingToName,
+    this.onCancelReply,
+  });
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final VoidCallback onSend;
+  final AppThemeExtension ext;
+  final String? replyingToName;
+  final VoidCallback? onCancelReply;
+
+  @override
+  State<_WebCommentInput> createState() => _WebCommentInputState();
+}
+
+class _WebCommentInputState extends State<_WebCommentInput> {
+  bool _emojiOpen = false;
+
+  void _toggleEmoji() {
+    setState(() => _emojiOpen = !_emojiOpen);
+    if (_emojiOpen) {
+      widget.focusNode.unfocus();
+    } else {
+      widget.focusNode.requestFocus();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = widget.ext;
+    final dividerColor =
+        ext.glassBorder.withValues(alpha: 0.15);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Emoji panel — above the input row, always fully visible
+        if (_emojiOpen)
+          EmojiPickerPanel(
+            ext: ext,
+            onEmojiSelected: (emoji) =>
+                insertEmoji(widget.controller, emoji),
+          ),
+
+        // Reply strip
+        if (widget.replyingToName != null)
+          Container(
+            padding: EdgeInsets.fromLTRB(14.w, 7.h, 8.w, 7.h),
+            decoration: BoxDecoration(
+              color: ext.accentGold.withValues(alpha: 0.08),
+              border: Border(
+                top: BorderSide(color: dividerColor),
+                left: BorderSide(color: ext.accentGold, width: 3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.reply_rounded,
+                    size: 13.sp, color: ext.accentGold),
+                SizedBox(width: 6.w),
+                Expanded(
+                  child: Text(
+                    'Replying to ${widget.replyingToName}',
+                    style: TextStyle(
+                      color: ext.accentGold,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: widget.onCancelReply,
+                  child: Icon(Icons.close_rounded,
+                      size: 14.sp, color: ext.searchHintColor),
+                ),
+              ],
+            ),
+          ),
+
+        // Input row
+        Container(
+          padding: EdgeInsets.fromLTRB(10.w, 10.h, 10.w, 12.h),
+          decoration: BoxDecoration(
+            color: ext.searchFieldFill,
+            border: Border(
+              top: BorderSide(color: dividerColor),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Emoji toggle button — circle background like WebActionBtn
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: _toggleEmoji,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    width: 34.w,
+                    height: 34.w,
+                    decoration: BoxDecoration(
+                      color: _emojiOpen
+                          ? ext.accentGold.withValues(alpha: 0.18)
+                          : ext.glassFill,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _emojiOpen
+                            ? ext.accentGold.withValues(alpha: 0.50)
+                            : ext.glassBorder.withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      _emojiOpen ? '⌨️' : '😊',
+                      style: TextStyle(fontSize: 16.sp),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 8.w),
+
+              // Text field
+              Expanded(
+                child: CallbackShortcuts(
+                  bindings: {
+                    const SingleActivator(LogicalKeyboardKey.enter,
+                        shift: false): widget.onSend,
+                    const SingleActivator(
+                        LogicalKeyboardKey.numpadEnter,
+                        shift: false): widget.onSend,
+                  },
+                  child: TextField(
+                    controller: widget.controller,
+                    focusNode: widget.focusNode,
+                    onTap: () {
+                      if (_emojiOpen) setState(() => _emojiOpen = false);
+                    },
+                    style: TextStyle(
+                        color: ext.greetingColor, fontSize: 13.sp),
+                    maxLines: 4,
+                    minLines: 1,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: widget.replyingToName != null
+                          ? 'Write a reply…'
+                          : 'Add a comment…',
+                      hintStyle: TextStyle(
+                          color: ext.searchHintColor, fontSize: 13.sp),
+                      filled: true,
+                      fillColor: ext.cardSurface,
+                      border: OutlineInputBorder(
+                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.circular(20.r),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 14.w, vertical: 9.h),
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => widget.onSend(),
+                  ),
+                ),
+              ),
+              SizedBox(width: 8.w),
+
+              // Send button
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: widget.onSend,
+                  child: Container(
+                    width: 36.w,
+                    height: 36.w,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: ext.accentGold.withValues(alpha: 0.35),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child:
+                        Icon(Icons.send_rounded, color: Colors.white, size: 16.sp),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
