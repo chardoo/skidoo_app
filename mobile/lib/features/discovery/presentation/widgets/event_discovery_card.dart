@@ -980,40 +980,51 @@ class _ImageFooterState extends State<_ImageFooter> {
           ),
         ),
 
-        // Content tags — tight gap when collapsed, more space when expanded
+        // Content tags — inline with "more / less" pinned to the right
         if (tagLine.isNotEmpty) ...[
-          SizedBox(height: _tagsExpanded ? 7.h : 3.h),
+          SizedBox(height: 4.h),
           GestureDetector(
             onTap: () => setState(() => _tagsExpanded = !_tagsExpanded),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  tagLine,
-                  maxLines: _tagsExpanded ? null : 1,
-                  overflow: _tagsExpanded
-                      ? TextOverflow.visible
-                      : TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w500,
-                    height: 1.4,
-                    shadows: _soft,
+            child: _tagsExpanded
+                ? Text(
+                    tagLine,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w500,
+                      height: 1.4,
+                      shadows: _soft,
+                    ),
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          tagLine,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                            shadows: _soft,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'more',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w500,
+                          shadows: _soft,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Text(
-                  _tagsExpanded ? 'less' : 'more',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w500,
-                    shadows: _soft,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ],
