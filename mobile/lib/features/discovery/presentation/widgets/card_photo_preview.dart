@@ -181,8 +181,6 @@ class _SliderVideoItemState extends State<_SliderVideoItem> {
         showControls: true,
         backgroundColor: Colors.black,
         listenToPauseNotifier: true,
-        // Grade feed video to match the photo look.
-        colorFilter: SkidooFilters.vibrant,
       ),
     );
   }
