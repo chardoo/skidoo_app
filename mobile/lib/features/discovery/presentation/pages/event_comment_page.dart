@@ -642,33 +642,28 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                                         final replies = threaded
                                                 .repliesMap[msg.id] ??
                                             [];
-                                        return _CommentCard(
+                                        return ThreadedCommentWidget(
+                                          key: ValueKey(msg.id),
+                                          comment: _toRowData(msg,
+                                              replies: replies,
+                                              onReply: _startReply),
+                                          replies: replies
+                                              .map((r) => _toRowData(
+                                                  r,
+                                                  onReply: _startReply))
+                                              .toList(),
                                           ext: ext,
-                                          isDark: isDark,
-                                          child: ThreadedCommentWidget(
-                                            key: ValueKey(msg.id),
-                                            comment: _toRowData(msg,
-                                                replies: replies,
-                                                onReply: _startReply),
-                                            replies: replies
-                                                .map((r) => _toRowData(
-                                                    r,
-                                                    onReply: _startReply))
-                                                .toList(),
-                                            ext: ext,
-                                            isExpanded: _expandedIds
-                                                .contains(msg.id),
-                                            onToggleReplies: () =>
-                                                setState(() {
-                                              if (_expandedIds
-                                                  .contains(msg.id)) {
-                                                _expandedIds
-                                                    .remove(msg.id);
-                                              } else {
-                                                _expandedIds.add(msg.id);
-                                              }
-                                            }),
-                                          ),
+                                          isExpanded: _expandedIds
+                                              .contains(msg.id),
+                                          onToggleReplies: () =>
+                                              setState(() {
+                                            if (_expandedIds
+                                                .contains(msg.id)) {
+                                              _expandedIds.remove(msg.id);
+                                            } else {
+                                              _expandedIds.add(msg.id);
+                                            }
+                                          }),
                                         );
                                       },
                                     );
@@ -716,60 +711,6 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                       ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Comment card bubble — wraps each thread in a visible elevated card ────────
-
-class _CommentCard extends StatefulWidget {
-  const _CommentCard({
-    required this.child,
-    required this.ext,
-    required this.isDark,
-  });
-  final Widget child;
-  final AppThemeExtension ext;
-  final bool isDark;
-
-  @override
-  State<_CommentCard> createState() => _CommentCardState();
-}
-
-class _CommentCardState extends State<_CommentCard> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = widget.ext;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        margin: EdgeInsets.only(bottom: 8.h),
-        padding: EdgeInsets.fromLTRB(12.w, 11.h, 12.w, 9.h),
-        decoration: BoxDecoration(
-          // Use the dedicated field-fill colour — clearly distinct from
-          // cardSurface (the panel background) on both dark and light themes.
-          color: _hovered
-              ? ext.searchHintColor.withValues(alpha: 0.10)
-              : ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(
-            color: ext.glassBorder.withValues(alpha: _hovered ? 0.22 : 0.12),
-            width: 0.8,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: widget.isDark ? 0.18 : 0.06),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: widget.child,
       ),
     );
   }

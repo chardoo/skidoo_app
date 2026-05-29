@@ -458,7 +458,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             : commentsW;
 
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          // stretch so the reactions and comments panels fill the full
+          // card height (image + description), not just the image height.
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Left spacer — centres card (shrinks when comments open) ───
             SizedBox(width: leftPad),
@@ -491,18 +493,16 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 ),
               ),
             ),
-            // ── Reactions — always 64 px, always flush to card ────────────
+            // ── Reactions — 64 px wide, stretches to full card height ─────
             SizedBox(
               width: reactionsW,
-              height: mediaH,
               child: _buildWebRightPanel(context, ext, commentsEnabled,
                   isExternalPanel: true, reactionsOnly: true, mediaH: mediaH),
             ),
-            // ── Comments panel — fills available space up to commentsW ─────
+            // ── Comments panel — stretches to full card height ────────────
             if (_webCommentsOpen)
               SizedBox(
                 width: effectiveCommentsW,
-                height: mediaH,
                 child: EventCommentInlinePanel(
                   event: widget.event,
                   isExternalPanel: true,
