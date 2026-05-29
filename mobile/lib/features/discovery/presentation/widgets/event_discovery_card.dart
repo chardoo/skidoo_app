@@ -25,8 +25,6 @@ import 'package:skidoo_app/models/photographer/photographerModel.dart';
 /// Width of the main content column on web — must match app.dart's _kWebColumnWidth.
 const double _kWebColumnWidth = 480.0;
 
-// Width of the side-panel (reactions column / inline comments) on web.
-const double _kWebSidePanelW = 170.0;
 
 class EventDiscoveryCard extends StatefulWidget {
   const EventDiscoveryCard({
@@ -573,62 +571,12 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
         );
       }
 
-      // ── Narrow: inside-card panel (current behaviour) ──────────────────────
-      const panelW = _kWebSidePanelW;
-      final imageW = cons.maxWidth - panelW;
-      final mediaH = _computeMediaHeight(imageW, screenH);
-      return Container(
-        color: Colors.transparent,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _PostHeader(
-              event: widget.event,
-              ext: ext,
-              isOwner: widget.isOwner,
-              isAuthenticated: widget.isAuthenticated,
-              onPhotographerTap: () => _openPhotographerProfile(context),
-              onHide: widget.onHide,
-              onLoginRequired: widget.onTap,
-              onImage: false,
-            ),
-            SizedBox(
-              height: mediaH,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    width: imageW,
-                    child:
-                        _buildMediaStack(context, ext, pics, imageW, mediaH),
-                  ),
-                  SizedBox(
-                    width: panelW,
-                    child: _buildWebRightPanel(context, ext, commentsEnabled,
-                        isExternalPanel: false),
-                  ),
-                ],
-              ),
-            ),
-            CardDescriptionText(
-              event: widget.event,
-              ext: ext,
-              expanded: _descExpanded,
-              onToggle: () => setState(() => _descExpanded = !_descExpanded),
-            ),
-            SizedBox(height: 6.h),
-            Divider(
-              height: 1,
-              thickness: 0.5,
-              color: ext.searchHintColor.withValues(alpha: 0.1),
-            ),
-          ],
-        ),
-      );
+      // ── Narrow (mobile web): same layout as native — reactions beneath ─────
+      return _buildMobileLayout(context, ext, pics, screenH);
     });
   }
 
-  // ── Mobile layout — Instagram header + TikTok image overlay ─────────────────
+  // ── Shared helpers: used by both native and mobile-web layouts ───────────────
 
   bool get _commentsEnabled =>
       AppConfigRepository.current.commentsEnabled &&
@@ -638,18 +586,89 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                   _currentPage.clamp(0, widget.event.pictures.length - 1)]
               .commentsEnabled);
 
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final pics = widget.event.pictures;
-    final screenH = MediaQuery.sizeOf(context).height;
+  /// Builds the interaction bar with all reaction handlers wired up.
+  /// Used by both the native iOS/Android path and the narrow mobile-web path.
+  Widget _buildInteractionBar(BuildContext context, AppThemeExtension ext) {
+    return BlocBuilder<DiscoveryBloc, DiscoveryState>(
+      buildWhen: (prev, next) => prev.savedEventIds != next.savedEventIds,
+      builder: (ctx, _) => CardInteractionBar(
+        liked: _liked,
+        disliked: _disliked,
+        saved: _isSaved(ctx),
+        likeCount: _likeCount,
+        dislikeCount: _dislikeCount,
+        commentCount: widget.event.commentCount,
+        commentsEnabled: _commentsEnabled,
+        ext: ext,
+        onLike: widget.isAuthenticated
+            ? () {
+                setState(() {
+                  if (!_liked && _disliked) {
+                    _disliked = false;
+                    _dislikeCount =
+                        (_dislikeCount - 1).clamp(0, 999999999);
+                  }
+                  _liked = !_liked;
+                  _likeCount += _liked ? 1 : -1;
+                });
+                ctx.read<DiscoveryBloc>().add(
+                      DiscoveryReactionToggled(widget.event.id,
+                          isLike: true),
+                    );
+              }
+            : widget.onTap,
+        onDislike: widget.isAuthenticated
+            ? () {
+                setState(() {
+                  if (!_disliked && _liked) {
+                    _liked = false;
+                    _likeCount = (_likeCount - 1).clamp(0, 999999999);
+                  }
+                  _disliked = !_disliked;
+                  _dislikeCount += _disliked ? 1 : -1;
+                });
+                ctx.read<DiscoveryBloc>().add(
+                      DiscoveryReactionToggled(widget.event.id,
+                          isLike: false),
+                    );
+              }
+            : widget.onTap,
+        onComment: widget.isAuthenticated
+            ? (widget.onCommentTap ??
+                () => _showCommentSheet(context, ext))
+            : widget.onTap,
+        onShare: widget.isAuthenticated
+            ? () {
+                final p = widget.event.pictures;
+                if (p.isEmpty) return;
+                GalleryShareSheet.show(
+                  context,
+                  imageUrl: p[_currentPage.clamp(0, p.length - 1)].url,
+                  photoLabel: widget.event.eventName,
+                );
+              }
+            : widget.onTap,
+        onSave: widget.isAuthenticated
+            ? () => ctx
+                .read<DiscoveryBloc>()
+                .add(DiscoveryEventSaveToggled(widget.event.id))
+            : widget.onTap,
+      ),
+    );
+  }
 
-    if (kIsWeb) return _buildWebCard(context, ext, pics, screenH);
-
+  /// Shared card layout for native iOS/Android AND narrow mobile-web.
+  /// header → full-width image → interaction bar below → caption → gap.
+  Widget _buildMobileLayout(
+    BuildContext context,
+    AppThemeExtension ext,
+    List<EventPicture> pics,
+    double screenH,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Instagram-style slim header ────────────────────────────────────
+        // ── Slim header ──────────────────────────────────────────────────
         Container(
           color: ext.cardSurface,
           child: _PostHeader(
@@ -664,103 +683,23 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           ),
         ),
 
-        // ── Full-bleed image + TikTok action overlay ───────────────────────
+        // ── Full-width image ─────────────────────────────────────────────
         LayoutBuilder(
           builder: (ctx, constraints) {
-            final mediaH = _computeMediaHeight(constraints.maxWidth, screenH);
-            return SizedBox(
-              width: constraints.maxWidth,
-              height: mediaH,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // The photo/video carousel with gradient + footer text
-                  _buildMediaStack(ctx, ext, pics, constraints.maxWidth, mediaH),
-
-                  // TikTok-style action column — right side of the image
-                  Positioned(
-                    right: 10.w,
-                    bottom: 80.h,
-                    child: BlocBuilder<DiscoveryBloc, DiscoveryState>(
-                      buildWhen: (p, n) =>
-                          p.savedEventIds != n.savedEventIds,
-                      builder: (ctx2, _) => _TikTokActionColumn(
-                        liked: _liked,
-                        disliked: _disliked,
-                        saved: _isSaved(ctx2),
-                        likeCount: _likeCount,
-                        dislikeCount: _dislikeCount,
-                        commentCount: widget.event.commentCount,
-                        commentsEnabled: _commentsEnabled,
-                        ext: ext,
-                        onLike: widget.isAuthenticated
-                            ? () {
-                                setState(() {
-                                  if (!_liked && _disliked) {
-                                    _disliked = false;
-                                    _dislikeCount = (_dislikeCount - 1)
-                                        .clamp(0, 999999999);
-                                  }
-                                  _liked = !_liked;
-                                  _likeCount += _liked ? 1 : -1;
-                                });
-                                ctx2.read<DiscoveryBloc>().add(
-                                      DiscoveryReactionToggled(
-                                          widget.event.id,
-                                          isLike: true),
-                                    );
-                              }
-                            : widget.onTap,
-                        onDislike: widget.isAuthenticated
-                            ? () {
-                                setState(() {
-                                  if (!_disliked && _liked) {
-                                    _liked = false;
-                                    _likeCount = (_likeCount - 1)
-                                        .clamp(0, 999999999);
-                                  }
-                                  _disliked = !_disliked;
-                                  _dislikeCount += _disliked ? 1 : -1;
-                                });
-                                ctx2.read<DiscoveryBloc>().add(
-                                      DiscoveryReactionToggled(
-                                          widget.event.id,
-                                          isLike: false),
-                                    );
-                              }
-                            : widget.onTap,
-                        onComment: widget.isAuthenticated
-                            ? (widget.onCommentTap ??
-                                () => _showCommentSheet(ctx2, ext))
-                            : widget.onTap,
-                        onShare: widget.isAuthenticated
-                            ? () {
-                                final p = widget.event.pictures;
-                                if (p.isEmpty) return;
-                                GalleryShareSheet.show(
-                                  ctx2,
-                                  imageUrl: p[_currentPage
-                                          .clamp(0, p.length - 1)]
-                                      .url,
-                                  photoLabel: widget.event.eventName,
-                                );
-                              }
-                            : widget.onTap,
-                        onSave: widget.isAuthenticated
-                            ? () => ctx2.read<DiscoveryBloc>().add(
-                                  DiscoveryEventSaveToggled(widget.event.id),
-                                )
-                            : widget.onTap,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
+            final mediaH =
+                _computeMediaHeight(constraints.maxWidth, screenH);
+            return _buildMediaStack(
+                ctx, ext, pics, constraints.maxWidth, mediaH);
           },
         ),
 
-        // ── Instagram-style minimal caption ───────────────────────────────
+        // ── Interaction bar below the image ──────────────────────────────
+        Container(
+          color: ext.cardSurface,
+          child: _buildInteractionBar(context, ext),
+        ),
+
+        // ── Caption ──────────────────────────────────────────────────────
         Container(
           color: ext.cardSurface,
           child: CardDescriptionText(
@@ -772,10 +711,24 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           ),
         ),
 
-        // ── Card gap (breathing room between cards) ────────────────────────
+        // ── Card gap ─────────────────────────────────────────────────────
         Container(height: 10.h, color: ext.homeBackground),
       ],
     );
+  }
+
+  // ── Entry point ───────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final pics = widget.event.pictures;
+    final screenH = MediaQuery.sizeOf(context).height;
+
+    if (kIsWeb) return _buildWebCard(context, ext, pics, screenH);
+
+    // Native iOS / Android — reactions beneath the image.
+    return _buildMobileLayout(context, ext, pics, screenH);
   }
 
   void _openPhotographerProfile(BuildContext context) {
@@ -1356,196 +1309,6 @@ class _UnauthCta extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── TikTok-style right-side action column (mobile only) ──────────────────────
-
-class _TikTokActionColumn extends StatelessWidget {
-  const _TikTokActionColumn({
-    required this.liked,
-    required this.disliked,
-    required this.saved,
-    required this.likeCount,
-    required this.dislikeCount,
-    required this.commentCount,
-    required this.commentsEnabled,
-    required this.ext,
-    required this.onLike,
-    required this.onDislike,
-    required this.onComment,
-    required this.onShare,
-    required this.onSave,
-  });
-
-  final bool liked;
-  final bool disliked;
-  final bool saved;
-  final int likeCount;
-  final int dislikeCount;
-  final int commentCount;
-  final bool commentsEnabled;
-  final AppThemeExtension ext;
-  final VoidCallback onLike;
-  final VoidCallback onDislike;
-  final VoidCallback onComment;
-  final VoidCallback onShare;
-  final VoidCallback onSave;
-
-  static String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return '$n';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // ── Like ───────────────────────────────────────────────────────────
-        _TikTokBtn(
-          onTap: onLike,
-          icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-          iconColor: liked ? const Color(0xFFFF3B5C) : Colors.white,
-          label: likeCount > 0 ? _fmt(likeCount) : null,
-          active: liked,
-        ),
-        SizedBox(height: 18.h),
-
-        // ── Dislike ────────────────────────────────────────────────────────
-        _TikTokBtn(
-          onTap: onDislike,
-          icon: disliked
-              ? Icons.thumb_down_rounded
-              : Icons.thumb_down_outlined,
-          iconColor: disliked ? const Color(0xFF7B8CFF) : Colors.white,
-          label: dislikeCount > 0 ? _fmt(dislikeCount) : null,
-          active: disliked,
-        ),
-        SizedBox(height: 18.h),
-
-        // ── Comment ────────────────────────────────────────────────────────
-        _TikTokBtn(
-          onTap: onComment,
-          icon: commentsEnabled
-              ? Icons.mode_comment_rounded
-              : Icons.comments_disabled_rounded,
-          iconColor:
-              commentsEnabled ? Colors.white : Colors.white.withValues(alpha: 0.35),
-          label: commentCount > 0 ? _fmt(commentCount) : null,
-        ),
-        SizedBox(height: 18.h),
-
-        // ── Share ──────────────────────────────────────────────────────────
-        _TikTokBtn(
-          onTap: onShare,
-          icon: Icons.near_me_rounded,
-          iconColor: Colors.white,
-        ),
-        SizedBox(height: 18.h),
-
-        // ── Bookmark ───────────────────────────────────────────────────────
-        _TikTokBtn(
-          onTap: onSave,
-          icon: saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-          iconColor: saved ? ext.accentGold : Colors.white,
-          active: saved,
-        ),
-      ],
-    );
-  }
-}
-
-class _TikTokBtn extends StatefulWidget {
-  const _TikTokBtn({
-    required this.onTap,
-    required this.icon,
-    required this.iconColor,
-    this.label,
-    this.active = false,
-  });
-
-  final VoidCallback onTap;
-  final IconData icon;
-  final Color iconColor;
-  final String? label;
-  final bool active;
-
-  @override
-  State<_TikTokBtn> createState() => _TikTokBtnState();
-}
-
-class _TikTokBtnState extends State<_TikTokBtn>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 90),
-    lowerBound: 0.82,
-    upperBound: 1.0,
-    value: 1.0,
-  );
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _onTap() async {
-    HapticFeedback.lightImpact();
-    await _ctrl.reverse();
-    if (!mounted) return;
-    await _ctrl.forward();
-    widget.onTap();
-  }
-
-  static const _shadow = [
-    Shadow(blurRadius: 14, color: Colors.black),
-    Shadow(blurRadius: 4, color: Colors.black87),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _onTap,
-      child: ScaleTransition(
-        scale: _ctrl,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              switchInCurve: Curves.elasticOut,
-              switchOutCurve: Curves.easeIn,
-              transitionBuilder: (child, anim) =>
-                  ScaleTransition(scale: anim, child: child),
-              child: Icon(
-                widget.icon,
-                key: ValueKey('${widget.icon}_${widget.active}'),
-                color: widget.iconColor,
-                size: 30.sp,
-                shadows: _shadow,
-              ),
-            ),
-            if (widget.label != null) ...[
-              SizedBox(height: 4.h),
-              Text(
-                widget.label!,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w700,
-                  shadows: const [
-                    Shadow(blurRadius: 8, color: Colors.black87),
-                  ],
-                ),
-              ),
-            ],
-          ],
         ),
       ),
     );
