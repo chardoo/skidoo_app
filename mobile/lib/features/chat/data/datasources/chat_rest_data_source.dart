@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart' as dio_pkg;
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
@@ -495,14 +496,24 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
           : file.uri.pathSegments.last;
 
       // ── Multipart file ───────────────────────────────────────────────────
-      // On web, Dio 5.x internally wraps the blob URL in an XFile and reads
-      // it via the browser Fetch API, so fromFile works.  We also support
-      // fromBytes as a safe fallback path.
-      final multipartFile = await dio_pkg.MultipartFile.fromFile(
-        file.path,
-        filename: filename,
-        contentType: MediaType.parse(contentType),
-      );
+      // MultipartFile.fromFile throws UnsupportedError on web (Dio 5.x browser
+      // stub explicitly forbids it). On web, read bytes via XFile first then
+      // use fromBytes. On native, fromFile streams the file without buffering.
+      final dio_pkg.MultipartFile multipartFile;
+      if (kIsWeb) {
+        final bytes = await XFile(file.path).readAsBytes();
+        multipartFile = dio_pkg.MultipartFile.fromBytes(
+          bytes,
+          filename: filename,
+          contentType: MediaType.parse(contentType),
+        );
+      } else {
+        multipartFile = await dio_pkg.MultipartFile.fromFile(
+          file.path,
+          filename: filename,
+          contentType: MediaType.parse(contentType),
+        );
+      }
 
       final formData = dio_pkg.FormData.fromMap({
         'file': multipartFile,
