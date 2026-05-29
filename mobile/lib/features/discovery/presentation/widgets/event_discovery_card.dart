@@ -931,9 +931,16 @@ class _CreatorInitialsAvatar extends StatelessWidget {
 
 // ── Image footer — TikTok-style text overlay at bottom-left ──────────────────
 
-class _ImageFooter extends StatelessWidget {
+class _ImageFooter extends StatefulWidget {
   const _ImageFooter({required this.event});
   final EventDiscovery event;
+
+  @override
+  State<_ImageFooter> createState() => _ImageFooterState();
+}
+
+class _ImageFooterState extends State<_ImageFooter> {
+  bool _tagsExpanded = false;
 
   static const _heavy = [
     Shadow(blurRadius: 20, color: Colors.black),
@@ -943,41 +950,26 @@ class _ImageFooter extends StatelessWidget {
     Shadow(blurRadius: 10, color: Colors.black87),
   ];
 
+  String get _tagLine {
+    final tags = widget.event.contentTags;
+    if (tags.isEmpty) return '';
+    return tags.map((t) => '#$t').join('  ');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tagLine = _tagLine;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Photographer line — no photo count
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.camera_alt_rounded,
-                size: 11.sp, color: Colors.white60,
-                shadows: _soft),
-            SizedBox(width: 4.w),
-            Flexible(
-              child: Text(
-                event.photographerName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w500,
-                  shadows: _soft,
-                ),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 4.h),
-        // Event name — large and bold
+        // Event name first — large and bold
         Text(
-          event.eventName,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+          widget.event.eventName,
+          maxLines: _tagsExpanded ? null : 2,
+          overflow:
+              _tagsExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.white,
             fontSize: 20.sp,
@@ -987,6 +979,43 @@ class _ImageFooter extends StatelessWidget {
             shadows: _heavy,
           ),
         ),
+
+        // Content tags — tight gap when collapsed, more space when expanded
+        if (tagLine.isNotEmpty) ...[
+          SizedBox(height: _tagsExpanded ? 7.h : 3.h),
+          GestureDetector(
+            onTap: () => setState(() => _tagsExpanded = !_tagsExpanded),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  tagLine,
+                  maxLines: _tagsExpanded ? null : 1,
+                  overflow: _tagsExpanded
+                      ? TextOverflow.visible
+                      : TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
+                    shadows: _soft,
+                  ),
+                ),
+                Text(
+                  _tagsExpanded ? 'less' : 'more',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w500,
+                    shadows: _soft,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
