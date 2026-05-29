@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'dart:math' as math;
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -57,14 +55,12 @@ class EventDiscoveryCard extends StatefulWidget {
   State<EventDiscoveryCard> createState() => _EventDiscoveryCardState();
 }
 
+// Minimum media area height — tall enough for all 5 reaction buttons to fit
+// beside the image without overflowing into the next card.
+const double _kMinMediaHeight = 380.0;
+
 class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     with SingleTickerProviderStateMixin {
-  // ── Image dimension cache — shared across all card instances ────────────────
-  // Capped at 150 entries; oldest half evicted when the limit is hit to prevent
-  // unbounded growth during long feed sessions.
-  static final Map<String, Size> _sizeCache = {};
-  static const int _sizeCacheLimit = 150;
-
   final _pageCtrl = PageController();
   int _currentPage = 0;
   int _maxRevealedPage = 0;
@@ -76,9 +72,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   bool _showHeartBurst = false;
   // Web-only: whether the inline comment panel is open (replaces reactions col).
   bool _webCommentsOpen = false;
-
-  /// Natural dimensions of the first (or current) picture once resolved.
-  Size? _imageSize;
 
   late final AnimationController _heartCtrl;
 
@@ -132,8 +125,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       _discoveryBloc = context.read<DiscoveryBloc>();
       _discoveryBloc?.add(DiscoveryEventVisible(widget.event.id));
     });
-    // Load natural image dimensions for dynamic card height.
-    _loadImageSize(widget.event);
   }
 
   @override
@@ -146,10 +137,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
         old.event.userReaction != widget.event.userReaction) {
       setState(() => _syncReactionFromEvent(widget.event));
     }
-    if (old.event.id != widget.event.id) {
-      _imageSize = null;
-      _loadImageSize(widget.event);
-    }
   }
 
   @override
@@ -161,86 +148,38 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     super.dispose();
   }
 
-  // ── Dynamic image height ──────────────────────────────────────────────────
+  // ── Media height ──────────────────────────────────────────────────────────
 
-  void _loadImageSize(EventDiscovery event) {
-    final pics = event.pictures;
-    if (pics.isEmpty || pics[0].isVideo) return;
-    final url = pics[0].url;
-    if (url.isEmpty) return;
-    // Cache hit — apply immediately without setState.
-    if (_sizeCache.containsKey(url)) {
-      _imageSize = _sizeCache[url];
-      return;
-    }
-    _resolveNetworkImageSize(url).then((size) {
-      if (mounted && size != null) {
-        if (_sizeCache.length >= _sizeCacheLimit) {
-          // Evict the oldest 75 entries to keep memory bounded.
-          final keys = _sizeCache.keys.take(75).toList();
-          keys.forEach(_sizeCache.remove);
-        }
-        _sizeCache[url] = size;
-        setState(() => _imageSize = size);
-      }
-    });
-  }
-
-  /// Resolves the pixel dimensions of a network image.
+  /// Computes the media area height from server-supplied dimensions.
   ///
-  /// Uses [CachedNetworkImageProvider] so the image data is read from the
-  /// disk cache when available (avoids a redundant network round-trip and is
-  /// more reliable than bare [NetworkImage]).
+  /// Uses [EventPicture.aspectRatio] (derived from backend width/height) so
+  /// the card renders at the correct height on the very first frame — no
+  /// async image decode needed.
   ///
-  /// A 6-second timeout prevents a broken/slow image URL from blocking the
-  /// card height calculation indefinitely — the caller's fallback height fires
-  /// instead.
-  static Future<Size?> _resolveNetworkImageSize(String url) {
-    final completer = Completer<Size?>();
-    try {
-      CachedNetworkImageProvider(url)
-          .resolve(const ImageConfiguration())
-          .addListener(
-            ImageStreamListener(
-              (info, _) {
-                if (!completer.isCompleted) {
-                  completer.complete(Size(
-                    info.image.width.toDouble(),
-                    info.image.height.toDouble(),
-                  ));
-                }
-              },
-              onError: (_, __) {
-                if (!completer.isCompleted) completer.complete(null);
-              },
-            ),
-          );
-    } catch (_) {
-      if (!completer.isCompleted) completer.complete(null);
-    }
-    // 6 s safety net — broken / very slow URLs fall back to the default height.
-    return completer.future
-        .timeout(const Duration(seconds: 6), onTimeout: () => null);
-  }
-
-  /// Computes the media area height using the image's natural aspect ratio.
-  /// Falls back to a screen-fraction height while the size is loading.
+  /// A minimum of [_kMinMediaHeight] ensures the reactions column always fits
+  /// beside the image without overflowing into the next card, even for wide
+  /// landscape shots that would otherwise produce a very short media area.
   double _computeMediaHeight(double availableWidth, double screenHeight) {
-    final currentPic = widget.event.pictures.isNotEmpty
-        ? widget.event.pictures[
-            _currentPage.clamp(0, widget.event.pictures.length - 1)]
+    final pics = widget.event.pictures;
+    final currentPic = pics.isNotEmpty
+        ? pics[_currentPage.clamp(0, pics.length - 1)]
         : null;
-    final isVideo = currentPic?.isVideo ?? false;
 
-    if (isVideo) return (screenHeight * 0.88).clamp(600.0, 860.0);
-
-    if (_imageSize != null && _imageSize!.width > 0) {
-      final ar = _imageSize!.width / _imageSize!.height;
-      return (availableWidth / ar).clamp(260.0, screenHeight * 0.92);
+    if (currentPic?.isVideo == true) {
+      // Videos: use supplied aspect ratio when available, else 16:9 default.
+      final ar = currentPic!.aspectRatio ?? (16 / 9);
+      return (availableWidth / ar)
+          .clamp(_kMinMediaHeight, screenHeight * 0.92);
     }
 
-    // Default while loading: roughly 4:5 portrait.
-    return (availableWidth / 0.8).clamp(380.0, screenHeight * 0.88);
+    final ar = currentPic?.aspectRatio;
+    if (ar != null && ar > 0) {
+      return (availableWidth / ar)
+          .clamp(_kMinMediaHeight, screenHeight * 0.92);
+    }
+
+    // Fallback for legacy records without server dimensions: 4:5 portrait.
+    return (availableWidth / 0.8).clamp(_kMinMediaHeight, screenHeight * 0.88);
   }
 
   void _handleDoubleTap() {

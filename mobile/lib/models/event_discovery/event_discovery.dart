@@ -12,6 +12,15 @@ class EventPicture {
   final bool isLikedByUser;
   final bool commentsEnabled;
 
+  /// Server-side pixel dimensions. Null for legacy records that pre-date
+  /// backend dimension extraction. The card falls back to a 4:5 default
+  /// when these are absent.
+  final int? width;
+  final int? height;
+
+  /// Duration in seconds for video assets. Null for photos.
+  final double? durationSeconds;
+
   const EventPicture({
     required this.id,
     required this.url,
@@ -23,9 +32,16 @@ class EventPicture {
     this.commentCount = 0,
     this.isLikedByUser = false,
     this.commentsEnabled = true,
+    this.width,
+    this.height,
+    this.durationSeconds,
   });
 
   bool get isVideo => mediaType == MediaType.video;
+
+  /// Aspect ratio (width ÷ height). Returns null when dimensions are unknown.
+  double? get aspectRatio =>
+      (width != null && height != null && height! > 0) ? width! / height! : null;
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -38,11 +54,13 @@ class EventPicture {
         'comment_count': commentCount,
         'isLikedByUser': isLikedByUser,
         'comments_enabled': commentsEnabled,
+        if (width != null) 'width': width,
+        if (height != null) 'height': height,
+        if (durationSeconds != null) 'duration_seconds': durationSeconds,
       };
 
   factory EventPicture.fromMap(Map<String, dynamic> json) {
     final typeRaw = json['mediaType']?.toString().toLowerCase() ?? 'photo';
-    // Support both camelCase and snake_case keys the server may return.
     int parseInt(String a, String b) =>
         (json[a] as num?)?.toInt() ?? (json[b] as num?)?.toInt() ?? 0;
     return EventPicture(
@@ -56,6 +74,9 @@ class EventPicture {
       commentCount: parseInt('commentCount', 'comment_count'),
       isLikedByUser: json['isLikedByUser'] == true || json['is_liked_by_user'] == true,
       commentsEnabled: json['comments_enabled'] as bool? ?? true,
+      width: (json['width'] as num?)?.toInt(),
+      height: (json['height'] as num?)?.toInt(),
+      durationSeconds: (json['duration_seconds'] as num?)?.toDouble(),
     );
   }
 }
