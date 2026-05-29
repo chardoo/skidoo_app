@@ -460,30 +460,42 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           children: [
             // ── Left spacer — centres card (shrinks when comments open) ───
             SizedBox(width: leftPad),
-            // ── Card column (image + caption + divider, no header) ───────
-            SizedBox(
+            // ── Card column (image + caption, rounded card) ───────────
+            Container(
               width: cardW,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: mediaH,
-                    child: _buildMediaStack(context, ext, pics, cardW, mediaH),
-                  ),
-                  CardDescriptionText(
-                    event: widget.event,
-                    ext: ext,
-                    expanded: _descExpanded,
-                    onToggle: () =>
-                        setState(() => _descExpanded = !_descExpanded),
-                  ),
-                  SizedBox(height: 6.h),
-                  Divider(
-                    height: 1,
-                    thickness: 0.5,
-                    color: ext.searchHintColor.withValues(alpha: 0.1),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 18,
+                    offset: const Offset(0, 3),
                   ),
                 ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      height: mediaH,
+                      child: _buildMediaStack(
+                          context, ext, pics, cardW, mediaH),
+                    ),
+                    Container(
+                      color: ext.cardSurface,
+                      child: CardDescriptionText(
+                        event: widget.event,
+                        ext: ext,
+                        expanded: _descExpanded,
+                        onToggle: () =>
+                            setState(() => _descExpanded = !_descExpanded),
+                      ),
+                    ),
+                    Container(color: ext.cardSurface, height: 8),
+                  ],
+                ),
               ),
             ),
             // ── Reactions — always 64 px, always flush to card ────────────
