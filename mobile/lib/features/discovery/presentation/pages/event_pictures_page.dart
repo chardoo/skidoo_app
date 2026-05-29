@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/components/media/media_action_buttons.dart';
-import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/web_action_widgets.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/features/photo_comments/data/photo_comment_remote_data_source.dart';
+import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
+import 'package:skidoo_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/models/photo_comment/photo_comment.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
@@ -409,6 +411,9 @@ class _VideoThumbTile extends StatelessWidget {
 
 // ── Fullscreen viewer page ─────────────────────────────────────────────────────
 
+const double _kViewerContentW = 480.0;
+const double _kViewerReactionsW = 64.0;
+
 class _FullscreenViewerPage extends StatefulWidget {
   const _FullscreenViewerPage({
     required this.entries,
@@ -449,25 +454,60 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenW = MediaQuery.sizeOf(context).width;
+    final isWideWeb =
+        kIsWeb && screenW >= _kViewerContentW + _kViewerReactionsW + 60;
+
+    final pageView = PageView.builder(
+      controller: _pageCtrl,
+      scrollDirection: Axis.vertical,
+      physics: const PageScrollPhysics(),
+      itemCount: widget.entries.length,
+      itemBuilder: (_, i) => _FeedCard(
+        key: ValueKey(widget.entries[i].picture.id),
+        entry: widget.entries[i],
+        index: i,
+        activeIndex: _activeIndex,
+        // On wide web the reactions panel is outside the card
+        showSidebarActions: !isWideWeb,
+      ),
+    );
+
+    if (isWideWeb) {
+      final leftPad =
+          ((screenW - _kViewerContentW - _kViewerReactionsW) / 2)
+              .clamp(0.0, double.infinity);
+
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Row(
+          children: [
+            SizedBox(width: leftPad),
+            SizedBox(width: _kViewerContentW, child: pageView),
+            SizedBox(
+              width: _kViewerReactionsW,
+              child: ValueListenableBuilder<int>(
+                valueListenable: _activeIndex,
+                builder: (_, idx, __) {
+                  final entry = widget.entries
+                      .elementAtOrNull(idx) ?? widget.entries.first;
+                  return _WebViewerReactionsPanel(
+                    key: ValueKey(entry.picture.id),
+                    entry: entry,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Full-screen vertical PageView
-          PageView.builder(
-            controller: _pageCtrl,
-            scrollDirection: Axis.vertical,
-            physics: const PageScrollPhysics(),
-            itemCount: widget.entries.length,
-            itemBuilder: (_, i) => _FeedCard(
-              key: ValueKey(widget.entries[i].picture.id),
-              entry: widget.entries[i],
-              index: i,
-              activeIndex: _activeIndex,
-            ),
-          ),
-
-          // Back button — hidden on web (no back button on desktop/laptop)
+          pageView,
           if (!kIsWeb)
             SafeArea(
               child: Padding(
@@ -482,7 +522,8 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
                       color: Colors.black.withValues(alpha: 0.45),
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15), width: 1),
+                          color: Colors.white.withValues(alpha: 0.15),
+                          width: 1),
                     ),
                     child: Icon(Icons.arrow_back_ios_new_rounded,
                         color: Colors.white, size: 16.sp),
@@ -490,6 +531,116 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Web reactions panel for the fullscreen viewer ─────────────────────────────
+// Mirrors the discovery feed's _WebReactionsColumn style: creator pin at top,
+// then like / comment / share using WebActionBtn (scaled icon + hover effect).
+
+class _WebViewerReactionsPanel extends StatefulWidget {
+  const _WebViewerReactionsPanel({super.key, required this.entry});
+  final _PicEntry entry;
+
+  @override
+  State<_WebViewerReactionsPanel> createState() =>
+      _WebViewerReactionsPanelState();
+}
+
+class _WebViewerReactionsPanelState extends State<_WebViewerReactionsPanel> {
+  late bool _liked;
+  late int _likeCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _liked = widget.entry.picture.isLikedByUser;
+    _likeCount = widget.entry.picture.likeCount;
+  }
+
+  void _toggleLike() {
+    final nowLiked = !_liked;
+    setState(() {
+      _liked = nowLiked;
+      _likeCount = (_likeCount + (nowLiked ? 1 : -1)).clamp(0, 999999999);
+    });
+    sl<PictureLikeService>().toggleLike(widget.entry.picture.id).then((r) {
+      if (mounted) setState(() { _liked = r.isLiked; _likeCount = r.likes; });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    const iconSize = 26.0;
+    const gap = 20.0;
+
+    return Container(
+      color: Colors.black,
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // Creator pin
+          if (widget.entry.photographerName.isNotEmpty) ...[
+            WebCreatorPin(
+              name: widget.entry.photographerName,
+              photographerId: '',
+              isFollowed: false,
+              isOwner: false,
+              isAuthenticated: false,
+              ext: ext,
+            ),
+            const SizedBox(height: gap),
+          ],
+
+          // Like
+          WebActionBtn(
+            icon: _liked
+                ? Icons.favorite_rounded
+                : Icons.favorite_border_rounded,
+            iconColor:
+                _liked ? const Color(0xFFFF3B5C) : Colors.white,
+            count: _likeCount,
+            countColor:
+                _liked ? const Color(0xFFFF3B5C) : Colors.white,
+            iconSize: iconSize,
+            onTap: _toggleLike,
+          ),
+          const SizedBox(height: gap),
+
+          // Comment
+          if (widget.entry.commentsAllowed)
+            WebActionBtn(
+              icon: Icons.mode_comment_outlined,
+              iconColor: Colors.white,
+              count: widget.entry.picture.commentCount,
+              countColor: Colors.white,
+              iconSize: iconSize,
+              onTap: () => PhotoCommentSheet.show(
+                context,
+                pictureId: widget.entry.picture.id,
+                imageUrl: widget.entry.picture.url,
+              ),
+            ),
+          if (widget.entry.commentsAllowed) const SizedBox(height: gap),
+
+          // Share
+          WebActionBtn(
+            icon: Icons.near_me_outlined,
+            iconColor: Colors.white,
+            count: null,
+            countColor: Colors.white,
+            iconSize: iconSize,
+            onTap: () => GalleryShareSheet.show(
+              context,
+              imageUrl: widget.entry.picture.url,
+              photoLabel: widget.entry.eventName,
+            ),
+          ),
         ],
       ),
     );
@@ -504,11 +655,13 @@ class _FeedCard extends StatefulWidget {
     required this.entry,
     required this.index,
     required this.activeIndex,
+    this.showSidebarActions = true,
   });
 
   final _PicEntry entry;
   final int index;
   final ValueNotifier<int> activeIndex;
+  final bool showSidebarActions;
 
   @override
   State<_FeedCard> createState() => _FeedCardState();
@@ -623,36 +776,30 @@ class _FeedCardState extends State<_FeedCard> {
           ),
         ),
 
-        // Action sidebar
-        Positioned(
-          right: 10.w,
-          bottom: sidebarBottom,
-          child: MediaActionButtons(
-            imageId: pic.id,
-            pictureId: pic.id,
-            imageUrl: pic.url,
-            eventName: eventName,
-            photographerName: photographerName,
-            initialLikeCount: pic.likeCount,
-            initialCommentCount: pic.commentCount,
-            initiallyLiked: pic.isLikedByUser,
-            axis: Axis.vertical,
-            showDownload: false,
-            showComment: widget.entry.commentsAllowed,
-            onSend: () {
-              if (kIsWeb) {
-                final ext = Theme.of(context).extension<AppThemeExtension>()!;
-                GetAppSheet.show(context, ext: ext);
-                return;
-              }
-              GalleryShareSheet.show(
+        // Action sidebar — hidden on wide web (reactions panel is outside the card)
+        if (widget.showSidebarActions)
+          Positioned(
+            right: 10.w,
+            bottom: sidebarBottom,
+            child: MediaActionButtons(
+              imageId: pic.id,
+              pictureId: pic.id,
+              imageUrl: pic.url,
+              eventName: eventName,
+              photographerName: photographerName,
+              initialLikeCount: pic.likeCount,
+              initialCommentCount: pic.commentCount,
+              initiallyLiked: pic.isLikedByUser,
+              axis: Axis.vertical,
+              showDownload: false,
+              showComment: widget.entry.commentsAllowed,
+              onSend: () => GalleryShareSheet.show(
                 context,
                 imageUrl: pic.url,
                 photoLabel: eventName,
-              );
-            },
+              ),
+            ),
           ),
-        ),
 
         // Info overlay
         Positioned(

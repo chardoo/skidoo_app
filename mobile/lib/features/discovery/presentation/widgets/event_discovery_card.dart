@@ -19,7 +19,7 @@ import 'package:skidoo_app/features/admin/data/repositories/app_config_repositor
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
-import 'package:skidoo_app/features/follow/data/follow_repository.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/web_action_widgets.dart';
 
 /// Width of the main content column on web — must match app.dart's _kWebColumnWidth.
 const double _kWebColumnWidth = 480.0;
@@ -1371,7 +1371,7 @@ class _WebReactionsColumn extends StatelessWidget {
           children: [
             // ── Photographer badge — external panel only (TikTok creator pin) ─
             if (isExternalPanel && photographerName.isNotEmpty) ...[
-              _WebCreatorPin(
+              WebCreatorPin(
                 name: photographerName,
                 photographerId: photographerId,
                 isFollowed: isFollowed,
@@ -1385,7 +1385,7 @@ class _WebReactionsColumn extends StatelessWidget {
             ],
 
             // ── Reactions ─────────────────────────────────────────────────────
-            _WebActionBtn(
+            WebActionBtn(
               icon: liked
                   ? Icons.favorite_rounded
                   : Icons.favorite_border_rounded,
@@ -1396,7 +1396,7 @@ class _WebReactionsColumn extends StatelessWidget {
               onTap: onLike,
             ),
             SizedBox(height: gap),
-            _WebActionBtn(
+            WebActionBtn(
               icon: disliked
                   ? Icons.thumb_down_rounded
                   : Icons.thumb_down_outlined,
@@ -1408,7 +1408,7 @@ class _WebReactionsColumn extends StatelessWidget {
               onTap: onDislike,
             ),
             SizedBox(height: gap),
-            _WebActionBtn(
+            WebActionBtn(
               icon: commentsEnabled
                   ? Icons.mode_comment_outlined
                   : Icons.comments_disabled_outlined,
@@ -1423,7 +1423,7 @@ class _WebReactionsColumn extends StatelessWidget {
               onTap: onComment,
             ),
             SizedBox(height: gap),
-            _WebActionBtn(
+            WebActionBtn(
               icon: saved
                   ? Icons.bookmark_rounded
                   : Icons.bookmark_border_rounded,
@@ -1434,7 +1434,7 @@ class _WebReactionsColumn extends StatelessWidget {
               onTap: onSave,
             ),
             SizedBox(height: gap),
-            _WebActionBtn(
+            WebActionBtn(
               icon: Icons.near_me_outlined,
               iconColor: ext.greetingColor,
               count: null,
@@ -1449,259 +1449,3 @@ class _WebReactionsColumn extends StatelessWidget {
   }
 }
 
-// ── Web creator pin — avatar with TikTok-style follow/unfollow badge ──────────
-
-class _WebCreatorPin extends StatefulWidget {
-  const _WebCreatorPin({
-    required this.name,
-    required this.photographerId,
-    required this.isFollowed,
-    required this.isOwner,
-    required this.isAuthenticated,
-    required this.ext,
-    this.onTap,
-    this.onLoginRequired,
-  });
-
-  final String name;
-  final String photographerId;
-  final bool isFollowed;
-  final bool isOwner;
-  final bool isAuthenticated;
-  final AppThemeExtension ext;
-  final VoidCallback? onTap;
-  final VoidCallback? onLoginRequired;
-
-  @override
-  State<_WebCreatorPin> createState() => _WebCreatorPinState();
-}
-
-class _WebCreatorPinState extends State<_WebCreatorPin> {
-  late bool _following;
-  bool _loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _following = widget.isFollowed ||
-        FollowRepository.followedIds.contains(widget.photographerId);
-  }
-
-  Future<void> _toggle() async {
-    if (_loading || widget.photographerId.isEmpty) return;
-    if (!widget.isAuthenticated) {
-      widget.onLoginRequired?.call();
-      return;
-    }
-    final willFollow = !_following;
-    setState(() { _following = willFollow; _loading = true; });
-    try {
-      if (willFollow) {
-        await FollowRepository().follow(widget.photographerId);
-      } else {
-        await FollowRepository().unfollow(widget.photographerId);
-      }
-    } catch (_) {
-      if (mounted) setState(() => _following = !willFollow);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = widget.name.isNotEmpty ? widget.name[0].toUpperCase() : '?';
-    final ext = widget.ext;
-
-    return SizedBox(
-      width: 48,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          // ── Avatar ──────────────────────────────────────────────────────
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: widget.onTap,
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [ext.accentGold, const Color(0xFFFF6B35)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: ext.accentGold.withValues(alpha: 0.35),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(2.5),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFFFFAB40), Color(0xFFFF6B35)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    initial,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // ── Follow / unfollow badge — bottom-center of avatar ───────────
-          if (!widget.isOwner)
-            Positioned(
-              bottom: -8,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: _toggle,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: _following
-                          ? Colors.white.withValues(alpha: 0.9)
-                          : const Color(0xFFFF3B5C),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: ext.homeBackground,
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: _loading
-                          ? SizedBox(
-                              width: 10,
-                              height: 10,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.5,
-                                color: _following
-                                    ? Colors.black54
-                                    : Colors.white,
-                              ),
-                            )
-                          : Icon(
-                              _following
-                                  ? Icons.check_rounded
-                                  : Icons.add_rounded,
-                              size: 13,
-                              color: _following ? Colors.black54 : Colors.white,
-                            ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Web: single action button (icon + count, hover-scale) ────────────────────
-
-class _WebActionBtn extends StatefulWidget {
-  const _WebActionBtn({
-    required this.icon,
-    required this.iconColor,
-    required this.count,
-    required this.countColor,
-    required this.onTap,
-    this.iconSize,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final int? count;
-  final Color countColor;
-  /// Null disables the button (dimmed, non-interactive).
-  final VoidCallback? onTap;
-  /// Override icon size; when null falls back to 28.sp.
-  final double? iconSize;
-
-  @override
-  State<_WebActionBtn> createState() => _WebActionBtnState();
-}
-
-class _WebActionBtnState extends State<_WebActionBtn> {
-  bool _hovered = false;
-
-  String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return '$n';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = widget.onTap != null;
-    return MouseRegion(
-      cursor:
-          enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      onEnter: (_) { if (enabled) setState(() => _hovered = true); },
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedScale(
-          scale: _hovered ? 1.14 : 1.0,
-          duration: const Duration(milliseconds: 130),
-          curve: Curves.easeOut,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Light circular background behind each icon
-              Container(
-                width: (widget.iconSize ?? 28.sp) + 16,
-                height: (widget.iconSize ?? 28.sp) + 16,
-                decoration: BoxDecoration(
-                  color: widget.iconColor.withValues(alpha: 0.10),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Icon(widget.icon, color: widget.iconColor,
-                    size: widget.iconSize ?? 28.sp),
-              ),
-              if (widget.count != null && widget.count! > 0) ...[
-                const SizedBox(height: 4),
-                Text(
-                  _fmt(widget.count!),
-                  style: TextStyle(
-                    color: widget.countColor,
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
