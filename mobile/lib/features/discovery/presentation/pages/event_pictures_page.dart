@@ -503,7 +503,7 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
       );
     }
 
-    return Scaffold(
+    final page = Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
@@ -534,6 +534,10 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
         ],
       ),
     );
+    // Centre the narrow viewer on web — matches the _kViewerContentW (480 px)
+    // used by the wide-web path so the card width is consistent.
+    return webWrap(page, backgroundColor: Colors.black,
+        width: _kViewerContentW);
   }
 }
 
