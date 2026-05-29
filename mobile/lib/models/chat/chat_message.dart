@@ -41,6 +41,17 @@ class ChatMessage {
   final String content;
   final String? imageUrl;
   final bool isVideo;
+
+  /// Server-side pixel dimensions of the attached image/video. Null when no
+  /// attachment or when the backend hasn't supplied dimensions yet.
+  final int? mediaWidth;
+  final int? mediaHeight;
+
+  double? get mediaAspectRatio =>
+      (mediaWidth != null && mediaHeight != null && mediaHeight! > 0)
+          ? mediaWidth! / mediaHeight!
+          : null;
+
   final String? replyToId;
   final ReplyPreview? replyPreview;
   final DateTime createdAt;
@@ -103,6 +114,8 @@ class ChatMessage {
     this.content = '',
     this.imageUrl,
     this.isVideo = false,
+    this.mediaWidth,
+    this.mediaHeight,
     this.replyToId,
     this.replyPreview,
     required this.createdAt,
@@ -144,6 +157,8 @@ class ChatMessage {
       content: json['content'] as String? ?? '',
       imageUrl: imageUrl,
       isVideo: isVideoFlag || isVideoByExt,
+      mediaWidth: (json['media_width'] as num?)?.toInt(),
+      mediaHeight: (json['media_height'] as num?)?.toInt(),
       replyToId: json['reply_to_id'] as String?,
       replyPreview: preview,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -184,6 +199,8 @@ class ChatMessage {
         'content': content,
         'image_url': imageUrl,
         'is_video': isVideo,
+        if (mediaWidth != null) 'media_width': mediaWidth,
+        if (mediaHeight != null) 'media_height': mediaHeight,
         'reply_to_id': replyToId,
         'reply_preview': replyPreview?.toJson(),
         'created_at': createdAt.toIso8601String(),
@@ -221,6 +238,8 @@ class ChatMessage {
       content: content ?? this.content,
       imageUrl: imageUrl ?? this.imageUrl,
       isVideo: isVideo ?? this.isVideo,
+      mediaWidth: mediaWidth,
+      mediaHeight: mediaHeight,
       replyToId: replyToId,
       replyPreview: replyPreview,
       createdAt: createdAt,

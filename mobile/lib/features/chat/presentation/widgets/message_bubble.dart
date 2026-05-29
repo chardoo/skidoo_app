@@ -126,8 +126,14 @@ class MessageBubble extends StatelessWidget {
                       // Media (image or video)
                       if (message.imageUrl != null)
                         _isVideoUrl(message.imageUrl!)
-                            ? _MessageVideo(videoUrl: message.imageUrl!)
-                            : _MessageImage(imageUrl: message.imageUrl!),
+                            ? _MessageVideo(
+                                videoUrl: message.imageUrl!,
+                                aspectRatio: message.mediaAspectRatio,
+                              )
+                            : _MessageImage(
+                                imageUrl: message.imageUrl!,
+                                aspectRatio: message.mediaAspectRatio,
+                              ),
                       // Text content + timestamp
                       if (message.isEncrypted ||
                           message.content.isNotEmpty ||
@@ -326,16 +332,23 @@ class _ReplyPreviewStrip extends StatelessWidget {
 // ── Image attachment ──────────────────────────────────────────────────────────
 
 class _MessageImage extends StatelessWidget {
-  const _MessageImage({required this.imageUrl});
+  const _MessageImage({required this.imageUrl, this.aspectRatio});
   final String imageUrl;
+
+  /// Server-supplied aspect ratio (width ÷ height). When present the
+  /// placeholder renders at the correct height immediately — no layout jump.
+  /// When null falls back to the legacy 180 dp placeholder.
+  final double? aspectRatio;
 
   @override
   Widget build(BuildContext context) {
-    return CachedNetworkImage(
+    final img = CachedNetworkImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
+      filterQuality: FilterQuality.high,
       placeholder: (_, __) => Container(
-        height: 180.h,
+        // Use known aspect ratio so bubble height is correct before decode.
+        height: aspectRatio != null ? null : 180.h,
         color: Colors.black12,
         child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
@@ -345,16 +358,25 @@ class _MessageImage extends StatelessWidget {
         child: const Icon(Icons.broken_image_rounded, color: Colors.white54),
       ),
     );
+    if (aspectRatio != null) {
+      return AspectRatio(aspectRatio: aspectRatio!, child: img);
+    }
+    return img;
   }
 }
 
 // ── Video attachment ──────────────────────────────────────────────────────────
 
 /// Thin wrapper: shows [SkidooVideoPlayer] inside a chat bubble.
-/// Uses the video's natural aspect ratio and shows full controls.
+/// Keeps the current bubble-constrained size; aspect ratio hint avoids the
+/// 16:9 default while the player reads the container headers.
 class _MessageVideo extends StatelessWidget {
-  const _MessageVideo({required this.videoUrl});
+  const _MessageVideo({required this.videoUrl, this.aspectRatio});
   final String videoUrl;
+
+  /// Server-supplied aspect ratio. Passed to the player so the correct height
+  /// is reserved from the first frame instead of snapping once headers load.
+  final double? aspectRatio;
 
   @override
   Widget build(BuildContext context) {
@@ -363,6 +385,7 @@ class _MessageVideo extends StatelessWidget {
       showControls: true,
       autoPlay: false,
       loop: false,
+      aspectRatio: aspectRatio,
       fit: BoxFit.contain,
       backgroundColor: Colors.black,
       borderRadius: BorderRadius.circular(12),

@@ -32,13 +32,28 @@ class Photo {
   /// 'image' or 'video' — matches the server's media_type field.
   final String mediaType;
 
+  /// Server-side pixel dimensions. Null for legacy records.
+  final int? width;
+  final int? height;
+
+  /// Duration in seconds (video only). Null for photos.
+  final double? durationSeconds;
+
+  double? get aspectRatio =>
+      (width != null && height != null && height! > 0) ? width! / height! : null;
+
+  bool get isVideo => mediaType == 'video';
+
   Photo(this.id, this.eventName, this.imageId, this.url, this.userId,
       this.price, this.eventDate, this.identification, this.isPublic,
       {this.eventId = '',
       this.likeCount = 0,
       this.commentCount = 0,
       this.isLikedByUser = false,
-      this.mediaType = 'image'});
+      this.mediaType = 'image',
+      this.width,
+      this.height,
+      this.durationSeconds});
 
   //deserialization
   factory Photo.fromMap(Map<String, dynamic> json) {
@@ -72,6 +87,9 @@ class Photo {
       commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
       isLikedByUser: json['isLikedByUser'] as bool? ?? false,
       mediaType: (json['media_type'] ?? json['mediaType'] as String?) ?? 'image',
+      width: (json['width'] as num?)?.toInt(),
+      height: (json['height'] as num?)?.toInt(),
+      durationSeconds: (json['duration_seconds'] as num?)?.toDouble(),
     );
   }
   Map<String, dynamic> toJson() => {

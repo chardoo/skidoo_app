@@ -439,9 +439,16 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
     final isVideo = d.mediaList.length == 1
         ? d.mediaList[0].isVideo
         : d.mediaIsVideo;
-    final mediaH = isVideo
-        ? (size.height * 0.80).clamp(540.0, 780.0)
-        : (size.height * 0.75).clamp(480.0, 740.0);
+
+    return LayoutBuilder(builder: (context, constraints) {
+    final availableW = constraints.maxWidth.isFinite ? constraints.maxWidth : size.width;
+    final firstMedia = d.mediaList.isNotEmpty ? d.mediaList[0] : null;
+    final ar = firstMedia?.aspectRatio;
+    final mediaH = ar != null
+        ? (availableW / ar).clamp(380.0, size.height * 0.92)
+        : isVideo
+            ? (size.height * 0.80).clamp(540.0, 780.0)
+            : (size.height * 0.75).clamp(480.0, 740.0);
 
     return Container(
       color: Colors.transparent,
@@ -627,6 +634,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
         ],
       ),
     );
+    }); // LayoutBuilder
   }
 }
 
