@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -533,14 +535,27 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor =
-        (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08);
+        (isDark ? Colors.white : Colors.black).withValues(alpha: 0.10);
 
-    return Container(
+    // Frosted glass panel for external (desktop) placement; solid card for
+    // the narrow inside-card variant.
+    Widget panel = Container(
       decoration: BoxDecoration(
-        color: ext.homeBackground,
+        color: isDark
+            ? Colors.black.withValues(alpha: widget.isExternalPanel ? 0.55 : 1.0)
+            : Colors.white.withValues(alpha: widget.isExternalPanel ? 0.72 : 1.0),
         border: widget.isExternalPanel
             ? null
             : Border(left: BorderSide(color: borderColor, width: 0.5)),
+        boxShadow: widget.isExternalPanel
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.10),
+                  blurRadius: 20,
+                  offset: const Offset(-3, 0),
+                ),
+              ]
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -569,6 +584,7 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                       )
                     : Column(
                         children: [
+                          // Syncing bar
                           BlocBuilder<ChatRoomBloc, ChatRoomState>(
                             buildWhen: (p, c) =>
                                 p.isSyncing != c.isSyncing,
@@ -581,82 +597,131 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                                   )
                                 : const SizedBox.shrink(),
                           ),
+
+                          // Comments list with bottom-fade overlay
                           Expanded(
-                            child: BlocConsumer<ChatRoomBloc,
-                                ChatRoomState>(
-                              listenWhen: (prev, curr) =>
-                                  curr.errorMessage != null &&
-                                  curr.errorMessage !=
-                                      prev.errorMessage,
-                              listener: (_, state) {
-                                AppSnackBar.error(
-                                    context, state.errorMessage!);
-                              },
-                              builder: (_, state) {
-                                if (state.isLoadingHistory &&
-                                    state.messages.isEmpty) {
-                                  return const AppLoadingIndicator();
-                                }
-                                if (state.messages.isEmpty) {
-                                  return _CommentEmptyView(ext: ext);
-                                }
-                                final threaded =
-                                    _buildThreads(state.messages);
-                                return ListView.builder(
-                                  controller: _scrollCtrl,
-                                  padding: EdgeInsets.fromLTRB(
-                                      12.w, 10.h, 12.w, 6.h),
-                                  itemCount:
-                                      threaded.topLevel.length +
-                                          (state.isLoadingMore
-                                              ? 1
-                                              : 0),
-                                  itemBuilder: (_, i) {
-                                    if (i ==
-                                        threaded.topLevel.length) {
-                                      return Padding(
-                                        padding: EdgeInsets.symmetric(
-                                            vertical: 10.h),
-                                        child: Center(
-                                          child:
-                                              CircularProgressIndicator(
-                                            color: ext.accentGold,
-                                            strokeWidth: 2,
-                                          ),
-                                        ),
-                                      );
+                            child: Stack(
+                              children: [
+                                BlocConsumer<ChatRoomBloc, ChatRoomState>(
+                                  listenWhen: (prev, curr) =>
+                                      curr.errorMessage != null &&
+                                      curr.errorMessage !=
+                                          prev.errorMessage,
+                                  listener: (_, state) {
+                                    AppSnackBar.error(
+                                        context, state.errorMessage!);
+                                  },
+                                  builder: (_, state) {
+                                    if (state.isLoadingHistory &&
+                                        state.messages.isEmpty) {
+                                      return const AppLoadingIndicator();
                                     }
-                                    final msg = threaded.topLevel[i];
-                                    final replies = threaded
-                                            .repliesMap[msg.id] ??
-                                        [];
-                                    return ThreadedCommentWidget(
-                                      key: ValueKey(msg.id),
-                                      comment: _toRowData(msg,
-                                          replies: replies,
-                                          onReply: _startReply),
-                                      replies: replies
-                                          .map((r) => _toRowData(r,
-                                              onReply: _startReply))
-                                          .toList(),
-                                      ext: ext,
-                                      isExpanded: _expandedIds
-                                          .contains(msg.id),
-                                      onToggleReplies: () =>
-                                          setState(() {
-                                        if (_expandedIds
-                                            .contains(msg.id)) {
-                                          _expandedIds.remove(msg.id);
-                                        } else {
-                                          _expandedIds.add(msg.id);
+                                    if (state.messages.isEmpty) {
+                                      return _CommentEmptyView(ext: ext);
+                                    }
+                                    final threaded =
+                                        _buildThreads(state.messages);
+                                    return ListView.builder(
+                                      controller: _scrollCtrl,
+                                      padding: EdgeInsets.fromLTRB(
+                                          12.w, 12.h, 12.w, 8.h),
+                                      itemCount:
+                                          threaded.topLevel.length +
+                                              (state.isLoadingMore
+                                                  ? 1
+                                                  : 0),
+                                      itemBuilder: (_, i) {
+                                        if (i ==
+                                            threaded.topLevel.length) {
+                                          return Padding(
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: 10.h),
+                                            child: Center(
+                                              child:
+                                                  CircularProgressIndicator(
+                                                color: ext.accentGold,
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                          );
                                         }
-                                      }),
+                                        final msg =
+                                            threaded.topLevel[i];
+                                        final replies = threaded
+                                                .repliesMap[msg.id] ??
+                                            [];
+                                        // Each top-level thread sits in a
+                                        // subtle card bubble for visual depth.
+                                        return _CommentCard(
+                                          ext: ext,
+                                          isDark: isDark,
+                                          child: ThreadedCommentWidget(
+                                            key: ValueKey(msg.id),
+                                            comment: _toRowData(msg,
+                                                replies: replies,
+                                                onReply: _startReply),
+                                            replies: replies
+                                                .map((r) => _toRowData(
+                                                    r,
+                                                    onReply: _startReply))
+                                                .toList(),
+                                            ext: ext,
+                                            isExpanded: _expandedIds
+                                                .contains(msg.id),
+                                            onToggleReplies: () =>
+                                                setState(() {
+                                              if (_expandedIds
+                                                  .contains(msg.id)) {
+                                                _expandedIds
+                                                    .remove(msg.id);
+                                              } else {
+                                                _expandedIds.add(msg.id);
+                                              }
+                                            }),
+                                          ),
+                                        );
+                                      },
                                     );
                                   },
-                                );
-                              },
+                                ),
+
+                                // Scroll-fade: softens the hard clip at the
+                                // list's bottom edge above the input bar.
+                                Positioned(
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  height: 32,
+                                  child: IgnorePointer(
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            (isDark
+                                                    ? Colors.black
+                                                    : Colors.white)
+                                                .withValues(alpha: 0),
+                                            (isDark
+                                                    ? Colors.black
+                                                    : Colors.white)
+                                                .withValues(
+                                                    alpha: widget
+                                                            .isExternalPanel
+                                                        ? 0.55
+                                                        : 1.0),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+
+                          // Input bar — includes emoji button
                           CommentInputBarWidget(
                             controller: _inputCtrl,
                             focusNode: _focusNode,
@@ -671,6 +736,69 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                       ),
           ),
         ],
+      ),
+    );
+
+    // Wrap external-panel variant in a backdrop blur so the background
+    // (home feed behind the panel) gets a frosted-glass treatment.
+    if (widget.isExternalPanel) {
+      panel = ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: panel,
+        ),
+      );
+    }
+
+    return panel;
+  }
+}
+
+// ── Comment card bubble — wraps each thread on web desktop ───────────────────
+
+class _CommentCard extends StatefulWidget {
+  const _CommentCard({
+    required this.child,
+    required this.ext,
+    required this.isDark,
+  });
+  final Widget child;
+  final AppThemeExtension ext;
+  final bool isDark;
+
+  @override
+  State<_CommentCard> createState() => _CommentCardState();
+}
+
+class _CommentCardState extends State<_CommentCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: EdgeInsets.only(bottom: 8.h),
+        padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 8.h),
+        decoration: BoxDecoration(
+          color: _hovered
+              ? (isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.03))
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.black.withValues(alpha: 0.02)),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: (isDark ? Colors.white : Colors.black)
+                .withValues(alpha: _hovered ? 0.10 : 0.06),
+            width: 0.8,
+          ),
+        ),
+        child: widget.child,
       ),
     );
   }
