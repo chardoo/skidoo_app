@@ -538,7 +538,6 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
     return Container(
       decoration: BoxDecoration(
         color: ext.homeBackground,
-        // External panel has no left border — visually separate from the card.
         border: widget.isExternalPanel
             ? null
             : Border(left: BorderSide(color: borderColor, width: 0.5)),
@@ -547,36 +546,11 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Header ─────────────────────────────────────────────────────
-          Padding(
-            padding:
-                EdgeInsets.fromLTRB(12.w, 10.h, 8.w, 8.h),
-            child: Row(
-              children: [
-                Icon(Icons.mode_comment_outlined,
-                    color: ext.searchHintColor, size: 15.sp),
-                SizedBox(width: 6.w),
-                Expanded(
-                  child: Text(
-                    'Comments',
-                    style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13.sp,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: widget.onClose,
-                  child: Padding(
-                    padding: EdgeInsets.all(4.w),
-                    child: Icon(Icons.close_rounded,
-                        color: ext.searchHintColor, size: 18.sp),
-                  ),
-                ),
-              ],
-            ),
+          _CommentPanelHeader(
+            ext: ext,
+            onClose: widget.onClose,
+            bloc: _bloc,
           ),
-          Divider(height: 1, thickness: 0.5, color: borderColor),
 
           // ── Body ───────────────────────────────────────────────────────
           Expanded(
@@ -624,15 +598,14 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                                   return const AppLoadingIndicator();
                                 }
                                 if (state.messages.isEmpty) {
-                                  return CommentEmptyState(ext: ext);
+                                  return _CommentEmptyView(ext: ext);
                                 }
                                 final threaded =
                                     _buildThreads(state.messages);
                                 return ListView.builder(
                                   controller: _scrollCtrl,
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 10.w,
-                                      vertical: 6.h),
+                                  padding: EdgeInsets.fromLTRB(
+                                      12.w, 10.h, 12.w, 6.h),
                                   itemCount:
                                       threaded.topLevel.length +
                                           (state.isLoadingMore
@@ -698,6 +671,176 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                       ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Redesigned inline panel header ───────────────────────────────────────────
+
+class _CommentPanelHeader extends StatelessWidget {
+  const _CommentPanelHeader({
+    required this.ext,
+    required this.onClose,
+    required this.bloc,
+  });
+
+  final AppThemeExtension ext;
+  final VoidCallback onClose;
+  final ChatRoomBloc bloc;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.homeBackground,
+        border: Border(
+          bottom: BorderSide(
+            color: ext.searchHintColor.withValues(alpha: 0.10),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(14.w, 12.h, 10.w, 12.h),
+        child: Row(
+          children: [
+            Container(
+              width: 34.w,
+              height: 34.w,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    ext.accentGold.withValues(alpha: 0.20),
+                    ext.accentGold.withValues(alpha: 0.06),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: ext.accentGold.withValues(alpha: 0.30),
+                  width: 1,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Icon(Icons.mode_comment_rounded,
+                  color: ext.accentGold, size: 16.sp),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Comments',
+                    style: TextStyle(
+                      color: ext.greetingColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15.sp,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  BlocBuilder<ChatRoomBloc, ChatRoomState>(
+                    bloc: bloc,
+                    buildWhen: (p, c) =>
+                        p.messages.length != c.messages.length,
+                    builder: (_, state) {
+                      final count = state.messages.length;
+                      if (count == 0) return const SizedBox.shrink();
+                      return Text(
+                        '$count ${count == 1 ? 'comment' : 'comments'}',
+                        style: TextStyle(
+                          color: ext.searchHintColor,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: onClose,
+                child: Container(
+                  width: 30.w,
+                  height: 30.w,
+                  decoration: BoxDecoration(
+                    color: ext.glassFill,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: ext.glassBorder, width: 0.8),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.close_rounded,
+                      color: ext.searchHintColor, size: 15.sp),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Empty state for inline panel ─────────────────────────────────────────────
+
+class _CommentEmptyView extends StatelessWidget {
+  const _CommentEmptyView({required this.ext});
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64.w,
+              height: 64.w,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    ext.accentGold.withValues(alpha: 0.15),
+                    ext.accentGold.withValues(alpha: 0.05),
+                  ],
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: ext.accentGold.withValues(alpha: 0.25),
+                  width: 1.5,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Text('💬', style: TextStyle(fontSize: 28.sp)),
+            ),
+            SizedBox(height: 16.h),
+            Text(
+              'No comments yet',
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontSize: 15.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: 6.h),
+            Text(
+              'Be the first to share your thoughts!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 13.sp,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

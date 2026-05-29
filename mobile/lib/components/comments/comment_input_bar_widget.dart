@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/widgets/emoji_panel.dart';
 
 /// Shared text-input bar for both event and photo comments.
 ///
 /// Accepts [replyingToName] as a plain string (no model dependency).
 /// When non-null, a gold reply banner is shown above the text field.
-class CommentInputBarWidget extends StatelessWidget {
+class CommentInputBarWidget extends StatefulWidget {
   const CommentInputBarWidget({
     super.key,
     required this.controller,
@@ -28,12 +29,26 @@ class CommentInputBarWidget extends StatelessWidget {
   final VoidCallback? onCancelReply;
 
   @override
+  State<CommentInputBarWidget> createState() => _CommentInputBarWidgetState();
+}
+
+class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
+  bool _emojiOpen = false;
+
+  void _onEmojiToggle(bool open) {
+    setState(() => _emojiOpen = open);
+    if (open) widget.focusNode.unfocus();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final ext = widget.ext;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         // ── Reply banner ─────────────────────────────────────────────────────
-        if (replyingToName != null)
+        if (widget.replyingToName != null)
           Container(
             padding: EdgeInsets.fromLTRB(16.w, 8.h, 8.w, 8.h),
             decoration: BoxDecoration(
@@ -50,7 +65,7 @@ class CommentInputBarWidget extends StatelessWidget {
                 SizedBox(width: 6.w),
                 Expanded(
                   child: Text(
-                    'Replying to $replyingToName',
+                    'Replying to ${widget.replyingToName}',
                     style: TextStyle(
                       color: ext.accentGold,
                       fontSize: 12.sp,
@@ -62,7 +77,7 @@ class CommentInputBarWidget extends StatelessWidget {
                 ),
                 SizedBox(width: 4.w),
                 GestureDetector(
-                  onTap: onCancelReply,
+                  onTap: widget.onCancelReply,
                   child: Icon(Icons.close_rounded,
                       size: 16.sp, color: ext.searchHintColor),
                 ),
@@ -70,38 +85,58 @@ class CommentInputBarWidget extends StatelessWidget {
             ),
           ),
 
-        // ── Text input ───────────────────────────────────────────────────────
+        // ── Text input row ───────────────────────────────────────────────────
         Container(
-          padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 10.h),
+          padding: EdgeInsets.fromLTRB(10.w, 8.h, 10.w, 10.h),
           decoration: BoxDecoration(
-            color: ext.glassFill,
+            color: ext.cardSurface,
             border: Border(
-              top: BorderSide(color: ext.glassBorder),
+              top: BorderSide(
+                  color: ext.searchHintColor.withValues(alpha: 0.10)),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
+            ],
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // On web, multi-line TextField never fires onSubmitted for Enter
-              // (it inserts a newline instead). CallbackShortcuts intercepts
-              // plain Enter to send, while Shift+Enter still inserts a newline.
+              // ── Emoji button ─────────────────────────────────────────────
+              EmojiButton(
+                controller: widget.controller,
+                ext: ext,
+                onToggle: _onEmojiToggle,
+                iconSize: 20.sp,
+              ),
+              SizedBox(width: 4.w),
+
+              // ── Text field ────────────────────────────────────────────────
               Expanded(
                 child: CallbackShortcuts(
                   bindings: <ShortcutActivator, VoidCallback>{
                     const SingleActivator(
-                        LogicalKeyboardKey.enter, shift: false): onSend,
+                        LogicalKeyboardKey.enter, shift: false): widget.onSend,
                     const SingleActivator(
-                        LogicalKeyboardKey.numpadEnter, shift: false): onSend,
+                        LogicalKeyboardKey.numpadEnter,
+                        shift: false): widget.onSend,
                   },
                   child: TextField(
-                    controller: controller,
-                    focusNode: focusNode,
+                    controller: widget.controller,
+                    focusNode: widget.focusNode,
+                    onTap: () {
+                      if (_emojiOpen) setState(() => _emojiOpen = false);
+                    },
                     style:
                         TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-                    maxLines: 3,
+                    maxLines: 4,
                     minLines: 1,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      hintText: replyingToName != null
+                      hintText: widget.replyingToName != null
                           ? 'Write a reply…'
                           : 'Add a comment…',
                       hintStyle:
@@ -116,23 +151,39 @@ class CommentInputBarWidget extends StatelessWidget {
                           horizontal: 16.w, vertical: 10.h),
                       isDense: true,
                     ),
-                    onSubmitted: (_) => onSend(),
+                    onSubmitted: (_) => widget.onSend(),
                   ),
                 ),
               ),
               SizedBox(width: 8.w),
+
+              // ── Send button ───────────────────────────────────────────────
               MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
-                  onTap: onSend,
-                  child: Container(
-                    width: 44.w,
-                    height: 44.h,
+                  onTap: widget.onSend,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 42.w,
+                    height: 42.h,
                     decoration: BoxDecoration(
-                        color: ext.accentGold, shape: BoxShape.circle),
+                      gradient: LinearGradient(
+                        colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: ext.accentGold.withValues(alpha: 0.35),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
                     alignment: Alignment.center,
                     child: Icon(Icons.send_rounded,
-                        color: Colors.white, size: 20.sp),
+                        color: Colors.white, size: 18.sp),
                   ),
                 ),
               ),

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart' show MaxLengthEnforcement;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/widgets/emoji_panel.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
 
@@ -174,7 +175,15 @@ class ChatInputBar extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(width: 8.w),
+              SizedBox(width: 4.w),
+
+              // Emoji button
+              EmojiButton(
+                controller: controller,
+                ext: ext,
+                iconSize: 20.sp,
+              ),
+              SizedBox(width: 4.w),
 
               // Text input
               Expanded(
