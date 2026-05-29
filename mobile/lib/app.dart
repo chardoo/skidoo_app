@@ -132,9 +132,12 @@ class _WebAppState extends State<_WebApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _configureScreenUtil();
-    // Seed the route observer so the sidebar shows the correct state immediately.
-    // Both logged-in and logged-out users start on the Discovery page.
-    WebRouteObserver.currentRouteName.value = DiscoveryPage.routeName;
+    // Seed the route observer so the sidebar renders the correct nav on the
+    // very first frame — before any postFrameCallback redirect fires.
+    // Authenticated users are heading to /home; guests start on /discovery.
+    WebRouteObserver.currentRouteName.value = AuthService.isAuthenticated.value
+        ? HomePage.routeName
+        : DiscoveryPage.routeName;
   }
 
   @override

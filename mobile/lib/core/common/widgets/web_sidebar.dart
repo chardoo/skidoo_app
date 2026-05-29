@@ -33,16 +33,15 @@ class WebSidebar extends StatelessWidget {
         final selectedTab = HomePage.webSelectedTab.value;
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
         final isLoggedIn = AuthService.isAuthenticated.value;
-        // Show the full tab nav only when the user is inside /home.
-        // On /discovery (whether logged in or out) render the same minimal
-        // sidebar so the content column width and reactions layout are
-        // identical in both states.
-        final routeName = WebRouteObserver.currentRouteName.value;
-        final isOnHome = routeName == HomePage.routeName;
-
+        // Logged-in users always see their full nav (Home/Gallery/Photographers/
+        // Search) regardless of the current route. This prevents a race between
+        // the _GuestGuard redirect and the sidebar render on hard refresh where
+        // the route observer briefly shows /discovery while the user is already
+        // authenticated. The sidebar width (240px) is unchanged in both states
+        // so the content column and card layouts are not affected.
         return _SidebarShell(
           ext: ext,
-          child: isLoggedIn && isOnHome
+          child: isLoggedIn
               ? _LoggedInNav(ext: ext, selectedTab: selectedTab)
               : _DiscoveryModeNav(ext: ext, isLoggedIn: isLoggedIn),
         );
@@ -1015,13 +1014,10 @@ class WebTopNav extends StatelessWidget {
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
         final isLoggedIn = AuthService.isAuthenticated.value;
 
-        final routeName = WebRouteObserver.currentRouteName.value;
-        final isOnHome = routeName == HomePage.routeName;
         return _TopNavBar(
           ext: ext,
           isLoggedIn: isLoggedIn,
           selectedTab: selectedTab,
-          isOnHome: isOnHome,
         );
       },
     );
@@ -1033,13 +1029,11 @@ class _TopNavBar extends StatelessWidget {
     required this.ext,
     required this.isLoggedIn,
     required this.selectedTab,
-    required this.isOnHome,
   });
 
   final AppThemeExtension ext;
   final bool isLoggedIn;
   final int selectedTab;
-  final bool isOnHome;
 
   @override
   Widget build(BuildContext context) {
@@ -1116,7 +1110,7 @@ class _TopNavBar extends StatelessWidget {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Row(
-                      children: isLoggedIn && isOnHome
+                      children: isLoggedIn
                           ? _loggedInPills()
                           : _loggedOutPills(),
                     ),
