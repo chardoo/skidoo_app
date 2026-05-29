@@ -78,6 +78,10 @@ class EventDiscovery {
   /// Sourced directly from event.user.is_followed in the feed response.
   final bool isFollowed;
 
+  /// Backend-supplied content tags (e.g. ["wedding", "photography", "ghana"]).
+  /// Shown as hashtags beneath the event name in the caption area.
+  final List<String> contentTags;
+
   const EventDiscovery({
     required this.id,
     required this.eventName,
@@ -90,6 +94,7 @@ class EventDiscovery {
     this.commentsEnabled = true,
     this.userReaction,
     this.isFollowed = false,
+    this.contentTags = const [],
   });
 
   Map<String, dynamic> toMap() => {
@@ -115,6 +120,7 @@ class EventDiscovery {
     String? userReaction,
     bool clearReaction = false,
     bool? isFollowed,
+    List<String>? contentTags,
   }) {
     return EventDiscovery(
       id: id,
@@ -129,6 +135,7 @@ class EventDiscovery {
       userReaction:
           clearReaction ? null : (userReaction ?? this.userReaction),
       isFollowed: isFollowed ?? this.isFollowed,
+      contentTags: contentTags ?? this.contentTags,
     );
   }
 
@@ -150,6 +157,10 @@ class EventDiscovery {
         .map((p) => EventPicture.fromMap(p as Map<String, dynamic>))
         .toList();
     final isFollowed = user['is_followed'] == true;
+    final rawTags = event['content_tags'] ?? event['contentTags'];
+    final contentTags = rawTags is List
+        ? rawTags.map((t) => t.toString()).where((t) => t.isNotEmpty).toList()
+        : <String>[];
     return EventDiscovery(
       id: event['id']?.toString() ?? '',
       // Event name can be 'eventName' or 'name'.
@@ -164,6 +175,7 @@ class EventDiscovery {
           (event['comment_count'] as num?)?.toInt() ?? 0,
       commentsEnabled: event['comments_enabled'] as bool? ?? true,
       isFollowed: isFollowed,
+      contentTags: contentTags,
     );
   }
 }
