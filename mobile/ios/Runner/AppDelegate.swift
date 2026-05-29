@@ -1,7 +1,7 @@
 import Flutter
 import UIKit
 import AVFoundation
-import CoreImage
+import Metal
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -21,27 +21,32 @@ import CoreImage
     } catch {
       print("[AppDelegate] AVAudioSession setup failed: \(error)")
     }
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    // Enable wide colour (P3) on the Flutter Metal layer after the engine
+    // has finished launching and the root view controller is available.
+    _applyWideColorIfSupported()
+    return result
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+  }
 
-    // Enable wide color (P3) rendering on the Flutter Metal layer so photos
-    // and videos display the full DCI-P3 colour gamut on supported iPhones.
-    // This is a no-op on devices that don't support wide colour.
-    if let flutterVC = engineBridge.flutterViewController,
-       let metalLayer = flutterVC.view.layer as? CAMetalLayer {
-      if #available(iOS 16.0, *) {
-        metalLayer.pixelFormat = .bgra10_xr_srgb   // 10-bit wide colour
-      } else {
-        metalLayer.pixelFormat = .bgra8Unorm        // 8-bit fallback
-      }
-      if let p3 = CGColorSpace(name: CGColorSpace.displayP3) {
-        metalLayer.colorspace = p3
-      }
-      metalLayer.wantsExtendedDynamicRangeContent = true
-      metalLayer.contentsScale = UIScreen.main.scale  // always full native DPI
+  // ── Wide colour / P3 rendering ────────────────────────────────────────────
+
+  private func _applyWideColorIfSupported() {
+    guard let flutterVC = window?.rootViewController as? FlutterViewController,
+          let metalLayer = flutterVC.view.layer as? CAMetalLayer else { return }
+
+    if #available(iOS 16.0, *) {
+      metalLayer.pixelFormat = MTLPixelFormat.bgra10_xr_srgb
+    } else {
+      metalLayer.pixelFormat = MTLPixelFormat.bgra8Unorm
     }
+    if let p3 = CGColorSpace(name: CGColorSpace.displayP3) {
+      metalLayer.colorspace = p3
+    }
+    metalLayer.wantsExtendedDynamicRangeContent = true
+    metalLayer.contentsScale = UIScreen.main.scale
   }
 }
