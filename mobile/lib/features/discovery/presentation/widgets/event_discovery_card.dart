@@ -322,7 +322,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           commentsEnabled: commentsEnabled,
           ext: ext,
           isExternalPanel: isExternalPanel,
-          mediaH: mediaH,
+          mediaH: mediaH! * 1.5,
           photographerName: widget.event.photographerName,
           photographerId: widget.event.photographerId,
           isFollowed: widget.event.isFollowed,
@@ -457,10 +457,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 .clamp(0.0, commentsW)
             : commentsW;
 
-        // Extra height added to reactions and comments so they cover the
-        // description area below the image (approx 80 px of text + padding).
-        const double descExt = 88.0;
-
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -495,18 +491,18 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 ),
               ),
             ),
-            // ── Reactions — extends past image into description area ──────
+            // ── Reactions — always 64 px, always flush to card ────────────
             SizedBox(
               width: reactionsW,
-              height: mediaH + descExt,
+              height: mediaH,
               child: _buildWebRightPanel(context, ext, commentsEnabled,
                   isExternalPanel: true, reactionsOnly: true, mediaH: mediaH),
             ),
-            // ── Comments panel — extends to full card height ──────────────
+            // ── Comments panel — fills available space up to commentsW ─────
             if (_webCommentsOpen)
               SizedBox(
                 width: effectiveCommentsW,
-                height: mediaH + descExt,
+                height: mediaH,
                 child: EventCommentInlinePanel(
                   event: widget.event,
                   isExternalPanel: true,
