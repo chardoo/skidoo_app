@@ -165,19 +165,22 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     final player = Player();
 
     // ── Native libmpv quality tuning (native only) ────────────────────────
-    // kIsWeb guard is required: the web build uses a NativePlayer stub that
-    // has no setProperty, so without this the Dart web compiler rejects it.
+    // Cast to dynamic before calling setProperty: dart2js type-checks even
+    // dead branches, and the web NativePlayer stub has no setProperty method.
+    // dynamic dispatch skips compile-time resolution entirely.
     if (!kIsWeb) {
       final platform = player.platform;
       if (platform is NativePlayer) {
         () async {
           try {
-            await platform.setProperty('scale', 'ewa_lanczos');
-            await platform.setProperty('cscale', 'ewa_lanczos');
-            await platform.setProperty('dscale', 'mitchell');
-            await platform.setProperty('dither-depth', 'auto');
-            await platform.setProperty('hwdec', 'auto-safe');
-            await platform.setProperty('vd-lavc-threads', '0');
+            // ignore: avoid_dynamic_calls
+            final p = platform as dynamic;
+            await p.setProperty('scale', 'ewa_lanczos');
+            await p.setProperty('cscale', 'ewa_lanczos');
+            await p.setProperty('dscale', 'mitchell');
+            await p.setProperty('dither-depth', 'auto');
+            await p.setProperty('hwdec', 'auto-safe');
+            await p.setProperty('vd-lavc-threads', '0');
           } catch (_) {}
         }();
       }
