@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -163,24 +164,23 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   void _initPlayer() {
     final player = Player();
 
-    // ── Native libmpv quality tuning ───────────────────────────────────────
-    // Raise the scaler quality so upscaled video looks crisp (not soft/blocky)
-    // the way it does in Instagram / TikTok. Only applies on native platforms
-    // where the player is backed by libmpv; a no-op on web.
-    final platform = player.platform;
-    if (platform is NativePlayer) {
-      () async {
-        try {
-          await platform.setProperty('scale', 'ewa_lanczos'); // sharp upscale
-          await platform.setProperty('cscale', 'ewa_lanczos'); // chroma upscale
-          await platform.setProperty('dscale', 'mitchell'); // smooth downscale
-          await platform.setProperty('dither-depth', 'auto');
-          await platform.setProperty('hwdec', 'auto-safe'); // hw decode for 4K
-          await platform.setProperty('vd-lavc-threads', '0'); // auto threads
-        } catch (_) {
-          // Property unsupported on this build of libmpv — ignore.
-        }
-      }();
+    // ── Native libmpv quality tuning (native only) ────────────────────────
+    // kIsWeb guard is required: the web build uses a NativePlayer stub that
+    // has no setProperty, so without this the Dart web compiler rejects it.
+    if (!kIsWeb) {
+      final platform = player.platform;
+      if (platform is NativePlayer) {
+        () async {
+          try {
+            await platform.setProperty('scale', 'ewa_lanczos');
+            await platform.setProperty('cscale', 'ewa_lanczos');
+            await platform.setProperty('dscale', 'mitchell');
+            await platform.setProperty('dither-depth', 'auto');
+            await platform.setProperty('hwdec', 'auto-safe');
+            await platform.setProperty('vd-lavc-threads', '0');
+          } catch (_) {}
+        }();
+      }
     }
 
     // Width-only render buffer: matches the physical screen width for
