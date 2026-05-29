@@ -24,6 +24,7 @@ import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/common/widgets/feed_launch_overlay.dart';
 import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
 import 'package:flutter/foundation.dart';
+import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
 import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 
 class HomeNavigationPage extends StatefulWidget {
@@ -286,14 +287,20 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                               label: 'For You',
                               active: _selectedTab == 0,
                               ext: ext,
-                              onTap: () => setState(() => _selectedTab = 0),
+                              onTap: () {
+                                VideoPauseNotifier.pauseAll();
+                                setState(() => _selectedTab = 0);
+                              },
                             ),
                             const SizedBox(width: 8),
                             _PillTab(
                               label: 'Following',
                               active: _selectedTab == 1,
                               ext: ext,
-                              onTap: () => setState(() => _selectedTab = 1),
+                              onTap: () {
+                                VideoPauseNotifier.pauseAll();
+                                setState(() => _selectedTab = 1);
+                              },
                             ),
                             const Spacer(),
                             const _WebGetAppButton(),
@@ -443,7 +450,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                       _FeedTabBar(
                         ext: ext,
                         selectedTab: _selectedTab,
-                        onTabChanged: (i) => setState(() => _selectedTab = i),
+                        onTabChanged: (i) {
+                          VideoPauseNotifier.pauseAll();
+                          setState(() => _selectedTab = i);
+                        },
                       ),
                   ],
                 ),

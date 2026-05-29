@@ -220,7 +220,8 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final enabled = TickerMode.valuesOf(context).enabled;
+    // ignore: deprecated_member_use
+    final enabled = TickerMode.of(context);
     if (_tickerEnabled != enabled) {
       _tickerEnabled = enabled;
       _syncPlayback();
