@@ -33,6 +33,14 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   // Room cache populated by the batch prefetch — keyed by event ID.
   final Map<String, ChatRoom> _roomCache = {};
 
+  // ── Debounced fallback room-fetch queue ───────────────────────────────────
+  // When individual cards need a room that wasn't prefetched, we collect their
+  // IDs for 80 ms then fire ONE batched request instead of N parallel singles.
+  final Set<String> _roomFetchQueue = {};
+  final Map<String, List<Completer<void>>> _roomFetchCompleters = {};
+  Timer? _roomFetchTimer;
+
+
   // Tracks rooms already subscribed on the shared WS this session.
   // When the WS reconnects, this set is cleared so rooms re-subscribe.
   final Set<String> _subscribedRoomIds = {};
@@ -133,12 +141,60 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     return null;
   }
 
+  /// Queues [eventId] for a debounced batch room fetch and returns a Future
+  /// that resolves once the batch completes. Multiple calls within 80 ms are
+  /// coalesced into one request instead of firing one request per ID.
+  Future<void> _enqueueRoomFetch(String eventId) {
+    _roomFetchQueue.add(eventId);
+    _roomFetchTimer?.cancel();
+    _roomFetchTimer = Timer(
+      const Duration(milliseconds: 80),
+      _flushRoomFetchQueue,
+    );
+    final completer = Completer<void>();
+    (_roomFetchCompleters[eventId] ??= []).add(completer);
+    return completer.future;
+  }
+
+  Future<void> _flushRoomFetchQueue() async {
+    if (_roomFetchQueue.isEmpty) return;
+    final ids = _roomFetchQueue.toList();
+    _roomFetchQueue.clear();
+    final completers = Map.of(_roomFetchCompleters);
+    _roomFetchCompleters.clear();
+
+    for (var i = 0; i < ids.length; i += 20) {
+      final chunk = ids.sublist(i, (i + 20).clamp(0, ids.length));
+      try {
+        final map = await _getEventRoomsBatch(chunk);
+        _roomCache.addAll(map);
+      } catch (e) {
+        debugPrint('[DiscoveryBloc] fallback batch error: $e');
+      }
+      for (final id in chunk) {
+        for (final c in completers[id] ?? <Completer<void>>[]) {
+          if (!c.isCompleted) c.complete();
+        }
+      }
+    }
+  }
+
   Future<List<EventDiscovery>> _enrichWithReactions(
     List<EventDiscovery> events,
     String userId,
   ) async {
     final ids = events.map((e) => e.id).toList();
-    final reactions = await _getReactionsBatch(ids, userId);
+    // Server allows max 50 IDs per reactions batch call — chunk sequentially.
+    final Map<String, EventReaction> reactions = {};
+    for (var i = 0; i < ids.length; i += 50) {
+      final chunk = ids.sublist(i, (i + 50).clamp(0, ids.length));
+      try {
+        final partial = await _getReactionsBatch(chunk, userId);
+        reactions.addAll(partial);
+      } catch (e) {
+        debugPrint('[DiscoveryBloc] reactions batch error: $e');
+      }
+    }
     return events.map((e) {
       final r = reactions[e.id] ?? EventReaction.empty();
       return e.copyWith(
@@ -151,32 +207,35 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   }
 
   /// Batch-fetches rooms for [events] and stores them in [_roomCache].
-  /// Silently ignores errors — WS connect will fall back to single fetch.
+  /// Chunks are sent sequentially (not all in parallel) so we don't flood
+  /// the server with simultaneous requests on large feed pages.
   void _prefetchRooms(List<EventDiscovery> events) {
     if (kIsWeb) return; // chat API not supported on web
     if (events.isEmpty) return;
     if (_currentUserId == null) return; // unauthenticated — skip
     final ids = events.map((e) => e.id).toList();
-    final futures = <Future<void>>[];
-    // Chunk into batches of 20 (backend limit).
+
+    // Build a sequential chain: each chunk waits for the previous to finish.
+    Future<void> chain = Future<void>.value();
     for (var i = 0; i < ids.length; i += 20) {
       final chunk = ids.sublist(i, (i + 20).clamp(0, ids.length));
-      futures.add(
-        _getEventRoomsBatch(chunk).then((map) {
+      chain = chain.then((_) async {
+        try {
+          final map = await _getEventRoomsBatch(chunk);
           _roomCache.addAll(map);
           debugPrint(
-            '[DiscoveryBloc] batch-prefetched ${map.length} rooms '
-            '(cache size: ${_roomCache.length})',
+            '[DiscoveryBloc] prefetched ${map.length} rooms '
+            '(cache=${_roomCache.length})',
           );
-        }).catchError((Object e) {
-          debugPrint('[DiscoveryBloc] room batch prefetch error: $e');
-        }),
-      );
+        } catch (e) {
+          debugPrint('[DiscoveryBloc] room prefetch error: $e');
+        }
+      });
     }
     // Chain onto any prior prefetch so _prefetchFuture always represents
     // all outstanding room-fetch work (initial load + load-more pages).
     _prefetchFuture = (_prefetchFuture ?? Future<void>.value())
-        .then((_) => Future.wait(futures));
+        .then((_) => chain);
   }
 
   // ── Load ──────────────────────────────────────────────────────────────────
@@ -329,9 +388,10 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
         room = _roomCache[id];
       }
       if (room == null) {
-        final map = await _getEventRoomsBatch([id]);
-        room = map[id];
-        if (room != null) _roomCache[id] = room;
+        // Use the debounced queue — coalesces concurrent single-card fetches
+        // into one batched request instead of N parallel single-ID requests.
+        await _enqueueRoomFetch(id);
+        room = _roomCache[id];
       }
       if (room == null || isClosed) return;
 
@@ -437,9 +497,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       room = _roomCache[event.eventId];
     }
     if (room == null) {
-      final map = await _getEventRoomsBatch([event.eventId]);
-      room = map[event.eventId];
-      if (room != null) _roomCache[event.eventId] = room;
+      await _enqueueRoomFetch(event.eventId);
+      room = _roomCache[event.eventId];
     }
     if (room == null) {
       // Revert optimistic update — can't route without room_id.
@@ -608,6 +667,14 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   Future<void> close() {
     _likeUpdateSub?.cancel();
     _wsConnectionSub?.cancel();
+    _roomFetchTimer?.cancel();
+    // Complete any pending completers so callers don't leak.
+    for (final list in _roomFetchCompleters.values) {
+      for (final c in list) {
+        if (!c.isCompleted) c.complete();
+      }
+    }
+    _roomFetchCompleters.clear();
     return super.close();
   }
 }
