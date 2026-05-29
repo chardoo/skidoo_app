@@ -251,17 +251,17 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               bottom: 0,
               left: 0,
               right: 0,
-              height: 220.h,
+              height: 160.h,
               child: const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    stops: [0.0, 0.5, 1.0],
+                    stops: [0.0, 0.55, 1.0],
                     colors: [
-                      Color(0xF2000000),
-                      Color(0x88000000),
-                      Color(0x00000000),
+                      Color(0x99000000), // 60 % — text shadows handle legibility
+                      Color(0x33000000), // 20 %
+                      Color(0x00000000), // 0 %
                     ],
                   ),
                 ),
