@@ -114,8 +114,12 @@ class SkidooVideoPlayer extends StatefulWidget {
 
 class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     with WidgetsBindingObserver {
-  late final Player _player;
-  late final VideoController _controller;
+  // Nullable until _initPlayer() fires on the first post-frame callback.
+  // This defers the heavy libmpv thread spawn + GPU texture allocation
+  // off the first render frame, eliminating first-video lag and audio pop.
+  Player? _player;
+  VideoController? _controller;
+  bool _playerReady = false;
 
   bool _muted = false;
   bool _manuallyPaused = false;
@@ -124,7 +128,6 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   bool _appActive = true;
 
   // Video pixel dimensions — populated from the player stream once media loads.
-  // Used to compute the exact aspect ratio for reliable centering.
   int? _videoW;
   int? _videoH;
 
@@ -134,9 +137,6 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   StreamSubscription<int?>? _widthSub;
   StreamSubscription<int?>? _heightSub;
 
-  /// Resolve initial mute state:
-  /// - explicit [widget.initiallyMuted] wins if provided
-  /// - otherwise use the global session preference (updated by user toggles)
   bool get _startMuted => widget.initiallyMuted ?? VideoMutePreference.muted;
 
   @override
@@ -145,49 +145,38 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     WidgetsBinding.instance.addObserver(this);
     _muted = _startMuted;
 
-    _player = Player();
-    // Use physical screen dimensions for the render buffer so the GPU
-    // allocates a full-resolution texture. This prevents the frame being
-    // upscaled from a smaller intermediate buffer on high-DPI screens.
+    // Defer Player + VideoController creation to after the first frame.
+    // Creates libmpv threads and allocates the GPU render texture off the
+    // critical render path — prevents first-video lag and audio pop on mobile.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initPlayer();
+    });
+  }
+
+  void _initPlayer() {
+    final player = Player();
+
+    // Width-only render buffer: matches the physical screen width for
+    // pixel-perfect rendering without allocating a full-screen-height GPU
+    // texture for every player instance.
     final view = WidgetsBinding.instance.platformDispatcher.views.first;
-    final physW = view.physicalSize.width ~/ view.devicePixelRatio == 0
-        ? null
-        : view.physicalSize.width.round();
-    final physH = view.physicalSize.height ~/ view.devicePixelRatio == 0
-        ? null
-        : view.physicalSize.height.round();
-    _controller = VideoController(
-      _player,
+    final physW = view.physicalSize.width.round();
+    final controller = VideoController(
+      player,
       configuration: VideoControllerConfiguration(
         enableHardwareAcceleration: true,
-        width: physW,
-        height: physH,
+        width: physW > 0 ? physW : null,
+        // height intentionally omitted — the render buffer height is derived
+        // from the video's own aspect ratio, halving GPU memory vs. allocating
+        // a full-screen buffer for every player.
       ),
     );
 
-    // Capture initial dimensions if already available (e.g. reused player).
-    _videoW = _player.state.width;
-    _videoH = _player.state.height;
+    player.setVolume(_muted ? 0 : 100);
+    player.setPlaylistMode(
+        widget.loop ? PlaylistMode.loop : PlaylistMode.none);
 
-    // Track dimension changes so we can use AspectRatio + Center for reliable
-    // centering once the actual video size is known.
-    _widthSub = _player.stream.width.listen((w) {
-      if (mounted && w != null && w > 0 && w != _videoW) {
-        setState(() => _videoW = w);
-      }
-    });
-    _heightSub = _player.stream.height.listen((h) {
-      if (mounted && h != null && h > 0 && h != _videoH) {
-        setState(() => _videoH = h);
-      }
-    });
-
-    _player.setVolume(_muted ? 0 : 100);
-    _player.setPlaylistMode(
-      widget.loop ? PlaylistMode.loop : PlaylistMode.none,
-    );
-
-    _player
+    player
         .open(Media(widget.url), play: false)
         .then((_) { if (mounted) _syncPlayback(); })
         .catchError((_) {});
@@ -195,16 +184,22 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     if (widget.listenToPauseNotifier) {
       _pauseSub = VideoPauseNotifier.listen(_onGlobalPause);
     }
-
-    // Mirror global mute-preference changes in real-time — when any other
-    // player unmutes (or mutes), this player immediately follows suit.
-    // Only active when initiallyMuted is null (not an explicit override).
     if (widget.initiallyMuted == null) {
       VideoMutePreference.notifier.addListener(_onGlobalMuteChanged);
     }
 
-    // Auto-hide controls once playing starts; re-show when paused.
-    _playingSub = _player.stream.playing.listen((playing) {
+    _widthSub = player.stream.width.listen((w) {
+      if (mounted && w != null && w > 0 && w != _videoW) {
+        setState(() => _videoW = w);
+      }
+    });
+    _heightSub = player.stream.height.listen((h) {
+      if (mounted && h != null && h > 0 && h != _videoH) {
+        setState(() => _videoH = h);
+      }
+    });
+
+    _playingSub = player.stream.playing.listen((playing) {
       if (!mounted) return;
       if (playing) {
         _scheduleHide();
@@ -215,6 +210,14 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     });
 
     if (!widget.autoPlay) _controlsVisible = true;
+
+    setState(() {
+      _player = player;
+      _controller = controller;
+      _videoW = player.state.width;
+      _videoH = player.state.height;
+      _playerReady = true;
+    });
   }
 
   @override
@@ -224,15 +227,16 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     final enabled = TickerMode.of(context);
     if (_tickerEnabled != enabled) {
       _tickerEnabled = enabled;
-      _syncPlayback();
+      if (_playerReady) _syncPlayback();
     }
   }
 
   @override
   void didUpdateWidget(SkidooVideoPlayer old) {
     super.didUpdateWidget(old);
+    if (!_playerReady) return;
     if (old.url != widget.url) {
-      _player
+      _player!
           .open(Media(widget.url), play: false)
           .then((_) { if (mounted) _syncPlayback(); })
           .catchError((_) {});
@@ -248,47 +252,46 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:
         _appActive = false;
-        if (_player.state.playing) _player.pause();
+        if (_player?.state.playing == true) _player!.pause();
       case AppLifecycleState.resumed:
         _appActive = true;
-        _syncPlayback();
+        if (_playerReady) _syncPlayback();
       case AppLifecycleState.inactive:
         break;
     }
   }
 
   void _onGlobalPause() {
-    if (_player.state.playing) {
-      _player.pause();
+    if (_player?.state.playing == true) {
+      _player!.pause();
       _manuallyPaused = true;
     }
   }
 
-  /// Called when any other player writes to [VideoMutePreference].
-  /// Syncs this player's volume immediately so all active players share
-  /// the same mute state without needing to be re-created.
   void _onGlobalMuteChanged() {
     if (!mounted) return;
     final globalMuted = VideoMutePreference.muted;
-    if (_muted == globalMuted) return; // already in sync — nothing to do
+    if (_muted == globalMuted) return;
     setState(() {
       _muted = globalMuted;
-      _player.setVolume(_muted ? 0 : 100);
+      _player?.setVolume(_muted ? 0 : 100);
     });
   }
 
   void _syncPlayback() {
+    final player = _player;
+    if (player == null) return;
     final shouldPlay = widget.autoPlay &&
         widget.isActive &&
         _tickerEnabled &&
         _appActive &&
         !_manuallyPaused;
 
-    if (shouldPlay && !_player.state.playing) {
-      _player.play();
-    } else if (!shouldPlay && _player.state.playing) {
-      if (!widget.isActive) _manuallyPaused = false; // reset when slide leaves
-      _player.pause();
+    if (shouldPlay && !player.state.playing) {
+      player.play();
+    } else if (!shouldPlay && player.state.playing) {
+      if (!widget.isActive) _manuallyPaused = false;
+      player.pause();
     }
   }
 
@@ -297,18 +300,20 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   void _onTap() {
     if (!_controlsVisible) {
       setState(() => _controlsVisible = true);
-      if (_player.state.playing) _scheduleHide();
+      if (_player?.state.playing == true) _scheduleHide();
     } else {
       _togglePlayback();
     }
   }
 
   void _togglePlayback() {
-    if (_player.state.playing) {
-      _player.pause();
+    final player = _player;
+    if (player == null) return;
+    if (player.state.playing) {
+      player.pause();
       _manuallyPaused = true;
     } else {
-      _player.play();
+      player.play();
       _manuallyPaused = false;
       _scheduleHide();
     }
@@ -317,16 +322,17 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   void _toggleMute() {
     setState(() {
       _muted = !_muted;
-      _player.setVolume(_muted ? 0 : 100);
+      _player?.setVolume(_muted ? 0 : 100);
     });
-    // Persist so the next video opens in the same mute state.
     VideoMutePreference.muted = _muted;
   }
 
   void _seekBy(Duration delta) {
-    final cur = _player.state.position + delta;
-    final dur = _player.state.duration;
-    _player.seek(
+    final player = _player;
+    if (player == null) return;
+    final cur = player.state.position + delta;
+    final dur = player.state.duration;
+    player.seek(
       cur < Duration.zero ? Duration.zero : (cur > dur ? dur : cur),
     );
   }
@@ -334,17 +340,18 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   void _scheduleHide() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && _player.state.playing) {
+      if (mounted && _player?.state.playing == true) {
         setState(() => _controlsVisible = false);
       }
     });
   }
 
   void _openFullscreen() {
-    // Capture current state before going fullscreen
-    final pos = _player.state.position;
-    final wasPlaying = _player.state.playing;
-    _player.pause();
+    final player = _player;
+    if (player == null) return;
+    final pos = player.state.position;
+    final wasPlaying = player.state.playing;
+    player.pause();
 
     Navigator.of(context)
         .push(MaterialPageRoute<void>(
@@ -357,8 +364,8 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
             loop: widget.loop,
             onExit: (finalPos, finalMuted) {
               setState(() => _muted = finalMuted);
-              _player.setVolume(_muted ? 0 : 100);
-              _player.seek(finalPos);
+              player.setVolume(_muted ? 0 : 100);
+              player.seek(finalPos);
               _syncPlayback();
             },
           ),
@@ -376,23 +383,19 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     _widthSub?.cancel();
     _heightSub?.cancel();
     _hideTimer?.cancel();
-    _player.dispose();
+    _player?.dispose();
     super.dispose();
   }
 
-  /// Builds the video surface.
-  ///
-  /// For [BoxFit.contain] we use Flutter's own [AspectRatio] + [Center] once
-  /// the video's pixel dimensions are known — this is far more reliable than
-  /// relying on the [Video] widget's internal fit/alignment rendering, which
-  /// can be off-centre on certain platforms.
-  ///
-  /// For [BoxFit.cover] (thumbnails) we delegate directly to [Video.fit].
   Widget _buildVideoSurface() {
+    final controller = _controller;
+    if (controller == null) {
+      return ColoredBox(color: widget.backgroundColor);
+    }
+
     final w = _videoW;
     final h = _videoH;
 
-    // Contain: use AspectRatio + Center — no platform surprises.
     if (widget.fit == BoxFit.contain && w != null && h != null && h > 0) {
       return ColoredBox(
         color: widget.backgroundColor,
@@ -400,8 +403,8 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
           child: AspectRatio(
             aspectRatio: w / h,
             child: Video(
-              controller: _controller,
-              fit: BoxFit.fill, // fills the exactly-sized AspectRatio box
+              controller: controller,
+              fit: BoxFit.fill,
               fill: widget.backgroundColor,
               filterQuality: FilterQuality.high,
               controls: NoVideoControls,
@@ -411,10 +414,9 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
       );
     }
 
-    // Cover / unknown dimensions — let Video handle it with ClipRect guard.
     return ClipRect(
       child: Video(
-        controller: _controller,
+        controller: controller,
         fit: widget.fit,
         fill: widget.backgroundColor,
         alignment: Alignment.center,
@@ -439,9 +441,6 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     } else if (widget.height != null) {
       sized = SizedBox(height: widget.height, child: video);
     } else {
-      // No explicit size — use the video's natural aspect ratio so the widget
-      // sizes itself correctly in Columns, ListViews, etc.
-      // Falls back to 16:9 while dimensions are still loading.
       final ratio = (_videoW != null && _videoH != null && _videoH! > 0)
           ? _videoW! / _videoH!
           : 16 / 9;
@@ -449,11 +448,12 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     }
 
     // ── Controls overlay ───────────────────────────────────────────────────
-    Widget player = Stack(
+    final player = _player;
+    Widget playerWidget = Stack(
       alignment: Alignment.center,
       children: [
         sized,
-        if (widget.showControls)
+        if (widget.showControls && player != null)
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -462,7 +462,7 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
                 opacity: _controlsVisible ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 220),
                 child: _ControlsOverlay(
-                  player: _player,
+                  player: player,
                   muted: _muted,
                   onPlayPause: _togglePlayback,
                   onMute: _toggleMute,
@@ -477,10 +477,11 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     );
 
     if (widget.borderRadius != null) {
-      player = ClipRRect(borderRadius: widget.borderRadius!, child: player);
+      playerWidget =
+          ClipRRect(borderRadius: widget.borderRadius!, child: playerWidget);
     }
 
-    return player;
+    return playerWidget;
   }
 }
 
@@ -643,7 +644,6 @@ class _BottomBar extends StatelessWidget {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Seek slider
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       thumbShape:
@@ -666,7 +666,6 @@ class _BottomBar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Time labels + fullscreen
                   Row(
                     children: [
                       Text(
@@ -706,9 +705,6 @@ class _BottomBar extends StatelessWidget {
 
 // ── Fullscreen page ───────────────────────────────────────────────────────────
 
-/// Dedicated fullscreen player that creates its own [Player] at the same URL
-/// and position. On pop it calls [onExit] with the final position and mute
-/// state so the inline player can resync.
 class _FullscreenVideoPage extends StatefulWidget {
   const _FullscreenVideoPage({
     required this.url,
@@ -753,13 +749,11 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
     _player = Player();
     final view = WidgetsBinding.instance.platformDispatcher.views.first;
     final physW = view.physicalSize.width.round();
-    final physH = view.physicalSize.height.round();
     _controller = VideoController(
       _player,
       configuration: VideoControllerConfiguration(
         enableHardwareAcceleration: true,
         width: physW > 0 ? physW : null,
-        height: physH > 0 ? physH : null,
       ),
     );
 
@@ -836,7 +830,6 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
       _muted = !_muted;
       _player.setVolume(_muted ? 0 : 100);
     });
-    // Persist so the next video opens in the same mute state.
     VideoMutePreference.muted = _muted;
   }
 
@@ -877,7 +870,6 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // ── Video — AspectRatio + Center for reliable centering ──────────
             Builder(builder: (_) {
               final w = _videoW;
               final h = _videoH;
@@ -898,11 +890,9 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
                   ),
                 );
               }
-              // Dimensions not yet known — show background while loading.
               return const ColoredBox(color: Colors.black);
             }),
 
-            // ── Controls overlay ────────────────────────────────────────────
             AnimatedOpacity(
               opacity: _controlsVisible ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 200),
@@ -916,11 +906,10 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
                 onMute: _toggleMute,
                 onSeekBack: () => _seekBy(const Duration(seconds: -10)),
                 onSeekForward: () => _seekBy(const Duration(seconds: 10)),
-                onFullscreen: null, // no nested fullscreen
+                onFullscreen: null,
               ),
             ),
 
-            // ── Close button ────────────────────────────────────────────────
             Positioned(
               top: safePad.top + 8.h,
               left: 12.w,
