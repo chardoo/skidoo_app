@@ -319,24 +319,31 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     // Already subscribed on the shared WS — nothing to do.
     if (_subscribedRoomIds.contains(id)) return;
 
-    // Prefer the batch-prefetched cache. If the prefetch is still in-flight
-    // (card became visible before the HTTP response landed), wait for it so
-    // we avoid firing a redundant single-ID batch call.
-    ChatRoom? room = _roomCache[id];
-    if (room == null) {
-      await _prefetchFuture;
-      room = _roomCache[id];
-    }
-    if (room == null) {
-      final map = await _getEventRoomsBatch([id]);
-      room = map[id];
-      if (room != null) _roomCache[id] = room;
-    }
-    if (room == null || isClosed) return;
+    try {
+      // Prefer the batch-prefetched cache. If the prefetch is still in-flight
+      // (card became visible before the HTTP response landed), wait for it so
+      // we avoid firing a redundant single-ID batch call.
+      ChatRoom? room = _roomCache[id];
+      if (room == null) {
+        await _prefetchFuture;
+        room = _roomCache[id];
+      }
+      if (room == null) {
+        final map = await _getEventRoomsBatch([id]);
+        room = map[id];
+        if (room != null) _roomCache[id] = room;
+      }
+      if (room == null || isClosed) return;
 
-    // Subscribe on the single shared connection — no new WS opened.
-    _bgService.sharedWs.subscribeRoom(room.id);
-    _subscribedRoomIds.add(id);
+      // Subscribe on the single shared connection — no new WS opened.
+      _bgService.sharedWs.subscribeRoom(room.id);
+      _subscribedRoomIds.add(id);
+    } on ServerException catch (e) {
+      // 504 / upstream timeout — server is slow, not a client bug. Skip silently.
+      debugPrint('[DiscoveryBloc] _onEventVisible: chat API error for $id — ${e.message}');
+    } catch (e) {
+      debugPrint('[DiscoveryBloc] _onEventVisible: unexpected error for $id — $e');
+    }
   }
 
   void _onEventHidden(
