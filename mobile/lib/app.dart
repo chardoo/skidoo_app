@@ -213,9 +213,9 @@ class _AppMaterial extends StatelessWidget {
       // On mobile: no wrapper — ScreenUtilInit already wraps the navigator.
       builder: kIsWeb ? _webLayoutBuilder : null,
       navigatorObservers: kIsWeb ? [WebRouteObserver.instance] : [],
-      // Always land on Discovery — logged-in users navigate to /home from
-      // the sidebar/navbar when they want chat, gallery, or photographers.
-      initialRoute: DiscoveryPage.routeName,
+      // Returning users (valid stored token) go straight to /home.
+      // New / logged-out users land on Discovery (the guest feed).
+      initialRoute: token.isNotEmpty ? HomePage.routeName : DiscoveryPage.routeName,
       routes: {
         // On web, guest-only pages redirect authenticated users to /home so
         // that pressing browser Back never lands on the unauthenticated UI.
@@ -392,10 +392,10 @@ class _GuestGuardState extends State<_GuestGuard> {
   @override
   void initState() {
     super.initState();
-    // Redirect only on web and only when the user is already authenticated.
+    // Redirect on all platforms when the user is already authenticated.
     // AuthService.isAuthenticated is seeded from Secure Storage before runApp
     // so this is a synchronous, zero-latency check — no frame flash.
-    _shouldRedirect = kIsWeb && AuthService.isAuthenticated.value;
+    _shouldRedirect = AuthService.isAuthenticated.value;
     if (_shouldRedirect) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
