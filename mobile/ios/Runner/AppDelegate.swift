@@ -40,13 +40,13 @@ import Metal
 
     if #available(iOS 16.0, *) {
       metalLayer.pixelFormat = MTLPixelFormat.bgra10_xr_srgb
+      metalLayer.wantsExtendedDynamicRangeContent = true
     } else {
       metalLayer.pixelFormat = MTLPixelFormat.bgra8Unorm
     }
     if let p3 = CGColorSpace(name: CGColorSpace.displayP3) {
       metalLayer.colorspace = p3
     }
-    metalLayer.wantsExtendedDynamicRangeContent = true
     metalLayer.contentsScale = UIScreen.main.scale
   }
 }
