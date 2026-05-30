@@ -253,7 +253,7 @@ class _SignUpViewState extends State<_SignUpView>
                             controller: _passwordController,
                             label: AppLocalizations.of(context)!.signupPassword,
                             textInputAction: TextInputAction.next,
-                            validator: Validators.passwordValidator,
+                            validator: Validators.signupPasswordValidator,
                           ),
                           SizedBox(height: 14.h),
 
@@ -266,7 +266,7 @@ class _SignUpViewState extends State<_SignUpView>
                               if (v != _passwordController.text) {
                                 return AppLocalizations.of(context)!.signupPasswordsDoNotMatch;
                               }
-                              return Validators.passwordValidator(v);
+                              return Validators.signupPasswordValidator(v);
                             },
                           ),
                           SizedBox(height: 32.h),

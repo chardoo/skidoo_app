@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/core/validators/media_validator.dart';
 import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
@@ -248,10 +249,10 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
 
     final valid = <XFile>[];
     for (final file in picked) {
-      final size = await File(file.path).length();
-      if (size > _maxCreativeBytes) {
-        if (!mounted) return;
-        AppSnackBar.error(context, '${file.name} is too large. Maximum size is 50 MB.');
+      final error = await MediaValidator.validate(file, isVideo: false);
+      if (!mounted) return;
+      if (error != null) {
+        AppSnackBar.error(context, error);
         return;
       }
       valid.add(file);
@@ -259,8 +260,6 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
     if (!mounted) return;
     setState(() => _creatives.addAll(valid));
   }
-
-  static const _maxCreativeBytes = 50 * 1024 * 1024; // 50 MB
 
   void _removeCreative(int index) {
     setState(() => _creatives.removeAt(index));

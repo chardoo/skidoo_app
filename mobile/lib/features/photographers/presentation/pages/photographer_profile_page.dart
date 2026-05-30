@@ -23,6 +23,7 @@ import 'package:skidoo_app/features/photographers/presentation/widgets/profile_r
 import 'package:skidoo_app/features/photographers/presentation/widgets/profile_sample_tile.dart';
 import 'package:skidoo_app/core/utils/auth_guard.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/core/validators/media_validator.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/models/photographer/photographer_event.dart';
@@ -359,6 +360,16 @@ class _SamplesTabState extends State<_SamplesTab>
   Future<void> _pickAndUpload() async {
     final picked = await _picker.pickMultiImage(imageQuality: 85);
     if (picked.isEmpty || !mounted) return;
+
+    for (final file in picked) {
+      final error = await MediaValidator.validate(file, isVideo: false);
+      if (!mounted) return;
+      if (error != null) {
+        AppSnackBar.error(context, error);
+        return;
+      }
+    }
+
     setState(() => _uploading = true);
     try {
       final files = picked.map((x) => File(x.path)).toList();

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart' show MaxLengthEnforcement;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/validators/media_validator.dart';
 import 'package:skidoo_app/core/widgets/emoji_panel.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
@@ -52,8 +53,6 @@ class ChatInputBar extends StatefulWidget {
   /// True only while the media is being uploaded (after send is tapped).
   final bool isUploadingImage;
 
-  static const _maxBytes = 50 * 1024 * 1024; // 50 MB
-
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
 }
@@ -73,12 +72,11 @@ class _ChatInputBarState extends State<ChatInputBar> {
       imageQuality: 85,
     );
     if (picked == null) return;
-    final size = await picked.length();
-    if (size > ChatInputBar._maxBytes) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('File is too large. Maximum size is 50 MB.')),
-      );
+    final error = await MediaValidator.validate(picked, isVideo: false);
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
     widget.onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: false);
@@ -88,12 +86,11 @@ class _ChatInputBarState extends State<ChatInputBar> {
     final picker = ImagePicker();
     final picked = await picker.pickVideo(source: ImageSource.gallery);
     if (picked == null) return;
-    final size = await picked.length();
-    if (size > ChatInputBar._maxBytes) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('File is too large. Maximum size is 50 MB.')),
-      );
+    final error = await MediaValidator.validate(picked, isVideo: true);
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
     widget.onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: true);

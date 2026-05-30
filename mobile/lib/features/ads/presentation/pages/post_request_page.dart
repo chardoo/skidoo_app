@@ -5,6 +5,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/core/validators/validators.dart';
+import 'package:skidoo_app/core/validators/media_validator.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -61,18 +63,15 @@ class _PostRequestPageState extends State<PostRequestPage> {
         source: ImageSource.gallery, imageQuality: 85);
     if (file == null) return;
 
-    final size = await File(file.path).length();
-    if (size > _maxBytes) {
-      if (!mounted) return;
-      AppSnackBar.error(context, 'File is too large. Maximum size is 50 MB.');
+    final error = await MediaValidator.validate(file, isVideo: false);
+    if (!mounted) return;
+    if (error != null) {
+      AppSnackBar.error(context, error);
       return;
     }
 
-    if (!mounted) return;
     setState(() => _assets.add(file));
   }
-
-  static const _maxBytes = 50 * 1024 * 1024; // 50 MB
 
   void _removeAsset(int index) {
     setState(() => _assets.removeAt(index));
@@ -156,8 +155,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
               controller: _titleCtrl,
               hint: 'e.g. Wedding photographer needed',
               ext: ext,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+              validator: (v) => Validators.lengthBetween(v, 3, 100, field: 'Title'),
             ),
 
             SizedBox(height: 20.h),
@@ -186,7 +184,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
               hint: 'e.g. Accra, Ghana',
               ext: ext,
               validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  Validators.lengthBetween(v, 2, 80, field: 'Location'),
             ),
 
             SizedBox(height: 20.h),
@@ -198,6 +196,8 @@ class _PostRequestPageState extends State<PostRequestPage> {
                   'Describe the event, date, style preferences, anything helpful...',
               ext: ext,
               maxLines: 4,
+              validator: (v) =>
+                  Validators.maxLength(v, 1000, field: 'Description'),
             ),
 
             SizedBox(height: 20.h),
@@ -250,6 +250,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
               hint: 'e.g. 500',
               ext: ext,
               keyboardType: TextInputType.number,
+              validator: (v) => Validators.optionalAmount(v, field: 'Budget'),
               prefix: Text(
                 'GHS  ',
                 style: TextStyle(
