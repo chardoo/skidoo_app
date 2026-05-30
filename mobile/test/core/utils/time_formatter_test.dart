@@ -1,0 +1,33 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:skidoo_app/core/utils/time_formatter.dart';
+
+void main() {
+  group('TimeFormatter.relative', () {
+    final now = DateTime.now();
+
+    test('"Just now" under a minute', () {
+      expect(TimeFormatter.relative(now.subtract(const Duration(seconds: 5))),
+          'Just now');
+    });
+
+    test('minutes under an hour', () {
+      expect(TimeFormatter.relative(now.subtract(const Duration(minutes: 5))),
+          '5m');
+    });
+
+    test('hours under a day', () {
+      expect(TimeFormatter.relative(now.subtract(const Duration(hours: 2))),
+          '2h');
+    });
+
+    test('days under a week', () {
+      expect(TimeFormatter.relative(now.subtract(const Duration(days: 3))),
+          '3d');
+    });
+
+    test('falls back to d/m beyond a week', () {
+      final old = DateTime(2026, 4, 15);
+      expect(TimeFormatter.relative(old), '15/4');
+    });
+  });
+}

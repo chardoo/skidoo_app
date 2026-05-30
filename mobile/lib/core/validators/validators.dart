@@ -38,14 +38,19 @@ class Validators {
     return null;
   }
 
+  /// Minimum password length enforced on sign-up / reset. Must stay in sync
+  /// with the backend's `MIN_PASSWORD_LEN` (validators.py) — a looser client
+  /// rule just lets the server reject the request after the fact.
+  static const int minPasswordLength = 8;
+
   /// Stronger password rule for sign-up. Login keeps [passwordValidator] so
   /// existing accounts with shorter passwords can still sign in.
   static String? signupPasswordValidator(String? value) {
     if (value == null || value.isEmpty) {
       return '*Password is required';
     }
-    if (value.length < 6) {
-      return '*Minimum 6 characters';
+    if (value.length < minPasswordLength) {
+      return '*Minimum $minPasswordLength characters';
     }
     return null;
   }
@@ -134,9 +139,8 @@ class Validators {
     }
     final uri = Uri.tryParse(trimmed);
     if (uri == null ||
-        !uri.hasScheme ||
         (uri.scheme != 'http' && uri.scheme != 'https') ||
-        !uri.hasAuthority) {
+        uri.host.isEmpty) {
       return '*$field must be a valid URL (https://…)';
     }
     return null;
