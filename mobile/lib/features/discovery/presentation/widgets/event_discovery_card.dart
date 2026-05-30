@@ -1366,18 +1366,9 @@ class _WebReactionsColumn extends StatelessWidget {
       decoration: BoxDecoration(color: ext.homeBackground, border: border),
       child: Padding(
         padding: const EdgeInsets.only(bottom: 16),
-        // Bottom-anchored strip that scales down if the icons + gaps slightly
-        // exceed the available height (e.g. when shown beside the comment
-        // thread, where the column is constrained to the card height while
-        // sizing is derived from the taller standalone media height).
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.bottomCenter,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
             // ── Photographer badge — external panel only (TikTok creator pin) ─
             if (isExternalPanel && photographerName.isNotEmpty) ...[
               WebCreatorPin(
@@ -1451,9 +1442,7 @@ class _WebReactionsColumn extends StatelessWidget {
               iconSize: iconSize,
               onTap: onShare,
             ),
-              ],
-            ),
-          ),
+          ],
         ),
       ),
     );
