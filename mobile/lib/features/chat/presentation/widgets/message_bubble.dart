@@ -93,7 +93,11 @@ class MessageBubble extends StatelessWidget {
                 ],
                 Container(
                   constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.72,
+                    // 72% of the window on mobile, but capped so chat media
+                    // doesn't balloon to fill the much wider desktop/laptop
+                    // window (where the chat panel is only part of the screen).
+                    maxWidth: (MediaQuery.of(context).size.width * 0.72)
+                        .clamp(0.0, 420.0),
                   ),
                   decoration: BoxDecoration(
                     color: isMe ? ext.accentGold : ext.cardSurface,
