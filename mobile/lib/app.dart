@@ -283,12 +283,21 @@ class _AppMaterial extends StatelessWidget {
                   Expanded(child: ClipRect(child: child!)),
                 ],
               )
-            // ── Desktop web: sidebar + full remaining width ─────────────
-            : Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // ── Desktop web: permanent top nav + (sidebar + content) ────
+            : Column(
                 children: [
-                  const WebSidebar(),
-                  Expanded(child: ClipRect(child: child!)),
+                  // Permanent top navigation — shown on every screen, with the
+                  // left sidebar left untouched beneath it.
+                  const WebTopNav(),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const WebSidebar(),
+                        Expanded(child: ClipRect(child: child!)),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
