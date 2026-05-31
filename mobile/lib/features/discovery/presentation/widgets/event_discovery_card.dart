@@ -483,26 +483,25 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           );
         }
 
-        // ── Open (YouTube Shorts style): card pushed left, a tall comment
-        //    panel flush to the right edge, separated by flexible space. ─────
+        // ── Open: comment thread sits directly beside the card (no gap). The
+        //    card keeps its centred position; only the left space shrinks when
+        //    the panel would otherwise overflow the right edge. ──────────────
         const desiredCommentsW = 400.0;
-        const openLeftPad = 56.0;
 
-        // Right margin yields on tight viewports so the layout never overflows.
-        final freeAfterCard =
-            (cons.maxWidth - cardW - reactionsW).clamp(0.0, double.infinity);
-        final rightPad = freeAfterCard >= 24.0 ? 24.0 : 0.0;
-
-        // Width left for comments after the card + reactions + right margin
-        // (assuming no left bias). Clamped so it never overflows.
-        final freeForComments =
-            (freeAfterCard - rightPad).clamp(0.0, double.infinity);
-        final commentsW = freeForComments.clamp(0.0, desiredCommentsW);
-
-        // Use any leftover slack to push the card off the left edge (capped at
-        // openLeftPad); the remainder becomes the gap before the comments.
-        final slack = freeForComments - commentsW;
-        final leftPad = slack >= openLeftPad ? openLeftPad : slack;
+        // Card's centred left pad (same as the closed state).
+        final basePad = ((cons.maxWidth - cardW - reactionsW) / 2)
+            .clamp(0.0, double.infinity);
+        // Room to the right of the reactions when the card stays centred.
+        final rightAvail = (cons.maxWidth - basePad - cardW - reactionsW)
+            .clamp(0.0, double.infinity);
+        // Pull the card left only by however much the panel overruns that room.
+        final shortfall =
+            (desiredCommentsW - rightAvail).clamp(0.0, double.infinity);
+        final leftPad = (basePad - shortfall).clamp(0.0, double.infinity);
+        // Width is whatever remains to the right, capped at the desired width
+        // (guaranteed not to overflow for any leftPad).
+        final commentsW = (cons.maxWidth - leftPad - cardW - reactionsW)
+            .clamp(0.0, desiredCommentsW);
 
         // Comment thread grows to (almost) the full viewport height so it
         // reaches the bottom of the screen, never shorter than the card.
@@ -519,7 +518,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               SizedBox(width: leftPad),
               cardColumn,
               reactionsColumn,
-              const Spacer(),
               SizedBox(
                 width: commentsW,
                 height: panelH,
@@ -529,7 +527,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                   onClose: () => setState(() => _webCommentsOpen = false),
                 ),
               ),
-              SizedBox(width: rightPad),
             ],
           ),
         );
