@@ -469,42 +469,37 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               isExternalPanel: true, reactionsOnly: true, mediaH: mediaH),
         );
 
-        // ── Closed: keep the card+reactions centred in the viewport. ────────
+        // Reserve the comment column's width on the right in BOTH states, so
+        // the card sits at the exact same x-position whether comments are open
+        // or closed — opening them never shifts ("pushes") the card.
+        const desiredCommentsW = 400.0;
+        final commentsW =
+            (cons.maxWidth - cardW - reactionsW).clamp(0.0, desiredCommentsW);
+
+        // Centred pad if the card were alone; and the largest pad that still
+        // leaves room for the reserved comment column. The card stays centred
+        // when there's space, and is biased left only as much as needed.
+        final basePad = ((cons.maxWidth - cardW - reactionsW) / 2)
+            .clamp(0.0, double.infinity);
+        final maxPadWithComments =
+            (cons.maxWidth - cardW - reactionsW - commentsW)
+                .clamp(0.0, double.infinity);
+        final leftPad = math.min(basePad, maxPadWithComments);
+
+        // ── Closed: card + reactions, left-biased so the right keeps space. ──
         if (!_webCommentsOpen) {
-          final basePad = ((cons.maxWidth - cardW - reactionsW) / 2)
-              .clamp(0.0, double.infinity);
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(width: basePad),
+              SizedBox(width: leftPad),
               cardColumn,
               reactionsColumn,
             ],
           );
         }
 
-        // ── Open: comment thread sits directly beside the card (no gap). The
-        //    card keeps its centred position; only the left space shrinks when
-        //    the panel would otherwise overflow the right edge. ──────────────
-        const desiredCommentsW = 400.0;
-
-        // Card's centred left pad (same as the closed state).
-        final basePad = ((cons.maxWidth - cardW - reactionsW) / 2)
-            .clamp(0.0, double.infinity);
-        // Room to the right of the reactions when the card stays centred.
-        final rightAvail = (cons.maxWidth - basePad - cardW - reactionsW)
-            .clamp(0.0, double.infinity);
-        // Pull the card left only by however much the panel overruns that room.
-        final shortfall =
-            (desiredCommentsW - rightAvail).clamp(0.0, double.infinity);
-        final leftPad = (basePad - shortfall).clamp(0.0, double.infinity);
-        // Width is whatever remains to the right, capped at the desired width
-        // (guaranteed not to overflow for any leftPad).
-        final commentsW = (cons.maxWidth - leftPad - cardW - reactionsW)
-            .clamp(0.0, desiredCommentsW);
-
-        // Comment thread grows to (almost) the full viewport height so it
-        // reaches the bottom of the screen, never shorter than the card.
+        // ── Open: comment thread drops straight into the reserved space,
+        //    directly beside the reactions (no gap, no card movement). ───────
         final panelH =
             (screenH - 80.0).clamp(mediaH, double.infinity).toDouble();
 
