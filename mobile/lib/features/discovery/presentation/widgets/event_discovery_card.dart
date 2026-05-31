@@ -486,33 +486,20 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 .clamp(0.0, double.infinity);
         final leftPad = math.min(basePad, maxPadWithComments);
 
-        // ── Closed: card + reactions, left-biased so the right keeps space. ──
-        if (!_webCommentsOpen) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(width: leftPad),
-              cardColumn,
-              reactionsColumn,
-            ],
-          );
-        }
-
-        // ── Open: comment thread drops straight into the reserved space,
-        //    directly beside the reactions (no gap, no card movement). ───────
+        // Comment thread grows to (almost) the full viewport height when open.
         final panelH =
             (screenH - 80.0).clamp(mediaH, double.infinity).toDouble();
 
-        return SizedBox(
-          height: panelH,
-          child: Row(
-            // Card + reactions centre vertically against the tall panel; the
-            // comment thread itself stretches to the full height.
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(width: leftPad),
-              cardColumn,
-              reactionsColumn,
+        // One identical Row for both states — only the comment child is added
+        // or removed. The card (and its video element) keeps its position and
+        // its state, so toggling comments never tears it down / reloads it.
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: leftPad),
+            cardColumn,
+            reactionsColumn,
+            if (_webCommentsOpen)
               SizedBox(
                 width: commentsW,
                 height: panelH,
@@ -522,8 +509,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                   onClose: () => setState(() => _webCommentsOpen = false),
                 ),
               ),
-            ],
-          ),
+          ],
         );
       }
 
