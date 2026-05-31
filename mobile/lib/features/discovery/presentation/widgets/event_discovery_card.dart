@@ -430,86 +430,108 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       const cardW = _kWebColumnWidth; // 480
 
       if (isWide) {
-        // ── Desktop: card+reactions centred; comments grow right without
-        //    shifting the card when there is enough room. On narrower viewports
-        //    (e.g. the Following feed which is capped at 720 px) leftPad shrinks
-        //    so the comment panel is never clipped off-screen.
         final mediaH = _computeMediaHeight(cardW, screenH);
         const reactionsW = 64.0;
-        const commentsW = 340.0;
 
-        // Centering pad when comments are closed.
-        final basePad =
-            ((cons.maxWidth - cardW - reactionsW) / 2).clamp(0.0, double.infinity);
-
-        // If opening comments would overflow the available width, reduce leftPad
-        // so all three columns (card + reactions + comments) fit on screen.
-        final leftPad = (!_webCommentsOpen ||
-                basePad + cardW + reactionsW + commentsW <= cons.maxWidth)
-            ? basePad
-            : ((cons.maxWidth - cardW - reactionsW - commentsW) / 2)
-                .clamp(0.0, double.infinity);
-
-        // Effective comments width — capped to whatever space remains after the
-        // card and reactions columns (prevents overflow when viewport is narrow).
-        final effectiveCommentsW = _webCommentsOpen
-            ? (cons.maxWidth - leftPad - cardW - reactionsW)
-                .clamp(0.0, commentsW)
-            : commentsW;
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Left spacer — centres card (shrinks when comments open) ───
-            SizedBox(width: leftPad),
-            // ── Card column (image + caption, rounded card) ───────────
-            SizedBox(
-              width: cardW,
-              child: Material(
-                color: ext.cardSurface,
-                borderRadius: BorderRadius.circular(14),
-                clipBehavior: Clip.antiAlias,
-                elevation: 6,
-                shadowColor: Colors.black.withValues(alpha: 0.22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      height: mediaH,
-                      child: _buildMediaStack(
-                          context, ext, pics, cardW, mediaH),
-                    ),
-                    CardDescriptionText(
-                      event: widget.event,
-                      ext: ext,
-                      expanded: _descExpanded,
-                      onToggle: () =>
-                          setState(() => _descExpanded = !_descExpanded),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
+        // Card column (image + caption) — identical in both states.
+        final cardColumn = SizedBox(
+          width: cardW,
+          child: Material(
+            color: ext.cardSurface,
+            borderRadius: BorderRadius.circular(14),
+            clipBehavior: Clip.antiAlias,
+            elevation: 6,
+            shadowColor: Colors.black.withValues(alpha: 0.22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: mediaH,
+                  child: _buildMediaStack(context, ext, pics, cardW, mediaH),
                 ),
-              ),
+                CardDescriptionText(
+                  event: widget.event,
+                  ext: ext,
+                  expanded: _descExpanded,
+                  onToggle: () =>
+                      setState(() => _descExpanded = !_descExpanded),
+                ),
+                const SizedBox(height: 8),
+              ],
             ),
-            // ── Reactions — always 64 px, always flush to card ────────────
-            SizedBox(
-              width: reactionsW,
-              height: mediaH,
-              child: _buildWebRightPanel(context, ext, commentsEnabled,
-                  isExternalPanel: true, reactionsOnly: true, mediaH: mediaH),
-            ),
-            // ── Comments panel — fills available space up to commentsW ─────
-            if (_webCommentsOpen)
+          ),
+        );
+
+        final reactionsColumn = SizedBox(
+          width: reactionsW,
+          height: mediaH,
+          child: _buildWebRightPanel(context, ext, commentsEnabled,
+              isExternalPanel: true, reactionsOnly: true, mediaH: mediaH),
+        );
+
+        // ── Closed: keep the card+reactions centred in the viewport. ────────
+        if (!_webCommentsOpen) {
+          final basePad = ((cons.maxWidth - cardW - reactionsW) / 2)
+              .clamp(0.0, double.infinity);
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(width: basePad),
+              cardColumn,
+              reactionsColumn,
+            ],
+          );
+        }
+
+        // ── Open (YouTube Shorts style): card pushed left, a tall comment
+        //    panel flush to the right edge, separated by flexible space. ─────
+        const desiredCommentsW = 400.0;
+        const openLeftPad = 56.0;
+
+        // Right margin yields on tight viewports so the layout never overflows.
+        final freeAfterCard =
+            (cons.maxWidth - cardW - reactionsW).clamp(0.0, double.infinity);
+        final rightPad = freeAfterCard >= 24.0 ? 24.0 : 0.0;
+
+        // Width left for comments after the card + reactions + right margin
+        // (assuming no left bias). Clamped so it never overflows.
+        final freeForComments =
+            (freeAfterCard - rightPad).clamp(0.0, double.infinity);
+        final commentsW = freeForComments.clamp(0.0, desiredCommentsW);
+
+        // Use any leftover slack to push the card off the left edge (capped at
+        // openLeftPad); the remainder becomes the gap before the comments.
+        final slack = freeForComments - commentsW;
+        final leftPad = slack >= openLeftPad ? openLeftPad : slack;
+
+        // Comment thread grows to (almost) the full viewport height so it
+        // reaches the bottom of the screen, never shorter than the card.
+        final panelH =
+            (screenH - 80.0).clamp(mediaH, double.infinity).toDouble();
+
+        return SizedBox(
+          height: panelH,
+          child: Row(
+            // Card + reactions centre vertically against the tall panel; the
+            // comment thread itself stretches to the full height.
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(width: leftPad),
+              cardColumn,
+              reactionsColumn,
+              const Spacer(),
               SizedBox(
-                width: effectiveCommentsW,
-                height: mediaH,
+                width: commentsW,
+                height: panelH,
                 child: EventCommentInlinePanel(
                   event: widget.event,
                   isExternalPanel: true,
                   onClose: () => setState(() => _webCommentsOpen = false),
                 ),
               ),
-          ],
+              SizedBox(width: rightPad),
+            ],
+          ),
         );
       }
 

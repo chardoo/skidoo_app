@@ -538,19 +538,36 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
         .withValues(alpha: 0.10);
 
     return Container(
-      decoration: BoxDecoration(
-        color: ext.cardSurface,
-        border: Border(
-          left: BorderSide(color: dividerColor, width: 0.5),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
-            blurRadius: 28,
-            offset: const Offset(-6, 0),
-          ),
-        ],
-      ),
+      decoration: widget.isExternalPanel
+          // Desktop: floating rounded card flush to the right of the feed.
+          ? BoxDecoration(
+              color: ext.cardSurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: dividerColor, width: 0.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
+                  blurRadius: 28,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            )
+          // Inline (mobile web): single left divider, no rounding.
+          : BoxDecoration(
+              color: ext.cardSurface,
+              border: Border(
+                left: BorderSide(color: dividerColor, width: 0.5),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
+                  blurRadius: 28,
+                  offset: const Offset(-6, 0),
+                ),
+              ],
+            ),
+      clipBehavior:
+          widget.isExternalPanel ? Clip.antiAlias : Clip.none,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -953,81 +970,50 @@ class _CommentPanelHeader extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(14.w, 12.h, 10.w, 12.h),
+        padding: EdgeInsets.fromLTRB(18.w, 14.h, 10.w, 14.h),
         child: Row(
           children: [
-            Container(
-              width: 34.w,
-              height: 34.w,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    ext.accentGold.withValues(alpha: 0.20),
-                    ext.accentGold.withValues(alpha: 0.06),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: ext.accentGold.withValues(alpha: 0.30),
-                  width: 1,
-                ),
+            // ── Title + inline count (YouTube: "Comments  15") ──────────────
+            Text(
+              'Comments',
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 16.sp,
+                letterSpacing: -0.2,
               ),
-              alignment: Alignment.center,
-              child: Icon(Icons.mode_comment_rounded,
-                  color: ext.accentGold, size: 16.sp),
             ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Comments',
+            BlocBuilder<ChatRoomBloc, ChatRoomState>(
+              bloc: bloc,
+              buildWhen: (p, c) => p.messages.length != c.messages.length,
+              builder: (_, state) {
+                final count = state.messages.length;
+                if (count == 0) return const SizedBox.shrink();
+                return Padding(
+                  padding: EdgeInsets.only(left: 8.w),
+                  child: Text(
+                    '$count',
                     style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15.sp,
-                      letterSpacing: -0.3,
+                      color: ext.searchHintColor,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  BlocBuilder<ChatRoomBloc, ChatRoomState>(
-                    bloc: bloc,
-                    buildWhen: (p, c) =>
-                        p.messages.length != c.messages.length,
-                    builder: (_, state) {
-                      final count = state.messages.length;
-                      if (count == 0) return const SizedBox.shrink();
-                      return Text(
-                        '$count ${count == 1 ? 'comment' : 'comments'}',
-                        style: TextStyle(
-                          color: ext.searchHintColor,
-                          fontSize: 11.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                );
+              },
             ),
+            const Spacer(),
             MouseRegion(
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
                 onTap: onClose,
                 child: Container(
-                  width: 30.w,
-                  height: 30.w,
-                  decoration: BoxDecoration(
-                    color: ext.glassFill,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: ext.glassBorder, width: 0.8),
-                  ),
+                  width: 34.w,
+                  height: 34.w,
+                  decoration: const BoxDecoration(shape: BoxShape.circle),
                   alignment: Alignment.center,
                   child: Icon(Icons.close_rounded,
-                      color: ext.searchHintColor, size: 15.sp),
+                      color: ext.greetingColor, size: 22.sp),
                 ),
               ),
             ),
