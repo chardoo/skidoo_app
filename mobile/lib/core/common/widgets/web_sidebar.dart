@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/navigation/app_navigator.dart';
@@ -6,9 +7,13 @@ import 'package:skidoo_app/core/navigation/web_route_observer.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/login_bottom_sheet.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
+import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
+import 'package:skidoo_app/features/chat/presentation/widgets/web_messages_panel.dart';
+import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page.dart';
+import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
 const double _kSidebarWidth = 240.0;
@@ -1429,6 +1434,258 @@ class _TopNavFilledBtnState extends State<_TopNavFilledBtn> {
               fontSize: 13,
               fontWeight: FontWeight.w700,
               decoration: TextDecoration.none,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Global top-right action cluster ───────────────────────────────────────────
+
+/// Persistent top-right actions (Get-the-app, Messages, Profile) shown on every
+/// web screen at the same position, so they don't disappear when navigating away
+/// from the home feed. Only rendered for authenticated users. Self-contained:
+/// uses the root [ChatRoomsBloc] and the root navigator so it works regardless
+/// of the current route.
+class WebTopActions extends StatefulWidget {
+  const WebTopActions({super.key});
+
+  @override
+  State<WebTopActions> createState() => _WebTopActionsState();
+}
+
+class _WebTopActionsState extends State<WebTopActions> {
+  String _initial = 'U';
+
+  @override
+  void initState() {
+    super.initState();
+    AuthService.isAuthenticated.addListener(_onAuthChanged);
+    _loadInitial();
+  }
+
+  void _onAuthChanged() {
+    if (!mounted) return;
+    _loadInitial();
+    setState(() {});
+  }
+
+  Future<void> _loadInitial() async {
+    final name = await sl<AuthService>().getName();
+    if (mounted) {
+      setState(() => _initial =
+          name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'U');
+    }
+  }
+
+  @override
+  void dispose() {
+    AuthService.isAuthenticated.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  void _openMessages() {
+    final nav = AppNavigator.navigatorKey.currentState;
+    if (nav == null) return;
+    nav.push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.black.withValues(alpha: 0.45),
+        barrierDismissible: true,
+        pageBuilder: (_, __, ___) => Material(
+          color: Colors.transparent,
+          child: WebMessagesPanel(onClose: () => nav.maybePop()),
+        ),
+      ),
+    );
+  }
+
+  void _openAccount() {
+    final nav = AppNavigator.navigatorKey.currentState;
+    if (nav == null) return;
+    nav.push(
+      MaterialPageRoute<void>(
+        builder: (_) => BlocProvider<DiscoveryBloc>(
+          create: (_) => sl<DiscoveryBloc>(),
+          child: const AccountPage(),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: AuthService.isAuthenticated,
+      builder: (context, isLoggedIn, _) {
+        if (!isLoggedIn) return const SizedBox.shrink();
+        final ext = Theme.of(context).extension<AppThemeExtension>()!;
+        return Material(
+          color: Colors.transparent,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const _ActionGetAppButton(),
+              const SizedBox(width: 8),
+              BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
+                selector: (s) =>
+                    s.unreadCounts.values.fold(0, (sum, c) => sum + c),
+                builder: (context, unread) => _ActionMessageButton(
+                  unreadCount: unread,
+                  onTap: _openMessages,
+                ),
+              ),
+              const SizedBox(width: 12),
+              _ActionAvatar(ext: ext, initial: _initial, onTap: _openAccount),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ActionGetAppButton extends StatefulWidget {
+  const _ActionGetAppButton();
+
+  @override
+  State<_ActionGetAppButton> createState() => _ActionGetAppButtonState();
+}
+
+class _ActionGetAppButtonState extends State<_ActionGetAppButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => launchUrl(
+          Uri.parse('https://skidoo.app'),
+          mode: LaunchMode.externalApplication,
+        ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: _hovered
+                ? ext.accentGold.withValues(alpha: 0.90)
+                : ext.accentGold,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.download_rounded, color: Colors.black, size: 14),
+              SizedBox(width: 5),
+              Text(
+                'Get the app',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionMessageButton extends StatefulWidget {
+  const _ActionMessageButton({required this.unreadCount, required this.onTap});
+
+  final int unreadCount;
+  final VoidCallback onTap;
+
+  @override
+  State<_ActionMessageButton> createState() => _ActionMessageButtonState();
+}
+
+class _ActionMessageButtonState extends State<_ActionMessageButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: _hovered ? ext.glassFill : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Badge(
+            isLabelVisible: widget.unreadCount > 0,
+            label: Text(
+              widget.unreadCount > 9 ? '9+' : '${widget.unreadCount}',
+              style: const TextStyle(fontSize: 9, color: Colors.white),
+            ),
+            backgroundColor: Colors.redAccent,
+            child: Icon(
+              Icons.chat_bubble_outline_rounded,
+              color: ext.searchHintColor,
+              size: 20,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionAvatar extends StatelessWidget {
+  const _ActionAvatar({
+    required this.ext,
+    required this.initial,
+    required this.onTap,
+  });
+
+  final AppThemeExtension ext;
+  final String initial;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [ext.accentGold, const Color(0xFFFF6B35)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: CircleAvatar(
+            radius: 16,
+            backgroundColor: ext.glassFill,
+            child: Text(
+              initial,
+              style: TextStyle(
+                color: ext.glassIcon,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+                decoration: TextDecoration.none,
+              ),
             ),
           ),
         ),

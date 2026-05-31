@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -11,8 +10,6 @@ import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
-import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
-import 'package:skidoo_app/features/chat/presentation/widgets/web_messages_panel.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/web_search_photos_panel.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/events_feed.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/home_empty_state.dart';
@@ -54,9 +51,6 @@ class HomeNavigationPage extends StatefulWidget {
 class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool _isSearchOpen = false;
   int _selectedTab = 0; // 0 = For You, 1 = Following
-
-  // Web desktop: messages overlay panel
-  bool _showMessagesPanel = false;
 
   // Web desktop: show photo results inline (no Navigator push).
   bool _showPhotosInline = false;
@@ -131,7 +125,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       _isSearchOpen = true;
       _headerVisible = true;
       _selectedTab = 0; // always show For You when searching
-      _showMessagesPanel = false; // close messages panel when search opens
     });
   }
 
@@ -303,67 +296,11 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                               },
                             ),
                             const Spacer(),
-                            const _WebGetAppButton(),
-                            const SizedBox(width: 8),
-                            // Messages icon
-                            BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
-                              selector: (s) => s.unreadCounts.values
-                                  .fold(0, (sum, c) => sum + c),
-                              builder: (context, unread) =>
-                                  _WebMessageIconButton(
-                                isOpen: _showMessagesPanel,
-                                unreadCount: unread,
-                                onTap: () => setState(
-                                  () =>
-                                      _showMessagesPanel = !_showMessagesPanel,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            // Profile avatar
-                            MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: GestureDetector(
-                                onTap: () {
-                                  final discoveryBloc =
-                                      context.read<DiscoveryBloc>();
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => BlocProvider.value(
-                                        value: discoveryBloc,
-                                        child: const AccountPage(),
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        ext.accentGold,
-                                        const Color(0xFFFF6B35)
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                  ),
-                                  child: CircleAvatar(
-                                    radius: 16,
-                                    backgroundColor: ext.glassFill,
-                                    child: Text(
-                                      userName[0].toUpperCase(),
-                                      style: TextStyle(
-                                        color: ext.glassIcon,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                            // Get-the-app / Messages / Profile now live in the
+                            // global WebTopActions cluster (app shell) so they
+                            // appear on every screen at the same position. Leave
+                            // room here so the tabs don't sit under it.
+                            const SizedBox(width: 240),
                           ],
                         ],
                       ),
@@ -380,13 +317,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                 ],
               ),
             ),
-            // ── Messages overlay panel ────────────────────────────────────────
-            if (_showMessagesPanel)
-              Positioned.fill(
-                child: WebMessagesPanel(
-                  onClose: () => setState(() => _showMessagesPanel = false),
-                ),
-              ),
           ],
         ),
       );
@@ -683,117 +613,3 @@ class _PillTab extends StatelessWidget {
   }
 }
 
-// ── Get the app button — shown in the web top bar ─────────────────────────────
-
-class _WebGetAppButton extends StatefulWidget {
-  const _WebGetAppButton();
-
-  @override
-  State<_WebGetAppButton> createState() => _WebGetAppButtonState();
-}
-
-class _WebGetAppButtonState extends State<_WebGetAppButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: () => launchUrl(
-          Uri.parse('https://skidoo.app'),
-          mode: LaunchMode.externalApplication,
-        ),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(
-            color: _hovered
-                ? ext.accentGold.withValues(alpha: 0.90)
-                : ext.accentGold,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.download_rounded, color: Colors.black, size: 14),
-              SizedBox(width: 5),
-              Text(
-                'Get the app',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Web message icon button ───────────────────────────────────────────────────
-
-class _WebMessageIconButton extends StatefulWidget {
-  const _WebMessageIconButton({
-    required this.isOpen,
-    required this.unreadCount,
-    required this.onTap,
-  });
-
-  final bool isOpen;
-  final int unreadCount;
-  final VoidCallback onTap;
-
-  @override
-  State<_WebMessageIconButton> createState() => _WebMessageIconButtonState();
-}
-
-class _WebMessageIconButtonState extends State<_WebMessageIconButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: widget.isOpen
-                ? ext.accentGold.withValues(alpha: 0.15)
-                : _hovered
-                    ? ext.glassFill
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Badge(
-            isLabelVisible: widget.unreadCount > 0,
-            label: Text(
-              widget.unreadCount > 9 ? '9+' : '${widget.unreadCount}',
-              style: const TextStyle(fontSize: 9, color: Colors.white),
-            ),
-            backgroundColor: Colors.redAccent,
-            child: Icon(
-              widget.isOpen
-                  ? Icons.chat_bubble_rounded
-                  : Icons.chat_bubble_outline_rounded,
-              color: widget.isOpen ? ext.accentGold : ext.searchHintColor,
-              size: 20,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
