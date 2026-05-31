@@ -19,6 +19,10 @@ abstract class ChatRepository {
     String? localDisplayName,
   });
 
+  /// Whether the current user may start a DM with [targetUserId] (block /
+  /// existing-conversation / hide_profile checks, mirrored from the server).
+  Future<CanMessageResult> canMessage(String targetUserId);
+
   Future<ChatRoom> createEventPrivateRoom({
     required String eventId,
     String? name,

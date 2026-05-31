@@ -56,7 +56,45 @@ class PictureReaction {
   }
 }
 
+/// Result of GET /chat/users/{id}/can-message — whether a DM may be started.
+class CanMessageResult {
+  /// Whether the "Message" button should be enabled.
+  final bool canMessage;
+
+  /// null when allowed; otherwise 'SELF', 'USER_BLOCKED', or
+  /// 'RECIPIENT_NOT_ACCEPTING_DMS'.
+  final String? reason;
+
+  /// True means an existing DM bypasses the recipient's hide_profile setting.
+  final bool hasExistingConversation;
+
+  const CanMessageResult({
+    required this.canMessage,
+    this.reason,
+    this.hasExistingConversation = false,
+  });
+
+  /// Permissive default used when the check itself fails (network etc.) — the
+  /// POST /rooms/direct error codes remain the authoritative fallback.
+  factory CanMessageResult.allowed() =>
+      const CanMessageResult(canMessage: true);
+
+  factory CanMessageResult.fromJson(Map<String, dynamic> json) =>
+      CanMessageResult(
+        canMessage: json['can_message'] as bool? ?? true,
+        reason: json['reason'] as String?,
+        hasExistingConversation:
+            json['has_existing_conversation'] as bool? ?? false,
+      );
+
+  /// Recipient has DMs turned off (and there's no existing conversation).
+  bool get notAcceptingDms => reason == 'RECIPIENT_NOT_ACCEPTING_DMS';
+}
+
 abstract class ChatRestDataSource {
+  /// GET /chat/users/{target_user_id}/can-message
+  Future<CanMessageResult> canMessage(String targetUserId);
+
   /// GET /chat/rooms/global
   Future<ChatRoom> getGlobalRoom();
 
@@ -256,6 +294,15 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         }),
       );
       return ChatRoom.fromJson(res.data as Map<String, dynamic>);
+    });
+  }
+
+  @override
+  Future<CanMessageResult> canMessage(String targetUserId) async {
+    return _wrap(() async {
+      final res =
+          await _client.dio.get('/chat/users/$targetUserId/can-message');
+      return CanMessageResult.fromJson(res.data as Map<String, dynamic>);
     });
   }
 

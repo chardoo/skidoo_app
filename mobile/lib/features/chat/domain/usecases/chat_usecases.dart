@@ -55,6 +55,16 @@ class GetOrCreateDirectRoomUseCase {
       );
 }
 
+/// Upfront check (before showing/enabling the Message button) of whether the
+/// current user may DM [targetUserId].
+class CanMessageUseCase {
+  final ChatRepository _repo;
+  CanMessageUseCase(this._repo);
+
+  Future<CanMessageResult> call(String targetUserId) =>
+      _repo.canMessage(targetUserId);
+}
+
 class CreateEventPrivateRoomUseCase {
   final ChatRepository _repo;
   CreateEventPrivateRoomUseCase(this._repo);

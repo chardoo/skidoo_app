@@ -7,6 +7,8 @@ import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart'
+    show CanMessageResult;
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
@@ -51,6 +53,8 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
   bool _isOwner = false;
   FollowStats _stats = const FollowStats(followers: 0, following: 0);
   bool _statsLoaded = false;
+  // null while the upfront can-message check is in flight.
+  CanMessageResult? _canMsg;
 
   @override
   void initState() {
@@ -58,6 +62,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
     _tabController = TabController(length: 2, vsync: this);
     _checkOwner();
     _loadStats();
+    _checkCanMessage();
   }
 
   Future<void> _checkOwner() async {
@@ -65,6 +70,20 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
       final myId = await sl<AuthService>().getUserId();
       if (mounted) setState(() => _isOwner = myId == widget.photographer.id);
     } catch (_) {}
+  }
+
+  /// Upfront DM-permission check so the Message button reflects the recipient's
+  /// settings before the user taps. The POST /rooms/direct error codes remain
+  /// the authoritative fallback (the setting can change between check and send).
+  Future<void> _checkCanMessage() async {
+    try {
+      final result =
+          await sl<CanMessageUseCase>().call(widget.photographer.id);
+      if (mounted) setState(() => _canMsg = result);
+    } catch (_) {
+      // Permissive on failure — let the send attempt surface the real error.
+      if (mounted) setState(() => _canMsg = CanMessageResult.allowed());
+    }
   }
 
   Future<void> _loadStats() async {
@@ -96,11 +115,21 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
         localDisplayName: p.name,
       );
     } catch (e) {
+      // Fallback for the race where the setting changed between the upfront
+      // can-message check and this send: handle the server error codes.
+      final msg = e is ServerException ? e.message : e.toString();
+      final notAccepting =
+          msg.contains('RECIPIENT_NOT_ACCEPTING_DMS') || msg.contains('400');
+      final blocked = msg.contains('USER_BLOCKED');
+      if (notAccepting && mounted) {
+        // Reflect it on the button immediately.
+        setState(() => _canMsg = const CanMessageResult(
+            canMessage: false, reason: 'RECIPIENT_NOT_ACCEPTING_DMS'));
+      }
       if (context.mounted) {
-        final isBlocked = e is ServerException && e.message.contains('400');
         AppSnackBar.error(
           context,
-          isBlocked
+          (notAccepting || blocked)
               ? AppLocalizations.of(context)!.photographerProfileNotAcceptingConversations
               : AppLocalizations.of(context)!.photographerProfileCouldNotOpenChat(e.toString()),
         );
@@ -203,7 +232,33 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                   SizedBox(height: 20.h),
 
                   // ── Action row: Follow + Chat ───────────────────────────
-                  if (!_isOwner)
+                  // When the recipient isn't accepting DMs, drop the Message
+                  // button and surface why beneath a full-width Follow button.
+                  if (!_isOwner && (_canMsg?.notAcceptingDms ?? false))
+                    Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: _ProfileFollowButton(
+                              photographerId: p.id, ext: ext),
+                        ),
+                        SizedBox(height: 8.h),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.do_not_disturb_alt_rounded,
+                                size: 14.sp, color: ext.searchHintColor),
+                            SizedBox(width: 6.w),
+                            Text(
+                              'Not accepting new messages',
+                              style: TextStyle(
+                                  color: ext.searchHintColor, fontSize: 12.sp),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  else if (!_isOwner)
                     Row(
                       children: [
                         Expanded(

@@ -82,6 +82,10 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<CanMessageResult> canMessage(String targetUserId) =>
+      _rest.canMessage(targetUserId);
+
+  @override
   Future<ChatRoom> createEventPrivateRoom({
     required String eventId,
     String? name,

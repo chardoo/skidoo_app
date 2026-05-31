@@ -306,6 +306,8 @@ Future<void> setupServiceLocator() async {
       GetSampleRoomUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetOrCreateDirectRoomUseCase>(
       GetOrCreateDirectRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<CanMessageUseCase>(
+      CanMessageUseCase(sl<ChatRepository>()));
   sl.registerSingleton<CreateEventPrivateRoomUseCase>(
       CreateEventPrivateRoomUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetMyRoomsUseCase>(
