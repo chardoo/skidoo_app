@@ -26,6 +26,8 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
 
   StreamSubscription<ChatRoom>? _groupInviteSub;
   StreamSubscription<ChatMessage>? _bgMsgSub;
+  StreamSubscription<String>? _roomRemovedSub;
+  StreamSubscription<void>? _roomsChangedSub;
 
   ChatRoomsBloc({
     required GetMyRoomsUseCase getMyRooms,
@@ -57,6 +59,7 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     on<ChatRoomsGroupInviteReceived>(_onGroupInviteReceived, transformer: concurrent());
     on<_ChatRoomsMessageArrived>(_onMessageArrived, transformer: concurrent());
     on<_ChatRoomsRoomRead>(_onRoomRead, transformer: concurrent());
+    on<_ChatRoomsRoomRemoved>(_onRoomRemoved, transformer: concurrent());
 
     // Wire background service → bloc so new background messages update the badge.
     _bgService.onUnreadUpdate = () {
@@ -81,13 +84,25 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
       debugPrint('[ChatRoomsBloc] groupInviteStream: roomId=${room.id} isClosed=$isClosed');
       if (!isClosed) add(ChatRoomsGroupInviteReceived(room));
     });
-    debugPrint('[ChatRoomsBloc] created — subscribed to groupInviteStream');
+
+    // Room removed (deleted, or I was kicked) → drop it from the list live.
+    _roomRemovedSub = _bgService.roomRemovedStream.listen((roomId) {
+      if (!isClosed) add(_ChatRoomsRoomRemoved(roomId));
+    });
+
+    // Membership / settings changed → re-sync so names + members update live.
+    _roomsChangedSub = _bgService.roomsChangedStream.listen((_) {
+      if (!isClosed) add(const ChatRoomsLoadRequested());
+    });
+    debugPrint('[ChatRoomsBloc] created — subscribed to room lifecycle relays');
   }
 
   @override
   Future<void> close() {
     _groupInviteSub?.cancel();
     _bgMsgSub?.cancel();
+    _roomRemovedSub?.cancel();
+    _roomsChangedSub?.cancel();
     return super.close();
   }
 
@@ -239,6 +254,24 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     final counts = Map<String, int>.from(state.unreadCounts)
       ..remove(event.roomId);
     emit(state.copyWith(unreadCounts: counts));
+  }
+
+  /// Drop a room (deleted, or I was removed) from the list + pending + counts.
+  void _onRoomRemoved(
+    _ChatRoomsRoomRemoved event,
+    Emitter<ChatRoomsState> emit,
+  ) {
+    final inRooms = state.rooms.any((r) => r.id == event.roomId);
+    final inPending = state.pendingInvites.any((r) => r.id == event.roomId);
+    if (!inRooms && !inPending) return;
+    final counts = Map<String, int>.from(state.unreadCounts)
+      ..remove(event.roomId);
+    emit(state.copyWith(
+      rooms: state.rooms.where((r) => r.id != event.roomId).toList(),
+      pendingInvites:
+          state.pendingInvites.where((r) => r.id != event.roomId).toList(),
+      unreadCounts: counts,
+    ));
   }
 
   Future<void> _onAcceptInvite(

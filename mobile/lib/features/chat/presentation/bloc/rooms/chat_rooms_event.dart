@@ -44,3 +44,10 @@ class _ChatRoomsRoomRead extends ChatRoomsEvent {
   const _ChatRoomsRoomRead(this.roomId);
   final String roomId;
 }
+
+/// The current user should drop this room from their list — it was deleted, or
+/// they were removed/kicked from it.
+class _ChatRoomsRoomRemoved extends ChatRoomsEvent {
+  const _ChatRoomsRoomRemoved(this.roomId);
+  final String roomId;
+}

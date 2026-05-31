@@ -2,7 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart'
-    show ChatWebSocketService, WsGroupInviteEvent, WsUserJoinedEvent;
+    show
+        ChatWebSocketService,
+        WsGroupInviteEvent,
+        WsUserJoinedEvent,
+        WsRoomDeletedEvent,
+        WsParticipantRemovedEvent,
+        WsParticipantLeftEvent,
+        WsRoomSettingsUpdatedEvent;
 import 'package:skidoo_app/features/chat/data/local/chat_database.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
@@ -48,9 +55,26 @@ class ChatBackgroundService {
     if (!_inviteRelay.isClosed) _inviteRelay.add(room);
   }
 
+  // Persistent relays for room lifecycle — never closed, survive WS reconnects
+  // (same pattern as [groupInviteStream]). ChatRoomsBloc subscribes once.
+
+  /// Fires a roomId when the current user should remove that room from their
+  /// list — the room was deleted, or the user was removed/kicked from it.
+  final _roomRemovedRelay = StreamController<String>.broadcast();
+  Stream<String> get roomRemovedStream => _roomRemovedRelay.stream;
+
+  /// Fires when a room's membership / settings changed (someone joined or left,
+  /// name or admin-only toggled) so the rooms list should re-sync.
+  final _roomsChangedRelay = StreamController<void>.broadcast();
+  Stream<void> get roomsChangedStream => _roomsChangedRelay.stream;
+
   StreamSubscription<ChatMessage>? _msgSub;
   StreamSubscription<WsGroupInviteEvent>? _groupInviteSub;
   StreamSubscription<WsUserJoinedEvent>? _userJoinedSub;
+  StreamSubscription<WsRoomDeletedEvent>? _roomDeletedSub;
+  StreamSubscription<WsParticipantRemovedEvent>? _participantRemovedSub;
+  StreamSubscription<WsParticipantLeftEvent>? _participantLeftSub;
+  StreamSubscription<WsRoomSettingsUpdatedEvent>? _roomSettingsSub;
 
   final Map<String, ChatRoom> _rooms = {};
 
@@ -236,6 +260,39 @@ class ChatBackgroundService {
           _roomCanEncrypt[event.roomId] = false;
           debugPrint('[BgChat] web client joined room ${event.roomId} — E2EE disabled');
         }
+        // Note: a member joining is surfaced as an in-conversation system
+        // message by ChatRoomBloc; we deliberately don't reload the whole
+        // rooms list here to avoid churn in busy groups.
+      });
+
+      // ── Room lifecycle → rooms-list relays (live updates without refresh) ──
+      _roomDeletedSub?.cancel();
+      _roomDeletedSub = _sharedWs.roomDeletedEvents.listen((event) {
+        debugPrint('[BgChat] room_deleted roomId=${event.roomId}');
+        if (!_roomRemovedRelay.isClosed) _roomRemovedRelay.add(event.roomId);
+      });
+
+      _participantRemovedSub?.cancel();
+      _participantRemovedSub =
+          _sharedWs.participantRemovedEvents.listen((event) async {
+        final me = _cachedMyUserId ??= await _authService.getUserId();
+        if (event.userId == me) {
+          // I was removed/kicked → drop the room from my list immediately.
+          debugPrint('[BgChat] removed from room ${event.roomId}');
+          if (!_roomRemovedRelay.isClosed) _roomRemovedRelay.add(event.roomId);
+        } else if (!_roomsChangedRelay.isClosed) {
+          _roomsChangedRelay.add(null);
+        }
+      });
+
+      _participantLeftSub?.cancel();
+      _participantLeftSub = _sharedWs.participantLeftEvents.listen((_) {
+        if (!_roomsChangedRelay.isClosed) _roomsChangedRelay.add(null);
+      });
+
+      _roomSettingsSub?.cancel();
+      _roomSettingsSub = _sharedWs.roomSettingsEvents.listen((_) {
+        if (!_roomsChangedRelay.isClosed) _roomsChangedRelay.add(null);
       });
     } catch (e) {
       _connected = false;
@@ -255,6 +312,14 @@ class ChatBackgroundService {
     _groupInviteSub = null;
     _userJoinedSub?.cancel();
     _userJoinedSub = null;
+    _roomDeletedSub?.cancel();
+    _roomDeletedSub = null;
+    _participantRemovedSub?.cancel();
+    _participantRemovedSub = null;
+    _participantLeftSub?.cancel();
+    _participantLeftSub = null;
+    _roomSettingsSub?.cancel();
+    _roomSettingsSub = null;
 
     if (_sharedWs.hadFatalClose) {
       debugPrint('[BgChat] fatal close — will not reconnect');
