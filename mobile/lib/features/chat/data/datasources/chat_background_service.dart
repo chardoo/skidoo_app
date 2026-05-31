@@ -9,7 +9,9 @@ import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service
         WsRoomDeletedEvent,
         WsParticipantRemovedEvent,
         WsParticipantLeftEvent,
-        WsRoomSettingsUpdatedEvent;
+        WsRoomSettingsUpdatedEvent,
+        WsMessageEditedEvent,
+        WsMessageDeletedEvent;
 import 'package:skidoo_app/features/chat/data/local/chat_database.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
@@ -75,6 +77,8 @@ class ChatBackgroundService {
   StreamSubscription<WsParticipantRemovedEvent>? _participantRemovedSub;
   StreamSubscription<WsParticipantLeftEvent>? _participantLeftSub;
   StreamSubscription<WsRoomSettingsUpdatedEvent>? _roomSettingsSub;
+  StreamSubscription<WsMessageEditedEvent>? _msgEditedSub;
+  StreamSubscription<WsMessageDeletedEvent>? _msgDeletedSub;
 
   final Map<String, ChatRoom> _rooms = {};
 
@@ -250,6 +254,9 @@ class ChatBackgroundService {
       _groupInviteSub?.cancel();
       _groupInviteSub = _sharedWs.groupInviteEvents.listen((event) {
         debugPrint('[BgChat] group_invite via sharedWs — roomId=${event.room.id}');
+        // Cache the invited room so the pending invite survives a restart /
+        // shows offline (it's split out by hasPendingInvite on load).
+        _db.upsertRoom(event.room).catchError((_) {});
         reportGroupInvite(event.room);
       });
 
@@ -266,9 +273,14 @@ class ChatBackgroundService {
       });
 
       // ── Room lifecycle → rooms-list relays (live updates without refresh) ──
+      // These also persist to the local DB so a kicked/deleted room doesn't
+      // linger in the cache (upsert-sync never deletes rooms) and reappear on
+      // restart — done here, not just in ChatRoomBloc, so it works even when
+      // the conversation isn't open.
       _roomDeletedSub?.cancel();
       _roomDeletedSub = _sharedWs.roomDeletedEvents.listen((event) {
         debugPrint('[BgChat] room_deleted roomId=${event.roomId}');
+        _db.deleteRoom(event.roomId).catchError((_) {});
         if (!_roomRemovedRelay.isClosed) _roomRemovedRelay.add(event.roomId);
       });
 
@@ -277,8 +289,9 @@ class ChatBackgroundService {
           _sharedWs.participantRemovedEvents.listen((event) async {
         final me = _cachedMyUserId ??= await _authService.getUserId();
         if (event.userId == me) {
-          // I was removed/kicked → drop the room from my list immediately.
+          // I was removed/kicked → drop the room from my list + cache.
           debugPrint('[BgChat] removed from room ${event.roomId}');
+          await _db.deleteRoom(event.roomId).catchError((_) {});
           if (!_roomRemovedRelay.isClosed) _roomRemovedRelay.add(event.roomId);
         } else if (!_roomsChangedRelay.isClosed) {
           _roomsChangedRelay.add(null);
@@ -293,6 +306,20 @@ class ChatBackgroundService {
       _roomSettingsSub?.cancel();
       _roomSettingsSub = _sharedWs.roomSettingsEvents.listen((_) {
         if (!_roomsChangedRelay.isClosed) _roomsChangedRelay.add(null);
+      });
+
+      // ── Message edit/delete → persist to the cache even when the room isn't
+      //    open (ChatRoomBloc only handles these for the active room). ───────
+      _msgEditedSub?.cancel();
+      _msgEditedSub = _sharedWs.messageEditedEvents.listen((event) {
+        _db
+            .updateMessageContent(event.id, event.content, event.updatedAt)
+            .catchError((_) {});
+      });
+
+      _msgDeletedSub?.cancel();
+      _msgDeletedSub = _sharedWs.messageDeletedEvents.listen((event) {
+        _db.deleteMessage(event.id).catchError((_) {});
       });
     } catch (e) {
       _connected = false;
@@ -320,6 +347,10 @@ class ChatBackgroundService {
     _participantLeftSub = null;
     _roomSettingsSub?.cancel();
     _roomSettingsSub = null;
+    _msgEditedSub?.cancel();
+    _msgEditedSub = null;
+    _msgDeletedSub?.cancel();
+    _msgDeletedSub = null;
 
     if (_sharedWs.hadFatalClose) {
       debugPrint('[BgChat] fatal close — will not reconnect');
