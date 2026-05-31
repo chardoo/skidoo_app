@@ -401,18 +401,28 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     HomeState homeState,
     DiscoveryState discoveryState,
   ) {
+    // IndexedStack keeps both tabs mounted, so without gating the inactive
+    // tab's top video would auto-play too. TickerMode(enabled: …) pauses every
+    // video in the inactive tab (SkidooVideoPlayer reads TickerMode.of) and
+    // resumes the active one — so only the visible tab plays.
     return IndexedStack(
       index: _selectedTab,
       children: [
         // ── For You ──────────────────────────────────────────────────────────
-        RefreshIndicator(
-          onRefresh: _onRefresh,
-          color: ext.accentGold,
-          backgroundColor: ext.homeBackground,
-          child: _buildForYouContent(context, ext, homeState, discoveryState),
+        TickerMode(
+          enabled: _selectedTab == 0,
+          child: RefreshIndicator(
+            onRefresh: _onRefresh,
+            color: ext.accentGold,
+            backgroundColor: ext.homeBackground,
+            child: _buildForYouContent(context, ext, homeState, discoveryState),
+          ),
         ),
         // ── Following ────────────────────────────────────────────────────────
-        FollowingFeed(topPadding: _feedTopPadding),
+        TickerMode(
+          enabled: _selectedTab == 1,
+          child: FollowingFeed(topPadding: _feedTopPadding),
+        ),
       ],
     );
   }
