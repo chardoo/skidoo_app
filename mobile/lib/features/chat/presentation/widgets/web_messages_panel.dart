@@ -5,6 +5,7 @@ import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/navigation/app_navigator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/utils/web_panel_route.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/create_group_page.dart';
@@ -17,66 +18,8 @@ import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 
-const double _kPanelWidth = 400.0;
-
-/// Gap above the panel so it clears the top bar / action cluster instead of
-/// butting right up against it.
-const double _kPanelTopGap = 56.0;
-
-/// Pushes [page] as a route occupying exactly the messages-panel area (same
-/// width/position), sliding in from the right. Used for chat sub-pages (create
-/// group, group settings) so they appear *inside* the right panel rather than
-/// as a full-screen page. Returns the popped result.
-Future<T?> _showPanelPage<T>(Widget page) {
-  final nav = AppNavigator.navigatorKey.currentState;
-  if (nav == null) return Future<T?>.value(null);
-  return nav.push<T>(
-    PageRouteBuilder<T>(
-      opaque: false,
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 220),
-      reverseTransitionDuration: const Duration(milliseconds: 180),
-      pageBuilder: (_, animation, __) =>
-          _PanelPageFrame(animation: animation, child: page),
-    ),
-  );
-}
-
-class _PanelPageFrame extends StatelessWidget {
-  const _PanelPageFrame({required this.animation, required this.child});
-
-  final Animation<double> animation;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Tap outside the panel column to dismiss.
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: () => Navigator.of(context).maybePop(),
-            child: const ColoredBox(color: Color(0x22000000)),
-          ),
-        ),
-        Positioned(
-          top: _kPanelTopGap,
-          right: 0,
-          bottom: 0,
-          width: _kPanelWidth,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1, 0),
-              end: Offset.zero,
-            ).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-            child: child,
-          ),
-        ),
-      ],
-    );
-  }
-}
+// Panel width / top gap and the constrained-page push helper live in
+// web_panel_route.dart so every chat page can land in the same panel column.
 
 /// Right-side overlay panel for web desktop/laptop.
 ///
@@ -165,7 +108,8 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
   /// Opens the new-group flow inside the panel, then drops into the freshly
   /// created room. The rooms list is refreshed regardless.
   Future<void> _openCreateGroup() async {
-    final room = await _showPanelPage<ChatRoom>(const CreateGroupPage());
+    final room =
+        await showWebPanelPage<ChatRoom>(context, const CreateGroupPage());
     if (!mounted) return;
     context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
     if (room != null) setState(() => _activeRoom = room);
@@ -175,7 +119,8 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
   void _openSettings() {
     final bloc = _activeRoomBloc;
     if (bloc == null) return;
-    _showPanelPage<void>(
+    showWebPanelPage<void>(
+      context,
       BlocProvider<ChatRoomBloc>.value(
         value: bloc,
         child: const GroupInfoPage(),
@@ -201,10 +146,10 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
 
         // ── Panel ──────────────────────────────────────────────────────────
         Positioned(
-          top: _kPanelTopGap,
+          top: kWebChatPanelTopGap,
           right: 0,
           bottom: 0,
-          width: _kPanelWidth,
+          width: kWebChatPanelWidth,
           child: SlideTransition(
             position: _slideAnim,
             child: _PanelShell(
@@ -453,6 +398,11 @@ class _PanelRoomsListState extends State<_PanelRoomsList> {
                     .contains(q))
                 .toList();
 
+        // Pending group invites — only on the unfiltered list.
+        final pending =
+            q.isEmpty ? state.pendingInvites : const <ChatRoom>[];
+        final bloc = context.read<ChatRoomsBloc>();
+
         return Column(
           children: [
             _PanelSearchBar(
@@ -472,22 +422,36 @@ class _PanelRoomsListState extends State<_PanelRoomsList> {
                 color: widget.ext.accentGold.withValues(alpha: 0.6),
               ),
             Expanded(
-              child: displayed.isEmpty
+              child: (displayed.isEmpty && pending.isEmpty)
                   ? _PanelEmptyRooms(
                       ext: widget.ext, isFiltered: q.isNotEmpty, query: _query)
-                  : ListView.builder(
+                  : ListView(
                       padding: const EdgeInsets.only(bottom: 16),
-                      itemCount: displayed.length,
-                      itemBuilder: (_, i) {
-                        final room = displayed[i];
-                        return RoomTile(
-                          room: room,
-                          unreadCount: state.unreadCounts[room.id] ?? 0,
-                          lastMessageAt: state.lastMessageAt[room.id],
-                          currentUserId: state.currentUserId,
-                          onTap: () => widget.onRoomTap(room),
-                        );
-                      },
+                      children: [
+                        if (pending.isNotEmpty) ...[
+                          _PanelSectionLabel(
+                              ext: widget.ext, label: 'Pending invites'),
+                          ...pending.map((room) => _PanelPendingTile(
+                                room: room,
+                                ext: widget.ext,
+                                onAccept: () =>
+                                    bloc.add(ChatRoomsAcceptInvite(room.id)),
+                                onDecline: () =>
+                                    bloc.add(ChatRoomsDeclineInvite(room.id)),
+                              )),
+                          const SizedBox(height: 4),
+                          if (displayed.isNotEmpty)
+                            _PanelSectionLabel(
+                                ext: widget.ext, label: 'Chats'),
+                        ],
+                        ...displayed.map((room) => RoomTile(
+                              room: room,
+                              unreadCount: state.unreadCounts[room.id] ?? 0,
+                              lastMessageAt: state.lastMessageAt[room.id],
+                              currentUserId: state.currentUserId,
+                              onTap: () => widget.onRoomTap(room),
+                            )),
+                      ],
                     ),
             ),
           ],
@@ -593,6 +557,139 @@ class _PanelEmptyRooms extends StatelessWidget {
               style: TextStyle(color: ext.searchHintColor, fontSize: 13),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Pending invites (web panel) ───────────────────────────────────────────────
+
+class _PanelSectionLabel extends StatelessWidget {
+  const _PanelSectionLabel({required this.ext, required this.label});
+
+  final AppThemeExtension ext;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          color: ext.searchHintColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _PanelPendingTile extends StatelessWidget {
+  const _PanelPendingTile({
+    required this.room,
+    required this.ext,
+    required this.onAccept,
+    required this.onDecline,
+  });
+
+  final ChatRoom room;
+  final AppThemeExtension ext;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ext.accentGold.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.group_rounded, color: Colors.orange, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  room.displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l10n.chatRoomsYouWereInvited,
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          _PanelPendingBtn(
+              label: l10n.chatRoomsJoin, color: ext.accentGold, onTap: onAccept),
+          const SizedBox(width: 6),
+          _PanelPendingBtn(
+              label: l10n.chatRoomsDecline,
+              color: ext.searchHintColor,
+              onTap: onDecline),
+        ],
+      ),
+    );
+  }
+}
+
+class _PanelPendingBtn extends StatelessWidget {
+  const _PanelPendingBtn({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withValues(alpha: 0.4)),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+                color: color, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
         ),
       ),
     );

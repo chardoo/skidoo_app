@@ -6,6 +6,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/invite_to_group_page.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
+import 'package:skidoo_app/core/utils/web_panel_route.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 /// WhatsApp-style group info page.
@@ -115,12 +116,11 @@ class GroupInfoPage extends StatelessWidget {
                     ),
                     TextButton.icon(
                       onPressed: () async {
-                        final count =
-                            await Navigator.of(context).push<int>(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                InviteToGroupPage(room: room),
-                          ),
+                        // Open "add people" inside the same web panel; full
+                        // page on mobile.
+                        final count = await showWebPanelPage<int>(
+                          context,
+                          InviteToGroupPage(room: room),
                         );
                         if (!context.mounted || count == null) return;
                         AppSnackBar.success(

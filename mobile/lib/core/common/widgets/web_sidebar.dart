@@ -1608,24 +1608,54 @@ class _ActionMessageButtonState extends State<_ActionMessageButton> {
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         onTap: widget.onTap,
-        child: AnimatedContainer(
+        child: AnimatedScale(
+          scale: _hovered ? 1.08 : 1.0,
           duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: _hovered ? ext.glassFill : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Badge(
-            isLabelVisible: widget.unreadCount > 0,
-            label: Text(
-              widget.unreadCount > 9 ? '9+' : '${widget.unreadCount}',
-              style: const TextStyle(fontSize: 9, color: Colors.white),
+          curve: Curves.easeOut,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  ext.accentGold.withValues(alpha: _hovered ? 0.30 : 0.18),
+                  ext.accentGold.withValues(alpha: _hovered ? 0.18 : 0.10),
+                ],
+              ),
+              border: Border.all(
+                color: ext.accentGold.withValues(alpha: _hovered ? 0.65 : 0.40),
+                width: 1.2,
+              ),
+              boxShadow: _hovered
+                  ? [
+                      BoxShadow(
+                        color: ext.accentGold.withValues(alpha: 0.25),
+                        blurRadius: 12,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
             ),
-            backgroundColor: Colors.redAccent,
-            child: Icon(
-              Icons.chat_bubble_outline_rounded,
-              color: ext.searchHintColor,
-              size: 20,
+            child: Badge(
+              isLabelVisible: widget.unreadCount > 0,
+              label: Text(
+                widget.unreadCount > 9 ? '9+' : '${widget.unreadCount}',
+                style: const TextStyle(
+                    fontSize: 9,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700),
+              ),
+              backgroundColor: Colors.redAccent,
+              child: Icon(
+                Icons.chat_bubble_rounded,
+                color: ext.accentGold,
+                size: 20,
+              ),
             ),
           ),
         ),
