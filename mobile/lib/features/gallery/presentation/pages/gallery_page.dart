@@ -108,6 +108,8 @@ class GalleryPage extends StatelessWidget {
                         value: context.read<CartBloc>(),
                         child: GalleryImageWidget(
                           photo: state.photos[index],
+                          photos: state.photos,
+                          index: index,
                         ),
                       );
                     },

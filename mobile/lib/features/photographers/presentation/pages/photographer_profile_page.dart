@@ -10,6 +10,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
+import 'package:skidoo_app/features/chat/presentation/widgets/web_messages_panel.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
 import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_events_usecase.dart';
@@ -109,6 +110,13 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
 
     if (!context.mounted) return;
     roomsBloc?.add(const ChatRoomsLoadRequested());
+
+    // Web: open the conversation in the right-side messages panel so all chat
+    // lives in one place. Native: push the full-screen chat page.
+    if (kIsWeb) {
+      WebMessagesPanel.open(initialRoom: room);
+      return;
+    }
 
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),

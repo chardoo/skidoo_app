@@ -8,7 +8,17 @@ import 'package:skidoo_app/models/photos/Photo.dart';
 class GalleryImageWidget extends StatelessWidget {
   final Photo photo;
 
-  const GalleryImageWidget({super.key, required this.photo});
+  /// Full gallery list and this tile's position, so the fullscreen viewer can
+  /// swipe left/right through every photo.
+  final List<Photo> photos;
+  final int index;
+
+  const GalleryImageWidget({
+    super.key,
+    required this.photo,
+    required this.photos,
+    required this.index,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +123,8 @@ class GalleryImageWidget extends StatelessWidget {
       PageRouteBuilder(
         opaque: false,
         barrierColor: Colors.black,
-        pageBuilder: (_, __, ___) => GalleryFullscreenPage(photo: photo),
+        pageBuilder: (_, __, ___) =>
+            GalleryFullscreenPage(photos: photos, initialIndex: index),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 250),

@@ -1486,21 +1486,7 @@ class _WebTopActionsState extends State<WebTopActions> {
     super.dispose();
   }
 
-  void _openMessages() {
-    final nav = AppNavigator.navigatorKey.currentState;
-    if (nav == null) return;
-    nav.push(
-      PageRouteBuilder<void>(
-        opaque: false,
-        barrierColor: Colors.black.withValues(alpha: 0.45),
-        barrierDismissible: true,
-        pageBuilder: (_, __, ___) => Material(
-          color: Colors.transparent,
-          child: WebMessagesPanel(onClose: () => nav.maybePop()),
-        ),
-      ),
-    );
-  }
+  void _openMessages() => WebMessagesPanel.open();
 
   void _openAccount() {
     final nav = AppNavigator.navigatorKey.currentState;

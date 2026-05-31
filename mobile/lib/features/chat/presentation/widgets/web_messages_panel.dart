@@ -3,9 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/navigation/app_navigator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
+import 'package:skidoo_app/features/chat/presentation/pages/create_group_page.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/chat_input_bar.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/message_entrance.dart';
@@ -22,9 +24,38 @@ const double _kPanelWidth = 400.0;
 /// by default; tapping a room opens the conversation inline within the panel.
 /// Tapping the semi-transparent backdrop, or pressing the ✕ icon, closes it.
 class WebMessagesPanel extends StatefulWidget {
-  const WebMessagesPanel({super.key, required this.onClose});
+  const WebMessagesPanel({super.key, required this.onClose, this.initialRoom});
 
   final VoidCallback onClose;
+
+  /// When provided, the panel opens straight into this conversation instead of
+  /// the rooms list.
+  final ChatRoom? initialRoom;
+
+  /// Opens the messages panel as a global right-side overlay on web, optionally
+  /// jumping straight to [initialRoom]. Single entry point so every "message"
+  /// affordance (top-bar icon, photographer profile, etc.) lands in the same
+  /// panel. Returns true if it was actually shown.
+  static bool open({ChatRoom? initialRoom}) {
+    final nav = AppNavigator.navigatorKey.currentState;
+    if (nav == null) return false;
+    nav.push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        // The panel draws its own dimmed backdrop, so the route stays clear.
+        barrierColor: Colors.transparent,
+        barrierDismissible: false,
+        pageBuilder: (_, __, ___) => Material(
+          color: Colors.transparent,
+          child: WebMessagesPanel(
+            initialRoom: initialRoom,
+            onClose: () => nav.maybePop(),
+          ),
+        ),
+      ),
+    );
+    return true;
+  }
 
   @override
   State<WebMessagesPanel> createState() => _WebMessagesPanelState();
@@ -40,6 +71,7 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
   @override
   void initState() {
     super.initState();
+    _activeRoom = widget.initialRoom;
     _slideCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 220),
@@ -58,6 +90,18 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
 
   void _openRoom(ChatRoom room) => setState(() => _activeRoom = room);
   void _backToRooms() => setState(() => _activeRoom = null);
+
+  /// Opens the new-group flow, then drops into the freshly created room.
+  Future<void> _openCreateGroup() async {
+    final nav = AppNavigator.navigatorKey.currentState;
+    if (nav == null) return;
+    final room = await nav.push<ChatRoom>(
+      MaterialPageRoute(builder: (_) => const CreateGroupPage()),
+    );
+    if (!mounted || room == null) return;
+    context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
+    setState(() => _activeRoom = room);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +133,7 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
               onBack: _backToRooms,
               onClose: widget.onClose,
               onRoomTap: _openRoom,
+              onCreateGroup: _openCreateGroup,
             ),
           ),
         ),
@@ -106,6 +151,7 @@ class _PanelShell extends StatelessWidget {
     required this.onBack,
     required this.onClose,
     required this.onRoomTap,
+    required this.onCreateGroup,
   });
 
   final AppThemeExtension ext;
@@ -113,6 +159,7 @@ class _PanelShell extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onClose;
   final ValueChanged<ChatRoom> onRoomTap;
+  final VoidCallback onCreateGroup;
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +180,7 @@ class _PanelShell extends StatelessWidget {
             activeRoom: activeRoom,
             onBack: onBack,
             onClose: onClose,
+            onCreateGroup: onCreateGroup,
           ),
           Expanded(
             child: AnimatedSwitcher(
@@ -165,12 +213,14 @@ class _PanelHeader extends StatelessWidget {
     required this.activeRoom,
     required this.onBack,
     required this.onClose,
+    required this.onCreateGroup,
   });
 
   final AppThemeExtension ext;
   final ChatRoom? activeRoom;
   final VoidCallback onBack;
   final VoidCallback onClose;
+  final VoidCallback onCreateGroup;
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +259,15 @@ class _PanelHeader extends StatelessWidget {
               ),
             ),
           ),
+          // New-group button — only on the rooms list, not inside a chat.
+          if (activeRoom == null) ...[
+            _HeaderIconBtn(
+              icon: Icons.group_add_rounded,
+              color: ext.greetingColor,
+              onTap: onCreateGroup,
+            ),
+            const SizedBox(width: 4),
+          ],
           _HeaderIconBtn(
             icon: Icons.close_rounded,
             color: ext.searchHintColor,
