@@ -197,6 +197,14 @@ class WsUserJoinedEvent {
   });
 }
 
+/// A server error frame. Carries the bare `{"error": "..."}` validation
+/// failures and the typed `{"type":"error","message":"..."}` setup error.
+class WsChatErrorEvent {
+  final String message;
+  final String? roomId;
+  const WsChatErrorEvent({required this.message, this.roomId});
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 /// Manages the WebSocket connection to the global chat endpoint.
@@ -215,7 +223,13 @@ class ChatWebSocketService {
   WebSocketChannel? _channel;
   String? _roomId;
 
+  /// Our own user id, captured from the `connected` frame. Used to apply the
+  /// server's self-filter rule: ignore fan-out events from ourselves unless
+  /// they carry `echo: true`.
+  String? _myUserId;
+
   StreamController<WsConnectedEvent>? _connectedController;
+  StreamController<WsChatErrorEvent>? _errorController;
   StreamController<ChatMessage>? _msgController;
   StreamController<LikeUpdate>? _likeController;
   StreamController<PictureLikeUpdate>? _picLikeController;
@@ -239,6 +253,10 @@ class ChatWebSocketService {
   /// Emits the initial server handshake (userId + room list).
   Stream<WsConnectedEvent> get connectedEvents =>
       _connectedController?.stream ?? const Stream.empty();
+
+  /// Emits server error frames (validation failures + setup errors).
+  Stream<WsChatErrorEvent> get errorEvents =>
+      _errorController?.stream ?? const Stream.empty();
 
   /// Emits chat messages received from the server.
   Stream<ChatMessage> get messages =>
@@ -376,6 +394,7 @@ class ChatWebSocketService {
 
   Future<void> _doConnect(Uri uri) async {
     _connectedController = StreamController<WsConnectedEvent>.broadcast();
+    _errorController = StreamController<WsChatErrorEvent>.broadcast();
     _msgController = StreamController<ChatMessage>.broadcast();
     _likeController = StreamController<LikeUpdate>.broadcast();
     _picLikeController = StreamController<PictureLikeUpdate>.broadcast();
@@ -415,12 +434,42 @@ class ChatWebSocketService {
           final json = jsonDecode(raw as String) as Map<String, dynamic>;
           final type = json['type'] as String?;
           debugPrint('[WS#$_instanceId] frame received: type=$type roomId=${json['room_id']} id=${json['id']}');
+
+          // Rule 1 — error frames have NO type field (bare `{"error": "..."}`),
+          // plus the typed setup error `{"type":"error","message":"..."}`.
+          // Check before switching on type, and never route them as messages.
+          if (json.containsKey('error') || type == 'error') {
+            final msg = (json['error'] ?? json['message'])?.toString() ??
+                'Unknown chat error';
+            debugPrint('[WS#$_instanceId] error frame: "$msg" roomId=${json['room_id']}');
+            _errorController?.add(WsChatErrorEvent(
+              message: msg,
+              roomId: json['room_id'] as String?,
+            ));
+            return;
+          }
+
+          // Rule 2 — the server suppresses self fan-out but still echoes the
+          // sender a copy with `echo: true`. Ignore any event from ourselves
+          // that is NOT an echo. (Frames without `sender_id` — connected,
+          // subscribed, room events keyed on *_by — are unaffected.)
+          final senderId = json['sender_id'];
+          if (senderId != null &&
+              _myUserId != null &&
+              senderId == _myUserId &&
+              json['echo'] != true) {
+            return;
+          }
+
           if (type == 'connected') {
             final userId = json['userId'] as String? ?? '';
+            _myUserId = userId;
             final rooms = (json['rooms'] as List<dynamic>? ?? [])
                 .whereType<Map<String, dynamic>>()
                 .toList();
             _connectedController?.add(WsConnectedEvent(userId, rooms));
+          } else if (type == 'subscribed') {
+            // Subscribe acknowledgement — no client state to update.
           } else if (type == 'like_update') {
             _likeController?.add(LikeUpdate.fromJson(json));
           } else if (type == 'picture_like_update') {
@@ -564,12 +613,14 @@ class ChatWebSocketService {
                 messageId: json['message_id'] as String?,
               ));
             }
-          } else {
-            // All unmatched types (including 'message' from server) are treated
-            // as chat messages.  On web, sender_role may be absent — handled by
-            // the nullable cast in ChatMessage.fromJson (defaults to '').
+          } else if (type == 'message' ||
+              (type == null && json['id'] is String && json['created_at'] is String)) {
+            // New message / comment. On web, sender_role may be absent —
+            // handled by the nullable cast in ChatMessage.fromJson.
             debugPrint('[WS] routing as ChatMessage: type=$type id=${json['id']} roomId=${json['room_id']} senderId=${json['sender_id']} role=${json['sender_role']} isEncrypted=${json['is_encrypted']} contentLen=${json['content']?.toString().length}');
             _msgController?.add(ChatMessage.fromJson(json));
+          } else {
+            debugPrint('[WS#$_instanceId] unhandled chat frame: type=$type');
           }
         } catch (e, st) {
           final rawStr = raw is String ? raw : raw.toString();
@@ -700,6 +751,7 @@ class ChatWebSocketService {
 
   void _closeControllers() {
     _connectedController?.close();
+    _errorController?.close();
     _msgController?.close();
     _likeController?.close();
     _picLikeController?.close();
@@ -719,6 +771,7 @@ class ChatWebSocketService {
     _senderKeyDistController?.close();
     _readReceiptController?.close();
     _connectedController = null;
+    _errorController = null;
     _msgController = null;
     _likeController = null;
     _picLikeController = null;

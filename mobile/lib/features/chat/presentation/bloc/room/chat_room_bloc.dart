@@ -9,6 +9,7 @@ import 'package:skidoo_app/core/error/exceptions.dart' show ServerException;
 import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart'
     show ChatWebSocketService, WsAdminGrantedEvent, WsAdminRevokedEvent,
+        WsChatErrorEvent,
         WsKeyBundlesEvent, WsKeyRotationEvent, WsMessageDeletedEvent,
         WsMessageEditedEvent, WsParticipantKeyAvailable,
         WsParticipantRemovedEvent, WsReadReceiptEvent, WsRoomDeletedEvent,
@@ -88,6 +89,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   StreamSubscription<WsSenderKeyDistributionEvent>? _wsSenderKeyDistSub;
   StreamSubscription? _wsParticipantLeftSub;
   StreamSubscription<WsReadReceiptEvent>? _wsReadReceiptSub;
+  StreamSubscription<WsChatErrorEvent>? _wsErrorSub;
   // Waits for ChatBackgroundService to signal the WS is (re)connected.
   StreamSubscription<bool>? _wsConnectionSub;
   Timer? _otpkPollTimer;
@@ -174,6 +176,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<ChatRoomLeaveGroupRequested>(_onLeaveGroupRequested);
     on<ChatRoomDeleteRequested>(_onDeleteRequested);
     on<_RoomDeleted>(_onRoomDeleted);
+    on<_WsServerError>((event, emit) =>
+        emit(state.copyWith(errorMessage: event.message)));
     on<_GroupSenderKeyReceived>(_onGroupSenderKeyReceived);
     on<_ParticipantLeft>(_onParticipantLeft);
     on<_ReadReceiptReceived>(_onReadReceiptReceived);
@@ -417,6 +421,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsSenderKeyDistSub?.cancel();
     _wsParticipantLeftSub?.cancel();
     _wsReadReceiptSub?.cancel();
+    _wsErrorSub?.cancel();
     _wsMsgSub = null;
     _wsLikeSub = null;
     _wsPicLikeSub = null;
@@ -434,6 +439,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsSenderKeyDistSub = null;
     _wsParticipantLeftSub = null;
     _wsReadReceiptSub = null;
+    _wsErrorSub = null;
   }
 
   void _setupWsListeners(String roomId) {
@@ -584,6 +590,16 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             upToMessageId: event.upToMessageId,
             messageId: event.messageId,
           ));
+        }
+      },
+    );
+
+    // Surface server error frames for this room (or general ones without a
+    // room_id, e.g. "Only admins can send messages in this room").
+    _wsErrorSub = _ws.errorEvents.listen(
+      (event) {
+        if (!isClosed && (event.roomId == null || event.roomId == roomId)) {
+          add(_WsServerError(event.message));
         }
       },
     );

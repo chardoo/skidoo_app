@@ -257,6 +257,13 @@ class _ParticipantLeft extends ChatRoomEvent {
   const _ParticipantLeft(this.userId);
 }
 
+/// WS server error frame for this room (or a general one with no room_id),
+/// e.g. "Only admins can send messages in this room".
+class _WsServerError extends ChatRoomEvent {
+  final String message;
+  const _WsServerError(this.message);
+}
+
 /// WS broadcast: another participant acknowledged reading messages.
 class _ReadReceiptReceived extends ChatRoomEvent {
   final String readerId;
