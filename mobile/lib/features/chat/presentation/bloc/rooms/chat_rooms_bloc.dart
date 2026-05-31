@@ -245,22 +245,38 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     ChatRoomsAcceptInvite event,
     Emitter<ChatRoomsState> emit,
   ) async {
+    ChatRoom? room;
+    for (final r in state.pendingInvites) {
+      if (r.id == event.roomId) {
+        room = r;
+        break;
+      }
+    }
+    if (room == null) return;
+
+    // Optimistically move the room from pending → active *immediately* so the
+    // pending card disappears the moment the user taps Join (web + mobile),
+    // without waiting on the network round-trip.
+    final accepted = room;
+    emit(state.copyWith(
+      rooms: [...state.rooms, accepted],
+      pendingInvites:
+          state.pendingInvites.where((r) => r.id != event.roomId).toList(),
+    ));
+
     try {
       await _acceptInvite(event.roomId);
-      // Move room from pending to active.
-      final room = state.pendingInvites.firstWhere((r) => r.id == event.roomId,
-          orElse: () => throw StateError('not found'));
-      emit(state.copyWith(
-        rooms: [...state.rooms, room],
-        pendingInvites:
-            state.pendingInvites.where((r) => r.id != event.roomId).toList(),
-      ));
-      // Subscribe immediately so WS messages start arriving without waiting
-      // for the full reload below.
+      // Subscribe immediately so WS messages start arriving right away.
       _bgService.sharedWs.subscribeRoom(event.roomId);
-      // Reload to get fresh participant list.
+      // Reload to get the fresh participant list.
       add(const ChatRoomsLoadRequested());
-    } catch (_) {}
+    } catch (_) {
+      // Roll back the optimistic move if the server rejected it.
+      emit(state.copyWith(
+        rooms: state.rooms.where((r) => r.id != event.roomId).toList(),
+        pendingInvites: [...state.pendingInvites, accepted],
+      ));
+    }
   }
 
   void _onGroupInviteReceived(
@@ -281,12 +297,27 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     ChatRoomsDeclineInvite event,
     Emitter<ChatRoomsState> emit,
   ) async {
+    ChatRoom? room;
+    for (final r in state.pendingInvites) {
+      if (r.id == event.roomId) {
+        room = r;
+        break;
+      }
+    }
+    if (room == null) return;
+    final declined = room;
+
+    // Remove the card immediately; restore it if the server call fails.
+    emit(state.copyWith(
+      pendingInvites:
+          state.pendingInvites.where((r) => r.id != event.roomId).toList(),
+    ));
     try {
       await _declineInvite(event.roomId);
+    } catch (_) {
       emit(state.copyWith(
-        pendingInvites:
-            state.pendingInvites.where((r) => r.id != event.roomId).toList(),
+        pendingInvites: [...state.pendingInvites, declined],
       ));
-    } catch (_) {}
+    }
   }
 }
