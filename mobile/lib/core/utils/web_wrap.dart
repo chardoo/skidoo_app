@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
@@ -32,7 +34,16 @@ Widget webWrap(
     color: backgroundColor,
     child: Align(
       alignment: Alignment.topCenter,
-      child: SizedBox(width: width, child: child),
+      // Shrink to the available width when the host is narrower than the
+      // column (e.g. the 400px messages panel) so the page never overflows.
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.hasBoundedWidth
+              ? math.min(width, constraints.maxWidth)
+              : width;
+          return SizedBox(width: w, child: child);
+        },
+      ),
     ),
   );
 }

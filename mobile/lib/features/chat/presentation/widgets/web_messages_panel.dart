@@ -8,6 +8,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/create_group_page.dart';
+import 'package:skidoo_app/features/chat/presentation/pages/group_info_page.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/chat_input_bar.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/message_entrance.dart';
@@ -21,6 +22,61 @@ const double _kPanelWidth = 400.0;
 /// Gap above the panel so it clears the top bar / action cluster instead of
 /// butting right up against it.
 const double _kPanelTopGap = 56.0;
+
+/// Pushes [page] as a route occupying exactly the messages-panel area (same
+/// width/position), sliding in from the right. Used for chat sub-pages (create
+/// group, group settings) so they appear *inside* the right panel rather than
+/// as a full-screen page. Returns the popped result.
+Future<T?> _showPanelPage<T>(Widget page) {
+  final nav = AppNavigator.navigatorKey.currentState;
+  if (nav == null) return Future<T?>.value(null);
+  return nav.push<T>(
+    PageRouteBuilder<T>(
+      opaque: false,
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 220),
+      reverseTransitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (_, animation, __) =>
+          _PanelPageFrame(animation: animation, child: page),
+    ),
+  );
+}
+
+class _PanelPageFrame extends StatelessWidget {
+  const _PanelPageFrame({required this.animation, required this.child});
+
+  final Animation<double> animation;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Tap outside the panel column to dismiss.
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).maybePop(),
+            child: const ColoredBox(color: Color(0x22000000)),
+          ),
+        ),
+        Positioned(
+          top: _kPanelTopGap,
+          right: 0,
+          bottom: 0,
+          width: _kPanelWidth,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1, 0),
+              end: Offset.zero,
+            ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+            child: child,
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 /// Right-side overlay panel for web desktop/laptop.
 ///
@@ -92,19 +148,39 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
     super.dispose();
   }
 
-  void _openRoom(ChatRoom room) => setState(() => _activeRoom = room);
-  void _backToRooms() => setState(() => _activeRoom = null);
+  /// The active conversation's bloc, surfaced by the room view so the header's
+  /// settings button can hand it to [GroupInfoPage].
+  ChatRoomBloc? _activeRoomBloc;
 
-  /// Opens the new-group flow, then drops into the freshly created room.
-  Future<void> _openCreateGroup() async {
-    final nav = AppNavigator.navigatorKey.currentState;
-    if (nav == null) return;
-    final room = await nav.push<ChatRoom>(
-      MaterialPageRoute(builder: (_) => const CreateGroupPage()),
-    );
-    if (!mounted || room == null) return;
-    context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
+  void _openRoom(ChatRoom room) {
+    _activeRoomBloc = null;
     setState(() => _activeRoom = room);
+  }
+
+  void _backToRooms() {
+    _activeRoomBloc = null;
+    setState(() => _activeRoom = null);
+  }
+
+  /// Opens the new-group flow inside the panel, then drops into the freshly
+  /// created room. The rooms list is refreshed regardless.
+  Future<void> _openCreateGroup() async {
+    final room = await _showPanelPage<ChatRoom>(const CreateGroupPage());
+    if (!mounted) return;
+    context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
+    if (room != null) setState(() => _activeRoom = room);
+  }
+
+  /// Opens group settings inside the panel, reusing the active room's bloc.
+  void _openSettings() {
+    final bloc = _activeRoomBloc;
+    if (bloc == null) return;
+    _showPanelPage<void>(
+      BlocProvider<ChatRoomBloc>.value(
+        value: bloc,
+        child: const GroupInfoPage(),
+      ),
+    );
   }
 
   @override
@@ -138,6 +214,8 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
               onClose: widget.onClose,
               onRoomTap: _openRoom,
               onCreateGroup: _openCreateGroup,
+              onOpenSettings: _openSettings,
+              onBlocReady: (bloc) => _activeRoomBloc = bloc,
             ),
           ),
         ),
@@ -156,6 +234,8 @@ class _PanelShell extends StatelessWidget {
     required this.onClose,
     required this.onRoomTap,
     required this.onCreateGroup,
+    required this.onOpenSettings,
+    required this.onBlocReady,
   });
 
   final AppThemeExtension ext;
@@ -164,6 +244,8 @@ class _PanelShell extends StatelessWidget {
   final VoidCallback onClose;
   final ValueChanged<ChatRoom> onRoomTap;
   final VoidCallback onCreateGroup;
+  final VoidCallback onOpenSettings;
+  final ValueChanged<ChatRoomBloc> onBlocReady;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +267,7 @@ class _PanelShell extends StatelessWidget {
             onBack: onBack,
             onClose: onClose,
             onCreateGroup: onCreateGroup,
+            onOpenSettings: onOpenSettings,
           ),
           Expanded(
             child: AnimatedSwitcher(
@@ -200,6 +283,7 @@ class _PanelShell extends StatelessWidget {
                       room: activeRoom!,
                       onBack: onBack,
                       ext: ext,
+                      onBlocReady: onBlocReady,
                     ),
             ),
           ),
@@ -218,6 +302,7 @@ class _PanelHeader extends StatelessWidget {
     required this.onBack,
     required this.onClose,
     required this.onCreateGroup,
+    required this.onOpenSettings,
   });
 
   final AppThemeExtension ext;
@@ -225,6 +310,7 @@ class _PanelHeader extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onClose;
   final VoidCallback onCreateGroup;
+  final VoidCallback onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -269,6 +355,15 @@ class _PanelHeader extends StatelessWidget {
               icon: Icons.group_add_rounded,
               color: ext.greetingColor,
               onTap: onCreateGroup,
+            ),
+            const SizedBox(width: 4),
+          ],
+          // Group settings — inside a group conversation.
+          if (activeRoom?.type == RoomType.group) ...[
+            _HeaderIconBtn(
+              icon: Icons.info_outline_rounded,
+              color: ext.greetingColor,
+              onTap: onOpenSettings,
             ),
             const SizedBox(width: 4),
           ],
@@ -512,17 +607,24 @@ class _PanelRoomView extends StatelessWidget {
     required this.room,
     required this.onBack,
     required this.ext,
+    required this.onBlocReady,
   });
 
   final ChatRoom room;
   final VoidCallback onBack;
   final AppThemeExtension ext;
+  final ValueChanged<ChatRoomBloc> onBlocReady;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<ChatRoomBloc>(),
-      child: _PanelRoomContent(room: room, onBack: onBack, ext: ext),
+      child: _PanelRoomContent(
+        room: room,
+        onBack: onBack,
+        ext: ext,
+        onBlocReady: onBlocReady,
+      ),
     );
   }
 }
@@ -534,11 +636,13 @@ class _PanelRoomContent extends StatefulWidget {
     required this.room,
     required this.onBack,
     required this.ext,
+    required this.onBlocReady,
   });
 
   final ChatRoom room;
   final VoidCallback onBack;
   final AppThemeExtension ext;
+  final ValueChanged<ChatRoomBloc> onBlocReady;
 
   @override
   State<_PanelRoomContent> createState() => _PanelRoomContentState();
@@ -556,6 +660,8 @@ class _PanelRoomContentState extends State<_PanelRoomContent> {
   void initState() {
     super.initState();
     _bloc = context.read<ChatRoomBloc>();
+    // Surface the bloc so the panel header's settings button can reuse it.
+    widget.onBlocReady(_bloc);
     _bloc.add(ChatRoomJoined(widget.room.id, room: widget.room));
     _scrollCtrl.addListener(_onScroll);
   }
