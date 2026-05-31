@@ -267,6 +267,9 @@ class _AppMaterial extends StatelessWidget {
     final bg = Theme.of(ctx).scaffoldBackgroundColor;
     final viewportW = MediaQuery.of(ctx).size.width;
     final isMobileWeb = viewportW < _kWebMobileBreakpoint;
+    // Built once and reused across auth rebuilds so the Navigator (and the
+    // pages inside it) is never torn down.
+    final content = ClipRect(child: child!);
 
     return DefaultTextStyle(
       style: DefaultTextStyle.of(ctx).style.copyWith(decoration: TextDecoration.none),
@@ -275,31 +278,45 @@ class _AppMaterial extends StatelessWidget {
         child: Column(
           children: [
             Expanded(
-              child: isMobileWeb
-            // ── Mobile web: top nav + full-width content ────────────────────
-            ? Column(
-                children: [
-                  const WebTopNav(),
-                  Expanded(child: ClipRect(child: child!)),
-                ],
-              )
-            // ── Desktop web: sidebar + content, with a permanent top-right
-            //    action cluster floating over every screen. ───────────────
-            : Stack(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              // Rebuild the nav chrome the instant auth flips so login/logout
+              // is reflected immediately — no manual page refresh needed. The
+              // nav widgets are intentionally non-const here so this rebuild
+              // actually re-runs their builders.
+              child: ValueListenableBuilder<bool>(
+                valueListenable: AuthService.isAuthenticated,
+                builder: (context, isLoggedIn, _) {
+                  // Keying the nav widgets off the auth state forces them to
+                  // rebuild from scratch on login/logout (a const widget would
+                  // be skipped), guaranteeing the correct items show/hide.
+                  final authKey = ValueKey(isLoggedIn);
+                  // ── Mobile web: top nav + full-width content ──────────────
+                  if (isMobileWeb) {
+                    return Column(
+                      children: [
+                        WebTopNav(key: authKey),
+                        Expanded(child: content),
+                      ],
+                    );
+                  }
+                  // ── Desktop web: sidebar + content, with a permanent
+                  //    top-right action cluster floating over every screen. ──
+                  return Stack(
                     children: [
-                      const WebSidebar(),
-                      Expanded(child: ClipRect(child: child!)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          WebSidebar(key: authKey),
+                          Expanded(child: content),
+                        ],
+                      ),
+                      Positioned(
+                        top: 10,
+                        right: 16,
+                        child: WebTopActions(key: authKey),
+                      ),
                     ],
-                  ),
-                  const Positioned(
-                    top: 10,
-                    right: 16,
-                    child: WebTopActions(),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ],

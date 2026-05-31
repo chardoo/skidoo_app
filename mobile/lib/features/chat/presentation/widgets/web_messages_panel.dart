@@ -18,6 +18,10 @@ import 'package:skidoo_app/models/chat/chat_room.dart';
 
 const double _kPanelWidth = 400.0;
 
+/// Gap above the panel so it clears the top bar / action cluster instead of
+/// butting right up against it.
+const double _kPanelTopGap = 56.0;
+
 /// Right-side overlay panel for web desktop/laptop.
 ///
 /// Slides in over the current page without removing it. Shows the rooms list
@@ -121,7 +125,7 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
 
         // ── Panel ──────────────────────────────────────────────────────────
         Positioned(
-          top: 0,
+          top: _kPanelTopGap,
           right: 0,
           bottom: 0,
           width: _kPanelWidth,
