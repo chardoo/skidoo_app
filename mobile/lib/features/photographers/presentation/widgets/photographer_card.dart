@@ -68,6 +68,135 @@ class PhotographerCard extends StatelessWidget {
   }
 }
 
+/// Card used in the grid layout of the creators page: a large cover image with
+/// the name + rating below. Works across mobile and web.
+class PhotographerGridCard extends StatelessWidget {
+  const PhotographerGridCard({
+    super.key,
+    required this.photographer,
+    required this.onTap,
+  });
+
+  final PhotographerModel photographer;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final hasImage =
+        photographer.imageUrl != null && photographer.imageUrl!.isNotEmpty;
+    final initial =
+        photographer.name.isNotEmpty ? photographer.name[0].toUpperCase() : '?';
+
+    return Semantics(button: true, label: photographer.name, child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16.r),
+      child: Container(
+        decoration: BoxDecoration(
+          color: ext.cardSurface,
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: ext.glassBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Cover image fills the flexible top area; text takes its natural
+            // height below so the tile never overflows its grid cell.
+            Expanded(
+              child: SizedBox(
+                width: double.infinity,
+                child: hasImage
+                    ? CachedNetworkImage(
+                        imageUrl: photographer.imageUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) =>
+                            ColoredBox(color: ext.searchFieldFill),
+                        errorWidget: (_, __, ___) =>
+                            _GridImageFallback(initial: initial, ext: ext),
+                      )
+                    : _GridImageFallback(initial: initial, ext: ext),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(10.w, 8.h, 10.w, 10.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    photographer.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: ext.greetingColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.sp,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  if (photographer.rating != null && photographer.rating! > 0)
+                    _RatingRow(rating: photographer.rating!, ext: ext)
+                  else
+                    Text(
+                      photographer.contact.isNotEmpty
+                          ? photographer.contact
+                          : 'No rating yet',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: ext.searchHintColor,
+                        fontSize: 11.sp,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ));
+  }
+}
+
+class _GridImageFallback extends StatelessWidget {
+  const _GridImageFallback({required this.initial, required this.ext});
+  final String initial;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ext.accentGold.withValues(alpha: 0.28),
+            ext.accentGold.withValues(alpha: 0.08),
+          ],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(
+          color: ext.accentGold,
+          fontWeight: FontWeight.bold,
+          fontSize: 40.sp,
+        ),
+      ),
+    );
+  }
+}
+
 class _PhotographerAvatar extends StatelessWidget {
   const _PhotographerAvatar({required this.photographer, required this.ext});
 
