@@ -346,7 +346,7 @@ class _MyRequestTile extends StatelessWidget {
           ],
           if (r.status == 'open' || r.status == 'promoted') ...[
             SizedBox(height: 12.h),
-            GestureDetector(
+            Semantics(button: true, label: 'Action tap', child: GestureDetector(
               onTap: onActionTap,
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -364,7 +364,7 @@ class _MyRequestTile extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
+            )),
           ],
         ],
       ),
@@ -630,7 +630,7 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
                 ),
               ),
               SizedBox(height: 24.h),
-              GestureDetector(
+              Semantics(button: true, label: 'Save', child: GestureDetector(
                 onTap: _saving ? null : _save,
                 child: Container(
                   padding: EdgeInsets.symmetric(vertical: 15.h),
@@ -662,7 +662,7 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
                           ),
                         ),
                 ),
-              ),
+              )),
             ],
           ),
         ),
@@ -725,7 +725,7 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
@@ -749,7 +749,7 @@ class _Chip extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

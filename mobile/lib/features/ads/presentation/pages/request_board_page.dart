@@ -435,7 +435,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               ),
 
               SizedBox(height: 24.h),
-              GestureDetector(
+              Semantics(button: true, label: 'Event type', child: GestureDetector(
                 onTap: () {
                   Navigator.of(context).pop();
                   widget.onApply(_eventType);
@@ -460,7 +460,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     ),
                   ),
                 ),
-              ),
+              )),
             ],
           ),
         ),
@@ -483,7 +483,7 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
@@ -508,6 +508,6 @@ class _FilterChip extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }

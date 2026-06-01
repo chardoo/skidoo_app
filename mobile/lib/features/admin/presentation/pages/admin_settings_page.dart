@@ -380,7 +380,7 @@ class _StepBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         width: 30.w,
@@ -398,7 +398,7 @@ class _StepBtn extends StatelessWidget {
           color: onTap != null ? ext.accentGold : ext.searchHintColor,
         ),
       ),
-    );
+    ));
   }
 }
 

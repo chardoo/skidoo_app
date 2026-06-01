@@ -291,7 +291,7 @@ class _SignUpViewState extends State<_SignUpView>
                                     fontSize: 14.sp,
                                   ),
                                 ),
-                                GestureDetector(
+                                Semantics(button: true, child: GestureDetector(
                                   onTap: () => Navigator.of(context)
                                       .pushReplacementNamed(LoginPage.routeName),
                                   child: Text(
@@ -302,7 +302,7 @@ class _SignUpViewState extends State<_SignUpView>
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                ),
+                                )),
                               ],
                             ),
                           ),
@@ -340,7 +340,7 @@ class _FaceCaptureButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final captured = imagePath.isNotEmpty;
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
@@ -455,7 +455,7 @@ class _FaceCaptureButton extends StatelessWidget {
           ],
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -473,7 +473,7 @@ class _GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: isLoading ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -519,6 +519,6 @@ class _GradientButton extends StatelessWidget {
                 ),
         ),
       ),
-    );
+    ));
   }
 }

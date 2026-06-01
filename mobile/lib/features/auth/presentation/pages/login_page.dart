@@ -219,7 +219,7 @@ class _LoginViewState extends State<_LoginView>
                           // ── Forgot password ────────────────────────────
                           Align(
                             alignment: Alignment.centerRight,
-                            child: GestureDetector(
+                            child: Semantics(button: true, label: 'Forget password page', child: GestureDetector(
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
                                     builder: (_) =>
@@ -233,7 +233,7 @@ class _LoginViewState extends State<_LoginView>
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                            ),
+                            )),
                           ),
                           SizedBox(height: 36.h),
 
@@ -257,7 +257,7 @@ class _LoginViewState extends State<_LoginView>
                                     fontSize: 14.sp,
                                   ),
                                 ),
-                                GestureDetector(
+                                Semantics(button: true, label: 'Signup', child: GestureDetector(
                                   onTap: () => Navigator.of(context)
                                       .pushReplacementNamed('/signup'),
                                   child: Text(
@@ -268,7 +268,7 @@ class _LoginViewState extends State<_LoginView>
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                ),
+                                )),
                               ],
                             ),
                           ),
@@ -305,7 +305,7 @@ class _GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: isLoading ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -351,6 +351,6 @@ class _GradientButton extends StatelessWidget {
                 ),
         ),
       ),
-    );
+    ));
   }
 }

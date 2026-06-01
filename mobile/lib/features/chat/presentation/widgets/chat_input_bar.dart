@@ -173,7 +173,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               // Media picker — disabled while uploading or already staged
-              GestureDetector(
+              Semantics(button: true, label: 'Show media picker', child: GestureDetector(
                 onTap: (widget.isUploadingImage || hasStaged)
                     ? null
                     : _showMediaPicker,
@@ -193,7 +193,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                     size: 20.sp,
                   ),
                 ),
-              ),
+              )),
               SizedBox(width: 4.w),
 
               // Emoji button
@@ -258,7 +258,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
               SizedBox(width: 8.w),
 
               // Send button
-              GestureDetector(
+              Semantics(button: true, label: 'Send', child: GestureDetector(
                 onTap: widget.isUploadingImage ? null : widget.onSend,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
@@ -281,7 +281,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                       : Icon(Icons.send_rounded,
                           color: Colors.white, size: 20.sp),
                 ),
-              ),
+              )),
             ],
           ),
         ),
@@ -409,7 +409,7 @@ class _StagedImagePreview extends StatelessWidget {
             ),
           ),
           if (!isUploading)
-            GestureDetector(
+            Semantics(button: true, label: 'Clear', child: GestureDetector(
               onTap: onClear,
               child: Container(
                 width: 28.w,
@@ -422,7 +422,7 @@ class _StagedImagePreview extends StatelessWidget {
                 child: Icon(Icons.close_rounded,
                     size: 16.sp, color: ext.searchHintColor),
               ),
-            ),
+            )),
         ],
       ),
     );
@@ -504,7 +504,7 @@ class _StagedVideoPreviewState extends State<_StagedVideoPreview> {
             ),
           ),
           if (!widget.isUploading)
-            GestureDetector(
+            Semantics(button: true, label: 'Clear', child: GestureDetector(
               onTap: widget.onClear,
               child: Container(
                 width: 28.w,
@@ -517,7 +517,7 @@ class _StagedVideoPreviewState extends State<_StagedVideoPreview> {
                 child: Icon(Icons.close_rounded,
                     size: 16.sp, color: widget.ext.searchHintColor),
               ),
-            ),
+            )),
         ],
       ),
     );
@@ -580,7 +580,7 @@ class _StagedNetworkImagePreview extends StatelessWidget {
               style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
           ),
-          GestureDetector(
+          Semantics(button: true, label: 'Clear', child: GestureDetector(
             onTap: onClear,
             child: Container(
               width: 28.w,
@@ -593,7 +593,7 @@ class _StagedNetworkImagePreview extends StatelessWidget {
               child: Icon(Icons.close_rounded,
                   size: 16.sp, color: ext.searchHintColor),
             ),
-          ),
+          )),
         ],
       ),
     );

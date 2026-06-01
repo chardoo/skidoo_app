@@ -100,6 +100,15 @@ class DiscoveryEventSaveToggled extends DiscoveryEvent {
   List<Object?> get props => [eventId];
 }
 
+/// Fires when the current user posts a comment on an event, so the feed card's
+/// comment count reflects it immediately (optimistic +1; reconciled on reload).
+class DiscoveryCommentAdded extends DiscoveryEvent {
+  final String eventId;
+  const DiscoveryCommentAdded(this.eventId);
+  @override
+  List<Object?> get props => [eventId];
+}
+
 /// Internal — fires when the initial saved-items list is loaded from the server.
 class _DiscoverySavedItemsLoaded extends DiscoveryEvent {
   /// Map of eventId → savedItemRecordId, for all currently saved events.

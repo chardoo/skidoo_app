@@ -41,7 +41,7 @@ class CartItemWidget extends StatelessWidget {
           Positioned(
             top: 8.h,
             right: 8.w,
-            child: GestureDetector(
+            child: Semantics(button: true, label: 'Photo', child: GestureDetector(
               onTap: () =>
                   context.read<CartBloc>().add(CartItemRemoved(photo)),
               child: Container(
@@ -55,7 +55,7 @@ class CartItemWidget extends StatelessWidget {
                 child: Icon(Icons.close_rounded,
                     color: Colors.white, size: 18.sp),
               ),
-            ),
+            )),
           ),
         ],
       ),

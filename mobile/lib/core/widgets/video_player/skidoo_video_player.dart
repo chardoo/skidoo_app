@@ -489,7 +489,7 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
         sized,
         if (widget.showControls && player != null)
           Positioned.fill(
-            child: GestureDetector(
+            child: Semantics(button: true, child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _onTap,
               child: AnimatedOpacity(
@@ -505,7 +505,7 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
                   onFullscreen: widget.allowFullscreen ? _openFullscreen : null,
                 ),
               ),
-            ),
+            )),
           ),
       ],
     );
@@ -629,7 +629,7 @@ class _CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
@@ -640,7 +640,7 @@ class _CircleButton extends StatelessWidget {
         ),
         child: Icon(icon, color: Colors.white, size: size ?? 20.sp),
       ),
-    );
+    ));
   }
 }
 
@@ -715,7 +715,7 @@ class _BottomBar extends StatelessWidget {
                       ),
                       if (onFullscreen != null) ...[
                         SizedBox(width: 8.w),
-                        GestureDetector(
+                        Semantics(button: true, label: 'Fullscreen', child: GestureDetector(
                           onTap: onFullscreen,
                           behavior: HitTestBehavior.opaque,
                           child: Icon(
@@ -723,7 +723,7 @@ class _BottomBar extends StatelessWidget {
                             color: Colors.white70,
                             size: 20.sp,
                           ),
-                        ),
+                        )),
                       ],
                     ],
                   ),
@@ -898,7 +898,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
+      body: Semantics(button: true, child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _onTap,
         child: Stack(
@@ -959,7 +959,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 }

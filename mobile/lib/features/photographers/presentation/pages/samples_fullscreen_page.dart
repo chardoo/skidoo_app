@@ -72,7 +72,7 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
             right: 0,
             child: Row(
               children: [
-                GestureDetector(
+                Semantics(button: true, label: 'Close', child: GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
                   child: Container(
                     margin: EdgeInsets.only(left: 16.w),
@@ -85,7 +85,7 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
                     child: const Icon(Icons.close_rounded,
                         color: Colors.white, size: 20),
                   ),
-                ),
+                )),
                 const Spacer(),
                 Container(
                   margin: EdgeInsets.only(right: 16.w),

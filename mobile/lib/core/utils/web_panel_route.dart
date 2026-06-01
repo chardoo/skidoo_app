@@ -42,10 +42,10 @@ class _WebPanelPageFrame extends StatelessWidget {
       children: [
         // Tap outside the panel column to dismiss this page.
         Positioned.fill(
-          child: GestureDetector(
+          child: Semantics(button: true, label: 'Maybe pop', child: GestureDetector(
             onTap: () => Navigator.of(context).maybePop(),
             child: const ColoredBox(color: Color(0x14000000)),
-          ),
+          )),
         ),
         Positioned(
           top: kWebChatPanelTopGap,

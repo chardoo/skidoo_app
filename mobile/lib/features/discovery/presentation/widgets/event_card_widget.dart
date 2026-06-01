@@ -21,7 +21,7 @@ class EventCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16.r),
@@ -95,7 +95,7 @@ class EventCardWidget extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 
   String _formatDate(String raw) {

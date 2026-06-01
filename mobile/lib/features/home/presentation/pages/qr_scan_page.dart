@@ -171,7 +171,7 @@ class _QrScanPageState extends State<QrScanPage> {
                       ),
                     ),
                     SizedBox(height: 16.h),
-                    GestureDetector(
+                    Semantics(button: true, label: 'Pick from gallery', child: GestureDetector(
                       onTap: _pickFromGallery,
                       child: Container(
                         padding: EdgeInsets.symmetric(
@@ -200,7 +200,7 @@ class _QrScanPageState extends State<QrScanPage> {
                           ],
                         ),
                       ),
-                    ),
+                    )),
                   ],
                 ),
               ),

@@ -408,7 +408,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     final isSelected = _selectedIds.contains(photo.id);
     final isPaid = photo.price > 0;
 
-    return GestureDetector(
+    return Semantics(button: true, label: 'Photo', child: GestureDetector(
       onTap: _selectionMode ? () => _toggleSelection(photo) : null,
       onLongPress: _selectionMode ? null : () => _enterSelectionMode(photo),
       child: AnimatedContainer(
@@ -565,7 +565,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
           ),
         ),
       ),
-    );
+    ));
   }
 
   // ── Bottom bar ─────────────────────────────────────────────────────────────
@@ -959,7 +959,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: disabled ? null : onTap,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 150),
@@ -1001,6 +1001,6 @@ class _ActionButton extends StatelessWidget {
                 ),
         ),
       ),
-    );
+    ));
   }
 }

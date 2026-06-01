@@ -42,7 +42,7 @@ class _PasswordFieldState extends State<PasswordField> {
           
           label: widget.label,
           // obsureText: isObscure,
-          trailing: GestureDetector(
+          trailing: Semantics(button: true, label: 'Is obscure', child: GestureDetector(
             onTap: () {
               setState(() {
                 isObscure = !isObscure;
@@ -52,7 +52,7 @@ class _PasswordFieldState extends State<PasswordField> {
               isObscure ? Icons.visibility : Icons.visibility_off,
               color: Colors.grey,
             ),
-          ),
+          )),
         ),
       ],
     );

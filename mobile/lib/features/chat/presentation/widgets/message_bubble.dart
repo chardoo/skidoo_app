@@ -1,5 +1,6 @@
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -96,8 +97,11 @@ class MessageBubble extends StatelessWidget {
                     // 72% of the window on mobile, but capped so chat media
                     // doesn't balloon to fill the much wider desktop/laptop
                     // window (where the chat panel is only part of the screen).
+                    // On web the chat lives in a ~460px side panel, so a 420px
+                    // bubble nearly fills (or overflows) it — keep media moderate
+                    // there with a tighter cap.
                     maxWidth: (MediaQuery.of(context).size.width * 0.72)
-                        .clamp(0.0, 420.0),
+                        .clamp(0.0, kIsWeb ? 300.0 : 420.0),
                   ),
                   decoration: BoxDecoration(
                     color: isMe ? ext.accentGold : ext.cardSurface,
@@ -517,6 +521,6 @@ class _Avatar extends StatelessWidget {
       ),
     );
     if (onTap == null) return avatar;
-    return GestureDetector(onTap: onTap, child: avatar);
+    return Semantics(button: true, child: GestureDetector(onTap: onTap, child: avatar));
   }
 }

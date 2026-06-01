@@ -262,7 +262,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                     ),
                     if (_lastCapturedFile != null) ...[
                       SizedBox(height: 8.h),
-                      GestureDetector(
+                      Semantics(button: true, label: 'Use anyway', child: GestureDetector(
                         onTap: _useAnyway,
                         child: Container(
                           padding: EdgeInsets.symmetric(
@@ -289,7 +289,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                             ],
                           ),
                         ),
-                      ),
+                      )),
                     ],
                     SizedBox(height: 14.h),
                   ],
@@ -307,10 +307,10 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                   SizedBox(height: 22.h),
 
                   // Shutter button
-                  GestureDetector(
+                  Semantics(button: true, label: 'Capture', child: GestureDetector(
                     onTap: _cameraReady && !_checking ? _capture : null,
                     child: _ShutterButton(checking: _checking),
-                  ),
+                  )),
                 ],
               ),
             ),
@@ -330,7 +330,7 @@ class _CircleIconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         width: 36.w,
@@ -341,7 +341,7 @@ class _CircleIconBtn extends StatelessWidget {
         ),
         child: Icon(icon, color: Colors.white, size: 18.sp),
       ),
-    );
+    ));
   }
 }
 

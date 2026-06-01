@@ -23,7 +23,8 @@ import 'package:skidoo_app/services/auth_service.dart';
 
 /// Opens a bottom sheet showing an image slider + real-time event comments.
 class EventCommentPage {
-  static void show(BuildContext context, EventDiscovery event) {
+  static void show(BuildContext context, EventDiscovery event,
+      {VoidCallback? onCommentSent}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -31,7 +32,7 @@ class EventCommentPage {
       useSafeArea: true,
       builder: (ctx) => BlocProvider(
         create: (_) => sl<ChatRoomBloc>(),
-        child: _EventCommentSheet(event: event),
+        child: _EventCommentSheet(event: event, onCommentSent: onCommentSent),
       ),
     );
   }
@@ -40,8 +41,9 @@ class EventCommentPage {
 // ── Sheet ─────────────────────────────────────────────────────────────────────
 
 class _EventCommentSheet extends StatefulWidget {
-  const _EventCommentSheet({required this.event});
+  const _EventCommentSheet({required this.event, this.onCommentSent});
   final EventDiscovery event;
+  final VoidCallback? onCommentSent;
 
   @override
   State<_EventCommentSheet> createState() => _EventCommentSheetState();
@@ -121,6 +123,7 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
     _bloc.add(ChatRoomMessageSent(text, replyToId: _replyingTo?.id));
+    widget.onCommentSent?.call();
     _inputCtrl.clear();
     if (_replyingTo != null) setState(() => _replyingTo = null);
   }
@@ -351,6 +354,7 @@ class EventCommentInlinePanel extends StatelessWidget {
     required this.event,
     required this.onClose,
     this.isExternalPanel = false,
+    this.onCommentSent,
   });
 
   final EventDiscovery event;
@@ -358,13 +362,17 @@ class EventCommentInlinePanel extends StatelessWidget {
   /// True when rendered outside the 480px card column (wide desktop layout).
   /// Removes the left border and uses slightly looser padding.
   final bool isExternalPanel;
+  final VoidCallback? onCommentSent;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<ChatRoomBloc>(),
       child: _InlineCommentContent(
-          event: event, onClose: onClose, isExternalPanel: isExternalPanel),
+          event: event,
+          onClose: onClose,
+          isExternalPanel: isExternalPanel,
+          onCommentSent: onCommentSent),
     );
   }
 }
@@ -374,10 +382,12 @@ class _InlineCommentContent extends StatefulWidget {
     required this.event,
     required this.onClose,
     this.isExternalPanel = false,
+    this.onCommentSent,
   });
   final EventDiscovery event;
   final VoidCallback onClose;
   final bool isExternalPanel;
+  final VoidCallback? onCommentSent;
 
   @override
   State<_InlineCommentContent> createState() =>
@@ -458,6 +468,7 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
     _bloc.add(ChatRoomMessageSent(text, replyToId: _replyingTo?.id));
+    widget.onCommentSent?.call();
     _inputCtrl.clear();
     if (_replyingTo != null) setState(() => _replyingTo = null);
   }

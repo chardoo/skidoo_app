@@ -374,7 +374,7 @@ class _FollowButtonState extends State<FollowButton>
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final onImg = widget.onImage;
 
-    return GestureDetector(
+    return Semantics(button: true, label: 'Toggle', child: GestureDetector(
       onTap: _toggle,
       child: ScaleTransition(
         scale: _ctrl,
@@ -422,7 +422,7 @@ class _FollowButtonState extends State<FollowButton>
                 ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -445,7 +445,7 @@ class CardActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Row(
@@ -462,6 +462,6 @@ class CardActionButton extends StatelessWidget {
           ],
         ],
       ),
-    );
+    ));
   }
 }

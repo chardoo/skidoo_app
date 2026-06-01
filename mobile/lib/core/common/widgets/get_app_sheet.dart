@@ -118,7 +118,7 @@ class GetAppSheet extends StatelessWidget {
             if (isWeb)
               Align(
                 alignment: Alignment.topRight,
-                child: GestureDetector(
+                child: Semantics(button: true, label: 'Close', child: GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
                   child: Container(
                     margin: EdgeInsets.only(bottom: 16.h),
@@ -133,7 +133,7 @@ class GetAppSheet extends StatelessWidget {
                       size: 16.sp,
                     ),
                   ),
-                ),
+                )),
               ),
 
             // Icon

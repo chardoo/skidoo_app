@@ -174,6 +174,14 @@ class _WsUserJoined extends ChatRoomEvent {
   const _WsUserJoined(this.userId, this.userName, {this.userRole = ''});
 }
 
+/// Internal — debounced request to re-fetch the room from the server so the
+/// participant list/count converges to server truth after any membership
+/// change (join/leave/removed). Covers WS frames that arrive with incomplete
+/// participant data, or that were missed on the broadcast stream entirely.
+class _RoomReconcileRequested extends ChatRoomEvent {
+  const _RoomReconcileRequested();
+}
+
 // ── Group admin actions (dispatched by the UI) ────────────────────────────────
 
 /// Grant admin rights to a participant.

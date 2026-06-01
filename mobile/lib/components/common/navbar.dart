@@ -151,7 +151,7 @@ class _NavTab extends StatelessWidget {
     }
 
     return Expanded(
-      child: GestureDetector(
+      child: Semantics(button: true, child: GestureDetector(
         onTap: () {
           HapticFeedback.selectionClick();
           onTap();
@@ -200,7 +200,7 @@ class _NavTab extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -215,7 +215,7 @@ class _CreateFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
+      child: Semantics(button: true, label: 'Medium impact', child: GestureDetector(
         onTap: () {
           HapticFeedback.mediumImpact();
           onTap();
@@ -247,7 +247,7 @@ class _CreateFab extends StatelessWidget {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }

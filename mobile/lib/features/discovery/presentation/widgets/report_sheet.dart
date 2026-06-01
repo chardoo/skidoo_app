@@ -105,11 +105,11 @@ class _ReportSheetState extends State<ReportSheet> {
               child: Row(
                 children: [
                   if (!kIsWeb)
-                    GestureDetector(
+                    Semantics(button: true, label: 'Close', child: GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
                       child: Icon(Icons.arrow_back_ios_new_rounded,
                           color: ext.greetingColor, size: 18.sp),
-                    ),
+                    )),
                   SizedBox(width: 12.w),
                   Text(
                     'Why are you reporting this?',

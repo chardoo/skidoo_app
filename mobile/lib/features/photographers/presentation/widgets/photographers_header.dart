@@ -48,14 +48,14 @@ class PhotographersHeader extends StatelessWidget {
                     prefixIcon: Icon(Icons.search_rounded,
                         color: ext.searchHintColor, size: 20.sp),
                     suffixIcon: value.text.isNotEmpty
-                        ? GestureDetector(
+                        ? Semantics(button: true, child: GestureDetector(
                             onTap: () {
                               textCtrl.clear();
                               onSearchChanged('');
                             },
                             child: Icon(Icons.close_rounded,
                                 color: ext.searchHintColor, size: 18.sp),
-                          )
+                          ))
                         : null,
                     border: InputBorder.none,
                     focusedBorder: InputBorder.none,

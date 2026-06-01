@@ -178,7 +178,7 @@ class _AuthPasswordFieldState extends State<AuthPasswordField> {
       keyboardType: TextInputType.visiblePassword,
       textInputAction: widget.textInputAction,
       validator: widget.validator,
-      suffix: GestureDetector(
+      suffix: Semantics(button: true, label: 'Show or hide password', child: GestureDetector(
         onTap: () => setState(() => _obscure = !_obscure),
         child: Padding(
           padding: EdgeInsets.only(right: 4.w),
@@ -190,7 +190,7 @@ class _AuthPasswordFieldState extends State<AuthPasswordField> {
             size: 20.sp,
           ),
         ),
-      ),
+      )),
     );
   }
 }

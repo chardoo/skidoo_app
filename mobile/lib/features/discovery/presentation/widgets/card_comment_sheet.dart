@@ -114,7 +114,7 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
                     ),
                   ),
                   SizedBox(width: 8.w),
-                  GestureDetector(
+                  Semantics(button: true, label: 'Submit', child: GestureDetector(
                     onTap: _submit,
                     child: Container(
                       width: 40.w,
@@ -126,7 +126,7 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
                       child: Icon(Icons.send_rounded,
                           color: Colors.white, size: 18.sp),
                     ),
-                  ),
+                  )),
                 ],
               ),
             ),

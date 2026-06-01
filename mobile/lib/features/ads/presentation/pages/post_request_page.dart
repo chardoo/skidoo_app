@@ -342,7 +342,7 @@ class _MultiMediaPicker extends StatelessWidget {
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: GestureDetector(
+                    child: Semantics(button: true, child: GestureDetector(
                       onTap: () => onRemove(i),
                       child: Container(
                         padding: const EdgeInsets.all(3),
@@ -353,7 +353,7 @@ class _MultiMediaPicker extends StatelessWidget {
                         child: Icon(Icons.close_rounded,
                             color: Colors.white, size: 14.sp),
                       ),
-                    ),
+                    )),
                   ),
                 ],
               ),
@@ -362,7 +362,7 @@ class _MultiMediaPicker extends StatelessWidget {
 
           // Add button (shown when under limit)
           if (!atLimit)
-            GestureDetector(
+            Semantics(button: true, label: 'Add', child: GestureDetector(
               onTap: onAdd,
               child: Container(
                 width: _thumbSize,
@@ -392,7 +392,7 @@ class _MultiMediaPicker extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
+            )),
         ],
       ),
     );
@@ -551,7 +551,7 @@ class _SubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: submitting ? null : onTap,
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 16.h),
@@ -588,7 +588,7 @@ class _SubmitButton extends StatelessWidget {
                 ),
               ),
       ),
-    );
+    ));
   }
 }
 
@@ -653,7 +653,7 @@ class _VisibleToChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
@@ -680,6 +680,6 @@ class _VisibleToChip extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }

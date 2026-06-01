@@ -231,7 +231,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                     ),
                   ),
                   SizedBox(height: 20.h),
-                  GestureDetector(
+                  Semantics(button: true, label: 'Amount', child: GestureDetector(
                     onTap: () async {
                       final amount = double.tryParse(ctrl.text.trim());
                       if (amount == null || amount <= 0) {
@@ -264,7 +264,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                         ),
                       ),
                     ),
-                  ),
+                  )),
                 ],
               ),
             ),
@@ -492,12 +492,12 @@ class _CampaignTile extends StatelessWidget {
                   !campaign.status.canResume &&
                   campaign.status != CampaignStatus.rejected) ...[
                 SizedBox(width: 6.w),
-                GestureDetector(
+                Semantics(button: true, label: 'Edit', child: GestureDetector(
                   onTap: onEdit,
                   child: Icon(Icons.edit_outlined,
                       size: 16.sp,
                       color: ext.searchHintColor.withValues(alpha: 0.7)),
-                ),
+                )),
               ],
             ],
           ),
@@ -546,7 +546,7 @@ class _CampaignTile extends StatelessWidget {
           // ── Pay & Submit button (draft / pending payment) ─────────────
           if (campaign.status.canPay) ...[
             SizedBox(height: 12.h),
-            GestureDetector(
+            Semantics(button: true, label: 'Pay', child: GestureDetector(
               onTap: onPay,
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -576,7 +576,7 @@ class _CampaignTile extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
+            )),
           ],
 
           // ── Active: Edit + Pause side by side ────────────────────────
@@ -611,7 +611,7 @@ class _CampaignTile extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: GestureDetector(
+                  child: Semantics(button: true, label: 'Resume', child: GestureDetector(
                     onTap: onResume,
                     child: Container(
                       padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -641,11 +641,11 @@ class _CampaignTile extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ),
+                  )),
                 ),
                 SizedBox(width: 8.w),
                 Expanded(
-                  child: GestureDetector(
+                  child: Semantics(button: true, label: 'Top up', child: GestureDetector(
                     onTap: onTopUp,
                     child: Container(
                       padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -675,7 +675,7 @@ class _CampaignTile extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ),
+                  )),
                 ),
               ],
             ),
@@ -691,7 +691,7 @@ class _CampaignTile extends StatelessWidget {
           // ── Rejected: Fix & Resubmit (gold) ──────────────────────────
           if (campaign.status == CampaignStatus.rejected) ...[
             SizedBox(height: 12.h),
-            GestureDetector(
+            Semantics(button: true, label: 'Edit', child: GestureDetector(
               onTap: onEdit,
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -720,7 +720,7 @@ class _CampaignTile extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
+            )),
             if (campaign.rejectionReason != null &&
                 campaign.rejectionReason!.isNotEmpty) ...[
               SizedBox(height: 8.h),
@@ -758,7 +758,7 @@ class _CampaignTile extends StatelessWidget {
           // ── Delete button (draft only) ────────────────────────────────
           if (campaign.status.canDelete) ...[
             SizedBox(height: 10.h),
-            GestureDetector(
+            Semantics(button: true, label: 'Delete', child: GestureDetector(
               onTap: onDelete,
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -788,7 +788,7 @@ class _CampaignTile extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
+            )),
           ],
         ],
       ),
@@ -820,7 +820,7 @@ class _OutlinedActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -849,7 +849,7 @@ class _OutlinedActionBtn extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

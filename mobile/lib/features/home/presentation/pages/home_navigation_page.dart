@@ -269,11 +269,11 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                             const Spacer(),
                             MouseRegion(
                               cursor: SystemMouseCursors.click,
-                              child: GestureDetector(
+                              child: Semantics(button: true, label: 'Close search', child: GestureDetector(
                                 onTap: _closeSearch,
                                 child: Icon(Icons.close_rounded,
                                     color: ext.searchHintColor, size: 20),
-                              ),
+                              )),
                             ),
                           ] else ...[
                             _PillTab(
@@ -594,7 +594,7 @@ class _PillTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -619,7 +619,7 @@ class _PillTab extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

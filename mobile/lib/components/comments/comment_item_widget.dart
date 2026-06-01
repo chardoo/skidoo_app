@@ -34,7 +34,7 @@ class CommentItemWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Avatar ────────────────────────────────────────────────────────
-            GestureDetector(
+            Semantics(button: true, label: 'View profile', child: GestureDetector(
               onTap: canChat ? data.onUserTap : null,
               child: Stack(
                 children: [
@@ -83,7 +83,7 @@ class CommentItemWidget extends StatelessWidget {
                     ),
                 ],
               ),
-            ),
+            )),
             SizedBox(width: 10.w),
 
             // ── Message body ──────────────────────────────────────────────────
@@ -94,7 +94,7 @@ class CommentItemWidget extends StatelessWidget {
                   // Name + time
                   Row(
                     children: [
-                      GestureDetector(
+                      Semantics(button: true, label: 'View profile', child: GestureDetector(
                         onTap: canChat ? data.onUserTap : null,
                         child: Text(
                           data.label,
@@ -113,7 +113,7 @@ class CommentItemWidget extends StatelessWidget {
                                 ext.accentGold.withValues(alpha: 0.5),
                           ),
                         ),
-                      ),
+                      )),
                       SizedBox(width: 6.w),
                       Text(
                         data.timeLabel,
@@ -141,7 +141,7 @@ class CommentItemWidget extends StatelessWidget {
 
                   // Reply button
                   if (data.onReply != null)
-                    GestureDetector(
+                    Semantics(button: true, label: 'Reply', child: GestureDetector(
                       onTap: data.onReply,
                       child: Padding(
                         padding: EdgeInsets.only(top: 3.h),
@@ -154,7 +154,7 @@ class CommentItemWidget extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ),
+                    )),
                 ],
               ),
             ),

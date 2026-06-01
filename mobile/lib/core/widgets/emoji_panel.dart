@@ -64,7 +64,7 @@ class EmojiButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: GestureDetector(
+      child: Semantics(button: true, label: 'Toggle', child: GestureDetector(
         onTap: onToggle,
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
@@ -73,7 +73,7 @@ class EmojiButton extends StatelessWidget {
             style: TextStyle(fontSize: iconSize ?? 20.sp),
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -136,7 +136,7 @@ class _EmojiPickerPanelState extends State<EmojiPickerPanel> {
               children: _kEmojiCategories.keys.map((cat) {
                 final active = cat == _activeCategory;
                 return Expanded(
-                  child: GestureDetector(
+                  child: Semantics(button: true, label: 'Cat', child: GestureDetector(
                     onTap: () => setState(() => _activeCategory = cat),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
@@ -161,7 +161,7 @@ class _EmojiPickerPanelState extends State<EmojiPickerPanel> {
                         ),
                       ),
                     ),
-                  ),
+                  )),
                 );
               }).toList(),
             ),
@@ -214,7 +214,7 @@ class _EmojiCellState extends State<_EmojiCell> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
@@ -227,7 +227,7 @@ class _EmojiCellState extends State<_EmojiCell> {
           ),
           child: Text(widget.emoji, style: TextStyle(fontSize: 20.sp)),
         ),
-      ),
+      )),
     );
   }
 }

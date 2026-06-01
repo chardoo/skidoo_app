@@ -451,7 +451,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
               color: ext.greetingColor, size: 18.sp),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: GestureDetector(
+        title: Semantics(button: true, label: 'Open group info', child: GestureDetector(
           onTap: widget.room.type == RoomType.group
               ? () => _openGroupInfo(context)
               : null,
@@ -497,7 +497,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
             ),
           ],
           ),
-        ),
+        )),
         actions: [
           // Block/Unblock menu — only shown for DM rooms
           if (_isDirect)
@@ -836,7 +836,7 @@ class _LikeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Semantics(button: true, child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20.r),
       child: Padding(
@@ -863,7 +863,7 @@ class _LikeButton extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -988,7 +988,7 @@ class _SheetOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return InkWell(
+    return Semantics(button: true, child: InkWell(
       onTap: loading ? null : onTap,
       borderRadius: BorderRadius.circular(12.r),
       child: Padding(
@@ -1024,7 +1024,7 @@ class _SheetOption extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

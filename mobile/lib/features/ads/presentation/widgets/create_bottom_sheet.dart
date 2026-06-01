@@ -154,7 +154,7 @@ class _CreateOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.all(16.w),
@@ -253,6 +253,6 @@ class _CreateOption extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }

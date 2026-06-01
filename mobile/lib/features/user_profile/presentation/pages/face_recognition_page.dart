@@ -217,7 +217,7 @@ class _AddSelfieTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
@@ -244,7 +244,7 @@ class _AddSelfieTile extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -298,7 +298,7 @@ class _SelfieTile extends StatelessWidget {
         Positioned(
           top: 4.h,
           right: 4.w,
-          child: GestureDetector(
+          child: Semantics(button: true, label: 'Remove', child: GestureDetector(
             onTap: onRemove,
             child: Container(
               padding: const EdgeInsets.all(4),
@@ -309,7 +309,7 @@ class _SelfieTile extends StatelessWidget {
               child: Icon(Icons.close_rounded,
                   color: Colors.white, size: 13.sp),
             ),
-          ),
+          )),
         ),
       ],
     );

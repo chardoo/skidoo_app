@@ -223,7 +223,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
 
   Widget _buildMediaStack(BuildContext context, AppThemeExtension ext,
       List<EventPicture> pics, double width, double height) {
-    return GestureDetector(
+    return Semantics(button: true, label: 'Is authenticated', child: GestureDetector(
       onTap: widget.isAuthenticated ? null : widget.onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -295,7 +295,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           ],
         ),
       ),
-    );
+    ));
   }
 
   // ── Web layout — image left, reactions/comments panel right ─────────────────
@@ -383,6 +383,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       event: widget.event,
       isExternalPanel: isExternalPanel,
       onClose: () => setState(() => _webCommentsOpen = false),
+      onCommentSent: _onCommentSent,
     );
 
     // Narrow (inside-card) layout: comments replace reactions.
@@ -507,6 +508,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                   event: widget.event,
                   isExternalPanel: true,
                   onClose: () => setState(() => _webCommentsOpen = false),
+                  onCommentSent: _onCommentSent,
                 ),
               ),
           ],
@@ -699,7 +701,14 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   }
 
   void _showCommentSheet(BuildContext context, AppThemeExtension ext) {
-    EventCommentPage.show(context, widget.event);
+    EventCommentPage.show(context, widget.event, onCommentSent: _onCommentSent);
+  }
+
+  /// Optimistically bump the feed card's comment count when the user posts a
+  /// comment. The feed rebuilds from DiscoveryBloc state, so the count updates
+  /// live without waiting for a reload.
+  void _onCommentSent() {
+    _discoveryBloc?.add(DiscoveryCommentAdded(widget.event.id));
   }
 }
 
@@ -759,20 +768,20 @@ class _PostHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // ── Avatar ─────────────────────────────────────────────────────
-          GestureDetector(
+          Semantics(button: true, label: 'View profile', child: GestureDetector(
             onTap: onPhotographerTap,
             child: _CreatorInitialsAvatar(
               name: name,
               size: 36.w,
               onImage: onImage,
             ),
-          ),
+          )),
 
           SizedBox(width: 10.w),
 
           // ── Name (no subtitle — keeps the header slim) ─────────────────
           Expanded(
-            child: GestureDetector(
+            child: Semantics(button: true, label: 'View profile', child: GestureDetector(
               onTap: onPhotographerTap,
               behavior: HitTestBehavior.opaque,
               child: Row(
@@ -798,7 +807,7 @@ class _PostHeader extends StatelessWidget {
                   ],
                 ],
               ),
-            ),
+            )),
           ),
 
           // ── Follow pill — hidden for own posts ─────────────────────────
@@ -813,14 +822,14 @@ class _PostHeader extends StatelessWidget {
           ],
 
           // ── More options ───────────────────────────────────────────────
-          GestureDetector(
+          Semantics(button: true, label: 'Show more options', child: GestureDetector(
             onTap: () => _showMoreOptions(context),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
               child: Icon(Icons.more_horiz_rounded,
                   color: iconColor, size: 21.sp),
             ),
-          ),
+          )),
         ],
       ),
     );
@@ -988,7 +997,7 @@ class _ImageFooterState extends State<_ImageFooter> {
         // Content tags — inline with "more / less" pinned to the right
         if (tagLine.isNotEmpty) ...[
           SizedBox(height: 4.h),
-          GestureDetector(
+          Semantics(button: true, child: GestureDetector(
             onTap: () => setState(() => _tagsExpanded = !_tagsExpanded),
             child: _tagsExpanded
                 ? Text(
@@ -1030,7 +1039,7 @@ class _ImageFooterState extends State<_ImageFooter> {
                       ),
                     ],
                   ),
-          ),
+          )),
         ],
       ],
     );
@@ -1268,7 +1277,7 @@ class _UnauthCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: GestureDetector(
+      child: Semantics(button: true, child: GestureDetector(
         onTap: onTap,
         child: Container(
           color: Colors.black.withValues(alpha: 0.4),
@@ -1282,7 +1291,7 @@ class _UnauthCta extends StatelessWidget {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }

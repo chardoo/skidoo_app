@@ -320,7 +320,7 @@ class _MediaTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         height: height,
@@ -342,7 +342,7 @@ class _MediaTile extends StatelessWidget {
               : _PhotoTile(url: picture.url),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -513,7 +513,7 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
             SafeArea(
               child: Padding(
                 padding: EdgeInsets.only(left: 14.w, top: 10.h),
-                child: GestureDetector(
+                child: Semantics(button: true, label: 'Close', child: GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
                   behavior: HitTestBehavior.opaque,
                   child: Container(
@@ -529,7 +529,7 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
                     child: Icon(Icons.arrow_back_ios_new_rounded,
                         color: Colors.white, size: 16.sp),
                   ),
-                ),
+                )),
               ),
             ),
         ],

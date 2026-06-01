@@ -74,7 +74,7 @@ class _PicturesFullscreenViewerState extends State<PicturesFullscreenViewer> {
                 child: Row(
                   children: [
                     if (!kIsWeb)
-                      GestureDetector(
+                      Semantics(button: true, label: 'Close', child: GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
                         child: Container(
                           width: 36.w,
@@ -86,7 +86,7 @@ class _PicturesFullscreenViewerState extends State<PicturesFullscreenViewer> {
                           child: Icon(Icons.close,
                               color: Colors.white, size: 20.sp),
                         ),
-                      ),
+                      )),
                     const Spacer(),
                     Container(
                       padding: EdgeInsets.symmetric(

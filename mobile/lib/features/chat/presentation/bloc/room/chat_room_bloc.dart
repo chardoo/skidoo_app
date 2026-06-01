@@ -93,6 +93,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   // Waits for ChatBackgroundService to signal the WS is (re)connected.
   StreamSubscription<bool>? _wsConnectionSub;
   Timer? _otpkPollTimer;
+  // Coalesces bursts of membership changes into a single authoritative re-fetch.
+  Timer? _reconcileDebounce;
   static const int _otpkReplenishThreshold = 10;
   static const int _otpkReplenishBatchSize = 100;
 
@@ -165,6 +167,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_MessageEdited>(_onMessageEdited);
     on<_MessageDeleted>(_onMessageDeleted);
     on<_WsUserJoined>(_onWsUserJoined);
+    on<_RoomReconcileRequested>(_onRoomReconcile);
     on<ChatRoomGrantAdminRequested>(_onGrantAdminRequested);
     on<ChatRoomRevokeAdminRequested>(_onRevokeAdminRequested);
     on<ChatRoomUpdateSettingsRequested>(_onUpdateSettingsRequested);
@@ -1801,6 +1804,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
   void _onWsUserJoined(_WsUserJoined event, Emitter<ChatRoomState> emit) {
     final name = event.userName.isNotEmpty ? event.userName : event.userId;
+    debugPrint('[ChatBloc] user_joined room=$_currentRoomId userId=${event.userId}'
+        ' name="${event.userName}" role="${event.userRole}"');
 
     // Add the new member to the local participant list so _rekeyGroup can
     // include them and the participant count stays consistent.
@@ -1819,10 +1824,46 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     emit(state.copyWith(room: updatedRoom, systemNotice: '$name joined the group'));
 
+    // The join frame may omit the user's name/role, and broadcast-stream frames
+    // can be missed entirely while WS listeners are (re)attaching — so always
+    // reconcile against the authoritative room list.
+    _scheduleRoomReconcile();
+
     // Distribute our group sender key to the new joiner so they can decrypt
     // our past and future messages.
     if (_isGroupRoom && _currentRoomId != null) {
       _distributeSenderKeyToMember(event.userId).catchError((_) {});
+    }
+  }
+
+  /// Debounced re-fetch of the room so the participant list/count always
+  /// converges to server truth after a membership change, regardless of how
+  /// complete (or whether) the triggering WS frame was.
+  void _scheduleRoomReconcile() {
+    _reconcileDebounce?.cancel();
+    _reconcileDebounce = Timer(const Duration(milliseconds: 800), () {
+      if (!isClosed && _currentRoomId != null) {
+        add(const _RoomReconcileRequested());
+      }
+    });
+  }
+
+  Future<void> _onRoomReconcile(
+    _RoomReconcileRequested event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    try {
+      final fresh = await _getRoom(roomId);
+      // Bail if the user navigated away or switched rooms while fetching.
+      if (isClosed || _currentRoomId != roomId) return;
+      final amIAdmin =
+          fresh.participants.any((p) => p.userId == _myUserId && p.isAdmin);
+      debugPrint('[ChatBloc] room reconciled — participants=${fresh.participants.length}');
+      emit(state.copyWith(room: fresh, amIAdmin: amIAdmin));
+    } catch (e) {
+      debugPrint('[ChatBloc] room reconcile failed: $e');
     }
   }
 
@@ -2013,6 +2054,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       room: updatedRoom,
       systemNotice: '$name left the group.',
     ));
+    _scheduleRoomReconcile();
 
     // Re-key: the departed member must not decrypt future messages.
     if (_isGroupRoom && _currentRoomId != null) {
@@ -2340,6 +2382,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       room: updatedRoom,
       systemNotice: '$name was removed from the group.',
     ));
+    _scheduleRoomReconcile();
 
     // Re-key: the removed member must not decrypt future messages.
     if (_isGroupRoom && _currentRoomId != null) {
@@ -2358,6 +2401,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
   void _onLeft(ChatRoomLeft event, Emitter<ChatRoomState> emit) {
     _otpkPollTimer?.cancel();
+    _reconcileDebounce?.cancel();
     _wsConnectionSub?.cancel();
     _wsConnectionSub = null;
     _cancelWsSubscriptions();
@@ -2369,6 +2413,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   @override
   Future<void> close() {
     _otpkPollTimer?.cancel();
+    _reconcileDebounce?.cancel();
     _wsConnectionSub?.cancel();
     _cancelWsSubscriptions();
     // Do NOT disconnect the shared WS — it is owned by ChatBackgroundService.

@@ -113,7 +113,7 @@ class _Header extends StatelessWidget {
           // ← back to event list
           MouseRegion(
             cursor: SystemMouseCursors.click,
-            child: GestureDetector(
+            child: Semantics(button: true, label: 'Back', child: GestureDetector(
               onTap: onBack,
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
@@ -131,7 +131,7 @@ class _Header extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
+            )),
           ),
           SizedBox(width: 8.w),
           Icon(Icons.chevron_right_rounded,
@@ -151,11 +151,11 @@ class _Header extends StatelessWidget {
           ),
           MouseRegion(
             cursor: SystemMouseCursors.click,
-            child: GestureDetector(
+            child: Semantics(button: true, label: 'Close', child: GestureDetector(
               onTap: onClose,
               child: Icon(Icons.close_rounded,
                   color: ext.searchHintColor, size: 20),
-            ),
+            )),
           ),
         ],
       ),
@@ -506,7 +506,7 @@ class _PanelBtn extends StatelessWidget {
     final bg = primary ? ext.accentGold : ext.searchFieldFill;
     final fg = primary ? Colors.black : ext.greetingColor;
 
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: disabled ? null : onTap,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 150),
@@ -550,6 +550,6 @@ class _PanelBtn extends StatelessWidget {
                 ),
         ),
       ),
-    );
+    ));
   }
 }

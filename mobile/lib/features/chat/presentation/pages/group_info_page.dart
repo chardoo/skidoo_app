@@ -540,7 +540,7 @@ class _ParticipantTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Semantics(button: true, label: 'Show options', child: InkWell(
       onTap: amIAdmin && !isSelf && !participant.isPending
           ? () => _showOptions(context)
           : null,
@@ -638,7 +638,7 @@ class _ParticipantTile extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -872,7 +872,7 @@ class _SheetOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return InkWell(
+    return Semantics(button: true, child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12.r),
       child: Padding(
@@ -901,6 +901,6 @@ class _SheetOption extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }

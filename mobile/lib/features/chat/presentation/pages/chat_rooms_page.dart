@@ -172,7 +172,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
                                 prefixIcon: Icon(Icons.search_rounded,
                                     color: ext.glassIcon, size: 20.sp),
                                 suffixIcon: _searchQuery.isNotEmpty
-                                    ? GestureDetector(
+                                    ? Semantics(button: true, child: GestureDetector(
                                         onTap: () {
                                           _searchCtrl.clear();
                                           setState(() => _searchQuery = '');
@@ -180,7 +180,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
                                         child: Icon(Icons.close_rounded,
                                             color: ext.searchHintColor,
                                             size: 18.sp),
-                                      )
+                                      ))
                                     : null,
                                 border: InputBorder.none,
                                 focusedBorder: InputBorder.none,
@@ -410,7 +410,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
@@ -425,6 +425,6 @@ class _ActionButton extends StatelessWidget {
               color: color, fontSize: 12.sp, fontWeight: FontWeight.w600),
         ),
       ),
-    );
+    ));
   }
 }

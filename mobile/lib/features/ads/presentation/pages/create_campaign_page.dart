@@ -594,7 +594,7 @@ class _BottomBar extends StatelessWidget {
       child: Row(
         children: [
           if (onBack != null)
-            GestureDetector(
+            Semantics(button: true, label: 'Back', child: GestureDetector(
               onTap: onBack,
               child: Container(
                 width: 48.w,
@@ -607,10 +607,10 @@ class _BottomBar extends StatelessWidget {
                 child: Icon(Icons.arrow_back_rounded,
                     color: ext.greetingColor, size: 20.sp),
               ),
-            ),
+            )),
           if (onBack != null) SizedBox(width: 12.w),
           Expanded(
-            child: GestureDetector(
+            child: Semantics(button: true, label: 'Next', child: GestureDetector(
               onTap: loading ? null : onNext,
               child: Container(
                 height: 50.h,
@@ -657,7 +657,7 @@ class _BottomBar extends StatelessWidget {
                         ],
                       ),
               ),
-            ),
+            )),
           ),
         ],
       ),
@@ -1414,7 +1414,7 @@ class _CampaignMultiPicker extends StatelessWidget {
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: GestureDetector(
+                    child: Semantics(button: true, child: GestureDetector(
                       onTap: () => onRemove(i),
                       child: Container(
                         padding: const EdgeInsets.all(3),
@@ -1425,14 +1425,14 @@ class _CampaignMultiPicker extends StatelessWidget {
                         child: Icon(Icons.close_rounded,
                             color: Colors.white, size: 14.sp),
                       ),
-                    ),
+                    )),
                   ),
                 ],
               ),
             );
           }),
           if (!atLimit)
-            GestureDetector(
+            Semantics(button: true, label: 'Add', child: GestureDetector(
               onTap: onAdd,
               child: Container(
                 width: _thumbSize,
@@ -1462,7 +1462,7 @@ class _CampaignMultiPicker extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
+            )),
         ],
       ),
     );
@@ -1481,7 +1481,7 @@ class _DatePickerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
@@ -1507,6 +1507,6 @@ class _DatePickerTile extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }

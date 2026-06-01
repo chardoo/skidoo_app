@@ -286,7 +286,7 @@ class _EditProfileCardState extends State<_EditProfileCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Header row ────────────────────────────────────────────────────
-          InkWell(
+          Semantics(button: true, label: 'Expanded', child: InkWell(
             borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
             onTap: () => setState(() => _expanded = !_expanded),
             child: Padding(
@@ -315,7 +315,7 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                 ],
               ),
             ),
-          ),
+          )),
           // ── Expandable form ───────────────────────────────────────────────
           AnimatedCrossFade(
             duration: const Duration(milliseconds: 250),

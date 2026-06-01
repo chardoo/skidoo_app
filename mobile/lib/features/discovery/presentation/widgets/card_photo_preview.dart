@@ -78,7 +78,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
           );
         }
 
-        return GestureDetector(
+        return Semantics(button: true, child: GestureDetector(
           onTap: widget.onTap,
           onDoubleTap: widget.onDoubleTap,
           child: Stack(
@@ -112,7 +112,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
               // if (pic.owner) const _OwnerCornerRibbon(),
             ],
           ),
-        );
+        ));
       },
     );
   }

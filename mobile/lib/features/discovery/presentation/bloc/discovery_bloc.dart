@@ -98,6 +98,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     on<_DiscoveryReactionsPatchReceived>(_onReactionsPatchReceived);
     on<_DiscoveryHiddenIdsLoaded>(_onHiddenIdsLoaded);
     on<DiscoveryEventSaveToggled>(_onSaveToggled);
+    on<DiscoveryCommentAdded>(_onCommentAdded);
     on<_DiscoverySavedItemsLoaded>(_onSavedItemsLoaded);
 
     // Load current user ID once so we can identify own updates later.
@@ -435,6 +436,18 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       userReaction: reaction,
       clearReaction: reaction == null && isOwnAction,
     );
+    emit(state.copyWith(events: updated));
+  }
+
+  // ── Comment added by the current user ─────────────────────────────────────
+
+  void _onCommentAdded(
+      DiscoveryCommentAdded event, Emitter<DiscoveryState> emit) {
+    final idx = state.events.indexWhere((e) => e.id == event.eventId);
+    if (idx == -1) return;
+    final current = state.events[idx];
+    final updated = List<EventDiscovery>.from(state.events);
+    updated[idx] = current.copyWith(commentCount: current.commentCount + 1);
     emit(state.copyWith(events: updated));
   }
 

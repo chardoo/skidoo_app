@@ -493,7 +493,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
                       : widget.onLoginRequired,
                 ),
                 SizedBox(width: 6.w),
-                GestureDetector(
+                Semantics(button: true, label: 'Hide', child: GestureDetector(
                   onTap: () => _FeedItemMoreOptionsSheet.show(
                     context,
                     ext: ext,
@@ -503,7 +503,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
                   ),
                   child: Icon(Icons.more_horiz_rounded,
                       color: ext.searchHintColor, size: 22.sp),
-                ),
+                )),
               ],
             ),
           ),
@@ -887,7 +887,7 @@ class _CtaStripState extends State<_CtaStrip>
       animation: _ctrl,
       builder: (context, child) {
         final p = _ctrl.value;
-        return GestureDetector(
+        return Semantics(button: true, child: GestureDetector(
           onTap: widget.onTap,
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 13.h),
@@ -911,7 +911,7 @@ class _CtaStripState extends State<_CtaStrip>
             ),
             child: child,
           ),
-        );
+        ));
       },
       child: Row(
         children: [
@@ -1029,7 +1029,7 @@ class _BodyText extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GestureDetector(
+          Semantics(button: true, label: 'Toggle', child: GestureDetector(
             onTap: onToggle,
             child: RichText(
               maxLines: expanded ? null : 2,
@@ -1052,17 +1052,17 @@ class _BodyText extends StatelessWidget {
                 ],
               ),
             ),
-          ),
+          )),
           if (!expanded) ...[
             SizedBox(height: 2.h),
-            GestureDetector(
+            Semantics(button: true, label: 'Toggle', child: GestureDetector(
               onTap: onToggle,
               child: Text(
                 'more',
                 style: TextStyle(
                     color: ext.searchHintColor, fontSize: 12.sp),
               ),
-            ),
+            )),
           ],
         ],
       ),

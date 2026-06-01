@@ -62,7 +62,7 @@ class ImageWithAddToCartWidget extends StatelessWidget {
           Positioned(
             bottom: 8.h,
             right: 8.w,
-            child: GestureDetector(
+            child: Semantics(button: true, label: 'Cart', child: GestureDetector(
               onTap: () {
                 if (photo.price == 0) {
                   context.read<CartBloc>().add(CartImageDownloaded(photo.url));
@@ -88,7 +88,7 @@ class ImageWithAddToCartWidget extends StatelessWidget {
                   size: 18.sp,
                 ),
               ),
-            ),
+            )),
           ),
         ],
       ),

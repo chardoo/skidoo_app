@@ -19,7 +19,7 @@ class PicturesBottomAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Column(
@@ -49,6 +49,6 @@ class PicturesBottomAction extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }

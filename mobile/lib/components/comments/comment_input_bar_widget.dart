@@ -88,11 +88,11 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                   ),
                 ),
                 SizedBox(width: 4.w),
-                GestureDetector(
+                Semantics(button: true, label: 'Cancel reply', child: GestureDetector(
                   onTap: widget.onCancelReply,
                   child: Icon(Icons.close_rounded,
                       size: 16.sp, color: ext.searchHintColor),
-                ),
+                )),
               ],
             ),
           ),
@@ -172,7 +172,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
               // ── Send button ───────────────────────────────────────────────
               MouseRegion(
                 cursor: SystemMouseCursors.click,
-                child: GestureDetector(
+                child: Semantics(button: true, label: 'Send', child: GestureDetector(
                   onTap: widget.onSend,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
@@ -197,7 +197,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                     child: Icon(Icons.send_rounded,
                         color: Colors.white, size: 18.sp),
                   ),
-                ),
+                )),
               ),
             ],
           ),

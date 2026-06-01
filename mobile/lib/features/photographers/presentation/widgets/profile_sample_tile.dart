@@ -11,7 +11,7 @@ class PhotographerSampleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(4.r),
@@ -31,6 +31,6 @@ class PhotographerSampleTile extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }

@@ -535,7 +535,7 @@ class _SamplesTabState extends State<_SamplesTab>
           itemBuilder: (context, index) {
             // Last cell is the "add" button for owners
             if (widget.isOwner && index == cellCount - 1) {
-              return GestureDetector(
+              return Semantics(button: true, label: 'Pick and upload', child: GestureDetector(
                 onTap: _uploading ? null : _pickAndUpload,
                 child: Container(
                   decoration: BoxDecoration(
@@ -565,7 +565,7 @@ class _SamplesTabState extends State<_SamplesTab>
                           ],
                         ),
                 ),
-              );
+              ));
             }
 
             final sample = _samples[index];
@@ -584,7 +584,7 @@ class _SamplesTabState extends State<_SamplesTab>
                   Positioned(
                     top: 4.h,
                     right: 4.w,
-                    child: GestureDetector(
+                    child: Semantics(button: true, label: 'Sample', child: GestureDetector(
                       onTap: () => _confirmDelete(sample),
                       child: Container(
                         padding: const EdgeInsets.all(3),
@@ -595,7 +595,7 @@ class _SamplesTabState extends State<_SamplesTab>
                         child: Icon(Icons.close_rounded,
                             color: Colors.white, size: 13.sp),
                       ),
-                    ),
+                    )),
                   ),
               ],
             );
@@ -745,7 +745,7 @@ class _EventsTabState extends State<_EventsTab>
         }
 
         final event = _events[index];
-        return GestureDetector(
+        return Semantics(button: true, child: GestureDetector(
           onTap: () {
             context.read<HomeBloc>().add(HomeImagesSearched(
                   eventId: event.id,
@@ -813,7 +813,7 @@ class _EventsTabState extends State<_EventsTab>
             ),
           ),
         ),
-        );
+        ));
       },
     );
   }

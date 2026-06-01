@@ -391,7 +391,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                     color: ext.searchHintColor.withValues(alpha: 0.1)),
               ),
             ),
-            child: GestureDetector(
+            child: Semantics(button: true, label: 'Save', child: GestureDetector(
               onTap: _saving ? null : _save,
               child: Container(
                 height: 50.h,
@@ -425,7 +425,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                         ),
                       ),
               ),
-            ),
+            )),
           ),
         ],
       ),
@@ -745,7 +745,7 @@ class _MediaPreview extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
-            child: GestureDetector(
+            child: Semantics(button: true, child: GestureDetector(
               onTap: onTap,
               child: ClipRRect(
                 borderRadius: BorderRadius.vertical(
@@ -771,13 +771,13 @@ class _MediaPreview extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
+            )),
           ),
         ],
       );
     }
     // No media yet
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         height: 100.h,
@@ -800,7 +800,7 @@ class _MediaPreview extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -857,7 +857,7 @@ class _LocalMediaTile extends StatelessWidget {
           Positioned(
             top: 6.h,
             right: 8.w,
-            child: GestureDetector(
+            child: Semantics(button: true, label: 'Remove', child: GestureDetector(
               onTap: onRemove,
               child: Container(
                 padding: const EdgeInsets.all(5),
@@ -868,13 +868,13 @@ class _LocalMediaTile extends StatelessWidget {
                 child: Icon(Icons.close_rounded,
                     color: Colors.white, size: 16.sp),
               ),
-            ),
+            )),
           ),
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: GestureDetector(
+            child: Semantics(button: true, child: GestureDetector(
               onTap: onTap,
               child: Container(
                 color: Colors.black.withValues(alpha: 0.45),
@@ -895,7 +895,7 @@ class _LocalMediaTile extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
+            )),
           ),
         ],
       ),
@@ -1208,7 +1208,7 @@ class _DateBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(button: true, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
@@ -1236,6 +1236,6 @@ class _DateBtn extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
