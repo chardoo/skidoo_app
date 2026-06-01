@@ -24,7 +24,12 @@ class RoomTile extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final hasUnread = unreadCount > 0;
 
-    return InkWell(
+    return Semantics(
+      button: true,
+      label: hasUnread
+          ? 'Chat with ${room.displayNameFor(currentUserId)}, $unreadCount unread'
+          : 'Chat with ${room.displayNameFor(currentUserId)}',
+      child: InkWell(
       onTap: onTap,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
@@ -117,6 +122,7 @@ class RoomTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

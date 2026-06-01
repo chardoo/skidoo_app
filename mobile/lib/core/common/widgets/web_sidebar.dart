@@ -1546,7 +1546,10 @@ class _ActionGetAppButtonState extends State<_ActionGetAppButton> {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return MouseRegion(
+    return Semantics(
+      button: true,
+      label: 'Get the app',
+      child: MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -1582,6 +1585,7 @@ class _ActionGetAppButtonState extends State<_ActionGetAppButton> {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -1602,7 +1606,12 @@ class _ActionMessageButtonState extends State<_ActionMessageButton> {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return MouseRegion(
+    return Semantics(
+      button: true,
+      label: widget.unreadCount > 0
+          ? 'Messages, ${widget.unreadCount} unread'
+          : 'Messages',
+      child: MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -1660,6 +1669,7 @@ class _ActionMessageButtonState extends State<_ActionMessageButton> {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -1677,30 +1687,34 @@ class _ActionAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [ext.accentGold, const Color(0xFFFF6B35)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return Semantics(
+      button: true,
+      label: 'Your profile and account',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
-          ),
-          child: CircleAvatar(
-            radius: 16,
-            backgroundColor: ext.glassFill,
-            child: Text(
-              initial,
-              style: TextStyle(
-                color: ext.glassIcon,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-                decoration: TextDecoration.none,
+            child: CircleAvatar(
+              radius: 16,
+              backgroundColor: ext.glassFill,
+              child: Text(
+                initial,
+                style: TextStyle(
+                  color: ext.glassIcon,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  decoration: TextDecoration.none,
+                ),
               ),
             ),
           ),

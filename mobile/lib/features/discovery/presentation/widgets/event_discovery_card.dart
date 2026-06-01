@@ -1394,6 +1394,7 @@ class _WebReactionsColumn extends StatelessWidget {
               countColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
               iconSize: iconSize,
               onTap: onLike,
+              semanticLabel: liked ? 'Unlike' : 'Like',
             ),
             SizedBox(height: gap),
             WebActionBtn(
@@ -1406,6 +1407,7 @@ class _WebReactionsColumn extends StatelessWidget {
                   disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
               iconSize: iconSize,
               onTap: onDislike,
+              semanticLabel: disliked ? 'Remove dislike' : 'Dislike',
             ),
             SizedBox(height: gap),
             WebActionBtn(
@@ -1421,6 +1423,8 @@ class _WebReactionsColumn extends StatelessWidget {
                   : ext.searchHintColor.withValues(alpha: 0.4),
               iconSize: iconSize,
               onTap: onComment,
+              semanticLabel:
+                  commentsEnabled ? 'Comments' : 'Comments disabled',
             ),
             SizedBox(height: gap),
             WebActionBtn(
@@ -1432,6 +1436,7 @@ class _WebReactionsColumn extends StatelessWidget {
               countColor: ext.greetingColor,
               iconSize: iconSize,
               onTap: onSave,
+              semanticLabel: saved ? 'Remove from saved' : 'Save',
             ),
             SizedBox(height: gap),
             WebActionBtn(
@@ -1441,6 +1446,7 @@ class _WebReactionsColumn extends StatelessWidget {
               countColor: ext.greetingColor,
               iconSize: iconSize,
               onTap: onShare,
+              semanticLabel: 'Share',
             ),
           ],
         ),

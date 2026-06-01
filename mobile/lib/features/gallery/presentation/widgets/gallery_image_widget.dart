@@ -24,7 +24,13 @@ class GalleryImageWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      image: true,
+      label: photo.eventName.isNotEmpty
+          ? 'Photo from ${photo.eventName}, open full screen'
+          : 'Photo, open full screen',
+      child: GestureDetector(
       onTap: () => _openFullscreen(context),
       child: Container(
         decoration: BoxDecoration(
@@ -114,6 +120,7 @@ class GalleryImageWidget extends StatelessWidget {
               ),
           ],
         ),
+      ),
       ),
     );
   }

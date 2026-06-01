@@ -278,6 +278,7 @@ class _PanelHeader extends StatelessWidget {
               icon: Icons.arrow_back_ios_new_rounded,
               color: ext.greetingColor,
               onTap: onBack,
+              semanticLabel: 'Back to conversations',
             ),
           if (activeRoom != null) const SizedBox(width: 8),
           Icon(Icons.chat_bubble_rounded, color: ext.accentGold, size: 18),
@@ -300,6 +301,7 @@ class _PanelHeader extends StatelessWidget {
               icon: Icons.group_add_rounded,
               color: ext.greetingColor,
               onTap: onCreateGroup,
+              semanticLabel: 'New group',
             ),
             const SizedBox(width: 4),
           ],
@@ -309,6 +311,7 @@ class _PanelHeader extends StatelessWidget {
               icon: Icons.info_outline_rounded,
               color: ext.greetingColor,
               onTap: onOpenSettings,
+              semanticLabel: 'Group info',
             ),
             const SizedBox(width: 4),
           ],
@@ -316,6 +319,7 @@ class _PanelHeader extends StatelessWidget {
             icon: Icons.close_rounded,
             color: ext.searchHintColor,
             onTap: onClose,
+            semanticLabel: 'Close messages',
           ),
         ],
       ),
@@ -328,21 +332,27 @@ class _HeaderIconBtn extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.onTap,
+    this.semanticLabel,
   });
 
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Icon(icon, color: color, size: 18),
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Icon(icon, color: color, size: 18),
+          ),
         ),
       ),
     );
@@ -674,21 +684,25 @@ class _PanelPendingBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withValues(alpha: 0.4)),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-                color: color, fontSize: 12, fontWeight: FontWeight.w600),
+    return Semantics(
+      button: true,
+      label: label,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                  color: color, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ),

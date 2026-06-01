@@ -195,6 +195,7 @@ class WebActionBtn extends StatefulWidget {
     required this.countColor,
     required this.onTap,
     this.iconSize,
+    this.semanticLabel,
   });
 
   final IconData icon;
@@ -203,6 +204,9 @@ class WebActionBtn extends StatefulWidget {
   final Color countColor;
   final VoidCallback? onTap;
   final double? iconSize;
+
+  /// Screen-reader label for this icon button (e.g. 'Like', 'Comment').
+  final String? semanticLabel;
 
   @override
   State<WebActionBtn> createState() => _WebActionBtnState();
@@ -220,14 +224,22 @@ class _WebActionBtnState extends State<WebActionBtn> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onTap != null;
-    return MouseRegion(
-      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      onEnter: (_) {
-        if (enabled) setState(() => _hovered = true);
-      },
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
+    final label = [
+      if (widget.semanticLabel != null) widget.semanticLabel!,
+      if (widget.count != null && widget.count! > 0) _fmt(widget.count!),
+    ].join(', ');
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label.isEmpty ? null : label,
+      child: MouseRegion(
+        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        onEnter: (_) {
+          if (enabled) setState(() => _hovered = true);
+        },
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
         child: AnimatedScale(
           scale: _hovered ? 1.14 : 1.0,
           duration: const Duration(milliseconds: 130),
@@ -260,6 +272,7 @@ class _WebActionBtnState extends State<WebActionBtn> {
               ],
             ],
           ),
+        ),
         ),
       ),
     );
