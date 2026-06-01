@@ -349,6 +349,19 @@ class _WebScrollBehavior extends MaterialScrollBehavior {
     ScrollableDetails details,
   ) =>
       child; // No glow / stretch on web.
+
+  // Flutter's MaterialScrollBehavior auto-adds a Material Scrollbar to every
+  // scroll view on web/desktop. With the centred column + sidebar layout that
+  // bar lands in the middle of the screen, right against the cards/reactions.
+  // Suppress it everywhere — the feed scrolls via wheel/trackpad/drag without
+  // a bar overlapping the content.
+  @override
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) =>
+      child;
 }
 
 // ── Auth route guard ─────────────────────────────────────────────────────────
