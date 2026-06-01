@@ -60,6 +60,8 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
           sendTimeout: const Duration(minutes: 3),
         ),
       );
+      // Stop the "add your photos" nudge now that the user has uploaded them.
+      await sl<AuthService>().setHasAddedFaces(true);
       if (!mounted) return;
       AppSnackBar.success(
           context, 'Face recognition training queued successfully.');

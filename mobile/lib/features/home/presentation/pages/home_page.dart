@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -16,7 +17,9 @@ import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page
 import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographers_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
+import 'package:skidoo_app/features/user_profile/presentation/pages/face_recognition_page.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_rooms_page.dart';
 import 'package:skidoo_app/components/common/navbar.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
@@ -102,6 +105,81 @@ class _HomeViewState extends State<_HomeView> {
     if (kIsWeb) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _restoreWebTab());
     }
+    // Nudge the user to add their reference photos (first login + every 4 days)
+    // until they've done so. Deferred so the home tree is laid out first.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybePromptAddFaces());
+  }
+
+  /// Shows the "add your photos" prompt when the user hasn't added faces and it
+  /// hasn't been shown in the last 4 days. The last-shown time is stored so it
+  /// reappears at most once every 4 days.
+  Future<void> _maybePromptAddFaces() async {
+    if (!mounted) return;
+    try {
+      final auth = sl<AuthService>();
+      // Only clients are matched against galleries; skip photographers.
+      if ((await auth.getRole()) == 'photographer') return;
+      if (await auth.getHasAddedFaces()) return; // already added their photos
+      final last = await auth.getLastFacePrompt();
+      if (last != null &&
+          DateTime.now().difference(last) < const Duration(days: 4)) {
+        return;
+      }
+      await auth.setLastFacePrompt(DateTime.now());
+      if (mounted) _showAddFacesDialog();
+    } catch (_) {
+      // Storage unavailable — skip the nudge silently.
+    }
+  }
+
+  void _showAddFacesDialog() {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: ext.cardSurface,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
+        icon: Icon(Icons.face_retouching_natural_rounded,
+            color: ext.accentGold, size: 40.sp),
+        title: Text(
+          'Add your photos',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              color: ext.greetingColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 18.sp),
+        ),
+        content: Text(
+          'Add a few photos of yourself so we can automatically find you in '
+          'event galleries and unlock the full Skidoo experience.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
+        ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text('Maybe later',
+                style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: ext.accentGold,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FaceRecognitionPage()),
+              );
+            },
+            child: Text('Add my photos',
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Reads the last-used tab from SharedPreferences and switches to it.

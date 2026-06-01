@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:skidoo_app/app.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/security/screenshot_guard.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
@@ -28,6 +29,9 @@ void main() async {
   if (kIsWeb) GoogleFonts.config.allowRuntimeFetching = true;
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  // Block screenshots / screen recording app-wide before the first frame.
+  await enableScreenshotProtection();
 
   final sw = Stopwatch()..start();
 

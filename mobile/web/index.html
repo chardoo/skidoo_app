@@ -33,6 +33,25 @@
   <link rel="manifest" href="manifest.json">
 
   <!--
+    Screenshot deterrents (web). Browsers expose NO API to block OS-level
+    screenshots, so this is best-effort only — it blocks the right-click
+    "Save image as…" menu and image drag-out. Kept JS-only (no global CSS) so
+    Flutter's canvas input/selection is unaffected. True screenshot prevention
+    is not possible on the web. (Flutter also calls BrowserContextMenu.disable.)
+  -->
+  <script>
+    (function () {
+      // Block the right-click context menu (Save image as…) — covers the gap
+      // before Flutter has booted and called BrowserContextMenu.disable.
+      window.addEventListener('contextmenu', function (e) { e.preventDefault(); }, true);
+      // Block image drag-out.
+      window.addEventListener('dragstart', function (e) {
+        if (e.target && e.target.tagName === 'IMG') e.preventDefault();
+      }, true);
+    })();
+  </script>
+
+  <!--
     iOS Safari and Android Chrome require a user gesture before audio can play.
     This snippet resumes (and immediately suspends) an AudioContext on the first
     touch, satisfying the browser's media-engagement requirement so that

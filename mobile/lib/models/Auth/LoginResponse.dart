@@ -11,9 +11,13 @@ class LoginResponseObject {
   /// The app must call POST /chat/keys/bundle before any DM can be encrypted.
   bool keyBundlePublished = false;
 
+  /// True once the user has uploaded their face/reference photos. When false,
+  /// the app nudges them to add photos (on login + every few days).
+  bool hasAddedFaces = false;
+
   LoginResponseObject(this.id, this.email, this.name, this.role,
       this.uniqueName, this.token, this.expiration, this.isValid,
-      {this.keyBundlePublished = false});
+      {this.keyBundlePublished = false, this.hasAddedFaces = false});
 
   LoginResponseObject.empty() {
     id = "";
@@ -25,6 +29,7 @@ class LoginResponseObject {
     expiration = "";
     isValid = false;
     keyBundlePublished = false;
+    hasAddedFaces = false;
   }
 
   //deserialization
@@ -39,6 +44,7 @@ class LoginResponseObject {
       json["expiration"] as String,
       json["isValid"] as bool,
       keyBundlePublished: json["keyBundlePublished"] as bool? ?? false,
+      hasAddedFaces: json["has_added_faces"] as bool? ?? false,
     );
   }
 

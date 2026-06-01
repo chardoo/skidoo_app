@@ -45,6 +45,8 @@ class AuthService {
   static const _kTimezone          = 'auth.timezone';
   static const _kInterestTags      = 'auth.interest_tags';
   static const _kRole              = 'auth.role';
+  static const _kHasAddedFaces     = 'auth.has_added_faces';
+  static const _kLastFacePrompt    = 'auth.last_face_prompt';
 
   // ── Adaptive helpers ─────────────────────────────────────────────────────────
 
@@ -118,6 +120,21 @@ class AuthService {
 
   Future<void> setName(String v) => _write(_kName, v);
   Future<String> getName() async => await _read(_kName) ?? '';
+
+  // ── Face / reference photos prompt ────────────────────────────────────────────
+  /// Whether the user has uploaded their reference photos (from login response).
+  Future<void> setHasAddedFaces(bool v) => _write(_kHasAddedFaces, v.toString());
+  Future<bool> getHasAddedFaces() async =>
+      (await _read(_kHasAddedFaces)) == 'true';
+
+  /// Timestamp the "add your photos" prompt was last shown — used to re-show it
+  /// only every few days.
+  Future<void> setLastFacePrompt(DateTime when) =>
+      _write(_kLastFacePrompt, when.toIso8601String());
+  Future<DateTime?> getLastFacePrompt() async {
+    final raw = await _read(_kLastFacePrompt);
+    return raw == null ? null : DateTime.tryParse(raw);
+  }
 
   // ── Extended profile fields ───────────────────────────────────────────────────
   Future<void> setContact(String v) => _write(_kContact, v);
