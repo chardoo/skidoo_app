@@ -515,6 +515,23 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
           ClipRRect(borderRadius: widget.borderRadius!, child: playerWidget);
     }
 
+    // ── Web: reveal the controls (mute, scrubber, fullscreen…) as soon as the
+    //    pointer enters the video, and hide again on exit while playing. ──────
+    if (kIsWeb && widget.showControls && player != null) {
+      playerWidget = MouseRegion(
+        onEnter: (_) {
+          _hideTimer?.cancel();
+          if (!_controlsVisible) setState(() => _controlsVisible = true);
+        },
+        onExit: (_) {
+          if (_player?.state.playing == true && _controlsVisible) {
+            setState(() => _controlsVisible = false);
+          }
+        },
+        child: playerWidget,
+      );
+    }
+
     return playerWidget;
   }
 }

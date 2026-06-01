@@ -65,6 +65,8 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   final _pageCtrl = PageController();
   int _currentPage = 0;
   int _maxRevealedPage = 0;
+  // Web: true while the pointer is over the media — reveals the prev/next arrows.
+  bool _mediaHovered = false;
   bool _liked = false;
   bool _disliked = false;
   int _likeCount = 0;
@@ -324,7 +326,13 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     // so the card's gradient, footer and page dots lift clear of it and the
     // controls stay visible and tappable.
     final controlsReserve = onVideo ? 60.h : 0.0;
-    return Semantics(button: true, label: 'Is authenticated', child: GestureDetector(
+    // Web: show prev/next carousel arrows when hovering a multi-photo card.
+    final showArrows =
+        kIsWeb && widget.isAuthenticated && visible.length > 1;
+    return MouseRegion(
+      onEnter: showArrows ? (_) => setState(() => _mediaHovered = true) : null,
+      onExit: showArrows ? (_) => setState(() => _mediaHovered = false) : null,
+      child: GestureDetector(
       onTap: widget.isAuthenticated ? null : widget.onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -393,10 +401,60 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               ),
             if (!widget.isAuthenticated && pics.isEmpty)
               _UnauthCta(onTap: widget.onTap),
+
+            // ── Web: prev / next carousel arrows (hover-revealed) ───────────
+            if (showArrows)
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: !_mediaHovered,
+                  child: AnimatedOpacity(
+                    opacity: _mediaHovered ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 160),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 8, vertical: controlsReserve),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Semantics(
+                            button: true,
+                            label: 'Previous photo',
+                            child: _CarouselArrow(
+                              isLeft: true,
+                              enabled: curIdx > 0,
+                              onTap: () => _goToCarouselPage(curIdx - 1),
+                            ),
+                          ),
+                          Semantics(
+                            button: true,
+                            label: 'Next photo',
+                            child: _CarouselArrow(
+                              isLeft: false,
+                              enabled: curIdx < visible.length - 1,
+                              onTap: () => _goToCarouselPage(curIdx + 1),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     ));
+  }
+
+  /// Animate the photo carousel to [target], clamped to the visible range.
+  void _goToCarouselPage(int target) {
+    if (!_pageCtrl.hasClients) return;
+    final t = target.clamp(0, _visibleCount - 1);
+    _pageCtrl.animateToPage(
+      t,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+    );
   }
 
   // ── Web layout — image left, reactions/comments panel right ─────────────────
@@ -1179,6 +1237,63 @@ class _HeartBurst extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ── Carousel prev/next arrow (web, hover-revealed) ──────────────────────────────
+
+class _CarouselArrow extends StatefulWidget {
+  const _CarouselArrow({
+    required this.isLeft,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final bool isLeft;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  State<_CarouselArrow> createState() => _CarouselArrowState();
+}
+
+class _CarouselArrowState extends State<_CarouselArrow> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: widget.enabled
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.enabled ? widget.onTap : null,
+        child: AnimatedOpacity(
+          opacity: widget.enabled ? 1.0 : 0.3,
+          duration: const Duration(milliseconds: 150),
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: _hover ? 0.7 : 0.45),
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.25), width: 1),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              widget.isLeft
+                  ? Icons.chevron_left_rounded
+                  : Icons.chevron_right_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
