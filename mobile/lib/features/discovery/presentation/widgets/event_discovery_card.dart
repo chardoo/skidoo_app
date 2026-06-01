@@ -316,6 +316,14 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
 
   Widget _buildMediaStack(BuildContext context, AppThemeExtension ext,
       List<EventPicture> pics, double width, double height) {
+    final visible = pics.take(_visibleCount).toList();
+    final curIdx = visible.isEmpty ? 0 : _currentPage.clamp(0, visible.length - 1);
+    final onVideo = curIdx < visible.length && visible[curIdx].isVideo;
+    // On video slides, reserve the bottom strip occupied by the player's
+    // control bar (scrubber + timestamps + fullscreen, anchored at bottom: 0)
+    // so the card's gradient, footer and page dots lift clear of it and the
+    // controls stay visible and tappable.
+    final controlsReserve = onVideo ? 60.h : 0.0;
     return Semantics(button: true, label: 'Is authenticated', child: GestureDetector(
       onTap: widget.isAuthenticated ? null : widget.onTap,
       child: AnimatedContainer(
@@ -329,7 +337,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             pics.isEmpty
                 ? CardGradientPlaceholder(name: widget.event.eventName)
                 : PostPhotoCarousel(
-                    pics: pics.take(_visibleCount).toList(),
+                    pics: visible,
                     pageController: _pageCtrl,
                     showBlur: !widget.isAuthenticated && pics.length > 3,
                     onTap: handleTap,
@@ -341,7 +349,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                     activeCardIndex: widget.activeCardIndex,
                   ),
             Positioned(
-              bottom: 0,
+              bottom: controlsReserve,
               left: 0,
               right: 0,
               height: 160.h,
@@ -361,7 +369,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               ),
             ),
             Positioned(
-              bottom: 16.h,
+              bottom: 16.h + controlsReserve,
               left: 14.w,
               right: kIsWeb ? 14.w : 82.w,
               child: _ImageFooter(event: widget.event),
@@ -374,7 +382,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               ),
             if (pics.length > 1)
               Positioned(
-                bottom: 10.h,
+                bottom: 10.h + controlsReserve,
                 left: 0,
                 right: 0,
                 child: _PageDots(
