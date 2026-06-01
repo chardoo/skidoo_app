@@ -708,6 +708,7 @@ class _MediaBackground extends StatelessWidget {
         SkidooImage(
           imageUrl: url,
           fit: BoxFit.contain,
+          semanticLabel: 'Advertisement image',
           placeholder: (_, __) => const SizedBox.shrink(),
           errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
           colorFilter: SkidooFilters.vibrant,
@@ -1115,6 +1116,7 @@ class _SingleMediaFrame extends StatelessWidget {
         SkidooImage(
           imageUrl: media.url,
           fit: BoxFit.contain,
+          semanticLabel: 'Advertisement image',
           placeholder: (_, __) => const SizedBox.shrink(),
           colorFilter: SkidooFilters.vibrant,
           errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),

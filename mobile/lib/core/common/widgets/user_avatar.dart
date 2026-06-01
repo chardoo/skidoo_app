@@ -33,13 +33,17 @@ class UserAvatar extends StatelessWidget {
     if (imageUrl != null && imageUrl!.isNotEmpty) {
       avatar = ClipRRect(
         borderRadius: BorderRadius.circular(radius.r),
-        child: CachedNetworkImage(
-          imageUrl: imageUrl!,
-          width: radius * 2,
-          height: radius * 2,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => _Initials(initial: initial, radius: radius, bg: bg, fg: fg),
-          errorWidget: (_, __, ___) => _Initials(initial: initial, radius: radius, bg: bg, fg: fg),
+        child: Semantics(
+          image: true,
+          label: 'Profile picture',
+          child: CachedNetworkImage(
+            imageUrl: imageUrl!,
+            width: radius * 2,
+            height: radius * 2,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => _Initials(initial: initial, radius: radius, bg: bg, fg: fg),
+            errorWidget: (_, __, ___) => _Initials(initial: initial, radius: radius, bg: bg, fg: fg),
+          ),
         ),
       );
     } else {

@@ -23,12 +23,12 @@ class PhotographerProfileHeader extends StatelessWidget {
       children: [
         // Background
         if (hasImage)
-          CachedNetworkImage(
+          Semantics(image: true, label: 'Photographer photo', child: CachedNetworkImage(
             imageUrl: photographer.imageUrl!,
             fit: BoxFit.cover,
             errorWidget: (_, __, ___) =>
                 Container(color: ext.cardSurface),
-          )
+          ))
         else
           Container(
             decoration: BoxDecoration(

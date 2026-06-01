@@ -136,7 +136,7 @@ class _FullscreenPhoto extends StatelessWidget {
       minScale: 1,
       maxScale: 4,
       child: Center(
-        child: CachedNetworkImage(
+        child: Semantics(image: true, label: 'Event photo', child: CachedNetworkImage(
           imageUrl: url,
           fit: BoxFit.contain,
           filterQuality: FilterQuality.high,
@@ -146,7 +146,7 @@ class _FullscreenPhoto extends StatelessWidget {
               Icons.broken_image_outlined,
               color: Colors.white38,
               size: 64.sp),
-        ),
+        )),
       ),
     );
   }

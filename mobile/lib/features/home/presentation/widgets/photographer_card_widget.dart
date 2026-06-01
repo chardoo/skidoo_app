@@ -34,6 +34,7 @@ class PhotographerCardWidget extends StatelessWidget {
                   ? SkidooImage(
                       imageUrl: photographer.imageUrl!,
                       fit: BoxFit.cover,
+                      semanticLabel: '${photographer.name}, photographer',
                       placeholder: (_, __) =>
                           _GradientPlaceholder(name: photographer.name),
                       errorWidget: (_, __, ___) =>

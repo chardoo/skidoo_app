@@ -180,7 +180,7 @@ class _ShimmerImage extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         // Base image
-        Image.asset(assetPath, width: width, fit: BoxFit.contain),
+        ExcludeSemantics(child: Image.asset(assetPath, width: width, fit: BoxFit.contain)),
         // Gold shimmer beam — blended on top with softLight so the
         // image colours show through and the highlight feels organic.
         Positioned.fill(

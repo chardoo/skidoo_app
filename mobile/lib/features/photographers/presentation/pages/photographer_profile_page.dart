@@ -767,7 +767,7 @@ class _EventsTabState extends State<_EventsTab>
               children: [
                 Expanded(
                   child: event.url.isNotEmpty
-                      ? Image.network(
+                      ? Semantics(image: true, label: 'Event photo', child: Image.network(
                           event.url,
                           fit: BoxFit.cover,
                           loadingBuilder: (_, child, progress) =>
@@ -788,7 +788,7 @@ class _EventsTabState extends State<_EventsTab>
                                   color: Colors.white38, size: 32),
                             ),
                           ),
-                        )
+                        ))
                       : Container(
                           color: const Color(0xFF1E2230),
                           child: Icon(Icons.event_rounded,

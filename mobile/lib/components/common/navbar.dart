@@ -112,12 +112,12 @@ class _NavTab extends StatelessWidget {
             size: 22.sp,
             color: color,
           )
-        : Image.asset(
+        : ExcludeSemantics(child: Image.asset(
             iconPath!,
             width: 22.sp,
             height: 22.sp,
             color: color,
-          );
+          ));
 
     if (unreadCount > 0) {
       iconWidget = Stack(

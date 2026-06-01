@@ -16,7 +16,7 @@ class CartItemWidget extends StatelessWidget {
       child: Stack(
         children: [
           // ── Image ─────────────────────────────────────────────────────
-          CachedNetworkImage(
+          Semantics(image: true, label: 'Photo', child: CachedNetworkImage(
             imageUrl: photo.url,
             fit: BoxFit.cover,
             width: double.infinity,
@@ -35,7 +35,7 @@ class CartItemWidget extends StatelessWidget {
               child: const Icon(Icons.broken_image_outlined,
                   color: Colors.white38, size: 48),
             ),
-          ),
+          )),
 
           // ── Remove button ──────────────────────────────────────────────
           Positioned(

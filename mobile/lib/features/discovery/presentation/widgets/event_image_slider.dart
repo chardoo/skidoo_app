@@ -41,7 +41,7 @@ class _EventImageSliderState extends State<EventImageSlider> {
               padding: EdgeInsets.symmetric(horizontal: 6.w),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14.r),
-                child: CachedNetworkImage(
+                child: Semantics(image: true, label: 'Event photo', child: CachedNetworkImage(
                   imageUrl: widget.pics[i].url,
                   fit: BoxFit.cover,
                   placeholder: (_, __) =>
@@ -51,7 +51,7 @@ class _EventImageSliderState extends State<EventImageSlider> {
                     child: const Icon(Icons.broken_image_outlined,
                         color: Colors.white38),
                   ),
-                ),
+                )),
               ),
             ),
           ),

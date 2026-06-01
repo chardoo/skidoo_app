@@ -35,6 +35,9 @@ class EventCardWidget extends StatelessWidget {
                   ? SkidooImage(
                       imageUrl: photo.url,
                       fit: BoxFit.cover,
+                      semanticLabel: photo.eventName.isNotEmpty
+                          ? '${photo.eventName} event cover'
+                          : 'Event cover',
                       placeholder: (_, __) =>
                           _GradientPlaceholder(name: photo.eventName),
                       errorWidget: (_, __, ___) =>

@@ -373,12 +373,12 @@ class _StagedImagePreview extends StatelessWidget {
                 // On web, filePath is a blob URL — Image.network handles it.
                 // On mobile, filePath is a local file path.
                 kIsWeb
-                    ? Image.network(
+                    ? Semantics(image: true, label: 'Selected image', child: Image.network(
                         filePath,
                         width: 64.w,
                         height: 64.w,
                         fit: BoxFit.cover,
-                      )
+                      ))
                     : Image.file(
                         File(filePath),
                         width: 64.w,
@@ -546,7 +546,7 @@ class _StagedNetworkImagePreview extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8.r),
-            child: CachedNetworkImage(
+            child: Semantics(image: true, label: 'Selected image', child: CachedNetworkImage(
               imageUrl: imageUrl,
               width: 64.w,
               height: 64.w,
@@ -571,7 +571,7 @@ class _StagedNetworkImagePreview extends StatelessWidget {
                 child: Icon(Icons.broken_image_rounded,
                     color: Colors.white54, size: 24.sp),
               ),
-            ),
+            )),
           ),
           SizedBox(width: 10.w),
           Expanded(

@@ -731,14 +731,14 @@ class _MediaPreview extends StatelessWidget {
             borderRadius: BorderRadius.circular(14.r),
             child: AspectRatio(
               aspectRatio: 16 / 9,
-              child: CachedNetworkImage(
+              child: Semantics(image: true, label: 'Campaign image', child: CachedNetworkImage(
                 imageUrl: state.existingMediaUrl!,
                 fit: BoxFit.cover,
                 placeholder: (_, __) =>
                     ColoredBox(color: ext.searchFieldFill),
                 errorWidget: (_, __, ___) =>
                     ColoredBox(color: ext.searchFieldFill),
-              ),
+              )),
             ),
           ),
           Positioned(

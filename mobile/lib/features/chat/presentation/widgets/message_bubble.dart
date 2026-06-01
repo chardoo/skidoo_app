@@ -312,12 +312,12 @@ class _ReplyPreviewStrip extends StatelessWidget {
           if (preview.imageUrl != null && !(preview.isVideo || _isVideoUrl(preview.imageUrl!)))
             ClipRRect(
               borderRadius: BorderRadius.circular(4.r),
-              child: CachedNetworkImage(
+              child: Semantics(image: true, label: 'Shared photo', child: CachedNetworkImage(
                 imageUrl: preview.imageUrl!,
                 width: 36.w,
                 height: 36.w,
                 fit: BoxFit.cover,
-              ),
+              )),
             )
           else if (preview.imageUrl != null && (preview.isVideo || _isVideoUrl(preview.imageUrl!)))
             ClipRRect(
@@ -350,7 +350,7 @@ class _MessageImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final img = CachedNetworkImage(
+    final img = Semantics(image: true, label: 'Shared photo', child: CachedNetworkImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
       filterQuality: FilterQuality.high,
@@ -365,7 +365,7 @@ class _MessageImage extends StatelessWidget {
         color: Colors.black12,
         child: const Icon(Icons.broken_image_rounded, color: Colors.white54),
       ),
-    );
+    ));
     if (aspectRatio != null) {
       return AspectRatio(aspectRatio: aspectRatio!, child: img);
     }

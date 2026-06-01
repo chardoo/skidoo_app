@@ -261,7 +261,7 @@ class _SelfieTile extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(10.r),
           child: kIsWeb
-              ? Image.network(file.path, fit: BoxFit.cover)
+              ? Semantics(image: true, label: 'Your photo', child: Image.network(file.path, fit: BoxFit.cover))
               : FutureBuilder<Uint8List>(
                   future: file.readAsBytes(),
                   builder: (_, snap) => snap.hasData

@@ -27,6 +27,7 @@ class SkidooImage extends StatelessWidget {
     this.fadeInDuration = const Duration(milliseconds: 250),
     this.isBlurBackground = false,
     this.colorFilter,
+    this.semanticLabel,
   });
 
   final String imageUrl;
@@ -48,6 +49,10 @@ class SkidooImage extends StatelessWidget {
 
   /// Optional color filter applied to the rendered image.
   final ColorFilter? colorFilter;
+
+  /// Screen-reader description. When null the image is treated as decorative
+  /// (no semantics node). Set for content images (photos, samples, covers).
+  final String? semanticLabel;
 
   int _cacheWidth(BuildContext context, double availableWidth) {
     if (isBlurBackground) return 120;
@@ -88,12 +93,16 @@ class SkidooImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Widget result;
     if (logicalWidth != null) {
-      return _image(context, logicalWidth!);
+      result = _image(context, logicalWidth!);
+    } else {
+      result = LayoutBuilder(
+        builder: (context, constraints) =>
+            _image(context, constraints.maxWidth.isFinite ? constraints.maxWidth : 1080),
+      );
     }
-    return LayoutBuilder(
-      builder: (context, constraints) =>
-          _image(context, constraints.maxWidth.isFinite ? constraints.maxWidth : 1080),
-    );
+    if (semanticLabel == null) return result;
+    return Semantics(image: true, label: semanticLabel, child: result);
   }
 }

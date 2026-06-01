@@ -103,6 +103,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
               SkidooImage(
                 imageUrl: pic.url,
                 fit: BoxFit.contain,
+                semanticLabel: 'Event photo',
                 placeholder: (_, __) => const SizedBox.shrink(),
                 errorWidget: (_, __, ___) =>
                     const ColoredBox(color: Color(0xFF111111)),

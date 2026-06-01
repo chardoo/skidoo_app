@@ -395,7 +395,7 @@ class _FaceCaptureButton extends StatelessWidget {
                   child: captured
                       ? ClipOval(
                           child: kIsWeb
-                              ? Image.network(imagePath, fit: BoxFit.cover)
+                              ? Semantics(image: true, label: 'Profile photo', child: Image.network(imagePath, fit: BoxFit.cover))
                               : Image.file(File(imagePath), fit: BoxFit.cover),
                         )
                       : Icon(

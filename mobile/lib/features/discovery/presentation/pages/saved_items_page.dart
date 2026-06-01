@@ -343,13 +343,13 @@ class _SavedItemTile extends StatelessWidget {
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(8.r),
         child: item.thumbnailUrl != null
-            ? Image.network(
+            ? Semantics(image: true, label: 'Saved item', child: Image.network(
                 item.thumbnailUrl!,
                 width: 56.w,
                 height: 56.w,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => _thumb(ext),
-              )
+              ))
             : _thumb(ext),
       ),
       title: Text(

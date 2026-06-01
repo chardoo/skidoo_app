@@ -49,7 +49,7 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
               return InteractiveViewer(
                 minScale: 1.0,
                 maxScale: 4.0,
-                child: CachedNetworkImage(
+                child: Semantics(image: true, label: 'Photographer sample', child: CachedNetworkImage(
                   imageUrl: widget.samples[i].url,
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
@@ -60,7 +60,7 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
                     child: Icon(Icons.broken_image_rounded,
                         color: Colors.white24, size: 60),
                   ),
-                ),
+                )),
               );
             },
           ),

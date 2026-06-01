@@ -320,6 +320,7 @@ class _PhotoCard extends StatelessWidget {
             imageUrl: photo.url,
             fit: BoxFit.cover,
             width: double.infinity,
+            semanticLabel: 'Photo',
             placeholder: (_, __) => Container(
               height: 150.h,
               color: ext.searchFieldFill,

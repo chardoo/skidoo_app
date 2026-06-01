@@ -357,6 +357,7 @@ class _PhotoTile extends StatelessWidget {
     return SkidooImage(
       imageUrl: url,
       fit: BoxFit.cover,
+      semanticLabel: 'Event photo',
       fadeInDuration: const Duration(milliseconds: 280),
       placeholder: (_, __) => const ColoredBox(color: Color(0xFF141414)),
       errorWidget: (_, __, ___) => ColoredBox(
@@ -1048,6 +1049,7 @@ class _PhotoBackground extends StatelessWidget {
         SkidooImage(
           imageUrl: url,
           fit: BoxFit.contain,
+          semanticLabel: 'Event photo',
           placeholder: (_, __) => placeholder,
           errorWidget: (_, __, ___) => errorWidget,
           colorFilter: SkidooFilters.vibrant,
