@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+// Needed only by the (currently disabled) web BrowserContextMenu protection:
+// import 'package:flutter/services.dart';
 import 'package:screen_protector/screen_protector.dart';
 
 /// Blocks screenshots and screen recording across the whole app.
@@ -17,9 +18,11 @@ import 'package:screen_protector/screen_protector.dart';
 /// Failures never propagate: a protection error must not crash startup.
 Future<void> enableScreenshotProtection() async {
   if (kIsWeb) {
-    try {
-      await BrowserContextMenu.disableContextMenu();
-    } catch (_) {/* non-fatal */}
+    // Web protection is disabled for now so testers can right-click to inspect
+    // elements. Re-enable to block the right-click "Save image as…" menu.
+    // try {
+    //   await BrowserContextMenu.disableContextMenu();
+    // } catch (_) {/* non-fatal */}
     return;
   }
 
