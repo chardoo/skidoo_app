@@ -268,8 +268,10 @@ class _AppMaterial extends StatelessWidget {
     final viewportW = MediaQuery.of(ctx).size.width;
     final isMobileWeb = viewportW < _kWebMobileBreakpoint;
     // Built once and reused across auth rebuilds so the Navigator (and the
-    // pages inside it) is never torn down.
-    final content = ClipRect(child: child!);
+    // pages inside it) is never torn down. The edge scrollbar overlays a single
+    // scroll indicator at the far right of the screen for every page (centred
+    // "column" pages included), instead of a per-component bar mid-layout.
+    final content = _WebEdgeScrollbar(child: ClipRect(child: child!));
 
     return DefaultTextStyle(
       style: DefaultTextStyle.of(ctx).style.copyWith(decoration: TextDecoration.none),
@@ -319,6 +321,99 @@ class _AppMaterial extends StatelessWidget {
                 },
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Web edge scrollbar ────────────────────────────────────────────────────────
+
+/// A single overlay scroll indicator pinned to the far-right edge of the
+/// screen. It listens to scroll notifications bubbling up from whichever page
+/// is active and renders a thin thumb at the screen edge — so the scrollbar is
+/// always at the far right, even for pages whose content is a centred column
+/// (which would otherwise paint a per-component bar mid-layout).
+class _WebEdgeScrollbar extends StatefulWidget {
+  const _WebEdgeScrollbar({required this.child});
+  final Widget child;
+
+  @override
+  State<_WebEdgeScrollbar> createState() => _WebEdgeScrollbarState();
+}
+
+class _WebEdgeScrollbarState extends State<_WebEdgeScrollbar> {
+  double _pixels = 0;
+  double _max = 0;
+  double _viewport = 0;
+
+  void _update(ScrollMetrics m) {
+    if (m.axis != Axis.vertical) return;
+    if (m.pixels == _pixels &&
+        m.maxScrollExtent == _max &&
+        m.viewportDimension == _viewport) {
+      return;
+    }
+    setState(() {
+      _pixels = m.pixels;
+      _max = m.maxScrollExtent;
+      _viewport = m.viewportDimension;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final thumbColor =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.30);
+    return NotificationListener<ScrollMetricsNotification>(
+      onNotification: (n) {
+        if (n.depth == 0) _update(n.metrics);
+        return false;
+      },
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (n) {
+          if (n.depth == 0) _update(n.metrics);
+          return false;
+        },
+        child: Stack(
+          children: [
+            widget.child,
+            if (_max > 1)
+              Positioned(
+                top: 0,
+                bottom: 0,
+                right: 0,
+                width: 8,
+                child: IgnorePointer(
+                  child: LayoutBuilder(
+                    builder: (ctx, c) {
+                      final track = c.maxHeight;
+                      final ratio = _viewport / (_viewport + _max);
+                      final thumb = (track * ratio).clamp(36.0, track);
+                      final top = _max <= 0
+                          ? 0.0
+                          : (_pixels.clamp(0.0, _max) / _max) * (track - thumb);
+                      return Stack(
+                        children: [
+                          Positioned(
+                            top: top,
+                            right: 2,
+                            width: 5,
+                            height: thumb,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: thumbColor,
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
           ],
         ),
       ),
