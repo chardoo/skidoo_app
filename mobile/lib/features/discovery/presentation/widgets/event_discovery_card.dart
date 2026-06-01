@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -78,6 +79,21 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   // Stored so we can safely dispatch from dispose() without using context.
   DiscoveryBloc? _discoveryBloc;
 
+  // Canonical aspect ratio (width ÷ height) for the whole card, computed once
+  // per event from the *tallest* image so every slide renders in an identical
+  // frame. Null when no media has known dimensions (legacy records).
+  double? _frameAspectRatio;
+
+  // Auto-scroll through the carousel while this card is the focused one.
+  Timer? _autoScroll;
+  // Set true around a programmatic page change so the page listener can tell
+  // auto-advances apart from real user swipes.
+  bool _isAutoAdvancing = false;
+  // When the user last swiped manually — auto-scroll pauses for one interval
+  // after a manual swipe so it doesn't fight the user.
+  DateTime? _lastManualSwipe;
+  static const _kAutoScrollInterval = Duration(seconds: 4);
+
   void _syncReactionFromEvent(EventDiscovery event) {
     _liked = event.userReaction == 'like';
     _disliked = event.userReaction == 'dislike';
@@ -101,6 +117,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   void initState() {
     super.initState();
     _syncReactionFromEvent(widget.event);
+    _frameAspectRatio = _computeFrameAspectRatio();
     _heartCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 750),
@@ -113,17 +130,23 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     _pageCtrl.addListener(() {
       final page = _pageCtrl.page?.round() ?? 0;
       if (page != _currentPage && mounted) {
+        // A page change that wasn't triggered by our own animateToPage is a
+        // real user swipe — pause auto-scroll briefly so it doesn't fight them.
+        if (!_isAutoAdvancing) _lastManualSwipe = DateTime.now();
         setState(() {
           _currentPage = page;
           if (page > _maxRevealedPage) _maxRevealedPage = page;
         });
       }
     });
+    // Restart/stop auto-scroll as feed focus moves between cards.
+    widget.activeCardIndex?.addListener(_onActiveCardChanged);
     // Notify the bloc that this card is now visible.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _discoveryBloc = context.read<DiscoveryBloc>();
       _discoveryBloc?.add(DiscoveryEventVisible(widget.event.id));
+      if (_isFocused) _startAutoScroll();
     });
   }
 
@@ -137,12 +160,25 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
         old.event.userReaction != widget.event.userReaction) {
       setState(() => _syncReactionFromEvent(widget.event));
     }
+    // Recompute the canonical frame when the card is rebound to a new event.
+    if (old.event.id != widget.event.id) {
+      _frameAspectRatio = _computeFrameAspectRatio();
+      _lastManualSwipe = null;
+    }
+    // Re-subscribe if the feed swapped the focus notifier instance.
+    if (old.activeCardIndex != widget.activeCardIndex) {
+      old.activeCardIndex?.removeListener(_onActiveCardChanged);
+      widget.activeCardIndex?.addListener(_onActiveCardChanged);
+      _onActiveCardChanged();
+    }
   }
 
   @override
   void dispose() {
     // Notify the bloc that this card has left the viewport.
     _discoveryBloc?.add(DiscoveryEventHidden(widget.event.id));
+    _stopAutoScroll();
+    widget.activeCardIndex?.removeListener(_onActiveCardChanged);
     _heartCtrl.dispose();
     _pageCtrl.dispose();
     super.dispose();
@@ -160,26 +196,83 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   /// beside the image without overflowing into the next card, even for wide
   /// landscape shots that would otherwise produce a very short media area.
   double _computeMediaHeight(double availableWidth, double screenHeight) {
-    final pics = widget.event.pictures;
-    final currentPic = pics.isNotEmpty
-        ? pics[_currentPage.clamp(0, pics.length - 1)]
-        : null;
-
-    if (currentPic?.isVideo == true) {
-      // Videos: use supplied aspect ratio when available, else 16:9 default.
-      final ar = currentPic!.aspectRatio ?? (16 / 9);
-      return (availableWidth / ar)
-          .clamp(_kMinMediaHeight, screenHeight * 0.92);
-    }
-
-    final ar = currentPic?.aspectRatio;
+    // One fixed height for the whole card — independent of which slide is
+    // showing — so the frame never resizes as the user (or auto-scroll) swipes.
+    final ar = _frameAspectRatio;
     if (ar != null && ar > 0) {
       return (availableWidth / ar)
           .clamp(_kMinMediaHeight, screenHeight * 0.92);
     }
 
-    // Fallback for legacy records without server dimensions: 4:5 portrait.
+    // Fallback for events whose media lack server dimensions: 4:5 portrait.
     return (availableWidth / 0.8).clamp(_kMinMediaHeight, screenHeight * 0.88);
+  }
+
+  /// Canonical aspect ratio for the card: the *smallest* ratio (= tallest
+  /// image) among the event's media, so every slide fits within the frame
+  /// without top/bottom cropping. Shorter/wider images are pillarboxed and the
+  /// carousel's blurred background fills the gap. Null when no media has dims.
+  double? _computeFrameAspectRatio() {
+    double? minAr;
+    for (final p in widget.event.pictures) {
+      final ar = p.aspectRatio;
+      if (ar != null && ar > 0 && (minAr == null || ar < minAr)) {
+        minAr = ar;
+      }
+    }
+    return minAr;
+  }
+
+  // ── Auto-scroll ────────────────────────────────────────────────────────────
+
+  /// True when this card is the one the feed is currently focused on (or when
+  /// there's no focus notifier, i.e. single-card contexts).
+  bool get _isFocused =>
+      widget.activeCardIndex == null ||
+      widget.activeCardIndex!.value == widget.cardIndex;
+
+  void _onActiveCardChanged() {
+    if (!mounted) return;
+    if (_isFocused) {
+      _startAutoScroll();
+    } else {
+      _stopAutoScroll();
+    }
+  }
+
+  void _startAutoScroll() {
+    _autoScroll?.cancel();
+    // Only auto-scroll real, multi-image carousels for signed-in users (the
+    // unauth teaser caps at 3 slides and ends on a locked overlay).
+    if (!widget.isAuthenticated || _visibleCount <= 1) return;
+    _autoScroll = Timer.periodic(_kAutoScrollInterval, (_) => _autoTick());
+  }
+
+  void _stopAutoScroll() {
+    _autoScroll?.cancel();
+    _autoScroll = null;
+  }
+
+  void _autoTick() {
+    if (!mounted || !_isFocused || !_pageCtrl.hasClients) return;
+    final count = _visibleCount;
+    if (count <= 1) return;
+    final pics = widget.event.pictures;
+    final idx = _currentPage.clamp(0, pics.length - 1);
+    // Pause on a video slide so the user can watch it.
+    if (idx < pics.length && pics[idx].isVideo) return;
+    // Hold off for one interval after a manual swipe.
+    if (_lastManualSwipe != null &&
+        DateTime.now().difference(_lastManualSwipe!) < _kAutoScrollInterval) {
+      return;
+    }
+    final next = (_currentPage + 1) % count;
+    _isAutoAdvancing = true;
+    _pageCtrl
+        .animateToPage(next,
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeInOut)
+        .whenComplete(() => _isAutoAdvancing = false);
   }
 
   void _handleDoubleTap() {
