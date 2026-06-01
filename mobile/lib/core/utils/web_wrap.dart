@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 /// Default width of the centred column used on web desktop/laptop views.
-const double kWebColumnWidth = 480;
+const double kWebColumnWidth = 530;
 
 /// Wider column width used on content-heavy pages (gallery, search, profiles).
-const double kWebColumnWidthWide = 550;
+const double kWebColumnWidthWide = 750;
 
 /// Constrains [child] to a centred column on web.
 ///
