@@ -701,11 +701,36 @@ class _NavItemState extends State<_NavItem> {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        widget.active ? widget.ext.accentGold : widget.ext.searchHintColor;
-    final bg = widget.active || _hovered
-        ? widget.ext.accentGold.withValues(alpha: 0.07)
-        : Colors.transparent;
+    final ext = widget.ext;
+    // Mirror the top-right cluster styling: the active item is a filled
+    // gold-gradient pill (echoing the gradient avatar), inactive items use the
+    // neutral greeting colour and a soft gold-tint hover pill.
+    final Color contentColor = widget.active
+        ? Colors.white
+        : (_hovered ? ext.accentGold : ext.greetingColor);
+
+    final BoxDecoration decoration = widget.active
+        ? BoxDecoration(
+            gradient: LinearGradient(
+              colors: [ext.accentGold, const Color(0xFFFF6B35)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: ext.accentGold.withValues(alpha: 0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          )
+        : BoxDecoration(
+            color: _hovered
+                ? ext.accentGold.withValues(alpha: 0.14)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(22),
+          );
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -715,23 +740,21 @@ class _NavItemState extends State<_NavItem> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(10),
-          ),
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: decoration,
           child: Row(
             children: [
-              Icon(widget.icon, color: color, size: 22),
+              Icon(widget.icon, color: contentColor, size: 21),
               const SizedBox(width: 12),
               Text(
                 widget.label,
                 style: TextStyle(
-                  color: color,
+                  color: contentColor,
                   fontSize: 15,
-                  fontWeight: widget.active ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: widget.active ? FontWeight.w700 : FontWeight.w600,
                   letterSpacing: 0.1,
+                  decoration: TextDecoration.none,
                 ),
               ),
             ],
