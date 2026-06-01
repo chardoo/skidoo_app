@@ -320,14 +320,14 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
               if (hasText)
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
+                  child: Semantics(button: true, label: 'Clear search', child: GestureDetector(
                     onTap: _clearSearch,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Icon(Icons.close_rounded,
                           color: widget.ext.searchHintColor, size: 14),
                     ),
-                  ),
+                  )),
                 )
               else
                 const SizedBox(width: 8),
@@ -435,7 +435,7 @@ class _TypeaheadItemState extends State<_TypeaheadItem> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
@@ -483,7 +483,7 @@ class _TypeaheadItemState extends State<_TypeaheadItem> {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -711,7 +711,7 @@ class _NavItemState extends State<_NavItem> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -737,7 +737,7 @@ class _NavItemState extends State<_NavItem> {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -760,7 +760,7 @@ class _CreatorTileState extends State<_CreatorTile> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, label: 'External application', child: GestureDetector(
         onTap: () => launchUrl(
           Uri.parse(_kCreatorUrl),
           mode: LaunchMode.externalApplication,
@@ -798,7 +798,7 @@ class _CreatorTileState extends State<_CreatorTile> {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -827,7 +827,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -849,7 +849,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -878,7 +878,7 @@ class _TextActionButtonState extends State<_TextActionButton> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -900,7 +900,7 @@ class _TextActionButtonState extends State<_TextActionButton> {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -976,7 +976,7 @@ class _FooterLinkState extends State<_FooterLink> {
       cursor: hasUrl ? SystemMouseCursors.click : MouseCursor.defer,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, label: 'External application', child: GestureDetector(
         onTap: hasUrl
             ? () => launchUrl(Uri.parse(widget.url),
                 mode: LaunchMode.externalApplication)
@@ -991,7 +991,7 @@ class _FooterLinkState extends State<_FooterLink> {
             decoration: TextDecoration.none,
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -1248,7 +1248,7 @@ class _TopNavPillState extends State<_TopNavPill> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -1281,7 +1281,7 @@ class _TopNavPillState extends State<_TopNavPill> {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -1303,7 +1303,7 @@ class _TopNavCreatorPillState extends State<_TopNavCreatorPill> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, label: 'External application', child: GestureDetector(
         onTap: () => launchUrl(
           Uri.parse(_kCreatorUrl),
           mode: LaunchMode.externalApplication,
@@ -1343,7 +1343,7 @@ class _TopNavCreatorPillState extends State<_TopNavCreatorPill> {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -1371,7 +1371,7 @@ class _TopNavTextBtnState extends State<_TopNavTextBtn> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, child: GestureDetector(
         onTap: widget.onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1387,7 +1387,7 @@ class _TopNavTextBtnState extends State<_TopNavTextBtn> {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -1415,7 +1415,7 @@ class _TopNavFilledBtnState extends State<_TopNavFilledBtn> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -1437,7 +1437,7 @@ class _TopNavFilledBtnState extends State<_TopNavFilledBtn> {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -1615,7 +1615,7 @@ class _ActionMessageButtonState extends State<_ActionMessageButton> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: Semantics(button: true, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedScale(
           scale: _hovered ? 1.08 : 1.0,
@@ -1668,7 +1668,7 @@ class _ActionMessageButtonState extends State<_ActionMessageButton> {
             ),
           ),
         ),
-      ),
+      )),
       ),
     );
   }

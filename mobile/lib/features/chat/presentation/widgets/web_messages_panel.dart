@@ -136,12 +136,12 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
       children: [
         // ── Backdrop: tapping it closes the panel ──────────────────────────
         Positioned.fill(
-          child: GestureDetector(
+          child: Semantics(button: true, label: 'Close', child: GestureDetector(
             onTap: widget.onClose,
             child: ColoredBox(
               color: Colors.black.withValues(alpha: 0.35),
             ),
-          ),
+          )),
         ),
 
         // ── Panel ──────────────────────────────────────────────────────────
@@ -520,14 +520,14 @@ class _PanelSearchBar extends StatelessWidget {
               ),
             ),
             if (query.isNotEmpty)
-              GestureDetector(
+              Semantics(button: true, label: 'Clear', child: GestureDetector(
                 onTap: onClear,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Icon(Icons.close_rounded,
                       color: ext.searchHintColor, size: 16),
                 ),
-              )
+              ))
             else
               const SizedBox(width: 8),
           ],
