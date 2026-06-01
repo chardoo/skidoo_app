@@ -80,7 +80,12 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          MouseRegion(
+          Semantics(
+            button: true,
+            label: widget.name.isNotEmpty
+                ? "View ${widget.name}'s profile"
+                : "View creator profile",
+            child: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: GestureDetector(
               onTap: widget.onTap,
@@ -125,11 +130,15 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
               ),
             ),
           ),
+          ),
 
           if (!widget.isOwner)
             Positioned(
               bottom: -8,
-              child: MouseRegion(
+              child: Semantics(
+                button: true,
+                label: _following ? 'Unfollow' : 'Follow',
+                child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
                   onTap: _toggle,
@@ -176,6 +185,7 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
                     ),
                   ),
                 ),
+              ),
               ),
             ),
         ],

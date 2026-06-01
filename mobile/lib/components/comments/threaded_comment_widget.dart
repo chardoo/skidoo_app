@@ -51,7 +51,12 @@ class ThreadedCommentWidget extends StatelessWidget {
           if (hasReplies)
             Padding(
               padding: EdgeInsets.only(left: 44.w, bottom: 4.h),
-              child: GestureDetector(
+              child: Semantics(
+                button: true,
+                label: isExpanded
+                    ? 'Hide replies'
+                    : 'Show $replyCount ${replyCount == 1 ? 'reply' : 'replies'}',
+                child: GestureDetector(
                 onTap: onToggleReplies,
                 behavior: HitTestBehavior.opaque,
                 child: Row(
@@ -83,6 +88,7 @@ class ThreadedCommentWidget extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
               ),
             ),
 

@@ -812,10 +812,14 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                GestureDetector(
-                  onTap: widget.onCancelReply,
-                  child: Icon(Icons.close_rounded,
-                      size: 14.sp, color: ext.searchHintColor),
+                Semantics(
+                  button: true,
+                  label: 'Cancel reply',
+                  child: GestureDetector(
+                    onTap: widget.onCancelReply,
+                    child: Icon(Icons.close_rounded,
+                        size: 14.sp, color: ext.searchHintColor),
+                  ),
                 ),
               ],
             ),
@@ -834,7 +838,10 @@ class _WebCommentInputState extends State<_WebCommentInput> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Emoji toggle button — circle background like WebActionBtn
-              MouseRegion(
+              Semantics(
+                button: true,
+                label: 'Emoji',
+                child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
                   onTap: _toggleEmoji,
@@ -861,6 +868,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                     ),
                   ),
                 ),
+              ),
               ),
               SizedBox(width: 8.w),
 
@@ -908,7 +916,10 @@ class _WebCommentInputState extends State<_WebCommentInput> {
               SizedBox(width: 8.w),
 
               // Send button
-              MouseRegion(
+              Semantics(
+                button: true,
+                label: 'Send comment',
+                child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
                   onTap: widget.onSend,
@@ -935,6 +946,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                         Icon(Icons.send_rounded, color: Colors.white, size: 16.sp),
                   ),
                 ),
+              ),
               ),
             ],
           ),
@@ -1003,17 +1015,21 @@ class _CommentPanelHeader extends StatelessWidget {
               },
             ),
             const Spacer(),
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: onClose,
-                child: Container(
-                  width: 34.w,
-                  height: 34.w,
-                  decoration: const BoxDecoration(shape: BoxShape.circle),
-                  alignment: Alignment.center,
-                  child: Icon(Icons.close_rounded,
-                      color: ext.greetingColor, size: 22.sp),
+            Semantics(
+              button: true,
+              label: 'Close comments',
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: onClose,
+                  child: Container(
+                    width: 34.w,
+                    height: 34.w,
+                    decoration: const BoxDecoration(shape: BoxShape.circle),
+                    alignment: Alignment.center,
+                    child: Icon(Icons.close_rounded,
+                        color: ext.greetingColor, size: 22.sp),
+                  ),
                 ),
               ),
             ),
