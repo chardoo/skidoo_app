@@ -69,7 +69,10 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     // Direct message stream: updates unreadCounts and lastMessageAt in-memory,
     // bypassing the DB.  Essential on web where SQLite is unavailable.
     _bgMsgSub = _bgService.backgroundMessages.listen((msg) {
-      if (!isClosed) add(_ChatRoomsMessageArrived(msg.roomId, msg.createdAt));
+      if (!isClosed) {
+        add(_ChatRoomsMessageArrived(msg.roomId, msg.createdAt,
+            senderId: msg.senderId, senderName: msg.senderName));
+      }
     });
 
     // Badge-clear signal: ChatRoomBloc fires this when a room is opened.
@@ -242,7 +245,27 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     counts[event.roomId] = (counts[event.roomId] ?? 0) + 1;
     final times = Map<String, DateTime>.from(state.lastMessageAt);
     times[event.roomId] = event.arrivedAt;
-    emit(state.copyWith(unreadCounts: counts, lastMessageAt: times));
+
+    // Backfill a nameless direct room with the sender's name so the list shows
+    // the person's name instead of "Direct Message"/their role.
+    var rooms = state.rooms;
+    final senderName = event.senderName?.trim() ?? '';
+    if (senderName.isNotEmpty &&
+        event.senderId != null &&
+        event.senderId != state.currentUserId) {
+      rooms = rooms.map((r) {
+        if (r.id != event.roomId || r.type != RoomType.direct) return r;
+        if (r.name != null && r.name!.isNotEmpty) return r;
+        final peer = r.participants
+            .where((p) => p.userId != state.currentUserId)
+            .firstOrNull;
+        final hasPeerName = (peer?.userName?.trim().isNotEmpty) ?? false;
+        return hasPeerName ? r : r.copyWith(name: senderName);
+      }).toList();
+    }
+
+    emit(state.copyWith(
+        rooms: rooms, unreadCounts: counts, lastMessageAt: times));
   }
 
   /// Clears the unread badge for [roomId] when the user opens the room.

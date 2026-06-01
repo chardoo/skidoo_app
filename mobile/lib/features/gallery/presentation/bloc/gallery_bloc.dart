@@ -2,6 +2,7 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
+import 'package:skidoo_app/core/utils/gallery_refresh_signal.dart';
 import 'package:skidoo_app/features/gallery/domain/usecases/get_gallery_usecase.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/services/auth_service.dart';
@@ -18,6 +19,18 @@ class GalleryBloc extends Bloc<GalleryEvent, GalleryState> {
         _authService = sl<AuthService>(),
         super(const GalleryState()) {
     on<GalleryLoadRequested>(_onLoadRequested);
+    // Reload when a purchase / free-save adds photos elsewhere in the app.
+    GalleryRefreshSignal.revision.addListener(_onRefreshSignal);
+  }
+
+  void _onRefreshSignal() {
+    if (!isClosed) add(const GalleryLoadRequested());
+  }
+
+  @override
+  Future<void> close() {
+    GalleryRefreshSignal.revision.removeListener(_onRefreshSignal);
+    return super.close();
   }
 
   Future<void> _onLoadRequested(

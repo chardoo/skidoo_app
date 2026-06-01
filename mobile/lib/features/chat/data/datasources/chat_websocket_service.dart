@@ -351,8 +351,11 @@ class ChatWebSocketService {
     if (code == null) return false;
     return const {
       4001, // invalid / expired token — re-auth required
-      4003, // caller is not a participant of any requested room
+      4003, // caller is not a participant / pending invite
+      4004, // room not found — retrying can't help
       4400, // wrong endpoint — client-side bug
+      // Note: 4029 (too many concurrent connections) and 1011 (internal) are
+      // intentionally NOT fatal — they should back off and retry.
     }.contains(code);
   }
 
@@ -441,7 +444,11 @@ class ChatWebSocketService {
           if (json.containsKey('error') || type == 'error') {
             final msg = (json['error'] ?? json['message'])?.toString() ??
                 'Unknown chat error';
-            debugPrint('[WS#$_instanceId] error frame: "$msg" roomId=${json['room_id']}');
+            // `detail` is the server's diagnostic (e.g. "<ExcType>: <msg>")
+            // for the "Internal error processing message" catch-all.
+            final detail = json['detail'];
+            debugPrint('[WS#$_instanceId] error frame: "$msg" roomId=${json['room_id']}'
+                '${detail != null ? ' detail=$detail' : ''}');
             _errorController?.add(WsChatErrorEvent(
               message: msg,
               roomId: json['room_id'] as String?,

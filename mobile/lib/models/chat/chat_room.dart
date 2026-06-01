@@ -181,13 +181,19 @@ class ChatRoom {
     }
   }
 
-  /// For direct rooms: returns the other participant's display name.
-  /// Falls back to [displayName] for non-direct rooms or when [myId] is empty.
+  /// For direct rooms: returns the other participant's name — the actual
+  /// person's name, never their role ("Photographer") or "Direct Message".
+  /// Falls back to [displayName] for non-direct rooms or when no name is known.
   String displayNameFor(String myId) {
-    if (type != RoomType.direct || myId.isEmpty) return displayName;
+    // An explicit room name (e.g. set when opening a DM from a profile) wins.
     if (name != null && name!.isNotEmpty) return name!;
+    if (type != RoomType.direct || myId.isEmpty) return displayName;
     final peer = participants.where((p) => p.userId != myId).firstOrNull;
-    return peer?.displayName ?? displayName;
+    // Use the peer's *name* only — not their role — so we never show
+    // "Photographer"/"User" in place of a person's name.
+    final peerName = peer?.userName;
+    if (peerName != null && peerName.trim().isNotEmpty) return peerName.trim();
+    return displayName;
   }
 
   /// True when any participant is an admin or superAdmin — used to badge

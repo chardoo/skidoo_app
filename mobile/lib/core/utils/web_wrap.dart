@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 const double kWebColumnWidth = 530;
 
 /// Wider column width used on content-heavy pages (gallery, search, profiles).
-const double kWebColumnWidthWide = 750;
+const double kWebColumnWidthWide = 700;
 
 /// Constrains [child] to a centred column on web.
 ///

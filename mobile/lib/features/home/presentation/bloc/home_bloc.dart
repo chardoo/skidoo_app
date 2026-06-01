@@ -2,6 +2,7 @@ import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
+import 'package:skidoo_app/core/utils/gallery_refresh_signal.dart';
 import 'package:skidoo_app/features/cart/domain/usecases/save_images_free_usecase.dart';
 import 'package:skidoo_app/features/home/domain/usecases/search_events_usecase.dart';
 import 'package:skidoo_app/features/home/domain/usecases/search_images_usecase.dart';
@@ -112,6 +113,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     try {
       final clientId = await _authService.getUserId();
       await _saveImagesFree(event.photos, clientId: clientId);
+      // Free-saved photos land in the gallery — refresh it.
+      GalleryRefreshSignal.bump();
       emit(state.copyWith(
           isSavingFree: false, savedFreeCount: event.photos.length));
     } on NetworkException {

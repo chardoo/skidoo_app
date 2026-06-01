@@ -34,9 +34,12 @@ class ChatRoomsGroupInviteReceived extends ChatRoomsEvent {
 /// A message landed in a background room — update badge and sort-order
 /// in-memory without a DB round-trip (essential on web where SQLite is absent).
 class _ChatRoomsMessageArrived extends ChatRoomsEvent {
-  const _ChatRoomsMessageArrived(this.roomId, this.arrivedAt);
+  const _ChatRoomsMessageArrived(this.roomId, this.arrivedAt,
+      {this.senderId, this.senderName});
   final String roomId;
   final DateTime arrivedAt;
+  final String? senderId;
+  final String? senderName;
 }
 
 /// ChatRoomBloc opened a room and marked all messages as read — zero the badge.
