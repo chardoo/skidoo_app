@@ -862,7 +862,10 @@ class _PanelRoomContentState extends State<_PanelRoomContent> {
           p.isConnecting != c.isConnecting ||
           p.isLoadingHistory != c.isLoadingHistory ||
           p.isLoadingMore != c.isLoadingMore ||
-          p.isSyncing != c.isSyncing,
+          p.isSyncing != c.isSyncing ||
+          // Admin-only toggle / admin status drive the input lock.
+          p.room?.adminOnly != c.room?.adminOnly ||
+          p.amIAdmin != c.amIAdmin,
       builder: (context, state) {
         _syncAnimationState(state.messages, state.isLoadingHistory);
 
@@ -889,19 +892,24 @@ class _PanelRoomContentState extends State<_PanelRoomContent> {
                 syncAnimationState: _syncAnimationState,
               ),
             ),
-            ChatInputBar(
-              controller: _inputCtrl,
-              onSend: _send,
-              ext: ext,
-              replyingTo: state.replyingTo,
-              onClearReply: () => _bloc.add(const ChatRoomReplySet(null)),
-              onImagePicked: _onImagePicked,
-              pendingImagePath: state.pendingImagePath,
-              pendingIsVideo: state.pendingIsVideo,
-              pendingShareUrl: state.pendingShareUrl,
-              onClearImage: () => _bloc.add(const ChatRoomImageCleared()),
-              isUploadingImage: state.isUploadingImage,
-            ),
+            // Admin-only rooms: non-admins can't send — disable the input and
+            // show a lock notice (mirrors the mobile chat room behaviour).
+            if (state.room?.adminOnly == true && !state.amIAdmin)
+              _AdminOnlyNotice(ext: ext, l10n: l10n)
+            else
+              ChatInputBar(
+                controller: _inputCtrl,
+                onSend: _send,
+                ext: ext,
+                replyingTo: state.replyingTo,
+                onClearReply: () => _bloc.add(const ChatRoomReplySet(null)),
+                onImagePicked: _onImagePicked,
+                pendingImagePath: state.pendingImagePath,
+                pendingIsVideo: state.pendingIsVideo,
+                pendingShareUrl: state.pendingShareUrl,
+                onClearImage: () => _bloc.add(const ChatRoomImageCleared()),
+                isUploadingImage: state.isUploadingImage,
+              ),
           ],
         );
       },
@@ -945,6 +953,42 @@ class _ConnectionBanner extends StatelessWidget {
 }
 
 // ── E2E badge ─────────────────────────────────────────────────────────────────
+
+/// Shown in place of the input bar when the room is admin-only and the current
+/// user is not an admin — they can read but not send.
+class _AdminOnlyNotice extends StatelessWidget {
+  const _AdminOnlyNotice({required this.ext, required this.l10n});
+
+  final AppThemeExtension ext;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        border: Border(
+          top: BorderSide(
+              color: ext.searchHintColor.withValues(alpha: 0.15)),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.lock_rounded, size: 14, color: ext.searchHintColor),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              l10n.chatRoomOnlyAdminsCanSend,
+              style: TextStyle(color: ext.searchHintColor, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _E2EBadge extends StatelessWidget {
   const _E2EBadge({required this.ext, required this.l10n});
