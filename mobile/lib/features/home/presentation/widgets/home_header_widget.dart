@@ -151,28 +151,36 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                       ),
                       // Right side: close (search open) or QR scan button
                       if (widget.isSearchOpen)
-                        GestureDetector(
-                          onTap: _handleClose,
-                          child: Padding(
-                            padding:
-                                EdgeInsets.symmetric(horizontal: 12.w),
-                            child: Icon(
-                              Icons.close_rounded,
-                              color: ext.searchHintColor,
-                              size: 18.sp,
+                        Semantics(
+                          button: true,
+                          label: 'Close search',
+                          child: GestureDetector(
+                            onTap: _handleClose,
+                            child: Padding(
+                              padding:
+                                  EdgeInsets.symmetric(horizontal: 12.w),
+                              child: Icon(
+                                Icons.close_rounded,
+                                color: ext.searchHintColor,
+                                size: 18.sp,
+                              ),
                             ),
                           ),
                         )
                       else if (widget.onQrScan != null)
-                        GestureDetector(
-                          onTap: widget.onQrScan,
-                          child: Padding(
-                            padding:
-                                EdgeInsets.symmetric(horizontal: 12.w),
-                            child: Icon(
-                              Icons.qr_code_scanner_rounded,
-                              color: ext.glassIcon,
-                              size: 20.sp,
+                        Semantics(
+                          button: true,
+                          label: 'Scan QR code',
+                          child: GestureDetector(
+                            onTap: widget.onQrScan,
+                            child: Padding(
+                              padding:
+                                  EdgeInsets.symmetric(horizontal: 12.w),
+                              child: Icon(
+                                Icons.qr_code_scanner_rounded,
+                                color: ext.glassIcon,
+                                size: 20.sp,
+                              ),
                             ),
                           ),
                         )
@@ -186,7 +194,10 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
             SizedBox(width: 12.w),
 
             // ── Profile avatar ────────────────────────────────────────────
-            GestureDetector(
+            Semantics(
+              button: true,
+              label: 'Profile',
+              child: GestureDetector(
               onTap: widget.onAvatarTap,
               child: Container(
                 padding: const EdgeInsets.all(2),
@@ -214,6 +225,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                   ),
                 ),
               ),
+            ),
             ),
           ],
         ),
