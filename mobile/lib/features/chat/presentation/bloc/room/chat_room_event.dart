@@ -98,6 +98,12 @@ class _WsConnected extends ChatRoomEvent {
   const _WsConnected();
 }
 
+/// WS reconnected after a drop — refetch room history to backfill any messages
+/// missed while offline (the socket has no replay/backfill).
+class _HistoryRefetchRequested extends ChatRoomEvent {
+  const _HistoryRefetchRequested();
+}
+
 class _WsFailed extends ChatRoomEvent {
   final String error;
   const _WsFailed(this.error);

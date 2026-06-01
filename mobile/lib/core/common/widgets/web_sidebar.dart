@@ -1508,24 +1508,59 @@ class _WebTopActionsState extends State<WebTopActions> {
       builder: (context, isLoggedIn, _) {
         if (!isLoggedIn) return const SizedBox.shrink();
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
+        // Single grouped capsule: action items, a divider, then the avatar.
         return Material(
           color: Colors.transparent,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const _ActionGetAppButton(),
-              const SizedBox(width: 8),
-              BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
-                selector: (s) =>
-                    s.unreadCounts.values.fold(0, (sum, c) => sum + c),
-                builder: (context, unread) => _ActionMessageButton(
-                  unreadCount: unread,
-                  onTap: _openMessages,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+            decoration: BoxDecoration(
+              color: ext.cardSurface,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: ext.glassBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
                 ),
-              ),
-              const SizedBox(width: 12),
-              _ActionAvatar(ext: ext, initial: _initial, onTap: _openAccount),
-            ],
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _CapsuleItem(
+                  ext: ext,
+                  icon: Icons.smartphone_rounded,
+                  label: 'Get app',
+                  onTap: () => launchUrl(
+                    Uri.parse('https://skidoo.app'),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+                BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
+                  selector: (s) =>
+                      s.unreadCounts.values.fold(0, (sum, c) => sum + c),
+                  builder: (context, unread) => _CapsuleItem(
+                    ext: ext,
+                    icon: Icons.chat_bubble_rounded,
+                    label: 'Messages',
+                    badgeCount: unread,
+                    onTap: _openMessages,
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 24,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  color: ext.glassBorder,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 2),
+                  child:
+                      _ActionAvatar(ext: ext, initial: _initial, onTap: _openAccount),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -1533,142 +1568,86 @@ class _WebTopActionsState extends State<WebTopActions> {
   }
 }
 
-class _ActionGetAppButton extends StatefulWidget {
-  const _ActionGetAppButton();
+/// An inline action inside the top-right capsule: an icon + label that
+/// highlights on hover. Shows a small unread badge on the icon when
+/// [badgeCount] > 0.
+class _CapsuleItem extends StatefulWidget {
+  const _CapsuleItem({
+    required this.ext,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.badgeCount = 0,
+  });
 
-  @override
-  State<_ActionGetAppButton> createState() => _ActionGetAppButtonState();
-}
-
-class _ActionGetAppButtonState extends State<_ActionGetAppButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return Semantics(
-      button: true,
-      label: 'Get the app',
-      child: MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: () => launchUrl(
-          Uri.parse('https://skidoo.app'),
-          mode: LaunchMode.externalApplication,
-        ),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(
-            color: _hovered
-                ? ext.accentGold.withValues(alpha: 0.90)
-                : ext.accentGold,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.download_rounded, color: Colors.black, size: 14),
-              SizedBox(width: 5),
-              Text(
-                'Get the app',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  decoration: TextDecoration.none,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      ),
-    );
-  }
-}
-
-class _ActionMessageButton extends StatefulWidget {
-  const _ActionMessageButton({required this.unreadCount, required this.onTap});
-
-  final int unreadCount;
+  final AppThemeExtension ext;
+  final IconData icon;
+  final String label;
   final VoidCallback onTap;
+  final int badgeCount;
 
   @override
-  State<_ActionMessageButton> createState() => _ActionMessageButtonState();
+  State<_CapsuleItem> createState() => _CapsuleItemState();
 }
 
-class _ActionMessageButtonState extends State<_ActionMessageButton> {
+class _CapsuleItemState extends State<_CapsuleItem> {
   bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final ext = widget.ext;
+    final icon = Icon(widget.icon, size: 16, color: ext.greetingColor);
     return Semantics(
       button: true,
-      label: widget.unreadCount > 0
-          ? 'Messages, ${widget.unreadCount} unread'
-          : 'Messages',
+      label: widget.badgeCount > 0
+          ? '${widget.label}, ${widget.badgeCount} unread'
+          : widget.label,
       child: MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Semantics(button: true, child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedScale(
-          scale: _hovered ? 1.08 : 1.0,
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  ext.accentGold.withValues(alpha: _hovered ? 0.30 : 0.18),
-                  ext.accentGold.withValues(alpha: _hovered ? 0.18 : 0.10),
-                ],
-              ),
-              border: Border.all(
-                color: ext.accentGold.withValues(alpha: _hovered ? 0.65 : 0.40),
-                width: 1.2,
-              ),
-              boxShadow: _hovered
-                  ? [
-                      BoxShadow(
-                        color: ext.accentGold.withValues(alpha: 0.25),
-                        blurRadius: 12,
-                        spreadRadius: 1,
-                      ),
-                    ]
-                  : null,
+              color: _hovered
+                  ? ext.accentGold.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(22),
             ),
-            child: Badge(
-              isLabelVisible: widget.unreadCount > 0,
-              label: Text(
-                widget.unreadCount > 9 ? '9+' : '${widget.unreadCount}',
-                style: const TextStyle(
-                    fontSize: 9,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700),
-              ),
-              backgroundColor: Colors.redAccent,
-              child: Icon(
-                Icons.chat_bubble_rounded,
-                color: ext.accentGold,
-                size: 20,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                widget.badgeCount > 0
+                    ? Badge(
+                        label: Text(
+                          widget.badgeCount > 9 ? '9+' : '${widget.badgeCount}',
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        backgroundColor: Colors.redAccent,
+                        child: icon,
+                      )
+                    : icon,
+                const SizedBox(width: 6),
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-      )),
       ),
     );
   }

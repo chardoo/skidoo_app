@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:bloc/bloc.dart';
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
@@ -53,6 +54,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   ChatWebSocketService get _ws => _bgService.sharedWs;
 
   String? _currentRoomId;
+  // True once the first WS connect for this room has happened. Later connects
+  // are reconnects → we refetch history to backfill anything missed offline.
+  bool _didInitialConnect = false;
   String _myUserId = '';
 
   // E2EE state
@@ -154,6 +158,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<ChatRoomLoadMoreRequested>(_onLoadMore);
     on<ChatRoomLeft>(_onLeft);
     on<_WsConnected>(_onWsConnected);
+    on<_HistoryRefetchRequested>(_onHistoryRefetch, transformer: droppable());
     on<_WsFailed>(_onWsFailed);
     on<_WsDropped>(_onWsDropped);
     on<_WsGaveUp>(_onWsGaveUp);
@@ -193,6 +198,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     Emitter<ChatRoomState> emit,
   ) async {
     _currentRoomId = event.roomId;
+    _didInitialConnect = false; // first connect for this room loads history here
 
     final roomType = event.room?.type;
     final isDm = roomType == RoomType.direct;
@@ -616,6 +622,41 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       isConnecting: false,
       clearError: true,
     ));
+    // The first connect's history is loaded by _onJoined. Any later connect is
+    // a reconnect — the socket doesn't replay, so refetch to backfill anything
+    // that arrived while we were offline.
+    if (_didInitialConnect) {
+      if (!isClosed) add(const _HistoryRefetchRequested());
+    } else {
+      _didInitialConnect = true;
+    }
+  }
+
+  /// Refetch room history after a reconnect and merge in anything new.
+  Future<void> _onHistoryRefetch(
+      _HistoryRefetchRequested event, Emitter<ChatRoomState> emit) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    try {
+      final fresh = await _getMessages(roomId);
+      if (isClosed) return;
+      final knownIds = state.messages.map((m) => m.id).toSet();
+      final incoming = fresh.where((m) => !knownIds.contains(m.id)).toList();
+      if (incoming.isEmpty) return;
+      emit(state.copyWith(
+          messages: _sorted([...state.messages, ...incoming])));
+
+      // Mark the backfilled messages read + ack the latest peer message.
+      await _markAsRead(roomId);
+      _bgService.onUnreadUpdate?.call();
+      _bgService.onRoomRead?.call(roomId);
+      final latest = _sorted(incoming)
+          .where((m) => !m.isLocal && m.senderId != _myUserId)
+          .firstOrNull;
+      if (latest != null) _ws.sendAck(roomId, latest.id);
+    } catch (_) {
+      // Backfill is best-effort; live frames keep the room current.
+    }
   }
 
   void _onUrlStaged(ChatRoomUrlStaged event, Emitter<ChatRoomState> emit) {
