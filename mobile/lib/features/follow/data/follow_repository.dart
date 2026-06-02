@@ -16,6 +16,78 @@ class FollowStats {
       );
 }
 
+/// A single account in a following/followers list.
+/// [notify] is only present in the *following* list (the follower's own
+/// per-account push setting); it is null for followers entries.
+class FollowEntry {
+  final String id;
+  final String type; // "photographer" | "client"
+  final String name;
+  final String? profileUrl;
+  final bool? notify;
+  final DateTime? followedAt;
+
+  const FollowEntry({
+    required this.id,
+    required this.type,
+    required this.name,
+    this.profileUrl,
+    this.notify,
+    this.followedAt,
+  });
+
+  bool get isPhotographer => type == 'photographer';
+
+  FollowEntry copyWith({bool? notify}) => FollowEntry(
+        id: id,
+        type: type,
+        name: name,
+        profileUrl: profileUrl,
+        notify: notify ?? this.notify,
+        followedAt: followedAt,
+      );
+
+  factory FollowEntry.fromJson(Map<String, dynamic> json) {
+    DateTime? parsedAt;
+    final rawAt = json['followedAt'] ?? json['followed_at'];
+    if (rawAt is String && rawAt.isNotEmpty) {
+      parsedAt = DateTime.tryParse(rawAt)?.toLocal();
+    }
+    return FollowEntry(
+      id: (json['id'] ?? '').toString(),
+      type: (json['type'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      profileUrl: (json['profile_url'] as String?)?.isNotEmpty == true
+          ? json['profile_url'] as String
+          : null,
+      notify: json['notify'] is bool ? json['notify'] as bool : null,
+      followedAt: parsedAt,
+    );
+  }
+}
+
+/// One page of a follow list plus its pagination metadata.
+class FollowPage {
+  final List<FollowEntry> data;
+  final int page;
+  final int limit;
+  final int total;
+  final int totalPages;
+
+  const FollowPage({
+    required this.data,
+    required this.page,
+    required this.limit,
+    required this.total,
+    required this.totalPages,
+  });
+
+  bool get hasMore => page < totalPages;
+
+  static const empty =
+      FollowPage(data: [], page: 1, limit: 20, total: 0, totalPages: 0);
+}
+
 /// Wraps all /follow/photographer/* endpoints.
 ///
 /// Maintains a session-local in-memory set of followed photographer IDs so
@@ -112,6 +184,82 @@ class FollowRepository {
     } catch (e, st) {
       debugPrint('$_tag getStats ERROR: $e\n$st');
       return const FollowStats(followers: 0, following: 0);
+    }
+  }
+
+  // ── Following / followers lists (current user) ────────────────────────────
+
+  /// GET /follow/following — accounts the current user follows (newest first).
+  Future<FollowPage> getFollowing({int page = 1, int limit = 20}) =>
+      _getList('/follow/following', page: page, limit: limit);
+
+  /// GET /follow/followers — accounts following the current user (newest first).
+  Future<FollowPage> getFollowers({int page = 1, int limit = 20}) =>
+      _getList('/follow/followers', page: page, limit: limit);
+
+  Future<FollowPage> _getList(String path,
+      {required int page, required int limit}) async {
+    debugPrint('$_tag getList $path → page=$page limit=$limit');
+    try {
+      final resp = await _dio.get(path, queryParameters: {
+        'page': page,
+        'limit': limit,
+      });
+      debugPrint('$_tag getList $path ← status=${resp.statusCode}');
+      final raw = resp.data;
+      Map<String, dynamic> body;
+      if (raw is Map<String, dynamic> && raw['data'] is Map<String, dynamic>) {
+        // Some gateways double-wrap in { success, data: { data, pagination } }.
+        body = raw['data'] as Map<String, dynamic>;
+      } else if (raw is Map<String, dynamic>) {
+        body = raw;
+      } else {
+        body = {};
+      }
+
+      final list = body['data'] is List ? body['data'] as List<dynamic> : const [];
+      final entries = <FollowEntry>[];
+      for (final item in list) {
+        if (item is Map<String, dynamic>) {
+          try {
+            entries.add(FollowEntry.fromJson(item));
+          } catch (e) {
+            debugPrint('$_tag getList parse error: $e');
+          }
+        }
+      }
+
+      final pag = body['pagination'] is Map<String, dynamic>
+          ? body['pagination'] as Map<String, dynamic>
+          : const <String, dynamic>{};
+      final total = (pag['total'] as num?)?.toInt() ?? entries.length;
+      final totalPages = (pag['totalPages'] as num?)?.toInt() ??
+          (limit > 0 ? ((total + limit - 1) ~/ limit) : 1);
+
+      return FollowPage(
+        data: entries,
+        page: (pag['page'] as num?)?.toInt() ?? page,
+        limit: (pag['limit'] as num?)?.toInt() ?? limit,
+        total: total,
+        totalPages: totalPages,
+      );
+    } catch (e, st) {
+      debugPrint('$_tag getList $path ERROR: $e\n$st');
+      rethrow;
+    }
+  }
+
+  /// PATCH /follow/{type}/{id}/notify — toggle per-account push for any type.
+  Future<void> setNotifyFor(String type, String id,
+      {required bool notify}) async {
+    if (id.isEmpty) return;
+    debugPrint('$_tag setNotifyFor → $type/$id notify=$notify');
+    try {
+      await _dio.patch('/follow/$type/$id/notify',
+          queryParameters: {'notify': notify});
+    } catch (e, st) {
+      debugPrint('$_tag setNotifyFor ERROR: $e\n$st');
+      rethrow;
     }
   }
 

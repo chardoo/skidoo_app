@@ -33,6 +33,7 @@ import 'package:skidoo_app/models/photographer/photographer_event.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
 import 'package:skidoo_app/features/follow/data/follow_repository.dart';
+import 'package:skidoo_app/features/follow/presentation/pages/follow_list_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -88,10 +89,22 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
 
   Future<void> _loadStats() async {
     final stats = await _followRepo.getStats(widget.photographer.id);
-    if (mounted) setState(() {
-      _stats = stats;
-      _statsLoaded = true;
-    });
+    if (mounted) {
+      setState(() {
+        _stats = stats;
+        _statsLoaded = true;
+      });
+    }
+  }
+
+  void _openFollowList(FollowListTab tab) {
+    Navigator.of(context).push(
+      FollowListPage.route(
+        initialTab: tab,
+        followersCount: _stats.followers,
+        followingCount: _stats.following,
+      ),
+    );
   }
 
   @override
@@ -200,7 +213,19 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
 
                   // ── Follow stats ────────────────────────────────────────
                   if (_statsLoaded)
-                    _FollowStatsRow(stats: _stats, ext: ext),
+                    _FollowStatsRow(
+                      stats: _stats,
+                      ext: ext,
+                      // The followers/following list endpoints return the
+                      // caller's own relationships, so tapping to open the list
+                      // is only offered on the user's own profile.
+                      onTapFollowers: _isOwner
+                          ? () => _openFollowList(FollowListTab.followers)
+                          : null,
+                      onTapFollowing: _isOwner
+                          ? () => _openFollowList(FollowListTab.following)
+                          : null,
+                    ),
                   if (!_statsLoaded)
                     SizedBox(
                       height: 18.h,
@@ -846,9 +871,18 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 // ── Follow stats row ──────────────────────────────────────────────────────────
 
 class _FollowStatsRow extends StatelessWidget {
-  const _FollowStatsRow({required this.stats, required this.ext});
+  const _FollowStatsRow({
+    required this.stats,
+    required this.ext,
+    this.onTapFollowers,
+    this.onTapFollowing,
+  });
   final FollowStats stats;
   final AppThemeExtension ext;
+  // Provided only on the current user's own profile — the list endpoints
+  // return the caller's own followers/following, so tapping is gated to owner.
+  final VoidCallback? onTapFollowers;
+  final VoidCallback? onTapFollowing;
 
   String _fmt(int n) {
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
@@ -860,23 +894,40 @@ class _FollowStatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _Stat(label: 'Followers', value: _fmt(stats.followers), ext: ext),
+        _Stat(
+          label: 'Followers',
+          value: _fmt(stats.followers),
+          ext: ext,
+          onTap: onTapFollowers,
+        ),
         SizedBox(width: 24.w),
-        _Stat(label: 'Following', value: _fmt(stats.following), ext: ext),
+        _Stat(
+          label: 'Following',
+          value: _fmt(stats.following),
+          ext: ext,
+          onTap: onTapFollowing,
+        ),
       ],
     );
   }
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value, required this.ext});
+  const _Stat({
+    required this.label,
+    required this.value,
+    required this.ext,
+    this.onTap,
+  });
   final String label;
   final String value;
   final AppThemeExtension ext;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final tappable = onTap != null;
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -889,15 +940,38 @@ class _Stat extends StatelessWidget {
             letterSpacing: -0.3,
           ),
         ),
-        Text(
-          label,
-          style: TextStyle(
-            color: ext.searchHintColor,
-            fontSize: 11.sp,
-            fontWeight: FontWeight.w500,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: tappable ? ext.accentGold : ext.searchHintColor,
+                fontSize: 11.sp,
+                fontWeight: tappable ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+            if (tappable) ...[
+              SizedBox(width: 2.w),
+              Icon(Icons.chevron_right_rounded,
+                  size: 13.sp, color: ext.accentGold),
+            ],
+          ],
         ),
       ],
+    );
+    if (!tappable) return column;
+    return Semantics(
+      button: true,
+      label: '$label, $value — view list',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8.r),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+          child: column,
+        ),
+      ),
     );
   }
 }

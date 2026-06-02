@@ -17,6 +17,7 @@ import 'package:skidoo_app/features/ads/presentation/pages/request_board_page.da
 import 'package:skidoo_app/features/user_profile/presentation/pages/face_recognition_page.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/saved_items_page.dart';
+import 'package:skidoo_app/features/follow/presentation/pages/follow_list_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 
@@ -126,6 +127,8 @@ class _AccountView extends StatelessWidget {
                               ),
                             ),
                             SizedBox(height: 32.h),
+                            _ConnectionsCard(ext: ext),
+                            SizedBox(height: 12.h),
                             _EditProfileCard(state: state, ext: ext),
                             SizedBox(height: 12.h),
                             _ThemeToggleCard(ext: ext),
@@ -1046,6 +1049,62 @@ class _FaceRecognitionCard extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const FaceRecognitionPage()),
               );
             },
+          ),
+          SizedBox(height: 4.h),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Connections (followers / following) card ──────────────────────────────────
+
+class _ConnectionsCard extends StatelessWidget {
+  const _ConnectionsCard({required this.ext});
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
+            child: Text(
+              'CONNECTIONS',
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          _AdsListTile(
+            icon: Icons.group_rounded,
+            iconColor: ext.accentGold,
+            title: 'Followers',
+            subtitle: 'People who follow you',
+            ext: ext,
+            onTap: () => Navigator.of(context).push(
+              FollowListPage.route(initialTab: FollowListTab.followers),
+            ),
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          _AdsListTile(
+            icon: Icons.person_add_alt_1_rounded,
+            iconColor: const Color(0xFF3B82F6),
+            title: 'Following',
+            subtitle: 'Accounts you follow',
+            ext: ext,
+            onTap: () => Navigator.of(context).push(
+              FollowListPage.route(initialTab: FollowListTab.following),
+            ),
           ),
           SizedBox(height: 4.h),
         ],
