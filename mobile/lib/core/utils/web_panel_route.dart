@@ -7,6 +7,47 @@ const double kWebChatPanelWidth = 460.0;
 /// Gap above the panel so it clears the top bar / action cluster.
 const double kWebChatPanelTopGap = 56.0;
 
+/// Margins that let the panel float as a card (clear of the screen edges).
+const double kWebChatPanelSideMargin = 16.0;
+const double kWebChatPanelBottomMargin = 16.0;
+
+/// Corner radius of the floating panel card.
+const double kWebChatPanelRadius = 22.0;
+
+/// Wraps the panel (and its sub-pages) in the floating, rounded, shadowed card
+/// so every chat surface shares the exact same elevated geometry.
+class WebPanelFloatingCard extends StatelessWidget {
+  const WebPanelFloatingCard({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(kWebChatPanelRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 44,
+            spreadRadius: 2,
+            offset: const Offset(0, 18),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(kWebChatPanelRadius),
+        child: child,
+      ),
+    );
+  }
+}
+
 /// Pushes [page] so that on web it occupies exactly the chat-panel column
 /// (same width/position, sliding in from the right) — keeping every chat
 /// sub-page (create group, group info, add people, …) inside the right panel.
@@ -49,8 +90,8 @@ class _WebPanelPageFrame extends StatelessWidget {
         ),
         Positioned(
           top: kWebChatPanelTopGap,
-          right: 0,
-          bottom: 0,
+          right: kWebChatPanelSideMargin,
+          bottom: kWebChatPanelBottomMargin,
           width: kWebChatPanelWidth,
           child: SlideTransition(
             position: Tween<Offset>(
@@ -58,7 +99,7 @@ class _WebPanelPageFrame extends StatelessWidget {
               end: Offset.zero,
             ).animate(
                 CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-            child: child,
+            child: WebPanelFloatingCard(child: child),
           ),
         ),
       ],

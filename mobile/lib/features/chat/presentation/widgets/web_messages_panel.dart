@@ -147,12 +147,13 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
         // ── Panel ──────────────────────────────────────────────────────────
         Positioned(
           top: kWebChatPanelTopGap,
-          right: 0,
-          bottom: 0,
+          right: kWebChatPanelSideMargin,
+          bottom: kWebChatPanelBottomMargin,
           width: kWebChatPanelWidth,
           child: SlideTransition(
             position: _slideAnim,
-            child: _PanelShell(
+            child: WebPanelFloatingCard(
+              child: _PanelShell(
               ext: ext,
               activeRoom: _activeRoom,
               onBack: _backToRooms,
@@ -161,6 +162,7 @@ class _WebMessagesPanelState extends State<WebMessagesPanel>
               onCreateGroup: _openCreateGroup,
               onOpenSettings: _openSettings,
               onBlocReady: (bloc) => _activeRoomBloc = bloc,
+              ),
             ),
           ),
         ),
@@ -196,12 +198,18 @@ class _PanelShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: ext.homeBackground,
-        border: Border(
-          left: BorderSide(
-            color: ext.searchHintColor.withValues(alpha: 0.12),
-            width: 1,
-          ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color.alphaBlend(
+                Colors.white.withValues(alpha: 0.04), ext.homeBackground),
+            ext.homeBackground,
+          ],
+        ),
+        border: Border.all(
+          color: ext.searchHintColor.withValues(alpha: 0.12),
+          width: 1,
         ),
       ),
       child: Column(
@@ -554,17 +562,50 @@ class _PanelEmptyRooms extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.symmetric(horizontal: 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.chat_bubble_outline_rounded,
-                size: 42, color: ext.searchHintColor.withValues(alpha: 0.5)),
-            const SizedBox(height: 12),
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    ext.accentGold.withValues(alpha: 0.20),
+                    ext.accentGold.withValues(alpha: 0.03),
+                  ],
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                isFiltered ? Icons.search_off_rounded : Icons.forum_rounded,
+                size: 38,
+                color: ext.accentGold.withValues(alpha: 0.85),
+              ),
+            ),
+            const SizedBox(height: 18),
             Text(
               isFiltered ? 'No chats match "$query"' : 'No conversations yet',
               textAlign: TextAlign.center,
-              style: TextStyle(color: ext.searchHintColor, fontSize: 13),
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isFiltered
+                  ? 'Try a different name.'
+                  : 'Start a chat from a profile, or tap the + to create a group.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12.5,
+                height: 1.4,
+              ),
             ),
           ],
         ),
@@ -584,15 +625,28 @@ class _PanelSectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-      child: Text(
-        label.toUpperCase(),
-        style: TextStyle(
-          color: ext.searchHintColor,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-        ),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 4,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: ext.accentGold,
+            ),
+          ),
+          const SizedBox(width: 7),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              color: ext.searchHintColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ],
       ),
     );
   }
