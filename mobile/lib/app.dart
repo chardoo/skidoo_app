@@ -212,9 +212,10 @@ class _AppMaterial extends StatelessWidget {
         Locale('de'),
       ],
       scrollBehavior: kIsWeb ? const _WebScrollBehavior() : null,
-      // On web: sidebar + centred 480 dp column.
-      // On mobile: no wrapper — ScreenUtilInit already wraps the navigator.
-      builder: kIsWeb ? _webLayoutBuilder : null,
+      // On web: sidebar + centred 480 dp column (its builder also wraps in a
+      // SelectionArea). On mobile: wrap in a SelectionArea so every Text is
+      // selectable / copyable there too.
+      builder: kIsWeb ? _webLayoutBuilder : _mobileSelectionBuilder,
       navigatorObservers: kIsWeb ? [WebRouteObserver.instance] : [],
       // Web: always start at Discovery so a hard-refresh (⇧⌘R) gives a clean
       // slate. _GuestGuard redirects authenticated users to /home immediately.
@@ -250,6 +251,13 @@ class _AppMaterial extends StatelessWidget {
       ),
     );
   }
+
+  /// Mobile wrapper: a [SelectionArea] so static text is selectable and
+  /// copyable (long-press to select, then Copy) — matching the web behaviour.
+  /// TextFields and buttons keep their own gestures; only plain Text becomes
+  /// selectable.
+  static Widget _mobileSelectionBuilder(BuildContext ctx, Widget? child) =>
+      SelectionArea(child: child!);
 
   /// Web layout — adapts to viewport width:
   ///   ≥ 720 px (desktop): left sidebar + centred column (480→760 px) + download button
