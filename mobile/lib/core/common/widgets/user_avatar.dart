@@ -51,7 +51,7 @@ class UserAvatar extends StatelessWidget {
     }
 
     if (onTap == null) return avatar;
-    return Semantics(button: true, child: GestureDetector(onTap: onTap, child: avatar));
+    return Semantics(button: true, label: 'User avatar', child: GestureDetector(onTap: onTap, child: avatar));
   }
 }
 

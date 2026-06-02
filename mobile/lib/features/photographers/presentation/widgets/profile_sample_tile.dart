@@ -11,7 +11,7 @@ class PhotographerSampleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: 'Sample photo', child: GestureDetector(
       onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(4.r),

@@ -92,7 +92,10 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
 
             // ── Search field ──────────────────────────────────────────────
             Expanded(
-              child: GestureDetector(
+              child: Semantics(
+                button: !widget.isSearchOpen,
+                label: widget.isSearchOpen ? null : 'Open search',
+                child: GestureDetector(
                 onTap: widget.isSearchOpen ? null : widget.onSearchOpen,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -189,6 +192,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                     ],
                   ),
                 ),
+              ),
               ),
             ),
             SizedBox(width: 12.w),

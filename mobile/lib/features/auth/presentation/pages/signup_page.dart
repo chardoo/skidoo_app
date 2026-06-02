@@ -291,7 +291,7 @@ class _SignUpViewState extends State<_SignUpView>
                                     fontSize: 14.sp,
                                   ),
                                 ),
-                                Semantics(button: true, child: GestureDetector(
+                                Semantics(button: true, label: 'Log in', child: GestureDetector(
                                   onTap: () => Navigator.of(context)
                                       .pushReplacementNamed(LoginPage.routeName),
                                   child: Text(
@@ -340,7 +340,7 @@ class _FaceCaptureButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final captured = imagePath.isNotEmpty;
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: 'Capture face', child: GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
@@ -473,7 +473,7 @@ class _GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: label, child: GestureDetector(
       onTap: isLoading ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),

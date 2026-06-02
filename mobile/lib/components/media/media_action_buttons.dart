@@ -516,7 +516,10 @@ class _MediaBtnState extends State<_MediaBtn>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      label: widget.label,
+      child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _ctrl.reverse(),
       onTapUp: (_) {
@@ -590,6 +593,7 @@ class _MediaBtnState extends State<_MediaBtn>
             ),
           ],
         ),
+      ),
       ),
     );
   }

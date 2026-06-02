@@ -61,7 +61,7 @@ class _CardDescriptionTextState extends State<CardDescriptionText> {
           // ── Content tags from backend ────────────────────────────────────
           if (tagLine.isNotEmpty) ...[
             SizedBox(height: 5.h),
-            Semantics(button: true, child: GestureDetector(
+            Semantics(button: true, label: 'Toggle tags', child: GestureDetector(
               onTap: () => setState(() => _tagsExpanded = !_tagsExpanded),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

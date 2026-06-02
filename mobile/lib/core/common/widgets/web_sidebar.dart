@@ -435,7 +435,7 @@ class _TypeaheadItemState extends State<_TypeaheadItem> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Semantics(button: true, child: GestureDetector(
+      child: Semantics(button: true, label: 'Search result', child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
@@ -736,7 +736,7 @@ class _NavItemState extends State<_NavItem> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Semantics(button: true, child: GestureDetector(
+      child: Semantics(button: true, label: widget.label, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -850,7 +850,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Semantics(button: true, child: GestureDetector(
+      child: Semantics(button: true, label: widget.label, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -901,7 +901,7 @@ class _TextActionButtonState extends State<_TextActionButton> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Semantics(button: true, child: GestureDetector(
+      child: Semantics(button: true, label: widget.label, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -1271,7 +1271,7 @@ class _TopNavPillState extends State<_TopNavPill> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Semantics(button: true, child: GestureDetector(
+      child: Semantics(button: true, label: widget.label, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -1394,7 +1394,7 @@ class _TopNavTextBtnState extends State<_TopNavTextBtn> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Semantics(button: true, child: GestureDetector(
+      child: Semantics(button: true, label: widget.label, child: GestureDetector(
         onTap: widget.onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1438,7 +1438,7 @@ class _TopNavFilledBtnState extends State<_TopNavFilledBtn> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Semantics(button: true, child: GestureDetector(
+      child: Semantics(button: true, label: widget.label, child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),

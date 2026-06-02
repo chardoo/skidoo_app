@@ -507,7 +507,7 @@ class _PanelBtn extends StatelessWidget {
     final bg = primary ? ext.accentGold : ext.searchFieldFill;
     final fg = primary ? Colors.black : ext.greetingColor;
 
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: label, child: GestureDetector(
       onTap: disabled ? null : onTap,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 150),

@@ -888,7 +888,7 @@ class _CtaStripState extends State<_CtaStrip>
       animation: _ctrl,
       builder: (context, child) {
         final p = _ctrl.value;
-        return Semantics(button: true, child: GestureDetector(
+        return Semantics(button: true, label: widget.label, child: GestureDetector(
           onTap: widget.onTap,
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 13.h),

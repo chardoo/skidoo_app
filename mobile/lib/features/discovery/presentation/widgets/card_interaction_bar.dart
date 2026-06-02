@@ -49,6 +49,7 @@ class CardInteractionBar extends StatelessWidget {
         children: [
           // ── Like ────────────────────────────────────────────────────────
           _AnimatedActionBtn(
+            semanticLabel: 'Like',
             onTap: () {
               HapticFeedback.lightImpact();
               onLike();
@@ -92,6 +93,7 @@ class CardInteractionBar extends StatelessWidget {
 
           // ── Dislike ──────────────────────────────────────────────────────
           _AnimatedActionBtn(
+            semanticLabel: 'Dislike',
             onTap: () {
               HapticFeedback.lightImpact();
               onDislike();
@@ -140,6 +142,7 @@ class CardInteractionBar extends StatelessWidget {
           // ── Comment ──────────────────────────────────────────────────────
           if (commentsEnabled)
             _AnimatedActionBtn(
+              semanticLabel: 'Comment',
               onTap: onComment,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -185,6 +188,7 @@ class CardInteractionBar extends StatelessWidget {
 
           // ── Share (paper plane) ──────────────────────────────────────────
           _AnimatedActionBtn(
+            semanticLabel: 'Share',
             onTap: onShare,
             child: Icon(Icons.near_me_outlined,
                 color: ext.greetingColor, size: 24.sp),
@@ -196,6 +200,7 @@ class CardInteractionBar extends StatelessWidget {
           if (onMessage != null) ...[
             SizedBox(width: 6.w),
             _AnimatedActionBtn(
+              semanticLabel: 'Message',
               onTap: () {
                 HapticFeedback.lightImpact();
                 onMessage!();
@@ -210,6 +215,7 @@ class CardInteractionBar extends StatelessWidget {
 
           // ── Bookmark ──────────────────────────────────────────────────────
           _AnimatedActionBtn(
+            semanticLabel: 'Save',
             onTap: () {
               HapticFeedback.selectionClick();
               onSave();
@@ -246,9 +252,11 @@ class CardInteractionBar extends StatelessWidget {
 // ── Tap-scale wrapper ─────────────────────────────────────────────────────────
 
 class _AnimatedActionBtn extends StatefulWidget {
-  const _AnimatedActionBtn({required this.child, required this.onTap});
+  const _AnimatedActionBtn(
+      {required this.child, required this.onTap, this.semanticLabel});
   final Widget child;
   final VoidCallback onTap;
+  final String? semanticLabel;
 
   @override
   State<_AnimatedActionBtn> createState() => _AnimatedActionBtnState();
@@ -272,15 +280,19 @@ class _AnimatedActionBtnState extends State<_AnimatedActionBtn>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _ctrl.reverse(),
-      onTapUp: (_) {
-        _ctrl.forward();
-        widget.onTap();
-      },
-      onTapCancel: () => _ctrl.forward(),
-      child: ScaleTransition(scale: _ctrl, child: widget.child),
+    return Semantics(
+      button: true,
+      label: widget.semanticLabel,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _ctrl.reverse(),
+        onTapUp: (_) {
+          _ctrl.forward();
+          widget.onTap();
+        },
+        onTapCancel: () => _ctrl.forward(),
+        child: ScaleTransition(scale: _ctrl, child: widget.child),
+      ),
     );
   }
 }
@@ -445,7 +457,7 @@ class CardActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: label, child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Row(

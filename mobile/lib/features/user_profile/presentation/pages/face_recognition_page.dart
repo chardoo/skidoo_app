@@ -219,7 +219,7 @@ class _AddSelfieTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: 'Add selfie', child: GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(

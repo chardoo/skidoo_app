@@ -216,7 +216,7 @@ class _ZoomablePhotoState extends State<_ZoomablePhoto> {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: 'Photo', child: GestureDetector(
       onTap: widget.onTap,
       child: InteractiveViewer(
         transformationController: _transformCtrl,

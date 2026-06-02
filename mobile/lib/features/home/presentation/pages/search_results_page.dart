@@ -960,7 +960,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: label, child: GestureDetector(
       onTap: disabled ? null : onTap,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 150),

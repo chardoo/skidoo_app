@@ -872,7 +872,7 @@ class _SheetOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return Semantics(button: true, child: InkWell(
+    return Semantics(button: true, label: label, child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12.r),
       child: Padding(

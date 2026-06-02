@@ -836,7 +836,7 @@ class _LikeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: InkWell(
+    return Semantics(button: true, label: 'Like', child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20.r),
       child: Padding(
@@ -988,7 +988,7 @@ class _SheetOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return Semantics(button: true, child: InkWell(
+    return Semantics(button: true, label: label, child: InkWell(
       onTap: loading ? null : onTap,
       borderRadius: BorderRadius.circular(12.r),
       child: Padding(

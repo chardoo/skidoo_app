@@ -1414,7 +1414,7 @@ class _CampaignMultiPicker extends StatelessWidget {
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: Semantics(button: true, child: GestureDetector(
+                    child: Semantics(button: true, label: 'Remove media', child: GestureDetector(
                       onTap: () => onRemove(i),
                       child: Container(
                         padding: const EdgeInsets.all(3),
@@ -1481,7 +1481,7 @@ class _DatePickerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: label, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),

@@ -745,7 +745,7 @@ class _MediaPreview extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
-            child: Semantics(button: true, child: GestureDetector(
+            child: Semantics(button: true, label: 'Media', child: GestureDetector(
               onTap: onTap,
               child: ClipRRect(
                 borderRadius: BorderRadius.vertical(
@@ -777,7 +777,7 @@ class _MediaPreview extends StatelessWidget {
       );
     }
     // No media yet
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: 'Media', child: GestureDetector(
       onTap: onTap,
       child: Container(
         height: 100.h,
@@ -874,7 +874,7 @@ class _LocalMediaTile extends StatelessWidget {
             bottom: 0,
             left: 0,
             right: 0,
-            child: Semantics(button: true, child: GestureDetector(
+            child: Semantics(button: true, label: 'Media', child: GestureDetector(
               onTap: onTap,
               child: Container(
                 color: Colors.black.withValues(alpha: 0.45),
@@ -1208,7 +1208,7 @@ class _DateBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: label, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),

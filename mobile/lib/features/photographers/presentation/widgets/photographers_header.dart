@@ -48,7 +48,7 @@ class PhotographersHeader extends StatelessWidget {
                     prefixIcon: Icon(Icons.search_rounded,
                         color: ext.searchHintColor, size: 20.sp),
                     suffixIcon: value.text.isNotEmpty
-                        ? Semantics(button: true, child: GestureDetector(
+                        ? Semantics(button: true, label: 'Clear search', child: GestureDetector(
                             onTap: () {
                               textCtrl.clear();
                               onSearchChanged('');

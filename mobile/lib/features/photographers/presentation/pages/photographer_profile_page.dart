@@ -745,7 +745,7 @@ class _EventsTabState extends State<_EventsTab>
         }
 
         final event = _events[index];
-        return Semantics(button: true, child: GestureDetector(
+        return Semantics(button: true, label: 'Event', child: GestureDetector(
           onTap: () {
             context.read<HomeBloc>().add(HomeImagesSearched(
                   eventId: event.id,

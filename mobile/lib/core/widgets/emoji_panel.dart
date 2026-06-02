@@ -214,7 +214,7 @@ class _EmojiCellState extends State<_EmojiCell> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Semantics(button: true, child: GestureDetector(
+      child: Semantics(button: true, label: 'Emoji', child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),

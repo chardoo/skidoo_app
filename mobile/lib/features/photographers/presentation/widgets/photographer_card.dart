@@ -18,7 +18,7 @@ class PhotographerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Semantics(button: true, child: InkWell(
+    return Semantics(button: true, label: photographer.name, child: InkWell(
       onTap: onTap,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 11.h),

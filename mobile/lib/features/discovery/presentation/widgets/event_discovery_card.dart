@@ -1156,7 +1156,7 @@ class _ImageFooterState extends State<_ImageFooter> {
         // Content tags — inline with "more / less" pinned to the right
         if (tagLine.isNotEmpty) ...[
           SizedBox(height: 4.h),
-          Semantics(button: true, child: GestureDetector(
+          Semantics(button: true, label: 'Toggle tags', child: GestureDetector(
             onTap: () => setState(() => _tagsExpanded = !_tagsExpanded),
             child: _tagsExpanded
                 ? Text(
@@ -1269,7 +1269,10 @@ class _CarouselArrowState extends State<_CarouselArrow> {
           : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
-      child: GestureDetector(
+      child: Semantics(
+        button: true,
+        label: widget.isLeft ? 'Previous photo' : 'Next photo',
+        child: GestureDetector(
         onTap: widget.enabled ? widget.onTap : null,
         child: AnimatedOpacity(
           opacity: widget.enabled ? 1.0 : 0.3,
@@ -1293,6 +1296,7 @@ class _CarouselArrowState extends State<_CarouselArrow> {
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -1493,7 +1497,7 @@ class _UnauthCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: Semantics(button: true, child: GestureDetector(
+      child: Semantics(button: true, label: 'Tap to explore', child: GestureDetector(
         onTap: onTap,
         child: Container(
           color: Colors.black.withValues(alpha: 0.4),

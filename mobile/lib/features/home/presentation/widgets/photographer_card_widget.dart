@@ -20,7 +20,7 @@ class PhotographerCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: 'Photographer', child: GestureDetector(
       onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16.r),

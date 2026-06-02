@@ -97,7 +97,7 @@ class _PhotographersPageState extends State<PhotographersPage> {
                           prefixIcon: Icon(Icons.search_rounded,
                               color: ext.glassIcon, size: 20.sp),
                           suffixIcon: value.text.isNotEmpty
-                              ? Semantics(button: true, child: GestureDetector(
+                              ? Semantics(button: true, label: 'Clear search', child: GestureDetector(
                                   onTap: () {
                                     _textCtrl.clear();
                                     context

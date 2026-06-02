@@ -489,7 +489,7 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
         sized,
         if (widget.showControls && player != null)
           Positioned.fill(
-            child: Semantics(button: true, child: GestureDetector(
+            child: Semantics(button: true, label: 'Video', child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _onTap,
               child: AnimatedOpacity(
@@ -646,7 +646,7 @@ class _CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: 'Player control', child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
@@ -915,7 +915,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Semantics(button: true, child: GestureDetector(
+      body: Semantics(button: true, label: 'Video', child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _onTap,
         child: Stack(

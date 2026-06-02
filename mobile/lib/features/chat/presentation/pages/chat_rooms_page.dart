@@ -172,7 +172,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
                                 prefixIcon: Icon(Icons.search_rounded,
                                     color: ext.glassIcon, size: 20.sp),
                                 suffixIcon: _searchQuery.isNotEmpty
-                                    ? Semantics(button: true, child: GestureDetector(
+                                    ? Semantics(button: true, label: 'Clear search', child: GestureDetector(
                                         onTap: () {
                                           _searchCtrl.clear();
                                           setState(() => _searchQuery = '');
@@ -410,7 +410,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: label, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),

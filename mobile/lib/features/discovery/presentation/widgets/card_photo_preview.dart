@@ -78,7 +78,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
           );
         }
 
-        return Semantics(button: true, child: GestureDetector(
+        return Semantics(button: true, label: 'Photo', child: GestureDetector(
           onTap: widget.onTap,
           onDoubleTap: widget.onDoubleTap,
           child: Stack(

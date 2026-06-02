@@ -380,7 +380,7 @@ class _StepBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: 'Step', child: GestureDetector(
       onTap: onTap,
       child: Container(
         width: 30.w,

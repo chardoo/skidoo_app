@@ -342,7 +342,7 @@ class _MultiMediaPicker extends StatelessWidget {
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: Semantics(button: true, child: GestureDetector(
+                    child: Semantics(button: true, label: 'Remove media', child: GestureDetector(
                       onTap: () => onRemove(i),
                       child: Container(
                         padding: const EdgeInsets.all(3),
@@ -551,7 +551,7 @@ class _SubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: 'Submit', child: GestureDetector(
       onTap: submitting ? null : onTap,
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 16.h),
@@ -653,7 +653,7 @@ class _VisibleToChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: label, child: GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),

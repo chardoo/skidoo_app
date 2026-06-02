@@ -151,7 +151,7 @@ class _NavTab extends StatelessWidget {
     }
 
     return Expanded(
-      child: Semantics(button: true, child: GestureDetector(
+      child: Semantics(button: true, label: label, child: GestureDetector(
         onTap: () {
           HapticFeedback.selectionClick();
           onTap();

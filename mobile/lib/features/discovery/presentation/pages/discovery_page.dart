@@ -402,7 +402,7 @@ class _FeedAppBar extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Semantics(button: true, child: GestureDetector(
+              Semantics(button: true, label: 'Sign up', child: GestureDetector(
                 onTap: () => Navigator.of(context)
                     .pushNamed(SignUpPage.routeName),
                 child: Text(
@@ -415,7 +415,7 @@ class _FeedAppBar extends StatelessWidget {
                 ),
               )),
               SizedBox(width: 12.w),
-              Semantics(button: true, child: GestureDetector(
+              Semantics(button: true, label: 'Log in', child: GestureDetector(
                 onTap: () => showLoginSheet(
                   context,
                   onLoginSuccess: () => Navigator.of(context)

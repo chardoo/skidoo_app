@@ -330,7 +330,7 @@ class _CircleIconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, child: GestureDetector(
+    return Semantics(button: true, label: 'Camera control', child: GestureDetector(
       onTap: onTap,
       child: Container(
         width: 36.w,
