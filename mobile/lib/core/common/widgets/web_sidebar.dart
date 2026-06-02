@@ -97,15 +97,22 @@ class _SidebarShell extends StatelessWidget {
                         child: Row(
                           children: [
                             Container(
-                              width: 28,
-                              height: 28,
+                              width: 30,
+                              height: 30,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [ext.accentGold, const Color(0xFFFF6B35)],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
-                                borderRadius: BorderRadius.circular(7),
+                                borderRadius: BorderRadius.circular(9),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: ext.accentGold.withValues(alpha: 0.40),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                               ),
                               alignment: Alignment.center,
                               child: const Text(
@@ -200,6 +207,7 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
   }
 
   void _onFocusChanged() {
+    if (mounted) setState(() {}); // repaint the gold focus ring
     if (!_focus.hasFocus) {
       // Delay removal so that a tap on a dropdown item fires before it disappears.
       Future.delayed(const Duration(milliseconds: 200), () {
@@ -282,17 +290,36 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
       child: CompositedTransformTarget(
         link: _layerLink,
-        child: Container(
-          height: 40,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          height: 42,
           decoration: BoxDecoration(
             color: widget.ext.glassFill,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: widget.ext.glassBorder, width: 1.0),
+            borderRadius: BorderRadius.circular(21),
+            border: Border.all(
+              color: _focus.hasFocus
+                  ? widget.ext.accentGold.withValues(alpha: 0.65)
+                  : widget.ext.glassBorder,
+              width: _focus.hasFocus ? 1.4 : 1.0,
+            ),
+            boxShadow: _focus.hasFocus
+                ? [
+                    BoxShadow(
+                      color: widget.ext.accentGold.withValues(alpha: 0.20),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             children: [
-              const SizedBox(width: 10),
-              Icon(Icons.search_rounded, color: widget.ext.glassIcon, size: 16),
+              const SizedBox(width: 12),
+              Icon(Icons.search_rounded,
+                  color: _focus.hasFocus
+                      ? widget.ext.accentGold
+                      : widget.ext.glassIcon,
+                  size: 16),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
@@ -511,16 +538,8 @@ class _DiscoveryModeNav extends StatelessWidget {
           ext: ext,
           onTap: () {},
         ),
-        const SizedBox(height: 8),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Divider(
-            color: ext.searchHintColor.withValues(alpha: 0.10),
-            height: 1,
-          ),
-        ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
+        _SectionLabel(text: 'Create', ext: ext),
 
         // Sign up as Creator
         Padding(
@@ -606,6 +625,7 @@ class _LoggedInNav extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SidebarSearchField(ext: ext),
+        _SectionLabel(text: 'Menu', ext: ext),
         _NavItem(
           icon: Icons.home_rounded,
           label: 'Home',
@@ -628,15 +648,8 @@ class _LoggedInNav extends StatelessWidget {
           onTap: () => HomePage.tabRequest.value = 3,
         ),
 
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Divider(
-            color: ext.searchHintColor.withValues(alpha: 0.10),
-            height: 1,
-          ),
-        ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
+        _SectionLabel(text: 'Create', ext: ext),
 
         // Sign up as Creator
         Padding(
@@ -676,6 +689,30 @@ class _LoggedInNav extends StatelessWidget {
 }
 
 // ── Shared sub-widgets ────────────────────────────────────────────────────────
+
+/// Small muted uppercase section heading used to group sidebar items.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.text, required this.ext});
+  final String text;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 16, 8),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          color: ext.searchHintColor.withValues(alpha: 0.55),
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.4,
+          decoration: TextDecoration.none,
+        ),
+      ),
+    );
+  }
+}
 
 /// Tappable nav row with hover highlight — no Material/InkWell required.
 class _NavItem extends StatefulWidget {
@@ -789,33 +826,49 @@ class _CreatorTileState extends State<_CreatorTile> {
           mode: LaunchMode.externalApplication,
         ),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: _hovered
-                ? widget.ext.accentGold.withValues(alpha: 0.10)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            gradient: _hovered
+                ? LinearGradient(
+                    colors: [widget.ext.accentGold, const Color(0xFFFF6B35)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: _hovered ? null : widget.ext.accentGold.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: widget.ext.accentGold.withValues(alpha: _hovered ? 0.7 : 0.4),
+              color: widget.ext.accentGold.withValues(alpha: _hovered ? 0.0 : 0.45),
               width: 1,
             ),
+            boxShadow: _hovered
+                ? [
+                    BoxShadow(
+                      color: widget.ext.accentGold.withValues(alpha: 0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             children: [
               Icon(
-                Icons.add_a_photo_outlined,
+                Icons.auto_awesome_rounded,
                 size: 18,
-                color: widget.ext.accentGold,
+                color: _hovered ? Colors.white : widget.ext.accentGold,
               ),
               const SizedBox(width: 10),
               Text(
                 'Sign up as Creator',
                 style: TextStyle(
-                  color: widget.ext.accentGold,
+                  color: _hovered ? Colors.white : widget.ext.accentGold,
                   fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
+                  decoration: TextDecoration.none,
                 ),
               ),
             ],
@@ -852,23 +905,39 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
       onExit: (_) => setState(() => _hovered = false),
       child: Semantics(button: true, label: widget.label, child: GestureDetector(
         onTap: widget.onTap,
-        child: AnimatedContainer(
+        child: AnimatedScale(
+          scale: _hovered ? 1.02 : 1.0,
           duration: const Duration(milliseconds: 150),
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: _hovered
-                ? widget.ext.accentGold.withValues(alpha: 0.85)
-                : widget.ext.accentGold,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            widget.label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
+          curve: Curves.easeOut,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [widget.ext.accentGold, const Color(0xFFFF6B35)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.ext.accentGold
+                      .withValues(alpha: _hovered ? 0.45 : 0.25),
+                  blurRadius: _hovered ? 18 : 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Text(
+              widget.label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                decoration: TextDecoration.none,
+              ),
             ),
           ),
         ),
@@ -906,20 +975,29 @@ class _TextActionButtonState extends State<_TextActionButton> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 11),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: _hovered
-                ? widget.ext.searchHintColor.withValues(alpha: 0.06)
+                ? widget.ext.accentGold.withValues(alpha: 0.10)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _hovered
+                  ? widget.ext.accentGold.withValues(alpha: 0.30)
+                  : widget.ext.searchHintColor.withValues(alpha: 0.18),
+              width: 1,
+            ),
           ),
           child: Text(
             widget.label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: widget.ext.searchHintColor,
+              color: _hovered
+                  ? widget.ext.accentGold
+                  : widget.ext.greetingColor,
               fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
+              decoration: TextDecoration.none,
             ),
           ),
         ),
