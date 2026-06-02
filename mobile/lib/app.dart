@@ -271,7 +271,14 @@ class _AppMaterial extends StatelessWidget {
     // pages inside it) is never torn down. The edge scrollbar overlays a single
     // scroll indicator at the far right of the screen for every page (centred
     // "column" pages included), instead of a per-component bar mid-layout.
-    final content = _WebEdgeScrollbar(child: ClipRect(child: child!));
+    //
+    // SelectionArea makes every Text inside the page content selectable and
+    // copyable on web (click-drag to select, Cmd/Ctrl+C to copy) without having
+    // to convert each Text to SelectableText. TextFields and buttons keep their
+    // own behaviour; only static text becomes selectable.
+    final content = SelectionArea(
+      child: _WebEdgeScrollbar(child: ClipRect(child: child!)),
+    );
 
     return DefaultTextStyle(
       style: DefaultTextStyle.of(ctx).style.copyWith(decoration: TextDecoration.none),
