@@ -438,16 +438,21 @@ class _WebEdgeScrollbarState extends State<_WebEdgeScrollbar> {
 
 // ── Web scroll behaviour ──────────────────────────────────────────────────────
 
-/// Enables mouse and trackpad dragging (Flutter web only enables touch by
+/// Enables trackpad / touch dragging (Flutter web only enables touch by
 /// default) and removes the Android overscroll glow that looks wrong in a
 /// browser. Physics are left to each scroll view — see [kWebScrollPhysics].
+///
+/// NOTE: [PointerDeviceKind.mouse] is intentionally NOT a drag device. With it,
+/// a mouse click-drag is consumed as scrolling and wins over the app's
+/// SelectionArea, so text can never be selected/copied. Excluding it makes
+/// mouse-drag select text (standard web behaviour) while the wheel, trackpad
+/// and scrollbar still scroll, and web carousels use their hover arrows.
 class _WebScrollBehavior extends MaterialScrollBehavior {
   const _WebScrollBehavior();
 
   @override
   Set<PointerDeviceKind> get dragDevices => const {
         PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
         PointerDeviceKind.trackpad,
         PointerDeviceKind.stylus,
       };
