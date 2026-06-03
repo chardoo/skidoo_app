@@ -10,6 +10,7 @@ import 'package:skidoo_app/features/chat/presentation/pages/create_group_page.da
 import 'package:skidoo_app/features/chat/presentation/widgets/room_tile.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 
 class ChatRoomsPage extends StatelessWidget {
   const ChatRoomsPage({super.key});
@@ -233,13 +234,17 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
                             final room = displayed[index];
-                            return RoomTile(
-                              room: room,
-                              unreadCount:
-                                  state.unreadCounts[room.id] ?? 0,
-                              lastMessageAt: state.lastMessageAt[room.id],
-                              currentUserId: state.currentUserId,
-                              onTap: () => _openRoom(context, room),
+                            return Reveal(
+                              delay: AppMotion.stagger * (index < 8 ? index : 0),
+                              offset: const Offset(0, 14),
+                              child: RoomTile(
+                                room: room,
+                                unreadCount:
+                                    state.unreadCounts[room.id] ?? 0,
+                                lastMessageAt: state.lastMessageAt[room.id],
+                                currentUserId: state.currentUserId,
+                                onTap: () => _openRoom(context, room),
+                              ),
                             );
                           },
                           childCount: displayed.length,

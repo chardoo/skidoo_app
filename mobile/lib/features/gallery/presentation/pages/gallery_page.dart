@@ -9,6 +9,7 @@ import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/features/gallery/presentation/bloc/gallery_bloc.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_image_widget.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 
 class GalleryPage extends StatelessWidget {
   const GalleryPage({super.key});
@@ -104,12 +105,17 @@ class GalleryPage extends StatelessWidget {
                     addRepaintBoundaries: true,
                     itemCount: state.photos.length,
                     itemBuilder: (context, index) {
-                      return BlocProvider.value(
-                        value: context.read<CartBloc>(),
-                        child: GalleryImageWidget(
-                          photo: state.photos[index],
-                          photos: state.photos,
-                          index: index,
+                      return Reveal(
+                        delay: AppMotion.stagger * (index < 10 ? index : 0),
+                        offset: const Offset(0, 20),
+                        scaleFrom: 0.98,
+                        child: BlocProvider.value(
+                          value: context.read<CartBloc>(),
+                          child: GalleryImageWidget(
+                            photo: state.photos[index],
+                            photos: state.photos,
+                            index: index,
+                          ),
                         ),
                       );
                     },

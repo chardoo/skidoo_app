@@ -12,6 +12,7 @@ import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 
 class SavedItemsPage extends StatefulWidget {
   static const routeName = '/saved-items';
@@ -305,12 +306,16 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
           final item = items[i];
           final resolvedName =
               _resolvedNames[item.assetId] ?? item.title;
-          return _SavedItemTile(
-            item: item,
-            ext: ext,
-            resolvedName: resolvedName,
-            onTap: () => _openEvent(item),
-            onUnsave: () => _unsave(item),
+          return Reveal(
+            delay: AppMotion.stagger * (i < 8 ? i : 0),
+            offset: const Offset(0, 16),
+            child: _SavedItemTile(
+              item: item,
+              ext: ext,
+              resolvedName: resolvedName,
+              onTap: () => _openEvent(item),
+              onUnsave: () => _unsave(item),
+            ),
           );
         },
       ),
