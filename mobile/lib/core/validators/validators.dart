@@ -69,6 +69,16 @@ class Validators {
     return null;
   }
 
+  /// Validates the national part of a phone number (digits only) entered
+  /// alongside a country dial-code dropdown. The full E.164 number is assembled
+  /// by the field itself. The backend must accept international numbers.
+  static String? nationalPhoneValidator(String? value) {
+    final n = (value ?? '').trim();
+    if (n.isEmpty) return '*Phone number is required';
+    if (n.length < 6 || n.length > 14) return '*Invalid number';
+    return null;
+  }
+
   static String? nameValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
       return '*Required';

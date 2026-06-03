@@ -292,15 +292,12 @@ class _SignUpViewState extends State<_SignUpView>
                           ),
                           SizedBox(height: 14.h),
 
-                          // ── Contact ────────────────────────────────────
-                          AuthTextField(
+                          // ── Contact (with country dial-code dropdown) ──
+                          AuthPhoneField(
                             controller: _contactController,
                             label: AppLocalizations.of(context)!.signupPhoneNumber,
-                            hint: 'e.g. 0241234567',
-                            prefixIcon: Icons.phone_outlined,
-                            keyboardType: TextInputType.phone,
-                            textInputAction: TextInputAction.next,
-                            validator: Validators.phoneNumberValidator,
+                            hint: 'e.g. 241234567',
+                            validator: Validators.nationalPhoneValidator,
                           ),
                           SizedBox(height: 14.h),
 
