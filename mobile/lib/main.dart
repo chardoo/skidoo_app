@@ -15,16 +15,22 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized(); // must be after WidgetsFlutterBinding
 
-  // Flutter Web ships with the semantic tree DISABLED — it only builds once a
-  // screen reader is detected or the hidden "Enable accessibility" button is
-  // clicked. That leaves <flt-semantics-host> empty, so none of the Semantics
-  // labels we attach reach the DOM (breaking screen readers and any role/label
-  // based e2e tests). Force it on at startup so the labels are always present.
-  // No-op cost on mobile, where the OS already drives semantics on demand, so
-  // we only enable it on web.
-  // if (kIsWeb) {
-    SemanticsBinding.instance.ensureSemantics();
-  // }
+  // Flutter Web ships with the semantic tree disabled until a screen reader is
+  // detected. Force-enabling it (ensureSemantics) makes our Semantics labels
+  // reach the DOM for role/label-based e2e tests — BUT it also switches web to
+  // the semantics-based text-input path, which stops the left sidebar search
+  // field (hosted in a bare Overlay above the Navigator) from receiving typed
+  // characters: it focuses and shows a caret but no input arrives.
+  //
+  // So we only force it on when explicitly requested via the URL (?a11y=1).
+  // Normal users get on-demand semantics and fully working text input; e2e
+  // runs append ?a11y=1 to opt into the always-on accessibility tree.
+  if (kIsWeb) {
+    final params = Uri.base.queryParameters;
+    if (params['a11y'] == '1' || params['semantics'] == '1') {
+      SemanticsBinding.instance.ensureSemantics();
+    }
+  }
 
   // Cap Flutter's decoded-image cache to prevent OOM crashes on photo feeds.
   // The default (1000 images / unbounded bytes) is dangerously high for an app
