@@ -147,11 +147,11 @@ class _EventsFeedState extends State<EventsFeed> {
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _updateActiveCard());
     _fetchInitial();
-    if (kIsWeb) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _feedFocusNode.requestFocus();
-      });
-    }
+    // NOTE: deliberately NOT auto-focusing the feed on web. Grabbing focus on
+    // load captured the browser's keyboard/input focus, which then blocked the
+    // sidebar search field (it lives above the Navigator in its own overlay)
+    // from ever receiving keystrokes — typing there did nothing. The feed's
+    // j/k/space shortcuts still work once the user clicks/scrolls the feed.
   }
 
   @override

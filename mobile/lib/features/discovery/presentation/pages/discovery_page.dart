@@ -55,11 +55,10 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   void initState() {
     super.initState();
     _scrollCtrl.addListener(_onScroll);
-    if (kIsWeb) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _feedFocusNode.requestFocus();
-      });
-    }
+    // NOTE: deliberately NOT auto-focusing the feed on web — grabbing focus on
+    // load captured the browser's input focus and blocked the sidebar search
+    // field (above the Navigator) from receiving keystrokes. The j/k/space
+    // shortcuts still work once the user clicks/scrolls the feed.
   }
 
   @override
