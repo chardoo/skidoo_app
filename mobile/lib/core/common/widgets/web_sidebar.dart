@@ -265,10 +265,11 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
     _removeOverlay();
     if (!mounted) return;
 
-    // The sidebar lives in MaterialApp.builder — above the Navigator — so
-    // Overlay.of(context) finds nothing. Use the Navigator's own overlay via
-    // the global key instead.
-    final overlay = AppNavigator.navigatorKey.currentState?.overlay;
+    // Insert into the sidebar's OWN local Overlay (provided by _SidebarShell)
+    // so the results render on top of the navigation items — like the mobile
+    // app. Using the Navigator's overlay instead would place them in the page
+    // content area to the right, where the content ClipRect hides them.
+    final overlay = Overlay.maybeOf(context);
     if (overlay == null) return;
 
     _overlayEntry = OverlayEntry(
