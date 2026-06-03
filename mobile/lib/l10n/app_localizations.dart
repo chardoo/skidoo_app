@@ -155,7 +155,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginSignIn.
   ///
   /// In en, this message translates to:
-  /// **'Sign In'**
+  /// **'Sign in'**
   String get loginSignIn;
 
   /// No description provided for @loginNoAccount.
@@ -167,7 +167,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginSignUp.
   ///
   /// In en, this message translates to:
-  /// **'Sign Up'**
+  /// **'Sign up'**
   String get loginSignUp;
 
   /// No description provided for @signupCreateAccount.
@@ -233,7 +233,7 @@ abstract class AppLocalizations {
   /// No description provided for @signupSignIn.
   ///
   /// In en, this message translates to:
-  /// **'Sign In'**
+  /// **'Sign in'**
   String get signupSignIn;
 
   /// No description provided for @signupAccountCreated.
@@ -725,7 +725,7 @@ abstract class AppLocalizations {
   /// No description provided for @accountLogout.
   ///
   /// In en, this message translates to:
-  /// **'Logout'**
+  /// **'Log out'**
   String get accountLogout;
 
   /// No description provided for @accountProfileUpdated.

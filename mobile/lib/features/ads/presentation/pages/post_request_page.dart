@@ -382,7 +382,7 @@ class _MultiMediaPicker extends StatelessWidget {
                         color: ext.accentGold, size: 26.sp),
                     SizedBox(height: 4.h),
                     Text(
-                      'Add Photo',
+                      'Add photo',
                       style: TextStyle(
                         color: ext.searchHintColor,
                         fontSize: 10.sp,

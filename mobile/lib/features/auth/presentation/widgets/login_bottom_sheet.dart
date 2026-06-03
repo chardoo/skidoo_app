@@ -217,7 +217,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                                   ),
                                 ),
                                 child: Text(
-                                  'Log In',
+                                  'Log in',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 15.sp,
@@ -247,7 +247,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                           );
                         },
                         child: Text(
-                          'Sign Up',
+                          'Sign up',
                           style: TextStyle(
                               color: ext.accentGold,
                               fontSize: 13.sp,

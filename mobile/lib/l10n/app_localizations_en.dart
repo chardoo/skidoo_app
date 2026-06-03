@@ -37,13 +37,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginForgotPassword => 'Forgot password?';
 
   @override
-  String get loginSignIn => 'Sign In';
+  String get loginSignIn => 'Sign in';
 
   @override
   String get loginNoAccount => 'Don\'t have an account?  ';
 
   @override
-  String get loginSignUp => 'Sign Up';
+  String get loginSignUp => 'Sign up';
 
   @override
   String get signupCreateAccount => 'Create account';
@@ -76,7 +76,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signupAlreadyHaveAccount => 'Already have an account?  ';
 
   @override
-  String get signupSignIn => 'Sign In';
+  String get signupSignIn => 'Sign in';
 
   @override
   String get signupAccountCreated => 'Account created! Please log in.';
@@ -355,7 +355,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountTitle => 'Account';
 
   @override
-  String get accountLogout => 'Logout';
+  String get accountLogout => 'Log out';
 
   @override
   String get accountProfileUpdated => 'Profile updated successfully';

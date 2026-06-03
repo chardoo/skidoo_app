@@ -654,7 +654,7 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
                               color: ext.accentGold, strokeWidth: 2),
                         )
                       : Text(
-                          'Save Changes',
+                          'Save changes',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 15.sp,

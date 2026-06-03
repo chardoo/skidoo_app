@@ -1226,7 +1226,7 @@ class _TopNavBar extends StatelessWidget {
                 // ── Auth actions (pinned right) ────────────────────────────────
                 if (isLoggedIn)
                   _TopNavTextBtn(
-                    label: 'Logout',
+                    label: 'Log out',
                     ext: ext,
                     onTap: () async {
                       await sl<AuthService>().removeToken();

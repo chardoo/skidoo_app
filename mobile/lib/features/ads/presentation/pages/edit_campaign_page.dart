@@ -417,7 +417,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                             strokeWidth: 2.5, color: Colors.white),
                       )
                     : Text(
-                        'Save Changes',
+                        'Save changes',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 15.sp,
