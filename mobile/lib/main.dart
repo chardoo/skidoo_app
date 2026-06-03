@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,6 +14,17 @@ import 'package:skidoo_app/services/auth_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized(); // must be after WidgetsFlutterBinding
+
+  // Flutter Web ships with the semantic tree DISABLED — it only builds once a
+  // screen reader is detected or the hidden "Enable accessibility" button is
+  // clicked. That leaves <flt-semantics-host> empty, so none of the Semantics
+  // labels we attach reach the DOM (breaking screen readers and any role/label
+  // based e2e tests). Force it on at startup so the labels are always present.
+  // No-op cost on mobile, where the OS already drives semantics on demand, so
+  // we only enable it on web.
+  if (kIsWeb) {
+    SemanticsBinding.instance.ensureSemantics();
+  }
 
   // Cap Flutter's decoded-image cache to prevent OOM crashes on photo feeds.
   // The default (1000 images / unbounded bytes) is dangerously high for an app
