@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/password_textfield.dart';
 import 'package:skidoo_app/core/common/textfield.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/login/login_bloc.dart';
@@ -53,6 +52,20 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
   final _passwordCtrl = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _emailCtrl.addListener(_onChanged);
+    _passwordCtrl.addListener(_onChanged);
+  }
+
+  void _onChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _filled =>
+      _emailCtrl.text.trim().isNotEmpty && _passwordCtrl.text.isNotEmpty;
+
+  @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
@@ -74,14 +87,14 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return BlocListener<LoginBloc, LoginState>(
+      listenWhen: (p, c) => p.isSuccess != c.isSuccess,
       listener: (context, state) {
         if (state.isSuccess) {
           Navigator.of(context).pop();
           widget.onLoginSuccess();
         }
-        if (state.errorMessage != null) {
-          AppSnackBar.error(context, state.errorMessage!);
-        }
+        // Errors are shown inline below (a SnackBar would render behind this
+        // modal sheet and never be seen).
       },
       child: AnimatedPadding(
         duration: const Duration(milliseconds: 200),
@@ -164,7 +177,46 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                       fontSize: 13.sp,
                     ),
                   ),
-                  SizedBox(height: 28.h),
+                  SizedBox(height: 20.h),
+
+                  // ── Inline error (shown here so it isn't hidden behind the
+                  //    bottom sheet like a SnackBar would be) ────────────────
+                  BlocBuilder<LoginBloc, LoginState>(
+                    buildWhen: (p, c) => p.errorMessage != c.errorMessage,
+                    builder: (context, state) {
+                      if (state.errorMessage == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return Container(
+                        width: double.infinity,
+                        margin: EdgeInsets.only(bottom: 16.h),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 14.w, vertical: 10.h),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF4757).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10.r),
+                          border: Border.all(
+                              color: const Color(0xFFFF4757)
+                                  .withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline_rounded,
+                                color: const Color(0xFFFF4757), size: 18.sp),
+                            SizedBox(width: 8.w),
+                            Expanded(
+                              child: Text(
+                                state.errorMessage!,
+                                style: TextStyle(
+                                    color: const Color(0xFFFF6B7A),
+                                    fontSize: 13.sp),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
 
                   // ── Fields ──────────────────────────────────────────────
                   MyTextField(
@@ -209,9 +261,11 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                         child: state.isLoading
                             ? const LoadingButton()
                             : FilledButton(
-                                onPressed: _submit,
+                                onPressed: _filled ? _submit : null,
                                 style: FilledButton.styleFrom(
                                   backgroundColor: ext.accentGold,
+                                  disabledBackgroundColor:
+                                      ext.accentGold.withValues(alpha: 0.4),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12.r),
                                   ),
