@@ -54,7 +54,18 @@ class _LoginViewState extends State<_LoginView>
         vsync: this, duration: const Duration(milliseconds: 600));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
+    // Rebuild as the user types so the Sign-in button enables/disables.
+    _emailController.addListener(_onFieldChanged);
+    _passwordController.addListener(_onFieldChanged);
   }
+
+  void _onFieldChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _fieldsFilled =>
+      _emailController.text.trim().isNotEmpty &&
+      _passwordController.text.isNotEmpty;
 
   @override
   void dispose() {
@@ -241,6 +252,7 @@ class _LoginViewState extends State<_LoginView>
                           _GradientButton(
                             label: AppLocalizations.of(context)!.loginSignIn,
                             isLoading: state.isLoading,
+                            enabled: _fieldsFilled,
                             onTap: _submit,
                           ),
                           SizedBox(height: 28.h),
@@ -297,30 +309,33 @@ class _GradientButton extends StatelessWidget {
     required this.label,
     required this.isLoading,
     required this.onTap,
+    this.enabled = true,
   });
 
   final String label;
   final bool isLoading;
+  final bool enabled;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: label, child: GestureDetector(
-      onTap: isLoading ? null : onTap,
+    final dimmed = isLoading || !enabled;
+    return Semantics(button: true, enabled: enabled && !isLoading, label: label, child: GestureDetector(
+      onTap: dimmed ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         height: 56.h,
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: isLoading
+            colors: dimmed
                 ? [_kOrange.withValues(alpha: 0.5), _kOrangeDark.withValues(alpha: 0.5)]
                 : [_kOrange, _kOrangeDark],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
           borderRadius: BorderRadius.circular(14.r),
-          boxShadow: isLoading
+          boxShadow: dimmed
               ? []
               : [
                   BoxShadow(

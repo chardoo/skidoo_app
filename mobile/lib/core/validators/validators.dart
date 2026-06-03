@@ -52,6 +52,20 @@ class Validators {
     if (value.length < minPasswordLength) {
       return '*Minimum $minPasswordLength characters';
     }
+    // Must mix lower + upper case, a number and a symbol. The backend should
+    // enforce the same rule — a looser server check lets weak passwords through.
+    if (!RegExp(r'[a-z]').hasMatch(value)) {
+      return '*Add a lowercase letter';
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      return '*Add an uppercase letter';
+    }
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return '*Add a number';
+    }
+    if (!RegExp(r'''[!@#$%^&*(),.?":{}|<>_\-\[\]/\\;'+=~`]''').hasMatch(value)) {
+      return '*Add a symbol (e.g. !@#\$)';
+    }
     return null;
   }
 

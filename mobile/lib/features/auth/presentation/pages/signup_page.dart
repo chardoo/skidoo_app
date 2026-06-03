@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/selfie_capture_screen.dart';
@@ -61,6 +62,40 @@ class _SignUpViewState extends State<_SignUpView>
         vsync: this, duration: const Duration(milliseconds: 600));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
+    // Rebuild as the user types so the Create-account button enables/disables.
+    for (final c in [
+      _emailController,
+      _usernameController,
+      _contactController,
+      _passwordController,
+      _confirmPasswordController,
+    ]) {
+      c.addListener(_onFieldChanged);
+    }
+  }
+
+  void _onFieldChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// True once every required text field has content. The face photo is checked
+  /// separately (it lives in the bloc state).
+  bool get _requiredTextFilled =>
+      _emailController.text.trim().isNotEmpty &&
+      _usernameController.text.trim().isNotEmpty &&
+      _contactController.text.trim().isNotEmpty &&
+      _passwordController.text.isNotEmpty &&
+      _confirmPasswordController.text.isNotEmpty;
+
+  /// Pick the face photo from the gallery / file system instead of the camera.
+  Future<void> _pickFaceFromGallery() async {
+    final x = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1080,
+      imageQuality: 85,
+    );
+    if (!mounted || x == null) return;
+    context.read<SignUpBloc>().add(SignUpFaceImageCaptured(x.path, x));
   }
 
   @override
@@ -214,12 +249,31 @@ class _SignUpViewState extends State<_SignUpView>
                             showError: _submitAttempted && state.imagePath.isEmpty,
                             onTap: () => _takeSelfie(context),
                           ),
-                          SizedBox(height: 24.h),
+                          SizedBox(height: 8.h),
+                          // Alternative to the camera: pick an existing photo.
+                          Center(
+                            child: Semantics(
+                              button: true,
+                              label: 'Choose a photo from files',
+                              child: TextButton.icon(
+                                onPressed: _pickFaceFromGallery,
+                                icon: Icon(Icons.image_outlined,
+                                    size: 16.sp, color: _kSubtext),
+                                label: Text(
+                                  'Choose a photo instead',
+                                  style: TextStyle(
+                                      color: _kSubtext, fontSize: 13.sp),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 16.h),
 
                           // ── Email ──────────────────────────────────────
                           AuthTextField(
                             controller: _emailController,
                             label: AppLocalizations.of(context)!.signupEmailAddress,
+                            hint: 'e.g. jane@example.com',
                             prefixIcon: Icons.mail_outline_rounded,
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
@@ -231,6 +285,7 @@ class _SignUpViewState extends State<_SignUpView>
                           AuthTextField(
                             controller: _usernameController,
                             label: AppLocalizations.of(context)!.signupUsername,
+                            hint: 'e.g. jane_doe',
                             prefixIcon: Icons.person_outline_rounded,
                             textInputAction: TextInputAction.next,
                             validator: Validators.nameValidator,
@@ -241,6 +296,7 @@ class _SignUpViewState extends State<_SignUpView>
                           AuthTextField(
                             controller: _contactController,
                             label: AppLocalizations.of(context)!.signupPhoneNumber,
+                            hint: 'e.g. 0241234567',
                             prefixIcon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
                             textInputAction: TextInputAction.next,
@@ -272,9 +328,13 @@ class _SignUpViewState extends State<_SignUpView>
                           SizedBox(height: 32.h),
 
                           // ── Sign up button ─────────────────────────────
+                          // Disabled until every field is filled and a face
+                          // photo is provided.
                           _GradientButton(
                             label: AppLocalizations.of(context)!.signupCreateAccountButton,
                             isLoading: state.isLoading,
+                            enabled: _requiredTextFilled &&
+                                state.imagePath.isNotEmpty,
                             onTap: () => _submit(state),
                           ),
                           SizedBox(height: 28.h),
@@ -465,30 +525,33 @@ class _GradientButton extends StatelessWidget {
     required this.label,
     required this.isLoading,
     required this.onTap,
+    this.enabled = true,
   });
 
   final String label;
   final bool isLoading;
+  final bool enabled;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: label, child: GestureDetector(
-      onTap: isLoading ? null : onTap,
+    final dimmed = isLoading || !enabled;
+    return Semantics(button: true, enabled: enabled && !isLoading, label: label, child: GestureDetector(
+      onTap: dimmed ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         height: 56.h,
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: isLoading
+            colors: dimmed
                 ? [_kOrange.withValues(alpha: 0.5), _kOrangeDark.withValues(alpha: 0.5)]
                 : [_kOrange, _kOrangeDark],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
           borderRadius: BorderRadius.circular(14.r),
-          boxShadow: isLoading
+          boxShadow: dimmed
               ? []
               : [
                   BoxShadow(

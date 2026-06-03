@@ -71,8 +71,17 @@ void main() {
     test('requires at least minPasswordLength characters (matches backend)', () {
       expect(Validators.minPasswordLength, 8);
       expect(Validators.signupPasswordValidator(''), isNotNull);
-      expect(Validators.signupPasswordValidator('1234567'), isNotNull); // 7
-      expect(Validators.signupPasswordValidator('12345678'), isNull); // 8
+      expect(Validators.signupPasswordValidator('Abc1!de'), isNotNull); // 7
+      // 8 chars meeting the full policy (lower + upper + number + symbol).
+      expect(Validators.signupPasswordValidator('Abcdef1!'), isNull);
+    });
+
+    test('requires lower + upper + number + symbol', () {
+      expect(Validators.signupPasswordValidator('ABCDEF1!'), isNotNull); // no lower
+      expect(Validators.signupPasswordValidator('abcdef1!'), isNotNull); // no upper
+      expect(Validators.signupPasswordValidator('Abcdefg!'), isNotNull); // no number
+      expect(Validators.signupPasswordValidator('Abcdefg1'), isNotNull); // no symbol
+      expect(Validators.signupPasswordValidator('Abcdef1!'), isNull); // all four
     });
   });
 
