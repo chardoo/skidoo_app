@@ -20,6 +20,7 @@ import 'package:skidoo_app/features/discovery/presentation/pages/saved_items_pag
 import 'package:skidoo_app/features/follow/presentation/pages/follow_list_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 
 String _resolveErrorMessage(String key, AppLocalizations l10n) => switch (key) {
       'accountAnonymousModeUpdateFailed' => l10n.accountAnonymousModeUpdateFailed,
@@ -127,29 +128,55 @@ class _AccountView extends StatelessWidget {
                               ),
                             ),
                             SizedBox(height: 32.h),
-                            _ConnectionsCard(ext: ext),
+                            Reveal(
+                              delay: AppMotion.stagger * 0,
+                              child: _ConnectionsCard(ext: ext),
+                            ),
                             SizedBox(height: 12.h),
-                            _EditProfileCard(state: state, ext: ext),
+                            Reveal(
+                              delay: AppMotion.stagger * 1,
+                              child: _EditProfileCard(state: state, ext: ext),
+                            ),
                             SizedBox(height: 12.h),
-                            _ThemeToggleCard(ext: ext),
+                            Reveal(
+                              delay: AppMotion.stagger * 2,
+                              child: _ThemeToggleCard(ext: ext),
+                            ),
                             SizedBox(height: 12.h),
-                            _NotificationSettingsCard(
-                                isMuted: state.isMuted, ext: ext),
+                            Reveal(
+                              delay: AppMotion.stagger * 3,
+                              child: _NotificationSettingsCard(
+                                  isMuted: state.isMuted, ext: ext),
+                            ),
                             SizedBox(height: 12.h),
-                            _PublicationSettingsCard(
-                                alwaysPublic: state.alwaysPublicImages,
-                                ext: ext),
+                            Reveal(
+                              delay: AppMotion.stagger * 4,
+                              child: _PublicationSettingsCard(
+                                  alwaysPublic: state.alwaysPublicImages,
+                                  ext: ext),
+                            ),
                             SizedBox(height: 12.h),
-                            _FaceRecognitionCard(ext: ext),
+                            Reveal(
+                              delay: AppMotion.stagger * 5,
+                              child: _FaceRecognitionCard(ext: ext),
+                            ),
                             SizedBox(height: 12.h),
-                            _AdsCard(ext: ext),
+                            Reveal(
+                              delay: AppMotion.stagger * 6,
+                              child: _AdsCard(ext: ext),
+                            ),
                             SizedBox(height: 12.h),
-                            _PrivacySettingsCard(
-                              anonymousMode: state.anonymousMode,
-                              hideProfile: state.hideProfile,
-                              isAnonymousModeUpdating: state.isAnonymousModeUpdating,
-                              isHideProfileUpdating: state.isHideProfileUpdating,
-                              ext: ext,
+                            Reveal(
+                              delay: AppMotion.stagger * 7,
+                              child: _PrivacySettingsCard(
+                                anonymousMode: state.anonymousMode,
+                                hideProfile: state.hideProfile,
+                                isAnonymousModeUpdating:
+                                    state.isAnonymousModeUpdating,
+                                isHideProfileUpdating:
+                                    state.isHideProfileUpdating,
+                                ext: ext,
+                              ),
                             ),
                             // const Spacer(),
                             SizedBox(height: 24.h),

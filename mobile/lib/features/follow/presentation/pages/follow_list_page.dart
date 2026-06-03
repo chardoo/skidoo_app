@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/time_formatter.dart';
+import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 import 'package:skidoo_app/core/utils/web_panel_route.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/follow/data/follow_repository.dart';
@@ -265,13 +266,18 @@ class _FollowListViewState extends State<_FollowListView>
             );
           }
           final entry = _items[i];
-          return _FollowTile(
-            entry: entry,
-            ext: ext,
-            showNotify: widget.kind == FollowListTab.following,
-            onNotifyChanged: (value) => _setNotify(i, value),
-            // Only photographers have a public profile page to open.
-            onTap: entry.isPhotographer ? () => _openProfile(entry) : null,
+          // Stagger the first screenful in; later (paged) rows just fade in.
+          return Reveal(
+            delay: AppMotion.stagger * (i < 8 ? i : 0),
+            offset: const Offset(0, 16),
+            child: _FollowTile(
+              entry: entry,
+              ext: ext,
+              showNotify: widget.kind == FollowListTab.following,
+              onNotifyChanged: (value) => _setNotify(i, value),
+              // Only photographers have a public profile page to open.
+              onTap: entry.isPhotographer ? () => _openProfile(entry) : null,
+            ),
           );
         },
       ),

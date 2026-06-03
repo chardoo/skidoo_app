@@ -9,6 +9,7 @@ import 'package:skidoo_app/features/photographers/presentation/pages/photographe
 import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_card.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 
 class PhotographersPage extends StatefulWidget {
   const PhotographersPage({super.key});
@@ -156,9 +157,13 @@ class _PhotographersPageState extends State<PhotographersPage> {
                   itemCount: state.photographers.length,
                   itemBuilder: (context, index) {
                     final p = state.photographers[index];
-                    return PhotographerGridCard(
-                      photographer: p,
-                      onTap: () => _openProfile(context, p),
+                    return Reveal(
+                      delay: AppMotion.stagger * (index < 8 ? index : 0),
+                      offset: const Offset(0, 20),
+                      child: PhotographerGridCard(
+                        photographer: p,
+                        onTap: () => _openProfile(context, p),
+                      ),
                     );
                   },
                 );
@@ -168,9 +173,13 @@ class _PhotographersPageState extends State<PhotographersPage> {
                 itemCount: state.photographers.length,
                 itemBuilder: (context, index) {
                   final p = state.photographers[index];
-                  return PhotographerCard(
-                    photographer: p,
-                    onTap: () => _openProfile(context, p),
+                  return Reveal(
+                    delay: AppMotion.stagger * (index < 8 ? index : 0),
+                    offset: const Offset(0, 16),
+                    child: PhotographerCard(
+                      photographer: p,
+                      onTap: () => _openProfile(context, p),
+                    ),
                   );
                 },
               );
