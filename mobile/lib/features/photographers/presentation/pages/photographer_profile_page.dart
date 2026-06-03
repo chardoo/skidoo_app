@@ -98,12 +98,11 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
   }
 
   void _openFollowList(FollowListTab tab) {
-    Navigator.of(context).push(
-      FollowListPage.route(
-        initialTab: tab,
-        followersCount: _stats.followers,
-        followingCount: _stats.following,
-      ),
+    FollowListPage.open(
+      context,
+      initialTab: tab,
+      followersCount: _stats.followers,
+      followingCount: _stats.following,
     );
   }
 

@@ -1,9 +1,17 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/time_formatter.dart';
+import 'package:skidoo_app/core/utils/web_panel_route.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/follow/data/follow_repository.dart';
+import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:skidoo_app/models/photographer/photographerModel.dart';
+
+/// Viewport width at/above which web shows the sidebar + content layout, so the
+/// follow list opens as the right-side floating panel (matches app.dart).
+const double _kDesktopWebMinWidth = 720.0;
 
 /// Which list to show first when the page opens.
 enum FollowListTab { followers, following }
@@ -27,18 +35,29 @@ class FollowListPage extends StatefulWidget {
   final int? followersCount;
   final int? followingCount;
 
-  static Route<void> route({
+  /// Opens the list. On desktop/laptop web it slides in as the right-side
+  /// floating panel (the shared web "panel" util); on mobile (native or narrow
+  /// web) it pushes full-screen.
+  static Future<void> open(
+    BuildContext context, {
     FollowListTab initialTab = FollowListTab.followers,
     int? followersCount,
     int? followingCount,
-  }) =>
-      MaterialPageRoute<void>(
-        builder: (_) => FollowListPage(
-          initialTab: initialTab,
-          followersCount: followersCount,
-          followingCount: followingCount,
-        ),
-      );
+  }) {
+    final page = FollowListPage(
+      initialTab: initialTab,
+      followersCount: followersCount,
+      followingCount: followingCount,
+    );
+    final isDesktopWeb =
+        kIsWeb && MediaQuery.of(context).size.width >= _kDesktopWebMinWidth;
+    if (isDesktopWeb) {
+      return showWebPanelPage<void>(context, page);
+    }
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => page),
+    );
+  }
 
   @override
   State<FollowListPage> createState() => _FollowListPageState();
@@ -245,15 +264,38 @@ class _FollowListViewState extends State<_FollowListView>
               ),
             );
           }
+          final entry = _items[i];
           return _FollowTile(
-            entry: _items[i],
+            entry: entry,
             ext: ext,
             showNotify: widget.kind == FollowListTab.following,
             onNotifyChanged: (value) => _setNotify(i, value),
+            // Only photographers have a public profile page to open.
+            onTap: entry.isPhotographer ? () => _openProfile(entry) : null,
           );
         },
       ),
     );
+  }
+
+  void _openProfile(FollowEntry entry) {
+    final model = PhotographerModel(
+      entry.id,
+      '',
+      entry.name,
+      '',
+      imageUrl: entry.profileUrl,
+    );
+    final page = PhotographerProfilePage(photographer: model);
+    final isDesktopWeb =
+        kIsWeb && MediaQuery.of(context).size.width >= _kDesktopWebMinWidth;
+    if (isDesktopWeb) {
+      showWebPanelPage<void>(context, page);
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => page),
+      );
+    }
   }
 
   Future<void> _setNotify(int index, bool value) async {
@@ -274,12 +316,14 @@ class _FollowTile extends StatelessWidget {
     required this.ext,
     required this.showNotify,
     required this.onNotifyChanged,
+    this.onTap,
   });
 
   final FollowEntry entry;
   final AppThemeExtension ext;
   final bool showNotify;
   final ValueChanged<bool> onNotifyChanged;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -288,7 +332,7 @@ class _FollowTile extends StatelessWidget {
       if (entry.followedAt != null) TimeFormatter.relative(entry.followedAt!),
     ].join(' · ');
 
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
@@ -340,9 +384,19 @@ class _FollowTile extends StatelessWidget {
                 ),
                 onPressed: () => onNotifyChanged(!entry.notify!),
               ),
-            ),
+            )
+          else if (onTap != null)
+            Icon(Icons.chevron_right_rounded,
+                color: ext.searchHintColor, size: 20),
         ],
       ),
+    );
+
+    if (onTap == null) return row;
+    return Semantics(
+      button: true,
+      label: 'Open ${entry.name}’s profile',
+      child: InkWell(onTap: onTap, child: row),
     );
   }
 }

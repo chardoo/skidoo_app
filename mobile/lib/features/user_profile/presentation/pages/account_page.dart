@@ -1091,8 +1091,9 @@ class _ConnectionsCard extends StatelessWidget {
             title: 'Followers',
             subtitle: 'People who follow you',
             ext: ext,
-            onTap: () => Navigator.of(context).push(
-              FollowListPage.route(initialTab: FollowListTab.followers),
+            onTap: () => FollowListPage.open(
+              context,
+              initialTab: FollowListTab.followers,
             ),
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
@@ -1102,8 +1103,9 @@ class _ConnectionsCard extends StatelessWidget {
             title: 'Following',
             subtitle: 'Accounts you follow',
             ext: ext,
-            onTap: () => Navigator.of(context).push(
-              FollowListPage.route(initialTab: FollowListTab.following),
+            onTap: () => FollowListPage.open(
+              context,
+              initialTab: FollowListTab.following,
             ),
           ),
           SizedBox(height: 4.h),
