@@ -1,17 +1,30 @@
 import 'dart:ui';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/material.dart';
 // ignore: depend_on_referenced_packages
 import 'package:google_fonts/google_fonts.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 
 class Styles {
   static ThemeData get dark => themeData(true);
   static ThemeData get light => themeData(false);
 
+  // Smooth fade + slide page transitions on every platform (mobile + web).
+  static const PageTransitionsTheme _pageTransitions = PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: AppPageTransitionsBuilder(),
+      TargetPlatform.iOS: AppPageTransitionsBuilder(),
+      TargetPlatform.macOS: AppPageTransitionsBuilder(),
+      TargetPlatform.windows: AppPageTransitionsBuilder(),
+      TargetPlatform.linux: AppPageTransitionsBuilder(),
+      TargetPlatform.fuchsia: AppPageTransitionsBuilder(),
+    },
+  );
+
   static ThemeData themeData(bool isDarkTheme) {
     return ThemeData(
+      pageTransitionsTheme: _pageTransitions,
       dataTableTheme: DataTableThemeData(
         decoration: BoxDecoration(
             color: isDarkTheme ? Colors.black : Colors.white),
@@ -51,7 +64,10 @@ class Styles {
             : Colors.white,
         selectedItemColor:
             isDarkTheme ? Colors.white : const Color(0xFFF5A623),
-        unselectedItemColor: const Color(0xFF9A9AAA),
+        // Darker grey on the light nav bar so unselected items meet AA contrast
+        // (0xFF9A9AAA is ~2.5:1 on white).
+        unselectedItemColor:
+            isDarkTheme ? const Color(0xFF9A9AAA) : const Color(0xFF5E5E6B),
         selectedLabelStyle: TextStyle(
           fontSize: 10.sp,
           fontWeight: FontWeight.w500,
@@ -132,15 +148,6 @@ class Styles {
       extensions: [
         isDarkTheme ? AppThemeExtension.dark : AppThemeExtension.light,
       ],
-      // ── Web: instant fade instead of mobile slide / zoom ─────────────────
-      pageTransitionsTheme: kIsWeb
-          ? PageTransitionsTheme(
-              builders: {
-                for (final p in TargetPlatform.values)
-                  p: const _WebFadeTransitionBuilder(),
-              },
-            )
-          : const PageTransitionsTheme(),
       scaffoldBackgroundColor: isDarkTheme
           ? const Color.fromARGB(255, 10, 13, 17)
           : const Color(0xFFF2F2F7),
@@ -157,29 +164,6 @@ class Styles {
         surface: isDarkTheme ? const Color(0xFF1A1D24) : Colors.white,
         onSurface: isDarkTheme ? Colors.white : Colors.black,
       ),
-    );
-  }
-}
-
-// ── Web page transition: quick fade (no mobile-style slide) ───────────────────
-
-class _WebFadeTransitionBuilder extends PageTransitionsBuilder {
-  const _WebFadeTransitionBuilder();
-
-  @override
-  Widget buildTransitions<T>(
-    PageRoute<T> route,
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    return FadeTransition(
-      opacity: CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOut,
-      ),
-      child: child,
     );
   }
 }

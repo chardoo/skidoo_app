@@ -74,7 +74,9 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     homeBackground: Color(0xFFF2F2F7),
     cardSurface: Color(0xFFFFFFFF),
     searchFieldFill: Color(0xFFE8E8EE),
-    searchHintColor: Color(0xFF9A9AAA),
+    // Darkened for WCAG AA: 0xFF9A9AAA was ~2.5:1 on the light background.
+    // 0xFF5E5E6B is ~5:1 on white while staying clearly "secondary".
+    searchHintColor: Color(0xFF5E5E6B),
     searchIconColor: Color(0xFF1A1A2E),
     accentGold: Color(0xFFF5A623),
     greetingColor: Color(0xFF1A1A2E),
@@ -89,7 +91,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     glassFill:   Color(0x0D000000), // black  5 %
     glassBorder: Color(0x26000000), // black 15 %
     glassIcon:   Color(0xA6000000), // black 65 %
-    glassHint:   Color(0x73000000), // black 45 %
+    glassHint:   Color(0x99000000), // black 60 % — AA contrast (was 45 %)
   );
 
   @override
