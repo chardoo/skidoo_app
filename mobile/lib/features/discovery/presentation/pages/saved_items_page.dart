@@ -204,6 +204,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
           ),
         ),
         leading: kIsWeb ? null : IconButton(
+          tooltip: 'Back',
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: ext.greetingColor, size: 18.sp),
           onPressed: () => Navigator.of(context).pop(),

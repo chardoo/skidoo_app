@@ -182,6 +182,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
             forceElevated: innerBoxIsScrolled,
             backgroundColor: ext.homeBackground,
             leading: kIsWeb ? null : IconButton(
+              tooltip: 'Back',
               icon: Icon(Icons.arrow_back_ios_rounded,
                   color: ext.greetingColor, size: 20.sp),
               onPressed: () => Navigator.of(context).pop(),

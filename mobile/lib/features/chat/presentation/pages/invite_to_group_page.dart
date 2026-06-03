@@ -130,6 +130,7 @@ class _InviteToGroupPageState extends State<InviteToGroupPage> {
         backgroundColor: ext.homeBackground,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Back',
           icon: Icon(Icons.arrow_back_ios_rounded,
               color: ext.greetingColor, size: 18.sp),
           onPressed: () => Navigator.of(context).pop(),

@@ -329,6 +329,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: kIsWeb ? null : IconButton(
+          tooltip: 'Close',
           icon: Icon(Icons.close_rounded, color: ext.greetingColor),
           onPressed: _exitSelectionMode,
         ),

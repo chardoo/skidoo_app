@@ -102,6 +102,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
           backgroundColor: ext.homeBackground,
           elevation: 0,
           leading: kIsWeb ? null : IconButton(
+            tooltip: 'Close',
             icon: Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -169,6 +170,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         backgroundColor: ext.homeBackground,
         elevation: 0,
         leading: kIsWeb ? null : IconButton(
+          tooltip: 'Close',
           icon: Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
           onPressed: () => Navigator.of(context).pop(),
         ),

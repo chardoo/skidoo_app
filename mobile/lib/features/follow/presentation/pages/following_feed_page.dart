@@ -191,6 +191,7 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: kIsWeb ? null : IconButton(
+          tooltip: 'Back',
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: ext.greetingColor, size: 20.sp),
           onPressed: () => Navigator.of(context).pop(),

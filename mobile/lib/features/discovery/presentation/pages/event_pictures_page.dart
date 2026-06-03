@@ -101,6 +101,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             leading: kIsWeb ? null : IconButton(
+              tooltip: 'Back',
               icon: Icon(Icons.arrow_back_ios_new_rounded,
                   color: ext.greetingColor, size: 18.sp),
               onPressed: () => Navigator.of(context).pop(),

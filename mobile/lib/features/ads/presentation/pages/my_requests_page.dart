@@ -206,6 +206,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
         backgroundColor: ext.homeBackground,
         elevation: 0,
         leading: kIsWeb ? null : IconButton(
+          tooltip: 'Back',
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: ext.greetingColor, size: 20.sp),
           onPressed: () => Navigator.of(context).pop(),

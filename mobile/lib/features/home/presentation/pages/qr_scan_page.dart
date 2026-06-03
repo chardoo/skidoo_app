@@ -60,6 +60,7 @@ class _QrScanPageState extends State<QrScanPage> {
         backgroundColor: Colors.black,
         elevation: 0,
         leading: kIsWeb ? null : IconButton(
+          tooltip: 'Back',
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: Colors.white, size: 20.sp),
           onPressed: () => Navigator.of(context).pop(),

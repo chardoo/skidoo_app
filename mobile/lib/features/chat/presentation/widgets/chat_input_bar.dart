@@ -666,6 +666,7 @@ class _ReplyBar extends StatelessWidget {
           ),
           IconButton(
             onPressed: onClear,
+            tooltip: 'Clear',
             icon: Icon(Icons.close_rounded,
                 size: 18.sp, color: ext.searchHintColor),
             padding: EdgeInsets.zero,
