@@ -36,6 +36,27 @@
   <link rel="manifest" href="manifest.json">
 
   <!--
+    No-cache safety net: this build ships without a service worker
+    (--pwa-strategy=none), but earlier builds did register one. Unregister any
+    existing service worker and wipe its CacheStorage on every load so returning
+    visitors are never pinned to a stale app shell.
+  -->
+  <script>
+    (function () {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations()
+          .then(function (regs) { regs.forEach(function (r) { r.unregister(); }); })
+          .catch(function () {});
+      }
+      if (window.caches && caches.keys) {
+        caches.keys()
+          .then(function (keys) { keys.forEach(function (k) { caches.delete(k); }); })
+          .catch(function () {});
+      }
+    })();
+  </script>
+
+  <!--
     Screenshot deterrents (web) — DISABLED for now so testers can right-click
     to inspect elements. Re-enable to block the right-click "Save image as…"
     menu and image drag-out. Note: browsers expose NO API to block OS-level

@@ -28,8 +28,11 @@ COPY mobile/pubspec.yaml mobile/pubspec.lock ./
 RUN flutter pub get
 
 # Copy the rest of the app source and build.
+# --pwa-strategy=none disables the service worker so the browser never serves a
+# stale cached app shell — combined with nginx's no-store headers, every visit
+# fetches the latest deploy.
 COPY mobile/ .
-RUN flutter build web --release
+RUN flutter build web --release --pwa-strategy=none
 
 # ── Stage 2: nginx static server ──────────────────────────────────────────────
 FROM nginx:alpine

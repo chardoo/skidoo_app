@@ -22,9 +22,9 @@ void main() async {
   // based e2e tests). Force it on at startup so the labels are always present.
   // No-op cost on mobile, where the OS already drives semantics on demand, so
   // we only enable it on web.
-  if (kIsWeb) {
+  // if (kIsWeb) {
     SemanticsBinding.instance.ensureSemantics();
-  }
+  // }
 
   // Cap Flutter's decoded-image cache to prevent OOM crashes on photo feeds.
   // The default (1000 images / unbounded bytes) is dangerously high for an app

@@ -257,7 +257,7 @@ class _AppMaterial extends StatelessWidget {
   /// TextFields and buttons keep their own gestures; only plain Text becomes
   /// selectable.
   static Widget _mobileSelectionBuilder(BuildContext ctx, Widget? child) =>
-      SelectionArea(child: child!);
+      _SelectionOverlay(child: child!);
 
   /// Web layout — adapts to viewport width:
   ///   ≥ 720 px (desktop): left sidebar + centred column (480→760 px) + download button
@@ -284,7 +284,12 @@ class _AppMaterial extends StatelessWidget {
     // copyable on web (click-drag to select, Cmd/Ctrl+C to copy) without having
     // to convert each Text to SelectableText. TextFields and buttons keep their
     // own behaviour; only static text becomes selectable.
-    final content = SelectionArea(
+    //
+    // It is wrapped in [_SelectionOverlay] because SelectionArea requires an
+    // Overlay ancestor (for the selection handles / copy toolbar). Here the
+    // builder sits ABOVE the app's Navigator — whose Overlay is a descendant —
+    // so we supply a local Overlay instead.
+    final content = _SelectionOverlay(
       child: _WebEdgeScrollbar(child: ClipRect(child: child!)),
     );
 
@@ -432,6 +437,33 @@ class _WebEdgeScrollbarState extends State<_WebEdgeScrollbar> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Selectable-text wrapper ───────────────────────────────────────────────────
+
+/// Wraps [child] in a [SelectionArea] backed by a local [Overlay].
+///
+/// [SelectionArea] needs an [Overlay] ancestor (it hosts the selection handles
+/// and the copy toolbar). When used inside [MaterialApp.builder] the wrapper
+/// sits ABOVE the app's [Navigator], whose Overlay is therefore a descendant —
+/// so we provide our own Overlay here. The Overlay also lets the copy menu
+/// float above all page content.
+class _SelectionOverlay extends StatelessWidget {
+  const _SelectionOverlay({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Overlay(
+      initialEntries: [
+        OverlayEntry(
+          maintainState: true,
+          builder: (_) => SelectionArea(child: child),
+        ),
+      ],
     );
   }
 }
