@@ -138,7 +138,12 @@ class _SidebarShell extends StatelessWidget {
                         ),
                       ),
 
-                      Expanded(child: child),
+                      // The sidebar lives above the Navigator, so it has no
+                      // route FocusScope. Without one, its search TextField
+                      // can't reliably claim primary focus on web (the active
+                      // route's scope keeps it), so typing does nothing. Give
+                      // the nav its own scope so the field accepts input.
+                      Expanded(child: FocusScope(child: child)),
 
                       // ── Footer ──────────────────────────────────────────
                       _SidebarFooter(ext: ext),
