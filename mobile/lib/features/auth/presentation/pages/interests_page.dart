@@ -94,7 +94,7 @@ class _InterestsView extends StatelessWidget {
                         runSpacing: 10.h,
                         children: _interests.map((tag) {
                           final selected = state.selected.contains(tag);
-                          return Semantics(button: true, label: 'Tag', child: GestureDetector(
+                          return Semantics(button: true, selected: selected, label: tag, child: GestureDetector(
                             onTap: () => context
                                 .read<InterestsBloc>()
                                 .add(InterestToggled(tag)),

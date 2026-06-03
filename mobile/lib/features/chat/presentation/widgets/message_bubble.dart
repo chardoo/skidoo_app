@@ -366,10 +366,81 @@ class _MessageImage extends StatelessWidget {
         child: const Icon(Icons.broken_image_rounded, color: Colors.white54),
       ),
     ));
+    final tappable = Semantics(
+      button: true,
+      label: 'Open photo',
+      child: GestureDetector(
+        onTap: () => Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute<void>(
+            fullscreenDialog: true,
+            builder: (_) => _ZoomableImageView(imageUrl: imageUrl),
+          ),
+        ),
+        child: img,
+      ),
+    );
     if (aspectRatio != null) {
-      return AspectRatio(aspectRatio: aspectRatio!, child: img);
+      return AspectRatio(aspectRatio: aspectRatio!, child: tappable);
     }
-    return img;
+    return tappable;
+  }
+}
+
+/// Full-screen, pinch/zoomable viewer for a shared chat photo.
+class _ZoomableImageView extends StatelessWidget {
+  const _ZoomableImageView({required this.imageUrl});
+  final String imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: InteractiveViewer(
+              minScale: 1,
+              maxScale: 5,
+              child: Center(
+                child: Semantics(
+                  image: true,
+                  label: 'Shared photo',
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                    placeholder: (_, __) => const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    errorWidget: (_, __, ___) => const Icon(
+                        Icons.broken_image_rounded, color: Colors.white54),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 12,
+            child: Semantics(
+              button: true,
+              label: 'Close',
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close_rounded, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
