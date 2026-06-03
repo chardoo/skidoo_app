@@ -321,6 +321,11 @@ class _EventsFeedState extends State<EventsFeed> {
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    // Don't hijack keys while the user is typing in a text field (e.g. the
+    // comment box): space, j and k must reach the field, not scroll the feed.
+    if (FocusManager.instance.primaryFocus?.context?.widget is EditableText) {
+      return KeyEventResult.ignored;
+    }
     final events = widget.discoveryState.events;
     if (events.isEmpty) return KeyEventResult.ignored;
     final current = _activeCardIndex.value;

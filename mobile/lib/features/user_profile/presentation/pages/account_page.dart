@@ -360,29 +360,32 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   // ── Locale section ─────────────────────────────────────
                   _SectionLabel(AppLocalizations.of(context)!.accountLocaleRegion, ext),
                   SizedBox(height: 10.h),
-                  _ProfileField(
+                  _ProfileDropdown(
                       controller: _countryCodeCtrl,
                       label: AppLocalizations.of(context)!.accountCountryCode,
                       icon: Icons.flag_outlined,
-                      maxLength: 2,
+                      options: _kCountryOptions,
                       ext: ext),
                   SizedBox(height: 10.h),
-                  _ProfileField(
+                  _ProfileDropdown(
                       controller: _localeCtrl,
                       label: AppLocalizations.of(context)!.accountLocale,
                       icon: Icons.language_outlined,
+                      options: _kLocaleOptions,
                       ext: ext),
                   SizedBox(height: 10.h),
-                  _ProfileField(
+                  _ProfileDropdown(
                       controller: _languageCtrl,
                       label: AppLocalizations.of(context)!.accountPreferredLanguage,
                       icon: Icons.translate_rounded,
+                      options: _kLanguageOptions,
                       ext: ext),
                   SizedBox(height: 10.h),
-                  _ProfileField(
+                  _ProfileDropdown(
                       controller: _timezoneCtrl,
                       label: AppLocalizations.of(context)!.accountTimezone,
                       icon: Icons.access_time_rounded,
+                      options: _kTimezoneOptions,
                       ext: ext),
                   SizedBox(height: 20.h),
 
@@ -505,7 +508,6 @@ class _ProfileField extends StatelessWidget {
     required this.icon,
     required this.ext,
     this.keyboardType = TextInputType.text,
-    this.maxLength,
   });
 
   final TextEditingController controller;
@@ -513,14 +515,12 @@ class _ProfileField extends StatelessWidget {
   final IconData icon;
   final AppThemeExtension ext;
   final TextInputType keyboardType;
-  final int? maxLength;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
-      maxLength: maxLength,
       style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
       decoration: InputDecoration(
         labelText: label,
@@ -545,6 +545,130 @@ class _ProfileField extends StatelessWidget {
         ),
         contentPadding:
             EdgeInsets.symmetric(horizontal: 12.w, vertical: 14.h),
+      ),
+    );
+  }
+}
+
+// ── Curated option lists for the locale/region dropdowns ───────────────────────
+// Values use the standard formats the API expects (ISO-3166 country, IETF
+// language, `xx_XX` locale, IANA timezone). Any previously-saved value that
+// isn't in a list is preserved as a selectable fallback by [_ProfileDropdown].
+
+const Map<String, String> _kCountryOptions = {
+  'GH': 'Ghana', 'NG': 'Nigeria', 'KE': 'Kenya', 'ZA': 'South Africa',
+  'EG': 'Egypt', 'MA': 'Morocco', 'US': 'United States', 'CA': 'Canada',
+  'GB': 'United Kingdom', 'IE': 'Ireland', 'DE': 'Germany', 'FR': 'France',
+  'ES': 'Spain', 'PT': 'Portugal', 'IT': 'Italy', 'NL': 'Netherlands',
+  'BE': 'Belgium', 'CH': 'Switzerland', 'SE': 'Sweden', 'NO': 'Norway',
+  'DK': 'Denmark', 'AE': 'United Arab Emirates', 'SA': 'Saudi Arabia',
+  'IN': 'India', 'CN': 'China', 'JP': 'Japan', 'SG': 'Singapore',
+  'AU': 'Australia', 'NZ': 'New Zealand', 'BR': 'Brazil', 'MX': 'Mexico',
+};
+
+const Map<String, String> _kLanguageOptions = {
+  'en': 'English', 'de': 'German', 'fr': 'French', 'es': 'Spanish',
+  'pt': 'Portuguese', 'ar': 'Arabic',
+};
+
+const Map<String, String> _kLocaleOptions = {
+  'en_US': 'English (US)', 'en_GB': 'English (UK)', 'de_DE': 'German (Germany)',
+  'fr_FR': 'French (France)', 'es_ES': 'Spanish (Spain)',
+  'pt_PT': 'Portuguese (Portugal)', 'it_IT': 'Italian (Italy)',
+  'nl_NL': 'Dutch (Netherlands)',
+};
+
+const Map<String, String> _kTimezoneOptions = {
+  'UTC': 'UTC', 'Africa/Accra': 'Accra', 'Africa/Lagos': 'Lagos',
+  'Africa/Nairobi': 'Nairobi', 'Africa/Johannesburg': 'Johannesburg',
+  'Africa/Cairo': 'Cairo', 'Europe/London': 'London', 'Europe/Berlin': 'Berlin',
+  'Europe/Paris': 'Paris', 'Europe/Madrid': 'Madrid', 'Europe/Rome': 'Rome',
+  'Europe/Amsterdam': 'Amsterdam', 'America/New_York': 'New York',
+  'America/Chicago': 'Chicago', 'America/Denver': 'Denver',
+  'America/Los_Angeles': 'Los Angeles', 'America/Sao_Paulo': 'São Paulo',
+  'America/Mexico_City': 'Mexico City', 'Asia/Dubai': 'Dubai',
+  'Asia/Kolkata': 'Kolkata', 'Asia/Shanghai': 'Shanghai', 'Asia/Tokyo': 'Tokyo',
+  'Asia/Singapore': 'Singapore', 'Australia/Sydney': 'Sydney',
+  'Pacific/Auckland': 'Auckland',
+};
+
+/// Dropdown styled to match [_ProfileField], writing the selected value back to
+/// [controller] so the existing save path is unchanged.
+class _ProfileDropdown extends StatefulWidget {
+  const _ProfileDropdown({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    required this.options,
+    required this.ext,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final Map<String, String> options;
+  final AppThemeExtension ext;
+
+  @override
+  State<_ProfileDropdown> createState() => _ProfileDropdownState();
+}
+
+class _ProfileDropdownState extends State<_ProfileDropdown> {
+  @override
+  Widget build(BuildContext context) {
+    final ext = widget.ext;
+    final current = widget.controller.text.trim();
+    final entries = <MapEntry<String, String>>[
+      ...widget.options.entries,
+      // Keep any saved value that isn't in the curated list selectable.
+      if (current.isNotEmpty && !widget.options.containsKey(current))
+        MapEntry(current, current),
+    ];
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: widget.label,
+        labelStyle: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+        prefixIcon: Icon(widget.icon, color: ext.searchHintColor, size: 18.sp),
+        filled: true,
+        fillColor: ext.homeBackground,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.r),
+          borderSide:
+              BorderSide(color: ext.searchHintColor.withValues(alpha: 0.2)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.r),
+          borderSide:
+              BorderSide(color: ext.searchHintColor.withValues(alpha: 0.2)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.r),
+          borderSide: BorderSide(color: ext.accentGold, width: 1.5),
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: current.isEmpty ? null : current,
+          isExpanded: true,
+          isDense: true,
+          hint: Text('Select',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp)),
+          dropdownColor: ext.cardSurface,
+          style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+          icon: Icon(Icons.keyboard_arrow_down_rounded,
+              color: ext.searchHintColor, size: 20.sp),
+          items: entries
+              .map((e) => DropdownMenuItem<String>(
+                    value: e.key,
+                    child: Text(e.value, overflow: TextOverflow.ellipsis),
+                  ))
+              .toList(),
+          onChanged: (v) {
+            if (v == null) return;
+            setState(() => widget.controller.text = v);
+          },
+        ),
       ),
     );
   }

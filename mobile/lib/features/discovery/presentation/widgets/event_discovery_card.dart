@@ -382,6 +382,29 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               right: kIsWeb ? 14.w : 82.w,
               child: _ImageFooter(event: widget.event),
             ),
+            // Web: a more-options button (Hide / Report). On mobile these live
+            // in the post header above the media, so this is web-only.
+            if (kIsWeb)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Semantics(
+                  button: true,
+                  label: 'More options',
+                  child: GestureDetector(
+                    onTap: () => _showEventMoreOptions(context, ext),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.more_horiz_rounded,
+                          color: Colors.white, size: 20),
+                    ),
+                  ),
+                ),
+              ),
             if (_showHeartBurst)
               Positioned.fill(
                 child: IgnorePointer(
@@ -861,6 +884,24 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
 
   void _showCommentSheet(BuildContext context, AppThemeExtension ext) {
     EventCommentPage.show(context, widget.event, onCommentSent: _onCommentSent);
+  }
+
+  /// Opens the Hide / Report sheet (used by the web card's more-options button;
+  /// mobile uses the post header's menu). Prompts login when unauthenticated.
+  void _showEventMoreOptions(BuildContext context, AppThemeExtension ext) {
+    if (!widget.isAuthenticated) {
+      widget.onTap();
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EventMoreOptionsSheet(
+        ext: ext,
+        eventId: widget.event.id,
+        onHide: widget.onHide,
+      ),
+    );
   }
 
   /// Optimistically bump the feed card's comment count when the user posts a
