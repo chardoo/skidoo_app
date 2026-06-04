@@ -22,6 +22,7 @@ import 'package:skidoo_app/core/common/widgets/feed_launch_overlay.dart';
 import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 
 class HomeNavigationPage extends StatefulWidget {
@@ -478,14 +479,18 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
               color: ext.homeBackground,
               child: _showPhotosInline
                   // ── Web desktop: inline photo results panel ────────────────
-                  ? WebSearchPhotosPanel(
-                      ext: ext,
-                      eventName: _inlineEventName,
-                      onBack: () => setState(() {
-                        _showPhotosInline = false;
-                        _inlineEventName = '';
-                      }),
-                      onClose: _closeSearch,
+                  // Constrained to the standard centred web column (webWrap),
+                  // matching Gallery/Photographers. The back arrow returns to
+                  // the home feed (not the in-content suggestion overlay).
+                  ? webWrap(
+                      WebSearchPhotosPanel(
+                        ext: ext,
+                        eventName: _inlineEventName,
+                        onBack: _closeSearch,
+                        onClose: _closeSearch,
+                      ),
+                      backgroundColor: ext.homeBackground,
+                      width: kWebColumnWidthWide,
                     )
                   // ── Event suggestion list (all platforms) ──────────────────
                   // Offset below the floating header (status bar + search bar)
