@@ -488,7 +488,19 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                       onClose: _closeSearch,
                     )
                   // ── Event suggestion list (all platforms) ──────────────────
-                  : _buildSearchOverlay(context, ext, homeState),
+                  // Offset below the floating header (status bar + search bar)
+                  // plus a little breathing room, so results never slide up
+                  // under the app bar. Falls back to a sensible estimate until
+                  // the header has been measured.
+                  : Padding(
+                      padding: EdgeInsets.only(
+                        top: (_headerHeight > 0
+                                ? _headerHeight
+                                : MediaQuery.of(context).padding.top + 64) +
+                            12,
+                      ),
+                      child: _buildSearchOverlay(context, ext, homeState),
+                    ),
             ),
           ),
       ],
