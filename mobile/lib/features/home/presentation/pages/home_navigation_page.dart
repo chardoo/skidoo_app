@@ -80,14 +80,20 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       };
       HomeNavigationPage._webEventTapHandler = (eventId, eventName) {
         if (!mounted) return;
-        context
-            .read<HomeBloc>()
-            .add(HomeImagesSearched(eventId: eventId, eventName: eventName));
-        setState(() {
-          _isSearchOpen = true;
-          _showPhotosInline = true;
-          _inlineEventName = eventName;
-        });
+        final homeBloc = context.read<HomeBloc>();
+        homeBloc.add(
+            HomeImagesSearched(eventId: eventId, eventName: eventName));
+        // Route to the search-event page on the ROOT navigator so it opens on
+        // top of whatever page/tab the user is currently on (Gallery, a
+        // profile, chat, …) — the inline panel only showed on the Home tab.
+        Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute<void>(
+            builder: (_) => BlocProvider.value(
+              value: homeBloc,
+              child: WebSearchPhotosPage(eventName: eventName),
+            ),
+          ),
+        );
       };
     }
   }

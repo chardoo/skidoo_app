@@ -8,9 +8,39 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/responsive.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
+
+/// Full-page, routed version of [WebSearchPhotosPanel] used on web so that
+/// selecting an event from the sidebar search opens the photos regardless of
+/// which page/tab the user is currently on. The back/close arrow pops the
+/// route, returning to wherever the user was. The caller must provide the
+/// [HomeBloc] (already loaded via HomeImagesSearched) above this widget.
+class WebSearchPhotosPage extends StatelessWidget {
+  const WebSearchPhotosPage({super.key, required this.eventName});
+
+  final String eventName;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    return Scaffold(
+      backgroundColor: ext.homeBackground,
+      body: webWrap(
+        WebSearchPhotosPanel(
+          ext: ext,
+          eventName: eventName,
+          onBack: () => Navigator.of(context).maybePop(),
+          onClose: () => Navigator.of(context).maybePop(),
+        ),
+        backgroundColor: ext.homeBackground,
+        width: kWebColumnWidthWide,
+      ),
+    );
+  }
+}
 
 /// Web-desktop inline photo-results panel.
 ///
