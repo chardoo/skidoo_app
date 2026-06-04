@@ -244,8 +244,8 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
       _removeOverlay();
       return;
     }
-    // Debounce so we don't fire a request on every keystroke.
-    _debounce = Timer(const Duration(milliseconds: 250), () => _runSearch(q));
+    // Short debounce so it feels immediate while still coalescing fast typing.
+    _debounce = Timer(const Duration(milliseconds: 150), () => _runSearch(q));
   }
 
   /// Runs the event search directly and pushes results to [webEventResults],
