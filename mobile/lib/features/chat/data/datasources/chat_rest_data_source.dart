@@ -114,6 +114,7 @@ abstract class ChatRestDataSource {
   Future<ChatRoom> getOrCreateDirectRoom({
     required String recipientId,
     required String recipientRole,
+    String? recipientName,
   });
 
   /// POST /chat/rooms/event-private
@@ -284,6 +285,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   Future<ChatRoom> getOrCreateDirectRoom({
     required String recipientId,
     required String recipientRole,
+    String? recipientName,
   }) async {
     return _wrap(() async {
       final res = await _client.dio.post(
@@ -291,6 +293,11 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         data: jsonEncode({
           'recipient_id': recipientId,
           'recipient_role': recipientRole,
+          // Let the chat service store the recipient's name (it has no user
+          // table to look it up). The app knows it (DMing from a profile/
+          // search), so the DM shows the right name instead of null.
+          if (recipientName != null && recipientName.trim().isNotEmpty)
+            'recipient_name': recipientName.trim(),
         }),
       );
       return ChatRoom.fromJson(res.data as Map<String, dynamic>);

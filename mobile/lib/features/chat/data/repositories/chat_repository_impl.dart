@@ -69,6 +69,9 @@ class ChatRepositoryImpl implements ChatRepository {
     final room = await _fetchAndCacheRoom(() => _rest.getOrCreateDirectRoom(
           recipientId: recipientId,
           recipientRole: recipientRole,
+          // Forward the known recipient name so the server stores it and every
+          // participant list (create/get/socket) returns it.
+          recipientName: localDisplayName,
         ));
     // Apply local display name if the server returned none.
     if ((room.name == null || room.name!.isEmpty) &&
