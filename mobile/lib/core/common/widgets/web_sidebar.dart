@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/features/home/domain/usecases/search_events_usecase.dart';
 import 'package:skidoo_app/core/navigation/app_navigator.dart';
 import 'package:skidoo_app/core/navigation/web_route_observer.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -183,6 +186,12 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
   final _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
 
+  // Debounced, self-contained typeahead search. Calling the use case directly
+  // (instead of routing through HomeNavigationPage's BLoC) makes the dropdown
+  // work on desktop/laptop regardless of which page is mounted.
+  Timer? _debounce;
+  int _searchReqId = 0;
+
   @override
   void initState() {
     super.initState();
@@ -193,6 +202,7 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     HomeNavigationPage.webEventResults.removeListener(_onResultsChanged);
     _focus.removeListener(_onFocusChanged);
     _ctrl.removeListener(_onControllerChanged);
@@ -225,6 +235,7 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
 
   void _onChanged(String value) {
     final q = value.trim();
+    _debounce?.cancel();
     if (q.length < 2) {
       // Query too short — clear results and hide dropdown.
       if (HomeNavigationPage.webEventResults.value.isNotEmpty) {
@@ -233,7 +244,26 @@ class _SidebarSearchFieldState extends State<_SidebarSearchField> {
       _removeOverlay();
       return;
     }
-    HomeNavigationPage.dispatchSearch(q);
+    // Debounce so we don't fire a request on every keystroke.
+    _debounce = Timer(const Duration(milliseconds: 250), () => _runSearch(q));
+  }
+
+  /// Runs the event search directly and pushes results to [webEventResults],
+  /// which the field listens to ([_onResultsChanged]) to show the dropdown.
+  /// A request id guards against out-of-order responses.
+  Future<void> _runSearch(String q) async {
+    final reqId = ++_searchReqId;
+    try {
+      final results = await sl<SearchEventsUseCase>()(SearchEventsParams(q));
+      if (!mounted || reqId != _searchReqId) return; // stale / disposed
+      HomeNavigationPage.webEventResults.value = results;
+      _syncOverlay();
+    } catch (_) {
+      if (mounted && reqId == _searchReqId) {
+        HomeNavigationPage.webEventResults.value = [];
+        _removeOverlay();
+      }
+    }
   }
 
   void _clearSearch() {
