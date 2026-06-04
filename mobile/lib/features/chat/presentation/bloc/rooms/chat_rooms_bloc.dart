@@ -154,10 +154,20 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
       final counts = results[0] as Map<String, int>;
       final lastTimes = results[1] as Map<String, DateTime>;
       final split = _splitRooms(fresh, myUserId);
+      // Web has no local DB, so getUnreadCounts() is empty and the badge would
+      // vanish on every page refresh. Seed it from the server's per-room
+      // unread_count instead, so it persists until the room is opened (which
+      // sends `ack`, clearing it server-side). Native keeps the DB-derived count.
+      final effectiveCounts = kIsWeb
+          ? <String, int>{
+              for (final r in fresh)
+                if (r.unreadCount > 0) r.id: r.unreadCount,
+            }
+          : counts;
       emit(state.copyWith(
         rooms: split.$1,
         pendingInvites: split.$2,
-        unreadCounts: counts,
+        unreadCounts: effectiveCounts,
         lastMessageAt: lastTimes,
         isLoading: false,
         isSyncing: false,

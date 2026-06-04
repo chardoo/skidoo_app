@@ -147,6 +147,12 @@ class ChatRoom {
   /// When true, only admins can send messages. Group rooms only.
   final bool adminOnly;
 
+  /// Server-provided count of messages this user hasn't read yet. The backend
+  /// derives it from the user's last-read marker (updated by `ack`). Used to
+  /// seed the unread badge on platforms with no local DB (web), so the count
+  /// survives a page refresh. Defaults to 0 when the server omits it.
+  final int unreadCount;
+
   const ChatRoom({
     required this.id,
     required this.type,
@@ -156,6 +162,7 @@ class ChatRoom {
     this.participants = const [],
     this.e2eStatus = const {},
     this.adminOnly = false,
+    this.unreadCount = 0,
   });
 
   /// Human-readable display name.
@@ -224,6 +231,7 @@ class ChatRoom {
     List<ChatParticipant>? participants,
     Map<String, bool>? e2eStatus,
     bool? adminOnly,
+    int? unreadCount,
   }) =>
       ChatRoom(
         id: id ?? this.id,
@@ -234,6 +242,7 @@ class ChatRoom {
         participants: participants ?? this.participants,
         e2eStatus: e2eStatus ?? this.e2eStatus,
         adminOnly: adminOnly ?? this.adminOnly,
+        unreadCount: unreadCount ?? this.unreadCount,
       );
 
   factory ChatRoom.fromJson(Map<String, dynamic> json) {
@@ -255,6 +264,7 @@ class ChatRoom {
       participants: participantsList,
       e2eStatus: e2eStatus,
       adminOnly: (json['admin_only'] as bool?) ?? false,
+      unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
     );
   }
 
