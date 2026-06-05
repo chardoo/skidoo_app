@@ -20,7 +20,7 @@ import 'package:skidoo_app/features/user_profile/presentation/pages/account_page
 import 'package:skidoo_app/services/auth_service.dart';
 
 const double _kSidebarWidth = 240.0;
-const String _kCreatorUrl = 'https://picco-v2.onrender.com/';
+const String _kCreatorUrl = 'https://picco-v2.onrender.com/dasboard';
 
 // Viewport width below which the desktop sidebar won't fit. Matches app.dart.
 // (Kept private — app.dart inlines its own copy of the same value.)
@@ -860,6 +860,8 @@ class _CreatorTileState extends State<_CreatorTile> {
         onTap: () => launchUrl(
           Uri.parse(_kCreatorUrl),
           mode: LaunchMode.externalApplication,
+          // Web: open in the SAME tab (not a new browser tab).
+          webOnlyWindowName: '_self',
         ),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
@@ -1444,6 +1446,8 @@ class _TopNavCreatorPillState extends State<_TopNavCreatorPill> {
         onTap: () => launchUrl(
           Uri.parse(_kCreatorUrl),
           mode: LaunchMode.externalApplication,
+          // Web: open in the SAME tab (not a new browser tab).
+          webOnlyWindowName: '_self',
         ),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
