@@ -42,6 +42,9 @@ class _DiscoveryView extends StatefulWidget {
 class _DiscoveryViewState extends State<_DiscoveryView> {
   final _scrollCtrl = ScrollController();
   final _activeCardIndex = ValueNotifier<int>(0);
+  // Web desktop/laptop: shared "comments open" flag so the panel stays open as
+  // the user scrolls between cards (each card shows its own thread).
+  final _webCommentsOpen = ValueNotifier<bool>(false);
   final _cardKeys = <String, GlobalKey>{};
   final _feedFocusNode = FocusNode();
   // Guard: only one _updateActiveCard per frame, no matter how many
@@ -65,6 +68,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   void dispose() {
     _scrollCtrl.dispose();
     _activeCardIndex.dispose();
+    _webCommentsOpen.dispose();
     _feedFocusNode.dispose();
     super.dispose();
   }
@@ -297,6 +301,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                                   event: ev,
                                   cardIndex: index,
                                   activeCardIndex: _activeCardIndex,
+                                  webCommentsOpen: _webCommentsOpen,
                                   onTap: () => _onCardTap(context, ev),
                                   isOwner: state.currentUserId != null &&
                                       state.currentUserId == ev.photographerId,

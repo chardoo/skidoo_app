@@ -110,6 +110,9 @@ class EventsFeed extends StatefulWidget {
 
 class _EventsFeedState extends State<EventsFeed> {
   final _activeCardIndex = ValueNotifier<int>(0);
+  // Web desktop/laptop: shared "comments open" flag so the panel stays open as
+  // the user scrolls between cards (each card shows its own thread).
+  final _webCommentsOpen = ValueNotifier<bool>(false);
   final _cardKeys = <String, GlobalKey>{};
   final _feedFocusNode = FocusNode();
   final _scrollCtrl = ScrollController();
@@ -297,6 +300,7 @@ class _EventsFeedState extends State<EventsFeed> {
   @override
   void dispose() {
     _activeCardIndex.dispose();
+    _webCommentsOpen.dispose();
     _feedFocusNode.dispose();
     _scrollCtrl.dispose();
     super.dispose();
@@ -641,6 +645,7 @@ class _EventsFeedState extends State<EventsFeed> {
                       event: event,
                       cardIndex: eventItem.eventIndex,
                       activeCardIndex: _activeCardIndex,
+                      webCommentsOpen: _webCommentsOpen,
                       isAuthenticated: true,
                       onTap: () => widget.onCardTap(event),
                       onCommentTap: () => widget.onCommentTap(event),

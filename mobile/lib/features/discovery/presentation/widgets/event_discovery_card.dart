@@ -36,6 +36,7 @@ class EventDiscoveryCard extends StatefulWidget {
     this.onCommentTap,
     this.cardIndex = 0,
     this.activeCardIndex,
+    this.webCommentsOpen,
     this.onHide,
   });
 
@@ -49,6 +50,11 @@ class EventDiscoveryCard extends StatefulWidget {
   /// Shared notifier; its value is the currently active card index.
   /// When null the card is treated as always active (e.g. discovery page).
   final ValueNotifier<int>? activeCardIndex;
+  /// Web desktop/laptop only: feed-level "comments open" flag shared by every
+  /// card, so that opening comments stays open as the user scrolls between
+  /// cards (each card then shows its own event's thread). Null on mobile, where
+  /// the per-card local flag is used instead.
+  final ValueNotifier<bool>? webCommentsOpen;
   /// Called when the user hides this event from their feed.
   final VoidCallback? onHide;
 
@@ -73,8 +79,25 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   int _dislikeCount = 0;
   bool _descExpanded = false;
   bool _showHeartBurst = false;
-  // Web-only: whether the inline comment panel is open (replaces reactions col).
-  bool _webCommentsOpen = false;
+  // Whether the inline comment panel is open (replaces reactions col).
+  // On web desktop/laptop this is driven by the shared feed-level notifier
+  // ([widget.webCommentsOpen]) so the state carries across cards as you scroll;
+  // on mobile it falls back to this local flag.
+  bool _localCommentsOpen = false;
+  bool get _useSharedComments => kIsWeb && widget.webCommentsOpen != null;
+  bool get _webCommentsOpen =>
+      _useSharedComments ? widget.webCommentsOpen!.value : _localCommentsOpen;
+  void _setCommentsOpen(bool value) {
+    if (_useSharedComments) {
+      widget.webCommentsOpen!.value = value; // listener rebuilds every card
+    } else {
+      setState(() => _localCommentsOpen = value);
+    }
+  }
+
+  void _onSharedCommentsChanged() {
+    if (mounted) setState(() {});
+  }
 
   late final AnimationController _heartCtrl;
 
@@ -143,6 +166,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     });
     // Restart/stop auto-scroll as feed focus moves between cards.
     widget.activeCardIndex?.addListener(_onActiveCardChanged);
+    // Rebuild when the shared "comments open" flag flips (web desktop/laptop),
+    // so this card opens/closes its own thread in step with the feed.
+    widget.webCommentsOpen?.addListener(_onSharedCommentsChanged);
     // Notify the bloc that this card is now visible.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -173,6 +199,10 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       widget.activeCardIndex?.addListener(_onActiveCardChanged);
       _onActiveCardChanged();
     }
+    if (old.webCommentsOpen != widget.webCommentsOpen) {
+      old.webCommentsOpen?.removeListener(_onSharedCommentsChanged);
+      widget.webCommentsOpen?.addListener(_onSharedCommentsChanged);
+    }
   }
 
   @override
@@ -181,6 +211,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     _discoveryBloc?.add(DiscoveryEventHidden(widget.event.id));
     _stopAutoScroll();
     widget.activeCardIndex?.removeListener(_onActiveCardChanged);
+    widget.webCommentsOpen?.removeListener(_onSharedCommentsChanged);
     _heartCtrl.dispose();
     _pageCtrl.dispose();
     super.dispose();
@@ -519,7 +550,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               : widget.onTap,
           // Toggle: tapping the comment icon closes the panel when it's open.
           onComment: widget.isAuthenticated && commentsEnabled
-              ? () => setState(() => _webCommentsOpen = !_webCommentsOpen)
+              ? () => _setCommentsOpen(!_webCommentsOpen)
               : widget.isAuthenticated
                   ? null
                   : widget.onTap,
@@ -544,7 +575,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     final commentsPanel = EventCommentInlinePanel(
       event: widget.event,
       isExternalPanel: isExternalPanel,
-      onClose: () => setState(() => _webCommentsOpen = false),
+      onClose: () => _setCommentsOpen(false),
       onCommentSent: _onCommentSent,
     );
 
@@ -669,7 +700,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 child: EventCommentInlinePanel(
                   event: widget.event,
                   isExternalPanel: true,
-                  onClose: () => setState(() => _webCommentsOpen = false),
+                  onClose: () => _setCommentsOpen(false),
                   onCommentSent: _onCommentSent,
                 ),
               ),
