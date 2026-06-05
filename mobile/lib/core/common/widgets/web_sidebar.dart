@@ -20,7 +20,7 @@ import 'package:skidoo_app/features/user_profile/presentation/pages/account_page
 import 'package:skidoo_app/services/auth_service.dart';
 
 const double _kSidebarWidth = 240.0;
-const String _kCreatorUrl = 'https://picco-v2.onrender.com/dasboard';
+const String _kCreatorUrl = 'https://picco-v2.onrender.com/photographer/dashboard';
 
 // Viewport width below which the desktop sidebar won't fit. Matches app.dart.
 // (Kept private — app.dart inlines its own copy of the same value.)
