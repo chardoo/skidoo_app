@@ -99,6 +99,7 @@ class _InviteToGroupPageState extends State<InviteToGroupPage> {
           roomId: widget.room.id,
           inviteeId: user.id,
           inviteeRole: user.role,
+          inviteeName: user.name,
         );
         debugPrint('[InviteToGroup] invited ${user.id} to ${widget.room.id}');
       } catch (e) {

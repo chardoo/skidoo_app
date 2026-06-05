@@ -54,11 +54,13 @@ abstract class ChatRepository {
     required String roomId,
     required String inviteeId,
     required String inviteeRole,
+    String? inviteeName,
   });
 
   Future<ChatRoom> createGroupRoom({
     required String name,
     List<String>? inviteeIds,
+    Map<String, String>? inviteeNames,
   });
 
   Future<void> acceptRoomInvite(String roomId);

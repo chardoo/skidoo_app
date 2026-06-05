@@ -134,6 +134,7 @@ abstract class ChatRestDataSource {
     required String roomId,
     required String inviteeId,
     required String inviteeRole,
+    String? inviteeName,
   });
 
   /// PUT /chat/rooms/{room_id}/messages/{message_id} — edit a message's content.
@@ -153,6 +154,7 @@ abstract class ChatRestDataSource {
   Future<ChatRoom> createGroupRoom({
     required String name,
     List<String>? inviteeIds,
+    Map<String, String>? inviteeNames,
   });
 
   /// POST /chat/rooms/{room_id}/join — accept a pending invite.
@@ -360,6 +362,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
     required String roomId,
     required String inviteeId,
     required String inviteeRole,
+    String? inviteeName,
   }) async {
     await _wrap(() async {
       await _client.dio.post(
@@ -367,6 +370,9 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         queryParameters: {
           'invitee_id': inviteeId,
           'invitee_role': inviteeRole,
+          // Server stores the invitee's name so it shows before they connect.
+          if (inviteeName != null && inviteeName.trim().isNotEmpty)
+            'invitee_name': inviteeName.trim(),
         },
       );
     });
@@ -397,6 +403,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   Future<ChatRoom> createGroupRoom({
     required String name,
     List<String>? inviteeIds,
+    Map<String, String>? inviteeNames,
   }) async {
     debugPrint('[ChatREST] POST /chat/rooms/group name="$name" invitees=$inviteeIds');
     return _wrap(() async {
@@ -406,6 +413,9 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
           'name': name,
           if (inviteeIds != null && inviteeIds.isNotEmpty)
             'invitee_ids': inviteeIds,
+          // {user_id: name} so each invitee's name shows before they connect.
+          if (inviteeNames != null && inviteeNames.isNotEmpty)
+            'invitee_names': inviteeNames,
         }),
       );
       final room = ChatRoom.fromJson(res.data as Map<String, dynamic>);

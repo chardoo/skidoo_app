@@ -99,11 +99,13 @@ class InviteToRoomUseCase {
     required String roomId,
     required String inviteeId,
     required String inviteeRole,
+    String? inviteeName,
   }) =>
       _repo.inviteToRoom(
         roomId: roomId,
         inviteeId: inviteeId,
         inviteeRole: inviteeRole,
+        inviteeName: inviteeName,
       );
 }
 
@@ -152,8 +154,13 @@ class CreateGroupRoomUseCase {
   Future<ChatRoom> call({
     required String name,
     List<String>? inviteeIds,
+    Map<String, String>? inviteeNames,
   }) =>
-      _repo.createGroupRoom(name: name, inviteeIds: inviteeIds);
+      _repo.createGroupRoom(
+        name: name,
+        inviteeIds: inviteeIds,
+        inviteeNames: inviteeNames,
+      );
 }
 
 class AcceptRoomInviteUseCase {

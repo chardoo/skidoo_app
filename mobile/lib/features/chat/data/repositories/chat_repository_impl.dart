@@ -174,20 +174,26 @@ class ChatRepositoryImpl implements ChatRepository {
     required String roomId,
     required String inviteeId,
     required String inviteeRole,
+    String? inviteeName,
   }) =>
       _rest.inviteToRoom(
         roomId: roomId,
         inviteeId: inviteeId,
         inviteeRole: inviteeRole,
+        inviteeName: inviteeName,
       );
 
   @override
   Future<ChatRoom> createGroupRoom({
     required String name,
     List<String>? inviteeIds,
+    Map<String, String>? inviteeNames,
   }) =>
-      _fetchAndCacheRoom(
-          () => _rest.createGroupRoom(name: name, inviteeIds: inviteeIds));
+      _fetchAndCacheRoom(() => _rest.createGroupRoom(
+            name: name,
+            inviteeIds: inviteeIds,
+            inviteeNames: inviteeNames,
+          ));
 
   @override
   Future<void> acceptRoomInvite(String roomId) =>

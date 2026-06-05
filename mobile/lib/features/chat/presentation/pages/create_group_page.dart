@@ -80,13 +80,22 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       return;
     }
     final inviteeIds = _selected.map((u) => u.id).toList();
+    // {user_id: name} so invitees show their name before they connect.
+    final inviteeNames = {
+      for (final u in _selected)
+        if (u.name.trim().isNotEmpty) u.id: u.name.trim(),
+    };
     debugPrint('[CreateGroup] starting — name="$name" invitees=${inviteeIds.length}: $inviteeIds');
     setState(() {
       _isCreating = true;
       _error = null;
     });
     try {
-      final room = await _createGroup(name: name, inviteeIds: inviteeIds);
+      final room = await _createGroup(
+        name: name,
+        inviteeIds: inviteeIds,
+        inviteeNames: inviteeNames,
+      );
       debugPrint('[CreateGroup] success — roomId=${room.id} type=${room.type.toApiString()}');
       if (!mounted) return;
       Navigator.of(context).pop(room);
