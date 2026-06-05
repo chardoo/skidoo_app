@@ -87,6 +87,10 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   bool get _useSharedComments => kIsWeb && widget.webCommentsOpen != null;
   bool get _webCommentsOpen =>
       _useSharedComments ? widget.webCommentsOpen!.value : _localCommentsOpen;
+  // Rendering gate: comments only show on the active/focused card, so inactive
+  // cards in the feed stay closed even while the shared flag is open. When the
+  // user scrolls on, the new active card opens its own thread (flag persists).
+  bool get _commentsVisible => _webCommentsOpen && _isFocused;
   void _setCommentsOpen(bool value) {
     if (_useSharedComments) {
       widget.webCommentsOpen!.value = value; // listener rebuilds every card
@@ -197,7 +201,8 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     if (old.activeCardIndex != widget.activeCardIndex) {
       old.activeCardIndex?.removeListener(_onActiveCardChanged);
       widget.activeCardIndex?.addListener(_onActiveCardChanged);
-      _onActiveCardChanged();
+      // Don't setState here — didUpdateWidget is already inside a build.
+      _applyAutoScrollForActive();
     }
     if (old.webCommentsOpen != widget.webCommentsOpen) {
       old.webCommentsOpen?.removeListener(_onSharedCommentsChanged);
@@ -264,8 +269,18 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       widget.activeCardIndex == null ||
       widget.activeCardIndex!.value == widget.cardIndex;
 
+  // Listener for activeCardIndex changes (fired outside build). Applies the
+  // auto-scroll side effect, then rebuilds so the comments gate
+  // (_commentsVisible) re-evaluates: a card that just became inactive hides its
+  // panel, and the new active card shows its own thread when the flag is open.
   void _onActiveCardChanged() {
     if (!mounted) return;
+    _applyAutoScrollForActive();
+    setState(() {});
+  }
+
+  // Auto-scroll only — safe to call during build (e.g. from didUpdateWidget).
+  void _applyAutoScrollForActive() {
     if (_isFocused) {
       _startAutoScroll();
     } else {
@@ -565,7 +580,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               : null,
         );
 
-    if (!_webCommentsOpen || reactionsOnly) {
+    if (!_commentsVisible || reactionsOnly) {
       return BlocBuilder<DiscoveryBloc, DiscoveryState>(
         buildWhen: (prev, next) => prev.savedEventIds != next.savedEventIds,
         builder: (ctx2, _) => buildReactions(ctx2),
@@ -693,7 +708,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             SizedBox(width: leftPad),
             cardColumn,
             reactionsColumn,
-            if (_webCommentsOpen)
+            if (_commentsVisible)
               SizedBox(
                 width: commentsW,
                 height: panelH,
