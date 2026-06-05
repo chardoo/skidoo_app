@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
@@ -587,11 +588,18 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       );
     }
 
-    final commentsPanel = EventCommentInlinePanel(
-      event: widget.event,
-      isExternalPanel: isExternalPanel,
-      onClose: () => _setCommentsOpen(false),
-      onCommentSent: _onCommentSent,
+    // Slide + fade the panel in from the side each time it appears (when the
+    // card becomes active with comments open, or the user opens them). Reveal
+    // plays once on insertion and honours reduce-motion.
+    final commentsPanel = Reveal(
+      offset: const Offset(40, 0),
+      duration: AppMotion.fast,
+      child: EventCommentInlinePanel(
+        event: widget.event,
+        isExternalPanel: isExternalPanel,
+        onClose: () => _setCommentsOpen(false),
+        onCommentSent: _onCommentSent,
+      ),
     );
 
     // Narrow (inside-card) layout: comments replace reactions.
