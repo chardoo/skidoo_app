@@ -17,8 +17,8 @@ if (keystoreFile.exists()) {
 android {
     namespace = "com.skidoo.app"
     compileSdk = flutter.compileSdkVersion
-    // media_kit_libs_android_video requires NDK 26+
-    ndkVersion = "26.1.10909125"
+    // Use the highest NDK any plugin requires (jni needs 28.2); backward compatible.
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
