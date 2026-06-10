@@ -365,7 +365,17 @@ class _StagedImagePreview extends StatelessWidget {
       color: ext.cardSurface,
       child: Row(
         children: [
-          ClipRRect(
+          Semantics(
+            button: true,
+            label: 'View attached image full screen',
+            child: GestureDetector(
+              onTap: () => Navigator.of(context, rootNavigator: true).push(
+                MaterialPageRoute<void>(
+                  fullscreenDialog: true,
+                  builder: (_) => _StagedImageFullScreen(filePath: filePath),
+                ),
+              ),
+              child: ClipRRect(
             borderRadius: BorderRadius.circular(8.r),
             child: Stack(
               alignment: Alignment.center,
@@ -401,6 +411,8 @@ class _StagedImagePreview extends StatelessWidget {
               ],
             ),
           ),
+            ),
+          ),
           SizedBox(width: 10.w),
           Expanded(
             child: Text(
@@ -423,6 +435,58 @@ class _StagedImagePreview extends StatelessWidget {
                     size: 16.sp, color: ext.searchHintColor),
               ),
             )),
+        ],
+      ),
+    );
+  }
+}
+
+/// Full-screen, pinch/zoomable viewer for a staged (not-yet-sent) attachment.
+/// Handles both web blob URLs (Image.network) and local file paths (Image.file).
+class _StagedImageFullScreen extends StatelessWidget {
+  const _StagedImageFullScreen({required this.filePath});
+  final String filePath;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: InteractiveViewer(
+              minScale: 1,
+              maxScale: 5,
+              child: Center(
+                child: Semantics(
+                  image: true,
+                  label: 'Attached photo',
+                  child: kIsWeb
+                      ? Image.network(filePath, fit: BoxFit.contain)
+                      : Image.file(File(filePath), fit: BoxFit.contain),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 12,
+            child: Semantics(
+              button: true,
+              label: 'Close',
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close_rounded, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

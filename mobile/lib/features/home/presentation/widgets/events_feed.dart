@@ -7,6 +7,7 @@ import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
+import 'package:skidoo_app/core/utils/focus_utils.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
@@ -327,7 +328,7 @@ class _EventsFeedState extends State<EventsFeed> {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     // Don't hijack keys while the user is typing in a text field (e.g. the
     // comment box): space, j and k must reach the field, not scroll the feed.
-    if (FocusManager.instance.primaryFocus?.context?.widget is EditableText) {
+    if (isTextInputFocused()) {
       return KeyEventResult.ignored;
     }
     final events = widget.discoveryState.events;
@@ -484,7 +485,10 @@ class _EventsFeedState extends State<EventsFeed> {
     } catch (e) {
       debugPrint('[EventsFeed] _openChat ERROR: $e');
       if (!context.mounted) return;
-      final blocked = e is ServerException && e.message.contains('400');
+      final blocked = e is ServerException &&
+          (e.message.contains('400') ||
+              e.message.contains('RECIPIENT_NOT_ACCEPTING_DMS') ||
+              e.message.contains('USER_BLOCKED'));
       AppSnackBar.error(
         context,
         blocked ? 'This user is not accepting messages.' : 'Could not open chat.',

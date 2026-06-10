@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
@@ -24,34 +23,50 @@ class SavedItem {
   });
 
   factory SavedItem.fromJson(Map<String, dynamic> json) {
-    debugPrint('[SavedItem] raw json keys: ${json.keys.toList()}');
-    debugPrint('[SavedItem] raw json: $json');
     final rawAsset = json['asset'];
     final Map<String, dynamic>? asset =
         rawAsset is Map<String, dynamic> ? rawAsset : null;
-    debugPrint('[SavedItem] asset keys: ${asset?.keys.toList()}');
     // The server may nest under 'event' or expose fields at the top level.
     final Map<String, dynamic>? event =
         asset?['event'] is Map<String, dynamic>
             ? asset!['event'] as Map<String, dynamic>
             : asset;
-    debugPrint('[SavedItem] event keys: ${event?.keys.toList()}');
+
+    // Helper: first non-empty value across candidate keys in a map.
+    String? firstOf(Map<String, dynamic>? m, List<String> keys) {
+      if (m == null) return null;
+      for (final k in keys) {
+        final v = m[k];
+        if (v != null && v.toString().isNotEmpty) return v.toString();
+      }
+      return null;
+    }
+
     // Pictures can be under 'pictures' or 'images'.
     final rawPics = (event?['pictures'] as List<dynamic>?) ??
         (event?['images'] as List<dynamic>?);
     final String? thumb = rawPics != null && rawPics.isNotEmpty
         ? (rawPics.first as Map<String, dynamic>)['url']?.toString()
-        : asset?['url']?.toString();
+        : firstOf(asset, ['url', 'thumbnailUrl', 'thumbnail_url', 'coverUrl']);
 
-    final title = event?['eventName']?.toString() ??
-        event?['name']?.toString() ??
-        asset?['name']?.toString();
-    final assetId = json['assetId']?.toString() ?? '';
-    debugPrint('[SavedItem] assetId=$assetId title=$title');
+    final title = firstOf(event, ['eventName', 'event_name', 'name', 'title']) ??
+        firstOf(asset, ['eventName', 'event_name', 'name', 'title']);
+
+    // assetType / assetId may be camelCase at the top level, snake_case, or only
+    // present on the nested asset/event object. Falling back through all of
+    // these is what keeps the title resolvable and the detail page non-empty.
+    final assetType = firstOf(json, ['assetType', 'asset_type', 'type']) ??
+        firstOf(asset, ['type', 'assetType']) ??
+        '';
+    final assetId = firstOf(json, ['assetId', 'asset_id']) ??
+        firstOf(asset, ['id', '_id', 'eventId', 'event_id']) ??
+        firstOf(event, ['id', '_id', 'eventId', 'event_id']) ??
+        '';
 
     return SavedItem(
-      savedItemId: json['id']?.toString() ?? '',
-      assetType: json['assetType']?.toString() ?? '',
+      savedItemId:
+          firstOf(json, ['id', '_id', 'savedItemId', 'saved_item_id']) ?? '',
+      assetType: assetType,
       assetId: assetId,
       title: title,
       thumbnailUrl: thumb,

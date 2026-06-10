@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:skidoo_app/core/config/chat_config.dart';
+import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
 import 'package:skidoo_app/features/chat/domain/repositories/chat_repository.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
@@ -47,12 +48,29 @@ class GetOrCreateDirectRoomUseCase {
     required String recipientId,
     required String recipientRole,
     String? localDisplayName,
-  }) =>
-      _repo.getOrCreateDirectRoom(
-        recipientId: recipientId,
-        recipientRole: recipientRole,
-        localDisplayName: localDisplayName,
-      );
+  }) async {
+    // Guard: respect the recipient's hide_profile / "not accepting DMs" setting
+    // on EVERY entry point (feed, ads, search, …), not just the photographer
+    // profile. The create-room endpoint does not reliably enforce this, so we
+    // check explicitly here. canMessage returns true when a conversation
+    // already exists, so replies to existing DMs are never blocked. The check
+    // fails open (network error → allowed) since the backend remains the final
+    // authority.
+    CanMessageResult permission;
+    try {
+      permission = await _repo.canMessage(recipientId);
+    } catch (_) {
+      permission = CanMessageResult.allowed();
+    }
+    if (!permission.canMessage) {
+      throw ServerException(permission.reason ?? 'RECIPIENT_NOT_ACCEPTING_DMS');
+    }
+    return _repo.getOrCreateDirectRoom(
+      recipientId: recipientId,
+      recipientRole: recipientRole,
+      localDisplayName: localDisplayName,
+    );
+  }
 }
 
 /// Upfront check (before showing/enabling the Message button) of whether the
