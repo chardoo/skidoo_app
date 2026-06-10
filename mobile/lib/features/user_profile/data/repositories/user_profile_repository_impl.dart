@@ -1,10 +1,18 @@
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/user_profile/data/datasources/user_profile_local_data_source.dart';
+import 'package:skidoo_app/features/user_profile/data/datasources/user_profile_remote_data_source.dart';
 import 'package:skidoo_app/features/user_profile/domain/repositories/user_profile_repository.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 
 class UserProfileRepositoryImpl implements UserProfileRepository {
   final UserProfileLocalDataSource _localDataSource;
-  UserProfileRepositoryImpl(this._localDataSource);
+  final UserProfileRemoteDataSource _remoteDataSource;
+  final AuthService _authService;
+  UserProfileRepositoryImpl(
+    this._localDataSource,
+    this._remoteDataSource,
+    this._authService,
+  );
 
   @override
   Future<String> getName() async {
@@ -30,12 +38,39 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
 
   @override
   Future<Map<String, dynamic>> getFullProfile() async {
+    // Local cache is the always-available baseline.
+    final Map<String, dynamic> local;
     try {
-      return await _localDataSource.getFullProfile();
+      local = await _localDataSource.getFullProfile();
     } on CacheException {
       rethrow;
     } catch (e) {
       throw CacheException('Failed to load profile: $e');
+    }
+
+    // Try to refresh from the backend so fields edited on another session (or
+    // lost from local storage after a re-login) are restored. Any failure
+    // (no endpoint / offline / unexpected shape) silently keeps the local copy.
+    try {
+      final clientId = await _authService.getUserId();
+      if (clientId.isEmpty) return local;
+      final remote = await _remoteDataSource.getProfile(clientId);
+
+      // Merge: a non-empty remote value wins; otherwise keep the local value.
+      final merged = Map<String, dynamic>.from(local);
+      remote.forEach((key, value) {
+        final isEmptyString = value is String && value.isEmpty;
+        final isEmptyList = value is List && value.isEmpty;
+        if (value != null && !isEmptyString && !isEmptyList) {
+          merged[key] = value;
+        }
+      });
+
+      // Write the refreshed values back to the local cache so they persist.
+      await _localDataSource.updateLocalProfile(merged);
+      return merged;
+    } catch (_) {
+      return local;
     }
   }
 

@@ -33,7 +33,11 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         _notifPrefs = sl<NotificationPrefsService>(),
         super(const HomeState()) {
     on<HomeInitialized>(_onInitialized);
-    on<HomeEventSearched>(_onEventSearched);
+    // restartable: a new keystroke cancels the previous (debounced) search so
+    // only the latest query hits the network and results can't arrive out of
+    // order — the old default concurrent transformer fired one request per
+    // keystroke and let the slowest response win, which felt like a hang.
+    on<HomeEventSearched>(_onEventSearched, transformer: restartable());
     // restartable: cancels the in-flight SSE stream when a new search starts.
     on<HomeImagesSearched>(_onImagesSearched, transformer: restartable());
     on<HomeSearchClosed>(_onSearchClosed);
@@ -53,12 +57,18 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   Future<void> _onEventSearched(
       HomeEventSearched event, Emitter<HomeState> emit) async {
     if (event.query.isEmpty) {
-      emit(state.copyWith(isSearching: true, events: []));
+      emit(state.copyWith(isSearching: true, isLoadingEvents: false, events: []));
       return;
     }
     emit(state.copyWith(isSearching: true, isLoadingEvents: true, events: []));
+    // Debounce: because this handler is restartable, a keystroke arriving within
+    // this window cancels the handler here — before the network call — so we
+    // only ever fetch for the query the user paused on.
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    if (emit.isDone) return;
     try {
       final events = await _searchEventsUseCase(SearchEventsParams(event.query));
+      if (emit.isDone) return;
       emit(state.copyWith(isLoadingEvents: false, events: events));
     } on NetworkException catch (e) {
       emit(state.copyWith(isLoadingEvents: false, errorMessage: e.message));

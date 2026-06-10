@@ -6,6 +6,7 @@ import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/utils/focus_utils.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/responsive.dart';
@@ -148,7 +149,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
     // Don't hijack keys while the user is typing in a text field (e.g. the
     // comment box): space, j and k must reach the field, not scroll the feed
     // or open the event.
-    if (FocusManager.instance.primaryFocus?.context?.widget is EditableText) {
+    if (isTextInputFocused()) {
       return KeyEventResult.ignored;
     }
     final events = context.read<DiscoveryBloc>().state.events;

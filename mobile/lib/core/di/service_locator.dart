@@ -72,6 +72,7 @@ import 'package:skidoo_app/features/photographers/domain/usecases/get_photograph
 import 'package:skidoo_app/features/photographers/domain/usecases/search_photographers_usecase.dart';
 import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
 import 'package:skidoo_app/features/user_profile/data/datasources/user_profile_local_data_source.dart';
+import 'package:skidoo_app/features/user_profile/data/datasources/user_profile_remote_data_source.dart';
 import 'package:skidoo_app/features/user_profile/data/repositories/user_profile_repository_impl.dart';
 import 'package:skidoo_app/features/user_profile/domain/repositories/user_profile_repository.dart';
 import 'package:skidoo_app/features/user_profile/domain/usecases/get_profile_usecase.dart';
@@ -257,8 +258,13 @@ Future<void> setupServiceLocator() async {
   // ── User Profile feature ──────────────────────────────────────────────────
   sl.registerSingleton<UserProfileLocalDataSource>(
       UserProfileLocalDataSourceImpl(sl<AuthService>()));
-  sl.registerSingleton<UserProfileRepository>(
-      UserProfileRepositoryImpl(sl<UserProfileLocalDataSource>()));
+  sl.registerSingleton<UserProfileRemoteDataSource>(
+      UserProfileRemoteDataSourceImpl(sl<Api>()));
+  sl.registerSingleton<UserProfileRepository>(UserProfileRepositoryImpl(
+    sl<UserProfileLocalDataSource>(),
+    sl<UserProfileRemoteDataSource>(),
+    sl<AuthService>(),
+  ));
   sl.registerSingleton<GetProfileUseCase>(
       GetProfileUseCase(sl<UserProfileRepository>()));
   sl.registerSingleton<UserLogoutUseCase>(
