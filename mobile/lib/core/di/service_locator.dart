@@ -290,7 +290,7 @@ Future<void> setupServiceLocator() async {
   sl.registerLazySingleton<E2eeService>(() => E2eeService());
   sl.registerSingleton<ChatBackgroundService>(
       ChatBackgroundService(sl<ChatDatabase>(), sl<ChatWebSocketService>(),
-          sl<E2eeService>(), sl<AuthService>()));
+          sl<E2eeService>(), sl<AuthService>(), sl<NotificationPrefsService>()));
 
   sl.registerSingleton<ChatRestDataSource>(
       ChatRestDataSourceImpl(sl<ChatApiClient>()));

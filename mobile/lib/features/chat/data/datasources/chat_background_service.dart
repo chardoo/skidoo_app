@@ -15,6 +15,8 @@ import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service
 import 'package:skidoo_app/features/chat/data/local/chat_database.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
+import 'package:skidoo_app/services/notification_prefs_service.dart';
+import 'package:skidoo_app/services/notification_sound_service.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/services/e2ee_service.dart';
 
@@ -29,6 +31,8 @@ class ChatBackgroundService {
   final ChatWebSocketService _sharedWs;
   final E2eeService _e2ee;
   final AuthService _authService;
+  final NotificationPrefsService _notifPrefs;
+  final NotificationSoundService _sound;
 
   void Function()? onUnreadUpdate;
 
@@ -108,7 +112,14 @@ class ChatBackgroundService {
   // without owning the connection lifecycle.
   final _connectionController = StreamController<bool>.broadcast();
 
-  ChatBackgroundService(this._db, this._sharedWs, this._e2ee, this._authService);
+  ChatBackgroundService(
+    this._db,
+    this._sharedWs,
+    this._e2ee,
+    this._authService,
+    this._notifPrefs, [
+    this._sound = const NotificationSoundService(),
+  ]);
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -386,9 +397,52 @@ class ChatBackgroundService {
       debugPrint('[BgChat] upserted msg ${msg.id} — firing backgroundMessages + onUnreadUpdate');
       if (!_bgMsgController.isClosed) _bgMsgController.add(msg);
       onUnreadUpdate?.call();
+      await _maybePlayDmSound(msg);
     } catch (e) {
       debugPrint('[BgChat] _onMessage error: $e');
     }
+  }
+
+  /// Plays the notification tone for an incoming direct message. Only reached
+  /// for rooms the user is NOT currently viewing — the open room is [pause]d, so
+  /// its messages are handled by ChatRoomBloc and never arrive here. Skips the
+  /// user's own echoed messages, non-DM rooms, and respects the in-app mute
+  /// preference. Never throws — a sound must not disrupt message processing.
+  Future<void> _maybePlayDmSound(ChatMessage msg) async {
+    try {
+      final myId = await _myUserIdCached();
+      final room = _rooms[msg.roomId];
+      if (shouldPlayDmSound(
+        muted: _notifPrefs.isMuted,
+        senderId: msg.senderId,
+        myId: myId,
+        roomType: room?.type,
+      )) {
+        _sound.playMessageTone();
+      }
+    } catch (_) {
+      // Best-effort.
+    }
+  }
+
+  /// Pure decision for whether an incoming message should play the new-message
+  /// tone. Exposed for testing.
+  ///
+  /// Plays only for direct messages the user did not send and has not muted.
+  /// [roomType] is null when the room isn't cached yet — almost always a
+  /// brand-new DM (group/event/global rooms are registered up-front via
+  /// [connectAll]), so an unknown room is treated as a DM rather than missing a
+  /// new conversation's first message.
+  @visibleForTesting
+  static bool shouldPlayDmSound({
+    required bool muted,
+    required String senderId,
+    required String myId,
+    required RoomType? roomType,
+  }) {
+    if (muted) return false;
+    if (senderId == myId) return false;
+    return roomType == null || roomType == RoomType.direct;
   }
 
   Future<ChatMessage> _tryDecrypt(ChatMessage msg) async {
