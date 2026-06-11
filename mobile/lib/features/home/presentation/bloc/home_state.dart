@@ -10,6 +10,10 @@ class HomeState extends Equatable {
   final bool isSavingFree;
   final int? savedFreeCount;   // set after a successful save; null otherwise
   final String? errorMessage;
+  // The event whose images are currently shown — retained so the search-results
+  // view can pull-to-refresh by re-dispatching the same image search.
+  final String? searchImagesEventId;
+  final String searchImagesEventName;
 
   const HomeState({
     this.userName = '',
@@ -21,6 +25,8 @@ class HomeState extends Equatable {
     this.isSavingFree = false,
     this.savedFreeCount,
     this.errorMessage,
+    this.searchImagesEventId,
+    this.searchImagesEventName = '',
   });
 
   HomeState copyWith({
@@ -35,6 +41,8 @@ class HomeState extends Equatable {
     bool clearSavedCount = false,
     String? errorMessage,
     bool clearError = false,
+    String? searchImagesEventId,
+    String? searchImagesEventName,
   }) {
     return HomeState(
       userName: userName ?? this.userName,
@@ -47,6 +55,9 @@ class HomeState extends Equatable {
       savedFreeCount:
           clearSavedCount ? null : (savedFreeCount ?? this.savedFreeCount),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      searchImagesEventId: searchImagesEventId ?? this.searchImagesEventId,
+      searchImagesEventName:
+          searchImagesEventName ?? this.searchImagesEventName,
     );
   }
 
@@ -61,5 +72,7 @@ class HomeState extends Equatable {
         isSavingFree,
         savedFreeCount,
         errorMessage,
+        searchImagesEventId,
+        searchImagesEventName,
       ];
 }
