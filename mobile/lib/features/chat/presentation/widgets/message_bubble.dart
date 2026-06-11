@@ -386,34 +386,113 @@ class _MessageImage extends StatelessWidget {
   }
 }
 
-/// Full-screen, pinch/zoomable viewer for a shared chat photo.
-class _ZoomableImageView extends StatelessWidget {
+/// Full-screen, zoomable viewer for a shared chat photo.
+///
+/// Supports pinch / scroll-wheel zoom (1×–6×), double-tap to toggle zoom at the
+/// tapped point, and swipe-down-to-dismiss while at rest.
+class _ZoomableImageView extends StatefulWidget {
   const _ZoomableImageView({required this.imageUrl});
   final String imageUrl;
 
   @override
+  State<_ZoomableImageView> createState() => _ZoomableImageViewState();
+}
+
+class _ZoomableImageViewState extends State<_ZoomableImageView>
+    with SingleTickerProviderStateMixin {
+  final TransformationController _ctrl = TransformationController();
+  late final AnimationController _anim;
+  Animation<Matrix4>? _zoomAnim;
+  Offset _doubleTapPos = Offset.zero;
+
+  /// Vertical offset while dragging to dismiss (only active at rest).
+  double _dragDy = 0;
+
+  bool get _isZoomed => _ctrl.value.getMaxScaleOnAxis() > 1.05;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    )..addListener(() {
+        final a = _zoomAnim;
+        if (a != null) _ctrl.value = a.value;
+      });
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _animateZoomTo(Matrix4 target) {
+    _zoomAnim = Matrix4Tween(begin: _ctrl.value, end: target)
+        .animate(CurvedAnimation(parent: _anim, curve: Curves.easeOut));
+    _anim.forward(from: 0);
+  }
+
+  void _handleDoubleTap() {
+    if (_isZoomed) {
+      _animateZoomTo(Matrix4.identity());
+    } else {
+      const scale = 2.5;
+      _animateZoomTo(Matrix4.identity()
+        ..translateByDouble(-_doubleTapPos.dx * (scale - 1),
+            -_doubleTapPos.dy * (scale - 1), 0, 1)
+        ..scaleByDouble(scale, scale, scale, 1));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Fade the backdrop out as the photo is dragged away.
+    final dismissT = (_dragDy.abs() / 320).clamp(0.0, 1.0);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.black.withValues(alpha: 1 - dismissT * 0.7),
       body: Stack(
         children: [
           Positioned.fill(
-            child: InteractiveViewer(
-              minScale: 1,
-              maxScale: 5,
-              child: Center(
-                child: Semantics(
-                  image: true,
-                  label: 'Shared photo',
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                    placeholder: (_, __) => const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
+            child: GestureDetector(
+              onDoubleTapDown: (d) => _doubleTapPos = d.localPosition,
+              onDoubleTap: _handleDoubleTap,
+              child: Transform.translate(
+                offset: Offset(0, _dragDy),
+                child: InteractiveViewer(
+                  transformationController: _ctrl,
+                  minScale: 1,
+                  maxScale: 6,
+                  // One-finger vertical drag while at rest → swipe to dismiss.
+                  // When zoomed in, InteractiveViewer pans instead.
+                  onInteractionUpdate: (d) {
+                    if (_isZoomed || d.pointerCount > 1) return;
+                    setState(() => _dragDy += d.focalPointDelta.dy);
+                  },
+                  onInteractionEnd: (_) {
+                    if (_dragDy.abs() > 130) {
+                      Navigator.of(context).pop();
+                    } else if (_dragDy != 0) {
+                      setState(() => _dragDy = 0);
+                    }
+                  },
+                  child: Center(
+                    child: Semantics(
+                      image: true,
+                      label: 'Shared photo',
+                      child: CachedNetworkImage(
+                        imageUrl: widget.imageUrl,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                        placeholder: (_, __) => const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        errorWidget: (_, __, ___) => const Icon(
+                            Icons.broken_image_rounded, color: Colors.white54),
+                      ),
                     ),
-                    errorWidget: (_, __, ___) => const Icon(
-                        Icons.broken_image_rounded, color: Colors.white54),
                   ),
                 ),
               ),
