@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -16,19 +18,28 @@ class CreateBottomSheet extends StatelessWidget {
 
   static void show(BuildContext context) {
     // On web (laptop/desktop) a full-width bottom sheet stretches across the
-    // whole viewport and looks broken — present it as a centred card,
-    // constrained to the standard web column via [webWrap].
+    // whole viewport and looks broken — present it as a card constrained to the
+    // standard web column width, anchored to the bottom-centre of the screen so
+    // it reads like a bottom sheet rather than floating in the middle.
     if (kIsWeb) {
       showDialog<void>(
         context: context,
         barrierColor: Colors.black.withValues(alpha: 0.55),
         builder: (_) => Dialog(
+          alignment: Alignment.bottomCenter,
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.all(24),
-          child: webWrap(
-            const CreateBottomSheet(isWeb: true),
-            backgroundColor: Colors.transparent,
-            width: kWebColumnWidth,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Cap to the web column width, but shrink on narrow viewports.
+              final w = constraints.hasBoundedWidth
+                  ? math.min(kWebColumnWidth, constraints.maxWidth)
+                  : kWebColumnWidth;
+              return SizedBox(
+                width: w,
+                child: const CreateBottomSheet(isWeb: true),
+              );
+            },
           ),
         ),
       );
