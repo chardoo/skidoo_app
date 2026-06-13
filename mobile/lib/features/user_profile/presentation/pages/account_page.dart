@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart' as dio_pkg;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -1156,12 +1158,97 @@ class _AdsCard extends StatelessWidget {
 
 // ── Face Recognition card ─────────────────────────────────────────────────────
 
-class _FaceRecognitionCard extends StatelessWidget {
+class _FaceRecognitionCard extends StatefulWidget {
   const _FaceRecognitionCard({required this.ext});
   final AppThemeExtension ext;
 
   @override
+  State<_FaceRecognitionCard> createState() => _FaceRecognitionCardState();
+}
+
+class _FaceRecognitionCardState extends State<_FaceRecognitionCard> {
+  bool _deleting = false;
+
+  /// Asks for confirmation, then calls `DELETE /client/face-data` to wipe the
+  /// user's enrolled face embeddings. The endpoint is idempotent and derives
+  /// the user from the auth token, so no body is sent.
+  Future<void> _deleteFaceData() async {
+    final ext = widget.ext;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: ext.cardSurface,
+        title: Text(
+          'Delete your face data?',
+          style: TextStyle(color: ext.greetingColor, fontSize: 15.sp),
+        ),
+        content: Text(
+          'This permanently removes your face from recognition so you '
+          'will no longer be matched in future event photos. This cannot '
+          'be undone — you would need to re-add your photos to be found '
+          'again.',
+          style: TextStyle(
+              color: ext.searchHintColor, fontSize: 13.sp, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: Text('Cancel',
+                style: TextStyle(color: ext.searchHintColor)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Delete',
+                style: TextStyle(
+                    color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    try {
+      final res = await sl<Api>().dio.delete('/client/face-data');
+      // 200 → { "status": "deleted" | "not_found" }. Both mean no embeddings
+      // remain, so re-prompt enrollment by clearing the local flag.
+      if (res.statusCode == 200) {
+        await sl<AuthService>().setHasAddedFaces(false);
+        if (!mounted) return;
+        final status =
+            (res.data is Map) ? res.data['status'] as String? : null;
+        AppSnackBar.success(
+          context,
+          status == 'not_found'
+              ? 'No face data was found — nothing to delete.'
+              : 'Your face data has been deleted.',
+        );
+      } else {
+        if (!mounted) return;
+        AppSnackBar.error(
+            context, 'Could not delete face data. Please try again.');
+      }
+    } on dio_pkg.DioException catch (e) {
+      // 400 → the similarity service rejected the delete; local state is
+      // untouched server-side, so ask the user to retry rather than assume.
+      if (!mounted) return;
+      final msg = e.response?.statusCode == 400
+          ? 'Face deletion service is busy. Please try again in a moment.'
+          : 'Could not delete face data. Please check your connection.';
+      AppSnackBar.error(context, msg);
+    } catch (_) {
+      if (mounted) {
+        AppSnackBar.error(
+            context, 'Could not delete face data. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final ext = widget.ext;
     return Container(
       decoration: BoxDecoration(
         color: ext.cardSurface,
@@ -1200,6 +1287,33 @@ class _FaceRecognitionCard extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const FaceRecognitionPage()),
               );
             },
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          ListTile(
+            contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
+            leading: Icon(Icons.no_accounts_outlined,
+                color: _deleting ? ext.searchHintColor : Colors.redAccent),
+            title: Text(
+              'Delete my face data',
+              style: TextStyle(
+                  color: ext.greetingColor,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500),
+            ),
+            subtitle: Text(
+              'Remove your face from recognition',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+            ),
+            trailing: _deleting
+                ? SizedBox(
+                    width: 18.w,
+                    height: 18.w,
+                    child: const CircularProgressIndicator(
+                        color: Colors.redAccent, strokeWidth: 2),
+                  )
+                : Icon(Icons.chevron_right_rounded,
+                    color: ext.searchHintColor, size: 20.sp),
+            onTap: _deleting ? null : _deleteFaceData,
           ),
           SizedBox(height: 4.h),
         ],
