@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +6,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
 import 'package:skidoo_app/core/validators/media_validator.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/xfile_image.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -100,7 +99,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
       if (_assets.isNotEmpty && requestId.isNotEmpty) {
         debugPrint('[PostRequestPage] _submit — uploading ${_assets.length} asset(s)');
         for (final file in _assets) {
-          await _repo.uploadRequestMedia(requestId, file.path);
+          await _repo.uploadRequestMedia(requestId, file);
         }
       }
 
@@ -333,11 +332,10 @@ class _MultiMediaPicker extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10.r),
-                    child: Image.file(
-                      File(assets[i].path),
+                    child: XFileImage(
+                      assets[i],
                       width: _thumbSize,
                       height: _thumbSize,
-                      fit: BoxFit.cover,
                     ),
                   ),
                   Positioned(

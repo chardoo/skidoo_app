@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -9,6 +7,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
 import 'package:skidoo_app/features/ads/models/ad_set.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/xfile_image.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -177,7 +176,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
             commentsEnabled: a.commentsEnabled,
           );
           if (a.newMedia != null) {
-            await _repo.uploadAdCreative(a.adId, a.newMedia!.path, a.newMediaIsVideo);
+            await _repo.uploadAdCreative(a.adId, a.newMedia!, a.newMediaIsVideo);
           }
         }
       }
@@ -608,7 +607,8 @@ class _AdForm extends StatelessWidget {
           source: ImageSource.gallery, imageQuality: 85);
     }
     if (file == null) return;
-    final size = await File(file.path).length();
+    // XFile.length() is web-safe (File from dart:io is not available on web).
+    final size = await file.length();
     if (size > _maxBytes) {
       if (context.mounted) {
         AppSnackBar.error(context, 'File is too large. Maximum size is 50 MB.');
@@ -835,7 +835,7 @@ class _LocalMediaTile extends StatelessWidget {
                           color: Colors.white54, size: 40.sp),
                     ),
                   )
-                : Image.file(File(path), fit: BoxFit.cover),
+                : XFileImage(XFile(path), fit: BoxFit.cover),
           ),
           Positioned(
             top: 8.h,

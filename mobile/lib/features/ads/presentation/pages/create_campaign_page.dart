@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,6 +8,7 @@ import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/xfile_image.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -235,7 +234,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
       // so sending N files there would only keep the last one.
       debugPrint('[CreateCampaignPage] _createAd — uploading ${_creatives.length} image(s) to campaignId=$_campaignId');
       for (final file in _creatives) {
-        final count = await _repo.uploadCampaignMedia(_campaignId!, file.path);
+        final count = await _repo.uploadCampaignMedia(_campaignId!, file);
         debugPrint('[CreateCampaignPage] _createAd — media_count after upload: $count');
       }
     }
@@ -1405,11 +1404,10 @@ class _CampaignMultiPicker extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10.r),
-                    child: Image.file(
-                      File(creatives[i].path),
+                    child: XFileImage(
+                      creatives[i],
                       width: _thumbSize,
                       height: _thumbSize,
-                      fit: BoxFit.cover,
                     ),
                   ),
                   Positioned(

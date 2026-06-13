@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
@@ -293,22 +294,16 @@ class AdsRepository {
     };
   }
 
-  Future<void> uploadRequestAsset(String requestId, String filePath) async {
-    debugPrint('$_tag uploadRequestAsset → requestId=$requestId path=$filePath');
-    await uploadRequestMedia(requestId, filePath);
+  Future<void> uploadRequestAsset(String requestId, XFile file) async {
+    debugPrint('$_tag uploadRequestAsset → requestId=$requestId name=${file.name}');
+    await uploadRequestMedia(requestId, file);
   }
 
-  Future<int> uploadRequestMedia(String requestId, String filePath) async {
-    debugPrint('$_tag uploadRequestMedia → requestId=$requestId path=$filePath');
-    final fileName = filePath.split('/').last;
-    final ext = fileName.split('.').last.toLowerCase();
-    final isVideo = ['mp4', 'mov', 'avi', 'webm', 'm4v'].contains(ext);
+  Future<int> uploadRequestMedia(String requestId, XFile file) async {
+    debugPrint('$_tag uploadRequestMedia → requestId=$requestId name=${file.name}');
+    final (fileName, ext, isVideo) = _describe(file);
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(
-        filePath,
-        filename: fileName,
-        contentType: MediaType.parse(_mimeFor(ext, isVideo)),
-      ),
+      'file': await _multipart(file, fileName, ext, isVideo),
     });
     final resp = await _dio.post('/requests/$requestId/media', data: formData);
     debugPrint('$_tag uploadRequestMedia ← status=${resp.statusCode}');
@@ -322,17 +317,11 @@ class AdsRepository {
     debugPrint('$_tag deleteRequestMedia ← done');
   }
 
-  Future<int> uploadCampaignMedia(String campaignId, String filePath) async {
-    debugPrint('$_tag uploadCampaignMedia → campaignId=$campaignId path=$filePath');
-    final fileName = filePath.split('/').last;
-    final ext = fileName.split('.').last.toLowerCase();
-    final isVideo = ['mp4', 'mov', 'avi', 'webm', 'm4v'].contains(ext);
+  Future<int> uploadCampaignMedia(String campaignId, XFile file) async {
+    debugPrint('$_tag uploadCampaignMedia → campaignId=$campaignId name=${file.name}');
+    final (fileName, ext, isVideo) = _describe(file);
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(
-        filePath,
-        filename: fileName,
-        contentType: MediaType.parse(_mimeFor(ext, isVideo)),
-      ),
+      'file': await _multipart(file, fileName, ext, isVideo),
     });
     final resp = await _dio.post('/campaigns/$campaignId/media', data: formData);
     debugPrint('$_tag uploadCampaignMedia ← status=${resp.statusCode}');
@@ -346,20 +335,43 @@ class AdsRepository {
     debugPrint('$_tag deleteCampaignMedia ← done');
   }
 
-  Future<void> uploadAdCreative(
-      String adId, String filePath, bool isVideo) async {
-    debugPrint('$_tag uploadAdCreative → adId=$adId path=$filePath isVideo=$isVideo');
-    final fileName = filePath.split('/').last;
-    final ext = fileName.split('.').last.toLowerCase();
+  Future<void> uploadAdCreative(String adId, XFile file, bool isVideo) async {
+    debugPrint('$_tag uploadAdCreative → adId=$adId name=${file.name} isVideo=$isVideo');
+    final (fileName, ext, _) = _describe(file);
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(
-        filePath,
-        filename: fileName,
-        contentType: MediaType.parse(_mimeFor(ext, isVideo)),
-      ),
+      'file': await _multipart(file, fileName, ext, isVideo),
     });
     final resp = await _dio.post('/ads/ads/$adId/media', data: formData);
     debugPrint('$_tag uploadAdCreative ← status=${resp.statusCode}');
+  }
+
+  /// Derives `(filename, extension, isVideo)` from an [XFile]. Uses
+  /// [XFile.name] rather than the path because on web the path is an opaque
+  /// blob URL with no usable filename or extension.
+  (String, String, bool) _describe(XFile file) {
+    final name =
+        file.name.isNotEmpty ? file.name : file.path.split('/').last;
+    final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
+    const videoExts = ['mp4', 'mov', 'avi', 'webm', 'm4v'];
+    return (name, ext, videoExts.contains(ext));
+  }
+
+  /// Builds a Dio [MultipartFile] in a web-safe way.
+  ///
+  /// `MultipartFile.fromFile` throws `UnsupportedError` on web (Dio's browser
+  /// stub forbids filesystem access), so on web we read the bytes via [XFile]
+  /// and use `fromBytes`. On native we stream from the path to avoid buffering
+  /// large videos in memory.
+  Future<MultipartFile> _multipart(
+      XFile file, String fileName, String ext, bool isVideo) async {
+    final contentType = MediaType.parse(_mimeFor(ext, isVideo));
+    if (kIsWeb) {
+      final bytes = await file.readAsBytes();
+      return MultipartFile.fromBytes(bytes,
+          filename: fileName, contentType: contentType);
+    }
+    return MultipartFile.fromFile(file.path,
+        filename: fileName, contentType: contentType);
   }
 
   Future<FeedRequestModel> updateRequest(
