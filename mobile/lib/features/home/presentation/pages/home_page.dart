@@ -134,51 +134,186 @@ class _HomeViewState extends State<_HomeView> {
 
   void _showAddFacesDialog() {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final gold = ext.accentGold;
     showDialog<void>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: ext.cardSurface,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
-        icon: Icon(Icons.face_retouching_natural_rounded,
-            color: ext.accentGold, size: 40.sp),
-        title: Text(
-          'Add your photos',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-              color: ext.greetingColor,
-              fontWeight: FontWeight.w800,
-              fontSize: 18.sp),
-        ),
-        content: Text(
-          'Add a few photos of yourself so we can automatically find you in '
-          'event galleries and unlock the full Skidoo experience.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-        ),
-        actionsAlignment: MainAxisAlignment.spaceBetween,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: Text('Maybe later',
-                style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp)),
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      builder: (dialogCtx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.symmetric(horizontal: 28.w),
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: ext.cardSurface,
+            borderRadius: BorderRadius.circular(26.r),
+            boxShadow: [
+              BoxShadow(
+                color: gold.withValues(alpha: 0.18),
+                blurRadius: 36.r,
+                spreadRadius: 2.r,
+              ),
+            ],
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: ext.accentGold,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              Navigator.of(dialogCtx).pop();
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const FaceRecognitionPage()),
-              );
-            },
-            child: Text('Add my photos',
-                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Gradient hero with a glowing face badge ──────────────────
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.only(top: 30.h, bottom: 24.h),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      gold.withValues(alpha: 0.28),
+                      gold.withValues(alpha: 0.04),
+                    ],
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 88.r,
+                    height: 88.r,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [gold, gold.withValues(alpha: 0.7)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: gold.withValues(alpha: 0.45),
+                          blurRadius: 22.r,
+                          spreadRadius: 1.r,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.face_retouching_natural_rounded,
+                      color: Colors.white,
+                      size: 46.sp,
+                    ),
+                  ),
+                ),
+              ),
+              // ── Body ─────────────────────────────────────────────────────
+              Padding(
+                padding: EdgeInsets.fromLTRB(24.w, 22.h, 24.w, 24.h),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Add your photos',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: ext.greetingColor,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 20.sp,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    SizedBox(height: 10.h),
+                    Text(
+                      'Add a few selfies so we can automatically find you in '
+                      'event galleries and unlock the full Skidoo experience.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: ext.searchHintColor,
+                        fontSize: 13.5.sp,
+                        height: 1.45,
+                      ),
+                    ),
+                    SizedBox(height: 18.h),
+                    _faceBenefitRow(
+                      ext,
+                      Icons.auto_awesome_rounded,
+                      'Get tagged in galleries automatically',
+                    ),
+                    SizedBox(height: 10.h),
+                    _faceBenefitRow(
+                      ext,
+                      Icons.lock_rounded,
+                      'Private & only used to recognise you',
+                    ),
+                    SizedBox(height: 24.h),
+                    // ── Primary action ──────────────────────────────────────
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: gold,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14.r),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(dialogCtx).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const FaceRecognitionPage()),
+                          );
+                        },
+                        child: Text(
+                          'Add my photos',
+                          style: TextStyle(
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogCtx).pop(),
+                      child: Text(
+                        'Maybe later',
+                        style: TextStyle(
+                          color: ext.searchHintColor,
+                          fontSize: 13.5.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
+    );
+  }
+
+  /// A single "why add your face" perk row used inside [_showAddFacesDialog].
+  Widget _faceBenefitRow(AppThemeExtension ext, IconData icon, String label) {
+    final gold = ext.accentGold;
+    return Row(
+      children: [
+        Container(
+          width: 32.r,
+          height: 32.r,
+          decoration: BoxDecoration(
+            color: gold.withValues(alpha: 0.14),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: gold, size: 17.sp),
+        ),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: ext.greetingColor,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
