@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/in_app_web_view_page.dart';
 import 'package:skidoo_app/core/common/widgets/selfie_capture_screen.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
@@ -22,6 +23,10 @@ const _kBg          = Color(0xFF0A0D11);
 const _kBgDeep      = Color(0xFF0F1525);
 const _kSubtext     = Color(0xFF9BA3B2);
 const _kError       = Color(0xFFFF4757);
+
+// Remote privacy policy — opened in a WebView so it stays up to date without
+// shipping an app update.
+const _kPrivacyPolicyUrl = 'https://www.piccotechnologies.com/privacy';
 
 class SignUpPage extends StatelessWidget {
   static const routeName = '/signup';
@@ -334,7 +339,42 @@ class _SignUpViewState extends State<_SignUpView>
                                 state.imagePath.isNotEmpty,
                             onTap: () => _submit(state),
                           ),
-                          SizedBox(height: 28.h),
+                          SizedBox(height: 16.h),
+
+                          // ── Privacy policy consent ─────────────────────
+                          Center(
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  'By creating an account, you agree to our ',
+                                  style: TextStyle(
+                                      color: _kSubtext, fontSize: 12.5.sp),
+                                ),
+                                Semantics(
+                                  button: true,
+                                  label: 'Privacy Policy',
+                                  child: GestureDetector(
+                                    onTap: () => InAppWebViewPage.open(
+                                      context,
+                                      url: _kPrivacyPolicyUrl,
+                                      title: 'Privacy Policy',
+                                    ),
+                                    child: Text(
+                                      'Privacy Policy',
+                                      style: TextStyle(
+                                        color: _kOrange,
+                                        fontSize: 12.5.sp,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 20.h),
 
                           // ── Sign in link ───────────────────────────────
                           Center(
