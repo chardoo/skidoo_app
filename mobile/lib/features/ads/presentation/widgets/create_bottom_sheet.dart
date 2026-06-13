@@ -1,14 +1,39 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/create_campaign_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/post_request_page.dart';
 
 class CreateBottomSheet extends StatelessWidget {
-  const CreateBottomSheet({super.key});
+  const CreateBottomSheet({super.key, this.isWeb = false});
+
+  /// When true the sheet renders as a centred card (for the web dialog)
+  /// instead of a bottom-anchored sheet with a drag handle.
+  final bool isWeb;
 
   static void show(BuildContext context) {
+    // On web (laptop/desktop) a full-width bottom sheet stretches across the
+    // whole viewport and looks broken — present it as a centred card,
+    // constrained to the standard web column via [webWrap].
+    if (kIsWeb) {
+      showDialog<void>(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.55),
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: webWrap(
+            const CreateBottomSheet(isWeb: true),
+            backgroundColor: Colors.transparent,
+            width: kWebColumnWidth,
+          ),
+        ),
+      );
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -25,7 +50,9 @@ class CreateBottomSheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: ext.homeBackground,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        borderRadius: isWeb
+            ? BorderRadius.circular(24.r)
+            : BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
       child: SafeArea(
         top: false,
@@ -35,18 +62,32 @@ class CreateBottomSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Drag handle ─────────────────────────────────────────────
-              Center(
-                child: Container(
-                  margin: EdgeInsets.symmetric(vertical: 12.h),
-                  width: 36.w,
-                  height: 4.h,
-                  decoration: BoxDecoration(
-                    color: ext.searchHintColor.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(2.r),
+              // ── Drag handle (mobile) / close button (web) ───────────────
+              if (isWeb)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 8.h, right: 0),
+                    child: IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(Icons.close_rounded,
+                          color: ext.searchHintColor, size: 22.sp),
+                      tooltip: 'Close',
+                    ),
+                  ),
+                )
+              else
+                Center(
+                  child: Container(
+                    margin: EdgeInsets.symmetric(vertical: 12.h),
+                    width: 36.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: ext.searchHintColor.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(2.r),
+                    ),
                   ),
                 ),
-              ),
 
               // ── Title ────────────────────────────────────────────────────
               Text(

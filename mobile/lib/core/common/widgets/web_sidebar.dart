@@ -8,6 +8,8 @@ import 'package:skidoo_app/features/home/domain/usecases/search_events_usecase.d
 import 'package:skidoo_app/core/navigation/app_navigator.dart';
 import 'package:skidoo_app/core/navigation/web_route_observer.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/login_bottom_sheet.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
@@ -36,6 +38,9 @@ class WebSidebar extends StatelessWidget {
         WebRouteObserver.currentRouteName,
         HomePage.webSelectedTab,
         AuthService.isAuthenticated,
+        // Rebuild when the remote config arrives so the "Create" nav item
+        // appears/disappears with ads/requests being enabled.
+        AppConfigRepository.notifier,
       ]),
       builder: (context, _) {
         final selectedTab = HomePage.webSelectedTab.value;
@@ -687,6 +692,20 @@ class _LoggedInNav extends StatelessWidget {
         const SizedBox(height: 18),
         _SectionLabel(text: 'Create', ext: ext),
 
+        // Post a Request / Create Campaign — opens the create dialog.
+        if (AppConfigRepository.current.adsEnabled ||
+            AppConfigRepository.current.requestsEnabled)
+          _NavItem(
+            icon: Icons.add_circle_outline_rounded,
+            label: 'Post a request or ad',
+            active: false,
+            ext: ext,
+            onTap: () {
+              final ctx = AppNavigator.navigatorKey.currentContext;
+              if (ctx != null) CreateBottomSheet.show(ctx);
+            },
+          ),
+
         // Sign up as Creator
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -820,14 +839,19 @@ class _NavItemState extends State<_NavItem> {
             children: [
               Icon(widget.icon, color: contentColor, size: 21),
               const SizedBox(width: 12),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  color: contentColor,
-                  fontSize: 15,
-                  fontWeight: widget.active ? FontWeight.w700 : FontWeight.w600,
-                  letterSpacing: 0.1,
-                  decoration: TextDecoration.none,
+              Flexible(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: contentColor,
+                    fontSize: 15,
+                    fontWeight:
+                        widget.active ? FontWeight.w700 : FontWeight.w600,
+                    letterSpacing: 0.1,
+                    decoration: TextDecoration.none,
+                  ),
                 ),
               ),
             ],
@@ -1152,6 +1176,9 @@ class WebTopNav extends StatelessWidget {
         WebRouteObserver.currentRouteName,
         HomePage.webSelectedTab,
         AuthService.isAuthenticated,
+        // Rebuild when the remote config arrives so the "Create" nav item
+        // appears/disappears with ads/requests being enabled.
+        AppConfigRepository.notifier,
       ]),
       builder: (context, _) {
         final selectedTab = HomePage.webSelectedTab.value;
@@ -1343,6 +1370,20 @@ class _TopNavBar extends StatelessWidget {
           ext: ext,
           onTap: () => HomePage.tabRequest.value = 3,
         ),
+        if (AppConfigRepository.current.adsEnabled ||
+            AppConfigRepository.current.requestsEnabled) ...[
+          const SizedBox(width: 6),
+          _TopNavPill(
+            icon: Icons.add_circle_outline_rounded,
+            label: 'Create',
+            active: false,
+            ext: ext,
+            onTap: () {
+              final ctx = AppNavigator.navigatorKey.currentContext;
+              if (ctx != null) CreateBottomSheet.show(ctx);
+            },
+          ),
+        ],
         const SizedBox(width: 6),
         _TopNavCreatorPill(ext: ext),
       ];
