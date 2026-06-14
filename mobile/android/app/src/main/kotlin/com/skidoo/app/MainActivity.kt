@@ -1,4 +1,4 @@
-package com.example.skidoo_app
+package com.skidoo.app
 
 import android.content.pm.ActivityInfo
 import android.os.Build
