@@ -29,4 +29,15 @@ class SkidooFilters {
     -0.04, -0.07, 1.12, 0, 0,
     0, 0, 0, 1, 0,
   ]);
+
+  /// Video-safe grade: boosts saturation and adds warmth without the violet
+  /// cast that [vibrant] produces on live video (where both R and B raised
+  /// simultaneously reads as purple). Blue stays at 1.0 so warmth comes from
+  /// the red lift, not a dual-channel boost.
+  static const ColorFilter videoWarm = ColorFilter.matrix(<double>[
+    1.15, -0.08, -0.05, 0, 3,  // R — warm lift
+    -0.05, 1.10, -0.03, 0, 0,  // G — moderate saturation
+    -0.05, -0.08, 1.00, 0, -3, // B — neutral (no boost prevents violet)
+    0, 0, 0, 1, 0,
+  ]);
 }
