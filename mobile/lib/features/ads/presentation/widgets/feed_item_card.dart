@@ -667,7 +667,7 @@ class _MediaBackground extends StatelessWidget {
           showControls: true,
           allowFullscreen: true,
           listenToPauseNotifier: true,
-          colorFilter: SkidooFilters.vibrant,
+          colorFilter: SkidooFilters.videoWarm,
         );
       }
       return const ColoredBox(
