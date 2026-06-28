@@ -146,7 +146,13 @@ class _PhotographersPageState extends State<PhotographersPage> {
                 );
               }
               if (_isGrid) {
-                return GridView.builder(
+                return RefreshIndicator(
+                  color: ext.accentGold,
+                  onRefresh: () async => context
+                      .read<PhotographerBloc>()
+                      .add(const PhotographersLoadRequested()),
+                  child: GridView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
                   gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 190,
@@ -166,9 +172,15 @@ class _PhotographersPageState extends State<PhotographersPage> {
                       ),
                     );
                   },
-                );
+                ));
               }
-              return ListView.builder(
+              return RefreshIndicator(
+                color: ext.accentGold,
+                onRefresh: () async => context
+                    .read<PhotographerBloc>()
+                    .add(const PhotographersLoadRequested()),
+                child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.only(top: 4.h, bottom: 24.h),
                 itemCount: state.photographers.length,
                 itemBuilder: (context, index) {
@@ -182,7 +194,7 @@ class _PhotographersPageState extends State<PhotographersPage> {
                     ),
                   );
                 },
-              );
+              ));
             },
           ),
         ),

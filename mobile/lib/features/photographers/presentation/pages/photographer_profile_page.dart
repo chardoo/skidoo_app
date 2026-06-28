@@ -445,6 +445,19 @@ class _SamplesTabState extends State<_SamplesTab>
     }
   }
 
+  /// Pull-to-refresh variant: refetch without flipping [_loading], so the
+  /// existing grid stays visible under the refresh spinner instead of being
+  /// replaced by the full-screen loader.
+  Future<void> _refreshSamples() async {
+    try {
+      final s = await sl<GetPhotographerSamplesUseCase>()
+          .call(widget.photographerId);
+      if (mounted) setState(() { _samples = s; _error = null; });
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
+  }
+
   Future<void> _pickAndUpload() async {
     final picked = await _picker.pickMultiImage(imageQuality: 85);
     if (picked.isEmpty || !mounted) return;
@@ -549,7 +562,11 @@ class _SamplesTabState extends State<_SamplesTab>
 
     return Stack(
       children: [
-        GridView.builder(
+        RefreshIndicator(
+          color: ext.accentGold,
+          onRefresh: _refreshSamples,
+          child: GridView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.all(4.w),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
@@ -625,6 +642,7 @@ class _SamplesTabState extends State<_SamplesTab>
               ],
             );
           },
+        ),
         ),
       ],
     );

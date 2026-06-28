@@ -255,7 +255,12 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                     );
                   }
 
-                  final feed = NotificationListener<ScrollNotification>(
+                  final feed = RefreshIndicator(
+                    color: ext.accentGold,
+                    onRefresh: () async => context
+                        .read<DiscoveryBloc>()
+                        .add(const DiscoveryLoadRequested()),
+                    child: NotificationListener<ScrollNotification>(
                     onNotification: (notification) {
                       if (notification is ScrollUpdateNotification ||
                           notification is ScrollEndNotification) {
@@ -266,7 +271,11 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                     child: ListView.builder(
                       controller: _scrollCtrl,
                       physics: kIsWeb
-                          ? const ClampingScrollPhysics()
+                          // AlwaysScrollable so pull-to-refresh works even when
+                          // the feed is shorter than the viewport.
+                          ? const AlwaysScrollableScrollPhysics(
+                              parent: ClampingScrollPhysics(),
+                            )
                           : const BouncingScrollPhysics(
                               parent: AlwaysScrollableScrollPhysics(),
                             ),
@@ -315,7 +324,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                         );
                       },
                     ),
-                  );
+                  ));
 
                   if (!kIsWeb && isTablet(context)) {
                     return Align(

@@ -82,7 +82,13 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
   Future<void> _onImagesSearched(
       HomeImagesSearched event, Emitter<HomeState> emit) async {
-    emit(state.copyWith(isLoadingImages: true, searchImages: [], clearError: true));
+    emit(state.copyWith(
+      isLoadingImages: true,
+      searchImages: [],
+      clearError: true,
+      searchImagesEventId: event.eventId,
+      searchImagesEventName: event.eventName,
+    ));
     try {
       final email = await _authService.getEmail();
       final stream = _searchImagesUseCase(SearchImagesParams(

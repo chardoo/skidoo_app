@@ -245,7 +245,19 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
 
               return Stack(
                 children: [
-                  CustomScrollView(
+                  RefreshIndicator(
+                    color: ext.accentGold,
+                    onRefresh: () async {
+                      final id = state.searchImagesEventId;
+                      if (id != null && id.isNotEmpty) {
+                        context.read<HomeBloc>().add(HomeImagesSearched(
+                              eventId: id,
+                              eventName: state.searchImagesEventName,
+                            ));
+                      }
+                    },
+                    child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     cacheExtent: 800,
                     slivers: [
                       if (state.isSavingFree || _paymentLoading)
@@ -297,6 +309,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                           ),
                         ),
                     ],
+                  ),
                   ),
 
                   // ── Bottom action bar ───────────────────────────────────────
