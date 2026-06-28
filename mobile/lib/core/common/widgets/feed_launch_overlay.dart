@@ -120,7 +120,7 @@ class _OverlaySheet extends StatelessWidget {
                 Transform.scale(
                   scale: logoScale,
                   child: _ShimmerImage(
-                    assetPath: 'assets/logo/skiido_wordmark.png',
+                    assetPath: 'assets/logo/jperg_wordmark.png',
                     shimmerPos: shimmerPos,
                     shimmerColor: ext.accentGold,
                     width: 260.w,

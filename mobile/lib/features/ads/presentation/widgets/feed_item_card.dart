@@ -667,7 +667,6 @@ class _MediaBackground extends StatelessWidget {
           showControls: true,
           allowFullscreen: true,
           listenToPauseNotifier: true,
-          colorFilter: SkidooFilters.vibrant,
         );
       }
       return const ColoredBox(
@@ -711,7 +710,6 @@ class _MediaBackground extends StatelessWidget {
           semanticLabel: 'Advertisement image',
           placeholder: (_, __) => const SizedBox.shrink(),
           errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
-          colorFilter: SkidooFilters.vibrant,
         ),
       ],
     );
@@ -1118,7 +1116,6 @@ class _SingleMediaFrame extends StatelessWidget {
           fit: BoxFit.contain,
           semanticLabel: 'Advertisement image',
           placeholder: (_, __) => const SizedBox.shrink(),
-          colorFilter: SkidooFilters.vibrant,
           errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
         ),
         if (media.isVideo)

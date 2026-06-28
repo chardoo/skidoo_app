@@ -1053,7 +1053,6 @@ class _PhotoBackground extends StatelessWidget {
           semanticLabel: 'Event photo',
           placeholder: (_, __) => placeholder,
           errorWidget: (_, __, ___) => errorWidget,
-          colorFilter: SkidooFilters.vibrant,
         ),
       ],
     );
