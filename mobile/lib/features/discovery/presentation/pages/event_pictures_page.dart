@@ -560,12 +560,14 @@ class _WebViewerReactionsPanel extends StatefulWidget {
 class _WebViewerReactionsPanelState extends State<_WebViewerReactionsPanel> {
   late bool _liked;
   late int _likeCount;
+  late int _commentCount;
 
   @override
   void initState() {
     super.initState();
     _liked = widget.entry.picture.isLikedByUser;
     _likeCount = widget.entry.picture.likeCount;
+    _commentCount = widget.entry.picture.commentCount;
   }
 
   void _toggleLike() {
@@ -624,13 +626,16 @@ class _WebViewerReactionsPanelState extends State<_WebViewerReactionsPanel> {
             WebActionBtn(
               icon: Icons.mode_comment_outlined,
               iconColor: Colors.white,
-              count: widget.entry.picture.commentCount,
+              count: _commentCount,
               countColor: Colors.white,
               iconSize: iconSize,
               onTap: () => PhotoCommentSheet.show(
                 context,
                 pictureId: widget.entry.picture.id,
                 imageUrl: widget.entry.picture.url,
+                onCommentSent: () {
+                  if (mounted) setState(() => _commentCount++);
+                },
               ),
             ),
           if (widget.entry.commentsAllowed) const SizedBox(height: gap),

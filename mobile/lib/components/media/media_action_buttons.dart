@@ -302,6 +302,9 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
             context,
             pictureId: widget.pictureId,
             imageUrl: widget.imageUrl,
+            onCommentSent: () {
+              if (mounted) setState(() => _commentCount++);
+            },
           ),
         ),
     ];

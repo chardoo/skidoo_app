@@ -299,10 +299,12 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
   bool _bodyExpanded = false;
   bool _initFired = false;
   bool _chatLoading = false;
+  late int _commentCount;
 
   @override
   void initState() {
     super.initState();
+    _commentCount = widget.data.commentCount;
     WidgetsBinding.instance.addObserver(this);
     _pageCtrl.addListener(() {
       final page = _pageCtrl.page?.round() ?? 0;
@@ -414,6 +416,9 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
           : (d.type == FeedItemType.ad ? 'Ad' : 'Request'),
       subtitle: 'by ${d.creatorName}',
       commentsEnabled: d.commentsEnabled,
+      onCommentSent: () {
+        if (mounted) setState(() => _commentCount++);
+      },
     );
   }
 
@@ -601,7 +606,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
             saved: _saved,
             likeCount: 0,
             dislikeCount: 0,
-            commentCount: d.commentCount,
+            commentCount: _commentCount,
             commentsEnabled: d.commentsEnabled,
             ext: ext,
             onLike: _handleLike,
@@ -667,7 +672,6 @@ class _MediaBackground extends StatelessWidget {
           showControls: true,
           allowFullscreen: true,
           listenToPauseNotifier: true,
-          colorFilter: SkidooFilters.videoWarm,
         );
       }
       return const ColoredBox(

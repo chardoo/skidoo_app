@@ -20,6 +20,7 @@ class PhotoCommentSheet {
     BuildContext context, {
     required String pictureId,
     required String imageUrl,
+    VoidCallback? onCommentSent,
   }) {
     showModalBottomSheet(
       context: context,
@@ -28,7 +29,10 @@ class PhotoCommentSheet {
       useSafeArea: true,
       builder: (ctx) => BlocProvider(
         create: (_) => sl<ChatRoomBloc>(),
-        child: _PhotoCommentSheetContent(pictureId: pictureId),
+        child: _PhotoCommentSheetContent(
+          pictureId: pictureId,
+          onCommentSent: onCommentSent,
+        ),
       ),
     );
   }
@@ -37,8 +41,12 @@ class PhotoCommentSheet {
 // ── Sheet content ─────────────────────────────────────────────────────────────
 
 class _PhotoCommentSheetContent extends StatefulWidget {
-  const _PhotoCommentSheetContent({required this.pictureId});
+  const _PhotoCommentSheetContent({
+    required this.pictureId,
+    this.onCommentSent,
+  });
   final String pictureId;
+  final VoidCallback? onCommentSent;
 
   @override
   State<_PhotoCommentSheetContent> createState() =>
@@ -118,6 +126,7 @@ class _PhotoCommentSheetContentState
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
     _bloc.add(ChatRoomMessageSent(text, replyToId: _replyingTo?.id));
+    widget.onCommentSent?.call();
     _inputCtrl.clear();
     if (_replyingTo != null) setState(() => _replyingTo = null);
   }

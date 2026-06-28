@@ -27,6 +27,7 @@ class FeedCommentSheet {
     required String title,
     String? subtitle,
     bool commentsEnabled = true,
+    VoidCallback? onCommentSent,
   }) {
     showModalBottomSheet(
       context: context,
@@ -42,6 +43,7 @@ class FeedCommentSheet {
           // Respect both the per-item flag and the global admin kill switch.
           commentsEnabled:
               commentsEnabled && AppConfigRepository.current.commentsEnabled,
+          onCommentSent: onCommentSent,
         ),
       ),
     );
@@ -55,11 +57,13 @@ class _FeedCommentSheetContent extends StatefulWidget {
     required this.title,
     this.subtitle,
     required this.commentsEnabled,
+    this.onCommentSent,
   });
 
   final String title;
   final String? subtitle;
   final bool commentsEnabled;
+  final VoidCallback? onCommentSent;
 
   @override
   State<_FeedCommentSheetContent> createState() =>
@@ -110,6 +114,8 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
     context.read<FeedCommentBloc>().add(
           FeedCommentPosted(text, parentId: _replyingTo?.id),
         );
+    // Only count top-level comments; replies don't change the card's count.
+    if (_replyingTo == null) widget.onCommentSent?.call();
     _inputCtrl.clear();
     if (_replyingTo != null) setState(() => _replyingTo = null);
   }
