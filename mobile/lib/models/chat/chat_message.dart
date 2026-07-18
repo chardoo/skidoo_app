@@ -103,7 +103,7 @@ class ChatMessage {
       senderRole == 'admin' || senderRole == 'superAdmin';
 
   String get displayName =>
-      isAdminMessage ? 'Skidoo Admin' : senderName;
+      isAdminMessage ? 'Jperg Admin' : senderName;
 
   const ChatMessage({
     required this.id,

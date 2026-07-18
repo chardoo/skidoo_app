@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
 /// Shows a bottom sheet with Edit / Delete options.
@@ -76,22 +77,12 @@ void showEditCommentDialog(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
       title: Text('Edit comment',
           style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
-      content: TextField(
+      content: AppTextField(
         controller: ctrl,
         autofocus: true,
         maxLines: 4,
         minLines: 1,
-        style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: ext.searchFieldFill,
-          border: OutlineInputBorder(
-            borderSide: BorderSide.none,
-            borderRadius: BorderRadius.circular(12.r),
-          ),
-          contentPadding:
-              EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-        ),
+        dense: true,
       ),
       actions: [
         TextButton(

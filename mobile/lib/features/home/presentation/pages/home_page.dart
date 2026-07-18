@@ -1,32 +1,27 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/responsive.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/gallery/presentation/bloc/gallery_bloc.dart';
-import 'package:skidoo_app/features/gallery/presentation/pages/gallery_page.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page.dart';
+import 'package:skidoo_app/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/photographers_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
+import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/pages/face_recognition_page.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_rooms_page.dart';
 import 'package:skidoo_app/components/common/navbar.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
-import 'package:skidoo_app/features/admin/data/models/app_config.dart';
-import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
-import 'package:skidoo_app/l10n/app_localizations.dart';
 
 class HomePage extends StatelessWidget {
   static const routeName = '/home';
@@ -88,9 +83,6 @@ class _HomeViewState extends State<_HomeView> {
   // intentional distance — avoids hiding on micro-bounces or tap-holds.
   double _downAccum = 0;
   static const _hideThreshold = 28.0;
-
-  // Auto-hide timer for tab 0 chrome.
-  Timer? _chromeTimer;
 
   // Tracks which tabs have been loaded so we only fire load events once.
   final _loadedTabs = <int>{0};
@@ -217,7 +209,7 @@ class _HomeViewState extends State<_HomeView> {
                     SizedBox(height: 10.h),
                     Text(
                       'Add a few selfies so we can automatically find you in '
-                      'event galleries and unlock the full Skidoo experience.',
+                      'event galleries and unlock the full Jperg experience.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: ext.searchHintColor,
@@ -239,32 +231,16 @@ class _HomeViewState extends State<_HomeView> {
                     ),
                     SizedBox(height: 24.h),
                     // ── Primary action ──────────────────────────────────────
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: gold,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 14.h),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14.r),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.of(dialogCtx).pop();
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                                builder: (_) => const FaceRecognitionPage()),
-                          );
-                        },
-                        child: Text(
-                          'Add my photos',
-                          style: TextStyle(
-                            fontSize: 15.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
+                    AppButton(
+                      fullWidth: true,
+                      label: 'Add my photos',
+                      onPressed: () {
+                        Navigator.of(dialogCtx).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const FaceRecognitionPage()),
+                        );
+                      },
                     ),
                     SizedBox(height: 6.h),
                     TextButton(
@@ -336,7 +312,6 @@ class _HomeViewState extends State<_HomeView> {
   void dispose() {
     HomePage.tabRequest.removeListener(_onTabRequest);
     HomePage.homeTapSignal.removeListener(_onHomeTap);
-    _chromeTimer?.cancel();
     super.dispose();
   }
 
@@ -367,37 +342,20 @@ class _HomeViewState extends State<_HomeView> {
     }
     VideoPauseNotifier.pauseAll();
     _downAccum = 0;
-    _chromeTimer?.cancel();
 
-    if (index == 0) {
-      // Home tab: show chrome briefly for orientation, then auto-hide.
-      setState(() {
-        _selectedTab = index;
-        _navBarVisible = true;
-      });
-      _startAutoHideTimer();
-    } else {
-      // All other tabs: chrome always visible, no timer.
-      setState(() {
-        _selectedTab = index;
-        _navBarVisible = true;
-      });
-    }
+    // Nav bar always shows on a deliberate tab switch — it only hides again
+    // in response to an actual downward scroll, never on a timer.
+    setState(() {
+      _selectedTab = index;
+      _navBarVisible = true;
+    });
 
     if (index == 1) {
       // Full reload so any newly created rooms appear immediately.
       context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
     }
 
-    // Lazy-load heavy tabs on first visit so they don't block startup.
-    if (!_loadedTabs.contains(index)) {
-      _loadedTabs.add(index);
-      if (index == 2) {
-        context.read<GalleryBloc>().add(const GalleryLoadRequested());
-      } else if (index == 3) {
-        context.read<PhotographerBloc>().add(const PhotographersLoadRequested());
-      }
-    }
+    _loadedTabs.add(index);
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
@@ -409,7 +367,6 @@ class _HomeViewState extends State<_HomeView> {
         _downAccum += delta;
         if (_downAccum >= _hideThreshold && _navBarVisible) {
           setState(() => _navBarVisible = false);
-          _chromeTimer?.cancel();
         }
       } else if (delta < 0) {
         // Upward — always show nav (home tab included). No layout shift because
@@ -417,22 +374,14 @@ class _HomeViewState extends State<_HomeView> {
         _downAccum = 0;
         if (!_navBarVisible) {
           setState(() => _navBarVisible = true);
-          if (_selectedTab == 0) _startAutoHideTimer();
         }
       }
     } else if (notification is ScrollEndNotification) {
+      // Scrolling stopped — nav stays exactly as it is (visible or hidden);
+      // it never auto-hides on a timer once at rest.
       _downAccum = 0;
-      // Home tab: (re)start auto-hide once the fling settles.
-      if (_selectedTab == 0 && _navBarVisible) _startAutoHideTimer();
     }
     return false;
-  }
-
-  void _startAutoHideTimer() {
-    _chromeTimer?.cancel();
-    _chromeTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && _selectedTab == 0) setState(() => _navBarVisible = false);
-    });
   }
 
   @override
@@ -454,8 +403,8 @@ class _HomeViewState extends State<_HomeView> {
           children: const [
             HomeNavigationPage(),
             ChatRoomsPage(),
-            GalleryPage(),
-            PhotographersPage(),
+            NotificationsPage(),
+            AccountPage(),
           ],
         ),
         bottomNavigationBar: kIsWeb ? null : AnimatedSlide(
@@ -464,19 +413,13 @@ class _HomeViewState extends State<_HomeView> {
           offset: _navBarVisible ? Offset.zero : const Offset(0, 1),
           child: IgnorePointer(
             ignoring: !_navBarVisible,
-            child: ValueListenableBuilder<AppConfig>(
-              valueListenable: AppConfigRepository.notifier,
-              builder: (context, cfg, _) =>
-                  BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
-                selector: (state) =>
-                    state.unreadCounts.values.fold(0, (sum, c) => sum + c),
-                builder: (context, totalUnread) => AppNavbar(
-                  selectedIndex: _selectedTab,
-                  onchange: _changeTab,
-                  onCreateTap: () => CreateBottomSheet.show(context),
-                  messageUnreadCount: totalUnread,
-                  showCreate: cfg.adsEnabled || cfg.requestsEnabled,
-                ),
+            child: BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
+              selector: (state) =>
+                  state.unreadCounts.values.fold(0, (sum, c) => sum + c),
+              builder: (context, totalUnread) => AppNavbar(
+                selectedIndex: _selectedTab,
+                onchange: _changeTab,
+                messageUnreadCount: totalUnread,
               ),
             ),
           ),
@@ -505,10 +448,10 @@ class _HomeViewState extends State<_HomeView> {
               selectedLabelTextStyle: TextStyle(color: ext.accentGold),
               unselectedLabelTextStyle: TextStyle(color: ext.searchHintColor),
               destinations: [
-                NavigationRailDestination(
-                  icon: const Icon(Icons.home_outlined),
-                  selectedIcon: const Icon(Icons.home_rounded),
-                  label: Text(AppLocalizations.of(context)!.navHome),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
+                  label: Text('Home'),
                 ),
                 NavigationRailDestination(
                   icon: Badge(
@@ -521,17 +464,17 @@ class _HomeViewState extends State<_HomeView> {
                     isLabelVisible: totalUnread > 0,
                     child: const Icon(Icons.chat_bubble_rounded),
                   ),
-                  label: Text(AppLocalizations.of(context)!.navMessages),
+                  label: const Text('Messages'),
                 ),
-                NavigationRailDestination(
-                  icon: const Icon(Icons.photo_library_outlined),
-                  selectedIcon: const Icon(Icons.photo_library_rounded),
-                  label: Text(AppLocalizations.of(context)!.navGallery),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.notifications_none_rounded),
+                  selectedIcon: Icon(Icons.notifications_rounded),
+                  label: Text('Notifications'),
                 ),
-                NavigationRailDestination(
-                  icon: const Icon(Icons.camera_alt_outlined),
-                  selectedIcon: const Icon(Icons.camera_alt_rounded),
-                  label: Text(AppLocalizations.of(context)!.navCreators),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.person_outline_rounded),
+                  selectedIcon: Icon(Icons.person_rounded),
+                  label: Text('Profile'),
                 ),
               ],
             ),
@@ -543,8 +486,8 @@ class _HomeViewState extends State<_HomeView> {
               children: const [
                 HomeNavigationPage(),
                 ChatRoomsPage(),
-                GalleryPage(),
-                PhotographersPage(),
+                NotificationsPage(),
+                AccountPage(),
               ],
             ),
           ),

@@ -383,7 +383,7 @@ class _FeedAppBar extends StatelessWidget {
                     gradient: LinearGradient(
                       colors: [
                         ext.accentGold,
-                        const Color(0xFFFF6B35),
+                        const Color(0xFF078368),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -403,7 +403,7 @@ class _FeedAppBar extends StatelessWidget {
                 SizedBox(width: 8.w),
                 Flexible(
                   child: Text(
-                    'SKIDDO',
+                    'JPERG',
                     maxLines: 1,
                     overflow: TextOverflow.clip,
                     style: TextStyle(

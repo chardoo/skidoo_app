@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
 class CardCommentSheet extends StatefulWidget {
@@ -92,25 +93,12 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: AppTextField(
                       controller: _ctrl,
-                      style: TextStyle(
-                          color: ext.greetingColor, fontSize: 14.sp),
-                      decoration: InputDecoration(
-                        hintText: 'Add a comment…',
-                        hintStyle: TextStyle(
-                            color: ext.searchHintColor, fontSize: 14.sp),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(22.r),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: ext.searchFieldFill,
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16.w, vertical: 10.h),
-                        isDense: true,
-                      ),
-                      onSubmitted: (_) => _submit(),
+                      hint: 'Add a comment…',
+                      dense: true,
+                      borderRadius: 22.r,
+                      onFieldSubmitted: (_) => _submit(),
                     ),
                   ),
                   SizedBox(width: 8.w),

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
+import 'package:skidoo_app/core/common/widgets/search_field.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/chat/data/datasources/user_search_data_source.dart';
@@ -151,7 +153,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _GroupNameField(controller: _nameController, ext: ext),
+          _GroupNameField(controller: _nameController),
           if (_error != null)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -159,10 +161,10 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                   style: TextStyle(color: Colors.red, fontSize: 12.sp)),
             ),
           if (_selected.isNotEmpty) _SelectedChips(users: _selected, ext: ext, onRemove: _removeSelected),
-          _SearchField(controller: _searchController, ext: ext, onChanged: _onSearchChanged),
+          _SearchField(controller: _searchController, onChanged: _onSearchChanged),
           Expanded(
             child: _isSearching
-                ? Center(child: CircularProgressIndicator(color: ext.accentGold))
+                ? Center(child: CircularProgressIndicator(color: ext.searchHintColor))
                 : _searchResults.isEmpty && _searchController.text.trim().isNotEmpty
                     ? Center(
                         child: Text('No users found.',
@@ -187,65 +189,34 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
 }
 
 class _GroupNameField extends StatelessWidget {
-  const _GroupNameField({required this.controller, required this.ext});
+  const _GroupNameField({required this.controller});
   final TextEditingController controller;
-  final AppThemeExtension ext;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 8.h),
-      child: TextField(
+      child: AppTextField(
         controller: controller,
-        style: TextStyle(color: ext.greetingColor, fontSize: 15.sp),
-        decoration: InputDecoration(
-          hintText: 'Group name',
-          hintStyle: TextStyle(color: ext.searchHintColor),
-          filled: true,
-          fillColor: ext.cardSurface,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding:
-              EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-        ),
+        hint: 'Group name',
       ),
     );
   }
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField(
-      {required this.controller,
-      required this.ext,
-      required this.onChanged});
+  const _SearchField({required this.controller, required this.onChanged});
   final TextEditingController controller;
-  final AppThemeExtension ext;
   final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 8.h),
-      child: TextField(
+      child: SearchField(
         controller: controller,
         onChanged: onChanged,
-        style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-        decoration: InputDecoration(
-          hintText: 'Search people to add...',
-          hintStyle: TextStyle(color: ext.searchHintColor),
-          prefixIcon:
-              Icon(Icons.search_rounded, color: ext.searchHintColor, size: 20.sp),
-          filled: true,
-          fillColor: ext.cardSurface,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding:
-              EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-        ),
+        hint: 'Search people to add...',
       ),
     );
   }

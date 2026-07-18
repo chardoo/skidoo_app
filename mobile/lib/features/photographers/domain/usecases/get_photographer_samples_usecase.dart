@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:cross_file/cross_file.dart';
 import 'package:skidoo_app/features/photographers/domain/repositories/photographer_repository.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
 
@@ -17,7 +16,7 @@ class UploadSamplesUseCase {
 
   Future<List<PhotographerSample>> call({
     required String photographerId,
-    required List<File> files,
+    required List<XFile> files,
   }) =>
       _repository.uploadSamples(photographerId: photographerId, files: files);
 }

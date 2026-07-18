@@ -43,6 +43,7 @@ class _ChatAuthInterceptor extends Interceptor {
       final userId = await _authService.getUserId();
       final email = await _authService.getEmail();
       final name = await _authService.getName();
+      final role = await _authService.getRole();
 
       if (token.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $token';
@@ -50,7 +51,14 @@ class _ChatAuthInterceptor extends Interceptor {
       if (userId.isNotEmpty) {
         options.headers['x-user-id'] = userId;
         options.headers['x-user-email'] = email;
-        options.headers['x-user-role'] = ChatConfig.roleClient;
+        // The chat gateway only recognises two roles (ChatConfig.roleClient /
+        // rolePhotographer) — was hardcoded to roleClient for every account,
+        // so a photographer's REST identity was always wrong on the wire.
+        // That silently worked for non-photographers only because their
+        // real auth role happens to fall through to the same default here.
+        options.headers['x-user-role'] = role == ChatConfig.rolePhotographer
+            ? ChatConfig.rolePhotographer
+            : ChatConfig.roleClient;
         options.headers['x-user-name'] = name;
       }
     } catch (_) {

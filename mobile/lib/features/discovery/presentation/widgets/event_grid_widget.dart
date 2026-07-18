@@ -29,7 +29,9 @@ class EventGridWidget extends StatelessWidget {
       itemCount: photos.length,
       itemBuilder: (context, index) {
         final height = _heights[index % _heights.length].h;
-        return EventCardWidget(
+        return 
+        
+        EventCardWidget(
           photo: photos[index],
           height: height,
           onTap: () => onCardTap(photos[index]),

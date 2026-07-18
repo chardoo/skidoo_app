@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
 import 'package:skidoo_app/core/validators/media_validator.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/xfile_image.dart';
+import 'package:skidoo_app/core/common/widgets/xfile_image.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -154,7 +155,6 @@ class _PostRequestPageState extends State<PostRequestPage> {
             _Field(
               controller: _titleCtrl,
               hint: 'e.g. Wedding photographer needed',
-              ext: ext,
               validator: (v) => Validators.lengthBetween(v, 3, 100, field: 'Title'),
             ),
 
@@ -182,7 +182,6 @@ class _PostRequestPageState extends State<PostRequestPage> {
             _Field(
               controller: _locationCtrl,
               hint: 'e.g. Accra, Ghana',
-              ext: ext,
               validator: (v) =>
                   Validators.lengthBetween(v, 2, 80, field: 'Location'),
             ),
@@ -194,7 +193,6 @@ class _PostRequestPageState extends State<PostRequestPage> {
               controller: _descCtrl,
               hint:
                   'Describe the event, date, style preferences, anything helpful...',
-              ext: ext,
               maxLines: 4,
               validator: (v) =>
                   Validators.maxLength(v, 1000, field: 'Description'),
@@ -248,17 +246,9 @@ class _PostRequestPageState extends State<PostRequestPage> {
             _Field(
               controller: _budgetCtrl,
               hint: 'e.g. 500',
-              ext: ext,
               keyboardType: TextInputType.number,
               validator: (v) => Validators.optionalAmount(v, field: 'Budget'),
-              prefix: Text(
-                'GHS  ',
-                style: TextStyle(
-                  color: ext.searchHintColor,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              prefixText: 'GHS  ',
             ),
 
             SizedBox(height: 16.h),
@@ -284,8 +274,8 @@ class _PostRequestPageState extends State<PostRequestPage> {
             // ── Submit ────────────────────────────────────────────────────
             _SubmitButton(
               submitting: _submitting,
-              onTap: _submit,
               ext: ext,
+              onTap: _submit,
             ),
             SizedBox(height: 20.h),
           ],
@@ -425,66 +415,29 @@ class _Field extends StatelessWidget {
   const _Field({
     required this.controller,
     required this.hint,
-    required this.ext,
     this.maxLines = 1,
     this.keyboardType,
     this.validator,
-    this.prefix,
+    this.prefixText,
   });
 
   final TextEditingController controller;
   final String hint;
-  final AppThemeExtension ext;
   final int maxLines;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
-  final Widget? prefix;
+  final String? prefixText;
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return AppTextField(
       controller: controller,
       maxLines: maxLines,
-      keyboardType: keyboardType,
+      keyboardType: keyboardType ?? TextInputType.text,
       validator: validator,
-      style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: prefix != null
-            ? Padding(
-                padding: EdgeInsets.only(left: 14.w, right: 0),
-                child: prefix,
-              )
-            : null,
-        prefixIconConstraints: const BoxConstraints(minWidth: 0),
-        hintStyle:
-            TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-        filled: true,
-        fillColor: ext.searchFieldFill,
-        contentPadding:
-            EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(
-            color: ext.accentGold.withValues(alpha: 0.6),
-            width: 1.2,
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide:
-              const BorderSide(color: Colors.redAccent, width: 1.0),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide:
-              const BorderSide(color: Colors.redAccent, width: 1.2),
-        ),
-      ),
+      dense: true,
+      hint: hint,
+      prefixText: prefixText,
     );
   }
 }
@@ -559,9 +512,9 @@ class _SubmitButton extends StatelessWidget {
             colors: submitting
                 ? [
                     ext.accentGold.withValues(alpha: 0.5),
-                    const Color(0xFFFF6B35).withValues(alpha: 0.5),
+                    const Color(0xFF078368).withValues(alpha: 0.5),
                   ]
-                : [ext.accentGold, const Color(0xFFFF6B35)],
+                : [ext.accentGold, const Color(0xFF078368)],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),

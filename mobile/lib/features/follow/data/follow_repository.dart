@@ -66,6 +66,45 @@ class FollowEntry {
   }
 }
 
+/// A recommended-to-follow creator returned by
+/// `GET /client/photographers/suggested`, best-match first.
+/// [matchScore] is 0–1, or null when the recommender has no personalised
+/// signal yet for this user (not an error — the endpoint still 200s).
+class SuggestedPhotographer {
+  final String id;
+  final String name;
+  final String contact;
+  final String email;
+  final int followerCount;
+  final double? matchScore;
+  final String? profileUrl;
+
+  const SuggestedPhotographer({
+    required this.id,
+    required this.name,
+    required this.contact,
+    required this.email,
+    required this.followerCount,
+    this.matchScore,
+    this.profileUrl,
+  });
+
+  factory SuggestedPhotographer.fromJson(Map<String, dynamic> json) {
+    // `profile_url` is the canonical field name across the backend (see
+    // main's Profile Image URLs doc) — same key FollowEntry above reads.
+    final rawUrl = json['profile_url'];
+    return SuggestedPhotographer(
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      contact: (json['contact'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+      followerCount: (json['follower_count'] as num?)?.toInt() ?? 0,
+      matchScore: (json['match_score'] as num?)?.toDouble(),
+      profileUrl: rawUrl is String && rawUrl.isNotEmpty ? rawUrl : null,
+    );
+  }
+}
+
 /// One page of a follow list plus its pagination metadata.
 class FollowPage {
   final List<FollowEntry> data;
@@ -139,6 +178,46 @@ class FollowRepository {
     } catch (e, st) {
       debugPrint('$_tag unfollow ERROR: $e\n$st');
       _followedIds.add(photographerId); // revert
+      rethrow;
+    }
+  }
+
+  // ── Suggested creators ───────────────────────────────────────────────────
+
+  /// GET /client/photographers/suggested — recommended creators to follow,
+  /// best-match first. Note this lives under `/client/`, not `/follow/`.
+  Future<List<SuggestedPhotographer>> getSuggestedPhotographers(
+      {int limit = 20}) async {
+    debugPrint('$_tag getSuggestedPhotographers → limit=$limit');
+    try {
+      final resp = await _dio.get(
+        '/client/photographers/suggested',
+        queryParameters: {'limit': limit},
+      );
+      debugPrint(
+          '$_tag getSuggestedPhotographers ← status=${resp.statusCode}');
+      final raw = resp.data;
+      final List<dynamic> list;
+      if (raw is List) {
+        list = raw;
+      } else if (raw is Map<String, dynamic> && raw['data'] is List) {
+        list = raw['data'] as List<dynamic>;
+      } else {
+        list = const [];
+      }
+      final result = <SuggestedPhotographer>[];
+      for (final item in list) {
+        if (item is Map<String, dynamic>) {
+          try {
+            result.add(SuggestedPhotographer.fromJson(item));
+          } catch (e) {
+            debugPrint('$_tag getSuggestedPhotographers parse error: $e');
+          }
+        }
+      }
+      return result;
+    } catch (e, st) {
+      debugPrint('$_tag getSuggestedPhotographers ERROR: $e\n$st');
       rethrow;
     }
   }

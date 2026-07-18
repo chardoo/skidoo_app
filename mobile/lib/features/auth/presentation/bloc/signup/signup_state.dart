@@ -2,32 +2,32 @@ part of 'signup_bloc.dart';
 
 class SignUpState extends Equatable {
   final bool isLoading;
-  final String imagePath;
   final String? errorMessage;
   final bool isSuccess;
+  final String email;
 
   const SignUpState({
     this.isLoading = false,
-    this.imagePath = '',
     this.errorMessage,
     this.isSuccess = false,
+    this.email = '',
   });
 
   SignUpState copyWith({
     bool? isLoading,
-    String? imagePath,
     String? errorMessage,
     bool? isSuccess,
+    String? email,
     bool clearError = false,
   }) {
     return SignUpState(
       isLoading: isLoading ?? this.isLoading,
-      imagePath: imagePath ?? this.imagePath,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       isSuccess: isSuccess ?? this.isSuccess,
+      email: email ?? this.email,
     );
   }
 
   @override
-  List<Object?> get props => [isLoading, imagePath, errorMessage, isSuccess];
+  List<Object?> get props => [isLoading, errorMessage, isSuccess, email];
 }

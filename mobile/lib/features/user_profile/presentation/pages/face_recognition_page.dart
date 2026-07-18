@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/common/widgets/selfie_capture_screen.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
@@ -22,6 +23,9 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
   // Validated selfie files — each was accepted by face detection.
   final List<XFile> _selfies = [];
   bool _uploading = false;
+  // Selfies are used for face-training only by default — the user must
+  // explicitly opt in for the first one to also become their profile photo.
+  bool _useAsProfile = false;
 
   static const _maxSelfies = 5;
 
@@ -50,6 +54,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
       final formData = dio_pkg.FormData.fromMap({
         'email': email,
         'files': files,
+        'use_as_profile': _useAsProfile.toString(),
       });
       await sl<Api>().dio.post(
         '/client/train-model',
@@ -130,6 +135,44 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
               ),
             ),
 
+            // ── Use as profile photo opt-in ────────────────────────────────────
+            Padding(
+              padding: EdgeInsets.fromLTRB(16.w, 0, 20.w, 8.h),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10.r),
+                onTap: _uploading
+                    ? null
+                    : () => setState(() => _useAsProfile = !_useAsProfile),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 4.w),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 22.w,
+                        height: 22.w,
+                        child: Checkbox(
+                          value: _useAsProfile,
+                          activeColor: ext.accentGold,
+                          onChanged: _uploading
+                              ? null
+                              : (v) => setState(() => _useAsProfile = v ?? false),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Flexible(
+                        child: Text(
+                          'Use my first photo as my profile picture too',
+                          style:
+                              TextStyle(color: ext.greetingColor, fontSize: 13.sp),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
             // ── Selfie grid ──────────────────────────────────────────────────
             Expanded(
               child: Padding(
@@ -163,35 +206,13 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
             // ── Submit button ────────────────────────────────────────────────
             Padding(
               padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50.h,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ext.accentGold,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    disabledBackgroundColor:
-                        ext.accentGold.withValues(alpha: 0.4),
-                  ),
-                  onPressed: (_uploading || _selfies.isEmpty) ? null : _submit,
-                  child: _uploading
-                      ? SizedBox(
-                          width: 22.w,
-                          height: 22.w,
-                          child: const CircularProgressIndicator(
-                              color: Colors.black, strokeWidth: 2),
-                        )
-                      : Text(
-                          _selfies.isEmpty
-                              ? 'Take a selfie to continue'
-                              : 'Train with ${_selfies.length} selfie${_selfies.length == 1 ? '' : 's'}',
-                          style: TextStyle(
-                              fontSize: 15.sp, fontWeight: FontWeight.w700),
-                        ),
-                ),
+              child: AppButton(
+                fullWidth: true,
+                isLoading: _uploading,
+                onPressed: (_uploading || _selfies.isEmpty) ? null : _submit,
+                label: _selfies.isEmpty
+                    ? 'Take a selfie to continue'
+                    : 'Train with ${_selfies.length} selfie${_selfies.length == 1 ? '' : 's'}',
               ),
             ),
           ],

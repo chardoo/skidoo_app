@@ -9,14 +9,14 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appName => 'Skidoo';
+  String get appName => 'Jperg';
 
   @override
   String get securityWarningTitle => 'Security Warning';
 
   @override
   String get securityWarningBody =>
-      'This device appears to be jailbroken or rooted.\n\nRunning Skidoo on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.';
+      'This device appears to be jailbroken or rooted.\n\nRunning Jperg on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.';
 
   @override
   String get securityWarningContinue => 'I understand, continue anyway';
@@ -119,10 +119,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get forgotPasswordLinkSent => 'Reset link sent to your email.';
 
   @override
-  String get interestsTitle => 'What interests you?';
+  String get interestsTitle => 'What do you love?';
 
   @override
-  String get interestsSubtitle => 'Select topics to personalise your feed';
+  String get interestsSubtitle =>
+      'Select at least 3 photography styles you enjoy.';
 
   @override
   String get interestsContinue => 'Continue';

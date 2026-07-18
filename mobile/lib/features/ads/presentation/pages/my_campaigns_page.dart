@@ -84,42 +84,14 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
   }
 
   Future<void> _confirmDelete(AdCampaign campaign) async {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: ext.homeBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-        title: Text(
-          'Delete campaign?',
-          style: TextStyle(
-            color: ext.greetingColor,
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        content: Text(
-          '"${campaign.name}" will be permanently deleted.',
-          style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel',
-                style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete',
-                style: TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Delete campaign?',
+      message: '"${campaign.name}" will be permanently deleted.',
+      confirmLabel: 'Delete',
+      isDestructive: true,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     debugPrint('[MyCampaignsPage] _delete campaignId=${campaign.id}');
     try {
       await _repo.deleteCampaign(campaign.id);
@@ -205,30 +177,12 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                         TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
                   ),
                   SizedBox(height: 20.h),
-                  TextField(
+                  AppTextField(
                     controller: ctrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     autofocus: true,
-                    style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-                    decoration: InputDecoration(
-                      hintText: 'Amount to add (e.g. 200)',
-                      hintStyle:
-                          TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-                      filled: true,
-                      fillColor: ext.searchFieldFill,
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 14.w, vertical: 13.h),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                        borderSide: BorderSide(
-                            color: ext.accentGold.withValues(alpha: 0.6),
-                            width: 1.2),
-                      ),
-                    ),
+                    dense: true,
+                    hint: 'Amount to add (e.g. 200)',
                   ),
                   SizedBox(height: 20.h),
                   Semantics(button: true, label: 'Amount', child: GestureDetector(
@@ -248,7 +202,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                       padding: EdgeInsets.symmetric(vertical: 15.h),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                          colors: [ext.accentGold, const Color(0xFF078368)],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
@@ -553,7 +507,7 @@ class _CampaignTile extends StatelessWidget {
                 padding: EdgeInsets.symmetric(vertical: 10.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                    colors: [ext.accentGold, const Color(0xFF078368)],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
@@ -652,7 +606,7 @@ class _CampaignTile extends StatelessWidget {
                       padding: EdgeInsets.symmetric(vertical: 10.h),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                          colors: [ext.accentGold, const Color(0xFF078368)],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
@@ -698,7 +652,7 @@ class _CampaignTile extends StatelessWidget {
                 padding: EdgeInsets.symmetric(vertical: 10.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                    colors: [ext.accentGold, const Color(0xFF078368)],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),

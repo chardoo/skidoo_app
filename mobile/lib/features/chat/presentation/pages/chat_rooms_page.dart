@@ -134,7 +134,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 680),
                 child: RefreshIndicator(
-                  color: ext.accentGold,
+                  color: ext.searchHintColor,
                   onRefresh: () async => context
                       .read<ChatRoomsBloc>()
                       .add(const ChatRoomsLoadRequested()),
@@ -146,7 +146,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
                           child: LinearProgressIndicator(
                             minHeight: 2,
                             backgroundColor: Colors.transparent,
-                            color: ext.accentGold.withValues(alpha: 0.6),
+                            color: ext.searchHintColor.withValues(alpha: 0.6),
                           ),
                         ),
 
@@ -155,43 +155,15 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
                         child: Padding(
                           padding:
                               EdgeInsets.fromLTRB(14.w, 8.h, 14.w, 4.h),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: ext.glassFill,
-                              borderRadius: BorderRadius.circular(12.r),
-                        border: Border.all(color: ext.glassBorder),
-                            ),
-                            child: TextField(
-                              controller: _searchCtrl,
-                              style: TextStyle(
-                                  color: ext.greetingColor, fontSize: 14.sp),
-                              decoration: InputDecoration(
-                                hintText: 'Search messages...',
-                                hintStyle: TextStyle(
-                                    color: ext.glassHint,
-                                    fontSize: 14.sp),
-                                prefixIcon: Icon(Icons.search_rounded,
-                                    color: ext.glassIcon, size: 20.sp),
-                                suffixIcon: _searchQuery.isNotEmpty
-                                    ? Semantics(button: true, label: 'Clear search', child: GestureDetector(
-                                        onTap: () {
-                                          _searchCtrl.clear();
-                                          setState(() => _searchQuery = '');
-                                        },
-                                        child: Icon(Icons.close_rounded,
-                                            color: ext.searchHintColor,
-                                            size: 18.sp),
-                                      ))
-                                    : null,
-                                border: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                isDense: true,
-                                contentPadding:
-                                    EdgeInsets.symmetric(vertical: 12.h),
-                              ),
-                              onChanged: (v) =>
-                                  setState(() => _searchQuery = v),
-                            ),
+                          child: SearchField(
+                            controller: _searchCtrl,
+                            hint: 'Search messages...',
+                            onChanged: (v) =>
+                                setState(() => _searchQuery = v),
+                            onClear: () {
+                              _searchCtrl.clear();
+                              setState(() => _searchQuery = '');
+                            },
                           ),
                         ),
                       ),

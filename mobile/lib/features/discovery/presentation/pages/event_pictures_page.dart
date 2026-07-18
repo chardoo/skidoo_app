@@ -1,5 +1,6 @@
 import 'dart:ui' show ImageFilter;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:skidoo_app/core/utils/skidoo_filters.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -9,6 +10,7 @@ import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/components/media/media_action_buttons.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/web_action_widgets.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/features/photo_comments/data/photo_comment_remote_data_source.dart';
@@ -26,13 +28,19 @@ class _PicEntry {
     required this.picture,
     required this.eventName,
     required this.photographerName,
+    required this.photographerId,
+    required this.photographerProfileUrl,
     required this.eventCommentsEnabled,
+    required this.contentTags,
   });
 
   final EventPicture picture;
   final String eventName;
   final String photographerName;
+  final String photographerId;
+  final String? photographerProfileUrl;
   final bool eventCommentsEnabled;
+  final List<String> contentTags;
 
   bool get commentsAllowed => eventCommentsEnabled && picture.commentsEnabled;
 }
@@ -53,7 +61,10 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
             picture: p,
             eventName: widget.event.eventName,
             photographerName: widget.event.photographerName,
+            photographerId: widget.event.photographerId,
+            photographerProfileUrl: widget.event.photographerProfileUrl,
             eventCommentsEnabled: widget.event.commentsEnabled,
+            contentTags: widget.event.contentTags,
           ))
       .toList();
 
@@ -595,11 +606,18 @@ class _WebViewerReactionsPanelState extends State<_WebViewerReactionsPanel> {
           if (widget.entry.photographerName.isNotEmpty) ...[
             WebCreatorPin(
               name: widget.entry.photographerName,
-              photographerId: '',
+              imageUrl: widget.entry.photographerProfileUrl,
+              photographerId: widget.entry.photographerId,
               isFollowed: false,
               isOwner: false,
               isAuthenticated: false,
               ext: ext,
+              onTap: () => openPhotographerProfile(
+                context,
+                photographerId: widget.entry.photographerId,
+                photographerName: widget.entry.photographerName,
+                photographerProfileUrl: widget.entry.photographerProfileUrl,
+              ),
             ),
             const SizedBox(height: gap),
           ],
@@ -707,7 +725,9 @@ class _FeedCardState extends State<_FeedCard> {
     }).catchError((_) {});
   }
 
-  static List<String> _hashtags(String eventName, String photographerName) {
+  /// Fallback for events with no backend `content_tags` — synthesized from
+  /// the event/photographer names so the caption never looks bare.
+  static List<String> _fallbackHashtags(String eventName, String photographerName) {
     final words = eventName
         .split(RegExp(r'[\s\-_&]+'))
         .where((w) => w.length > 2)
@@ -816,8 +836,17 @@ class _FeedCardState extends State<_FeedCard> {
           child: _InfoOverlay(
             eventName: eventName,
             photographerName: photographerName,
-            hashtags: _hashtags(eventName, photographerName),
+            photographerProfileUrl: widget.entry.photographerProfileUrl,
+            hashtags: widget.entry.contentTags.isNotEmpty
+                ? widget.entry.contentTags.map((t) => '#$t').toList()
+                : _fallbackHashtags(eventName, photographerName),
             topComment: _topComment,
+            onAvatarTap: () => openPhotographerProfile(
+              context,
+              photographerId: widget.entry.photographerId,
+              photographerName: photographerName,
+              photographerProfileUrl: widget.entry.photographerProfileUrl,
+            ),
           ),
         ),
       ],
@@ -831,14 +860,18 @@ class _InfoOverlay extends StatelessWidget {
   const _InfoOverlay({
     required this.eventName,
     required this.photographerName,
+    required this.photographerProfileUrl,
     required this.hashtags,
     required this.topComment,
+    required this.onAvatarTap,
   });
 
   final String eventName;
   final String photographerName;
+  final String? photographerProfileUrl;
   final List<String> hashtags;
   final PhotoComment? topComment;
+  final VoidCallback onAvatarTap;
 
   @override
   Widget build(BuildContext context) {
@@ -848,34 +881,48 @@ class _InfoOverlay extends StatelessWidget {
       children: [
         Row(
           children: [
-            _InitialsAvatar(name: photographerName, size: 30.w),
+            Semantics(
+              button: true,
+              label: "View ${photographerName.isNotEmpty ? photographerName : 'creator'}'s profile",
+              child: GestureDetector(
+                onTap: onAvatarTap,
+                child: _InitialsAvatar(
+                  name: photographerName,
+                  imageUrl: photographerProfileUrl,
+                  size: 30.w,
+                ),
+              ),
+            ),
             SizedBox(width: 8.w),
             Flexible(
-              child: Text(
-                photographerName.isNotEmpty ? photographerName : 'Creator',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13.sp,
+              child: GestureDetector(
+                onTap: onAvatarTap,
+                child: Text(
+                  photographerName.isNotEmpty ? photographerName : 'Creator',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.sp,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             SizedBox(width: 6.w),
             Container(
               padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5A623).withValues(alpha: 0.18),
+                color: const Color(0xFF0BA98A).withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(4.r),
                 border: Border.all(
-                    color: const Color(0xFFF5A623).withValues(alpha: 0.4),
+                    color: const Color(0xFF0BA98A).withValues(alpha: 0.4),
                     width: 0.5),
               ),
               child: Text(
                 'creator',
                 style: TextStyle(
-                  color: const Color(0xFFF5A623),
+                  color: const Color(0xFF0BA98A),
                   fontSize: 9.sp,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.3,
@@ -907,7 +954,7 @@ class _InfoOverlay extends StatelessWidget {
               .map((tag) => Text(
                     tag,
                     style: TextStyle(
-                      color: const Color(0xFFF5A623).withValues(alpha: 0.9),
+                      color: const Color(0xFF0BA98A).withValues(alpha: 0.9),
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w600,
                     ),
@@ -971,9 +1018,13 @@ class _InfoOverlay extends StatelessWidget {
 // ── Initials avatar ───────────────────────────────────────────────────────────
 
 class _InitialsAvatar extends StatelessWidget {
-  const _InitialsAvatar({required this.name, required this.size});
+  const _InitialsAvatar({required this.name, this.imageUrl, required this.size});
 
   final String name;
+
+  /// Photographer's real avatar — shown instead of the initials fallback
+  /// when present (`profile_url` on the event's nested user object).
+  final String? imageUrl;
   final double size;
 
   @override
@@ -985,7 +1036,7 @@ class _InitialsAvatar extends StatelessWidget {
         .map((w) => w[0].toUpperCase())
         .join();
 
-    return Container(
+    final fallback = Container(
       width: size,
       height: size,
       decoration: const BoxDecoration(
@@ -993,7 +1044,7 @@ class _InitialsAvatar extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFF5A623), Color(0xFFD4840F)],
+          colors: [Color(0xFF0BA98A), Color(0xFF078368)],
         ),
       ),
       child: Center(
@@ -1006,6 +1057,20 @@ class _InitialsAvatar extends StatelessWidget {
             height: 1,
           ),
         ),
+      ),
+    );
+
+    final url = imageUrl;
+    if (url == null || url.isEmpty) return fallback;
+
+    return ClipOval(
+      child: CachedNetworkImage(
+        imageUrl: url,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => fallback,
+        errorWidget: (_, __, ___) => fallback,
       ),
     );
   }

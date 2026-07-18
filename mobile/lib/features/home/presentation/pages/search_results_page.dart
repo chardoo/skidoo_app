@@ -15,6 +15,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
 import 'package:skidoo_app/features/cart/domain/repositories/cart_repository.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/services/auth_service.dart';
@@ -169,8 +170,10 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         context.read<HomeBloc>().add(HomeFreeImagesSaved(freePhotos));
       }
 
-      // Request the bottom-nav to switch to Gallery, then pop back to home.
-      HomePage.tabRequest.value = 2;
+      // Request the bottom-nav to switch to Home, then the Found pill (where
+      // purchased/found photos now live), then pop back to home.
+      HomePage.tabRequest.value = 0;
+      HomeNavigationPage.pillTabRequest.value = 0;
       Navigator.of(context)
           .popUntil(ModalRoute.withName(HomePage.routeName));
     } catch (e) {

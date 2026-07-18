@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 ///   • [error]      — red,   for failures and blocking problems
 ///   • [success]    — green, for completed actions
 ///   • [info]       — dark grey, for neutral status messages
-///   • [withAction] — dark surface + gold action (e.g. "Content hidden / Undo")
+///   • [withAction] — dark surface + teal action (e.g. "Content hidden / Undo")
 ///
 /// All types: floating, 12-px radius, standard margin, hides the current bar first.
 class AppSnackBar {
@@ -16,7 +16,7 @@ class AppSnackBar {
   static const _kSuccess = Color(0xFF2E7D32);
   static const _kInfo    = Color(0xFF37474F);
   static const _kDark    = Color(0xFF2C2C2E);
-  static const _kGold    = Color(0xFFF5A623);
+  static const _kGold    = Color(0xFF0BA98A);
 
   static const _kDefaultMargin =
       EdgeInsets.fromLTRB(16, 0, 16, 16);

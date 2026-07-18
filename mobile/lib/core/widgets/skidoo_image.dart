@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
 
 /// High-quality drop-in for [CachedNetworkImage].
@@ -14,6 +15,13 @@ import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
 /// If [logicalWidth] is supplied the cache is sized to that value × DPR.
 /// Otherwise a [LayoutBuilder] measures the actual available width at build
 /// time, which is the safest default.
+///
+/// Shows a centred spinner over a subtle tint while loading unless the
+/// caller passes its own [placeholder] — every [SkidooImage] gets a real
+/// loading state without having to remember to wire one up each time. Blur
+/// backdrops ([isBlurBackground]) skip the spinner: they're tiny (120px),
+/// load near-instantly, and a spinner flashing behind a blur layer is just
+/// visual noise.
 class SkidooImage extends StatelessWidget {
   const SkidooImage({
     super.key,
@@ -54,6 +62,24 @@ class SkidooImage extends StatelessWidget {
   /// (no semantics node). Set for content images (photos, samples, covers).
   final String? semanticLabel;
 
+  Widget _defaultPlaceholder(BuildContext context, String url) {
+    final ext = Theme.of(context).extension<AppThemeExtension>();
+    return ColoredBox(
+      color: ext?.searchFieldFill ?? const Color(0x11000000),
+      child: Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: (ext?.accentGold ?? const Color(0xFF0BA98A))
+                .withValues(alpha: 0.8),
+          ),
+        ),
+      ),
+    );
+  }
+
   int _cacheWidth(BuildContext context, double availableWidth) {
     if (isBlurBackground) return 120;
     final dpr = MediaQuery.devicePixelRatioOf(context);
@@ -82,7 +108,7 @@ class SkidooImage extends StatelessWidget {
       memCacheWidth: _cacheWidth(context, availableWidth),
       filterQuality: FilterQuality.high,
       fadeInDuration: fadeInDuration,
-      placeholder: placeholder,
+      placeholder: placeholder ?? (isBlurBackground ? null : _defaultPlaceholder),
       errorWidget: errorWidget,
     );
     if (colorFilter != null) {

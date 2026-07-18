@@ -66,6 +66,16 @@ void main() async {
 
   final authService = sl<AuthService>();
 
+  // On iOS, Keychain entries survive app deletion — without this, a genuine
+  // fresh install would silently inherit the previous install's token /
+  // onboarding-seen flag and look like a returning user. Must complete
+  // before the reads below, which would otherwise race the wipe.
+  if (await authService.isFreshInstall()) {
+    await authService.resetAllForFreshInstall();
+    await authService.markInstalled();
+    debugPrint('[Startup] fresh install detected — cleared stale Keychain data');
+  }
+
   // ── Run all independent startup checks in parallel ──────────────────────────
   // Previously these were 4 serial awaits (jailbreak check, two Keychain reads
   // for the token, one more for the expiration, and camera enumeration). Now
@@ -88,11 +98,14 @@ void main() async {
     // [2] Token expiration string (one Keychain read — avoids isTokenExpired()
     //     re-reading the token a second time internally)
     authService.getExpiration(),
+    // [3] Whether the first-run onboarding carousel has already been shown.
+    authService.getHasSeenOnboarding(),
   ]);
 
   final isDeviceCompromised = results[0] as bool;
   final token              = results[1] as String;
   final expiration         = results[2] as String;
+  final hasSeenOnboarding  = results[3] as bool;
 
   // Replicate isTokenExpired() logic without a second Keychain round-trip.
   bool isExpired = token.isEmpty;
@@ -114,5 +127,6 @@ void main() async {
   runApp(MyApp(
     token: isExpired ? '' : token,
     isDeviceCompromised: isDeviceCompromised,
+    hasSeenOnboarding: hasSeenOnboarding,
   ));
 }

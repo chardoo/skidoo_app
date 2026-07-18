@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/common/customButtom.dart';
-import 'package:skidoo_app/core/common/textfield.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 
@@ -58,16 +58,15 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                     ?.copyWith(color: Colors.grey),
               ),
               SizedBox(height: 30.h),
-              MyTextField(
+              AppTextField(
                 controller: _emailController,
                 validator: Validators.emailValidator,
                 label: AppLocalizations.of(context)!.forgotPasswordEmail,
               ),
               SizedBox(height: 30.h),
-              CustomButton(
-                height: 50.h,
-                width: double.infinity,
-                ontap: () {
+              AppButton(
+                fullWidth: true,
+                onPressed: () {
                   if (_formKey.currentState?.validate() ?? false) {
                     AppSnackBar.success(context, AppLocalizations.of(context)!.forgotPasswordLinkSent);
                   }

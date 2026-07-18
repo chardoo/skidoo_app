@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:skidoo_app/core/common/widgets/app_loading_indicator.dart';
 import 'package:skidoo_app/core/utils/video_mute_preference.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
 
@@ -139,9 +140,15 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   int? _videoW;
   int? _videoH;
 
+  // True while media_kit is fetching/decoding data — covers both the
+  // initial network load and any mid-playback rebuffer stall. Surfaced as a
+  // spinner overlay so a slow network doesn't just look like a stuck video.
+  bool _buffering = false;
+
   Timer? _hideTimer;
   StreamSubscription<void>? _pauseSub;
   StreamSubscription<bool>? _playingSub;
+  StreamSubscription<bool>? _bufferingSub;
   StreamSubscription<int?>? _widthSub;
   StreamSubscription<int?>? _heightSub;
 
@@ -236,6 +243,12 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
       } else {
         _hideTimer?.cancel();
         setState(() => _controlsVisible = true);
+      }
+    });
+
+    _bufferingSub = player.stream.buffering.listen((buffering) {
+      if (mounted && buffering != _buffering) {
+        setState(() => _buffering = buffering);
       }
     });
 
@@ -410,6 +423,7 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     }
     _pauseSub?.cancel();
     _playingSub?.cancel();
+    _bufferingSub?.cancel();
     _widthSub?.cancel();
     _heightSub?.cancel();
     _hideTimer?.cancel();
@@ -420,7 +434,10 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   Widget _buildVideoSurface() {
     final controller = _controller;
     if (controller == null) {
-      return ColoredBox(color: widget.backgroundColor);
+      return ColoredBox(
+        color: widget.backgroundColor,
+        child: const AppLoadingIndicator(),
+      );
     }
 
     final w = _videoW;
@@ -487,6 +504,10 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
       alignment: Alignment.center,
       children: [
         sized,
+        if (_buffering)
+          const IgnorePointer(
+            child: AppLoadingIndicator(),
+          ),
         if (widget.showControls && player != null)
           Positioned.fill(
             child: Semantics(button: true, label: 'Video', child: GestureDetector(
@@ -701,7 +722,7 @@ class _BottomBar extends StatelessWidget {
                           const RoundSliderThumbShape(enabledThumbRadius: 5),
                       overlayShape: SliderComponentShape.noOverlay,
                       trackHeight: 2.5,
-                      activeTrackColor: const Color(0xFFF5A623),
+                      activeTrackColor: const Color(0xFF0BA98A),
                       inactiveTrackColor: Colors.white24,
                       thumbColor: Colors.white,
                     ),

@@ -49,7 +49,13 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
         _bgService = bgService,
         _authService = authService,
         super(const ChatRoomsState()) {
-    on<ChatRoomsLoadRequested>(_onLoad);
+    // restartable() cancels a still-running _onLoad when a newer one is
+    // requested, so a stale/slow server round-trip from an earlier load
+    // (e.g. kicked off at app launch) can never emit *after* — and clobber
+    // — a more recent load's correct result. Without this, _onLoad calls
+    // race freely and whichever happens to finish last wins, regardless of
+    // which was actually requested last.
+    on<ChatRoomsLoadRequested>(_onLoad, transformer: restartable());
     // concurrent() lets refresh events run immediately alongside _onLoad
     // instead of queuing behind the network call, so the badge updates as
     // soon as a background WS message is saved to the DB.
@@ -165,8 +171,15 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
             }
           : counts;
       emit(state.copyWith(
-        rooms: split.$1,
-        pendingInvites: split.$2,
+        // Merge rather than replace: a room just joined/created is written
+        // to the local cache synchronously (see ChatRepositoryImpl's
+        // _fetchAndCacheRoom), but the server's "list my rooms" response can
+        // still be a beat behind that write. Blindly trusting `fresh` here
+        // would erase a room the user only just joined. Genuine removals
+        // still take effect via _onRoomRemoved (which also purges the local
+        // cache), so this can't resurrect a room that was actually deleted.
+        rooms: _mergeRooms(split.$1, state.rooms),
+        pendingInvites: _mergeRooms(split.$2, state.pendingInvites),
         unreadCounts: effectiveCounts,
         lastMessageAt: lastTimes,
         isLoading: false,
@@ -189,6 +202,15 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
             : null,
       ));
     }
+  }
+
+  /// Unions [fresh] (just fetched from the server) with any [known] rooms
+  /// that aren't in it yet, keyed by id — [fresh]'s copy of a room wins
+  /// where both have it, since it's the more up-to-date one.
+  List<ChatRoom> _mergeRooms(List<ChatRoom> fresh, List<ChatRoom> known) {
+    final freshIds = fresh.map((r) => r.id).toSet();
+    final onlyLocal = known.where((r) => !freshIds.contains(r.id));
+    return [...fresh, ...onlyLocal];
   }
 
   /// Splits all rooms into (activeRooms, pendingInvites) for [myUserId].

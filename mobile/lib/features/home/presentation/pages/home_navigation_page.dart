@@ -1,9 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
@@ -13,13 +13,12 @@ import 'package:skidoo_app/features/home/presentation/pages/search_results_page.
 import 'package:skidoo_app/features/home/presentation/widgets/web_search_photos_panel.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/events_feed.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/home_empty_state.dart';
-import 'package:skidoo_app/features/home/presentation/widgets/home_header_widget.dart';
+import 'package:skidoo_app/features/home/presentation/widgets/feed_top_bar.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/search_events_list.dart';
-import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
-import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/common/widgets/feed_launch_overlay.dart';
 import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
+import 'package:skidoo_app/features/gallery/presentation/widgets/found_feed.dart';
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
@@ -45,13 +44,20 @@ class HomeNavigationPage extends StatefulWidget {
   static void dispatchEventTap(String eventId, String eventName) =>
       _webEventTapHandler?.call(eventId, eventName);
 
+  /// Any caller can write a pill index here (0 = Found, 1 = For You,
+  /// 2 = Following) to request a pill switch, e.g. after a purchase that
+  /// lands new photos in the Found tab. Cleared after being handled.
+  static final pillTabRequest = ValueNotifier<int?>(null);
+
   @override
   State<HomeNavigationPage> createState() => _HomeNavigationPageState();
 }
 
 class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool _isSearchOpen = false;
-  int _selectedTab = 0; // 0 = For You, 1 = Following
+  // 0 = Found, 1 = For You, 2 = Following. Defaults to For You (unchanged
+  // landing tab from before Found was added).
+  int _selectedTab = 1;
 
   // Web desktop: show photo results inline (no Navigator push).
   bool _showPhotosInline = false;
@@ -65,11 +71,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   final _headerKey = GlobalKey();
   double _headerHeight = 0;
 
-  Timer? _chromeTimer;
-
   @override
   void initState() {
     super.initState();
+    HomeNavigationPage.pillTabRequest.addListener(_onPillTabRequest);
     if (kIsWeb) {
       // Typeahead: only dispatch the BLoC event search — don't open the content
       // overlay. The sidebar dropdown shows suggestions; the inline photos panel
@@ -100,12 +105,20 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
   @override
   void dispose() {
+    HomeNavigationPage.pillTabRequest.removeListener(_onPillTabRequest);
     if (kIsWeb) {
       HomeNavigationPage._webSearchHandler = null;
       HomeNavigationPage._webEventTapHandler = null;
     }
-    _chromeTimer?.cancel();
     super.dispose();
+  }
+
+  void _onPillTabRequest() {
+    final tab = HomeNavigationPage.pillTabRequest.value;
+    if (tab != null) {
+      setState(() => _selectedTab = tab);
+      HomeNavigationPage.pillTabRequest.value = null;
+    }
   }
 
   void _measureHeaderHeight() {
@@ -118,20 +131,12 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     });
   }
 
-  void _startHeaderAutoHideTimer() {
-    _chromeTimer?.cancel();
-    _chromeTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && !_isSearchOpen) setState(() => _headerVisible = false);
-    });
-  }
-
   void _openSearch() {
     _headerDownAccum = 0;
-    _chromeTimer?.cancel();
     setState(() {
       _isSearchOpen = true;
       _headerVisible = true;
-      _selectedTab = 0; // always show For You when searching
+      _selectedTab = 1; // always show For You when searching
     });
   }
 
@@ -170,6 +175,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     );
   }
 
+  void _openCreate() => CreateBottomSheet.show(context);
+
   void _openEventImages(BuildContext context, EventDiscovery event) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => EventPicturesPage(event: event)),
@@ -202,22 +209,18 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         _headerDownAccum += delta;
         if (_headerDownAccum >= _headerHideThreshold && _headerVisible) {
           setState(() => _headerVisible = false);
-          _chromeTimer?.cancel();
         }
       } else if (delta < 0 || atTop) {
         // Scrolling up, or bounce-back at top — show header, reset accum.
         _headerDownAccum = 0;
         if (!_headerVisible) setState(() => _headerVisible = true);
-        if (!atTop) _startHeaderAutoHideTimer();
       }
     } else if (notification is ScrollEndNotification) {
+      // Scrolling stopped — header stays exactly as it is (visible or
+      // hidden); it never auto-hides on a timer once at rest.
       _headerDownAccum = 0;
-      if (notification.metrics.pixels <= 0) {
-        // At the very top — keep header visible, cancel any pending hide.
-        _chromeTimer?.cancel();
-        if (!_headerVisible) setState(() => _headerVisible = true);
-      } else if (_headerVisible) {
-        _startHeaderAutoHideTimer();
+      if (notification.metrics.pixels <= 0 && !_headerVisible) {
+        setState(() => _headerVisible = true);
       }
     }
     return false;
@@ -233,8 +236,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final homeState = context.watch<HomeBloc>().state;
     final discoveryState = context.watch<DiscoveryBloc>().state;
-    final userState = context.watch<UserProfileBloc>().state;
-    final userName = userState.name.isNotEmpty ? userState.name : 'User';
 
     // ── Web: compact top bar (tabs + avatar) + Column layout ─────────────────
     if (kIsWeb) {
@@ -284,7 +285,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                             ),
                           ] else ...[
                             _PillTab(
-                              label: 'For You',
+                              label: 'Found',
                               active: _selectedTab == 0,
                               ext: ext,
                               onTap: () {
@@ -294,12 +295,22 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                             ),
                             const SizedBox(width: 8),
                             _PillTab(
-                              label: 'Following',
+                              label: 'For You',
                               active: _selectedTab == 1,
                               ext: ext,
                               onTap: () {
                                 VideoPauseNotifier.pauseAll();
                                 setState(() => _selectedTab = 1);
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _PillTab(
+                              label: 'Following',
+                              active: _selectedTab == 2,
+                              ext: ext,
+                              onTap: () {
+                                VideoPauseNotifier.pauseAll();
+                                setState(() => _selectedTab = 2);
                               },
                             ),
                             const Spacer(),
@@ -334,7 +345,15 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     _measureHeaderHeight();
 
     return FeedLaunchOverlay(
-      child: Scaffold(
+      child: PopScope(
+        // While search is open, the system back gesture/button closes search
+        // instead of leaving the tab (there was previously no way back other
+        // than spotting the small close icon in the header).
+        canPop: !_isSearchOpen,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && _isSearchOpen) _closeSearch();
+        },
+        child: Scaffold(
         backgroundColor: ext.homeBackground,
         body: Stack(
           children: [
@@ -346,8 +365,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
               ),
             ),
 
-            // Header + tab bar slide in/out from top (Transform.translate —
-            // no layout shift).
+            // Header slides in/out from top (Transform.translate — no layout
+            // shift).
             Positioned(
               top: 0,
               left: 0,
@@ -356,47 +375,30 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                 offset: _headerVisible ? Offset.zero : const Offset(0, -1),
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOut,
-                child: Column(
+                child: Padding(
                   key: _headerKey,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.only(top: topPadding),
-                      child: HomeHeaderWidget(
-                        userName: userName,
-                        userInitial: userName[0].toUpperCase(),
-                        isSearchOpen: _isSearchOpen,
-                        onSearchOpen: _openSearch,
-                        onSearchClose: _closeSearch,
-                        onSearchChanged: _onSearchChanged,
-                        onQrScan: _openQrScan,
-                        onAvatarTap: () {
-                          final discoveryBloc = context.read<DiscoveryBloc>();
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => BlocProvider.value(
-                                value: discoveryBloc,
-                                child: const AccountPage(),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    if (!_isSearchOpen)
-                      _FeedTabBar(
-                        ext: ext,
-                        selectedTab: _selectedTab,
-                        onTabChanged: (i) {
-                          VideoPauseNotifier.pauseAll();
-                          setState(() => _selectedTab = i);
-                        },
-                      ),
-                  ],
+                  padding: EdgeInsets.only(top: topPadding),
+                  child: FeedTopBar(
+                    selectedTab: _selectedTab,
+                    onTabChanged: (i) {
+                      VideoPauseNotifier.pauseAll();
+                      setState(() => _selectedTab = i);
+                    },
+                    isSearchOpen: _isSearchOpen,
+                    onSearchOpen: _openSearch,
+                    onSearchClose: _closeSearch,
+                    onSearchChanged: _onSearchChanged,
+                    onQrScan: _openQrScan,
+                    onCreatePressed: (AppConfigRepository.current.adsEnabled ||
+                            AppConfigRepository.current.requestsEnabled)
+                        ? _openCreate
+                        : null,
+                  ),
                 ),
               ),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -415,9 +417,14 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     return IndexedStack(
       index: _selectedTab,
       children: [
-        // ── For You ──────────────────────────────────────────────────────────
+        // ── Found ────────────────────────────────────────────────────────────
         TickerMode(
           enabled: _selectedTab == 0,
+          child: FoundFeed(topPadding: _feedTopPadding),
+        ),
+        // ── For You ──────────────────────────────────────────────────────────
+        TickerMode(
+          enabled: _selectedTab == 1,
           child: RefreshIndicator(
             onRefresh: _onRefresh,
             color: ext.accentGold,
@@ -427,7 +434,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         ),
         // ── Following ────────────────────────────────────────────────────────
         TickerMode(
-          enabled: _selectedTab == 1,
+          enabled: _selectedTab == 2,
           child: FollowingFeed(topPadding: _feedTopPadding),
         ),
       ],
@@ -563,42 +570,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       );
     }
     return const SizedBox.shrink();
-  }
-}
-
-class _FeedTabBar extends StatelessWidget {
-  final AppThemeExtension ext;
-  final int selectedTab;
-  final ValueChanged<int> onTabChanged;
-
-  const _FeedTabBar({
-    required this.ext,
-    required this.selectedTab,
-    required this.onTabChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          _PillTab(
-            label: 'For You',
-            active: selectedTab == 0,
-            ext: ext,
-            onTap: () => onTabChanged(0),
-          ),
-          const SizedBox(width: 8),
-          _PillTab(
-            label: 'Following',
-            active: selectedTab == 1,
-            ext: ext,
-            onTap: () => onTabChanged(1),
-          ),
-        ],
-      ),
-    );
   }
 }
 

@@ -14,10 +14,10 @@ class PhotographerRatingRow extends StatelessWidget {
       children: [
         ...List.generate(5, (i) {
           if (i < r.floor()) {
-            return Icon(Icons.star_rounded, color: ext.accentGold, size: 16.sp);
+            return Icon(Icons.star_rounded, color: Colors.amber, size: 16.sp);
           } else if (i < r && r - i >= 0.5) {
             return Icon(Icons.star_half_rounded,
-                color: ext.accentGold, size: 16.sp);
+                color: Colors.amber, size: 16.sp);
           } else {
             return Icon(Icons.star_outline_rounded,
                 color: ext.searchHintColor, size: 16.sp);
@@ -27,7 +27,7 @@ class PhotographerRatingRow extends StatelessWidget {
         Text(
           r > 0 ? '${r.toStringAsFixed(1)} / 5.0' : 'No rating yet',
           style: TextStyle(
-            color: r > 0 ? ext.accentGold : ext.searchHintColor,
+            color: r > 0 ? ext.greetingColor : ext.searchHintColor,
             fontSize: 13.sp,
             fontWeight: FontWeight.w500,
           ),

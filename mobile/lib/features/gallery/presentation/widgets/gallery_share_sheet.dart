@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/search_field.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
@@ -12,8 +13,10 @@ import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:skidoo_app/models/chat/shareable_user.dart';
 
-/// Bottom sheet that lets the user search any app user (client or photographer)
-/// and share a photo to their DM room.
+/// Bottom sheet with an in-app user search to send a photo directly to
+/// another app user's DM room. The native OS share sheet is a separate,
+/// direct icon on the card itself (see `shareOverlayPhotoExternally` in
+/// `media_action_buttons.dart`) — not nested inside this sheet.
 class GalleryShareSheet {
   static void show(
     BuildContext context, {
@@ -210,36 +213,11 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
           // Search field
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.w),
-            child: TextField(
+            child: SearchField(
               controller: _searchCtrl,
+              hint: 'Search by name…',
               autofocus: true,
-              style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-              decoration: InputDecoration(
-                hintText: 'Search by name…',
-                hintStyle: TextStyle(color: ext.searchHintColor),
-                prefixIcon: Icon(Icons.search_rounded,
-                    color: ext.searchHintColor, size: 20.sp),
-                suffixIcon: _loading
-                    ? Padding(
-                        padding: EdgeInsets.all(12.r),
-                        child: SizedBox(
-                          width: 16.w,
-                          height: 16.w,
-                          child: CircularProgressIndicator(
-                              color: ext.accentGold, strokeWidth: 2),
-                        ),
-                      )
-                    : null,
-                filled: true,
-                fillColor: ext.searchFieldFill,
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(14.r),
-                ),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-                isDense: true,
-              ),
+              loading: _loading,
               onChanged: (q) => _search(q),
             ),
           ),

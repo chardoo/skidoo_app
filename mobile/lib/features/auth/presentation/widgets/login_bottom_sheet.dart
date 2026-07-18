@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/password_textfield.dart';
-import 'package:skidoo_app/core/common/textfield.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/login/login_bloc.dart';
+import 'package:skidoo_app/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/forget_password_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
-import 'package:skidoo_app/widgets/loader.dart';
 
 /// Shows the login bottom sheet. [onLoginSuccess] is called after successful
 /// login so the caller can navigate appropriately.
@@ -87,14 +87,24 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return BlocListener<LoginBloc, LoginState>(
-      listenWhen: (p, c) => p.isSuccess != c.isSuccess,
+      listenWhen: (p, c) =>
+          p.isSuccess != c.isSuccess ||
+          p.needsEmailVerification != c.needsEmailVerification,
       listener: (context, state) {
         if (state.isSuccess) {
           Navigator.of(context).pop();
           widget.onLoginSuccess();
+          return;
         }
-        // Errors are shown inline below (a SnackBar would render behind this
-        // modal sheet and never be seen).
+        if (state.needsEmailVerification) {
+          context.read<LoginBloc>().add(const LoginEmailVerificationHandled());
+          final email = _emailCtrl.text.trim();
+          Navigator.of(context).pop();
+          EmailVerificationPage.push(context, email: email);
+          return;
+        }
+        // Other errors are shown inline below (a SnackBar would render
+        // behind this modal sheet and never be seen).
       },
       child: AnimatedPadding(
         duration: const Duration(milliseconds: 200),
@@ -148,7 +158,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                       ),
                       SizedBox(width: 8.w),
                       Text(
-                        'SKIDDO',
+                        'JPERG',
                         style: TextStyle(
                           color: ext.logoTextColor,
                           fontWeight: FontWeight.bold,
@@ -219,17 +229,16 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                   ),
 
                   // ── Fields ──────────────────────────────────────────────
-                  MyTextField(
+                  AppTextField(
                     controller: _emailCtrl,
                     validator: (v) => Validators.emailValidator(v),
                     label: 'Email',
                   ),
                   SizedBox(height: 16.h),
-                  PasswordField(
+                  AppPasswordField(
                     label: 'Password',
-                    validator: (v) =>
-                        Validators.passwordValidator(v as String?),
-                    pwdController: _passwordCtrl,
+                    validator: (v) => Validators.passwordValidator(v),
+                    controller: _passwordCtrl,
                   ),
 
                   // ── Forgot password ─────────────────────────────────────
@@ -255,30 +264,11 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                   // ── Login button ────────────────────────────────────────
                   BlocBuilder<LoginBloc, LoginState>(
                     builder: (context, state) {
-                      return SizedBox(
-                        width: double.infinity,
-                        height: 50.h,
-                        child: state.isLoading
-                            ? const LoadingButton()
-                            : FilledButton(
-                                onPressed: _filled ? _submit : null,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: ext.accentGold,
-                                  disabledBackgroundColor:
-                                      ext.accentGold.withValues(alpha: 0.4),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12.r),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Log in',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
+                      return AppButton(
+                        fullWidth: true,
+                        isLoading: state.isLoading,
+                        onPressed: _filled ? _submit : null,
+                        label: 'Log in',
                       );
                     },
                   ),

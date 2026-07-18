@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
+import 'package:skidoo_app/core/common/widgets/app_confirm_dialog.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
@@ -108,7 +111,7 @@ class GroupInfoPage extends StatelessWidget {
                             ? '$activeCount participant${activeCount == 1 ? '' : 's'} · $pendingCount pending'
                             : '$activeCount participant${activeCount == 1 ? '' : 's'}',
                         style: TextStyle(
-                          color: ext.accentGold,
+                          color: ext.searchHintColor,
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.4,
@@ -208,72 +211,31 @@ class GroupInfoPage extends StatelessWidget {
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  void _confirmLeave(BuildContext context, AppThemeExtension ext) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: ext.cardSurface,
-        title: Text(
-          'Leave group?',
-          style: TextStyle(color: ext.greetingColor, fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'You will no longer receive messages from this group.',
-          style: TextStyle(color: ext.searchHintColor, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: Text('Cancel',
-                style: TextStyle(color: ext.searchHintColor)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogCtx).pop();
-              context
-                  .read<ChatRoomBloc>()
-                  .add(const ChatRoomLeaveGroupRequested());
-            },
-            child: const Text('Leave',
-                style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+  Future<void> _confirmLeave(BuildContext context, AppThemeExtension ext) async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Leave group?',
+      message: 'You will no longer receive messages from this group.',
+      confirmLabel: 'Leave',
+      isDestructive: true,
     );
+    if (confirmed && context.mounted) {
+      context.read<ChatRoomBloc>().add(const ChatRoomLeaveGroupRequested());
+    }
   }
 
-  void _confirmDelete(BuildContext context, AppThemeExtension ext) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: ext.cardSurface,
-        title: Text(
-          'Delete group?',
-          style: TextStyle(color: ext.greetingColor, fontWeight: FontWeight.bold),
-        ),
-        content: Text(
+  Future<void> _confirmDelete(BuildContext context, AppThemeExtension ext) async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Delete group?',
+      message:
           'This will permanently delete the group and all its messages for everyone. This cannot be undone.',
-          style: TextStyle(color: ext.searchHintColor, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: Text('Cancel',
-                style: TextStyle(color: ext.searchHintColor)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogCtx).pop();
-              context
-                  .read<ChatRoomBloc>()
-                  .add(const ChatRoomDeleteRequested());
-            },
-            child: const Text('Delete',
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete',
+      isDestructive: true,
     );
+    if (confirmed && context.mounted) {
+      context.read<ChatRoomBloc>().add(const ChatRoomDeleteRequested());
+    }
   }
 }
 
@@ -391,53 +353,19 @@ class _RenameSectionState extends State<_RenameSection> {
           Row(
             children: [
               Expanded(
-                child: TextField(
+                child: AppTextField(
                   controller: _ctrl,
-                  style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-                  decoration: InputDecoration(
-                    hintText: 'Enter group name',
-                    hintStyle:
-                        TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-                    filled: true,
-                    fillColor: ext.homeBackground,
-                    contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12.w, vertical: 10.h),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                      borderSide: BorderSide(
-                          color: ext.searchHintColor.withValues(alpha: 0.2)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                      borderSide: BorderSide(
-                          color: ext.searchHintColor.withValues(alpha: 0.2)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.r),
-                      borderSide:
-                          BorderSide(color: ext.accentGold, width: 1.5),
-                    ),
-                  ),
-                  onSubmitted: (_) => _save(context),
+                  dense: true,
+                  hint: 'Enter group name',
+                  onFieldSubmitted: (_) => _save(context),
                 ),
               ),
               SizedBox(width: 10.w),
-              TextButton(
+              AppButton(
+                label: 'Save',
+                width: 80,
+                height: 40,
                 onPressed: () => _save(context),
-                style: TextButton.styleFrom(
-                  backgroundColor: ext.accentGold,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(
-                      horizontal: 16.w, vertical: 10.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                ),
-                child: Text(
-                  'Save',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13.sp),
-                ),
               ),
             ],
           ),

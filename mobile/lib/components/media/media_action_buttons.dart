@@ -11,10 +11,102 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/features/gallery/data/datasources/overlay_remote_data_source.dart';
 import 'package:skidoo_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
 import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
 import 'package:skidoo_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
+
+/// Fetches the creator-branded overlay image and hands it to the native OS
+/// share sheet. This is THE external-share routine for the whole app — every
+/// card's "share to other apps" icon (discovery page, Home "For You"/
+/// "Following", the Found tab, the event-pictures feed) calls this exact
+/// function so the branding behaviour never diverges between screens. Also
+/// used internally by [MediaActionButtons]'s own Share/Download buttons.
+///
+/// [imageId] is the picture's `id` (matches the existing `imageId:` param
+/// convention already used by every [MediaActionButtons] call site).
+/// [isDownload] only changes the loading copy and the shared "text" (kept
+/// null for downloads on web, matching the prior behaviour) — the actual
+/// action is the same OS share/save sheet either way, since there is no
+/// permission-free direct gallery-write API in this app.
+Future<void> shareOverlayPhotoExternally(
+  BuildContext context, {
+  required String imageId,
+  required String photographerName,
+  String eventName = '',
+  bool isDownload = false,
+  Rect? shareOrigin,
+}) async {
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.transparent,
+    builder: (_) => _ProcessingOverlay(
+      label: isDownload ? 'Preparing download…' : 'Preparing to share…',
+    ),
+  );
+
+  try {
+    final result =
+        await sl<GetOverlayImageUseCase>()(imageId, photographerName);
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    final safeId = imageId.replaceAll('/', '_').replaceAll('\\', '_');
+    final filename = 'overlay_$safeId.${result.fileExtension}';
+    final subject = eventName.isNotEmpty ? eventName : 'Photo';
+    final text =
+        eventName.isNotEmpty ? 'Check out $eventName!' : 'Check out this photo!';
+
+    if (kIsWeb) {
+      // ── Web: use in-memory XFile — no temp file writes ──────────────────
+      final xFile = XFile.fromData(
+        result.bytes,
+        mimeType: result.contentType,
+        name: filename,
+      );
+      try {
+        await Share.shareXFiles(
+          [xFile],
+          subject: subject,
+          text: isDownload ? null : text,
+        );
+      } catch (_) {
+        // Browser doesn't support Web Share API Level 2 — fall back to
+        // triggering a browser download via a data URI.
+        final dataUri =
+            'data:${result.contentType};base64,${base64Encode(result.bytes)}';
+        await launchUrl(Uri.parse(dataUri), mode: LaunchMode.externalApplication);
+      }
+      return;
+    }
+
+    // ── Mobile: write temp file → OS share sheet ─────────────────────────
+    final dir = await getTemporaryDirectory();
+    final filePath = '${dir.path}/$filename';
+    await File(filePath).writeAsBytes(result.bytes, flush: true);
+
+    await Share.shareXFiles(
+      [XFile(filePath, mimeType: result.contentType)],
+      subject: subject,
+      text: text,
+      sharePositionOrigin: shareOrigin,
+    );
+
+    // Clean up after the OS share sheet closes.
+    try {
+      await File(filePath).delete();
+    } catch (_) {}
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      AppSnackBar.error(
+        context,
+        'Could not prepare file: $e',
+        margin: const EdgeInsets.only(bottom: 80, left: 24, right: 24),
+      );
+    }
+  }
+}
 
 /// Reusable **Like / Download / Share / Comment** action buttons for any media item.
 ///
@@ -135,91 +227,18 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
         ? box.localToGlobal(Offset.zero) & box.size
         : null;
 
-    debugPrint('[SHARE] ── _handleAction start ──────────────────────');
-    debugPrint('[SHARE] isDownload=$isDownload kIsWeb=$kIsWeb shareOrigin=$shareOrigin');
-    debugPrint('[SHARE] widget.imageId="${widget.imageId}"');
-
-    _showLoadingOverlay(isDownload: isDownload);
-
-    try {
-      final OverlayResult result = await sl<GetOverlayImageUseCase>()(
-        widget.imageId,
-        widget.photographerName,
-      );
-
-      debugPrint('[SHARE] Overlay API success — contentType="${result.contentType}" bytes=${result.bytes.length}');
-
-      if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-      setState(() { _downloading = false; _sharing = false; });
-
-      final safeId = widget.imageId.replaceAll('/', '_').replaceAll('\\', '_');
-      final filename = 'overlay_$safeId.${result.fileExtension}';
-      final subject = widget.eventName.isNotEmpty ? widget.eventName : 'Photo';
-      final text = widget.eventName.isNotEmpty
-          ? 'Check out ${widget.eventName}!'
-          : 'Check out this photo!';
-
-      if (kIsWeb) {
-        // ── Web: use in-memory XFile — no temp file writes ──────────────────
-        final xFile = XFile.fromData(
-          result.bytes,
-          mimeType: result.contentType,
-          name: filename,
-        );
-        try {
-          // Web Share API Level 2 (Chrome/Edge/Safari) — shares a real file.
-          await Share.shareXFiles(
-            [xFile],
-            subject: subject,
-            text: isDownload ? null : text,
-          );
-        } catch (_) {
-          // Browser doesn't support Web Share API Level 2 — fall back to
-          // triggering a browser download via a data URI.
-          final dataUri =
-              'data:${result.contentType};base64,${base64Encode(result.bytes)}';
-          await launchUrl(
-            Uri.parse(dataUri),
-            mode: LaunchMode.externalApplication,
-          );
-        }
-        return;
-      }
-
-      // ── Mobile: write temp file → OS share sheet ─────────────────────────
-      final dir = await getTemporaryDirectory();
-      final filePath = '${dir.path}/$filename';
-      await File(filePath).writeAsBytes(result.bytes, flush: true);
-
-      await Share.shareXFiles(
-        [XFile(filePath, mimeType: result.contentType)],
-        subject: subject,
-        text: text,
-        sharePositionOrigin: shareOrigin,
-      );
-
-      // Clean up after the OS share sheet closes.
-      try { await File(filePath).delete(); } catch (_) {}
-    } catch (e, st) {
-      debugPrint('[SHARE] ERROR: $e\n$st');
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-        setState(() { _downloading = false; _sharing = false; });
-        _snack('Could not prepare file: $e');
-      }
-    }
-  }
-
-  void _showLoadingOverlay({required bool isDownload}) {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.transparent,
-      builder: (_) => _ProcessingOverlay(
-        label: isDownload ? 'Preparing download…' : 'Preparing to share…',
-      ),
+    await shareOverlayPhotoExternally(
+      context,
+      imageId: widget.imageId,
+      photographerName: widget.photographerName,
+      eventName: widget.eventName,
+      isDownload: isDownload,
+      shareOrigin: shareOrigin,
     );
+
+    if (mounted) {
+      setState(() { _downloading = false; _sharing = false; });
+    }
   }
 
   void _toggleLike() {
@@ -264,7 +283,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
           key: _downloadKey,
           icon: Icons.download_rounded,
           label: '',
-          color: const Color(0xFFF5A623),
+          color: const Color(0xFF0BA98A),
           size: _btnSize,
           iconSize: _icnSize,
           busy: _downloading,
@@ -331,14 +350,6 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
     return Row(
       mainAxisSize: MainAxisSize.max,
       children: withDividers,
-    );
-  }
-
-  void _snack(String msg) {
-    AppSnackBar.error(
-      context,
-      msg,
-      margin: EdgeInsets.only(bottom: 80.h, left: 24.w, right: 24.w),
     );
   }
 }
@@ -426,13 +437,13 @@ class _ProcessingOverlayState extends State<_ProcessingOverlay>
                             child: const CircularProgressIndicator(
                               strokeWidth: 2.5,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFFF5A623),
+                                Color(0xFF0BA98A),
                               ),
                             ),
                           ),
                           Icon(
                             Icons.auto_awesome_rounded,
-                            color: const Color(0xFFF5A623),
+                            color: const Color(0xFF0BA98A),
                             size: 22.sp,
                           ),
                         ],
@@ -546,7 +557,7 @@ class _MediaBtnState extends State<_MediaBtn>
                   radius: 1.4,
                 ),
                 border: Border.all(
-                  color: const Color(0xFFF5A623).withValues(alpha: 0.35),
+                  color: const Color(0xFF0BA98A).withValues(alpha: 0.35),
                   width: 1,
                 ),
                 boxShadow: [
@@ -557,7 +568,7 @@ class _MediaBtnState extends State<_MediaBtn>
                     offset: const Offset(0, 3),
                   ),
                   BoxShadow(
-                    color: const Color(0xFFF5A623).withValues(alpha: 0.08),
+                    color: const Color(0xFF0BA98A).withValues(alpha: 0.08),
                     blurRadius: 8,
                     spreadRadius: 0,
                   ),

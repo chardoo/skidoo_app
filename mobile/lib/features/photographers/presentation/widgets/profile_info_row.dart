@@ -19,7 +19,7 @@ class PhotographerInfoRow extends StatelessWidget {
             color: ext.cardSurface,
             borderRadius: BorderRadius.circular(10.r),
           ),
-          child: Icon(icon, size: 16.sp, color: ext.accentGold),
+          child: Icon(icon, size: 16.sp, color: ext.searchHintColor),
         ),
         SizedBox(width: 12.w),
         Flexible(

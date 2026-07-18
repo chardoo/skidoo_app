@@ -22,8 +22,18 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
 
   @override
   Future<LoginResponseObject> call(LoginParams params) async {
-    final previousUserId = await _authService.getUserId();
     final user = await _repository.login(params.email, params.password);
+    await establishSession(user);
+    return user;
+  }
+
+  /// Persists [user]'s session and runs post-auth bring-up (wiping local data
+  /// on an account switch, publishing/rotating E2EE keys). Shared by [call]
+  /// and by [VerifyCodeUseCase] after email-OTP verification — both receive a
+  /// fresh [LoginResponseObject] from the backend and need identical session
+  /// establishment.
+  Future<void> establishSession(LoginResponseObject user) async {
+    final previousUserId = await _authService.getUserId();
 
     if (!kIsWeb) {
       // Different user on the same device — wipe all user-scoped local data
@@ -74,8 +84,6 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
       // Phase 2 + SPK rotation — fire-and-forget so login is never blocked.
       unawaited(_maintainKeysAfterLogin());
     }
-
-    return user;
   }
 
   /// Phase 2 (OTPK replenishment) and SPK rotation, run on every login/app

@@ -57,13 +57,13 @@ class Styles {
                 ? Colors.white
                 : const Color.fromARGB(255, 9, 10, 9)),
       ),
-      fontFamily: GoogleFonts.spaceGrotesk().fontFamily,
+      fontFamily: GoogleFonts.poppins().fontFamily,
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: isDarkTheme
-            ? const Color.fromARGB(255, 10, 13, 17)
+            ? const Color(0xFF0A1310)
             : Colors.white,
         selectedItemColor:
-            isDarkTheme ? Colors.white : const Color(0xFFF5A623),
+            isDarkTheme ? Colors.white : const Color(0xFF0BA98A),
         // Darker grey on the light nav bar so unselected items meet AA contrast
         // (0xFF9A9AAA is ~2.5:1 on white).
         unselectedItemColor:
@@ -77,12 +77,12 @@ class Styles {
           fontWeight: FontWeight.w500,
         ),
       ),
-      primaryColor: const Color(0xFFFF8303),
+      primaryColor: const Color(0xFF0BA98A),
       indicatorColor: isDarkTheme
-          ? const Color(0xff0E1D36)
+          ? const Color(0xFF0F241C)
           : const Color.fromARGB(255, 195, 197, 201),
       hintColor: isDarkTheme
-          ? const Color(0xff280C0B)
+          ? const Color(0xFF10201A)
           : const Color.fromARGB(255, 255, 255, 255),
       dialogTheme: DialogThemeData(
         backgroundColor:
@@ -100,30 +100,30 @@ class Styles {
         headlineMedium: TextStyle(
             color: isDarkTheme ? Colors.white : Colors.black,
             fontSize: 16.sp),
-        headlineSmall: GoogleFonts.spaceGrotesk(
+        headlineSmall: GoogleFonts.poppins(
             fontWeight: FontWeight.w300,
             fontStyle: FontStyle.normal,
             fontSize: 14.sp,
             color: isDarkTheme ? Colors.white : const Color(0xff280C0B)),
-        displaySmall: GoogleFonts.spaceGrotesk(
+        displaySmall: GoogleFonts.poppins(
           fontFeatures: [const FontFeature.subscripts()],
           fontSize: 13.sp,
         ),
-        displayMedium: GoogleFonts.spaceGrotesk(
+        displayMedium: GoogleFonts.poppins(
             fontWeight: FontWeight.w500,
             fontStyle: FontStyle.normal,
             fontSize: 13.sp,
             color: isDarkTheme ? Colors.white : const Color(0xff280C0B)),
-        displayLarge: GoogleFonts.spaceGrotesk(
+        displayLarge: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
             fontStyle: FontStyle.normal,
             fontSize: 24.sp,
             color: isDarkTheme ? Colors.white : Colors.black),
       ),
-      focusColor: Colors.orange,
+      focusColor: const Color(0xFF0BA98A),
       disabledColor: Colors.grey,
-      cardColor: isDarkTheme ? const Color(0xFF151515) : Colors.white,
-      canvasColor: isDarkTheme ? Colors.black : Colors.grey[50],
+      cardColor: isDarkTheme ? const Color(0xFF141F19) : Colors.white,
+      canvasColor: isDarkTheme ? const Color(0xFF060A08) : Colors.grey[50],
       brightness: isDarkTheme ? Brightness.dark : Brightness.light,
       buttonTheme: ButtonThemeData(
         colorScheme: isDarkTheme
@@ -139,7 +139,7 @@ class Styles {
           color: isDarkTheme ? Colors.white : Colors.black,
           fontSize: 18.sp,
           fontWeight: FontWeight.w600,
-          fontFamily: GoogleFonts.spaceGrotesk().fontFamily,
+          fontFamily: GoogleFonts.poppins().fontFamily,
         ),
         iconTheme: IconThemeData(
           color: isDarkTheme ? Colors.white : Colors.black,
@@ -149,7 +149,7 @@ class Styles {
         isDarkTheme ? AppThemeExtension.dark : AppThemeExtension.light,
       ],
       scaffoldBackgroundColor: isDarkTheme
-          ? const Color.fromARGB(255, 10, 13, 17)
+          ? const Color(0xFF0A1310)
           : const Color(0xFFF2F2F7),
       colorScheme: ColorScheme(
         brightness: isDarkTheme ? Brightness.dark : Brightness.light,
@@ -161,7 +161,7 @@ class Styles {
         secondary: const Color(0xFF42B546),
         error: isDarkTheme ? Colors.white : Colors.black,
         onError: isDarkTheme ? Colors.white : Colors.black,
-        surface: isDarkTheme ? const Color(0xFF1A1D24) : Colors.white,
+        surface: isDarkTheme ? const Color(0xFF16241D) : Colors.white,
         onSurface: isDarkTheme ? Colors.white : Colors.black,
       ),
     );

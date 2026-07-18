@@ -47,6 +47,9 @@ class AuthService {
   static const _kRole              = 'auth.role';
   static const _kHasAddedFaces     = 'auth.has_added_faces';
   static const _kLastFacePrompt    = 'auth.last_face_prompt';
+  static const _kHasSeenOnboarding = 'auth.has_seen_onboarding';
+  static const _kAudiencePreference = 'auth.audience_preference';
+  static const _kInstallMarker     = 'auth.install_marker';
 
   // ── Adaptive helpers ─────────────────────────────────────────────────────────
 
@@ -175,6 +178,20 @@ class AuthService {
   Future<String> getRole() async => await _read(_kRole) ?? '';
   Future<bool> isSuperAdmin() async => (await getRole()) == 'super_admin';
 
+  // ── Onboarding ───────────────────────────────────────────────────────────────
+  /// Device-level flag (not cleared on logout) — the 3-screen intro carousel
+  /// is shown once ever, not on every logged-out cold start.
+  Future<void> setHasSeenOnboarding() => _write(_kHasSeenOnboarding, 'true');
+  Future<bool> getHasSeenOnboarding() async =>
+      (await _read(_kHasSeenOnboarding)) == 'true';
+
+  /// "I'm here to discover" vs "Share my work" — a local content-personalisation
+  /// signal only, does not change the account's role.
+  Future<void> setAudiencePreference(String preference) =>
+      _write(_kAudiencePreference, preference);
+  Future<String> getAudiencePreference() async =>
+      await _read(_kAudiencePreference) ?? '';
+
   // ── Session teardown ──────────────────────────────────────────────────────────
   /// Deletes every auth key so non-auth preferences are untouched.
   Future<void> removeToken() {
@@ -193,6 +210,52 @@ class AuthService {
       _delete(_kTimezone),
       _delete(_kInterestTags),
       _delete(_kRole),
+    ]);
+  }
+
+  // ── Fresh-install detection ───────────────────────────────────────────────────
+  /// On iOS, Keychain entries (what [FlutterSecureStorage] uses) survive app
+  /// deletion — only the sandboxed container (SharedPreferences) is actually
+  /// wiped on uninstall. Without this check, a "fresh install" silently
+  /// inherits the previous install's token/onboarding-seen/etc. from the
+  /// Keychain and looks like a returning user.
+  ///
+  /// [_kInstallMarker] itself lives in SharedPreferences (not Keychain), so
+  /// it reads back false exactly once per real install, on every platform.
+  Future<bool> isFreshInstall() async {
+    final prefs = await SharedPreferences.getInstance();
+    return !(prefs.getBool(_kInstallMarker) ?? false);
+  }
+
+  Future<void> markInstalled() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kInstallMarker, true);
+  }
+
+  /// Wipes every key this service persists — the superset of [removeToken]
+  /// (which deliberately keeps onboarding/faces state across a logout).
+  /// Only call this when [isFreshInstall] is true.
+  Future<void> resetAllForFreshInstall() async {
+    isAuthenticated.value = false;
+    await Future.wait([
+      _delete(_kToken),
+      _delete(_kExpiration),
+      _delete(_kUniqueName),
+      _delete(_kEmail),
+      _delete(_kId),
+      _delete(_kName),
+      _delete(_kContact),
+      _delete(_kCountryCode),
+      _delete(_kLocale),
+      _delete(_kPreferredLanguage),
+      _delete(_kTimezone),
+      _delete(_kInterestTags),
+      _delete(_kRole),
+      _delete(_kHasAddedFaces),
+      _delete(_kLastFacePrompt),
+      _delete(_kHasSeenOnboarding),
+      _delete(_kAudiencePreference),
+      _delete(_kPendingInterests),
     ]);
   }
 }

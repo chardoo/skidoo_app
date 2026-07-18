@@ -81,44 +81,18 @@ class _PhotographersPageState extends State<PhotographersPage> {
                 child: ValueListenableBuilder<TextEditingValue>(
                   valueListenable: _textCtrl,
                   builder: (context, value, _) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: ext.glassFill,
-                        borderRadius: BorderRadius.circular(12.r),
-                        border: Border.all(color: ext.glassBorder),
-                      ),
-                      child: TextField(
-                        controller: _textCtrl,
-                        style:
-                            TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-                        decoration: InputDecoration(
-                          hintText: 'Search creators...',
-                          hintStyle: TextStyle(
-                                    color: ext.glassHint, fontSize: 14.sp),
-                          prefixIcon: Icon(Icons.search_rounded,
-                              color: ext.glassIcon, size: 20.sp),
-                          suffixIcon: value.text.isNotEmpty
-                              ? Semantics(button: true, label: 'Clear search', child: GestureDetector(
-                                  onTap: () {
-                                    _textCtrl.clear();
-                                    context
-                                        .read<PhotographerBloc>()
-                                        .add(PhotographersSearched(''));
-                                  },
-                                  child: Icon(Icons.close_rounded,
-                                      color: ext.searchHintColor, size: 18.sp),
-                                ))
-                              : null,
-                          border: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          isDense: true,
-                          contentPadding:
-                              EdgeInsets.symmetric(vertical: 12.h),
-                        ),
-                        onChanged: (q) => context
+                    return SearchField(
+                      controller: _textCtrl,
+                      hint: 'Search creators...',
+                      onChanged: (q) => context
+                          .read<PhotographerBloc>()
+                          .add(PhotographersSearched(q)),
+                      onClear: () {
+                        _textCtrl.clear();
+                        context
                             .read<PhotographerBloc>()
-                            .add(PhotographersSearched(q)),
-                      ),
+                            .add(const PhotographersSearched(''));
+                      },
                     );
                   },
                 ),

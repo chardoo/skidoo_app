@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:skidoo_app/core/common/customButtom.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
@@ -64,10 +64,11 @@ class _CartView extends StatelessWidget {
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
         final page = Scaffold(
           appBar: AppBar(
+            backgroundColor: ext.homeBackground,
             title: Text(
               'My Cart',
               style: TextStyle(
-                  color: Colors.white,
+                  color: ext.greetingColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 15.sp),
             ),
@@ -78,12 +79,12 @@ class _CartView extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.image, size: 80.sp),
+                        Icon(Icons.image,
+                            size: 80.sp, color: ext.searchHintColor),
                         Text(
                           'Cart Empty',
                           style: TextStyle(
-                              fontSize: 16.sp,
-                              color: const Color.fromARGB(255, 221, 217, 217)),
+                              fontSize: 16.sp, color: ext.searchHintColor),
                         ),
                       ],
                     ),
@@ -107,18 +108,16 @@ class _CartView extends StatelessWidget {
           floatingActionButtonLocation:
               FloatingActionButtonLocation.centerDocked,
           floatingActionButton: state.items.isNotEmpty
-              ? state.status == CartStatus.paymentLoading
-                  ? const CircularProgressIndicator()
-                  : CustomButton(
-                      width: 343.w,
-                      height: 50.h,
-                      label: 'Pay ${state.totalAmount}',
-                      ontap: state.totalAmount > 0
-                          ? () => context
-                              .read<CartBloc>()
-                              .add(const CartPaymentInitiated())
-                          : null,
-                    )
+              ? AppButton(
+                  width: 343.w,
+                  isLoading: state.status == CartStatus.paymentLoading,
+                  label: 'Pay ${state.totalAmount}',
+                  onPressed: state.totalAmount > 0
+                      ? () => context
+                          .read<CartBloc>()
+                          .add(const CartPaymentInitiated())
+                      : null,
+                )
               : null,
         );
         return webWrap(page, backgroundColor: ext.homeBackground);

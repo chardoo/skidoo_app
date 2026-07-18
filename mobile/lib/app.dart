@@ -11,6 +11,7 @@ import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/theme/theme_cubit.dart';
 import 'package:skidoo_app/core/navigation/app_navigator.dart';
 import 'package:skidoo_app/core/navigation/web_route_observer.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
 import 'package:skidoo_app/core/common/widgets/web_sidebar.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/interests_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
@@ -19,6 +20,8 @@ import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
+import 'package:skidoo_app/features/onboarding/presentation/pages/onboarding_page.dart';
+import 'package:skidoo_app/features/splash/presentation/pages/splash_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 // ── Web layout constants ──────────────────────────────────────────────────────
@@ -39,10 +42,15 @@ class MyApp extends StatelessWidget {
   /// jailbroken.
   final bool isDeviceCompromised;
 
+  /// True once the first-run onboarding carousel has been shown (Skip or
+  /// finishing the last slide) — mobile-only, gates the cold-start route.
+  final bool hasSeenOnboarding;
+
   const MyApp({
     super.key,
     required this.token,
     this.isDeviceCompromised = false,
+    this.hasSeenOnboarding = false,
   });
 
   @override
@@ -70,6 +78,7 @@ class MyApp extends StatelessWidget {
             : _MobileApp(
                 token: token,
                 isDeviceCompromised: isDeviceCompromised,
+                hasSeenOnboarding: hasSeenOnboarding,
                 themeMode: themeMode,
               ),
       ),
@@ -83,11 +92,13 @@ class _MobileApp extends StatelessWidget {
   const _MobileApp({
     required this.token,
     required this.isDeviceCompromised,
+    required this.hasSeenOnboarding,
     required this.themeMode,
   });
 
   final String token;
   final bool isDeviceCompromised;
+  final bool hasSeenOnboarding;
   final ThemeMode themeMode;
 
   @override
@@ -99,6 +110,7 @@ class _MobileApp extends StatelessWidget {
       builder: (_, __) => _AppMaterial(
         token: token,
         isDeviceCompromised: isDeviceCompromised,
+        hasSeenOnboarding: hasSeenOnboarding,
         themeMode: themeMode,
       ),
     );
@@ -174,6 +186,9 @@ class _WebAppState extends State<_WebApp> with WidgetsBindingObserver {
     return _AppMaterial(
       token: widget.token,
       isDeviceCompromised: widget.isDeviceCompromised,
+      // Web never shows the mobile-only onboarding carousel (see the
+      // initialRoute comment below) — the value is irrelevant here.
+      hasSeenOnboarding: true,
       themeMode: widget.themeMode,
     );
   }
@@ -185,11 +200,13 @@ class _AppMaterial extends StatelessWidget {
   const _AppMaterial({
     required this.token,
     required this.isDeviceCompromised,
+    required this.hasSeenOnboarding,
     required this.themeMode,
   });
 
   final String token;
   final bool isDeviceCompromised;
+  final bool hasSeenOnboarding;
   final ThemeMode themeMode;
 
   @override
@@ -212,20 +229,35 @@ class _AppMaterial extends StatelessWidget {
         Locale('de'),
       ],
       scrollBehavior: kIsWeb ? const _WebScrollBehavior() : null,
-      // On web: sidebar + centred 480 dp column (its builder also wraps in a
-      // SelectionArea). On mobile: wrap in a SelectionArea so every Text is
-      // selectable / copyable there too.
-      builder: kIsWeb ? _webLayoutBuilder : _mobileSelectionBuilder,
+      // On web: sidebar + centred 480 dp column (its builder wraps content in
+      // a SelectionArea — standard click-drag copy on desktop). On mobile,
+      // no ambient SelectionArea: it fought with double-tap-to-like,
+      // long-press-for-options, and swipe gestures on feed cards/chat
+      // bubbles, popping the native "Select All" menu unpredictably, and
+      // could crash on nested Scrollables (flutter/flutter#111690).
+      builder: kIsWeb ? _webLayoutBuilder : null,
       navigatorObservers: kIsWeb ? [WebRouteObserver.instance] : [],
       // Web: always start at Discovery so a hard-refresh (⇧⌘R) gives a clean
       // slate. _GuestGuard redirects authenticated users to /home immediately.
       //
-      // Native iOS/Android: returning users (valid token) skip straight to
-      // /home — no flash of the guest feed on every cold start.
-      initialRoute: (!kIsWeb && token.isNotEmpty)
-          ? HomePage.routeName
-          : DiscoveryPage.routeName,
+      // Native iOS/Android: every cold start plays the branded splash first
+      // (including already-logged-in users, who previously had no splash
+      // moment at all), then hands off to the real destination: returning
+      // users (valid token) go to /home; first-ever launch (no token,
+      // onboarding never shown) goes to the 3-screen intro carousel; every
+      // other logged-out cold start (including after "Continue as guest")
+      // goes straight to Discovery.
+      initialRoute: kIsWeb ? DiscoveryPage.routeName : SplashPage.routeName,
       routes: {
+        SplashPage.routeName: (_) => SplashPage(
+              nextRoute: token.isNotEmpty
+                  ? HomePage.routeName
+                  : !hasSeenOnboarding
+                      ? OnboardingPage.routeName
+                      : DiscoveryPage.routeName,
+            ),
+        OnboardingPage.routeName: (_) =>
+            const _GuestGuard(child: OnboardingPage()),
         // On web, guest-only pages redirect authenticated users to /home so
         // that pressing browser Back never lands on the unauthenticated UI.
         DiscoveryPage.routeName: (_) => _GuestGuard(
@@ -251,13 +283,6 @@ class _AppMaterial extends StatelessWidget {
       ),
     );
   }
-
-  /// Mobile wrapper: a [SelectionArea] so static text is selectable and
-  /// copyable (long-press to select, then Copy) — matching the web behaviour.
-  /// TextFields and buttons keep their own gestures; only plain Text becomes
-  /// selectable.
-  static Widget _mobileSelectionBuilder(BuildContext ctx, Widget? child) =>
-      _SelectionOverlay(child: child!);
 
   /// Web layout — adapts to viewport width:
   ///   ≥ 720 px (desktop): left sidebar + centred column (480→760 px) + download button
@@ -630,7 +655,7 @@ class _SecurityWarningPage extends StatelessWidget {
             children: [
               Icon(
                 Icons.shield_outlined,
-                color: const Color(0xFFF5A623),
+                color: const Color(0xFF0BA98A),
                 size: 72.sp,
               ),
               SizedBox(height: 24.h),
@@ -655,27 +680,14 @@ class _SecurityWarningPage extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 40.h),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFF5A623),
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.r),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pushReplacementNamed(
-                      DiscoveryPage.routeName,
-                    );
-                  },
-                  child: Text(
-                    AppLocalizations.of(context)!.securityWarningContinue,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
+              AppButton(
+                fullWidth: true,
+                label: AppLocalizations.of(context)!.securityWarningContinue,
+                onPressed: () {
+                  Navigator.of(context).pushReplacementNamed(
+                    DiscoveryPage.routeName,
+                  );
+                },
               ),
             ],
           ),

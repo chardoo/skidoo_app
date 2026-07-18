@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart' as dio;
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
@@ -14,7 +14,7 @@ abstract class PhotographerRemoteDataSource {
   Future<List<PhotographerSample>> getSamples(String photographerId);
   Future<List<PhotographerSample>> uploadSamples({
     required String photographerId,
-    required List<File> files,
+    required List<XFile> files,
   });
   Future<void> deleteSample({
     required String sampleId,
@@ -24,6 +24,28 @@ abstract class PhotographerRemoteDataSource {
     required String photographerId,
     required int page,
     required int limit,
+  });
+  Future<Map<String, dynamic>> getPhotographerProfile(String photographerId);
+  Future<void> updatePhotographerProfile({
+    required String photographerId,
+    String? studioName,
+    String? bio,
+    List<String>? specialties,
+  });
+  Future<String> uploadProfilePhoto({
+    required String photographerId,
+    required XFile photo,
+  });
+  Future<String> uploadStudioImage({
+    required String photographerId,
+    required XFile image,
+  });
+  Future<void> submitVerification({
+    required String photographerId,
+    required XFile idDocument,
+    required bool acceptedTerms,
+    required bool confirmedUploadRights,
+    required bool acceptedPayoutPolicy,
   });
 }
 
@@ -97,13 +119,13 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
   @override
   Future<List<PhotographerSample>> uploadSamples({
     required String photographerId,
-    required List<File> files,
+    required List<XFile> files,
   }) async {
     try {
-      final multiparts = await Future.wait(files.map((f) =>
-          dio.MultipartFile.fromFile(
-            f.path,
-            filename: f.uri.pathSegments.last,
+      final multiparts = await Future.wait(files.map((f) async =>
+          dio.MultipartFile.fromBytes(
+            await f.readAsBytes(),
+            filename: f.name,
           )));
       final formData = dio.FormData.fromMap({
         'userId': photographerId,
@@ -186,6 +208,155 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
       if (err.response == null) throw const app_ex.NetworkException();
       throw app_ex.ServerException(
           'Failed to load events: ${err.response?.statusCode} — ${err.response?.data}');
+    } catch (e) {
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> getPhotographerProfile(
+      String photographerId) async {
+    try {
+      final res = await _api.dio.get('/photographer/profile/$photographerId');
+      return res.data is Map<String, dynamic>
+          ? res.data as Map<String, dynamic>
+          : <String, dynamic>{};
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      throw app_ex.ServerException(
+          'Failed to load profile: ${err.response?.statusCode}');
+    } catch (e) {
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
+    }
+  }
+
+  /// `PATCH /photographer/profile/{id}` — confirmed contract
+  /// (`docs/FRONTEND_PROFILE_AND_SAMPLES.md`): multipart form, `bio`/
+  /// `specialties`/`studio_name` only. Photo uploads are separate dedicated
+  /// endpoints — see [uploadProfilePhoto] / [uploadStudioImage].
+  @override
+  Future<void> updatePhotographerProfile({
+    required String photographerId,
+    String? studioName,
+    String? bio,
+    List<String>? specialties,
+  }) async {
+    try {
+      final formData = dio.FormData.fromMap({
+        if (studioName != null) 'studio_name': studioName,
+        if (bio != null) 'bio': bio,
+        if (specialties != null) 'specialties': jsonEncode(specialties),
+      });
+      await _api.dio.patch(
+        '/photographer/profile/$photographerId',
+        data: formData,
+        options: dio.Options(contentType: 'multipart/form-data'),
+      );
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      throw app_ex.ServerException(
+          'Failed to update profile: ${err.response?.statusCode}');
+    } catch (e) {
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
+    }
+  }
+
+  /// `POST /photographer/profile/{id}/photo` — confirmed contract. Personal
+  /// avatar, distinct from [uploadStudioImage].
+  @override
+  Future<String> uploadProfilePhoto({
+    required String photographerId,
+    required XFile photo,
+  }) async {
+    try {
+      final formData = dio.FormData.fromMap({
+        'file': dio.MultipartFile.fromBytes(
+          await photo.readAsBytes(),
+          filename: photo.name,
+        ),
+      });
+      final res = await _api.dio.post(
+        '/photographer/profile/$photographerId/photo',
+        data: formData,
+        options: dio.Options(contentType: 'multipart/form-data'),
+      );
+      final body = res.data;
+      return body is Map ? (body['profile_url']?.toString() ?? '') : '';
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      throw app_ex.ServerException(
+          'Failed to upload profile photo: ${err.response?.statusCode}');
+    } catch (e) {
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
+    }
+  }
+
+  /// `POST /photographer/profile/{id}/studio-image` — confirmed contract.
+  /// Single image, each call replaces the previous one. Response:
+  /// `{"id": "...", "studio_image_url": "..."}`.
+  @override
+  Future<String> uploadStudioImage({
+    required String photographerId,
+    required XFile image,
+  }) async {
+    try {
+      final formData = dio.FormData.fromMap({
+        'file': dio.MultipartFile.fromBytes(
+          await image.readAsBytes(),
+          filename: image.name,
+        ),
+      });
+      final res = await _api.dio.post(
+        '/photographer/profile/$photographerId/studio-image',
+        data: formData,
+        options: dio.Options(contentType: 'multipart/form-data'),
+      );
+      final body = res.data;
+      return body is Map ? (body['studio_image_url']?.toString() ?? '') : '';
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      throw app_ex.ServerException(
+          'Failed to upload studio image: ${err.response?.statusCode}');
+    } catch (e) {
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
+    }
+  }
+
+  /// **Assumed** endpoint — no backend contract exists for this yet. See the
+  /// doc comment on [PhotographerRepository.submitVerification].
+  @override
+  Future<void> submitVerification({
+    required String photographerId,
+    required XFile idDocument,
+    required bool acceptedTerms,
+    required bool confirmedUploadRights,
+    required bool acceptedPayoutPolicy,
+  }) async {
+    try {
+      final formData = dio.FormData.fromMap({
+        'userId': photographerId,
+        'accepted_terms': acceptedTerms.toString(),
+        'confirmed_upload_rights': confirmedUploadRights.toString(),
+        'accepted_payout_policy': acceptedPayoutPolicy.toString(),
+        'file': dio.MultipartFile.fromBytes(
+          await idDocument.readAsBytes(),
+          filename: idDocument.name,
+        ),
+      });
+      await _api.dio.post(
+        '/photographer/verification',
+        data: formData,
+        options: dio.Options(contentType: 'multipart/form-data'),
+      );
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      throw app_ex.ServerException(
+          'Failed to submit verification: ${err.response?.statusCode}');
     } catch (e) {
       if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
       throw app_ex.ServerException('Unexpected error: $e');

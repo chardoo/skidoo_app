@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// App name
   ///
   /// In en, this message translates to:
-  /// **'Skidoo'**
+  /// **'Jperg'**
   String get appName;
 
   /// No description provided for @securityWarningTitle.
@@ -113,7 +113,7 @@ abstract class AppLocalizations {
   /// No description provided for @securityWarningBody.
   ///
   /// In en, this message translates to:
-  /// **'This device appears to be jailbroken or rooted.\n\nRunning Skidoo on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.'**
+  /// **'This device appears to be jailbroken or rooted.\n\nRunning Jperg on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.'**
   String get securityWarningBody;
 
   /// No description provided for @securityWarningContinue.
@@ -317,13 +317,13 @@ abstract class AppLocalizations {
   /// No description provided for @interestsTitle.
   ///
   /// In en, this message translates to:
-  /// **'What interests you?'**
+  /// **'What do you love?'**
   String get interestsTitle;
 
   /// No description provided for @interestsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Select topics to personalise your feed'**
+  /// **'Select at least 3 photography styles you enjoy.'**
   String get interestsSubtitle;
 
   /// No description provided for @interestsContinue.

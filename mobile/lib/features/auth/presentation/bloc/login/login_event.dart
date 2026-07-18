@@ -21,3 +21,9 @@ class LoginPasswordVisibilityToggled extends LoginEvent {
 class LoginErrorCleared extends LoginEvent {
   const LoginErrorCleared();
 }
+
+/// Dispatched by the page right after it navigates to EmailVerificationPage,
+/// so a later state change can't re-trigger that navigation.
+class LoginEmailVerificationHandled extends LoginEvent {
+  const LoginEmailVerificationHandled();
+}

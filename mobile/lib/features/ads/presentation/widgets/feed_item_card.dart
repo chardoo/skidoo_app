@@ -708,7 +708,12 @@ class _MediaBackground extends StatelessWidget {
           imageUrl: url,
           fit: BoxFit.contain,
           semanticLabel: 'Advertisement image',
-          placeholder: (_, __) => const SizedBox.shrink(),
+          // Non-opaque — the blurred backdrop stays visible behind the
+          // spinner while the full-res image is still loading.
+          placeholder: (_, __) => const Center(
+            child: CircularProgressIndicator(
+                color: Colors.white70, strokeWidth: 2),
+          ),
           errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
         ),
       ],
@@ -736,7 +741,7 @@ class _CreatorAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
-          colors: [ext.accentGold, const Color(0xFFFF6B35)],
+          colors: [ext.accentGold, const Color(0xFF078368)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -754,7 +759,7 @@ class _CreatorAvatar extends StatelessWidget {
           shape: BoxShape.circle,
           gradient: photo == null
               ? const LinearGradient(
-                  colors: [Color(0xFFFFAB40), Color(0xFFFF6B35)],
+                  colors: [Color(0xFF3DD9B4), Color(0xFF078368)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
@@ -921,7 +926,7 @@ class _CtaStripState extends State<_CtaStrip>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isAd
-                    ? [widget.ext.accentGold, const Color(0xFFFF6B35)]
+                    ? [widget.ext.accentGold, const Color(0xFF078368)]
                     : [const Color(0xFF3B82F6), const Color(0xFF1D4ED8)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -1115,7 +1120,12 @@ class _SingleMediaFrame extends StatelessWidget {
           imageUrl: media.url,
           fit: BoxFit.contain,
           semanticLabel: 'Advertisement image',
-          placeholder: (_, __) => const SizedBox.shrink(),
+          // Non-opaque — the blurred backdrop stays visible behind the
+          // spinner while the full-res image is still loading.
+          placeholder: (_, __) => const Center(
+            child: CircularProgressIndicator(
+                color: Colors.white70, strokeWidth: 2),
+          ),
           errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
         ),
         if (media.isVideo)

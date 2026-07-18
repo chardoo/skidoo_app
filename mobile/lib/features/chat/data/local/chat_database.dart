@@ -170,11 +170,14 @@ class ChatDatabase {
     await db.transaction((txn) async {
       for (final msg in messages) {
         // Remove any optimistic placeholder for this content + image combination.
-        // The IS operator handles NULL correctly in SQLite.
+        // The IS operator handles NULL correctly in SQLite — but sqflite's
+        // whereArgs validation rejects a literal null argument outright (see
+        // _imageUrlIsClause), so the clause/arg are built conditionally.
+        final (imageClause, imageArgs) = _imageUrlIsClause(msg.imageUrl);
         await txn.delete(
           'chat_messages',
-          where: 'room_id = ? AND is_local = 1 AND content = ? AND image_url IS ?',
-          whereArgs: [msg.roomId, msg.content, msg.imageUrl],
+          where: 'room_id = ? AND is_local = 1 AND content = ? AND $imageClause',
+          whereArgs: [msg.roomId, msg.content, ...imageArgs],
         );
 
         // Check whether a row with this id already exists so we can
@@ -248,10 +251,11 @@ class ChatDatabase {
       // Delete the matching optimistic placeholder if present.
       // Match on content + image_url so image-only messages don't accidentally
       // wipe unrelated local placeholders (SQLite IS handles NULL correctly).
+      final (imageClause, imageArgs) = _imageUrlIsClause(message.imageUrl);
       await txn.delete(
         'chat_messages',
-        where: 'room_id = ? AND is_local = 1 AND content = ? AND image_url IS ?',
-        whereArgs: [message.roomId, message.content, message.imageUrl],
+        where: 'room_id = ? AND is_local = 1 AND content = ? AND $imageClause',
+        whereArgs: [message.roomId, message.content, ...imageArgs],
       );
       await txn.insert(
         'chat_messages',
@@ -460,6 +464,17 @@ class ChatDatabase {
             .where((e) => e.value != null)
             .map((e) => MapEntry(e.key, e.value!)),
       );
+
+  /// Builds an `image_url IS ?` fragment + matching arg list, or
+  /// `image_url IS NULL` with no arg when [imageUrl] is null. SQLite's `IS`
+  /// operator handles NULL correctly either way, but sqflite's whereArgs
+  /// validation (unlike raw query args) rejects a literal null argument
+  /// outright — see sqflite_common's `checkWhereArgs` — so a null value can
+  /// never be placed in the args list itself.
+  (String, List<Object?>) _imageUrlIsClause(String? imageUrl) {
+    if (imageUrl == null) return ('image_url IS NULL', const []);
+    return ('image_url IS ?', [imageUrl]);
+  }
 
   ChatMessage _rowToMessage(Map<String, dynamic> row) {
     ReplyPreview? preview;

@@ -5,7 +5,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Bottom sheet (mobile) / dialog (web) shown when the user taps a feature
-/// that requires the native app — e.g. share. Prompts them to download Skidoo.
+/// that requires the native app — e.g. share. Prompts them to download Jperg.
 class GetAppSheet extends StatelessWidget {
   const GetAppSheet._({required this.ext, required this.featureLabel});
 
@@ -171,7 +171,7 @@ class GetAppSheet extends StatelessWidget {
             SizedBox(height: 8.h),
 
             Text(
-              'Download Skidoo to share, send to friends, and enjoy the full experience.',
+              'Download Jperg to share, send to friends, and enjoy the full experience.',
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 13.sp,

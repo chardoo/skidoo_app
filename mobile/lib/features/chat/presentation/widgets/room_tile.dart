@@ -191,7 +191,7 @@ class _RoomAvatar extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
-            colors: [ext.accentGold, const Color(0xFFFF6B35)],
+            colors: [ext.accentGold, const Color(0xFF078368)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),

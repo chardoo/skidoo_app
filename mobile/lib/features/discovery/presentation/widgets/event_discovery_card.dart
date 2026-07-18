@@ -5,23 +5,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/components/media/media_action_buttons.dart';
 import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
+import 'package:skidoo_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart' show CardInteractionBar;
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_description_text.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/report_sheet.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/carousel_arrow.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/heart_burst.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/image_footer.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/page_dots.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/post_header.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/unauth_cta.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/web_reactions_column.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
-import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/web_action_widgets.dart';
 
 /// Width of the main content column on web — must match app.dart's _kWebColumnWidth.
 const double _kWebColumnWidth = 480.0;
@@ -427,12 +432,12 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
               bottom: 16.h + controlsReserve,
               left: 14.w,
               right: kIsWeb ? 14.w : 82.w,
-              child: _ImageFooter(event: widget.event),
+              child: ImageFooter(event: widget.event),
             ),
             if (_showHeartBurst)
               Positioned.fill(
                 child: IgnorePointer(
-                  child: Center(child: _HeartBurst(ctrl: _heartCtrl)),
+                  child: Center(child: HeartBurst(ctrl: _heartCtrl)),
                 ),
               ),
             if (pics.length > 1)
@@ -440,14 +445,14 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 bottom: 10.h + controlsReserve,
                 left: 0,
                 right: 0,
-                child: _PageDots(
+                child: PageDots(
                   totalCount: _visibleCount,
                   controller: _pageCtrl,
                   maxRevealedPage: _maxRevealedPage,
                 ),
               ),
             if (!widget.isAuthenticated && pics.isEmpty)
-              _UnauthCta(onTap: widget.onTap),
+              UnauthCta(onTap: widget.onTap),
 
             // ── Web: prev / next carousel arrows (hover-revealed) ───────────
             if (showArrows)
@@ -466,7 +471,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                           Semantics(
                             button: true,
                             label: 'Previous photo',
-                            child: _CarouselArrow(
+                            child: CarouselArrow(
                               isLeft: true,
                               enabled: curIdx > 0,
                               onTap: () => _goToCarouselPage(curIdx - 1),
@@ -475,7 +480,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                           Semantics(
                             button: true,
                             label: 'Next photo',
-                            child: _CarouselArrow(
+                            child: CarouselArrow(
                               isLeft: false,
                               enabled: curIdx < visible.length - 1,
                               onTap: () => _goToCarouselPage(curIdx + 1),
@@ -518,7 +523,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   }) {
     // Shared reactions column — used standalone or as a narrow strip beside
     // the inline comment panel.
-    Widget buildReactions(BuildContext ctx) => _WebReactionsColumn(
+    Widget buildReactions(BuildContext ctx) => WebReactionsColumn(
           liked: _liked,
           disliked: _disliked,
           saved: _isSaved(ctx),
@@ -531,10 +536,16 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           mediaH: mediaH! * 1.5,
           photographerName: widget.event.photographerName,
           photographerId: widget.event.photographerId,
+          photographerProfileUrl: widget.event.photographerProfileUrl,
           isFollowed: widget.event.isFollowed,
           isOwner: widget.isOwner,
           isAuthenticated: widget.isAuthenticated,
-          onPhotographerTap: () => _openPhotographerProfile(ctx),
+          onPhotographerTap: () => openPhotographerProfile(
+            ctx,
+            photographerId: widget.event.photographerId,
+            photographerName: widget.event.photographerName,
+            photographerProfileUrl: widget.event.photographerProfileUrl,
+          ),
           onLoginRequired: widget.onTap,
           onLike: widget.isAuthenticated
               ? () {
@@ -808,6 +819,19 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 );
               }
             : widget.onTap,
+        onShareExternal: widget.isAuthenticated
+            ? () {
+                final p = widget.event.pictures;
+                if (p.isEmpty) return Future.value();
+                final pic = p[_currentPage.clamp(0, p.length - 1)];
+                return shareOverlayPhotoExternally(
+                  context,
+                  imageId: pic.id,
+                  photographerName: widget.event.photographerName,
+                  eventName: widget.event.eventName,
+                );
+              }
+            : null,
         onSave: widget.isAuthenticated
             ? () => ctx
                 .read<DiscoveryBloc>()
@@ -831,12 +855,17 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
         // ── Slim header ──────────────────────────────────────────────────
         Container(
           color: ext.cardSurface,
-          child: _PostHeader(
+          child: PostHeader(
             event: widget.event,
             ext: ext,
             isOwner: widget.isOwner,
             isAuthenticated: widget.isAuthenticated,
-            onPhotographerTap: () => _openPhotographerProfile(context),
+            onPhotographerTap: () => openPhotographerProfile(
+              context,
+              photographerId: widget.event.photographerId,
+              photographerName: widget.event.photographerName,
+              photographerProfileUrl: widget.event.photographerProfileUrl,
+            ),
             onHide: widget.onHide,
             onLoginRequired: widget.onTap,
             onImage: false,
@@ -891,31 +920,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     return _buildMobileLayout(context, ext, pics, screenH);
   }
 
-  void _openPhotographerProfile(BuildContext context) {
-    final photographer = PhotographerModel(
-      widget.event.photographerId,
-      '',
-      widget.event.photographerName,
-      '',
-    );
-    // HomeBloc may not be in the tree on the unauthenticated discovery page.
-    HomeBloc? homeBloc;
-    try {
-      homeBloc = context.read<HomeBloc>();
-    } catch (_) {}
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => homeBloc != null
-            ? BlocProvider.value(
-                value: homeBloc,
-                child: PhotographerProfilePage(photographer: photographer),
-              )
-            : PhotographerProfilePage(photographer: photographer),
-      ),
-    );
-  }
-
   void _showCommentSheet(BuildContext context, AppThemeExtension ext) {
     EventCommentPage.show(context, widget.event, onCommentSent: _onCommentSent);
   }
@@ -930,7 +934,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _EventMoreOptionsSheet(
+      builder: (_) => EventMoreOptionsSheet(
         ext: ext,
         eventId: widget.event.id,
         onHide: widget.onHide,
@@ -945,833 +949,3 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     _discoveryBloc?.add(DiscoveryCommentAdded(widget.event.id));
   }
 }
-
-// ── Post header ───────────────────────────────────────────────────────────────
-
-class _PostHeader extends StatelessWidget {
-  const _PostHeader({
-    required this.event,
-    required this.ext,
-    this.isOwner = false,
-    this.isAuthenticated = false,
-    this.onPhotographerTap,
-    this.onHide,
-    this.onLoginRequired,
-    this.onImage = false,
-  });
-  final EventDiscovery event;
-  final AppThemeExtension ext;
-  final bool isOwner;
-  final bool isAuthenticated;
-  final VoidCallback? onPhotographerTap;
-  final VoidCallback? onHide;
-  final VoidCallback? onLoginRequired;
-  final bool onImage;
-
-  void _showMoreOptions(BuildContext context) {
-    if (!isAuthenticated) {
-      onLoginRequired?.call();
-      return;
-    }
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _EventMoreOptionsSheet(
-        ext: ext,
-        eventId: event.id,
-        onHide: onHide,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final name = event.photographerName;
-    final nameColor = onImage ? Colors.white : ext.greetingColor;
-    final iconColor = onImage ? Colors.white : ext.greetingColor;
-    final textShadows = onImage
-        ? const [
-            Shadow(blurRadius: 12, color: Colors.black87),
-            Shadow(blurRadius: 4, color: Colors.black54),
-          ]
-        : null;
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(12.w, 9.h, 4.w, 9.h),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // ── Avatar ─────────────────────────────────────────────────────
-          Semantics(button: true, label: 'View profile', child: GestureDetector(
-            onTap: onPhotographerTap,
-            child: _CreatorInitialsAvatar(
-              name: name,
-              size: 36.w,
-              onImage: onImage,
-            ),
-          )),
-
-          SizedBox(width: 10.w),
-
-          // ── Name (no subtitle — keeps the header slim) ─────────────────
-          Expanded(
-            child: Semantics(button: true, label: 'View profile', child: GestureDetector(
-              onTap: onPhotographerTap,
-              behavior: HitTestBehavior.opaque,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      name,
-                      style: TextStyle(
-                        color: nameColor,
-                        fontSize: 13.5.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.3,
-                        shadows: textShadows,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (isOwner) ...[
-                    SizedBox(width: 6.w),
-                    _OwnerPill(ext: ext),
-                  ],
-                ],
-              ),
-            )),
-          ),
-
-          // ── Follow pill — hidden for own posts ─────────────────────────
-          if (!isOwner) ...[
-            SizedBox(width: 10.w),
-            FollowButton(
-              photographerId: event.photographerId,
-              onImage: onImage,
-              initialFollowing: event.isFollowed,
-              onLoginRequired: isAuthenticated ? null : onLoginRequired,
-            ),
-          ],
-
-          // ── More options ───────────────────────────────────────────────
-          Semantics(button: true, label: 'Show more options', child: GestureDetector(
-            onTap: () => _showMoreOptions(context),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-              child: Icon(Icons.more_horiz_rounded,
-                  color: iconColor, size: 21.sp),
-            ),
-          )),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Owner pill badge ──────────────────────────────────────────────────────────
-
-class _OwnerPill extends StatelessWidget {
-  const _OwnerPill({required this.ext});
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            ext.accentGold.withValues(alpha: 0.18),
-            const Color(0xFFFF8C00).withValues(alpha: 0.12),
-          ],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(
-          color: ext.accentGold.withValues(alpha: 0.45),
-          width: 0.8,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.workspace_premium_rounded,
-              size: 9.sp, color: ext.accentGold),
-          SizedBox(width: 3.w),
-          Text(
-            'Your post',
-            style: TextStyle(
-              color: ext.accentGold,
-              fontSize: 9.sp,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Creator initials avatar — used on image overlays ─────────────────────────
-
-class _CreatorInitialsAvatar extends StatelessWidget {
-  const _CreatorInitialsAvatar({
-    required this.name,
-    required this.size,
-    this.onImage = false,
-  });
-  final String name;
-  final double size;
-  final bool onImage;
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-    const borderPad = 2.5;
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [ext.accentGold, const Color(0xFFFF6B35)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: ext.accentGold.withValues(alpha: 0.40),
-            blurRadius: 10,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(borderPad),
-      child: Container(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            colors: [Color(0xFFFFAB40), Color(0xFFFF6B35)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          initial,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: (size - borderPad * 2) * 0.42,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Image footer — TikTok-style text overlay at bottom-left ──────────────────
-
-class _ImageFooter extends StatefulWidget {
-  const _ImageFooter({required this.event});
-  final EventDiscovery event;
-
-  @override
-  State<_ImageFooter> createState() => _ImageFooterState();
-}
-
-class _ImageFooterState extends State<_ImageFooter> {
-  bool _tagsExpanded = false;
-
-  static const _heavy = [
-    Shadow(blurRadius: 20, color: Colors.black),
-    Shadow(blurRadius: 6, color: Colors.black87),
-  ];
-  static const _soft = [
-    Shadow(blurRadius: 10, color: Colors.black87),
-  ];
-
-  String get _tagLine {
-    final tags = widget.event.contentTags;
-    if (tags.isEmpty) return '';
-    return tags.map((t) => '#$t').join('  ');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tagLine = _tagLine;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Event name first — large and bold
-        Text(
-          widget.event.eventName,
-          maxLines: _tagsExpanded ? null : 2,
-          overflow:
-              _tagsExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20.sp,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.6,
-            height: 1.15,
-            shadows: _heavy,
-          ),
-        ),
-
-        // Content tags — inline with "more / less" pinned to the right
-        if (tagLine.isNotEmpty) ...[
-          SizedBox(height: 4.h),
-          Semantics(button: true, label: 'Toggle tags', child: GestureDetector(
-            onTap: () => setState(() => _tagsExpanded = !_tagsExpanded),
-            child: _tagsExpanded
-                ? Text(
-                    tagLine,
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4,
-                      shadows: _soft,
-                    ),
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          tagLine,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4,
-                            shadows: _soft,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'more',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 11.sp,
-                          fontWeight: FontWeight.w500,
-                          shadows: _soft,
-                        ),
-                      ),
-                    ],
-                  ),
-          )),
-        ],
-      ],
-    );
-  }
-}
-
-// ── Double-tap heart burst ────────────────────────────────────────────────────
-
-class _HeartBurst extends StatelessWidget {
-  const _HeartBurst({required this.ctrl});
-  final AnimationController ctrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: ctrl,
-      builder: (_, __) {
-        final t = ctrl.value;
-        // Scale: 0→1.4 in first half, 1.4→1.2 in second half
-        final scale = t < 0.4 ? (t / 0.4) * 1.4 : 1.4 - ((t - 0.4) / 0.6) * 0.2;
-        // Opacity: full until 0.6, then fade out
-        final opacity = t < 0.6 ? 1.0 : 1.0 - ((t - 0.6) / 0.4);
-
-        return Opacity(
-          opacity: opacity.clamp(0.0, 1.0),
-          child: Transform.scale(
-            scale: scale.clamp(0.0, 2.0),
-            child: Icon(
-              Icons.favorite_rounded,
-              color: Colors.white,
-              size: 90.sp,
-              shadows: const [
-                Shadow(blurRadius: 20, color: Colors.black54),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ── Carousel prev/next arrow (web, hover-revealed) ──────────────────────────────
-
-class _CarouselArrow extends StatefulWidget {
-  const _CarouselArrow({
-    required this.isLeft,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final bool isLeft;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  State<_CarouselArrow> createState() => _CarouselArrowState();
-}
-
-class _CarouselArrowState extends State<_CarouselArrow> {
-  bool _hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: widget.enabled
-          ? SystemMouseCursors.click
-          : SystemMouseCursors.basic,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: Semantics(
-        button: true,
-        label: widget.isLeft ? 'Previous photo' : 'Next photo',
-        child: GestureDetector(
-        onTap: widget.enabled ? widget.onTap : null,
-        child: AnimatedOpacity(
-          opacity: widget.enabled ? 1.0 : 0.3,
-          duration: const Duration(milliseconds: 150),
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: _hover ? 0.7 : 0.45),
-              shape: BoxShape.circle,
-              border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.25), width: 1),
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              widget.isLeft
-                  ? Icons.chevron_left_rounded
-                  : Icons.chevron_right_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-        ),
-      ),
-      ),
-    );
-  }
-}
-
-// ── Page dots ─────────────────────────────────────────────────────────────────
-// Smooth Instagram-style dots: width and opacity interpolate continuously with
-// the PageController's fractional .page value so animation tracks the finger.
-
-class _PageDots extends StatelessWidget {
-  const _PageDots({
-    required this.totalCount,
-    required this.controller,
-    required this.maxRevealedPage,
-  });
-
-  final int totalCount;
-  final PageController controller;
-
-  /// The highest page index the user has swiped to so far.
-  /// Dots are revealed up to this index, with a minimum of min(3, totalCount).
-  final int maxRevealedPage;
-
-  @override
-  Widget build(BuildContext context) {
-    // Show min(3, totalCount) dots immediately. Reveal the next dot one step
-    // early — when the user reaches the last-but-one of the currently shown
-    // dots — so there's always one more waiting ahead.
-    final revealedCount = math.min(
-      totalCount,
-      math.max(math.min(3, totalCount), maxRevealedPage + 3),
-    );
-
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (_, __) {
-        final page =
-            controller.hasClients ? (controller.page ?? 0.0) : 0.0;
-        return AnimatedSize(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOut,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(revealedCount, (i) {
-              final t = (page - i).abs().clamp(0.0, 1.0);
-              // Active dot is wider; interpolated continuously while swiping.
-              final w = 20.w - 14.w * t;
-              final color = Color.lerp(
-                Colors.white,
-                Colors.white.withValues(alpha: 0.35),
-                t,
-              )!;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOut,
-                margin: EdgeInsets.symmetric(horizontal: 3.w),
-                width: w,
-                height: 6.h,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(3.r),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 4,
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ── Event "more options" bottom sheet ─────────────────────────────────────────
-
-
-class _EventMoreOptionsSheet extends StatelessWidget {
-  const _EventMoreOptionsSheet({
-    required this.ext,
-    required this.eventId,
-    this.onHide,
-  });
-  final AppThemeExtension ext;
-  final String eventId;
-  final VoidCallback? onHide;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.homeBackground,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Drag handle
-            Container(
-              margin: EdgeInsets.symmetric(vertical: 12.h),
-              width: 36.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: ext.searchHintColor.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-
-            // Hide option
-            ListTile(
-              leading: Container(
-                width: 40.w,
-                height: 40.w,
-                decoration: BoxDecoration(
-                  color: ext.searchFieldFill,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.visibility_off_outlined,
-                    color: ext.greetingColor, size: 20.sp),
-              ),
-              title: Text(
-                'Hide event',
-                style: TextStyle(
-                  color: ext.greetingColor,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15.sp,
-                ),
-              ),
-              subtitle: Text(
-                "You won't see this event again",
-                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-              ),
-              onTap: () {
-                Navigator.of(context).pop();
-                onHide?.call();
-              },
-            ),
-
-            Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
-
-            // Report option — opens the reason picker sheet
-            ListTile(
-              leading: Container(
-                width: 40.w,
-                height: 40.w,
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.flag_outlined,
-                    color: Colors.redAccent, size: 20.sp),
-              ),
-              title: Text(
-                'Report event',
-                style: TextStyle(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15.sp,
-                ),
-              ),
-              subtitle: Text(
-                'Inappropriate, misleading or harmful content',
-                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-              ),
-              trailing: Icon(Icons.chevron_right_rounded,
-                  color: ext.searchHintColor, size: 20.sp),
-              onTap: () {
-                Navigator.of(context).pop();
-                ReportSheet.show(
-                  context,
-                  ext: ext,
-                  assetType: 'event',
-                  assetId: eventId,
-                );
-              },
-            ),
-
-            SizedBox(height: 8.h),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Unauthenticated full CTA ──────────────────────────────────────────────────
-
-class _UnauthCta extends StatelessWidget {
-  const _UnauthCta({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: Semantics(button: true, label: 'Tap to explore', child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          color: Colors.black.withValues(alpha: 0.4),
-          alignment: Alignment.center,
-          child: Text(
-            'Tap to explore',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      )),
-    );
-  }
-}
-
-// ── Web: vertical reactions column ────────────────────────────────────────────
-
-class _WebReactionsColumn extends StatelessWidget {
-  const _WebReactionsColumn({
-    required this.liked,
-    required this.disliked,
-    required this.saved,
-    required this.likeCount,
-    required this.dislikeCount,
-    required this.commentCount,
-    required this.commentsEnabled,
-    required this.ext,
-    required this.isExternalPanel,
-    required this.onLike,
-    required this.onDislike,
-    required this.onComment,
-    required this.onShare,
-    required this.onSave,
-    this.photographerName = '',
-    this.photographerId = '',
-    this.isFollowed = false,
-    this.isOwner = false,
-    this.isAuthenticated = false,
-    this.onPhotographerTap,
-    this.onLoginRequired,
-    this.mediaH,
-    this.onMore,
-  });
-
-  final bool liked;
-  final bool disliked;
-  final bool saved;
-  final int likeCount;
-  final int dislikeCount;
-  final int commentCount;
-  final bool commentsEnabled;
-  final AppThemeExtension ext;
-  final bool isExternalPanel;
-  final VoidCallback onLike;
-  final VoidCallback onDislike;
-  final VoidCallback? onComment;
-  final VoidCallback onShare;
-  final VoidCallback onSave;
-  // Photographer badge shown at the bottom of the external panel (web desktop).
-  final String photographerName;
-  final String photographerId;
-  final bool isFollowed;
-  final bool isOwner;
-  final bool isAuthenticated;
-  final VoidCallback? onPhotographerTap;
-  final VoidCallback? onLoginRequired;
-  // When provided, icon size and spacing scale with media height.
-  final double? mediaH;
-  // Opens the Hide / Report menu — shown beneath the reactions on web.
-  final VoidCallback? onMore;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final border = isExternalPanel
-        ? null
-        : Border(
-            left: BorderSide(
-              color: (isDark ? Colors.white : Colors.black)
-                  .withValues(alpha: 0.08),
-              width: 0.5,
-            ),
-          );
-
-    // Scale icon size and gap proportionally to the available media height.
-    // Small cards (≈380px) get compact 20px icons; tall cards cap at 28px.
-    // All values are slightly trimmed from the old fixed 32px.
-    final h = mediaH;
-    final iconSize = isExternalPanel
-        ? (h != null ? (h * 0.040).clamp(16.0, 24.0) : 24.0)
-        : null;
-    final gap = h != null ? (h * 0.030).clamp(8.0, 14.0) : 14.0;
-
-    return Container(
-      decoration: BoxDecoration(color: ext.homeBackground, border: border),
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            // ── Photographer badge — external panel only (TikTok creator pin) ─
-            if (isExternalPanel && photographerName.isNotEmpty) ...[
-              WebCreatorPin(
-                name: photographerName,
-                photographerId: photographerId,
-                isFollowed: isFollowed,
-                isOwner: isOwner,
-                isAuthenticated: isAuthenticated,
-                ext: ext,
-                onTap: onPhotographerTap,
-                onLoginRequired: onLoginRequired,
-              ),
-              SizedBox(height: gap),
-            ],
-
-            // ── Reactions ─────────────────────────────────────────────────────
-            WebActionBtn(
-              icon: liked
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border_rounded,
-              iconColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
-              count: likeCount,
-              countColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
-              iconSize: iconSize,
-              onTap: onLike,
-              semanticLabel: liked ? 'Unlike' : 'Like',
-            ),
-            SizedBox(height: gap),
-            WebActionBtn(
-              icon: disliked
-                  ? Icons.thumb_down_rounded
-                  : Icons.thumb_down_outlined,
-              iconColor: disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
-              count: dislikeCount,
-              countColor:
-                  disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
-              iconSize: iconSize,
-              onTap: onDislike,
-              semanticLabel: disliked ? 'Remove dislike' : 'Dislike',
-            ),
-            SizedBox(height: gap),
-            WebActionBtn(
-              icon: commentsEnabled
-                  ? Icons.mode_comment_outlined
-                  : Icons.comments_disabled_outlined,
-              iconColor: commentsEnabled
-                  ? ext.greetingColor
-                  : ext.searchHintColor.withValues(alpha: 0.4),
-              count: commentCount,
-              countColor: commentsEnabled
-                  ? ext.greetingColor
-                  : ext.searchHintColor.withValues(alpha: 0.4),
-              iconSize: iconSize,
-              onTap: onComment,
-              semanticLabel:
-                  commentsEnabled ? 'Comments' : 'Comments disabled',
-            ),
-            SizedBox(height: gap),
-            WebActionBtn(
-              icon: saved
-                  ? Icons.bookmark_rounded
-                  : Icons.bookmark_border_rounded,
-              iconColor: saved ? ext.accentGold : ext.greetingColor,
-              count: null,
-              countColor: ext.greetingColor,
-              iconSize: iconSize,
-              onTap: onSave,
-              semanticLabel: saved ? 'Remove from saved' : 'Save',
-            ),
-            SizedBox(height: gap),
-            WebActionBtn(
-              icon: Icons.near_me_outlined,
-              iconColor: ext.greetingColor,
-              count: null,
-              countColor: ext.greetingColor,
-              iconSize: iconSize,
-              onTap: onShare,
-              semanticLabel: 'Share',
-            ),
-            // ── Hide / Report — beneath the reactions (web) ───────────────────
-            if (onMore != null) ...[
-              SizedBox(height: gap),
-              WebActionBtn(
-                icon: Icons.more_horiz_rounded,
-                iconColor: ext.greetingColor,
-                count: null,
-                countColor: ext.greetingColor,
-                iconSize: iconSize,
-                onTap: onMore,
-                semanticLabel: 'More options',
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-

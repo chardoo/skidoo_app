@@ -1,12 +1,12 @@
 {
   "@@locale": "en",
 
-  "appName": "Skidoo",
+  "appName": "Jperg",
   "@appName": { "description": "App name" },
 
   "securityWarningTitle": "Security Warning",
   "@securityWarningTitle": {},
-  "securityWarningBody": "This device appears to be jailbroken or rooted.\n\nRunning Skidoo on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.",
+  "securityWarningBody": "This device appears to be jailbroken or rooted.\n\nRunning Jperg on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.",
   "@securityWarningBody": {},
   "securityWarningContinue": "I understand, continue anyway",
   "@securityWarningContinue": {},
@@ -78,9 +78,9 @@
   "forgotPasswordLinkSent": "Reset link sent to your email.",
   "@forgotPasswordLinkSent": {},
 
-  "interestsTitle": "What interests you?",
+  "interestsTitle": "What do you love?",
   "@interestsTitle": {},
-  "interestsSubtitle": "Select topics to personalise your feed",
+  "interestsSubtitle": "Select at least 3 photography styles you enjoy.",
   "@interestsSubtitle": {},
   "interestsContinue": "Continue",
   "@interestsContinue": {},

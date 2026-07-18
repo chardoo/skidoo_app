@@ -86,6 +86,13 @@ class EventDiscovery {
   final String eventName;
   final String photographerName;
   final String photographerId;
+
+  /// The photographer's personal avatar — canonical field is `profile_url`
+  /// on the nested user/photographer object (same field used everywhere
+  /// else a creator's photo appears: listing, search, suggested). Null
+  /// when the photographer has no avatar set.
+  final String? photographerProfileUrl;
+
   final List<EventPicture> pictures;
   final int likes;
   final int dislikes;
@@ -100,14 +107,21 @@ class EventDiscovery {
   final bool isFollowed;
 
   /// Backend-supplied content tags (e.g. ["wedding", "photography", "ghana"]).
-  /// Shown as hashtags beneath the event name in the caption area.
+  /// Shown as hashtags beneath the event name in the caption area. Always
+  /// present (at least `[]`) per `docs/FRONTEND_EVENT_DESCRIPTION_TAGS.md`.
   final List<String> contentTags;
+
+  /// Backend-supplied caption text, max 2000 chars. Always present (at
+  /// least `''`) per `docs/FRONTEND_EVENT_DESCRIPTION_TAGS.md` — shown as
+  /// the caption body beneath the event name, above the content tags.
+  final String description;
 
   const EventDiscovery({
     required this.id,
     required this.eventName,
     required this.photographerName,
     required this.photographerId,
+    this.photographerProfileUrl,
     required this.pictures,
     this.likes = 0,
     this.dislikes = 0,
@@ -116,6 +130,7 @@ class EventDiscovery {
     this.userReaction,
     this.isFollowed = false,
     this.contentTags = const [],
+    this.description = '',
   });
 
   Map<String, dynamic> toMap() => {
@@ -125,12 +140,15 @@ class EventDiscovery {
           'id': photographerId,
           'name': photographerName,
           'is_followed': isFollowed,
+          if (photographerProfileUrl != null) 'profile_url': photographerProfileUrl,
         },
         'pictures': pictures.map((p) => p.toMap()).toList(),
         'likes': likes,
         'dislikes': dislikes,
         'comment_count': commentCount,
         'comments_enabled': commentsEnabled,
+        'content_tags': contentTags,
+        'description': description,
       };
 
   EventDiscovery copyWith({
@@ -142,12 +160,14 @@ class EventDiscovery {
     bool clearReaction = false,
     bool? isFollowed,
     List<String>? contentTags,
+    String? description,
   }) {
     return EventDiscovery(
       id: id,
       eventName: eventName,
       photographerName: photographerName,
       photographerId: photographerId,
+      photographerProfileUrl: photographerProfileUrl,
       pictures: pictures,
       likes: likes ?? this.likes,
       dislikes: dislikes ?? this.dislikes,
@@ -157,6 +177,7 @@ class EventDiscovery {
           clearReaction ? null : (userReaction ?? this.userReaction),
       isFollowed: isFollowed ?? this.isFollowed,
       contentTags: contentTags ?? this.contentTags,
+      description: description ?? this.description,
     );
   }
 
@@ -189,6 +210,9 @@ class EventDiscovery {
           event['name']?.toString() ?? '',
       photographerName: user['name']?.toString() ?? '',
       photographerId: user['id']?.toString() ?? '',
+      photographerProfileUrl: (user['profile_url'] as String?)?.isNotEmpty == true
+          ? user['profile_url'] as String
+          : null,
       pictures: pics,
       likes: (event['likes'] as num?)?.toInt() ?? 0,
       dislikes: (event['dislikes'] as num?)?.toInt() ?? 0,
@@ -197,6 +221,7 @@ class EventDiscovery {
       commentsEnabled: event['comments_enabled'] as bool? ?? true,
       isFollowed: isFollowed,
       contentTags: contentTags,
+      description: event['description']?.toString() ?? '',
     );
   }
 }

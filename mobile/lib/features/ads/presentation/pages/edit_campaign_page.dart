@@ -2,12 +2,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
 import 'package:skidoo_app/features/ads/models/ad_set.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/xfile_image.dart';
+import 'package:skidoo_app/core/common/widgets/xfile_image.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -400,9 +401,9 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                     colors: _saving
                         ? [
                             ext.accentGold.withValues(alpha: 0.5),
-                            const Color(0xFFFF6B35).withValues(alpha: 0.5),
+                            const Color(0xFF078368).withValues(alpha: 0.5),
                           ]
-                        : [ext.accentGold, const Color(0xFFFF6B35)],
+                        : [ext.accentGold, const Color(0xFF078368)],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
@@ -1070,29 +1071,12 @@ class _EField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return AppTextField(
       controller: controller,
       maxLines: maxLines,
-      keyboardType: keyboardType,
-      style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle:
-            TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-        filled: true,
-        fillColor: ext.searchFieldFill,
-        contentPadding:
-            EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(
-              color: ext.accentGold.withValues(alpha: 0.6), width: 1.2),
-        ),
-      ),
+      keyboardType: keyboardType ?? TextInputType.text,
+      dense: true,
+      hint: hint,
     );
   }
 }

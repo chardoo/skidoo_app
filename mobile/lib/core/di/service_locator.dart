@@ -18,10 +18,13 @@ import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.d
 import 'package:skidoo_app/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:skidoo_app/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:skidoo_app/features/auth/domain/usecases/become_photographer_usecase.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/get_token_usecase.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/login_usecase.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/pending_interests_usecases.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/register_usecase.dart';
+import 'package:skidoo_app/features/auth/domain/usecases/resend_verification_usecase.dart';
+import 'package:skidoo_app/features/auth/domain/usecases/verify_code_usecase.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/update_profile_usecase.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/interests/interests_bloc.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/login/login_bloc.dart';
@@ -68,6 +71,7 @@ import 'package:skidoo_app/features/photographers/data/repositories/photographer
 import 'package:skidoo_app/features/photographers/domain/repositories/photographer_repository.dart';
 import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_events_usecase.dart';
 import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
+import 'package:skidoo_app/features/photographers/domain/usecases/photographer_profile_usecases.dart';
 import 'package:skidoo_app/features/photographers/domain/usecases/get_photographers_usecase.dart';
 import 'package:skidoo_app/features/photographers/domain/usecases/search_photographers_usecase.dart';
 import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
@@ -137,6 +141,12 @@ Future<void> setupServiceLocator() async {
     sl<ChatKeyDataSource>(),
   ));
   sl.registerSingleton<RegisterUseCase>(RegisterUseCase(sl<AuthRepository>()));
+  sl.registerLazySingleton<VerifyCodeUseCase>(
+      () => VerifyCodeUseCase(sl<AuthRepository>(), sl<LoginUseCase>()));
+  sl.registerSingleton<ResendVerificationUseCase>(
+      ResendVerificationUseCase(sl<AuthRepository>()));
+  sl.registerSingleton<BecomePhotographerUseCase>(
+      BecomePhotographerUseCase(sl<AuthRepository>()));
   sl.registerSingleton<GetTokenUseCase>(GetTokenUseCase(sl<AuthRepository>()));
   sl.registerSingleton<LogoutUseCase>(LogoutUseCase(sl<AuthRepository>()));
   sl.registerSingleton<UpdateProfileUseCase>(
@@ -151,10 +161,10 @@ Future<void> setupServiceLocator() async {
   sl.registerFactory<LoginBloc>(() => LoginBloc(
         loginUseCase: sl<LoginUseCase>(),
         getPendingInterests: sl<GetPendingInterestsUseCase>(),
+        resendVerification: sl<ResendVerificationUseCase>(),
       ));
   sl.registerFactory<SignUpBloc>(() => SignUpBloc(
         registerUseCase: sl<RegisterUseCase>(),
-        setPendingInterests: sl<SetPendingInterestsUseCase>(),
       ));
   sl.registerFactory<InterestsBloc>(() => InterestsBloc(
         updateProfileUseCase: sl<UpdateProfileUseCase>(),
@@ -249,6 +259,16 @@ Future<void> setupServiceLocator() async {
       DeleteSampleUseCase(sl<PhotographerRepository>()));
   sl.registerSingleton<GetPhotographerEventsUseCase>(
       GetPhotographerEventsUseCase(sl<PhotographerRepository>()));
+  sl.registerSingleton<GetPhotographerProfileUseCase>(
+      GetPhotographerProfileUseCase(sl<PhotographerRepository>()));
+  sl.registerSingleton<UpdatePhotographerProfileUseCase>(
+      UpdatePhotographerProfileUseCase(sl<PhotographerRepository>()));
+  sl.registerSingleton<UploadPhotographerProfilePhotoUseCase>(
+      UploadPhotographerProfilePhotoUseCase(sl<PhotographerRepository>()));
+  sl.registerSingleton<UploadStudioImageUseCase>(
+      UploadStudioImageUseCase(sl<PhotographerRepository>()));
+  sl.registerSingleton<SubmitVerificationUseCase>(
+      SubmitVerificationUseCase(sl<PhotographerRepository>()));
 
   sl.registerFactory<PhotographerBloc>(() => PhotographerBloc(
         getPhotographersUseCase: sl<GetPhotographersUseCase>(),

@@ -20,6 +20,7 @@ class CardInteractionBar extends StatelessWidget {
     required this.onShare,
     required this.onSave,
     this.onMessage,
+    this.onShareExternal,
     this.commentsEnabled = true,
   });
 
@@ -39,6 +40,12 @@ class CardInteractionBar extends StatelessWidget {
 
   /// When non-null, a DM icon is shown between the spacer and the bookmark.
   final VoidCallback? onMessage;
+
+  /// When non-null, a direct "share to other apps" icon (native OS share
+  /// sheet) is shown right next to [onShare] — its own tap target, not
+  /// nested inside whatever [onShare] opens. Shows a spinner while the
+  /// download-then-share round trip is in flight.
+  final Future<void> Function()? onShareExternal;
 
   @override
   Widget build(BuildContext context) {
@@ -66,9 +73,7 @@ class CardInteractionBar extends StatelessWidget {
                     child: child,
                   ),
                   child: Icon(
-                    liked
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
+                    Icons.favorite_rounded,
                     key: ValueKey(liked),
                     color: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
                     size: 26.sp,
@@ -110,9 +115,7 @@ class CardInteractionBar extends StatelessWidget {
                     child: child,
                   ),
                   child: Icon(
-                    disliked
-                        ? Icons.thumb_down_rounded
-                        : Icons.thumb_down_outlined,
+                    Icons.thumb_down_rounded,
                     key: ValueKey(disliked),
                     color: disliked
                         ? const Color(0xFF5B6EF5)
@@ -147,7 +150,7 @@ class CardInteractionBar extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.mode_comment_outlined,
+                  Icon(Icons.mode_comment_rounded,
                       color: ext.greetingColor, size: 24.sp),
                   if (commentCount > 0) ...[
                     SizedBox(width: 5.w),
@@ -167,7 +170,7 @@ class CardInteractionBar extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.comments_disabled_outlined,
+                Icon(Icons.comments_disabled_rounded,
                     color: ext.searchHintColor.withValues(alpha: 0.4),
                     size: 24.sp),
                 if (commentCount > 0) ...[
@@ -186,13 +189,20 @@ class CardInteractionBar extends StatelessWidget {
 
           SizedBox(width: 18.w),
 
-          // ── Share (paper plane) ──────────────────────────────────────────
+          // ── Share (paper plane) — send to a user via in-app DM ───────────
           _AnimatedActionBtn(
-            semanticLabel: 'Share',
+            semanticLabel: 'Send',
             onTap: onShare,
-            child: Icon(Icons.near_me_outlined,
+            child: Icon(Icons.near_me_rounded,
                 color: ext.greetingColor, size: 24.sp),
           ),
+
+          // ── Share externally — its own tap target, not nested inside the
+          // "Send" sheet — direct native OS share sheet.
+          if (onShareExternal != null) ...[
+            SizedBox(width: 18.w),
+            _ExternalShareAction(ext: ext, onTap: onShareExternal!),
+          ],
 
           const Spacer(),
 
@@ -206,7 +216,7 @@ class CardInteractionBar extends StatelessWidget {
                 onMessage!();
               },
               child: Icon(
-                Icons.chat_bubble_outline_rounded,
+                Icons.chat_bubble_rounded,
                 color: ext.accentGold,
                 size: 24.sp,
               ),
@@ -228,9 +238,7 @@ class CardInteractionBar extends StatelessWidget {
                 child: child,
               ),
               child: Icon(
-                saved
-                    ? Icons.bookmark_rounded
-                    : Icons.bookmark_border_rounded,
+                Icons.bookmark_rounded,
                 key: ValueKey(saved),
                 color: saved ? ext.accentGold : ext.greetingColor,
                 size: 26.sp,
@@ -246,6 +254,49 @@ class CardInteractionBar extends StatelessWidget {
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
     if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
     return '$n';
+  }
+}
+
+// ── External share (native OS share sheet) ────────────────────────────────────
+
+class _ExternalShareAction extends StatefulWidget {
+  const _ExternalShareAction({required this.ext, required this.onTap});
+  final AppThemeExtension ext;
+  final Future<void> Function() onTap;
+
+  @override
+  State<_ExternalShareAction> createState() => _ExternalShareActionState();
+}
+
+class _ExternalShareActionState extends State<_ExternalShareAction> {
+  bool _busy = false;
+
+  Future<void> _handleTap() async {
+    if (_busy) return;
+    HapticFeedback.lightImpact();
+    setState(() => _busy = true);
+    try {
+      await widget.onTap();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _AnimatedActionBtn(
+      semanticLabel: 'Share to other apps',
+      onTap: _handleTap,
+      child: _busy
+          ? SizedBox(
+              width: 20.sp,
+              height: 20.sp,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: widget.ext.greetingColor),
+            )
+          : Icon(Icons.ios_share_rounded,
+              color: widget.ext.greetingColor, size: 22.sp),
+    );
   }
 }
 
@@ -306,6 +357,7 @@ class FollowButton extends StatefulWidget {
     this.onImage = false,
     this.initialFollowing = false,
     this.onLoginRequired,
+    this.compact = false,
   });
 
   /// The photographer/creator to follow or unfollow.
@@ -320,6 +372,10 @@ class FollowButton extends StatefulWidget {
   /// When set, tapping the button calls this instead of attempting to follow.
   /// Use for unauthenticated users to show the login prompt.
   final VoidCallback? onLoginRequired;
+
+  /// When true, renders as a small circular +/check badge (meant to overlay
+  /// the bottom of an avatar, TikTok-style) instead of the "Follow" text pill.
+  final bool compact;
 
   @override
   State<FollowButton> createState() => _FollowButtonState();
@@ -385,6 +441,45 @@ class _FollowButtonState extends State<FollowButton>
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final onImg = widget.onImage;
+
+    if (widget.compact) {
+      return Semantics(
+        button: true,
+        label: _following ? 'Unfollow' : 'Follow',
+        child: GestureDetector(
+          onTap: _toggle,
+          child: ScaleTransition(
+            scale: _ctrl,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              width: 20.w,
+              height: 20.w,
+              decoration: BoxDecoration(
+                color: _following ? Colors.white24 : ext.accentGold,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              alignment: Alignment.center,
+              child: _loading
+                  ? SizedBox(
+                      width: 10.w,
+                      height: 10.w,
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(
+                      _following ? Icons.check_rounded : Icons.add_rounded,
+                      color: Colors.white,
+                      size: 14.sp,
+                    ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Semantics(button: true, label: 'Toggle', child: GestureDetector(
       onTap: _toggle,

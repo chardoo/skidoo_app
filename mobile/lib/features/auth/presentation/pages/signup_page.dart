@@ -1,28 +1,25 @@
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/in_app_web_view_page.dart';
-import 'package:skidoo_app/core/common/widgets/selfie_capture_screen.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/signup/signup_bloc.dart';
+import 'package:skidoo_app/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
-import 'package:skidoo_app/features/auth/presentation/widgets/auth_text_field.dart';
+import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
+import 'package:skidoo_app/core/common/widgets/app_phone_field.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
-const _kOrange      = Color(0xFFFF8303);
-const _kOrangeDark  = Color(0xFFE66E00);
-const _kBg          = Color(0xFF0A0D11);
-const _kBgDeep      = Color(0xFF0F1525);
-const _kSubtext     = Color(0xFF9BA3B2);
-const _kError       = Color(0xFFFF4757);
+// The teal gradient logo/CTA is the auth flow's fixed brand accent — it stays
+// the same in both themes. Background/text below are theme-aware (see `ext`).
+const _kTeal        = Color(0xFF0BA98A);
+const _kTealDark    = Color(0xFF078368);
 
 // Remote privacy policy — opened in a WebView so it stays up to date without
 // shipping an app update.
@@ -58,7 +55,6 @@ class _SignUpViewState extends State<_SignUpView>
   final _confirmPasswordController = TextEditingController();
   late final AnimationController _fadeCtrl;
   late final Animation<double>   _fadeAnim;
-  bool _submitAttempted = false;
 
   @override
   void initState() {
@@ -83,25 +79,12 @@ class _SignUpViewState extends State<_SignUpView>
     if (mounted) setState(() {});
   }
 
-  /// True once every required text field has content. The face photo is checked
-  /// separately (it lives in the bloc state).
   bool get _requiredTextFilled =>
       _emailController.text.trim().isNotEmpty &&
       _usernameController.text.trim().isNotEmpty &&
       _contactController.text.trim().isNotEmpty &&
       _passwordController.text.isNotEmpty &&
       _confirmPasswordController.text.isNotEmpty;
-
-  /// Pick the face photo from the gallery / file system instead of the camera.
-  Future<void> _pickFaceFromGallery() async {
-    final x = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1080,
-      imageQuality: 85,
-    );
-    if (!mounted || x == null) return;
-    context.read<SignUpBloc>().add(SignUpFaceImageCaptured(x.path, x));
-  }
 
   @override
   void dispose() {
@@ -114,35 +97,31 @@ class _SignUpViewState extends State<_SignUpView>
     super.dispose();
   }
 
-  void _submit(SignUpState state) {
-    setState(() => _submitAttempted = true);
+  void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
-      if (state.imagePath.isEmpty) return;
       context.read<SignUpBloc>().add(SignUpSubmitted(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
             contact: _contactController.text.trim(),
             userName: _usernameController.text.trim(),
-            imagePath: state.imagePath,
           ));
     }
   }
 
-  Future<void> _takeSelfie(BuildContext context) async {
-    final xFile = await SelfieCaptureScreen.push(context);
-    if (!context.mounted || xFile == null) return;
-    context.read<SignUpBloc>().add(SignUpFaceImageCaptured(xFile.path, xFile));
+  void _continueAsGuest() {
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil(DiscoveryPage.routeName, (route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final page = Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: ext.homeBackground,
       body: BlocConsumer<SignUpBloc, SignUpState>(
         listener: (context, state) {
           if (state.isSuccess) {
-            AppSnackBar.success(context, AppLocalizations.of(context)!.signupAccountCreated);
-            Navigator.of(context).pushReplacementNamed(LoginPage.routeName);
+            EmailVerificationPage.push(context, email: state.email);
           }
           if (state.errorMessage != null && !state.isLoading) {
             AppSnackBar.error(context, state.errorMessage!);
@@ -153,15 +132,15 @@ class _SignUpViewState extends State<_SignUpView>
             children: [
               // ── Ambient gradient background ──────────────────────────────
               Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [_kBg, _kBgDeep],
+                    colors: [ext.homeBackground, ext.cardSurface],
                   ),
                 ),
               ),
-              // ── Radial orange glow ───────────────────────────────────────
+              // ── Radial teal glow ───────────────────────────────────────
               Positioned(
                 top: -120,
                 left: 0,
@@ -174,7 +153,7 @@ class _SignUpViewState extends State<_SignUpView>
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          _kOrange.withValues(alpha: 0.15),
+                          _kTeal.withValues(alpha: 0.15),
                           Colors.transparent,
                         ],
                       ),
@@ -204,14 +183,14 @@ class _SignUpViewState extends State<_SignUpView>
                             height: 52.w,
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [_kOrange, _kOrangeDark],
+                                colors: [_kTeal, _kTealDark],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(14.r),
                               boxShadow: [
                                 BoxShadow(
-                                  color: _kOrange.withValues(alpha: 0.35),
+                                  color: _kTeal.withValues(alpha: 0.35),
                                   blurRadius: 20,
                                   offset: const Offset(0, 6),
                                 ),
@@ -229,7 +208,7 @@ class _SignUpViewState extends State<_SignUpView>
                           Text(
                             AppLocalizations.of(context)!.signupCreateAccount,
                             style: TextStyle(
-                              color: Colors.white,
+                              color: ext.greetingColor,
                               fontSize: 30.sp,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.5,
@@ -240,7 +219,7 @@ class _SignUpViewState extends State<_SignUpView>
                           Text(
                             AppLocalizations.of(context)!.signupSubtitle,
                             style: TextStyle(
-                              color: _kSubtext,
+                              color: ext.searchHintColor,
                               fontSize: 15.sp,
                               fontWeight: FontWeight.w400,
                               letterSpacing: 0.1,
@@ -248,34 +227,8 @@ class _SignUpViewState extends State<_SignUpView>
                           ),
                           SizedBox(height: 36.h),
 
-                          // ── Face capture ───────────────────────────────
-                          _FaceCaptureButton(
-                            imagePath: state.imagePath,
-                            showError: _submitAttempted && state.imagePath.isEmpty,
-                            onTap: () => _takeSelfie(context),
-                          ),
-                          SizedBox(height: 8.h),
-                          // Alternative to the camera: pick an existing photo.
-                          Center(
-                            child: Semantics(
-                              button: true,
-                              label: 'Choose a photo from files',
-                              child: TextButton.icon(
-                                onPressed: _pickFaceFromGallery,
-                                icon: Icon(Icons.image_outlined,
-                                    size: 16.sp, color: _kSubtext),
-                                label: Text(
-                                  'Choose a photo instead',
-                                  style: TextStyle(
-                                      color: _kSubtext, fontSize: 13.sp),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 16.h),
-
                           // ── Email ──────────────────────────────────────
-                          AuthTextField(
+                          AppTextField(
                             controller: _emailController,
                             label: AppLocalizations.of(context)!.signupEmailAddress,
                             hint: 'e.g. jane@example.com',
@@ -287,7 +240,7 @@ class _SignUpViewState extends State<_SignUpView>
                           SizedBox(height: 14.h),
 
                           // ── Username ───────────────────────────────────
-                          AuthTextField(
+                          AppTextField(
                             controller: _usernameController,
                             label: AppLocalizations.of(context)!.signupUsername,
                             hint: 'e.g. jane_doe',
@@ -298,7 +251,7 @@ class _SignUpViewState extends State<_SignUpView>
                           SizedBox(height: 14.h),
 
                           // ── Contact (with country dial-code dropdown) ──
-                          AuthPhoneField(
+                          AppPhoneField(
                             controller: _contactController,
                             label: AppLocalizations.of(context)!.signupPhoneNumber,
                             hint: 'e.g. 241234567',
@@ -307,7 +260,7 @@ class _SignUpViewState extends State<_SignUpView>
                           SizedBox(height: 14.h),
 
                           // ── Password ───────────────────────────────────
-                          AuthPasswordField(
+                          AppPasswordField(
                             controller: _passwordController,
                             label: AppLocalizations.of(context)!.signupPassword,
                             textInputAction: TextInputAction.next,
@@ -316,7 +269,7 @@ class _SignUpViewState extends State<_SignUpView>
                           SizedBox(height: 14.h),
 
                           // ── Confirm password ───────────────────────────
-                          AuthPasswordField(
+                          AppPasswordField(
                             controller: _confirmPasswordController,
                             label: AppLocalizations.of(context)!.signupConfirmPassword,
                             textInputAction: TextInputAction.done,
@@ -330,14 +283,11 @@ class _SignUpViewState extends State<_SignUpView>
                           SizedBox(height: 32.h),
 
                           // ── Sign up button ─────────────────────────────
-                          // Disabled until every field is filled and a face
-                          // photo is provided.
                           _GradientButton(
                             label: AppLocalizations.of(context)!.signupCreateAccountButton,
                             isLoading: state.isLoading,
-                            enabled: _requiredTextFilled &&
-                                state.imagePath.isNotEmpty,
-                            onTap: () => _submit(state),
+                            enabled: _requiredTextFilled,
+                            onTap: _submit,
                           ),
                           SizedBox(height: 16.h),
 
@@ -350,7 +300,7 @@ class _SignUpViewState extends State<_SignUpView>
                                 Text(
                                   'By creating an account, you agree to our ',
                                   style: TextStyle(
-                                      color: _kSubtext, fontSize: 12.5.sp),
+                                      color: ext.searchHintColor, fontSize: 12.5.sp),
                                 ),
                                 Semantics(
                                   button: true,
@@ -364,7 +314,7 @@ class _SignUpViewState extends State<_SignUpView>
                                     child: Text(
                                       'Privacy Policy',
                                       style: TextStyle(
-                                        color: _kOrange,
+                                        color: _kTeal,
                                         fontSize: 12.5.sp,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -384,7 +334,7 @@ class _SignUpViewState extends State<_SignUpView>
                                 Text(
                                   AppLocalizations.of(context)!.signupAlreadyHaveAccount,
                                   style: TextStyle(
-                                    color: _kSubtext,
+                                    color: ext.searchHintColor,
                                     fontSize: 14.sp,
                                   ),
                                 ),
@@ -394,13 +344,33 @@ class _SignUpViewState extends State<_SignUpView>
                                   child: Text(
                                     AppLocalizations.of(context)!.signupSignIn,
                                     style: TextStyle(
-                                      color: _kOrange,
+                                      color: _kTeal,
                                       fontSize: 14.sp,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 )),
                               ],
+                            ),
+                          ),
+                          SizedBox(height: 12.h),
+
+                          // ── Continue as guest ───────────────────────────
+                          Center(
+                            child: Semantics(
+                              button: true,
+                              label: 'Continue as guest',
+                              child: TextButton(
+                                onPressed: _continueAsGuest,
+                                child: Text(
+                                  'Continue as guest',
+                                  style: TextStyle(
+                                    color: ext.searchHintColor,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                           SizedBox(height: 40.h),
@@ -417,143 +387,9 @@ class _SignUpViewState extends State<_SignUpView>
         },
       ),
     );
-    return webWrap(page, backgroundColor: _kBg);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-}
-
-// ── Face capture section ───────────────────────────────────────────────────────
-class _FaceCaptureButton extends StatelessWidget {
-  const _FaceCaptureButton({
-    required this.imagePath,
-    required this.showError,
-    required this.onTap,
-  });
-
-  final String imagePath;
-  final bool showError;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final captured = imagePath.isNotEmpty;
-    return Semantics(button: true, label: 'Capture face', child: GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 16.w),
-            decoration: BoxDecoration(
-              color: const Color(0xFF151821),
-              borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(
-                color: showError
-                    ? _kError
-                    : captured
-                        ? _kOrange
-                        : const Color(0xFF252836),
-                width: captured || showError ? 1.5 : 1,
-              ),
-              boxShadow: captured
-                  ? [
-                      BoxShadow(
-                        color: _kOrange.withValues(alpha: 0.18),
-                        blurRadius: 16,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : [],
-            ),
-            child: Row(
-              children: [
-                // Avatar / placeholder
-                Container(
-                  width: 56.w,
-                  height: 56.w,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF0F1525),
-                    border: Border.all(
-                      color: captured ? _kOrange : const Color(0xFF3A3F52),
-                      width: 2,
-                    ),
-                    boxShadow: captured
-                        ? [
-                            BoxShadow(
-                              color: _kOrange.withValues(alpha: 0.25),
-                              blurRadius: 12,
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: captured
-                      ? ClipOval(
-                          child: kIsWeb
-                              ? Semantics(image: true, label: 'Profile photo', child: Image.network(imagePath, fit: BoxFit.cover))
-                              : Image.file(File(imagePath), fit: BoxFit.cover),
-                        )
-                      : Icon(
-                          Icons.face_retouching_natural,
-                          color: const Color(0xFF9BA3B2),
-                          size: 28.sp,
-                        ),
-                ),
-                SizedBox(width: 16.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        captured ? AppLocalizations.of(context)!.signupFaceCaptured : AppLocalizations.of(context)!.signupRegisterFace,
-                        style: TextStyle(
-                          color: captured ? Colors.white : const Color(0xFF9BA3B2),
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: 3.h),
-                      Text(
-                        captured
-                            ? AppLocalizations.of(context)!.signupTapToRetake
-                            : AppLocalizations.of(context)!.signupTapToOpenCamera,
-                        style: TextStyle(
-                          color: const Color(0xFF4A5568),
-                          fontSize: 12.sp,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  captured
-                      ? Icons.check_circle_rounded
-                      : Icons.chevron_right_rounded,
-                  color: captured ? _kOrange : const Color(0xFF4A5568),
-                  size: 22.sp,
-                ),
-              ],
-            ),
-          ),
-          if (showError) ...[
-            SizedBox(height: 6.h),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                AppLocalizations.of(context)!.signupFaceRequired,
-                style: TextStyle(
-                  color: _kError,
-                  fontSize: 11.5.sp,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    ));
-  }
 }
 
 // ── Gradient CTA button ────────────────────────────────────────────────────────
@@ -582,8 +418,8 @@ class _GradientButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: dimmed
-                ? [_kOrange.withValues(alpha: 0.5), _kOrangeDark.withValues(alpha: 0.5)]
-                : [_kOrange, _kOrangeDark],
+                ? [_kTeal.withValues(alpha: 0.5), _kTealDark.withValues(alpha: 0.5)]
+                : [_kTeal, _kTealDark],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
@@ -592,7 +428,7 @@ class _GradientButton extends StatelessWidget {
               ? []
               : [
                   BoxShadow(
-                    color: _kOrange.withValues(alpha: 0.35),
+                    color: _kTeal.withValues(alpha: 0.35),
                     blurRadius: 20,
                     offset: const Offset(0, 6),
                   ),

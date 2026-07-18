@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/utils/skidoo_filters.dart';
+import 'package:skidoo_app/core/common/widgets/app_loading_indicator.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
@@ -91,8 +91,10 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                   imageUrl: pic.url,
                   fit: BoxFit.cover,
                   isBlurBackground: true,
-                  placeholder: (_, __) =>
-                      const ColoredBox(color: Color(0xFF111111)),
+                  placeholder: (_, __) => const ColoredBox(
+                    color: Color(0xFF111111),
+                    child: AppLoadingIndicator(),
+                  ),
                   errorWidget: (_, __, ___) =>
                       const ColoredBox(color: Color(0xFF111111)),
                 ),
@@ -104,7 +106,12 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                 imageUrl: pic.url,
                 fit: BoxFit.contain,
                 semanticLabel: 'Event photo',
-                placeholder: (_, __) => const SizedBox.shrink(),
+                // Non-opaque — the blurred backdrop stays visible behind the
+                // spinner while the full-res image is still loading.
+                placeholder: (_, __) => const Center(
+                  child: CircularProgressIndicator(
+                      color: Colors.white70, strokeWidth: 2),
+                ),
                 errorWidget: (_, __, ___) =>
                     const ColoredBox(color: Color(0xFF111111)),
               ),

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
@@ -131,21 +132,13 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
                   style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp, height: 1.5),
                 ),
                 SizedBox(height: 32.h),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ext.accentGold,
-                      foregroundColor: Colors.black,
-                      padding: EdgeInsets.symmetric(vertical: 14.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                    ),
-                    onPressed: () {
-                      widget.onSuccess();
-                      Navigator.of(context).pop();
-                    },
-                    child: Text('Payment complete', style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700)),
-                  ),
+                AppButton(
+                  fullWidth: true,
+                  label: 'Payment complete',
+                  onPressed: () {
+                    widget.onSuccess();
+                    Navigator.of(context).pop();
+                  },
                 ),
                 SizedBox(height: 12.h),
                 TextButton(

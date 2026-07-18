@@ -4,39 +4,48 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/constants/icons.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
+/// Bottom nav: Home / notifications / chat / profile — floating rounded
+/// pill, only the active tab shows an icon+label (on a filled accent pill);
+/// inactive tabs are bare icons. No centre create button (ad/request
+/// creation and the Creators tab moved into [AccountPage]'s `_AdsCard`
+/// section since they have no other reachable entry point once removed from
+/// here).
 class AppNavbar extends StatelessWidget {
   const AppNavbar({
     super.key,
     required this.selectedIndex,
     required this.onchange,
-    required this.onCreateTap,
     this.messageUnreadCount = 0,
-    this.showCreate = true,
   });
 
+  /// Index into `HomePage`'s `IndexedStack`: 0 = Home, 1 = Chat,
+  /// 2 = Notifications, 3 = Profile (Account).
   final int selectedIndex;
   final ValueChanged<int> onchange;
-  final VoidCallback onCreateTap;
   final int messageUnreadCount;
-  /// Hide the centre + button when no creatable features are enabled.
-  final bool showCreate;
 
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        border: Border(
-          top: BorderSide(color: ext.glassBorder, width: 0.5),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 62.h,
+    return SafeArea(
+      top: false,
+      minimum: EdgeInsets.only(bottom: 12.h),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        child: Container(
+          height: 58.h,
+          padding: EdgeInsets.symmetric(horizontal: 10.w),
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(29.r),
+          ),
+          // Tabs size to their own content (not 4 equal Expanded slots) so
+          // the active tab's icon+label pill gets exactly the room it
+          // needs — equal-width slots left too little space for even the
+          // shortest label ("Home") on real phone widths.
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _NavTab(
                 label: 'Home',
@@ -44,6 +53,14 @@ class AppNavbar extends StatelessWidget {
                 selected: selectedIndex == 0,
                 ext: ext,
                 onTap: () => onchange(0),
+              ),
+              _NavTab(
+                label: 'Notifications',
+                icon: Icons.notifications_none_rounded,
+                selectedIcon: Icons.notifications_rounded,
+                selected: selectedIndex == 2,
+                ext: ext,
+                onTap: () => onchange(2),
               ),
               _NavTab(
                 label: 'Messages',
@@ -54,17 +71,10 @@ class AppNavbar extends StatelessWidget {
                 unreadCount: messageUnreadCount,
                 onTap: () => onchange(1),
               ),
-              if (showCreate) _CreateFab(onTap: onCreateTap, ext: ext),
               _NavTab(
-                label: 'Gallery',
-                iconPath: IconsPath.gallery,
-                selected: selectedIndex == 2,
-                ext: ext,
-                onTap: () => onchange(2),
-              ),
-              _NavTab(
-                label: 'Creators',
-                iconPath: IconsPath.photographer,
+                label: 'Profile',
+                icon: Icons.person_outline_rounded,
+                selectedIcon: Icons.person_rounded,
                 selected: selectedIndex == 3,
                 ext: ext,
                 onTap: () => onchange(3),
@@ -103,20 +113,19 @@ class _NavTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeColor = ext.accentGold;
-    final inactiveColor = ext.glassIcon;
-    final color = selected ? activeColor : inactiveColor;
+    final iconColor = selected ? Colors.black : Colors.white70;
 
     Widget iconWidget = icon != null
         ? Icon(
             selected && selectedIcon != null ? selectedIcon! : icon!,
-            size: 22.sp,
-            color: color,
+            size: 20.sp,
+            color: iconColor,
           )
         : ExcludeSemantics(child: Image.asset(
             iconPath!,
-            width: 22.sp,
-            height: 22.sp,
-            color: color,
+            width: 20.sp,
+            height: 20.sp,
+            color: iconColor,
           ));
 
     if (unreadCount > 0) {
@@ -150,104 +159,61 @@ class _NavTab extends StatelessWidget {
       );
     }
 
-    return Expanded(
-      child: Semantics(button: true, label: label, child: GestureDetector(
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
         onTap: () {
           HapticFeedback.selectionClick();
           onTap();
         },
         behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          height: 62.h,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Pill highlight expands behind icon when active
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeOutCubic,
-                padding: EdgeInsets.symmetric(
-                  horizontal: selected ? 14.w : 8.w,
-                  vertical: 6.h,
-                ),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? activeColor.withValues(alpha: 0.13)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20.r),
-                ),
-                child: iconWidget,
+        // Guarantees a real tap target on the icon-only (unselected) tabs,
+        // which would otherwise be as narrow as the icon itself now that
+        // tabs size to their own content instead of an equal Expanded slot.
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: 44.w, minHeight: 44.h),
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.symmetric(
+                horizontal: selected ? 16.w : 10.w,
+                vertical: 10.h,
               ),
-
-              // Label — always occupies space but fades in/out
-              SizedBox(height: 3.h),
-              SizedBox(
-                height: 12.h,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 220),
-                  opacity: selected ? 1.0 : 0.0,
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      color: activeColor,
-                      fontSize: 9.5.sp,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.1,
+              decoration: BoxDecoration(
+                color: selected ? activeColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(20.r),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  iconWidget,
+                  // Label — only the active tab shows one, no reserved
+                  // space on inactive tabs (matches the floating-pill
+                  // design). maxLines/overflow stay as a safety net, but
+                  // tabs are no longer squeezed into an equal-width slot
+                  // so this shouldn't actually trigger in normal use.
+                  if (selected) ...[
+                    SizedBox(width: 6.w),
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 12.5.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.1,
+                      ),
                     ),
-                  ),
-                ),
+                  ],
+                ],
               ),
-            ],
-          ),
-        ),
-      )),
-    );
-  }
-}
-
-// ── Center create button ──────────────────────────────────────────────────────
-
-class _CreateFab extends StatelessWidget {
-  const _CreateFab({required this.onTap, required this.ext});
-  final VoidCallback onTap;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Semantics(button: true, label: 'Medium impact', child: GestureDetector(
-        onTap: () {
-          HapticFeedback.mediumImpact();
-          onTap();
-        },
-        behavior: HitTestBehavior.opaque,
-        child: Center(
-          child: Container(
-            width: 46.w,
-            height: 46.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [ext.accentGold, const Color(0xFFFF6B35)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: ext.accentGold.withValues(alpha: 0.45),
-                  blurRadius: 18,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.add_rounded,
-              color: Colors.white,
-              size: 26.sp,
             ),
           ),
         ),
-      )),
+      ),
     );
   }
 }

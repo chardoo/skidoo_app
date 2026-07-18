@@ -39,3 +39,13 @@ class BadRequestException implements Exception {
   @override
   String toString() => message;
 }
+
+/// Login was rejected because the account's email hasn't been verified yet
+/// (backend: 403, error.code == "EMAIL_NOT_VERIFIED").
+class EmailNotVerifiedException implements Exception {
+  final String message;
+  const EmailNotVerifiedException(
+      [this.message = 'Please verify your email address to continue.']);
+  @override
+  String toString() => message;
+}

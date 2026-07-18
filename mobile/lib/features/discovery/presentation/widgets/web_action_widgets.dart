@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -12,6 +13,7 @@ class WebCreatorPin extends StatefulWidget {
   const WebCreatorPin({
     super.key,
     required this.name,
+    this.imageUrl,
     required this.photographerId,
     required this.isFollowed,
     required this.isOwner,
@@ -22,6 +24,10 @@ class WebCreatorPin extends StatefulWidget {
   });
 
   final String name;
+
+  /// Photographer's real avatar — shown instead of the initials fallback
+  /// when present (`profile_url` on the event's nested user object).
+  final String? imageUrl;
   final String photographerId;
   final bool isFollowed;
   final bool isOwner;
@@ -69,6 +75,40 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
     }
   }
 
+  Widget _fallback(String initial) => Container(
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [Color(0xFF3DD9B4), Color(0xFF078368)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          initial,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
+      );
+
+  Widget _buildInner(String initial) {
+    final url = widget.imageUrl;
+    if (url == null || url.isEmpty) return _fallback(initial);
+    return ClipOval(
+      child: CachedNetworkImage(
+        imageUrl: url,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => _fallback(initial),
+        errorWidget: (_, __, ___) => _fallback(initial),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final initial = widget.name.isNotEmpty ? widget.name[0].toUpperCase() : '?';
@@ -95,7 +135,7 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                    colors: [ext.accentGold, const Color(0xFF078368)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -107,26 +147,7 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
                   ],
                 ),
                 padding: const EdgeInsets.all(2.5),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFFFFAB40), Color(0xFFFF6B35)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    initial,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
+                child: _buildInner(initial),
               ),
             ),
           ),

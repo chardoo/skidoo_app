@@ -893,34 +893,21 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                         LogicalKeyboardKey.numpadEnter,
                         shift: false): widget.onSend,
                   },
-                  child: TextField(
+                  child: AppTextField(
                     controller: widget.controller,
                     focusNode: widget.focusNode,
                     onTap: () {
                       if (_emojiOpen) setState(() => _emojiOpen = false);
                     },
-                    style: TextStyle(
-                        color: ext.greetingColor, fontSize: 13.sp),
                     maxLines: 4,
                     minLines: 1,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: widget.replyingToName != null
-                          ? 'Write a reply…'
-                          : 'Add a comment…',
-                      hintStyle: TextStyle(
-                          color: ext.searchHintColor, fontSize: 13.sp),
-                      filled: true,
-                      fillColor: ext.cardSurface,
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide.none,
-                        borderRadius: BorderRadius.circular(20.r),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 14.w, vertical: 9.h),
-                      isDense: true,
-                    ),
-                    onSubmitted: (_) => widget.onSend(),
+                    dense: true,
+                    borderRadius: 20.r,
+                    hint: widget.replyingToName != null
+                        ? 'Write a reply…'
+                        : 'Add a comment…',
+                    onFieldSubmitted: (_) => widget.onSend(),
                   ),
                 ),
               ),
@@ -939,7 +926,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                     height: 36.w,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                        colors: [ext.accentGold, const Color(0xFF078368)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),

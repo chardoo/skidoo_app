@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/search_field.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
@@ -176,14 +177,13 @@ class _InviteToGroupPageState extends State<InviteToGroupPage> {
                 users: _selected, ext: ext, onRemove: _removeSelected),
           _SearchField(
             controller: _searchController,
-            ext: ext,
             onChanged: _onSearchChanged,
           ),
           Expanded(
             child: _isSearching
                 ? Center(
                     child:
-                        CircularProgressIndicator(color: ext.accentGold))
+                        CircularProgressIndicator(color: ext.searchHintColor))
                 : _searchResults.isEmpty &&
                         _searchController.text.trim().isNotEmpty
                     ? Center(
@@ -220,37 +220,19 @@ class _InviteToGroupPageState extends State<InviteToGroupPage> {
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField(
-      {required this.controller,
-      required this.ext,
-      required this.onChanged});
+  const _SearchField({required this.controller, required this.onChanged});
   final TextEditingController controller;
-  final AppThemeExtension ext;
   final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 8.h),
-      child: TextField(
+      child: SearchField(
         controller: controller,
-        onChanged: onChanged,
+        hint: 'Search people...',
         autofocus: true,
-        style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-        decoration: InputDecoration(
-          hintText: 'Search people...',
-          hintStyle: TextStyle(color: ext.searchHintColor),
-          prefixIcon: Icon(Icons.search_rounded,
-              color: ext.searchHintColor, size: 20.sp),
-          filled: true,
-          fillColor: ext.cardSurface,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding:
-              EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-        ),
+        onChanged: onChanged,
       ),
     );
   }

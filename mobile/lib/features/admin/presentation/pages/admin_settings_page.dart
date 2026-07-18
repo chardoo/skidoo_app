@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_error_view.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
@@ -118,20 +120,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!,
-                          style: TextStyle(
-                              color: ext.searchHintColor, fontSize: 13.sp),
-                          textAlign: TextAlign.center),
-                      SizedBox(height: 12.h),
-                      ElevatedButton(
-                          onPressed: _load, child: const Text('Retry')),
-                    ],
-                  ),
-                )
+              ? AppErrorView(message: _error!, onRetry: _load)
               : ListView(
                   padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
                   children: [
@@ -458,29 +447,14 @@ class _BudgetRowState extends State<_BudgetRow> {
           SizedBox(width: 12.w),
           SizedBox(
             width: 80.w,
-            child: TextField(
+            child: AppTextField(
               controller: _ctrl,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: ext.greetingColor,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w600),
-              decoration: InputDecoration(
-                prefixText: 'GH₵ ',
-                prefixStyle: TextStyle(
-                    color: ext.searchHintColor, fontSize: 14.sp),
-                filled: true,
-                fillColor: ext.searchFieldFill,
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                isDense: true,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
-              ),
+              dense: true,
+              borderRadius: 8.r,
+              prefixText: 'GH₵ ',
               onChanged: (v) {
                 final parsed = double.tryParse(v);
                 if (parsed != null && parsed >= 0) widget.onChanged(parsed);

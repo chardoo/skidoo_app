@@ -18,6 +18,8 @@ import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.d
 import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page.dart';
+import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
+import 'package:skidoo_app/features/photographers/presentation/pages/photographers_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
@@ -109,7 +111,7 @@ class _SidebarShell extends StatelessWidget {
                               height: 30,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                                  colors: [ext.accentGold, const Color(0xFF078368)],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
@@ -134,7 +136,7 @@ class _SidebarShell extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'SKIDDO',
+                              'JPERG',
                               style: TextStyle(
                                 color: ext.logoTextColor,
                                 fontWeight: FontWeight.w900,
@@ -655,6 +657,24 @@ class _DiscoveryModeNav extends StatelessWidget {
 
 // ── Logged-in nav ─────────────────────────────────────────────────────────────
 
+/// Pushes [PhotographersPage] with its own freshly-created [PhotographerBloc].
+/// The sidebar renders above the app's Navigator (outside any route's widget
+/// tree — see [WebTopActions] doc comment), so there is no ambient bloc to
+/// read here; a new instance is created via the service locator instead.
+void _openPhotographers() {
+  final nav = AppNavigator.navigatorKey.currentState;
+  if (nav == null) return;
+  nav.push(
+    MaterialPageRoute<void>(
+      builder: (_) => BlocProvider<PhotographerBloc>(
+        create: (_) => sl<PhotographerBloc>()
+          ..add(const PhotographersLoadRequested()),
+        child: const PhotographersPage(),
+      ),
+    ),
+  );
+}
+
 class _LoggedInNav extends StatelessWidget {
   const _LoggedInNav({required this.ext, required this.selectedTab});
   final AppThemeExtension ext;
@@ -675,8 +695,8 @@ class _LoggedInNav extends StatelessWidget {
           onTap: () => HomePage.tabRequest.value = 0,
         ),
         _NavItem(
-          icon: Icons.photo_library_outlined,
-          label: 'Gallery',
+          icon: Icons.notifications_outlined,
+          label: 'Notifications',
           active: selectedTab == 2,
           ext: ext,
           onTap: () => HomePage.tabRequest.value = 2,
@@ -684,9 +704,9 @@ class _LoggedInNav extends StatelessWidget {
         _NavItem(
           icon: Icons.camera_alt_outlined,
           label: 'Photographers',
-          active: selectedTab == 3,
+          active: false,
           ext: ext,
-          onTap: () => HomePage.tabRequest.value = 3,
+          onTap: _openPhotographers,
         ),
 
         const SizedBox(height: 18),
@@ -804,7 +824,7 @@ class _NavItemState extends State<_NavItem> {
     final BoxDecoration decoration = widget.active
         ? BoxDecoration(
             gradient: LinearGradient(
-              colors: [ext.accentGold, const Color(0xFFFF6B35)],
+              colors: [ext.accentGold, const Color(0xFF078368)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -895,7 +915,7 @@ class _CreatorTileState extends State<_CreatorTile> {
           decoration: BoxDecoration(
             gradient: _hovered
                 ? LinearGradient(
-                    colors: [widget.ext.accentGold, const Color(0xFFFF6B35)],
+                    colors: [widget.ext.accentGold, const Color(0xFF078368)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
@@ -977,7 +997,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
             padding: const EdgeInsets.symmetric(vertical: 13),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [widget.ext.accentGold, const Color(0xFFFF6B35)],
+                colors: [widget.ext.accentGold, const Color(0xFF078368)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -1106,7 +1126,7 @@ class _SidebarFooter extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '© ${DateTime.now().year} SKIDDO',
+            '© ${DateTime.now().year} JPERG',
             style: TextStyle(color: muted, fontSize: 10),
           ),
         ],
@@ -1236,7 +1256,7 @@ class _TopNavBar extends StatelessWidget {
                         height: 24,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                            colors: [ext.accentGold, const Color(0xFF078368)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -1254,7 +1274,7 @@ class _TopNavBar extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'SKIDDO',
+                        'JPERG',
                         style: TextStyle(
                           color: ext.logoTextColor,
                           fontWeight: FontWeight.w900,
@@ -1356,8 +1376,8 @@ class _TopNavBar extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         _TopNavPill(
-          icon: Icons.photo_library_outlined,
-          label: 'Gallery',
+          icon: Icons.notifications_outlined,
+          label: 'Notifications',
           active: selectedTab == 2,
           ext: ext,
           onTap: () => HomePage.tabRequest.value = 2,
@@ -1366,9 +1386,9 @@ class _TopNavBar extends StatelessWidget {
         _TopNavPill(
           icon: Icons.camera_alt_outlined,
           label: 'Photographers',
-          active: selectedTab == 3,
+          active: false,
           ext: ext,
-          onTap: () => HomePage.tabRequest.value = 3,
+          onTap: _openPhotographers,
         ),
         if (AppConfigRepository.current.adsEnabled ||
             AppConfigRepository.current.requestsEnabled) ...[
@@ -1860,7 +1880,7 @@ class _ActionAvatar extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                colors: [ext.accentGold, const Color(0xFF078368)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),

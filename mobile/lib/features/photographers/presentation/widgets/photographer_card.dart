@@ -243,10 +243,10 @@ class _RatingRow extends StatelessWidget {
       children: [
         ...List.generate(5, (i) {
           if (i < rating.floor()) {
-            return Icon(Icons.star_rounded, color: ext.accentGold, size: 12.sp);
+            return Icon(Icons.star_rounded, color: Colors.amber, size: 12.sp);
           } else if (i < rating && rating - i >= 0.5) {
             return Icon(Icons.star_half_rounded,
-                color: ext.accentGold, size: 12.sp);
+                color: Colors.amber, size: 12.sp);
           } else {
             return Icon(Icons.star_outline_rounded,
                 color: ext.searchHintColor, size: 12.sp);
@@ -256,7 +256,7 @@ class _RatingRow extends StatelessWidget {
         Text(
           rating.toStringAsFixed(1),
           style: TextStyle(
-            color: ext.accentGold,
+            color: ext.greetingColor,
             fontSize: 11.sp,
             fontWeight: FontWeight.w500,
           ),

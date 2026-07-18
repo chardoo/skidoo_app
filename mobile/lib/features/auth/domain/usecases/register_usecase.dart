@@ -16,9 +16,9 @@ class RegisterUseCase implements UseCase<void, RegisterParams> {
 
 class RegisterParams extends Equatable {
   final Map<String, String> fields;
-  final Uint8List imageBytes;
-  final String imageFilename;
-  const RegisterParams({required this.fields, required this.imageBytes, required this.imageFilename});
+  final Uint8List? imageBytes;
+  final String? imageFilename;
+  const RegisterParams({required this.fields, this.imageBytes, this.imageFilename});
 
   @override
   List<Object?> get props => [fields, imageBytes, imageFilename];

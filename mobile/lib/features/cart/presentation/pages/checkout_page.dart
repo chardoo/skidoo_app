@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
@@ -89,22 +90,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp, height: 1.5),
                 ),
                 SizedBox(height: 32.h),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ext.accentGold,
-                      foregroundColor: Colors.black,
-                      padding: EdgeInsets.symmetric(vertical: 14.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                    ),
-                    onPressed: () {
-                      context.read<CartBloc>().add(const CartPaymentCompleted());
-                      Navigator.of(context).pop();
-                    },
-                    child: Text('Payment complete',
-                        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700)),
-                  ),
+                AppButton(
+                  fullWidth: true,
+                  label: 'Payment complete',
+                  onPressed: () {
+                    context.read<CartBloc>().add(const CartPaymentCompleted());
+                    Navigator.of(context).pop();
+                  },
                 ),
                 SizedBox(height: 12.h),
                 TextButton(

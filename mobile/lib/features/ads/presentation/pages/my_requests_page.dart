@@ -639,7 +639,7 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
                     gradient: _saving
                         ? null
                         : LinearGradient(
-                            colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                            colors: [ext.accentGold, const Color(0xFF078368)],
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
                           ),
@@ -688,26 +688,12 @@ class _EditField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return AppTextField(
       controller: ctrl,
       maxLines: maxLines,
       keyboardType: keyboardType,
-      style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
-        filled: true,
-        fillColor: ext.searchFieldFill,
-        contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(color: ext.accentGold.withValues(alpha: 0.7), width: 1.2),
-        ),
-      ),
+      dense: true,
+      label: label,
     );
   }
 }

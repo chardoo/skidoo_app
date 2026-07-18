@@ -410,29 +410,10 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ),
               ),
               SizedBox(height: 8.h),
-              TextField(
+              AppTextField(
                 controller: widget.locationCtrl,
-                style:
-                    TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-                decoration: InputDecoration(
-                  hintText: 'e.g. Accra',
-                  hintStyle: TextStyle(
-                      color: ext.searchHintColor, fontSize: 14.sp),
-                  filled: true,
-                  fillColor: ext.searchFieldFill,
-                  contentPadding: EdgeInsets.symmetric(
-                      horizontal: 14.w, vertical: 13.h),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                    borderSide: BorderSide(
-                        color: ext.accentGold.withValues(alpha: 0.6),
-                        width: 1.2),
-                  ),
-                ),
+                dense: true,
+                hint: 'e.g. Accra',
               ),
 
               SizedBox(height: 24.h),
@@ -445,7 +426,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   padding: EdgeInsets.symmetric(vertical: 15.h),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                      colors: [ext.accentGold, const Color(0xFF078368)],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),

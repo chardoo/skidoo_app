@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
+import 'package:skidoo_app/core/common/widgets/app_confirm_dialog.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -16,6 +19,10 @@ import 'package:skidoo_app/features/admin/presentation/pages/admin_settings_page
 import 'package:skidoo_app/features/ads/presentation/pages/my_campaigns_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/request_board_page.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
+import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
+import 'package:skidoo_app/features/photographers/presentation/pages/photographers_page.dart';
+import 'package:skidoo_app/features/photographers/presentation/pages/portfolio_edit_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/pages/face_recognition_page.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/saved_items_page.dart';
@@ -74,7 +81,13 @@ class _AccountView extends StatelessWidget {
       },
       builder: (context, state) {
         final page = Scaffold(
-          backgroundColor: Colors.transparent,
+          // AccountPage is pushed as its own standalone route (avatar tap /
+          // web sidebar), not nested in HomePage's IndexedStack like the
+          // bottom-nav tabs — so unlike those, it has no themed ancestor
+          // Scaffold behind it to fall back to. Transparent here left mobile
+          // showing the raw black canvas; webWrap() only paints a background
+          // on web (kIsWeb), so mobile needs its own explicit color.
+          backgroundColor: ext.homeBackground,
           appBar: AppBar(
             elevation: 0,
             centerTitle: true,
@@ -142,34 +155,39 @@ class _AccountView extends StatelessWidget {
                             SizedBox(height: 12.h),
                             Reveal(
                               delay: AppMotion.stagger * 2,
-                              child: _ThemeToggleCard(ext: ext),
+                              child: _PhotographerPortfolioCard(ext: ext),
                             ),
                             SizedBox(height: 12.h),
                             Reveal(
                               delay: AppMotion.stagger * 3,
+                              child: _ThemeToggleCard(ext: ext),
+                            ),
+                            SizedBox(height: 12.h),
+                            Reveal(
+                              delay: AppMotion.stagger * 4,
                               child: _NotificationSettingsCard(
                                   isMuted: state.isMuted, ext: ext),
                             ),
                             SizedBox(height: 12.h),
                             Reveal(
-                              delay: AppMotion.stagger * 4,
+                              delay: AppMotion.stagger * 5,
                               child: _PublicationSettingsCard(
                                   alwaysPublic: state.alwaysPublicImages,
                                   ext: ext),
                             ),
                             SizedBox(height: 12.h),
                             Reveal(
-                              delay: AppMotion.stagger * 5,
+                              delay: AppMotion.stagger * 6,
                               child: _FaceRecognitionCard(ext: ext),
                             ),
                             SizedBox(height: 12.h),
                             Reveal(
-                              delay: AppMotion.stagger * 6,
+                              delay: AppMotion.stagger * 7,
                               child: _AdsCard(ext: ext),
                             ),
                             SizedBox(height: 12.h),
                             Reveal(
-                              delay: AppMotion.stagger * 7,
+                              delay: AppMotion.stagger * 8,
                               child: _PrivacySettingsCard(
                                 anonymousMode: state.anonymousMode,
                                 hideProfile: state.hideProfile,
@@ -182,31 +200,15 @@ class _AccountView extends StatelessWidget {
                             ),
                             // const Spacer(),
                             SizedBox(height: 24.h),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 14.h),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                ),
-                                onPressed: () {
-                                  context
-                                      .read<UserProfileBloc>()
-                                      .add(const UserLogoutRequested());
-                                },
-                                child: Text(
-                                  AppLocalizations.of(context)!.accountLogout,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
+                            AppButton(
+                              fullWidth: true,
+                              variant: AppButtonVariant.destructive,
+                              label: AppLocalizations.of(context)!.accountLogout,
+                              onPressed: () {
+                                context
+                                    .read<UserProfileBloc>()
+                                    .add(const UserLogoutRequested());
+                              },
                             ),
                             SizedBox(height: 32.h),
                           ],
@@ -369,21 +371,18 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   _ProfileField(
                       controller: _nameCtrl,
                       label: AppLocalizations.of(context)!.accountDisplayName,
-                      icon: Icons.person_outline_rounded,
-                      ext: ext),
+                      icon: Icons.person_outline_rounded),
                   SizedBox(height: 10.h),
                   _ProfileField(
                       controller: _usernameCtrl,
                       label: AppLocalizations.of(context)!.accountUsername,
-                      icon: Icons.alternate_email_rounded,
-                      ext: ext),
+                      icon: Icons.alternate_email_rounded),
                   SizedBox(height: 10.h),
                   _ProfileField(
                       controller: _contactCtrl,
                       label: AppLocalizations.of(context)!.accountPhoneNumber,
                       icon: Icons.phone_outlined,
-                      keyboardType: TextInputType.phone,
-                      ext: ext),
+                      keyboardType: TextInputType.phone),
                   SizedBox(height: 20.h),
 
                   // ── Locale section ─────────────────────────────────────
@@ -467,36 +466,13 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   // ── Save button ────────────────────────────────────────
                   BlocBuilder<UserProfileBloc, UserProfileState>(
                     builder: (context, state) {
-                      final loading = state.isUpdateLoading;
-                      return SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: ext.accentGold,
-                            padding: EdgeInsets.symmetric(vertical: 14.h),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10.r),
-                            ),
-                          ),
-                          onPressed: loading ? null : () => _save(context),
-                          child: loading
-                              ? SizedBox(
-                                  width: 20.w,
-                                  height: 20.w,
-                                  child: const CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(
-                                  AppLocalizations.of(context)!.accountSaveChanges,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15.sp,
-                                  ),
-                                ),
-                        ),
+                      return AppButton(
+                        fullWidth: true,
+                        isLoading: state.isUpdateLoading,
+                        onPressed: state.isUpdateLoading
+                            ? null
+                            : () => _save(context),
+                        label: AppLocalizations.of(context)!.accountSaveChanges,
                       );
                     },
                   ),
@@ -535,46 +511,21 @@ class _ProfileField extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.icon,
-    required this.ext,
     this.keyboardType = TextInputType.text,
   });
 
   final TextEditingController controller;
   final String label;
   final IconData icon;
-  final AppThemeExtension ext;
   final TextInputType keyboardType;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return AppTextField(
       controller: controller,
       keyboardType: keyboardType,
-      style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
-        prefixIcon: Icon(icon, color: ext.searchHintColor, size: 18.sp),
-        counterText: '',
-        filled: true,
-        fillColor: ext.homeBackground,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.r),
-          borderSide: BorderSide(
-              color: ext.searchHintColor.withValues(alpha: 0.2)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.r),
-          borderSide: BorderSide(
-              color: ext.searchHintColor.withValues(alpha: 0.2)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.r),
-          borderSide: BorderSide(color: ext.accentGold, width: 1.5),
-        ),
-        contentPadding:
-            EdgeInsets.symmetric(horizontal: 12.w, vertical: 14.h),
-      ),
+      label: label,
+      prefixIcon: icon,
     );
   }
 }
@@ -699,6 +650,59 @@ class _ProfileDropdownState extends State<_ProfileDropdown> {
           },
         ),
       ),
+    );
+  }
+}
+
+// ── Photographer portfolio card ────────────────────────────────────────────────
+// Only rendered for photographer accounts — lets them re-open the same
+// studio-name/bio/specialties/sample-photos fields collected during
+// onboarding's "Set up your portfolio" step. Normal users see nothing here;
+// their profile editing stays entirely in _EditProfileCard above.
+class _PhotographerPortfolioCard extends StatelessWidget {
+  const _PhotographerPortfolioCard({required this.ext});
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String>(
+      future: sl<AuthService>().getRole(),
+      builder: (context, snap) {
+        if (snap.data != 'photographer') return const SizedBox.shrink();
+        return Container(
+          decoration: BoxDecoration(
+            color: ext.cardSurface,
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
+                child: Text(
+                  'PORTFOLIO',
+                  style: TextStyle(
+                    color: ext.searchHintColor,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              _AdsListTile(
+                icon: Icons.photo_library_outlined,
+                iconColor: const Color(0xFF0BA98A),
+                title: 'Portfolio',
+                subtitle: 'Studio name, bio, specialties, and sample photos',
+                ext: ext,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PortfolioEditPage()),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -829,7 +833,7 @@ class _PublicationSettingsCard extends StatelessWidget {
           const Divider(height: 1, indent: 16, endIndent: 16),
           ListTile(
             contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
-            leading: Icon(Icons.bookmark_rounded, color: ext.accentGold),
+            leading: Icon(Icons.bookmark_rounded, color: ext.searchHintColor),
             title: Text(
               AppLocalizations.of(context)!.accountSavedItems,
               style: TextStyle(
@@ -1060,14 +1064,44 @@ class _AdsCard extends StatelessWidget {
             final showRequests = cfg.requestsEnabled;
             final showAds = cfg.adsEnabled;
 
-            // Collapse the entire card when nothing is enabled.
-            if (!showRequests && !showAds && !isAdmin) {
-              return const SizedBox.shrink();
+            final tiles = <Widget>[
+              _AdsListTile(
+                icon: Icons.camera_alt_outlined,
+                iconColor: const Color(0xFF8B5CF6),
+                title: 'Creators',
+                subtitle: 'Browse photographers',
+                ext: ext,
+                onTap: () {
+                  final bloc = context.read<PhotographerBloc>()
+                    ..add(const PhotographersLoadRequested());
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider.value(
+                        value: bloc,
+                        child: const PhotographersPage(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ];
+
+            if (showRequests || showAds) {
+              tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+              tiles.add(_AdsListTile(
+                icon: Icons.add_circle_outline_rounded,
+                iconColor: const Color(0xFF10B981),
+                title: 'Create',
+                subtitle: 'Post a request or start an ad campaign',
+                ext: ext,
+                onTap: () => CreateBottomSheet.show(context),
+              ));
             }
 
-            final tiles = <Widget>[];
-
             if (showRequests) {
+              if (tiles.isNotEmpty) {
+                tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+              }
               tiles.add(_AdsListTile(
                 icon: Icons.inbox_outlined,
                 iconColor: const Color(0xFF3B82F6),
@@ -1173,39 +1207,17 @@ class _FaceRecognitionCardState extends State<_FaceRecognitionCard> {
   /// user's enrolled face embeddings. The endpoint is idempotent and derives
   /// the user from the auth token, so no body is sent.
   Future<void> _deleteFaceData() async {
-    final ext = widget.ext;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: ext.cardSurface,
-        title: Text(
-          'Delete your face data?',
-          style: TextStyle(color: ext.greetingColor, fontSize: 15.sp),
-        ),
-        content: Text(
-          'This permanently removes your face from recognition so you '
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Delete your face data?',
+      message: 'This permanently removes your face from recognition so you '
           'will no longer be matched in future event photos. This cannot '
           'be undone — you would need to re-add your photos to be found '
           'again.',
-          style: TextStyle(
-              color: ext.searchHintColor, fontSize: 13.sp, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: Text('Cancel',
-                style: TextStyle(color: ext.searchHintColor)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('Delete',
-                style: TextStyle(
-                    color: Colors.redAccent, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete',
+      isDestructive: true,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
 
     setState(() => _deleting = true);
     try {

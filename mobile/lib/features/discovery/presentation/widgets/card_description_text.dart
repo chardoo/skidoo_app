@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/expandable_caption.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 
-class CardDescriptionText extends StatefulWidget {
+class CardDescriptionText extends StatelessWidget {
   const CardDescriptionText({
     super.key,
     required this.event,
@@ -19,23 +20,20 @@ class CardDescriptionText extends StatefulWidget {
   final VoidCallback onToggle;
   final String? eventDate;
 
-  @override
-  State<CardDescriptionText> createState() => _CardDescriptionTextState();
-}
-
-class _CardDescriptionTextState extends State<CardDescriptionText> {
-  bool _tagsExpanded = false;
-
   String get _tagLine {
-    final tags = widget.event.contentTags;
+    final tags = event.contentTags;
     if (tags.isEmpty) return '';
     return tags.map((t) => '#$t').join('  ');
   }
 
   @override
   Widget build(BuildContext context) {
-    final ext = widget.ext;
     final tagLine = _tagLine;
+    final linkStyle = TextStyle(
+      color: ext.searchHintColor,
+      fontSize: 11.sp,
+      fontWeight: FontWeight.w500,
+    );
 
     return Padding(
       padding: EdgeInsets.fromLTRB(14.w, 9.h, 14.w, 9.h),
@@ -45,10 +43,9 @@ class _CardDescriptionTextState extends State<CardDescriptionText> {
         children: [
           // ── Event name ───────────────────────────────────────────────────
           Text(
-            widget.event.eventName,
-            maxLines: widget.expanded ? null : 2,
-            overflow:
-                widget.expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+            event.eventName,
+            maxLines: expanded ? null : 2,
+            overflow: expanded ? TextOverflow.visible : TextOverflow.ellipsis,
             style: TextStyle(
               color: ext.greetingColor,
               fontSize: 13.5.sp,
@@ -58,40 +55,36 @@ class _CardDescriptionTextState extends State<CardDescriptionText> {
             ),
           ),
 
+          // ── Description (backend caption text) — "more"/"less" only shows
+          // when the text actually overflows 2 lines. ───────────────────────
+          if (event.description.isNotEmpty) ...[
+            SizedBox(height: 3.h),
+            ExpandableCaption(
+              text: event.description,
+              collapsedMaxLines: 2,
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontSize: 13.sp,
+                height: 1.35,
+              ),
+              linkStyle: linkStyle,
+            ),
+          ],
+
           // ── Content tags from backend ────────────────────────────────────
           if (tagLine.isNotEmpty) ...[
             SizedBox(height: 5.h),
-            Semantics(button: true, label: 'Toggle tags', child: GestureDetector(
-              onTap: () => setState(() => _tagsExpanded = !_tagsExpanded),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    tagLine,
-                    maxLines: _tagsExpanded ? null : 1,
-                    overflow: _tagsExpanded
-                        ? TextOverflow.visible
-                        : TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: ext.accentGold.withValues(alpha: 0.85),
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4,
-                    ),
-                  ),
-                  SizedBox(height: 3.h),
-                  Text(
-                    _tagsExpanded ? 'less' : 'more',
-                    style: TextStyle(
-                      color: ext.searchHintColor,
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+            ExpandableCaption(
+              text: tagLine,
+              collapsedMaxLines: 1,
+              style: TextStyle(
+                color: ext.accentGold.withValues(alpha: 0.85),
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
               ),
-            )),
+              linkStyle: linkStyle,
+            ),
           ],
         ],
       ),

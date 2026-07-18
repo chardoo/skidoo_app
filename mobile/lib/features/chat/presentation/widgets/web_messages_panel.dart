@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/navigation/app_navigator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/web_panel_route.dart';
@@ -289,7 +290,7 @@ class _PanelHeader extends StatelessWidget {
               semanticLabel: 'Back to conversations',
             ),
           if (activeRoom != null) const SizedBox(width: 8),
-          Icon(Icons.chat_bubble_rounded, color: ext.accentGold, size: 18),
+          Icon(Icons.chat_bubble_rounded, color: ext.greetingColor, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -424,9 +425,7 @@ class _PanelRoomsListState extends State<_PanelRoomsList> {
         return Column(
           children: [
             _PanelSearchBar(
-              ext: widget.ext,
               controller: _searchCtrl,
-              query: _query,
               onChanged: (v) => setState(() => _query = v),
               onClear: () {
                 _searchCtrl.clear();
@@ -437,7 +436,7 @@ class _PanelRoomsListState extends State<_PanelRoomsList> {
               LinearProgressIndicator(
                 minHeight: 2,
                 backgroundColor: Colors.transparent,
-                color: widget.ext.accentGold.withValues(alpha: 0.6),
+                color: widget.ext.searchHintColor.withValues(alpha: 0.6),
               ),
             Expanded(
               child: (displayed.isEmpty && pending.isEmpty)
@@ -483,16 +482,12 @@ class _PanelRoomsListState extends State<_PanelRoomsList> {
 
 class _PanelSearchBar extends StatelessWidget {
   const _PanelSearchBar({
-    required this.ext,
     required this.controller,
-    required this.query,
     required this.onChanged,
     required this.onClear,
   });
 
-  final AppThemeExtension ext;
   final TextEditingController controller;
-  final String query;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
 
@@ -500,46 +495,12 @@ class _PanelSearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-      child: Container(
+      child: SearchField(
+        controller: controller,
+        hint: 'Search messages…',
         height: 38,
-        decoration: BoxDecoration(
-          color: ext.glassFill,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: ext.glassBorder),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 10),
-            Icon(Icons.search_rounded, color: ext.glassIcon, size: 16),
-            const SizedBox(width: 6),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                style: TextStyle(color: ext.greetingColor, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'Search messages…',
-                  hintStyle:
-                      TextStyle(color: ext.searchHintColor, fontSize: 13),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                onChanged: onChanged,
-              ),
-            ),
-            if (query.isNotEmpty)
-              Semantics(button: true, label: 'Clear', child: GestureDetector(
-                onTap: onClear,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Icon(Icons.close_rounded,
-                      color: ext.searchHintColor, size: 16),
-                ),
-              ))
-            else
-              const SizedBox(width: 8),
-          ],
-        ),
+        onChanged: onChanged,
+        onClear: onClear,
       ),
     );
   }
@@ -573,8 +534,8 @@ class _PanelEmptyRooms extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    ext.accentGold.withValues(alpha: 0.20),
-                    ext.accentGold.withValues(alpha: 0.03),
+                    ext.searchHintColor.withValues(alpha: 0.20),
+                    ext.searchHintColor.withValues(alpha: 0.03),
                   ],
                 ),
               ),
@@ -582,7 +543,7 @@ class _PanelEmptyRooms extends StatelessWidget {
               child: Icon(
                 isFiltered ? Icons.search_off_rounded : Icons.forum_rounded,
                 size: 38,
-                color: ext.accentGold.withValues(alpha: 0.85),
+                color: ext.searchHintColor,
               ),
             ),
             const SizedBox(height: 18),
@@ -633,7 +594,7 @@ class _PanelSectionLabel extends StatelessWidget {
             height: 4,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: ext.accentGold,
+              color: ext.searchHintColor,
             ),
           ),
           const SizedBox(width: 7),
@@ -895,14 +856,10 @@ class _PanelRoomContentState extends State<_PanelRoomContent> {
           return;
         }
         if (state.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.errorMessage!)),
-          );
+          AppSnackBar.error(context, state.errorMessage!);
         }
         if (state.systemNotice != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.systemNotice!)),
-          );
+          AppSnackBar.info(context, state.systemNotice!);
         }
       },
       buildWhen: (p, c) =>
@@ -930,7 +887,7 @@ class _PanelRoomContentState extends State<_PanelRoomContent> {
               LinearProgressIndicator(
                 minHeight: 2,
                 backgroundColor: Colors.transparent,
-                color: ext.accentGold.withValues(alpha: 0.6),
+                color: ext.searchHintColor.withValues(alpha: 0.6),
               ),
             if (widget.room.type == RoomType.direct ||
                 widget.room.type == RoomType.group)
@@ -1099,7 +1056,7 @@ class _MessageList extends StatelessWidget {
     syncAnimationState(state.messages, state.isLoadingHistory);
 
     if (state.isLoadingHistory && state.messages.isEmpty) {
-      return Center(child: CircularProgressIndicator(color: ext.accentGold));
+      return Center(child: CircularProgressIndicator(color: ext.searchHintColor));
     }
 
     if (state.messages.isEmpty) {
@@ -1122,7 +1079,7 @@ class _MessageList extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Center(
               child: CircularProgressIndicator(
-                  color: ext.accentGold, strokeWidth: 2),
+                  color: ext.searchHintColor, strokeWidth: 2),
             ),
           );
         }

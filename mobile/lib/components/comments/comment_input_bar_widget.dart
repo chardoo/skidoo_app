@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/widgets/emoji_panel.dart';
 
@@ -136,34 +137,21 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                         LogicalKeyboardKey.numpadEnter,
                         shift: false): widget.onSend,
                   },
-                  child: TextField(
+                  child: AppTextField(
                     controller: widget.controller,
                     focusNode: widget.focusNode,
                     onTap: () {
                       if (_emojiOpen) setState(() => _emojiOpen = false);
                     },
-                    style:
-                        TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                     maxLines: 4,
                     minLines: 1,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: widget.replyingToName != null
-                          ? 'Write a reply…'
-                          : 'Add a comment…',
-                      hintStyle:
-                          TextStyle(color: ext.glassHint, fontSize: 14.sp),
-                      filled: true,
-                      fillColor: ext.glassFill,
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide.none,
-                        borderRadius: BorderRadius.circular(22.r),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 16.w, vertical: 10.h),
-                      isDense: true,
-                    ),
-                    onSubmitted: (_) => widget.onSend(),
+                    dense: true,
+                    borderRadius: 22.r,
+                    hint: widget.replyingToName != null
+                        ? 'Write a reply…'
+                        : 'Add a comment…',
+                    onFieldSubmitted: (_) => widget.onSend(),
                   ),
                 ),
               ),
@@ -180,7 +168,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                     height: 42.h,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [ext.accentGold, const Color(0xFFFF6B35)],
+                        colors: [ext.accentGold, const Color(0xFF078368)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),

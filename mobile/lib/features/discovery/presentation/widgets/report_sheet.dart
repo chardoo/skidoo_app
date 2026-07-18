@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
@@ -149,36 +150,12 @@ class _ReportSheetState extends State<ReportSheet> {
 
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.w),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _selected == null || _submitting ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    disabledBackgroundColor:
-                        Colors.redAccent.withValues(alpha: 0.3),
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _submitting
-                      ? SizedBox(
-                          width: 18.w,
-                          height: 18.w,
-                          child: const CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
-                        )
-                      : Text(
-                          'Submit Report',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15.sp,
-                          ),
-                        ),
-                ),
+              child: AppButton(
+                fullWidth: true,
+                variant: AppButtonVariant.destructive,
+                isLoading: _submitting,
+                onPressed: _selected == null || _submitting ? null : _submit,
+                label: 'Submit Report',
               ),
             ),
 

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_confirm_dialog.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
@@ -87,7 +89,7 @@ class _GlobalRoomInitializerState extends State<_GlobalRoomInitializer> {
       return webWrap(
         Scaffold(
           backgroundColor: ext.homeBackground,
-          body: Center(child: CircularProgressIndicator(color: ext.accentGold)),
+          body: Center(child: CircularProgressIndicator(color: ext.searchHintColor)),
         ),
         backgroundColor: ext.homeBackground,
       );
@@ -152,6 +154,12 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   bool _isBlocked = false;
   bool _blockLoading = false;
   String _otherUserId = '';
+  // The super admin's account is never blockable — matches the 'admin' /
+  // 'superAdmin' role-string convention already used for participant-level
+  // checks elsewhere (e.g. ChatRoom.hasAdminParticipant, not AuthService's
+  // own-role check, which uses a different 'super_admin' string for a
+  // different purpose — the signed-in user's own role).
+  bool _isPeerSuperAdmin = false;
 
   @override
   void initState() {
@@ -187,6 +195,12 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       final peer = participants.where((p) => p.userId != myId).firstOrNull;
       if (peer == null) return;
       _otherUserId = peer.userId;
+      if (mounted) {
+        setState(() => _isPeerSuperAdmin = peer.userRole == 'superAdmin');
+      } else {
+        _isPeerSuperAdmin = peer.userRole == 'superAdmin';
+      }
+      if (_isPeerSuperAdmin) return;
 
       final blocked = await sl<GetBlockedUsersUseCase>().call();
       if (mounted) setState(() => _isBlocked = blocked.contains(_otherUserId));
@@ -194,7 +208,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   }
 
   Future<void> _toggleBlock() async {
-    if (_otherUserId.isEmpty || _blockLoading) return;
+    if (_otherUserId.isEmpty || _blockLoading || _isPeerSuperAdmin) return;
     setState(() => _blockLoading = true);
     try {
       if (_isBlocked) {
@@ -292,16 +306,12 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
         backgroundColor: ext.cardSurface,
         title: Text(AppLocalizations.of(context)!.chatRoomEditMessage,
             style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
-        content: TextField(
+        content: AppTextField(
           controller: ctrl,
           autofocus: true,
           maxLines: null,
-          style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-          decoration: InputDecoration(
-            hintText: AppLocalizations.of(context)!.chatRoomEditYourMessage,
-            hintStyle: TextStyle(color: ext.searchHintColor),
-            border: InputBorder.none,
-          ),
+          filled: false,
+          hint: AppLocalizations.of(context)!.chatRoomEditYourMessage,
         ),
         actions: [
           TextButton(
@@ -329,31 +339,15 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   }
 
   Future<void> _showDeleteDialog(BuildContext context, ChatMessage msg) async {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: ext.cardSurface,
-        title: Text(AppLocalizations.of(context)!.chatRoomDeleteMessage,
-            style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
-        content: Text(AppLocalizations.of(context)!.chatRoomDeleteForEveryone,
-            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child:
-                Text(AppLocalizations.of(context)!.chatRoomCancel, style: TextStyle(color: ext.searchHintColor)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(AppLocalizations.of(context)!.chatRoomDelete,
-                style: const TextStyle(
-                    color: Colors.redAccent, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: AppLocalizations.of(context)!.chatRoomDeleteMessage,
+      message: AppLocalizations.of(context)!.chatRoomDeleteForEveryone,
+      confirmLabel: AppLocalizations.of(context)!.chatRoomDelete,
+      cancelLabel: AppLocalizations.of(context)!.chatRoomCancel,
+      isDestructive: true,
     );
-    if (confirmed == true && context.mounted) {
+    if (confirmed && context.mounted) {
       _bloc.add(ChatRoomMessageDeleteRequested(msg.id));
     }
   }
@@ -500,8 +494,9 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
           ),
         )),
         actions: [
-          // Block/Unblock menu — only shown for DM rooms
-          if (_isDirect)
+          // Block/Unblock menu — only shown for DM rooms, and never for the
+          // super admin's account.
+          if (_isDirect && !_isPeerSuperAdmin)
             PopupMenuButton<String>(
               icon: Icon(Icons.more_vert_rounded,
                   color: ext.greetingColor, size: 20.sp),
@@ -590,7 +585,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                         ? LinearProgressIndicator(
                             minHeight: 2,
                             backgroundColor: Colors.transparent,
-                            color: ext.accentGold.withValues(alpha: 0.6),
+                            color: ext.searchHintColor.withValues(alpha: 0.6),
                           )
                         : const SizedBox.shrink(),
                   ),
@@ -662,7 +657,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                         if (state.isLoadingHistory && state.messages.isEmpty) {
                           return Center(
                             child: CircularProgressIndicator(
-                                color: ext.accentGold),
+                                color: ext.searchHintColor),
                           );
                         }
 
@@ -689,7 +684,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                                 padding: EdgeInsets.symmetric(vertical: 12.h),
                                 child: Center(
                                   child: CircularProgressIndicator(
-                                      color: ext.accentGold, strokeWidth: 2),
+                                      color: ext.searchHintColor, strokeWidth: 2),
                                 ),
                               );
                             }

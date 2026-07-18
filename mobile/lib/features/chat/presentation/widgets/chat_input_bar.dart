@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MaxLengthEnforcement;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/validators/media_validator.dart';
 import 'package:skidoo_app/core/widgets/emoji_panel.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
@@ -75,8 +77,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
     final error = await MediaValidator.validate(picked, isVideo: false);
     if (!mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error)));
+      AppSnackBar.error(context, error);
       return;
     }
     widget.onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: false);
@@ -89,8 +90,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
     final error = await MediaValidator.validate(picked, isVideo: true);
     if (!mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error)));
+      AppSnackBar.error(context, error);
       return;
     }
     widget.onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: true);
@@ -207,13 +207,11 @@ class _ChatInputBarState extends State<ChatInputBar> {
 
               // Text input
               Expanded(
-                child: TextField(
+                child: AppTextField(
                   controller: widget.controller,
                   onTap: () {
                     if (_emojiOpen) setState(() => _emojiOpen = false);
                   },
-                  style:
-                      TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                   maxLines: 4,
                   minLines: 1,
                   maxLength: 1000,
@@ -234,25 +232,14 @@ class _ChatInputBarState extends State<ChatInputBar> {
                             )
                           : null,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                    hintText: hasStaged
-                        ? 'Add a caption… (optional)'
-                        : widget.replyingTo != null
-                            ? 'Reply…'
-                            : 'Type a message…',
-                    hintStyle: TextStyle(
-                        color: ext.searchHintColor, fontSize: 14.sp),
-                    filled: true,
-                    fillColor: ext.searchFieldFill,
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide.none,
-                      borderRadius: BorderRadius.circular(22.r),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16.w, vertical: 10.h),
-                    isDense: true,
-                  ),
-                  onSubmitted: (_) => widget.onSend(),
+                  dense: true,
+                  borderRadius: 22.r,
+                  hint: hasStaged
+                      ? 'Add a caption… (optional)'
+                      : widget.replyingTo != null
+                          ? 'Reply…'
+                          : 'Type a message…',
+                  onFieldSubmitted: (_) => widget.onSend(),
                 ),
               ),
               SizedBox(width: 8.w),
@@ -325,13 +312,13 @@ class _MediaPickerSheet extends StatelessWidget {
           ),
           SizedBox(height: 8.h),
           ListTile(
-            leading: Icon(Icons.image_rounded, color: ext.accentGold),
+            leading: Icon(Icons.image_rounded, color: ext.searchHintColor),
             title: Text('Photo',
                 style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
             onTap: onPickImage,
           ),
           ListTile(
-            leading: Icon(Icons.videocam_rounded, color: ext.accentGold),
+            leading: Icon(Icons.videocam_rounded, color: ext.searchHintColor),
             title: Text('Video',
                 style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
             onTap: onPickVideo,
@@ -624,7 +611,7 @@ class _StagedNetworkImagePreview extends StatelessWidget {
                   width: 18.w,
                   height: 18.w,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: ext.accentGold),
+                      strokeWidth: 2, color: ext.searchHintColor),
                 ),
               ),
               errorWidget: (_, __, ___) => Container(

@@ -120,3 +120,5 @@ flutter:
   assets:
     - assets/navbar_icons/
     - assets/logo/
+    - assets/splash/
+    - assets/Images/

@@ -1,8 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/common/widgets/app_button.dart';
+import 'package:skidoo_app/core/common/widgets/app_confirm_dialog.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
@@ -236,7 +236,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                             height: 12.w,
                             child: CircularProgressIndicator(
                               strokeWidth: 1.5,
-                              color: ext.accentGold,
+                              color: ext.searchHintColor,
                             ),
                           ),
                         ],
@@ -265,7 +265,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                         SizedBox(
                           width: double.infinity,
                           child: _ProfileFollowButton(
-                              photographerId: p.id, ext: ext),
+                              photographerId: p.id),
                         ),
                         SizedBox(height: 8.h),
                         Row(
@@ -289,7 +289,6 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                         Expanded(
                           child: _ProfileFollowButton(
                             photographerId: p.id,
-                            ext: ext,
                           ),
                         ),
                         SizedBox(width: 10.w),
@@ -473,10 +472,9 @@ class _SamplesTabState extends State<_SamplesTab>
 
     setState(() => _uploading = true);
     try {
-      final files = picked.map((x) => File(x.path)).toList();
       final updated = await sl<UploadSamplesUseCase>().call(
         photographerId: widget.photographerId,
-        files: files,
+        files: picked,
       );
       if (mounted) setState(() => _samples = updated);
     } catch (e) {
@@ -487,30 +485,14 @@ class _SamplesTabState extends State<_SamplesTab>
   }
 
   Future<void> _confirmDelete(PhotographerSample sample) async {
-    final ext = widget.ext;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: ext.cardSurface,
-        title: Text('Remove sample?',
-            style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
-        content: Text('This photo will be removed from your portfolio.',
-            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel',
-                style: TextStyle(color: ext.searchHintColor)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Remove',
-                style: TextStyle(color: Colors.redAccent)),
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Remove sample?',
+      message: 'This photo will be removed from your portfolio.',
+      confirmLabel: 'Remove',
+      isDestructive: true,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     try {
       await sl<DeleteSampleUseCase>().call(
         sampleId: sample.id,
@@ -530,7 +512,7 @@ class _SamplesTabState extends State<_SamplesTab>
     final ext = widget.ext;
 
     if (_loading) {
-      return Center(child: CircularProgressIndicator(color: ext.accentGold));
+      return Center(child: CircularProgressIndicator(color: ext.searchHintColor));
     }
 
     if (_error != null && _samples.isEmpty) {
@@ -563,7 +545,7 @@ class _SamplesTabState extends State<_SamplesTab>
     return Stack(
       children: [
         RefreshIndicator(
-          color: ext.accentGold,
+          color: ext.searchHintColor,
           onRefresh: _refreshSamples,
           child: GridView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -731,7 +713,7 @@ class _EventsTabState extends State<_EventsTab>
     final ext = widget.ext;
 
     if (_loading && _events.isEmpty) {
-      return Center(child: CircularProgressIndicator(color: ext.accentGold));
+      return Center(child: CircularProgressIndicator(color: ext.searchHintColor));
     }
 
     if (_error != null && _events.isEmpty) {
@@ -782,7 +764,7 @@ class _EventsTabState extends State<_EventsTab>
             child: Padding(
               padding: EdgeInsets.all(16.w),
               child: CircularProgressIndicator(
-                  color: ext.accentGold, strokeWidth: 2),
+                  color: ext.searchHintColor, strokeWidth: 2),
             ),
           );
         }
@@ -817,7 +799,7 @@ class _EventsTabState extends State<_EventsTab>
                               progress == null
                                   ? child
                                   : Container(
-                                      color: const Color(0xFF1E2230),
+                                      color: const Color(0xFF1B2A22),
                                       child: const Center(
                                         child: CircularProgressIndicator(
                                             color: Colors.white38,
@@ -825,7 +807,7 @@ class _EventsTabState extends State<_EventsTab>
                                       ),
                                     ),
                           errorBuilder: (_, __, ___) => Container(
-                            color: const Color(0xFF1E2230),
+                            color: const Color(0xFF1B2A22),
                             child: const Center(
                               child: Icon(Icons.broken_image_outlined,
                                   color: Colors.white38, size: 32),
@@ -833,9 +815,9 @@ class _EventsTabState extends State<_EventsTab>
                           ),
                         ))
                       : Container(
-                          color: const Color(0xFF1E2230),
+                          color: const Color(0xFF1B2A22),
                           child: Icon(Icons.event_rounded,
-                              color: ext.accentGold, size: 36.sp),
+                              color: ext.searchHintColor, size: 36.sp),
                         ),
                 ),
                 Padding(
@@ -999,10 +981,8 @@ class _Stat extends StatelessWidget {
 class _ProfileFollowButton extends StatefulWidget {
   const _ProfileFollowButton({
     required this.photographerId,
-    required this.ext,
   });
   final String photographerId;
-  final AppThemeExtension ext;
 
   @override
   State<_ProfileFollowButton> createState() => _ProfileFollowButtonState();
@@ -1042,50 +1022,12 @@ class _ProfileFollowButtonState extends State<_ProfileFollowButton> {
 
   @override
   Widget build(BuildContext context) {
-    final ext = widget.ext;
-    return SizedBox(
-      height: 50.h,
-      child: ElevatedButton(
-        onPressed: () => requireAuth(context, action: () => _toggle(context)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _following ? ext.searchFieldFill : ext.accentGold,
-          foregroundColor: _following ? ext.greetingColor : Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14.r),
-            side: _following
-                ? BorderSide(
-                    color: ext.searchHintColor.withValues(alpha: 0.35))
-                : BorderSide.none,
-          ),
-        ),
-        child: _loading
-            ? SizedBox(
-                width: 18.w,
-                height: 18.w,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: _following ? ext.searchHintColor : Colors.white,
-                ),
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _following
-                        ? Icons.person_remove_outlined
-                        : Icons.person_add_outlined,
-                    size: 16.sp,
-                  ),
-                  SizedBox(width: 6.w),
-                  Text(
-                    _following ? 'Following' : 'Follow',
-                    style: TextStyle(
-                        fontSize: 14.sp, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-      ),
+    return AppButton(
+      variant: _following ? AppButtonVariant.secondary : AppButtonVariant.primary,
+      isLoading: _loading,
+      icon: _following ? Icons.person_remove_outlined : Icons.person_add_outlined,
+      label: _following ? 'Following' : 'Follow',
+      onPressed: () => requireAuth(context, action: () => _toggle(context)),
     );
   }
 }

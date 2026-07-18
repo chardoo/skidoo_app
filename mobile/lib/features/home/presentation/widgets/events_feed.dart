@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
@@ -18,8 +16,7 @@ import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_discovery_card.dart';
-import 'package:skidoo_app/l10n/app_localizations.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 
 // ── Virtual feed item types ───────────────────────────────────────────────────
@@ -87,7 +84,12 @@ List<_FeedItem> _buildVirtualList(
   return items;
 }
 
-// ── Scrollable events feed (authenticated) ────────────────────────────────────
+// ── Vertically-paged events feed (authenticated) ──────────────────────────────
+//
+// TikTok-style: each item (event, ad, or request) is one full-viewport page.
+// Vertical swipe moves between pages; horizontal swipe within an event moves
+// between that event's own photos/videos (FullBleedEventCard's nested
+// PostPhotoCarousel — unchanged from before).
 
 class EventsFeed extends StatefulWidget {
   const EventsFeed({
@@ -111,12 +113,8 @@ class EventsFeed extends StatefulWidget {
 
 class _EventsFeedState extends State<EventsFeed> {
   final _activeCardIndex = ValueNotifier<int>(0);
-  // Web desktop/laptop: shared "comments open" flag so the panel stays open as
-  // the user scrolls between cards (each card shows its own thread).
-  final _webCommentsOpen = ValueNotifier<bool>(false);
-  final _cardKeys = <String, GlobalKey>{};
+  final _pageCtrl = PageController();
   final _feedFocusNode = FocusNode();
-  final _scrollCtrl = ScrollController();
   final _repo = AdsRepository();
 
   // One ad per slot — fetched fresh from the server for each slot.
@@ -125,9 +123,6 @@ class _EventsFeedState extends State<EventsFeed> {
   final List<String?> _impressionIds = [];
   // Context event IDs passed to serveAd, forwarded to trackImpression.
   final List<String?> _adContextEventIds = [];
-
-  // GlobalKeys for ad cards — used to check viewport visibility.
-  final _adCardGlobalKeys = <int, GlobalKey>{};
   // Ad slot indices that have already fired an impression (never re-fire).
   final _firedAdImpressions = <int>{};
 
@@ -139,17 +134,9 @@ class _EventsFeedState extends State<EventsFeed> {
   // Guards against overlapping fetch-more calls.
   bool _fetchingMore = false;
 
-  GlobalKey _keyFor(String eventId) =>
-      _cardKeys.putIfAbsent(eventId, GlobalKey.new);
-
-  GlobalKey _adKeyFor(int adIdx) =>
-      _adCardGlobalKeys.putIfAbsent(adIdx, GlobalKey.new);
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _updateActiveCard());
     _fetchInitial();
     // NOTE: deliberately NOT auto-focusing the feed on web. Grabbing focus on
     // load captured the browser's keyboard/input focus, which then blocked the
@@ -179,7 +166,6 @@ class _EventsFeedState extends State<EventsFeed> {
         _adContextEventIds.clear();
         _requests = [];
         _requestPage = 1;
-        _adCardGlobalKeys.clear();
         _firedAdImpressions.clear();
       });
       _fetchInitial();
@@ -194,13 +180,10 @@ class _EventsFeedState extends State<EventsFeed> {
   Future<void> _fetchInitial() async {
     debugPrint('[EventsFeed] _fetchInitial');
     try {
-      // AppConfigRepository.current is already populated by the fire-and-forget
-      // fetch in main.dart — no blocking network call needed here.
       final contextEventId = widget.discoveryState.events.isNotEmpty
           ? widget.discoveryState.events.first.id
           : null;
 
-      // Respect config: skip API calls when the server has disabled a slot type.
       final cfg = AppConfigRepository.current;
       final results = await Future.wait([
         if (cfg.adsEnabled)
@@ -217,12 +200,6 @@ class _EventsFeedState extends State<EventsFeed> {
       final ad = results[0] as AdModel?;
       final requests = results[1] as List<FeedRequestModel>;
 
-      debugPrint(
-        '[EventsFeed] _fetchInitial — '
-        'adsEnabled=${cfg.adsEnabled} requestsEnabled=${cfg.requestsEnabled} | '
-        'ad=${ad == null ? "none" : "adId=${ad.adId}"} | '
-        'requests=${requests.length}',
-      );
       setState(() {
         _ads
           ..clear()
@@ -244,7 +221,6 @@ class _EventsFeedState extends State<EventsFeed> {
   Future<void> _fetchMore() async {
     if (_fetchingMore) return;
     _fetchingMore = true;
-    debugPrint('[EventsFeed] _fetchMore — adSlot=${_ads.length} requestPage=${_requestPage + 1}');
     try {
       final cfg = AppConfigRepository.current;
       final nextRequestPage = _requestPage + 1;
@@ -268,18 +244,10 @@ class _EventsFeedState extends State<EventsFeed> {
       // Drop the ad if its ID was already shown in a previous slot.
       if (ad != null) {
         final seenAdIds = _ads.whereType<AdModel>().map((a) => a.adId).toSet();
-        if (seenAdIds.contains(ad.adId)) {
-          debugPrint('[EventsFeed] _fetchMore — duplicate adId=${ad.adId}, dropping');
-          ad = null;
-        }
+        if (seenAdIds.contains(ad.adId)) ad = null;
       }
 
       if (!mounted) return;
-      debugPrint(
-        '[EventsFeed] _fetchMore — '
-        'ad=${ad == null ? "none" : "adId=${ad.adId}"} | '
-        'newRequests=${moreRequests.length}',
-      );
       setState(() {
         _ads.add(ad);
         _impressionIds.add(null);
@@ -301,133 +269,35 @@ class _EventsFeedState extends State<EventsFeed> {
   @override
   void dispose() {
     _activeCardIndex.dispose();
-    _webCommentsOpen.dispose();
+    _pageCtrl.dispose();
     _feedFocusNode.dispose();
-    _scrollCtrl.dispose();
     super.dispose();
   }
 
-  // ── Keyboard navigation (web desktop/laptop only) ─────────────────────────
+  // ── Page tracking ──────────────────────────────────────────────────────────
 
-  /// Scroll the card at [index] into view and update [_activeCardIndex].
-  void _scrollToCard(String eventId, int index) {
-    _activeCardIndex.value = index;
-    final key = _cardKeys[eventId];
-    final ctx = key?.currentContext;
-    if (ctx != null) {
-      Scrollable.ensureVisible(
-        ctx,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-        alignment: 0.0, // align top of card with top of viewport
-      );
+  /// Finds the page index (within [virtualItems]) of the event at
+  /// [eventIndex] — used to translate keyboard nav / external requests
+  /// (expressed in event-index terms) into a PageView page.
+  int _pageIndexForEvent(List<_FeedItem> virtualItems, int eventIndex) {
+    for (var i = 0; i < virtualItems.length; i++) {
+      final item = virtualItems[i];
+      if (item is _EventItem && item.eventIndex == eventIndex) return i;
     }
+    return 0;
   }
 
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    // Don't hijack keys while the user is typing in a text field (e.g. the
-    // comment box): space, j and k must reach the field, not scroll the feed.
-    if (isTextInputFocused()) {
-      return KeyEventResult.ignored;
-    }
-    final events = widget.discoveryState.events;
-    if (events.isEmpty) return KeyEventResult.ignored;
-    final current = _activeCardIndex.value;
+  void _onPageChanged(List<_FeedItem> virtualItems, int pageIndex) {
+    final item = pageIndex < virtualItems.length ? virtualItems[pageIndex] : null;
+    _activeCardIndex.value = item is _EventItem ? item.eventIndex : -1;
 
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
-        event.logicalKey == LogicalKeyboardKey.keyJ) {
-      final next = (current + 1).clamp(0, events.length - 1);
-      if (next != current) _scrollToCard(events[next].id, next);
-      return KeyEventResult.handled;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
-        event.logicalKey == LogicalKeyboardKey.keyK) {
-      final prev = (current - 1).clamp(0, events.length - 1);
-      if (prev != current) _scrollToCard(events[prev].id, prev);
-      return KeyEventResult.handled;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.enter ||
-        event.logicalKey == LogicalKeyboardKey.space) {
-      if (current < events.length) widget.onCardTap(events[current]);
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-
-  // ── Event card hide ───────────────────────────────────────────────────────
-
-  void _onHide(String eventId) {
-    final idx =
-        widget.discoveryState.events.indexWhere((e) => e.id == eventId);
-    if (idx != -1 && _activeCardIndex.value == idx) {
-      _activeCardIndex.value = -1;
+    if (item is _AdItem && !_firedAdImpressions.contains(item.adIndex)) {
+      _firedAdImpressions.add(item.adIndex);
+      _fireAdImpression(item.adIndex);
     }
 
-    final bloc = context.read<DiscoveryBloc>();
-    bloc.add(DiscoveryEventHideRequested(eventId));
-
-    AppSnackBar.withAction(
-      context,
-      AppLocalizations.of(context)!.discoveryContentHidden,
-      actionLabel: AppLocalizations.of(context)!.discoveryUndo,
-      onAction: () => bloc.add(const DiscoveryEventHideUndone()),
-    ).then((reason) {
-      if (reason != SnackBarClosedReason.action && !bloc.isClosed) {
-        bloc.add(DiscoveryEventHideCommitted(eventId));
-      }
-    });
-  }
-
-  // ── Active card tracking ──────────────────────────────────────────────────
-
-  void _updateActiveCard() {
-    if (!mounted) return;
-    final screenH = MediaQuery.sizeOf(context).height;
-    final viewportMid = screenH / 2;
-    final events = widget.discoveryState.events;
-
-    int? bestIdx;
-    double bestDist = double.infinity;
-
-    for (int i = 0; i < events.length; i++) {
-      final key = _cardKeys[events[i].id];
-      if (key == null) continue;
-      final ctx = key.currentContext;
-      if (ctx == null) continue;
-      final box = ctx.findRenderObject() as RenderBox?;
-      if (box == null || !box.attached) continue;
-      final pos = box.localToGlobal(Offset.zero);
-      final cardCenter = pos.dy + box.size.height / 2;
-      final dist = (cardCenter - viewportMid).abs();
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestIdx = i;
-      }
-    }
-
-    if (bestIdx != null && bestIdx != _activeCardIndex.value) {
-      _activeCardIndex.value = bestIdx;
-    }
-
-    _checkAdImpressions(screenH);
-  }
-
-  // Scans visible ad slots and fires impressions exactly once per slot.
-  void _checkAdImpressions(double screenH) {
-    for (final entry in _adCardGlobalKeys.entries) {
-      final adIdx = entry.key;
-      if (_firedAdImpressions.contains(adIdx)) continue;
-      final ctx = entry.value.currentContext;
-      if (ctx == null) continue;
-      final box = ctx.findRenderObject() as RenderBox?;
-      if (box == null || !box.attached) continue;
-      final top = box.localToGlobal(Offset.zero).dy;
-      // Fire when any part of the card is within the screen.
-      if (top + box.size.height > 0 && top < screenH) {
-        _firedAdImpressions.add(adIdx);
-        _fireAdImpression(adIdx);
-      }
+    if (pageIndex >= virtualItems.length - 2 && !widget.discoveryState.isLoadingMore) {
+      widget.onLoadMore();
     }
   }
 
@@ -436,9 +306,6 @@ class _EventsFeedState extends State<EventsFeed> {
     if (ad == null) return;
     final contextEventId =
         adIdx < _adContextEventIds.length ? _adContextEventIds[adIdx] : null;
-    debugPrint(
-      '[EventsFeed] impression → adIdx=$adIdx adId=${ad.adId} token=${ad.impressionToken}',
-    );
     final id = await _repo.trackImpression(
       adId: ad.adId,
       adsetId: ad.adsetId,
@@ -452,6 +319,60 @@ class _EventsFeedState extends State<EventsFeed> {
     }
   }
 
+  // ── Keyboard navigation (web desktop/laptop only) ─────────────────────────
+
+  KeyEventResult _handleKeyEvent(
+      List<_FeedItem> virtualItems, FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (isTextInputFocused()) return KeyEventResult.ignored;
+    final events = widget.discoveryState.events;
+    if (events.isEmpty) return KeyEventResult.ignored;
+    final current = _activeCardIndex.value.clamp(0, events.length - 1);
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
+        event.logicalKey == LogicalKeyboardKey.keyJ) {
+      final next = (current + 1).clamp(0, events.length - 1);
+      if (next != current) {
+        _pageCtrl.animateToPage(_pageIndexForEvent(virtualItems, next),
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+        event.logicalKey == LogicalKeyboardKey.keyK) {
+      final prev = (current - 1).clamp(0, events.length - 1);
+      if (prev != current) {
+        _pageCtrl.animateToPage(_pageIndexForEvent(virtualItems, prev),
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.space) {
+      if (current < events.length) widget.onCardTap(events[current]);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  // ── Event card hide ───────────────────────────────────────────────────────
+
+  void _onHide(String eventId) {
+    final bloc = context.read<DiscoveryBloc>();
+    bloc.add(DiscoveryEventHideRequested(eventId));
+
+    AppSnackBar.withAction(
+      context,
+      'Post hidden',
+      actionLabel: 'Undo',
+      onAction: () => bloc.add(const DiscoveryEventHideUndone()),
+    ).then((reason) {
+      if (reason != SnackBarClosedReason.action && !bloc.isClosed) {
+        bloc.add(DiscoveryEventHideCommitted(eventId));
+      }
+    });
+  }
+
   // ── Chat ──────────────────────────────────────────────────────────────────
 
   Future<void> _openChat(
@@ -460,7 +381,6 @@ class _EventsFeedState extends State<EventsFeed> {
     String userType,
     String displayName,
   ) async {
-    debugPrint('[EventsFeed] _openChat → userId=$userId displayName="$displayName"');
     final role = userType == 'photographer'
         ? ChatConfig.rolePhotographer
         : ChatConfig.roleClient;
@@ -483,7 +403,6 @@ class _EventsFeedState extends State<EventsFeed> {
       );
       if (context.mounted) roomsBloc?.add(const ChatRoomsLoadRequested());
     } catch (e) {
-      debugPrint('[EventsFeed] _openChat ERROR: $e');
       if (!context.mounted) return;
       final blocked = e is ServerException &&
           (e.message.contains('400') ||
@@ -501,89 +420,57 @@ class _EventsFeedState extends State<EventsFeed> {
   @override
   Widget build(BuildContext context) {
     final state = widget.discoveryState;
-    final virtualItems = _buildVirtualList(
-      state.events,
-      state.isLoadingMore,
-    );
+    final visibleRequests =
+        _requests.where((r) => !_hiddenRequestIds.contains(r.id)).toList();
+    // Drop ad/request slots with no confirmed content — _buildVirtualList
+    // reserves a slot as soon as an interval is reached (or the batch is
+    // shorter than the interval), before the async ad/request fetch for
+    // that slot has resolved or is known to be empty. Rendering those as a
+    // PageView page produces a swipeable blank screen; skipping them here
+    // means the feed only ever shows a page once there's something on it.
+    final virtualItems = _buildVirtualList(state.events, state.isLoadingMore)
+        .where((item) {
+      if (item is _AdItem) {
+        return item.adIndex < _ads.length && _ads[item.adIndex] != null;
+      }
+      if (item is _RequestItem) {
+        return item.requestIndex < visibleRequests.length;
+      }
+      return true;
+    }).toList();
 
     return Focus(
       focusNode: _feedFocusNode,
-      onKeyEvent: kIsWeb ? _handleKeyEvent : null,
-      child: NotificationListener<ScrollNotification>(
-      onNotification: (notification) {
-        if (notification is ScrollUpdateNotification) {
-          final metrics = notification.metrics;
-          if (metrics.pixels >= metrics.maxScrollExtent - 1000 &&
-              !widget.discoveryState.isLoadingMore) {
-            debugPrint(
-              '[ForYouFeed] load-more threshold hit — '
-              'offset=${metrics.pixels.toStringAsFixed(0)} '
-              'maxExtent=${metrics.maxScrollExtent.toStringAsFixed(0)}',
-            );
-            widget.onLoadMore();
-          }
-          // Check ad visibility on every scroll frame.
-          WidgetsBinding.instance
-              .addPostFrameCallback((_) => _updateActiveCard());
-        } else if (notification is ScrollEndNotification) {
-          WidgetsBinding.instance
-              .addPostFrameCallback((_) => _updateActiveCard());
-        }
-        return false;
-      },
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: ConstrainedBox(
-          // On web the card manages its own 480px column + reactions panel via
-          // LayoutBuilder — cap must not interfere. On mobile/tablet 720px
-          // prevents cards from stretching too wide on large screens.
-          constraints: kIsWeb
-              ? const BoxConstraints()
-              : const BoxConstraints(maxWidth: 720),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(end: widget.topPadding),
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            builder: (context, pad, _) => ListView.builder(
-            controller: _scrollCtrl,
-            physics: kIsWeb
-                ? const ClampingScrollPhysics()
-                : const BouncingScrollPhysics(),
-            // Keep fewer offscreen cards live on mobile — large cacheExtent
-            // forces Flutter to decode images for items far off-screen, which
-            // is the primary driver of OOM crashes on long feeds.
-            cacheExtent: kIsWeb ? 2400 : 300,
-            addAutomaticKeepAlives: false,
-            padding: EdgeInsets.only(top: pad),
-            itemCount: virtualItems.length,
-            itemBuilder: (context, index) {
-              final item = virtualItems[index];
+      onKeyEvent: kIsWeb
+          ? (node, event) => _handleKeyEvent(virtualItems, node, event)
+          : null,
+      child: Padding(
+        padding: EdgeInsets.only(top: widget.topPadding),
+        child: PageView.builder(
+          controller: _pageCtrl,
+          scrollDirection: Axis.vertical,
+          itemCount: virtualItems.length,
+          onPageChanged: (i) => _onPageChanged(virtualItems, i),
+          itemBuilder: (context, index) {
+            final item = virtualItems[index];
 
-              // ── Loading spinner ───────────────────────────────────────────
-              if (item is _LoadingItem) {
-                return Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20.h),
-                  child: const AppLoadingIndicator(),
-                );
-              }
+            // ── Loading spinner ───────────────────────────────────────────
+            if (item is _LoadingItem) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-              // ── Injected ad ───────────────────────────────────────────────
-              if (item is _AdItem) {
-                final adIdx = item.adIndex;
-                final ad = adIdx < _ads.length ? _ads[adIdx] : null;
+            // ── Injected ad ───────────────────────────────────────────────
+            if (item is _AdItem) {
+              final adIdx = item.adIndex;
+              final ad = adIdx < _ads.length ? _ads[adIdx] : null;
+              if (ad == null) return const SizedBox.shrink();
 
-                // Primary path — real ad from the serve endpoint (with tracking).
-                if (ad != null) {
-                  debugPrint(
-                    '[EventsFeed] _AdItem[$adIdx] — '
-                    'adId=${ad.adId} '
-                    'mediaCount=${ad.media.length} '
-                    'mediaUrl=${ad.mediaUrl} '
-                    'mediaType=${ad.mediaType} '
-                    'media[0]url=${ad.media.isNotEmpty ? ad.media[0].url : "EMPTY"}',
-                  );
-                  return FeedItemCard(
-                    key: _adKeyFor(adIdx),
+              return FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width: MediaQuery.sizeOf(context).width,
+                  child: FeedItemCard(
+                    key: ValueKey('ad_$adIdx'),
                     data: FeedItemData.fromAd(
                       ad,
                       onCtaTap: () => _repo.trackClick(
@@ -593,77 +480,57 @@ class _EventsFeedState extends State<EventsFeed> {
                             ? _impressionIds[adIdx]
                             : null,
                       ),
-                      // Impression is fired by _checkAdImpressions() on
-                      // first viewport entry — not on widget mount.
                     ),
                     onHide: () => setState(() {
                       if (adIdx < _ads.length) _ads[adIdx] = null;
                     }),
-                  );
-                }
-
-                // /ads/serve returned null — no eligible ad, collapse the slot.
-                return const SizedBox.shrink();
-              }
-
-              // ── Injected request ──────────────────────────────────────────
-              if (item is _RequestItem) {
-                final visible = _requests
-                    .where((r) => !_hiddenRequestIds.contains(r.id))
-                    .toList();
-                if (item.requestIndex >= visible.length) {
-                  return const SizedBox.shrink();
-                }
-                final req = visible[item.requestIndex];
-                return FeedItemCard(
-                  key: ValueKey('req_${req.id}'),
-                  data: FeedItemData.fromRequest(
-                    req,
-                    onMessageTap: () => _openChat(
-                      context,
-                      req.requesterId,
-                      req.requesterType,
-                      req.requesterName,
-                    ),
-                  ),
-                  onHide: () =>
-                      setState(() => _hiddenRequestIds.add(req.id)),
-                );
-              }
-
-              // ── Event card ────────────────────────────────────────────────
-              final eventItem = item as _EventItem;
-              final event = eventItem.event;
-              final isPending = state.pendingHideEventId == event.id;
-
-              return ClipRect(
-                child: AnimatedAlign(
-                  duration: const Duration(milliseconds: 380),
-                  curve: Curves.easeInOut,
-                  alignment: Alignment.topCenter,
-                  heightFactor: isPending ? 0.0 : 1.0,
-                  child: IgnorePointer(
-                    ignoring: isPending,
-                    child: EventDiscoveryCard(
-                      key: _keyFor(event.id),
-                      event: event,
-                      cardIndex: eventItem.eventIndex,
-                      activeCardIndex: _activeCardIndex,
-                      webCommentsOpen: _webCommentsOpen,
-                      isAuthenticated: true,
-                      onTap: () => widget.onCardTap(event),
-                      onCommentTap: () => widget.onCommentTap(event),
-                      onHide: () => _onHide(event.id),
-                    ),
                   ),
                 ),
               );
-            },
-          ),
-          ),
+            }
+
+            // ── Injected request ──────────────────────────────────────────
+            if (item is _RequestItem) {
+              if (item.requestIndex >= visibleRequests.length) {
+                return const SizedBox.shrink();
+              }
+              final req = visibleRequests[item.requestIndex];
+              return FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width: MediaQuery.sizeOf(context).width,
+                  child: FeedItemCard(
+                    key: ValueKey('req_${req.id}'),
+                    data: FeedItemData.fromRequest(
+                      req,
+                      onMessageTap: () => _openChat(
+                        context,
+                        req.requesterId,
+                        req.requesterType,
+                        req.requesterName,
+                      ),
+                    ),
+                    onHide: () => setState(() => _hiddenRequestIds.add(req.id)),
+                  ),
+                ),
+              );
+            }
+
+            // ── Event card ────────────────────────────────────────────────
+            final eventItem = item as _EventItem;
+            final event = eventItem.event;
+
+            return FullBleedEventCard(
+              key: ValueKey('event_${event.id}'),
+              event: event,
+              cardIndex: eventItem.eventIndex,
+              activeCardIndex: _activeCardIndex,
+              onTap: () => widget.onCardTap(event),
+              onHide: () => _onHide(event.id),
+            );
+          },
         ),
       ),
-    ),
     );
   }
 }

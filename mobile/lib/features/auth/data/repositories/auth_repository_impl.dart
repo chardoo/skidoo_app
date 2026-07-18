@@ -20,6 +20,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<LoginResponseObject> login(String email, String password) async {
     try {
       return await _remoteDataSource.login(email, password);
+    } on EmailNotVerifiedException {
+      rethrow;
     } on ServerException {
       rethrow;
     } on NetworkException {
@@ -32,7 +34,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> register(Map<String, String> fields, Uint8List imageBytes, String imageFilename) async {
+  Future<void> register(Map<String, String> fields, Uint8List? imageBytes, String? imageFilename) async {
     try {
       await _remoteDataSource.register(fields, imageBytes, imageFilename);
     } on ServerException {
@@ -41,6 +43,45 @@ class AuthRepositoryImpl implements AuthRepository {
       rethrow;
     } catch (e) {
       throw ServerException('Unexpected error during registration: $e');
+    }
+  }
+
+  @override
+  Future<LoginResponseObject> verifyCode(Map<String, dynamic> data) async {
+    try {
+      return await _remoteDataSource.verifyCode(data);
+    } on ServerException {
+      rethrow;
+    } on NetworkException {
+      rethrow;
+    } catch (e) {
+      throw ServerException('Unexpected error during code verification: $e');
+    }
+  }
+
+  @override
+  Future<void> resendVerification(String email) async {
+    try {
+      await _remoteDataSource.resendVerification(email);
+    } on ServerException {
+      rethrow;
+    } on NetworkException {
+      rethrow;
+    } catch (e) {
+      throw ServerException('Unexpected error during resend: $e');
+    }
+  }
+
+  @override
+  Future<void> becomePhotographer() async {
+    try {
+      await _remoteDataSource.becomePhotographer();
+    } on ServerException {
+      rethrow;
+    } on NetworkException {
+      rethrow;
+    } catch (e) {
+      throw ServerException('Unexpected error during photographer upgrade: $e');
     }
   }
 
