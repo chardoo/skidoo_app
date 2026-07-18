@@ -9,6 +9,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.searchHintColor,
     required this.searchIconColor,
     required this.accentGold,
+    required this.accentGoldDark,
+    required this.likeRed,
+    required this.errorRed,
+    required this.dislikeBlue,
+    required this.infoBlue,
     required this.greetingColor,
     required this.cardOverlayStart,
     required this.cardOverlayEnd,
@@ -30,6 +35,26 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color searchHintColor;
   final Color searchIconColor;
   final Color accentGold;
+
+  /// Darker partner shade for [accentGold] gradients — was copy-pasted as
+  /// `Color(0xFF078368)` in ~30 places before being named here.
+  final Color accentGoldDark;
+
+  /// "Liked"/heart-active red. Distinct from [errorRed] — same hue family,
+  /// different semantic role (positive reaction vs validation error), so
+  /// kept as two tokens rather than merged into one.
+  final Color likeRed;
+
+  /// Validation/error red — see [likeRed] for why this isn't the same token.
+  final Color errorRed;
+
+  /// "Disliked"/thumbs-down-active blue.
+  final Color dislikeBlue;
+
+  /// Informational/status badge blue (e.g. "pending review"). Distinct from
+  /// [dislikeBlue] — different semantic role.
+  final Color infoBlue;
+
   final Color greetingColor;
   final Color cardOverlayStart;
   final Color cardOverlayEnd;
@@ -55,6 +80,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     searchHintColor: Color(0xFF7A8A85),
     searchIconColor: Color(0xFFFFFFFF),
     accentGold: Color(0xFF0BA98A),
+    accentGoldDark: Color(0xFF078368),
+    likeRed: Color(0xFFFF3B5C),
+    errorRed: Color(0xFFFF4757),
+    dislikeBlue: Color(0xFF5B6EF5),
+    infoBlue: Color(0xFF3B82F6),
     greetingColor: Color(0xFFFFFFFF),
     cardOverlayStart: Color(0x00000000),
     cardOverlayEnd: Color(0xCC000000),
@@ -79,6 +109,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     searchHintColor: Color(0xFF5E5E6B),
     searchIconColor: Color(0xFF1A1A2E),
     accentGold: Color(0xFF0BA98A),
+    accentGoldDark: Color(0xFF078368),
+    likeRed: Color(0xFFFF3B5C),
+    errorRed: Color(0xFFFF4757),
+    dislikeBlue: Color(0xFF5B6EF5),
+    infoBlue: Color(0xFF3B82F6),
     greetingColor: Color(0xFF1A1A2E),
     cardOverlayStart: Color(0x00000000),
     cardOverlayEnd: Color(0xCC000000),
@@ -102,6 +137,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     Color? searchHintColor,
     Color? searchIconColor,
     Color? accentGold,
+    Color? accentGoldDark,
+    Color? likeRed,
+    Color? errorRed,
+    Color? dislikeBlue,
+    Color? infoBlue,
     Color? greetingColor,
     Color? cardOverlayStart,
     Color? cardOverlayEnd,
@@ -123,6 +163,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       searchHintColor: searchHintColor ?? this.searchHintColor,
       searchIconColor: searchIconColor ?? this.searchIconColor,
       accentGold: accentGold ?? this.accentGold,
+      accentGoldDark: accentGoldDark ?? this.accentGoldDark,
+      likeRed: likeRed ?? this.likeRed,
+      errorRed: errorRed ?? this.errorRed,
+      dislikeBlue: dislikeBlue ?? this.dislikeBlue,
+      infoBlue: infoBlue ?? this.infoBlue,
       greetingColor: greetingColor ?? this.greetingColor,
       cardOverlayStart: cardOverlayStart ?? this.cardOverlayStart,
       cardOverlayEnd: cardOverlayEnd ?? this.cardOverlayEnd,
@@ -149,6 +194,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       searchHintColor: Color.lerp(searchHintColor, other.searchHintColor, t)!,
       searchIconColor: Color.lerp(searchIconColor, other.searchIconColor, t)!,
       accentGold: Color.lerp(accentGold, other.accentGold, t)!,
+      accentGoldDark: Color.lerp(accentGoldDark, other.accentGoldDark, t)!,
+      likeRed: Color.lerp(likeRed, other.likeRed, t)!,
+      errorRed: Color.lerp(errorRed, other.errorRed, t)!,
+      dislikeBlue: Color.lerp(dislikeBlue, other.dislikeBlue, t)!,
+      infoBlue: Color.lerp(infoBlue, other.infoBlue, t)!,
       greetingColor: Color.lerp(greetingColor, other.greetingColor, t)!,
       cardOverlayStart: Color.lerp(cardOverlayStart, other.cardOverlayStart, t)!,
       cardOverlayEnd: Color.lerp(cardOverlayEnd, other.cardOverlayEnd, t)!,
