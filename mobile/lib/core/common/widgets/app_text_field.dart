@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-
-const _kError = Color(0xFFFF4757);
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// App-wide text field — one focus animation, one fill/border/label recipe,
 /// theme-aware (follows light/dark instead of being hardcoded). Change the
@@ -145,7 +144,7 @@ class _AppTextFieldState extends State<AppTextField> {
         prefixIcon: widget.prefixIcon == null
             ? null
             : Padding(
-                padding: EdgeInsets.only(left: 4.w),
+                padding: EdgeInsets.only(left: AppSpacing.xs.w),
                 child: Icon(
                   widget.prefixIcon,
                   color: _isFocused ? focusedColor : idleLabel,
@@ -159,9 +158,9 @@ class _AppTextFieldState extends State<AppTextField> {
         errorBorder: InputBorder.none,
         focusedErrorBorder: InputBorder.none,
         contentPadding: widget.dense
-            ? EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h)
-            : EdgeInsets.symmetric(horizontal: 16.w, vertical: 18.h),
-        errorStyle: TextStyle(color: _kError, fontSize: 11.5.sp, height: 0.1),
+            ? EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 10.h)
+            : EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 18.h),
+        errorStyle: TextStyle(color: ext.errorRed, fontSize: 11.5.sp, height: 0.1),
         errorMaxLines: 1,
       ),
     );
@@ -237,7 +236,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
         child: GestureDetector(
           onTap: () => setState(() => _obscure = !_obscure),
           child: Padding(
-            padding: EdgeInsets.only(right: 4.w),
+            padding: EdgeInsets.only(right: AppSpacing.xs.w),
             child: Icon(
               _obscure
                   ? Icons.visibility_outlined

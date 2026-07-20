@@ -12,6 +12,8 @@ import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Full-page, routed version of [WebSearchPhotosPanel] used on web so that
 /// selecting an event from the sidebar search opens the photos regardless of
@@ -146,7 +148,7 @@ class _Header extends StatelessWidget {
             child: Semantics(button: true, label: 'Back', child: GestureDetector(
               onTap: onBack,
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w, vertical: AppSpacing.xs.h),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -163,7 +165,7 @@ class _Header extends StatelessWidget {
               ),
             )),
           ),
-          SizedBox(width: 8.w),
+          SizedBox(width: AppSpacing.sm.w),
           Icon(Icons.chevron_right_rounded,
               color: ext.searchHintColor.withValues(alpha: 0.5), size: 14),
           SizedBox(width: 6.w),
@@ -228,13 +230,13 @@ class _Loading extends StatelessWidget {
         children: [
           Icon(Icons.image_search_rounded,
               size: 52.sp, color: ext.accentGold.withValues(alpha: 0.7)),
-          SizedBox(height: 20.h),
+          SizedBox(height: AppSpacing.xl.h),
           SizedBox(
             width: 200.w,
             child: LinearProgressIndicator(
               color: ext.accentGold,
               backgroundColor: ext.accentGold.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(4.r),
+              borderRadius: BorderRadius.circular(AppRadius.xs.r),
               minHeight: 4.h,
             ),
           ),
@@ -270,7 +272,7 @@ class _Empty extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.image_search_outlined, size: 56.sp, color: ext.searchHintColor),
-          SizedBox(height: 12.h),
+          SizedBox(height: AppSpacing.md.h),
           Text('No photos found for this event',
               style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp)),
         ],
@@ -313,7 +315,7 @@ class _PhotoGrid extends StatelessWidget {
             if (loadingMore)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.lg.h),
                   child: Center(
                     child: SizedBox(
                       width: 18.w,
@@ -380,7 +382,7 @@ class _PhotoCard extends StatelessWidget {
                 filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                 child: Container(
                   padding:
-                      EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                      EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 3.h),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.30),
                     borderRadius: BorderRadius.circular(30.r),
@@ -547,7 +549,7 @@ class _PanelBtn extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 14.w),
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: BorderRadius.circular(12.r),
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
             border: primary
                 ? null
                 : Border.all(

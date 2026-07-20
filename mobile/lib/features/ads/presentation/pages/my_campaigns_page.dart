@@ -9,6 +9,8 @@ import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dar
 import 'package:skidoo_app/features/ads/presentation/pages/edit_campaign_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class MyCampaignsPage extends StatefulWidget {
   const MyCampaignsPage({super.key});
@@ -152,7 +154,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                 children: [
                   Center(
                     child: Container(
-                      margin: EdgeInsets.symmetric(vertical: 12.h),
+                      margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
                       width: 36.w,
                       height: 4.h,
                       decoration: BoxDecoration(
@@ -176,7 +178,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                     style:
                         TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
                   ),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: AppSpacing.xl.h),
                   AppTextField(
                     controller: ctrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -184,7 +186,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                     dense: true,
                     hint: 'Amount to add (e.g. 200)',
                   ),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: AppSpacing.xl.h),
                   Semantics(button: true, label: 'Amount', child: GestureDetector(
                     onTap: () async {
                       final amount = double.tryParse(ctrl.text.trim());
@@ -202,7 +204,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                       padding: EdgeInsets.symmetric(vertical: 15.h),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [ext.accentGold, const Color(0xFF078368)],
+                          colors: [ext.accentGold, ext.accentGoldDark],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
@@ -365,7 +367,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                       color: ext.accentGold,
                       child: ListView.builder(
                         physics: const BouncingScrollPhysics(),
-                        padding: EdgeInsets.only(bottom: 20.h),
+                        padding: EdgeInsets.only(bottom: AppSpacing.xl.h),
                         itemCount: _campaigns.length,
                         itemBuilder: (_, i) => _CampaignTile(
                           campaign: _campaigns[i],
@@ -413,10 +415,10 @@ class _CampaignTile extends StatelessWidget {
 
     return Container(
       margin: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 0),
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.all(AppSpacing.lg.w),
       decoration: BoxDecoration(
         color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(AppRadius.lg.r),
         border: Border.all(
           color: ext.searchHintColor.withValues(alpha: 0.1),
           width: 0.8,
@@ -481,7 +483,7 @@ class _CampaignTile extends StatelessWidget {
             ),
             SizedBox(height: 6.h),
             ClipRRect(
-              borderRadius: BorderRadius.circular(4.r),
+              borderRadius: BorderRadius.circular(AppRadius.xs.r),
               child: LinearProgressIndicator(
                 value: campaign.spentPercent,
                 backgroundColor: ext.searchFieldFill,
@@ -500,18 +502,18 @@ class _CampaignTile extends StatelessWidget {
 
           // ── Pay & Submit button (draft / pending payment) ─────────────
           if (campaign.status.canPay) ...[
-            SizedBox(height: 12.h),
+            SizedBox(height: AppSpacing.md.h),
             Semantics(button: true, label: 'Pay', child: GestureDetector(
               onTap: onPay,
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 10.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [ext.accentGold, const Color(0xFF078368)],
+                    colors: [ext.accentGold, ext.accentGoldDark],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(AppRadius.md.r),
                 ),
                 alignment: Alignment.center,
                 child: Row(
@@ -536,7 +538,7 @@ class _CampaignTile extends StatelessWidget {
 
           // ── Active: Edit + Pause side by side ────────────────────────
           if (campaign.status.canPause) ...[
-            SizedBox(height: 12.h),
+            SizedBox(height: AppSpacing.md.h),
             Row(
               children: [
                 Expanded(
@@ -547,7 +549,7 @@ class _CampaignTile extends StatelessWidget {
                     onTap: onEdit,
                   ),
                 ),
-                SizedBox(width: 8.w),
+                SizedBox(width: AppSpacing.sm.w),
                 Expanded(
                   child: _OutlinedActionBtn(
                     icon: Icons.pause_circle_outline_rounded,
@@ -562,7 +564,7 @@ class _CampaignTile extends StatelessWidget {
 
           // ── Paused: Resume + Top-up, then Edit below ──────────────────
           if (campaign.status.canResume) ...[
-            SizedBox(height: 12.h),
+            SizedBox(height: AppSpacing.md.h),
             Row(
               children: [
                 Expanded(
@@ -576,7 +578,7 @@ class _CampaignTile extends StatelessWidget {
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
-                        borderRadius: BorderRadius.circular(12.r),
+                        borderRadius: BorderRadius.circular(AppRadius.md.r),
                       ),
                       alignment: Alignment.center,
                       child: Row(
@@ -598,7 +600,7 @@ class _CampaignTile extends StatelessWidget {
                     ),
                   )),
                 ),
-                SizedBox(width: 8.w),
+                SizedBox(width: AppSpacing.sm.w),
                 Expanded(
                   child: Semantics(button: true, label: 'Top up', child: GestureDetector(
                     onTap: onTopUp,
@@ -606,11 +608,11 @@ class _CampaignTile extends StatelessWidget {
                       padding: EdgeInsets.symmetric(vertical: 10.h),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [ext.accentGold, const Color(0xFF078368)],
+                          colors: [ext.accentGold, ext.accentGoldDark],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
-                        borderRadius: BorderRadius.circular(12.r),
+                        borderRadius: BorderRadius.circular(AppRadius.md.r),
                       ),
                       alignment: Alignment.center,
                       child: Row(
@@ -634,7 +636,7 @@ class _CampaignTile extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
             _OutlinedActionBtn(
               icon: Icons.edit_outlined,
               label: 'Edit Campaign',
@@ -645,18 +647,18 @@ class _CampaignTile extends StatelessWidget {
 
           // ── Rejected: Fix & Resubmit (gold) ──────────────────────────
           if (campaign.status == CampaignStatus.rejected) ...[
-            SizedBox(height: 12.h),
+            SizedBox(height: AppSpacing.md.h),
             Semantics(button: true, label: 'Edit', child: GestureDetector(
               onTap: onEdit,
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 10.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [ext.accentGold, const Color(0xFF078368)],
+                    colors: [ext.accentGold, ext.accentGoldDark],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(AppRadius.md.r),
                 ),
                 alignment: Alignment.center,
                 child: Row(
@@ -678,7 +680,7 @@ class _CampaignTile extends StatelessWidget {
             )),
             if (campaign.rejectionReason != null &&
                 campaign.rejectionReason!.isNotEmpty) ...[
-              SizedBox(height: 8.h),
+              SizedBox(height: AppSpacing.sm.h),
               Container(
                 padding: EdgeInsets.all(10.w),
                 decoration: BoxDecoration(
@@ -719,7 +721,7 @@ class _CampaignTile extends StatelessWidget {
                 padding: EdgeInsets.symmetric(vertical: 10.h),
                 decoration: BoxDecoration(
                   color: Colors.redAccent.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(AppRadius.md.r),
                   border: Border.all(
                     color: Colors.redAccent.withValues(alpha: 0.3),
                     width: 1.0,
@@ -781,7 +783,7 @@ class _OutlinedActionBtn extends StatelessWidget {
         padding: EdgeInsets.symmetric(vertical: 10.h),
         decoration: BoxDecoration(
           color: ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
           border: Border.all(
             color: ext.searchHintColor.withValues(alpha: 0.25),
             width: 1.0,
@@ -816,10 +818,10 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 3.h),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(AppRadius.xl.r),
         border: Border.all(color: color.withValues(alpha: 0.4), width: 0.8),
       ),
       child: Text(

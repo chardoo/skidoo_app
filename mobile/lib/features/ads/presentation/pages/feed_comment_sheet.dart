@@ -13,6 +13,7 @@ import 'package:skidoo_app/core/utils/time_formatter.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/bloc/feed_comment_bloc.dart';
 import 'package:skidoo_app/models/photo_comment/photo_comment.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Opens a bottom-sheet comment section for an ad or request.
 ///
@@ -180,13 +181,13 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
                           : ListView.builder(
                               controller: _scrollCtrl,
                               padding: EdgeInsets.symmetric(
-                                  horizontal: 16.w, vertical: 8.h),
+                                  horizontal: AppSpacing.lg.w, vertical: AppSpacing.sm.h),
                               itemCount: state.comments.length +
                                   (state.isLoadingMore ? 1 : 0),
                               itemBuilder: (_, i) {
                                 if (i == state.comments.length) {
                                   return Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                                    padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
                                     child: Center(
                                       child: CircularProgressIndicator(
                                         color: ext.accentGold,

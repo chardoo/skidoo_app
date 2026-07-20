@@ -635,7 +635,7 @@ class _PanelPendingTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: ext.cardSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ext.accentGold.withValues(alpha: 0.3)),
+        border: Border.all(color: ext.searchHintColor.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [

@@ -1,49 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/widgets/paste_aware_digit_formatter.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/verify_code_usecase.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/face_capture_step_page.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 const _kCodeLength = 6;
 const _kResendCooldown = Duration(seconds: 30);
-
-/// Lets a single OTP box accept a full pasted code. `TextField.maxLength`
-/// would otherwise silently truncate a paste to 1 character before it's
-/// even visible to `onChanged`, so this formatter runs first: on a
-/// multi-digit paste it hands the whole string to [onPaste] (which fills
-/// the other boxes) and keeps only this box's own digit (by [index]) for
-/// itself, so the box that received the paste still ends up correct.
-class _PasteAwareDigitFormatter extends TextInputFormatter {
-  _PasteAwareDigitFormatter({required this.index, required this.onPaste});
-
-  final int index;
-  final void Function(String digits, int pastedAtIndex) onPaste;
-
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final digitsOnly = newValue.text.replaceAll(RegExp(r'\D'), '');
-    if (digitsOnly.length > 1) {
-      onPaste(digitsOnly, index);
-      final own = index < digitsOnly.length ? digitsOnly[index] : '';
-      return TextEditingValue(
-        text: own,
-        selection: TextSelection.collapsed(offset: own.length),
-      );
-    }
-    return TextEditingValue(
-      text: digitsOnly,
-      selection: TextSelection.collapsed(offset: digitsOnly.length),
-    );
-  }
-}
 
 /// "Check your email" — the OTP step between account creation and the app.
 /// On success the backend returns a full session (same as login), so the
@@ -192,7 +163,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                     child: Icon(Icons.mark_email_read_rounded,
                         color: ext.accentGold, size: 26.sp),
                   ),
-                  SizedBox(height: 24.h),
+                  SizedBox(height: AppSpacing.xxl.h),
                   Text(
                     'Check your email',
                     style: TextStyle(
@@ -201,12 +172,12 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: AppSpacing.sm.h),
                   Text(
                     'We sent a $_kCodeLength-digit code to ${widget.email}',
                     style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
                   ),
-                  SizedBox(height: 32.h),
+                  SizedBox(height: AppSpacing.xxxl.h),
 
                   // ── Code boxes ─────────────────────────────────────────
                   Row(
@@ -227,7 +198,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                             fontWeight: FontWeight.w700,
                           ),
                           inputFormatters: [
-                            _PasteAwareDigitFormatter(
+                            PasteAwareDigitFormatter(
                                 index: i, onPaste: _handlePaste),
                           ],
                           decoration: InputDecoration(
@@ -235,11 +206,11 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                             filled: true,
                             fillColor: ext.searchFieldFill,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.r),
+                              borderRadius: BorderRadius.circular(AppRadius.md.r),
                               borderSide: BorderSide.none,
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.r),
+                              borderRadius: BorderRadius.circular(AppRadius.md.r),
                               borderSide: BorderSide(color: ext.accentGold, width: 1.5),
                             ),
                           ),
@@ -252,7 +223,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                   if (_error != null) ...[
                     SizedBox(height: 14.h),
                     Text(_error!,
-                        style: const TextStyle(color: Color(0xFFFF4757), fontSize: 12.5)),
+                        style: TextStyle(color: ext.errorRed, fontSize: 12.5)),
                   ],
                   SizedBox(height: 28.h),
 
@@ -281,7 +252,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                               style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700)),
                     ),
                   ),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: AppSpacing.xl.h),
 
                   Center(
                     child: Semantics(
@@ -304,7 +275,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 40.h),
+                  SizedBox(height: AppSpacing.huge.h),
                 ],
               ),
             ),

@@ -22,6 +22,7 @@ import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_rooms_page.dart';
 import 'package:skidoo_app/components/common/navbar.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class HomePage extends StatelessWidget {
   static const routeName = '/home';
@@ -152,7 +153,7 @@ class _HomeViewState extends State<_HomeView> {
               // ── Gradient hero with a glowing face badge ──────────────────
               Container(
                 width: double.infinity,
-                padding: EdgeInsets.only(top: 30.h, bottom: 24.h),
+                padding: EdgeInsets.only(top: 30.h, bottom: AppSpacing.xxl.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -229,7 +230,7 @@ class _HomeViewState extends State<_HomeView> {
                       Icons.lock_rounded,
                       'Private & only used to recognise you',
                     ),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: AppSpacing.xxl.h),
                     // ── Primary action ──────────────────────────────────────
                     AppButton(
                       fullWidth: true,
@@ -278,7 +279,7 @@ class _HomeViewState extends State<_HomeView> {
           ),
           child: Icon(icon, color: gold, size: 17.sp),
         ),
-        SizedBox(width: 12.w),
+        SizedBox(width: AppSpacing.md.w),
         Expanded(
           child: Text(
             label,

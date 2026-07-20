@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/constants/photography_specialties.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Minimum sample-work photos required, matching the design ("min. 4
 /// photos") and used by both callers to gate their primary action.
@@ -176,9 +178,9 @@ class _PortfolioFormState extends State<PortfolioForm> {
             ),
           ),
         ),
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _FieldLabel('Studio cover photo (optional)', ext: ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         Semantics(
           button: true,
           label: 'Change studio cover photo',
@@ -191,17 +193,17 @@ class _PortfolioFormState extends State<PortfolioForm> {
             ),
           ),
         ),
-        SizedBox(height: 24.h),
+        SizedBox(height: AppSpacing.xxl.h),
         _FieldLabel('Studio name', ext: ext),
         SizedBox(height: 6.h),
         _TextInput(controller: _nameCtrl, hint: 'Username', ext: ext),
-        SizedBox(height: 16.h),
+        SizedBox(height: AppSpacing.lg.h),
         _FieldLabel('Bio summary', ext: ext),
         SizedBox(height: 6.h),
         _TextInput(controller: _bioCtrl, hint: 'Tell people about your work', ext: ext, maxLines: 4),
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _FieldLabel('Specialties', ext: ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         Wrap(
           spacing: 8.w,
           runSpacing: 8.h,
@@ -215,10 +217,10 @@ class _PortfolioFormState extends State<PortfolioForm> {
                 onTap: () => _toggleSpecialty(tag),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: AppSpacing.sm.h),
                   decoration: BoxDecoration(
                     color: selected ? ext.accentGold : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20.r),
+                    borderRadius: BorderRadius.circular(AppRadius.xl.r),
                     border: Border.all(
                       color: selected ? ext.accentGold : ext.searchHintColor.withValues(alpha: 0.5),
                     ),
@@ -236,9 +238,9 @@ class _PortfolioFormState extends State<PortfolioForm> {
             );
           }).toList(),
         ),
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _FieldLabel('Sample work (min. $kMinSamplePhotos photos)', ext: ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         Wrap(
           spacing: 10.w,
           runSpacing: 10.h,
@@ -328,9 +330,9 @@ class _TextInput extends StatelessWidget {
           hintStyle: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
           filled: true,
           fillColor: ext.searchFieldFill,
-          contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+          contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: AppSpacing.md.h),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
             borderSide: BorderSide.none,
           ),
         ),
@@ -399,13 +401,13 @@ class _StudioImagePicker extends StatelessWidget {
       );
     }
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12.r),
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
       child: Container(
         height: 110.h,
         width: double.infinity,
         decoration: BoxDecoration(
           color: ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
           border: Border.all(color: ext.accentGold.withValues(alpha: 0.4)),
         ),
         child: content,

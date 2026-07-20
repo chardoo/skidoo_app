@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/components/comments/comment_item_widget.dart';
 import 'package:skidoo_app/components/comments/comment_row_data.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// YouTube-style threaded comment: one top-level item + expandable reply list.
 ///
@@ -50,7 +51,7 @@ class ThreadedCommentWidget extends StatelessWidget {
           // ── View / hide replies toggle ─────────────────────────────────────
           if (hasReplies)
             Padding(
-              padding: EdgeInsets.only(left: 44.w, bottom: 4.h),
+              padding: EdgeInsets.only(left: 44.w, bottom: AppSpacing.xs.h),
               child: Semantics(
                 button: true,
                 label: isExpanded
@@ -78,7 +79,7 @@ class ThreadedCommentWidget extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(width: 4.w),
+                    SizedBox(width: AppSpacing.xs.w),
                     Icon(
                       isExpanded
                           ? Icons.keyboard_arrow_up_rounded
@@ -95,7 +96,7 @@ class ThreadedCommentWidget extends StatelessWidget {
           // ── Expanded replies with gold connector ───────────────────────────
           if (isExpanded && replies.isNotEmpty)
             Padding(
-              padding: EdgeInsets.only(left: 20.w),
+              padding: EdgeInsets.only(left: AppSpacing.xl.w),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

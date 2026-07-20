@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 // ── Emoji data ────────────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ class EmojiButton extends StatelessWidget {
       child: Semantics(button: true, label: 'Toggle', child: GestureDetector(
         onTap: onToggle,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
+          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: AppSpacing.xs.h),
           child: Text(
             isOpen ? '⌨️' : '😊',
             style: TextStyle(fontSize: iconSize ?? 20.sp),
@@ -170,7 +171,7 @@ class _EmojiPickerPanelState extends State<EmojiPickerPanel> {
           // ── Emoji grid ──────────────────────────────────────────────────────
           Expanded(
             child: GridView.builder(
-              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w, vertical: AppSpacing.xs.h),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 8,
                 mainAxisSpacing: 2.h,

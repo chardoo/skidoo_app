@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/components/comments/comment_row_data.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Single comment/reply row — model-agnostic.
 /// Accepts pre-computed [CommentRowData]; contains no BLoC or model imports.
@@ -122,7 +123,7 @@ class CommentItemWidget extends StatelessWidget {
                             fontSize: 11.sp),
                       ),
                       if (data.isPending) ...[
-                        SizedBox(width: 4.w),
+                        SizedBox(width: AppSpacing.xs.w),
                         Icon(Icons.access_time_rounded,
                             size: 10.sp, color: ext.searchHintColor),
                       ],

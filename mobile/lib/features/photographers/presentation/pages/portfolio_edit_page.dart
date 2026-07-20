@@ -12,6 +12,7 @@ import 'package:skidoo_app/features/photographers/presentation/pages/verify_term
 import 'package:skidoo_app/features/photographers/presentation/widgets/portfolio_form.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Account-section "Portfolio" screen — a photographer's portfolio setup,
 /// done on demand from Account rather than automatically during onboarding.
@@ -171,7 +172,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
         child: _loading
             ? Center(child: CircularProgressIndicator(color: ext.accentGold))
             : SingleChildScrollView(
-                padding: EdgeInsets.all(20.w),
+                padding: EdgeInsets.all(AppSpacing.xl.w),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -184,14 +185,14 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
                       initialSamples: _originalSamples,
                       onChanged: (data) => setState(() => _data = data),
                     ),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: AppSpacing.xxl.h),
                     AppButton(
                       fullWidth: true,
                       isLoading: _saving,
                       onPressed: (_data?.meetsMinimumSamples ?? false) ? _save : null,
                       label: _isFirstTimeSetup ? 'Continue' : 'Save',
                     ),
-                    SizedBox(height: 12.h),
+                    SizedBox(height: AppSpacing.md.h),
                   ],
                 ),
               ),

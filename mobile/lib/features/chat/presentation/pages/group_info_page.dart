@@ -11,6 +11,8 @@ import 'package:skidoo_app/features/chat/presentation/pages/invite_to_group_page
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/core/utils/web_panel_route.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// WhatsApp-style group info page.
 ///
@@ -79,17 +81,17 @@ class GroupInfoPage extends StatelessWidget {
               room.participants.where((p) => p.isPending).length;
 
           return ListView(
-            padding: EdgeInsets.only(bottom: 32.h),
+            padding: EdgeInsets.only(bottom: AppSpacing.xxxl.h),
             children: [
               // ── Header ─────────────────────────────────────────────────────
               _GroupHeader(room: room, ext: ext),
 
-              SizedBox(height: 8.h),
+              SizedBox(height: AppSpacing.sm.h),
 
               // ── Admin-only mode toggle ──────────────────────────────────────
               if (state.amIAdmin) ...[
                 _RenameSection(room: room, ext: ext),
-                SizedBox(height: 8.h),
+                SizedBox(height: AppSpacing.sm.h),
                 _SettingsSection(
                   adminOnly: room.adminOnly,
                   ext: ext,
@@ -97,7 +99,7 @@ class GroupInfoPage extends StatelessWidget {
                       .read<ChatRoomBloc>()
                       .add(ChatRoomUpdateSettingsRequested(adminOnly: value)),
                 ),
-                SizedBox(height: 8.h),
+                SizedBox(height: AppSpacing.sm.h),
               ],
 
               // ── Participants list ───────────────────────────────────────────
@@ -141,7 +143,7 @@ class GroupInfoPage extends StatelessWidget {
                       ),
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.symmetric(
-                            horizontal: 8.w, vertical: 4.h),
+                            horizontal: AppSpacing.sm.w, vertical: AppSpacing.xs.h),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
@@ -188,21 +190,21 @@ class GroupInfoPage extends StatelessWidget {
               ),
 
               // ── Leave / Delete group ───────────────────────────────────────
-              SizedBox(height: 24.h),
+              SizedBox(height: AppSpacing.xxl.h),
               _LeaveGroupButton(
                 isLeaving: state.isLeaving,
                 ext: ext,
                 onLeave: () => _confirmLeave(context, ext),
               ),
               if (state.amIAdmin) ...[
-                SizedBox(height: 12.h),
+                SizedBox(height: AppSpacing.md.h),
                 _DeleteGroupButton(
                   isDeleting: state.isDeleting,
                   ext: ext,
                   onDelete: () => _confirmDelete(context, ext),
                 ),
               ],
-              SizedBox(height: 8.h),
+              SizedBox(height: AppSpacing.sm.h),
             ],
           );
         },
@@ -251,19 +253,19 @@ class _GroupHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: ext.cardSurface,
-      padding: EdgeInsets.symmetric(vertical: 24.h),
+      padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl.h),
       child: Column(
         children: [
           Container(
             width: 80.w,
             height: 80.w,
             decoration: BoxDecoration(
-              color: ext.accentGold.withValues(alpha: 0.15),
+              color: ext.searchFieldFill,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
             child: Icon(Icons.group_rounded,
-                color: ext.accentGold, size: 40.sp),
+                color: ext.greetingColor, size: 40.sp),
           ),
           SizedBox(height: 14.h),
           Text(
@@ -275,7 +277,7 @@ class _GroupHeader extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 4.h),
+          SizedBox(height: AppSpacing.xs.h),
           Text(
             'Group',
             style:
@@ -394,7 +396,7 @@ class _SettingsSection extends StatelessWidget {
       color: ext.cardSurface,
       child: SwitchListTile(
         contentPadding:
-            EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+            EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.xs.h),
         title: Text(
           'Only admins can send messages',
           style:
@@ -408,8 +410,8 @@ class _SettingsSection extends StatelessWidget {
               color: ext.searchHintColor, fontSize: 12.sp),
         ),
         value: adminOnly,
-        activeThumbColor: ext.accentGold,
-        activeTrackColor: ext.accentGold.withValues(alpha: 0.4),
+        activeThumbColor: ext.greetingColor,
+        activeTrackColor: ext.searchHintColor.withValues(alpha: 0.4),
         onChanged: onToggle,
       ),
     );
@@ -443,7 +445,7 @@ class _ParticipantTile extends StatelessWidget {
   }
 
   void _showOptions(BuildContext context) {
-    if (!amIAdmin || isSelf || participant.isPending) return;
+    if (!amIAdmin || isSelf) return;
 
     showModalBottomSheet<void>(
       context: context,
@@ -470,20 +472,18 @@ class _ParticipantTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(button: true, label: 'Show options', child: InkWell(
-      onTap: amIAdmin && !isSelf && !participant.isPending
-          ? () => _showOptions(context)
-          : null,
+      onTap: amIAdmin && !isSelf ? () => _showOptions(context) : null,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 10.h),
         child: Row(
           children: [
             CircleAvatar(
               radius: 22.r,
-              backgroundColor: ext.accentGold.withValues(alpha: 0.15),
+              backgroundColor: ext.searchFieldFill,
               child: Text(
                 _initial,
                 style: TextStyle(
-                  color: ext.accentGold,
+                  color: ext.greetingColor,
                   fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                 ),
@@ -533,7 +533,7 @@ class _ParticipantTile extends StatelessWidget {
             if (participant.isPending)
               Container(
                 padding:
-                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                    EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 3.h),
                 decoration: BoxDecoration(
                   color: ext.searchHintColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6.r),
@@ -550,15 +550,15 @@ class _ParticipantTile extends StatelessWidget {
             else if (participant.isAdmin)
               Container(
                 padding:
-                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                    EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 3.h),
                 decoration: BoxDecoration(
-                  color: ext.accentGold.withValues(alpha: 0.15),
+                  color: ext.infoBlue.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6.r),
                 ),
                 child: Text(
                   'Admin',
                   style: TextStyle(
-                    color: ext.accentGold,
+                    color: ext.infoBlue,
                     fontSize: 11.sp,
                     fontWeight: FontWeight.w600,
                   ),
@@ -621,11 +621,11 @@ class _ParticipantOptionsSheet extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 24.r,
-                backgroundColor: ext.accentGold.withValues(alpha: 0.15),
+                backgroundColor: ext.searchFieldFill,
                 child: Text(
                   _initial,
                   style: TextStyle(
-                    color: ext.accentGold,
+                    color: ext.greetingColor,
                     fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
                   ),
@@ -655,30 +655,34 @@ class _ParticipantOptionsSheet extends StatelessWidget {
             ],
           ),
 
-          SizedBox(height: 16.h),
+          SizedBox(height: AppSpacing.lg.h),
           Divider(color: ext.searchHintColor.withValues(alpha: 0.12)),
-          SizedBox(height: 4.h),
+          SizedBox(height: AppSpacing.xs.h),
 
-          // ── Admin toggle ───────────────────────────────────────────────────
-          if (!participant.isAdmin)
-            _SheetOption(
-              icon: Icons.shield_rounded,
-              label: 'Make group admin',
-              color: ext.accentGold,
-              onTap: onGrantAdmin,
-            )
-          else
-            _SheetOption(
-              icon: Icons.shield_outlined,
-              label: 'Remove as admin',
-              color: Colors.orangeAccent,
-              onTap: onRevokeAdmin,
-            ),
+          // ── Admin toggle — doesn't apply to a pending invite, since
+          // they're not a member yet. ─────────────────────────────────────
+          if (!participant.isPending) ...[
+            if (!participant.isAdmin)
+              _SheetOption(
+                icon: Icons.shield_rounded,
+                label: 'Make group admin',
+                color: ext.infoBlue,
+                onTap: onGrantAdmin,
+              )
+            else
+              _SheetOption(
+                icon: Icons.shield_outlined,
+                label: 'Remove as admin',
+                color: Colors.orangeAccent,
+                onTap: onRevokeAdmin,
+              ),
+          ],
 
-          // ── Kick ──────────────────────────────────────────────────────────
+          // ── Kick — for a pending invite this revokes it, so they can no
+          // longer join at all. ────────────────────────────────────────────
           _SheetOption(
             icon: Icons.person_remove_outlined,
-            label: 'Remove from group',
+            label: participant.isPending ? 'Cancel invite' : 'Remove from group',
             color: Colors.redAccent,
             onTap: onKick,
           ),
@@ -705,7 +709,7 @@ class _LeaveGroupButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
       child: SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
@@ -714,7 +718,7 @@ class _LeaveGroupButton extends StatelessWidget {
             side: const BorderSide(color: Colors.redAccent),
             padding: EdgeInsets.symmetric(vertical: 14.h),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
             ),
           ),
           onPressed: isLeaving ? null : onLeave,
@@ -752,7 +756,7 @@ class _DeleteGroupButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
       child: SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
@@ -761,7 +765,7 @@ class _DeleteGroupButton extends StatelessWidget {
             side: const BorderSide(color: Colors.redAccent),
             padding: EdgeInsets.symmetric(vertical: 14.h),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
             ),
           ),
           onPressed: isDeleting ? null : onDelete,
@@ -803,9 +807,9 @@ class _SheetOption extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     return Semantics(button: true, label: label, child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12.r),
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 4.w),
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h, horizontal: AppSpacing.xs.w),
         child: Row(
           children: [
             Container(

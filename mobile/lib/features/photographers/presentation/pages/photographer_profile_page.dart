@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_button.dart';
@@ -36,6 +37,8 @@ import 'package:skidoo_app/features/follow/data/follow_repository.dart';
 import 'package:skidoo_app/features/follow/presentation/pages/follow_list_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class PhotographerProfilePage extends StatefulWidget {
   const PhotographerProfilePage({super.key, required this.photographer});
@@ -160,7 +163,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
     }
 
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
+      CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
     );
 
     if (context.mounted) roomsBloc?.add(const ChatRoomsLoadRequested());
@@ -209,7 +212,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                   ),
                   SizedBox(height: 6.h),
                   PhotographerRatingRow(rating: p.rating, ext: ext),
-                  SizedBox(height: 12.h),
+                  SizedBox(height: AppSpacing.md.h),
 
                   // ── Follow stats ────────────────────────────────────────
                   if (_statsLoaded)
@@ -242,19 +245,19 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                         ],
                       ),
                     ),
-                  SizedBox(height: 16.h),
+                  SizedBox(height: AppSpacing.lg.h),
 
                   PhotographerInfoRow(
                       icon: Icons.mail_outline_rounded,
                       text: p.email,
                       ext: ext),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: AppSpacing.sm.h),
                   if (p.contact.isNotEmpty)
                     PhotographerInfoRow(
                         icon: Icons.phone_outlined,
                         text: p.contact,
                         ext: ext),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: AppSpacing.xl.h),
 
                   // ── Action row: Follow + Chat ───────────────────────────
                   // When the recipient isn't accepting DMs, drop the Message
@@ -267,7 +270,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                           child: _ProfileFollowButton(
                               photographerId: p.id),
                         ),
-                        SizedBox(height: 8.h),
+                        SizedBox(height: AppSpacing.sm.h),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -346,7 +349,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                         ),
                       ),
                     ),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: AppSpacing.sm.h),
                 ],
               ),
             ),
@@ -549,7 +552,7 @@ class _SamplesTabState extends State<_SamplesTab>
           onRefresh: _refreshSamples,
           child: GridView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.all(4.w),
+          padding: EdgeInsets.all(AppSpacing.xs.w),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
             crossAxisSpacing: 4.w,
@@ -564,7 +567,7 @@ class _SamplesTabState extends State<_SamplesTab>
                 child: Container(
                   decoration: BoxDecoration(
                     color: ext.cardSurface,
-                    borderRadius: BorderRadius.circular(4.r),
+                    borderRadius: BorderRadius.circular(AppRadius.xs.r),
                     border: Border.all(
                       color: ext.accentGold.withValues(alpha: 0.4),
                       width: 0.8,
@@ -580,7 +583,7 @@ class _SamplesTabState extends State<_SamplesTab>
                           children: [
                             Icon(Icons.add_photo_alternate_outlined,
                                 color: ext.accentGold, size: 28.sp),
-                            SizedBox(height: 4.h),
+                            SizedBox(height: AppSpacing.xs.h),
                             Text('Add',
                                 style: TextStyle(
                                     color: ext.accentGold,
@@ -726,7 +729,7 @@ class _EventsTabState extends State<_EventsTab>
               style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 12.h),
+            SizedBox(height: AppSpacing.md.h),
             TextButton(
               onPressed: _loadMore,
               child: Text('Retry', style: TextStyle(color: ext.accentGold)),
@@ -748,7 +751,7 @@ class _EventsTabState extends State<_EventsTab>
     // 2-column grid: image card with event name beneath
     return GridView.builder(
       controller: _scrollCtrl,
-      padding: EdgeInsets.all(12.w),
+      padding: EdgeInsets.all(AppSpacing.md.w),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 10.w,
@@ -762,7 +765,7 @@ class _EventsTabState extends State<_EventsTab>
           if (!_loading) _loadMore();
           return Center(
             child: Padding(
-              padding: EdgeInsets.all(16.w),
+              padding: EdgeInsets.all(AppSpacing.lg.w),
               child: CircularProgressIndicator(
                   color: ext.searchHintColor, strokeWidth: 2),
             ),
@@ -822,7 +825,7 @@ class _EventsTabState extends State<_EventsTab>
                 ),
                 Padding(
                   padding:
-                      EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+                      EdgeInsets.symmetric(horizontal: 10.w, vertical: AppSpacing.sm.h),
                   child: Text(
                     event.eventName,
                     style: TextStyle(
@@ -900,7 +903,7 @@ class _FollowStatsRow extends StatelessWidget {
           ext: ext,
           onTap: onTapFollowers,
         ),
-        SizedBox(width: 24.w),
+        SizedBox(width: AppSpacing.xxl.w),
         _Stat(
           label: 'Following',
           value: _fmt(stats.following),
@@ -966,9 +969,9 @@ class _Stat extends StatelessWidget {
       label: '$label, $value — view list',
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8.r),
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w, vertical: 2.h),
           child: column,
         ),
       ),

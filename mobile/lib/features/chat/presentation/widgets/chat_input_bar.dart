@@ -13,6 +13,8 @@ import 'package:skidoo_app/core/validators/media_validator.dart';
 import 'package:skidoo_app/core/widgets/emoji_panel.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class ChatInputBar extends StatefulWidget {
   const ChatInputBar({
@@ -194,7 +196,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                   ),
                 ),
               )),
-              SizedBox(width: 4.w),
+              SizedBox(width: AppSpacing.xs.w),
 
               // Emoji button
               EmojiButton(
@@ -203,7 +205,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                 ext: ext,
                 iconSize: 20.sp,
               ),
-              SizedBox(width: 4.w),
+              SizedBox(width: AppSpacing.xs.w),
 
               // Text input
               Expanded(
@@ -242,7 +244,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                   onFieldSubmitted: (_) => widget.onSend(),
                 ),
               ),
-              SizedBox(width: 8.w),
+              SizedBox(width: AppSpacing.sm.w),
 
               // Send button
               Semantics(button: true, label: 'Send', child: GestureDetector(
@@ -296,12 +298,12 @@ class _MediaPickerSheet extends StatelessWidget {
       margin: EdgeInsets.fromLTRB(12.w, 0, 12.w, 24.h),
       decoration: BoxDecoration(
         color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(AppRadius.lg.r),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(height: 8.h),
+          SizedBox(height: AppSpacing.sm.h),
           Container(
             width: 36.w,
             height: 4.h,
@@ -310,7 +312,7 @@ class _MediaPickerSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(2.r),
             ),
           ),
-          SizedBox(height: 8.h),
+          SizedBox(height: AppSpacing.sm.h),
           ListTile(
             leading: Icon(Icons.image_rounded, color: ext.searchHintColor),
             title: Text('Photo',
@@ -323,7 +325,7 @@ class _MediaPickerSheet extends StatelessWidget {
                 style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
             onTap: onPickVideo,
           ),
-          SizedBox(height: 8.h),
+          SizedBox(height: AppSpacing.sm.h),
         ],
       ),
     );
@@ -363,7 +365,7 @@ class _StagedImagePreview extends StatelessWidget {
                 ),
               ),
               child: ClipRRect(
-            borderRadius: BorderRadius.circular(8.r),
+            borderRadius: BorderRadius.circular(AppRadius.sm.r),
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -508,7 +510,7 @@ class _StagedVideoPreviewState extends State<_StagedVideoPreview> {
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8.r),
+            borderRadius: BorderRadius.circular(AppRadius.sm.r),
             child: SizedBox(
               width: 64.w,
               height: 64.w,
@@ -596,7 +598,7 @@ class _StagedNetworkImagePreview extends StatelessWidget {
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8.r),
+            borderRadius: BorderRadius.circular(AppRadius.sm.r),
             child: Semantics(image: true, label: 'Selected image', child: CachedNetworkImage(
               imageUrl: imageUrl,
               width: 64.w,
@@ -675,7 +677,7 @@ class _ReplyBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.sm.h),
       decoration: BoxDecoration(
         color: ext.cardSurface,
         border: Border(
@@ -687,8 +689,8 @@ class _ReplyBar extends StatelessWidget {
           Container(
             width: 3,
             height: 32.h,
-            color: ext.accentGold,
-            margin: EdgeInsets.only(right: 8.w),
+            color: ext.searchHintColor,
+            margin: EdgeInsets.only(right: AppSpacing.sm.w),
           ),
           Expanded(
             child: Column(
@@ -700,7 +702,7 @@ class _ReplyBar extends StatelessWidget {
                       ? message.senderName
                       : message.senderRole,
                   style: TextStyle(
-                    color: ext.accentGold,
+                    color: ext.searchHintColor,
                     fontSize: 11.sp,
                     fontWeight: FontWeight.w700,
                   ),

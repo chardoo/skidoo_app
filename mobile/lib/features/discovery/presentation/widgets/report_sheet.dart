@@ -8,6 +8,7 @@ import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 const reportReasons = <String, String>{
   'inappropriate_content': 'Inappropriate content',
@@ -92,7 +93,7 @@ class _ReportSheetState extends State<ReportSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              margin: EdgeInsets.symmetric(vertical: 12.h),
+              margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
               width: 36.w,
               height: 4.h,
               decoration: BoxDecoration(
@@ -111,7 +112,7 @@ class _ReportSheetState extends State<ReportSheet> {
                       child: Icon(Icons.arrow_back_ios_new_rounded,
                           color: ext.greetingColor, size: 18.sp),
                     )),
-                  SizedBox(width: 12.w),
+                  SizedBox(width: AppSpacing.md.w),
                   Text(
                     'Why are you reporting this?',
                     style: TextStyle(
@@ -146,10 +147,10 @@ class _ReportSheetState extends State<ReportSheet> {
               );
             }),
 
-            SizedBox(height: 12.h),
+            SizedBox(height: AppSpacing.md.h),
 
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
               child: AppButton(
                 fullWidth: true,
                 variant: AppButtonVariant.destructive,
@@ -159,7 +160,7 @@ class _ReportSheetState extends State<ReportSheet> {
               ),
             ),
 
-            SizedBox(height: 16.h),
+            SizedBox(height: AppSpacing.lg.h),
           ],
         ),
       ),

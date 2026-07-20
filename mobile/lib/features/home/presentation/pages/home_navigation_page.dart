@@ -226,10 +226,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     return false;
   }
 
-  /// On web the header is part of the Column layout — no padding needed.
-  /// On mobile it floats as an overlay, so the feed must clear it.
-  double get _feedTopPadding =>
-      kIsWeb ? 0 : (_headerVisible ? _headerHeight : 0);
+  /// Media is always full-bleed edge-to-edge (including under the status
+  /// bar) — the Found/For You/Following header floats transparently on top
+  /// of it rather than reserving its own opaque strip, matching the design.
+  double get _feedTopPadding => 0;
 
   @override
   Widget build(BuildContext context) {
@@ -362,6 +362,27 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
               child: NotificationListener<ScrollNotification>(
                 onNotification: _onScrollNotification,
                 child: _buildBody(context, ext, homeState, discoveryState),
+              ),
+            ),
+
+            // Top scrim — media is full-bleed behind the header now, so this
+            // keeps the Found/For You/Following labels legible over bright
+            // photos/videos instead of relying on an opaque reserved strip.
+            const Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: 140,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x99000000), Color(0x00000000)],
+                    ),
+                  ),
+                ),
               ),
             ),
 

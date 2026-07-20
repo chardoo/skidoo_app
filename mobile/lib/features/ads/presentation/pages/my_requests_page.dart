@@ -8,6 +8,8 @@ import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/create_campaign_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class MyRequestsPage extends StatefulWidget {
   const MyRequestsPage({super.key});
@@ -116,7 +118,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                margin: EdgeInsets.symmetric(vertical: 12.h),
+                margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
                 width: 36.w,
                 height: 4.h,
                 decoration: BoxDecoration(
@@ -128,7 +130,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
                 _ActionTile(
                   icon: Icons.edit_outlined,
                   label: 'Edit Request',
-                  color: const Color(0xFF3B82F6),
+                  color: ext.infoBlue,
                   ext: ext,
                   onTap: () {
                     Navigator.of(context).pop();
@@ -168,7 +170,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
                     _close(req, 'closed');
                   },
                 ),
-              SizedBox(height: 8.h),
+              SizedBox(height: AppSpacing.sm.h),
             ],
           ),
         ),
@@ -277,10 +279,10 @@ class _MyRequestTile extends StatelessWidget {
 
     return Container(
       margin: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 0),
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.all(AppSpacing.lg.w),
       decoration: BoxDecoration(
         color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(AppRadius.lg.r),
         border: Border.all(
           color: ext.searchHintColor.withValues(alpha: 0.1),
           width: 0.8,
@@ -308,7 +310,7 @@ class _MyRequestTile extends StatelessWidget {
               _StatusBadge(status: r.status, color: statusColor, ext: ext),
             ],
           ),
-          SizedBox(height: 8.h),
+          SizedBox(height: AppSpacing.sm.h),
           Wrap(
             spacing: 8.w,
             runSpacing: 4.h,
@@ -333,7 +335,7 @@ class _MyRequestTile extends StatelessWidget {
             ],
           ),
           if (r.description.isNotEmpty) ...[
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
             Text(
               r.description,
               maxLines: 2,
@@ -346,14 +348,14 @@ class _MyRequestTile extends StatelessWidget {
             ),
           ],
           if (r.status == 'open' || r.status == 'promoted') ...[
-            SizedBox(height: 12.h),
+            SizedBox(height: AppSpacing.md.h),
             Semantics(button: true, label: 'Action tap', child: GestureDetector(
               onTap: onActionTap,
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 10.h),
                 decoration: BoxDecoration(
                   color: ext.searchFieldFill,
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(AppRadius.md.r),
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -403,10 +405,10 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 3.h),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(AppRadius.xl.r),
         border: Border.all(color: color.withValues(alpha: 0.4), width: 0.8),
       ),
       child: Text(
@@ -546,7 +548,7 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
             children: [
               Center(
                 child: Container(
-                  margin: EdgeInsets.symmetric(vertical: 12.h),
+                  margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
                   width: 36.w,
                   height: 4.h,
                   decoration: BoxDecoration(
@@ -564,20 +566,20 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
                   letterSpacing: -0.4,
                 ),
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: AppSpacing.lg.h),
               _EditField(label: 'Title *', ctrl: _titleCtrl, ext: ext),
-              SizedBox(height: 12.h),
+              SizedBox(height: AppSpacing.md.h),
               _EditField(label: 'Description', ctrl: _descCtrl, ext: ext, maxLines: 3),
-              SizedBox(height: 12.h),
+              SizedBox(height: AppSpacing.md.h),
               _EditField(label: 'Location', ctrl: _locationCtrl, ext: ext),
-              SizedBox(height: 12.h),
+              SizedBox(height: AppSpacing.md.h),
               _EditField(
                 label: 'Budget (${widget.request.currency})',
                 ctrl: _budgetCtrl,
                 ext: ext,
                 keyboardType: TextInputType.number,
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: AppSpacing.lg.h),
               Text(
                 'Event Type',
                 style: TextStyle(
@@ -586,7 +588,7 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 8.h),
+              SizedBox(height: AppSpacing.sm.h),
               Wrap(
                 spacing: 8.w,
                 runSpacing: 8.h,
@@ -605,11 +607,11 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
                       )),
                 ],
               ),
-              SizedBox(height: 20.h),
+              SizedBox(height: AppSpacing.xl.h),
               Container(
                 decoration: BoxDecoration(
                   color: ext.searchFieldFill,
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(AppRadius.md.r),
                 ),
                 child: SwitchListTile(
                   value: _commentsEnabled,
@@ -630,7 +632,7 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
                   ),
                 ),
               ),
-              SizedBox(height: 24.h),
+              SizedBox(height: AppSpacing.xxl.h),
               Semantics(button: true, label: 'Save', child: GestureDetector(
                 onTap: _saving ? null : _save,
                 child: Container(
@@ -639,7 +641,7 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
                     gradient: _saving
                         ? null
                         : LinearGradient(
-                            colors: [ext.accentGold, const Color(0xFF078368)],
+                            colors: [ext.accentGold, ext.accentGoldDark],
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
                           ),
@@ -715,12 +717,12 @@ class _Chip extends StatelessWidget {
     return Semantics(button: true, label: label, child: GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 7.h),
         decoration: BoxDecoration(
           color: selected
               ? ext.accentGold.withValues(alpha: 0.15)
               : ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(AppRadius.xl.r),
           border: Border.all(
             color: selected
                 ? ext.accentGold.withValues(alpha: 0.6)

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class CardCommentSheet extends StatefulWidget {
   const CardCommentSheet({super.key, required this.ext, required this.eventName});
@@ -49,7 +50,7 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(height: 16.h),
+            SizedBox(height: AppSpacing.lg.h),
             Text(
               'Comments',
               style: TextStyle(
@@ -58,13 +59,13 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
                 fontSize: 16.sp,
               ),
             ),
-            SizedBox(height: 12.h),
+            SizedBox(height: AppSpacing.md.h),
 
             // Comment list
             Flexible(
               child: _comments.isEmpty
                   ? Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32.h),
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.xxxl.h),
                       child: Text(
                         'No comments yet. Be the first!',
                         style: TextStyle(
@@ -74,7 +75,7 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
                   : ListView.builder(
                       shrinkWrap: true,
                       reverse: false,
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
                       itemCount: _comments.length,
                       itemBuilder: (_, i) => CardCommentTile(
                           comment: _comments[i], ext: ext),
@@ -101,7 +102,7 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
                       onFieldSubmitted: (_) => _submit(),
                     ),
                   ),
-                  SizedBox(width: 8.w),
+                  SizedBox(width: AppSpacing.sm.w),
                   Semantics(button: true, label: 'Submit', child: GestureDetector(
                     onTap: _submit,
                     child: Container(

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class QrScanPage extends StatefulWidget {
   const QrScanPage({super.key});
@@ -171,12 +172,12 @@ class _QrScanPageState extends State<QrScanPage> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: 16.h),
+                    SizedBox(height: AppSpacing.lg.h),
                     Semantics(button: true, label: 'Pick from gallery', child: GestureDetector(
                       onTap: _pickFromGallery,
                       child: Container(
                         padding: EdgeInsets.symmetric(
-                            horizontal: 24.w, vertical: 13.h),
+                            horizontal: AppSpacing.xxl.w, vertical: 13.h),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(30.r),
@@ -189,7 +190,7 @@ class _QrScanPageState extends State<QrScanPage> {
                           children: [
                             Icon(Icons.photo_library_outlined,
                                 color: Colors.white, size: 18.sp),
-                            SizedBox(width: 8.w),
+                            SizedBox(width: AppSpacing.sm.w),
                             Text(
                               'Choose from Gallery',
                               style: TextStyle(

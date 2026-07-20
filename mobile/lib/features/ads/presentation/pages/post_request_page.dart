@@ -10,6 +10,8 @@ import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/core/common/widgets/xfile_image.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 const _eventTypes = [
   'Wedding',
@@ -148,37 +150,37 @@ class _PostRequestPageState extends State<PostRequestPage> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w, vertical: AppSpacing.sm.h),
           children: [
             _SectionLabel('What are you looking for?', ext),
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
             _Field(
               controller: _titleCtrl,
               hint: 'e.g. Wedding photographer needed',
               validator: (v) => Validators.lengthBetween(v, 3, 100, field: 'Title'),
             ),
 
-            SizedBox(height: 20.h),
+            SizedBox(height: AppSpacing.xl.h),
             _SectionLabel('Event type', ext),
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
             _EventTypeDropdown(
               value: _selectedEventType,
               ext: ext,
               onChanged: (v) => setState(() => _selectedEventType = v),
             ),
 
-            SizedBox(height: 20.h),
+            SizedBox(height: AppSpacing.xl.h),
             _SectionLabel('Visible to', ext),
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
             _VisibleToSelector(
               value: _visibleTo,
               ext: ext,
               onChanged: (v) => setState(() => _visibleTo = v),
             ),
 
-            SizedBox(height: 20.h),
+            SizedBox(height: AppSpacing.xl.h),
             _SectionLabel('Location', ext),
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
             _Field(
               controller: _locationCtrl,
               hint: 'e.g. Accra, Ghana',
@@ -186,9 +188,9 @@ class _PostRequestPageState extends State<PostRequestPage> {
                   Validators.lengthBetween(v, 2, 80, field: 'Location'),
             ),
 
-            SizedBox(height: 20.h),
+            SizedBox(height: AppSpacing.xl.h),
             _SectionLabel('Description', ext),
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
             _Field(
               controller: _descCtrl,
               hint:
@@ -198,7 +200,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
                   Validators.maxLength(v, 1000, field: 'Description'),
             ),
 
-            SizedBox(height: 20.h),
+            SizedBox(height: AppSpacing.xl.h),
             // ── Media picker ──────────────────────────────────────────────
             Row(
               children: [
@@ -220,7 +222,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
                 ),
               ],
             ),
-            SizedBox(height: 4.h),
+            SizedBox(height: AppSpacing.xs.h),
             Text(
               'Add up to 5 photos to attract more photographers.',
               style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
@@ -234,15 +236,15 @@ class _PostRequestPageState extends State<PostRequestPage> {
               onRemove: _removeAsset,
             ),
 
-            SizedBox(height: 20.h),
+            SizedBox(height: AppSpacing.xl.h),
             _SectionLabel('Budget (optional)', ext),
-            SizedBox(height: 4.h),
+            SizedBox(height: AppSpacing.xs.h),
             Text(
               'Enter a rough budget so photographers know what to expect.',
               style:
                   TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
             _Field(
               controller: _budgetCtrl,
               hint: 'e.g. 500',
@@ -251,7 +253,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
               prefixText: 'GHS  ',
             ),
 
-            SizedBox(height: 16.h),
+            SizedBox(height: AppSpacing.lg.h),
 
             // ── Comments toggle ───────────────────────────────────────────
             SwitchListTile(
@@ -269,7 +271,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
               contentPadding: EdgeInsets.zero,
             ),
 
-            SizedBox(height: 16.h),
+            SizedBox(height: AppSpacing.lg.h),
 
             // ── Submit ────────────────────────────────────────────────────
             _SubmitButton(
@@ -277,7 +279,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
               ext: ext,
               onTap: _submit,
             ),
-            SizedBox(height: 20.h),
+            SizedBox(height: AppSpacing.xl.h),
           ],
         ),
       ),
@@ -317,7 +319,7 @@ class _MultiMediaPicker extends StatelessWidget {
           // Existing thumbnails
           ...List.generate(assets.length, (i) {
             return Padding(
-              padding: EdgeInsets.only(right: 8.w),
+              padding: EdgeInsets.only(right: AppSpacing.sm.w),
               child: Stack(
                 children: [
                   ClipRRect(
@@ -369,7 +371,7 @@ class _MultiMediaPicker extends StatelessWidget {
                   children: [
                     Icon(Icons.add_photo_alternate_outlined,
                         color: ext.accentGold, size: 26.sp),
-                    SizedBox(height: 4.h),
+                    SizedBox(height: AppSpacing.xs.h),
                     Text(
                       'Add photo',
                       style: TextStyle(
@@ -460,7 +462,7 @@ class _EventTypeDropdown extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 14.w),
       decoration: BoxDecoration(
         color: ext.searchFieldFill,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
       ),
       // ignore: deprecated_member_use
       child: DropdownButtonFormField<String>(
@@ -506,15 +508,15 @@ class _SubmitButton extends StatelessWidget {
     return Semantics(button: true, label: 'Submit', child: GestureDetector(
       onTap: submitting ? null : onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 16.h),
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.lg.h),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: submitting
                 ? [
                     ext.accentGold.withValues(alpha: 0.5),
-                    const Color(0xFF078368).withValues(alpha: 0.5),
+                    ext.accentGoldDark.withValues(alpha: 0.5),
                   ]
-                : [ext.accentGold, const Color(0xFF078368)],
+                : [ext.accentGold, ext.accentGoldDark],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),

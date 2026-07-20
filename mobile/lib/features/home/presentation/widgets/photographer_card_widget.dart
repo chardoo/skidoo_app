@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
 
 class PhotographerCardWidget extends StatelessWidget {
   const PhotographerCardWidget({
@@ -23,7 +24,7 @@ class PhotographerCardWidget extends StatelessWidget {
     return Semantics(button: true, label: 'Photographer', child: GestureDetector(
       onTap: onTap,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(AppRadius.lg.r),
         child: SizedBox(
           height: height,
           child: Stack(

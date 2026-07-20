@@ -5,6 +5,7 @@ import 'package:skidoo_app/core/utils/skidoo_filters.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:share_plus/share_plus.dart';
@@ -28,6 +29,8 @@ import 'package:skidoo_app/features/discovery/presentation/widgets/card_interact
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/report_sheet.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model — same shape for ads and requests, mirrors EventDiscovery fields
@@ -388,7 +391,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
       );
       if (!mounted) return;
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
+        CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
       );
     } catch (e) {
       if (!mounted) return;
@@ -485,7 +488,7 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
                     ],
                   ),
                 ),
-                SizedBox(width: 8.w),
+                SizedBox(width: AppSpacing.sm.w),
                 FollowButton(
                   photographerId: d.creatorId,
                   onLoginRequired: widget.isAuthenticated
@@ -741,7 +744,7 @@ class _CreatorAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
-          colors: [ext.accentGold, const Color(0xFF078368)],
+          colors: [ext.accentGold, ext.accentGoldDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -796,12 +799,12 @@ class _TypeLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final isAd = type == FeedItemType.ad;
     final bgColor =
-        isAd ? ext.accentGold : const Color(0xFF3B82F6);
+        isAd ? ext.accentGold : ext.infoBlue;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.5.h),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(4.r),
+        borderRadius: BorderRadius.circular(AppRadius.xs.r),
         boxShadow: [
           BoxShadow(
             color: bgColor.withValues(alpha: 0.35),
@@ -885,7 +888,7 @@ class _CtaStripState extends State<_CtaStrip>
   Widget build(BuildContext context) {
     final isAd = widget.type == FeedItemType.ad;
     final ext = widget.ext;
-    final accentColor = isAd ? ext.accentGold : const Color(0xFF3B82F6);
+    final accentColor = isAd ? ext.accentGold : ext.infoBlue;
 
     return AnimatedBuilder(
       animation: _ctrl,
@@ -894,7 +897,7 @@ class _CtaStripState extends State<_CtaStrip>
         return Semantics(button: true, label: widget.label, child: GestureDetector(
           onTap: widget.onTap,
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 13.h),
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 13.h),
             decoration: BoxDecoration(
               color: accentColor.withValues(alpha: 0.07 + p * 0.14),
               border: Border.symmetric(
@@ -926,8 +929,8 @@ class _CtaStripState extends State<_CtaStrip>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isAd
-                    ? [widget.ext.accentGold, const Color(0xFF078368)]
-                    : [const Color(0xFF3B82F6), const Color(0xFF1D4ED8)],
+                    ? [widget.ext.accentGold, ext.accentGoldDark]
+                    : [ext.infoBlue, const Color(0xFF1D4ED8)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -939,7 +942,7 @@ class _CtaStripState extends State<_CtaStrip>
             child: Text(
               widget.label,
               style: TextStyle(
-                color: isAd ? widget.ext.accentGold : const Color(0xFF3B82F6),
+                color: isAd ? widget.ext.accentGold : ext.infoBlue,
                 fontSize: 13.sp,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.1,
@@ -949,7 +952,7 @@ class _CtaStripState extends State<_CtaStrip>
           Icon(
             isAd ? Icons.open_in_new_rounded : Icons.arrow_forward_ios_rounded,
             size: isAd ? 16.sp : 13.sp,
-            color: (isAd ? widget.ext.accentGold : const Color(0xFF3B82F6))
+            color: (isAd ? widget.ext.accentGold : ext.infoBlue)
                 .withValues(alpha: 0.7),
           ),
         ],
@@ -1227,7 +1230,7 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              margin: EdgeInsets.symmetric(vertical: 12.h),
+              margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
               width: 36.w,
               height: 4.h,
               decoration: BoxDecoration(
@@ -1305,7 +1308,7 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
               },
             ),
 
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
           ],
         ),
       ),

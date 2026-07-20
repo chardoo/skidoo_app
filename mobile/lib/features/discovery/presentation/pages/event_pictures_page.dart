@@ -20,6 +20,8 @@ import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/models/photo_comment/photo_comment.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 // ── Flat entry: one picture + its parent event metadata ──────────────────────
 
@@ -161,13 +163,13 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
             actions: [
               if (pics.isNotEmpty)
                 Padding(
-                  padding: EdgeInsets.only(right: 16.w),
+                  padding: EdgeInsets.only(right: AppSpacing.lg.w),
                   child: Container(
                     padding:
                         EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                     decoration: BoxDecoration(
                       color: ext.accentGold.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20.r),
+                      borderRadius: BorderRadius.circular(AppRadius.xl.r),
                       border: Border.all(
                         color: ext.accentGold.withValues(alpha: 0.3),
                         width: 0.8,
@@ -226,7 +228,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
                   children: [
                     Icon(Icons.photo_library_outlined,
                         size: 48.sp, color: ext.searchHintColor),
-                    SizedBox(height: 12.h),
+                    SizedBox(height: AppSpacing.md.h),
                     Text('No media available',
                         style: TextStyle(
                             color: ext.searchHintColor, fontSize: 14.sp)),
@@ -628,10 +630,10 @@ class _WebViewerReactionsPanelState extends State<_WebViewerReactionsPanel> {
                 ? Icons.favorite_rounded
                 : Icons.favorite_border_rounded,
             iconColor:
-                _liked ? const Color(0xFFFF3B5C) : Colors.white,
+                _liked ? ext.likeRed : Colors.white,
             count: _likeCount,
             countColor:
-                _liked ? const Color(0xFFFF3B5C) : Colors.white,
+                _liked ? ext.likeRed : Colors.white,
             iconSize: iconSize,
             onTap: _toggleLike,
           ),
@@ -893,7 +895,7 @@ class _InfoOverlay extends StatelessWidget {
                 ),
               ),
             ),
-            SizedBox(width: 8.w),
+            SizedBox(width: AppSpacing.sm.w),
             Flexible(
               child: GestureDetector(
                 onTap: onAvatarTap,
@@ -914,7 +916,7 @@ class _InfoOverlay extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
               decoration: BoxDecoration(
                 color: const Color(0xFF0BA98A).withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(4.r),
+                borderRadius: BorderRadius.circular(AppRadius.xs.r),
                 border: Border.all(
                     color: const Color(0xFF0BA98A).withValues(alpha: 0.4),
                     width: 0.5),

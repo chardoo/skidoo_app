@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
@@ -399,7 +400,7 @@ class _EventsFeedState extends State<EventsFeed> {
       if (!context.mounted) return;
       roomsBloc?.add(const ChatRoomsLoadRequested());
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
+        CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
       );
       if (context.mounted) roomsBloc?.add(const ChatRoomsLoadRequested());
     } catch (e) {

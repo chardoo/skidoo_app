@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Full-screen front-camera selfie capture with on-device face validation.
 ///
@@ -188,7 +190,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
             bottom: false,
             child: Padding(
               padding:
-                  EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                  EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 10.h),
               child: Row(
                 children: [
                   if (!kIsWeb)
@@ -243,13 +245,13 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                           horizontal: 14.w, vertical: 10.h),
                       decoration: BoxDecoration(
                         color: Colors.red.shade800.withValues(alpha: 0.88),
-                        borderRadius: BorderRadius.circular(12.r),
+                        borderRadius: BorderRadius.circular(AppRadius.md.r),
                       ),
                       child: Row(
                         children: [
                           const Icon(Icons.face_retouching_off_rounded,
                               color: Colors.white, size: 18),
-                          SizedBox(width: 8.w),
+                          SizedBox(width: AppSpacing.sm.w),
                           Expanded(
                             child: Text(
                               _errorHint!,
@@ -261,7 +263,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                       ),
                     ),
                     if (_lastCapturedFile != null) ...[
-                      SizedBox(height: 8.h),
+                      SizedBox(height: AppSpacing.sm.h),
                       Semantics(button: true, label: 'Use anyway', child: GestureDetector(
                         onTap: _useAnyway,
                         child: Container(

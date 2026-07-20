@@ -6,6 +6,8 @@ import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/create_campaign_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/post_request_page.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class CreateBottomSheet extends StatelessWidget {
   const CreateBottomSheet({super.key, this.isWeb = false});
@@ -51,7 +53,7 @@ class CreateBottomSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: ext.homeBackground,
         borderRadius: isWeb
-            ? BorderRadius.circular(24.r)
+            ? BorderRadius.circular(AppRadius.xxl.r)
             : BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
       child: SafeArea(
@@ -67,7 +69,7 @@ class CreateBottomSheet extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerRight,
                   child: Padding(
-                    padding: EdgeInsets.only(top: 8.h, right: 0),
+                    padding: EdgeInsets.only(top: AppSpacing.sm.h, right: 0),
                     child: IconButton(
                       onPressed: () => Navigator.of(context).pop(),
                       icon: Icon(Icons.close_rounded,
@@ -79,7 +81,7 @@ class CreateBottomSheet extends StatelessWidget {
               else
                 Center(
                   child: Container(
-                    margin: EdgeInsets.symmetric(vertical: 12.h),
+                    margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
                     width: 36.w,
                     height: 4.h,
                     decoration: BoxDecoration(
@@ -99,7 +101,7 @@ class CreateBottomSheet extends StatelessWidget {
                   letterSpacing: -0.5,
                 ),
               ),
-              SizedBox(height: 4.h),
+              SizedBox(height: AppSpacing.xs.h),
               Text(
                 'What would you like to post?',
                 style: TextStyle(
@@ -107,14 +109,14 @@ class CreateBottomSheet extends StatelessWidget {
                   fontSize: 13.sp,
                 ),
               ),
-              SizedBox(height: 20.h),
+              SizedBox(height: AppSpacing.xl.h),
 
               // ── Option: Post a Request (only when requestsEnabled) ────────
               if (cfg.requestsEnabled) ...[
                 _CreateOption(
                   icon: Icons.edit_note_rounded,
-                  iconColor: const Color(0xFF3B82F6),
-                  iconBgColor: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                  iconColor: ext.infoBlue,
+                  iconBgColor: ext.infoBlue.withValues(alpha: 0.12),
                   title: 'Post a Request',
                   subtitle: 'Free  ·  Goes live after review',
                   description:
@@ -131,7 +133,7 @@ class CreateBottomSheet extends StatelessWidget {
                     );
                   },
                 ),
-                if (cfg.adsEnabled) SizedBox(height: 12.h),
+                if (cfg.adsEnabled) SizedBox(height: AppSpacing.md.h),
               ],
 
               // ── Option: Create Campaign (only when adsEnabled) ────────────
@@ -157,7 +159,7 @@ class CreateBottomSheet extends StatelessWidget {
                   },
                 ),
 
-              SizedBox(height: 8.h),
+              SizedBox(height: AppSpacing.sm.h),
             ],
           ),
         ),
@@ -198,10 +200,10 @@ class _CreateOption extends StatelessWidget {
     return Semantics(button: true, label: title, child: GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.all(16.w),
+        padding: EdgeInsets.all(AppSpacing.lg.w),
         decoration: BoxDecoration(
           color: ext.cardSurface,
-          borderRadius: BorderRadius.circular(16.r),
+          borderRadius: BorderRadius.circular(AppRadius.lg.r),
           border: Border.all(
             color: ext.searchHintColor.withValues(alpha: 0.1),
             width: 0.8,
@@ -239,13 +241,13 @@ class _CreateOption extends StatelessWidget {
                           letterSpacing: -0.2,
                         ),
                       ),
-                      SizedBox(width: 8.w),
+                      SizedBox(width: AppSpacing.sm.w),
                       Container(
                         padding: EdgeInsets.symmetric(
                             horizontal: 7.w, vertical: 2.h),
                         decoration: BoxDecoration(
                           color: badgeColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20.r),
+                          borderRadius: BorderRadius.circular(AppRadius.xl.r),
                           border: Border.all(
                             color: badgeColor.withValues(alpha: 0.35),
                             width: 0.7,

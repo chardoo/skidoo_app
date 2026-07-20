@@ -7,6 +7,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// A lightweight in-app browser used to show remote, always-up-to-date content
 /// (privacy policy, terms, etc.) without bundling it in the app.
@@ -122,7 +123,7 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
               children: [
                 Icon(Icons.open_in_new_rounded,
                     size: 52.sp, color: ext.accentGold),
-                SizedBox(height: 20.h),
+                SizedBox(height: AppSpacing.xl.h),
                 Text(
                   '${widget.title} opened in a new tab',
                   textAlign: TextAlign.center,

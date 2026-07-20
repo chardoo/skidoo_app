@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class PhotographerCard extends StatelessWidget {
   const PhotographerCard({
@@ -21,11 +23,11 @@ class PhotographerCard extends StatelessWidget {
     return Semantics(button: true, label: photographer.name, child: InkWell(
       onTap: onTap,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 11.h),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 11.h),
         child: Row(
           children: [
             _PhotographerAvatar(photographer: photographer, ext: ext),
-            SizedBox(width: 12.w),
+            SizedBox(width: AppSpacing.md.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,11 +92,11 @@ class PhotographerGridCard extends StatelessWidget {
 
     return Semantics(button: true, label: photographer.name, child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16.r),
+      borderRadius: BorderRadius.circular(AppRadius.lg.r),
       child: Container(
         decoration: BoxDecoration(
           color: ext.cardSurface,
-          borderRadius: BorderRadius.circular(16.r),
+          borderRadius: BorderRadius.circular(AppRadius.lg.r),
           border: Border.all(color: ext.glassBorder),
           boxShadow: [
             BoxShadow(
@@ -141,7 +143,7 @@ class PhotographerGridCard extends StatelessWidget {
                       fontSize: 13.sp,
                     ),
                   ),
-                  SizedBox(height: 4.h),
+                  SizedBox(height: AppSpacing.xs.h),
                   if (photographer.rating != null && photographer.rating! > 0)
                     _RatingRow(rating: photographer.rating!, ext: ext)
                   else
@@ -252,7 +254,7 @@ class _RatingRow extends StatelessWidget {
                 color: ext.searchHintColor, size: 12.sp);
           }
         }),
-        SizedBox(width: 4.w),
+        SizedBox(width: AppSpacing.xs.w),
         Text(
           rating.toStringAsFixed(1),
           style: TextStyle(

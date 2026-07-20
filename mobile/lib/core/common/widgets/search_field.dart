@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// The "glass" search pill used across headers (home, photographers, chat,
 /// gallery share, sidebar). One shape/tint recipe — change it here and every
@@ -43,7 +44,7 @@ class SearchField extends StatelessWidget {
         children: [
           SizedBox(width: 14.w),
           Icon(Icons.search_rounded, color: ext.glassIcon, size: 20.sp),
-          SizedBox(width: 8.w),
+          SizedBox(width: AppSpacing.sm.w),
           Expanded(
             child: TextField(
               controller: controller,
@@ -57,13 +58,13 @@ class SearchField extends StatelessWidget {
                 hintStyle: TextStyle(color: ext.glassHint, fontSize: 14.sp),
                 border: InputBorder.none,
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 12.h),
+                contentPadding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
               ),
             ),
           ),
           if (loading)
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12.w),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
               child: SizedBox(
                 width: 16.w,
                 height: 16.w,

@@ -23,6 +23,7 @@ import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/features/onboarding/presentation/pages/onboarding_page.dart';
 import 'package:skidoo_app/features/splash/presentation/pages/splash_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 // ── Web layout constants ──────────────────────────────────────────────────────
 
@@ -649,7 +650,7 @@ class _SecurityWarningPage extends StatelessWidget {
       backgroundColor: const Color(0xFF0D0D0D),
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 48.h),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.w, vertical: 48.h),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -658,7 +659,7 @@ class _SecurityWarningPage extends StatelessWidget {
                 color: const Color(0xFF0BA98A),
                 size: 72.sp,
               ),
-              SizedBox(height: 24.h),
+              SizedBox(height: AppSpacing.xxl.h),
               Text(
                 AppLocalizations.of(context)!.securityWarningTitle,
                 style: TextStyle(
@@ -669,7 +670,7 @@ class _SecurityWarningPage extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: AppSpacing.lg.h),
               Text(
                 AppLocalizations.of(context)!.securityWarningBody,
                 style: TextStyle(
@@ -679,7 +680,7 @@ class _SecurityWarningPage extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 40.h),
+              SizedBox(height: AppSpacing.huge.h),
               AppButton(
                 fullWidth: true,
                 label: AppLocalizations.of(context)!.securityWarningContinue,

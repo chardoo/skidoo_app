@@ -5,6 +5,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
 
 /// Slim header row shown above a feed card's media: creator avatar + name,
 /// an "owner" badge for the current user's own posts, a Follow pill, and a
@@ -147,12 +148,12 @@ class OwnerPill extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             ext.accentGold.withValues(alpha: 0.18),
-            const Color(0xFF078368).withValues(alpha: 0.12),
+            ext.accentGoldDark.withValues(alpha: 0.12),
           ],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(AppRadius.xl.r),
         border: Border.all(
           color: ext.accentGold.withValues(alpha: 0.45),
           width: 0.8,
@@ -204,10 +205,10 @@ class CreatorInitialsAvatar extends StatelessWidget {
     const borderPad = 2.5;
 
     final fallback = Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
-          colors: [Color(0xFF3DD9B4), Color(0xFF078368)],
+          colors: [const Color(0xFF3DD9B4), ext.accentGoldDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -242,7 +243,7 @@ class CreatorInitialsAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
-          colors: [ext.accentGold, const Color(0xFF078368)],
+          colors: [ext.accentGold, ext.accentGoldDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

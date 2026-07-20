@@ -14,6 +14,8 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
 import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
 import 'package:skidoo_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Fetches the creator-branded overlay image and hands it to the native OS
 /// share sheet. This is THE external-share routine for the whole app — every
@@ -23,7 +25,10 @@ import 'package:skidoo_app/features/photo_comments/presentation/pages/photo_comm
 /// used internally by [MediaActionButtons]'s own Share/Download buttons.
 ///
 /// [imageId] is the picture's `id` (matches the existing `imageId:` param
-/// convention already used by every [MediaActionButtons] call site).
+/// convention already used by every [MediaActionButtons] call site) — NOT
+/// the separate `imageId` field on [EventPicture]/`Photo`, which is a
+/// different value. Every call site must pass `pic.id` here, not
+/// `pic.imageId`.
 /// [isDownload] only changes the loading copy and the shared "text" (kept
 /// null for downloads on web, matching the prior behaviour) — the actual
 /// action is the same OS share/save sheet either way, since there is no
@@ -49,7 +54,7 @@ Future<void> shareOverlayPhotoExternally(
     final result =
         await sl<GetOverlayImageUseCase>()(imageId, photographerName);
     if (!context.mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
+    _dismissProcessingDialog(context);
 
     final safeId = imageId.replaceAll('/', '_').replaceAll('\\', '_');
     final filename = 'overlay_$safeId.${result.fileExtension}';
@@ -98,7 +103,7 @@ Future<void> shareOverlayPhotoExternally(
     } catch (_) {}
   } catch (e) {
     if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
+      _dismissProcessingDialog(context);
       AppSnackBar.error(
         context,
         'Could not prepare file: $e',
@@ -106,6 +111,19 @@ Future<void> shareOverlayPhotoExternally(
       );
     }
   }
+}
+
+/// Pops the [_ProcessingOverlay] dialog pushed at the top of
+/// [shareOverlayPhotoExternally]. Guarded with `canPop()` + try/catch: if
+/// the route is already gone for any reason (user backed out, a hot-reload
+/// reassemble raced with the in-flight request, etc.), this becomes a
+/// no-op instead of hitting Flutter's `_history.isNotEmpty` assertion from
+/// popping a Navigator with nothing left on its stack.
+void _dismissProcessingDialog(BuildContext context) {
+  try {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    if (navigator.canPop()) navigator.pop();
+  } catch (_) {}
 }
 
 /// Reusable **Like / Download / Share / Comment** action buttons for any media item.
@@ -395,10 +413,10 @@ class _ProcessingOverlayState extends State<_ProcessingOverlay>
               scale: _scale,
               child: Container(
                 padding: EdgeInsets.symmetric(
-                    horizontal: 36.w, vertical: 32.h),
+                    horizontal: 36.w, vertical: AppSpacing.xxxl.h),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1A1A1A).withValues(alpha: 0.95),
-                  borderRadius: BorderRadius.circular(24.r),
+                  borderRadius: BorderRadius.circular(AppRadius.xxl.r),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: 0.08),
                     width: 1,
@@ -450,7 +468,7 @@ class _ProcessingOverlayState extends State<_ProcessingOverlay>
                       ),
                     ),
 
-                    SizedBox(height: 20.h),
+                    SizedBox(height: AppSpacing.xl.h),
 
                     Text(
                       widget.label,
@@ -585,7 +603,7 @@ class _MediaBtnState extends State<_MediaBtn>
                     )
                   : Icon(widget.icon, color: widget.color, size: widget.iconSize),
             ),
-            SizedBox(height: 4.h),
+            SizedBox(height: AppSpacing.xs.h),
             Text(
               widget.label,
               style: TextStyle(

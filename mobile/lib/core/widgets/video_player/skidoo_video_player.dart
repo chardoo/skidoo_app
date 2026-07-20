@@ -9,6 +9,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:skidoo_app/core/common/widgets/app_loading_indicator.dart';
 import 'package:skidoo_app/core/utils/video_mute_preference.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 export 'package:media_kit/media_kit.dart' show PlaylistMode;
 
@@ -616,7 +617,7 @@ class _ControlsOverlay extends StatelessWidget {
                   onTap: onSeekBack,
                   size: 26.sp,
                 ),
-                SizedBox(width: 24.w),
+                SizedBox(width: AppSpacing.xxl.w),
                 StreamBuilder<bool>(
                   stream: player.stream.playing,
                   initialData: player.state.playing,
@@ -629,7 +630,7 @@ class _ControlsOverlay extends StatelessWidget {
                     padding: 12,
                   ),
                 ),
-                SizedBox(width: 24.w),
+                SizedBox(width: AppSpacing.xxl.w),
                 _CircleButton(
                   icon: Icons.forward_10_rounded,
                   onTap: onSeekForward,
@@ -752,7 +753,7 @@ class _BottomBar extends StatelessWidget {
                             color: Colors.white70, fontSize: 10.sp),
                       ),
                       if (onFullscreen != null) ...[
-                        SizedBox(width: 8.w),
+                        SizedBox(width: AppSpacing.sm.w),
                         Semantics(button: true, label: 'Fullscreen', child: GestureDetector(
                           onTap: onFullscreen,
                           behavior: HitTestBehavior.opaque,

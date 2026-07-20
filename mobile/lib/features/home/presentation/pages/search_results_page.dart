@@ -21,6 +21,8 @@ import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class SearchResultsPage extends StatefulWidget {
   static const routeName = '/searchresults';
@@ -289,7 +291,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                       if (state.isLoadingImages)
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20.h),
+                            padding: EdgeInsets.symmetric(vertical: AppSpacing.xl.h),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -431,7 +433,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
           border: isSelected
               ? Border.all(color: ext.accentGold, width: 2.5)
               : Border.all(color: Colors.transparent, width: 2.5),
@@ -491,7 +493,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                          horizontal: 9.w, vertical: 4.h),
+                          horizontal: 9.w, vertical: AppSpacing.xs.h),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.30),
                         borderRadius: BorderRadius.circular(30.r),
@@ -547,7 +549,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                     child: Align(
                       alignment: Alignment.topRight,
                       child: Padding(
-                        padding: EdgeInsets.all(8.w),
+                        padding: EdgeInsets.all(AppSpacing.sm.w),
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 180),
                           child: isSelected
@@ -621,7 +623,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
               // ── Notice — only when some photos cost money ─────────────────
               if (hasPaidAnywhere) ...[
                 _PayNotice(ext: ext),
-                SizedBox(height: 8.h),
+                SizedBox(height: AppSpacing.sm.h),
               ],
 
               // ── Buttons ───────────────────────────────────────────────────
@@ -789,17 +791,17 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         children: [
           Icon(Icons.image_search_rounded,
               size: 56.sp, color: ext.accentGold.withValues(alpha: 0.7)),
-          SizedBox(height: 24.h),
+          SizedBox(height: AppSpacing.xxl.h),
           SizedBox(
             width: 220.w,
             child: LinearProgressIndicator(
               color: ext.accentGold,
               backgroundColor: ext.accentGold.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(4.r),
+              borderRadius: BorderRadius.circular(AppRadius.xs.r),
               minHeight: 4.h,
             ),
           ),
-          SizedBox(height: 20.h),
+          SizedBox(height: AppSpacing.xl.h),
           Text(
             AppLocalizations.of(context)!.searchResultsScanningPhotos,
             style: TextStyle(
@@ -807,7 +809,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                 fontSize: 15.sp,
                 fontWeight: FontWeight.w600),
           ),
-          SizedBox(height: 8.h),
+          SizedBox(height: AppSpacing.sm.h),
           Text(AppLocalizations.of(context)!.searchResultsMayTakeAMoment,
               style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp)),
         ],
@@ -822,7 +824,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         children: [
           Icon(Icons.image_search_outlined,
               size: 64.sp, color: ext.searchHintColor),
-          SizedBox(height: 12.h),
+          SizedBox(height: AppSpacing.md.h),
           Text(AppLocalizations.of(context)!.searchResultsNoPhotos,
               style: TextStyle(color: ext.searchHintColor, fontSize: 15.sp)),
         ],
@@ -831,7 +833,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   }
 
   void _showSnack(BuildContext context, String msg, {required bool isError}) {
-    final margin = EdgeInsets.only(bottom: 80.h, left: 16.w, right: 16.w);
+    final margin = EdgeInsets.only(bottom: 80.h, left: AppSpacing.lg.w, right: AppSpacing.lg.w);
     if (isError) {
       AppSnackBar.error(context, msg, margin: margin);
     } else {
@@ -925,7 +927,7 @@ class _PayNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
       decoration: BoxDecoration(
         color: ext.accentGold.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(10.r),
@@ -935,7 +937,7 @@ class _PayNotice extends StatelessWidget {
       child: Row(
         children: [
           Icon(Icons.info_outline_rounded, color: ext.accentGold, size: 15.sp),
-          SizedBox(width: 8.w),
+          SizedBox(width: AppSpacing.sm.w),
           Expanded(
             child: Text(
               'Some photos require payment. Deselect paid photos to save the free ones.',
@@ -986,7 +988,7 @@ class _ActionButton extends StatelessWidget {
           height: 46.h,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(12.r),
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
             border: borderColor != null
                 ? Border.all(color: borderColor!, width: 1)
                 : null,

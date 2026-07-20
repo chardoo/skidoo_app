@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class RoomTile extends StatelessWidget {
   const RoomTile({
@@ -32,11 +34,11 @@ class RoomTile extends StatelessWidget {
       child: InkWell(
       onTap: onTap,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 10.h),
         child: Row(
           children: [
             _RoomAvatar(type: room.type, ext: ext, isAdmin: room.hasAdminParticipant),
-            SizedBox(width: 12.w),
+            SizedBox(width: AppSpacing.md.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,8 +51,8 @@ class RoomTile extends StatelessWidget {
                           children: [
                             if (room.hasAdminParticipant) ...[
                               Icon(Icons.verified_rounded,
-                                  size: 14.sp, color: ext.accentGold),
-                              SizedBox(width: 4.w),
+                                  size: 14.sp, color: ext.infoBlue),
+                              SizedBox(width: AppSpacing.xs.w),
                             ],
                             Flexible(
                               child: Text(
@@ -74,7 +76,7 @@ class RoomTile extends StatelessWidget {
                           _formatTime(lastMessageAt!),
                           style: TextStyle(
                             color: hasUnread
-                                ? ext.accentGold
+                                ? ext.greetingColor
                                 : ext.searchHintColor,
                             fontSize: 11.sp,
                             fontWeight: hasUnread
@@ -104,7 +106,7 @@ class RoomTile extends StatelessWidget {
                               horizontal: 6.w, vertical: 2.h),
                           decoration: BoxDecoration(
                             color: ext.accentGold,
-                            borderRadius: BorderRadius.circular(20.r),
+                            borderRadius: BorderRadius.circular(AppRadius.xl.r),
                           ),
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
@@ -190,21 +192,10 @@ class _RoomAvatar extends StatelessWidget {
         height: 52.w,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: LinearGradient(
-            colors: [ext.accentGold, const Color(0xFF078368)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: ext.accentGold.withValues(alpha: 0.35),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          color: ext.infoBlue.withValues(alpha: 0.18),
         ),
         alignment: Alignment.center,
-        child: Icon(Icons.shield_rounded, color: Colors.white, size: 22.sp),
+        child: Icon(Icons.shield_rounded, color: ext.infoBlue, size: 22.sp),
       );
     }
     final (icon, color) = _iconAndColor(ext);
@@ -218,7 +209,7 @@ class _RoomAvatar extends StatelessWidget {
   (IconData, Color) _iconAndColor(AppThemeExtension ext) {
     switch (type) {
       case RoomType.global:
-        return (Icons.public_rounded, ext.accentGold);
+        return (Icons.public_rounded, Colors.cyan);
       case RoomType.direct:
         return (Icons.person_rounded, Colors.blueAccent);
       case RoomType.event:

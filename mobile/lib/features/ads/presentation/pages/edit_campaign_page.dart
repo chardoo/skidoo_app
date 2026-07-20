@@ -11,6 +11,8 @@ import 'package:skidoo_app/features/ads/models/ad_set.dart';
 import 'package:skidoo_app/core/common/widgets/xfile_image.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -227,15 +229,15 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
               children: [
                 // ── Campaign Details ─────────────────────────────────────
                 _SectionHeader('Campaign Details', ext),
-                SizedBox(height: 16.h),
+                SizedBox(height: AppSpacing.lg.h),
 
                 _ELabel('Campaign name', ext),
-                SizedBox(height: 8.h),
+                SizedBox(height: AppSpacing.sm.h),
                 _EField(controller: _nameCtrl, hint: 'e.g. Summer Wedding Promo', ext: ext),
 
-                SizedBox(height: 20.h),
+                SizedBox(height: AppSpacing.xl.h),
                 _ELabel('Objective', ext),
-                SizedBox(height: 8.h),
+                SizedBox(height: AppSpacing.sm.h),
                 _EDropdown<String>(
                   value: _objective,
                   items: _objectives,
@@ -244,7 +246,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                   onChanged: (v) => setState(() => _objective = v ?? _objectives[0]),
                 ),
 
-                SizedBox(height: 20.h),
+                SizedBox(height: AppSpacing.xl.h),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -254,7 +256,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _ELabel('Total budget', ext),
-                          SizedBox(height: 8.h),
+                          SizedBox(height: AppSpacing.sm.h),
                           _EField(
                             controller: _budgetCtrl,
                             hint: 'e.g. 1000',
@@ -270,7 +272,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _ELabel('Currency', ext),
-                          SizedBox(height: 8.h),
+                          SizedBox(height: AppSpacing.sm.h),
                           _EDropdown<String>(
                             value: _currency,
                             items: _currencies,
@@ -285,9 +287,9 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                   ],
                 ),
 
-                SizedBox(height: 20.h),
+                SizedBox(height: AppSpacing.xl.h),
                 _ELabel('Campaign dates (optional)', ext),
-                SizedBox(height: 8.h),
+                SizedBox(height: AppSpacing.sm.h),
                 Row(
                   children: [
                     Expanded(
@@ -312,7 +314,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                   ],
                 ),
 
-                SizedBox(height: 20.h),
+                SizedBox(height: AppSpacing.xl.h),
                 _EToggleRow(
                   label: 'Allow comments',
                   subtitle: 'Let viewers comment on this campaign',
@@ -323,9 +325,9 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
 
                 // ── Ad Sets ──────────────────────────────────────────────
                 if (_adsetStates.isNotEmpty) ...[
-                  SizedBox(height: 32.h),
+                  SizedBox(height: AppSpacing.xxxl.h),
                   _Divider(ext),
-                  SizedBox(height: 24.h),
+                  SizedBox(height: AppSpacing.xxl.h),
                   for (var i = 0; i < _adsetStates.length; i++) ...[
                     _SectionHeader(
                       _adsetStates.length == 1
@@ -333,22 +335,22 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                           : 'Ad Set ${i + 1}',
                       ext,
                     ),
-                    SizedBox(height: 4.h),
+                    SizedBox(height: AppSpacing.xs.h),
                     Text(
                       _adsetStates[i].adset.placement.label,
                       style: TextStyle(
                           color: ext.searchHintColor, fontSize: 12.sp),
                     ),
-                    SizedBox(height: 16.h),
+                    SizedBox(height: AppSpacing.lg.h),
                     _AdSetForm(
                       state: _adsetStates[i],
                       ext: ext,
                       onChanged: () => setState(() {}),
                     ),
                     if (i < _adsetStates.length - 1) ...[
-                      SizedBox(height: 24.h),
+                      SizedBox(height: AppSpacing.xxl.h),
                       _Divider(ext),
-                      SizedBox(height: 24.h),
+                      SizedBox(height: AppSpacing.xxl.h),
                     ],
                   ],
                 ],
@@ -358,16 +360,16 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                   for (var ai = 0;
                       ai < _adsetStates[si].adStates.length;
                       ai++) ...[
-                    SizedBox(height: 32.h),
+                    SizedBox(height: AppSpacing.xxxl.h),
                     _Divider(ext),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: AppSpacing.xxl.h),
                     _SectionHeader(
                       _adsetStates[si].adStates.length == 1
                           ? 'Ad Creative'
                           : 'Ad Creative ${ai + 1}',
                       ext,
                     ),
-                    SizedBox(height: 16.h),
+                    SizedBox(height: AppSpacing.lg.h),
                     _AdForm(
                       state: _adsetStates[si].adStates[ai],
                       ext: ext,
@@ -377,7 +379,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                   ],
                 ],
 
-                SizedBox(height: 16.h),
+                SizedBox(height: AppSpacing.lg.h),
               ],
             ),
           ),
@@ -401,9 +403,9 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                     colors: _saving
                         ? [
                             ext.accentGold.withValues(alpha: 0.5),
-                            const Color(0xFF078368).withValues(alpha: 0.5),
+                            ext.accentGoldDark.withValues(alpha: 0.5),
                           ]
-                        : [ext.accentGold, const Color(0xFF078368)],
+                        : [ext.accentGold, ext.accentGoldDark],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
@@ -536,16 +538,16 @@ class _AdSetForm extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ELabel('Daily budget', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _EField(
           controller: state.dailyBudgetCtrl,
           hint: 'e.g. 50',
           ext: ext,
           keyboardType: TextInputType.number,
         ),
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _ELabel('Audience', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _EDropdown<String>(
           value: state.audience,
           items: _audienceTypes,
@@ -556,9 +558,9 @@ class _AdSetForm extends StatelessWidget {
             onChanged();
           },
         ),
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _ELabel('Target event type (optional)', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _EDropdown<String>(
           value: state.eventType,
           items: _eventTypes,
@@ -571,9 +573,9 @@ class _AdSetForm extends StatelessWidget {
           hint: 'Any event type',
           nullable: true,
         ),
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _ELabel('Target location (optional)', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _EField(
             controller: state.locationCtrl, hint: 'e.g. Accra', ext: ext),
       ],
@@ -639,39 +641,39 @@ class _AdForm extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ELabel('Headline', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _EField(
           controller: state.headlineCtrl,
           hint: 'Grab attention in one line',
           ext: ext,
         ),
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _ELabel('Body text (optional)', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _EField(
           controller: state.bodyCtrl,
           hint: 'Describe what you offer...',
           ext: ext,
           maxLines: 3,
         ),
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _ELabel('CTA button text (optional)', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _EField(
           controller: state.ctaTextCtrl,
           hint: 'e.g. Book Now · Learn More',
           ext: ext,
         ),
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _ELabel('CTA link', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _EField(
           controller: state.ctaUrlCtrl,
           hint: 'https://',
           ext: ext,
           keyboardType: TextInputType.url,
         ),
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _EToggleRow(
           label: 'Allow comments',
           subtitle: 'Let viewers comment on this ad',
@@ -682,9 +684,9 @@ class _AdForm extends StatelessWidget {
             onChanged();
           },
         ),
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _ELabel('Creative media', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _MediaPreview(
           state: state,
           ext: ext,
@@ -754,7 +756,7 @@ class _MediaPreview extends StatelessWidget {
                     bottom: Radius.circular(14.r)),
                 child: Container(
                   color: Colors.black.withValues(alpha: 0.5),
-                  padding: EdgeInsets.symmetric(vertical: 8.h),
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -845,7 +847,7 @@ class _LocalMediaTile extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(20.r),
+                borderRadius: BorderRadius.circular(AppRadius.xl.r),
               ),
               child: Text(
                 isVideo ? 'Video' : 'Image',
@@ -927,7 +929,7 @@ class _MediaPickerSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              margin: EdgeInsets.symmetric(vertical: 12.h),
+              margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
               width: 36.w,
               height: 4.h,
               decoration: BoxDecoration(
@@ -994,7 +996,7 @@ class _MediaPickerSheet extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       fontSize: 14.sp)),
             ),
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
           ],
         ),
       ),
@@ -1105,7 +1107,7 @@ class _EDropdown<T> extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 14.w),
       decoration: BoxDecoration(
         color: ext.searchFieldFill,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
       ),
       child: DropdownButton<T>(
         value: value,
@@ -1160,7 +1162,7 @@ class _EToggleRow extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: ext.searchFieldFill,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
       ),
       child: SwitchListTile(
         value: value,
@@ -1199,13 +1201,13 @@ class _DateBtn extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
         decoration: BoxDecoration(
           color: ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
         ),
         child: Row(
           children: [
             Icon(Icons.calendar_today_outlined,
                 color: ext.searchHintColor, size: 16.sp),
-            SizedBox(width: 8.w),
+            SizedBox(width: AppSpacing.sm.w),
             Expanded(
               child: Text(
                 label,

@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class PicturesFullscreenViewer extends StatefulWidget {
   const PicturesFullscreenViewer({
@@ -70,7 +72,7 @@ class _PicturesFullscreenViewerState extends State<PicturesFullscreenViewer> {
             child: SafeArea(
               child: Padding(
                 padding: EdgeInsets.symmetric(
-                    horizontal: 12.w, vertical: 8.h),
+                    horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
                 child: Row(
                   children: [
                     if (!kIsWeb)
@@ -90,17 +92,17 @@ class _PicturesFullscreenViewerState extends State<PicturesFullscreenViewer> {
                     const Spacer(),
                     Container(
                       padding: EdgeInsets.symmetric(
-                          horizontal: 12.w, vertical: 5.h),
+                          horizontal: AppSpacing.md.w, vertical: 5.h),
                       decoration: BoxDecoration(
                         color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20.r),
+                        borderRadius: BorderRadius.circular(AppRadius.xl.r),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (widget.pictures[_currentIndex].isVideo)
                             Padding(
-                              padding: EdgeInsets.only(right: 4.w),
+                              padding: EdgeInsets.only(right: AppSpacing.xs.w),
                               child: Icon(Icons.videocam_rounded,
                                   color: Colors.white70, size: 12.sp),
                             ),

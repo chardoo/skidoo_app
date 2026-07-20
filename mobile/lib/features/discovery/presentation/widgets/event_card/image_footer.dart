@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// TikTok-style text overlay at the bottom-left of a feed card's media —
 /// event name plus a collapsible content-tags line.
@@ -55,7 +56,7 @@ class _ImageFooterState extends State<ImageFooter> {
 
         // Content tags — inline with "more / less" pinned to the right
         if (tagLine.isNotEmpty) ...[
-          SizedBox(height: 4.h),
+          SizedBox(height: AppSpacing.xs.h),
           Semantics(button: true, label: 'Toggle tags', child: GestureDetector(
             onTap: () => setState(() => _tagsExpanded = !_tagsExpanded),
             child: _tagsExpanded

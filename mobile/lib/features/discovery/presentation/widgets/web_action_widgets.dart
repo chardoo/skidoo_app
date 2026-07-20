@@ -76,10 +76,10 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
   }
 
   Widget _fallback(String initial) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
-            colors: [Color(0xFF3DD9B4), Color(0xFF078368)],
+            colors: [const Color(0xFF3DD9B4), widget.ext.accentGoldDark],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -135,7 +135,7 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [ext.accentGold, const Color(0xFF078368)],
+                    colors: [ext.accentGold, ext.accentGoldDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -170,7 +170,7 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
                     decoration: BoxDecoration(
                       color: _following
                           ? Colors.white.withValues(alpha: 0.9)
-                          : const Color(0xFFFF3B5C),
+                          : ext.likeRed,
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: ext.homeBackground,

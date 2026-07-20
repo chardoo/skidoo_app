@@ -110,9 +110,9 @@ class WebReactionsColumn extends StatelessWidget {
             // ── Reactions ─────────────────────────────────────────────────────
             WebActionBtn(
               icon: Icons.favorite_rounded,
-              iconColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
+              iconColor: liked ? ext.likeRed : ext.greetingColor,
               count: likeCount,
-              countColor: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
+              countColor: liked ? ext.likeRed : ext.greetingColor,
               iconSize: iconSize,
               onTap: onLike,
               semanticLabel: liked ? 'Unlike' : 'Like',
@@ -120,10 +120,10 @@ class WebReactionsColumn extends StatelessWidget {
             SizedBox(height: gap),
             WebActionBtn(
               icon: Icons.thumb_down_rounded,
-              iconColor: disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
+              iconColor: disliked ? ext.dislikeBlue : ext.greetingColor,
               count: dislikeCount,
               countColor:
-                  disliked ? const Color(0xFF5B6EF5) : ext.greetingColor,
+                  disliked ? ext.dislikeBlue : ext.greetingColor,
               iconSize: iconSize,
               onTap: onDislike,
               semanticLabel: disliked ? 'Remove dislike' : 'Dislike',

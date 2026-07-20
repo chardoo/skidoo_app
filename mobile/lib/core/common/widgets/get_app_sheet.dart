@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Bottom sheet (mobile) / dialog (web) shown when the user taps a feature
 /// that requires the native app — e.g. share. Prompts them to download Jperg.
@@ -59,7 +61,7 @@ class GetAppSheet extends StatelessWidget {
         barrierColor: Colors.black.withValues(alpha: 0.55),
         builder: (_) => Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.symmetric(horizontal: 28.w, vertical: 40.h),
+          insetPadding: EdgeInsets.symmetric(horizontal: 28.w, vertical: AppSpacing.huge.h),
           elevation: 0,
           child: GetAppSheet._(ext: ext, featureLabel: featureLabel),
         ),
@@ -84,7 +86,7 @@ class GetAppSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: ext.homeBackground,
         borderRadius: isWeb
-            ? BorderRadius.circular(24.r)
+            ? BorderRadius.circular(AppRadius.xxl.r)
             : BorderRadius.vertical(top: Radius.circular(24.r)),
         boxShadow: isWeb
             ? [
@@ -107,7 +109,7 @@ class GetAppSheet extends StatelessWidget {
               Container(
                 width: 36.w,
                 height: 4.h,
-                margin: EdgeInsets.only(bottom: 20.h),
+                margin: EdgeInsets.only(bottom: AppSpacing.xl.h),
                 decoration: BoxDecoration(
                   color: ext.searchHintColor.withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(2.r),
@@ -121,7 +123,7 @@ class GetAppSheet extends StatelessWidget {
                 child: Semantics(button: true, label: 'Close', child: GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
                   child: Container(
-                    margin: EdgeInsets.only(bottom: 16.h),
+                    margin: EdgeInsets.only(bottom: AppSpacing.lg.h),
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: ext.searchFieldFill,
@@ -155,7 +157,7 @@ class GetAppSheet extends StatelessWidget {
               ),
             ),
 
-            SizedBox(height: 16.h),
+            SizedBox(height: AppSpacing.lg.h),
 
             Text(
               '$featureLabel is available on the app',
@@ -168,7 +170,7 @@ class GetAppSheet extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
 
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
 
             Text(
               'Download Jperg to share, send to friends, and enjoy the full experience.',

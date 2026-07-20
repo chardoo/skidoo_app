@@ -20,6 +20,7 @@ import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Opens a bottom sheet showing an image slider + real-time event comments.
 class EventCommentPage {
@@ -271,8 +272,8 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
                                 return ListView.builder(
                                   controller: _scrollCtrl,
                                   padding: EdgeInsets.symmetric(
-                                      horizontal: 16.w,
-                                      vertical: 8.h),
+                                      horizontal: AppSpacing.lg.w,
+                                      vertical: AppSpacing.sm.h),
                                   itemCount: threaded.topLevel.length +
                                       (state.isLoadingMore ? 1 : 0),
                                   itemBuilder: (_, i) {
@@ -281,7 +282,7 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
                                       return Padding(
                                         padding:
                                             EdgeInsets.symmetric(
-                                                vertical: 12.h),
+                                                vertical: AppSpacing.md.h),
                                         child: Center(
                                           child:
                                               CircularProgressIndicator(
@@ -881,7 +882,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                 ),
               ),
               ),
-              SizedBox(width: 8.w),
+              SizedBox(width: AppSpacing.sm.w),
 
               // Text field
               Expanded(
@@ -911,7 +912,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                   ),
                 ),
               ),
-              SizedBox(width: 8.w),
+              SizedBox(width: AppSpacing.sm.w),
 
               // Send button
               Semantics(
@@ -926,7 +927,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                     height: 36.w,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [ext.accentGold, const Color(0xFF078368)],
+                        colors: [ext.accentGold, ext.accentGoldDark],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -1000,7 +1001,7 @@ class _CommentPanelHeader extends StatelessWidget {
                 final count = state.messages.length;
                 if (count == 0) return const SizedBox.shrink();
                 return Padding(
-                  padding: EdgeInsets.only(left: 8.w),
+                  padding: EdgeInsets.only(left: AppSpacing.sm.w),
                   child: Text(
                     '$count',
                     style: TextStyle(
@@ -1048,7 +1049,7 @@ class _CommentEmptyView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24.w),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1071,7 +1072,7 @@ class _CommentEmptyView extends StatelessWidget {
               alignment: Alignment.center,
               child: Text('💬', style: TextStyle(fontSize: 28.sp)),
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: AppSpacing.lg.h),
             Text(
               'No comments yet',
               style: TextStyle(

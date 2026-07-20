@@ -10,6 +10,8 @@ import 'package:skidoo_app/features/photographers/presentation/widgets/photograp
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class PhotographersPage extends StatefulWidget {
   const PhotographersPage({super.key});
@@ -66,7 +68,7 @@ class _PhotographersPageState extends State<PhotographersPage> {
             ),
             actions: [
               Padding(
-                padding: EdgeInsets.only(right: 12.w),
+                padding: EdgeInsets.only(right: AppSpacing.md.w),
                 child: _ViewToggle(
                   isGrid: _isGrid,
                   ext: ext,
@@ -155,7 +157,7 @@ class _PhotographersPageState extends State<PhotographersPage> {
                     .add(const PhotographersLoadRequested()),
                 child: ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(top: 4.h, bottom: 24.h),
+                padding: EdgeInsets.only(top: AppSpacing.xs.h, bottom: AppSpacing.xxl.h),
                 itemCount: state.photographers.length,
                 itemBuilder: (context, index) {
                   final p = state.photographers[index];
@@ -237,7 +239,7 @@ class _ViewToggle extends StatelessWidget {
           color: selected
               ? ext.accentGold.withValues(alpha: 0.18)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(8.r),
+          borderRadius: BorderRadius.circular(AppRadius.sm.r),
         ),
         child: Icon(
           icon,

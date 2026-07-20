@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Row of dot indicators showing progress through a paged carousel.
 class OnboardingPageIndicator extends StatelessWidget {
@@ -24,7 +25,7 @@ class OnboardingPageIndicator extends StatelessWidget {
         final active = i == activeIndex;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          margin: EdgeInsets.symmetric(horizontal: 4.w),
+          margin: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w),
           width: active ? 20.w : 6.w,
           height: 6.w,
           decoration: BoxDecoration(

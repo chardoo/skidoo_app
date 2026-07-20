@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
@@ -14,6 +15,8 @@ import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 const _eventTypes = [
   'Wedding', 'Birthday', 'Corporate', 'Concert',
@@ -138,7 +141,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
       );
       if (!mounted) return;
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
+        CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
       );
     } catch (e) {
       debugPrint('[RequestBoardPage] _openChat ERROR: $e');
@@ -250,7 +253,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                           // Loading spinner at the very end
                           if (i == adOffset + visible.length) {
                             return Padding(
-                              padding: EdgeInsets.symmetric(vertical: 20.h),
+                              padding: EdgeInsets.symmetric(vertical: AppSpacing.xl.h),
                               child: const AppLoadingIndicator(),
                             );
                           }
@@ -352,7 +355,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             children: [
               Center(
                 child: Container(
-                  margin: EdgeInsets.symmetric(vertical: 12.h),
+                  margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
                   width: 36.w,
                   height: 4.h,
                   decoration: BoxDecoration(
@@ -370,7 +373,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   letterSpacing: -0.4,
                 ),
               ),
-              SizedBox(height: 20.h),
+              SizedBox(height: AppSpacing.xl.h),
 
               Text(
                 'Event type',
@@ -380,7 +383,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 8.h),
+              SizedBox(height: AppSpacing.sm.h),
               Wrap(
                 spacing: 8.w,
                 runSpacing: 8.h,
@@ -400,7 +403,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ],
               ),
 
-              SizedBox(height: 20.h),
+              SizedBox(height: AppSpacing.xl.h),
               Text(
                 'Location',
                 style: TextStyle(
@@ -409,14 +412,14 @@ class _FilterSheetState extends State<_FilterSheet> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 8.h),
+              SizedBox(height: AppSpacing.sm.h),
               AppTextField(
                 controller: widget.locationCtrl,
                 dense: true,
                 hint: 'e.g. Accra',
               ),
 
-              SizedBox(height: 24.h),
+              SizedBox(height: AppSpacing.xxl.h),
               Semantics(button: true, label: 'Event type', child: GestureDetector(
                 onTap: () {
                   Navigator.of(context).pop();
@@ -426,7 +429,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   padding: EdgeInsets.symmetric(vertical: 15.h),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [ext.accentGold, const Color(0xFF078368)],
+                      colors: [ext.accentGold, ext.accentGoldDark],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),
@@ -468,12 +471,12 @@ class _FilterChip extends StatelessWidget {
     return Semantics(button: true, label: label, child: GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 7.h),
         decoration: BoxDecoration(
           color: selected
               ? ext.accentGold.withValues(alpha: 0.15)
               : ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(AppRadius.xl.r),
           border: Border.all(
             color: selected
                 ? ext.accentGold.withValues(alpha: 0.6)

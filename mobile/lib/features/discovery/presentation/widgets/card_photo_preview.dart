@@ -17,6 +17,7 @@ class PostPhotoCarousel extends StatefulWidget {
     this.scrollable = true,
     this.cardIndex = 0,
     this.activeCardIndex,
+    this.fullBleed = false,
   });
 
   final List<EventPicture> pics;
@@ -29,6 +30,14 @@ class PostPhotoCarousel extends StatefulWidget {
   final int cardIndex;
   /// Feed-level notifier for which card should be playing. Null = always play.
   final ValueNotifier<int>? activeCardIndex;
+
+  /// True for the TikTok-style full-screen feed ([FullBleedEventCard]),
+  /// where media should crop-to-fill the entire screen (`BoxFit.cover`) —
+  /// never leave empty bars. False (default) for the classic bounded card
+  /// ([EventDiscoveryCard]), which has its own fixed-aspect-ratio frame and
+  /// deliberately letterboxes (`BoxFit.contain`) with a blurred backdrop
+  /// filling the gaps instead of cropping the photo.
+  final bool fullBleed;
 
   @override
   State<PostPhotoCarousel> createState() => _PostPhotoCarouselState();
@@ -71,6 +80,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                 onTap: widget.onTap,
                 cardIndex: widget.cardIndex,
                 activeCardIndex: widget.activeCardIndex,
+                fit: widget.fullBleed ? BoxFit.cover : BoxFit.contain,
               ),
               if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
               // if (pic.owner) const _OwnerCornerRibbon(),
@@ -84,37 +94,52 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ── Blurred background — tiny decode, blur hides all detail ─
-              ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                child: SkidooImage(
+              if (widget.fullBleed)
+                // ── Full-screen feed: crop-to-fill, no letterbox/blur needed ──
+                SkidooImage(
                   imageUrl: pic.url,
                   fit: BoxFit.cover,
-                  isBlurBackground: true,
+                  semanticLabel: 'Event photo',
                   placeholder: (_, __) => const ColoredBox(
                     color: Color(0xFF111111),
                     child: AppLoadingIndicator(),
                   ),
                   errorWidget: (_, __, ___) =>
                       const ColoredBox(color: Color(0xFF111111)),
+                )
+              else ...[
+                // ── Blurred background — tiny decode, blur hides all detail ─
+                ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  child: SkidooImage(
+                    imageUrl: pic.url,
+                    fit: BoxFit.cover,
+                    isBlurBackground: true,
+                    placeholder: (_, __) => const ColoredBox(
+                      color: Color(0xFF111111),
+                      child: AppLoadingIndicator(),
+                    ),
+                    errorWidget: (_, __, ___) =>
+                        const ColoredBox(color: Color(0xFF111111)),
+                  ),
                 ),
-              ),
-              // Dim the blur layer so it doesn't compete with the main image
-              const ColoredBox(color: Color(0x55000000)),
-              // ── Sharp full image — physical-pixel resolution via DPR ──────
-              SkidooImage(
-                imageUrl: pic.url,
-                fit: BoxFit.contain,
-                semanticLabel: 'Event photo',
-                // Non-opaque — the blurred backdrop stays visible behind the
-                // spinner while the full-res image is still loading.
-                placeholder: (_, __) => const Center(
-                  child: CircularProgressIndicator(
-                      color: Colors.white70, strokeWidth: 2),
+                // Dim the blur layer so it doesn't compete with the main image
+                const ColoredBox(color: Color(0x55000000)),
+                // ── Sharp full image — physical-pixel resolution via DPR ──────
+                SkidooImage(
+                  imageUrl: pic.url,
+                  fit: BoxFit.contain,
+                  semanticLabel: 'Event photo',
+                  // Non-opaque — the blurred backdrop stays visible behind the
+                  // spinner while the full-res image is still loading.
+                  placeholder: (_, __) => const Center(
+                    child: CircularProgressIndicator(
+                        color: Colors.white70, strokeWidth: 2),
+                  ),
+                  errorWidget: (_, __, ___) =>
+                      const ColoredBox(color: Color(0xFF111111)),
                 ),
-                errorWidget: (_, __, ___) =>
-                    const ColoredBox(color: Color(0xFF111111)),
-              ),
+              ],
               if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
               // if (pic.owner) const _OwnerCornerRibbon(),
             ],
@@ -137,6 +162,7 @@ class _SliderVideoItem extends StatefulWidget {
     required this.onTap,
     this.cardIndex = 0,
     this.activeCardIndex,
+    this.fit = BoxFit.contain,
   });
 
   final String url;
@@ -145,6 +171,7 @@ class _SliderVideoItem extends StatefulWidget {
   final VoidCallback onTap;
   final int cardIndex;
   final ValueNotifier<int>? activeCardIndex;
+  final BoxFit fit;
 
   @override
   State<_SliderVideoItem> createState() => _SliderVideoItemState();
@@ -184,7 +211,7 @@ class _SliderVideoItemState extends State<_SliderVideoItem> {
         isActive: _isSlideActive && _isCardActive,
         autoPlay: true,
         loop: true,
-        fit: BoxFit.contain,
+        fit: widget.fit,
         showControls: true,
         backgroundColor: Colors.black,
         listenToPauseNotifier: true,

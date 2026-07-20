@@ -14,6 +14,7 @@ import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/common/widgets/app_phone_field.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 // The teal gradient logo/CTA is the auth flow's fixed brand accent — it stays
@@ -215,7 +216,7 @@ class _SignUpViewState extends State<_SignUpView>
                               height: 1.1,
                             ),
                           ),
-                          SizedBox(height: 8.h),
+                          SizedBox(height: AppSpacing.sm.h),
                           Text(
                             AppLocalizations.of(context)!.signupSubtitle,
                             style: TextStyle(
@@ -280,7 +281,7 @@ class _SignUpViewState extends State<_SignUpView>
                               return Validators.signupPasswordValidator(v);
                             },
                           ),
-                          SizedBox(height: 32.h),
+                          SizedBox(height: AppSpacing.xxxl.h),
 
                           // ── Sign up button ─────────────────────────────
                           _GradientButton(
@@ -289,7 +290,7 @@ class _SignUpViewState extends State<_SignUpView>
                             enabled: _requiredTextFilled,
                             onTap: _submit,
                           ),
-                          SizedBox(height: 16.h),
+                          SizedBox(height: AppSpacing.lg.h),
 
                           // ── Privacy policy consent ─────────────────────
                           Center(
@@ -324,7 +325,7 @@ class _SignUpViewState extends State<_SignUpView>
                               ],
                             ),
                           ),
-                          SizedBox(height: 20.h),
+                          SizedBox(height: AppSpacing.xl.h),
 
                           // ── Sign in link ───────────────────────────────
                           Center(
@@ -353,7 +354,7 @@ class _SignUpViewState extends State<_SignUpView>
                               ],
                             ),
                           ),
-                          SizedBox(height: 12.h),
+                          SizedBox(height: AppSpacing.md.h),
 
                           // ── Continue as guest ───────────────────────────
                           Center(
@@ -373,7 +374,7 @@ class _SignUpViewState extends State<_SignUpView>
                               ),
                             ),
                           ),
-                          SizedBox(height: 40.h),
+                          SizedBox(height: AppSpacing.huge.h),
                         ],
                       ),
                     ),

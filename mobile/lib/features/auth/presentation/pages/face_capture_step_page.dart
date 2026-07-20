@@ -13,6 +13,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/audience_preference_page.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 enum _Step { intro, scanning, confirmed }
 
@@ -187,12 +188,12 @@ class _ConfirmedPhoto extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(height: 24.h),
+        SizedBox(height: AppSpacing.xxl.h),
         InkWell(
           borderRadius: BorderRadius.circular(10.r),
           onTap: uploading ? null : () => onUseAsProfileChanged(!useAsProfile),
           child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 4.w),
+            padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: AppSpacing.xs.w),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -207,7 +208,7 @@ class _ConfirmedPhoto extends StatelessWidget {
                         : (v) => onUseAsProfileChanged(v ?? false),
                   ),
                 ),
-                SizedBox(width: 8.w),
+                SizedBox(width: AppSpacing.sm.w),
                 Flexible(
                   child: Text(
                     'Use this photo as my profile picture too',

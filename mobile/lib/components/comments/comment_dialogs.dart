@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Shows a bottom sheet with Edit / Delete options.
 /// [onEdit] and [onDelete] receive no arguments — callers close over
@@ -27,7 +29,7 @@ void showCommentOptionsSheet(
           Container(
             width: 40.w,
             height: 4.h,
-            margin: EdgeInsets.only(bottom: 16.h),
+            margin: EdgeInsets.only(bottom: AppSpacing.lg.h),
             decoration: BoxDecoration(
               color: ext.searchHintColor.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2.r),
@@ -74,7 +76,7 @@ void showEditCommentDialog(
     builder: (ctx) => AlertDialog(
       backgroundColor: ext.cardSurface,
       shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg.r)),
       title: Text('Edit comment',
           style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
       content: AppTextField(
@@ -116,7 +118,7 @@ void showDeleteCommentDialog(
     builder: (ctx) => AlertDialog(
       backgroundColor: ext.cardSurface,
       shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg.r)),
       title: Text('Delete comment',
           style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
       content: Text(

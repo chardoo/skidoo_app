@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
 
 class EventCardWidget extends StatelessWidget {
   const EventCardWidget({
@@ -24,7 +25,7 @@ class EventCardWidget extends StatelessWidget {
     return Semantics(button: true, label: 'Event', child: GestureDetector(
       onTap: onTap,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(AppRadius.lg.r),
         child: SizedBox(
           height: height,
           child: Stack(

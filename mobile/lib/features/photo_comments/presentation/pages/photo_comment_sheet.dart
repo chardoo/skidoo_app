@@ -13,6 +13,7 @@ import 'package:skidoo_app/core/utils/time_formatter.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart' show GetPhotoRoomUseCase;
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Bottom sheet showing real-time comments for a photo, backed by a photo room WebSocket.
 class PhotoCommentSheet {
@@ -235,13 +236,13 @@ class _PhotoCommentSheetContentState
                                 return ListView.builder(
                                   controller: _scrollCtrl,
                                   padding: EdgeInsets.symmetric(
-                                      horizontal: 16.w, vertical: 8.h),
+                                      horizontal: AppSpacing.lg.w, vertical: AppSpacing.sm.h),
                                   itemCount: threaded.topLevel.length +
                                       (state.isLoadingMore ? 1 : 0),
                                   itemBuilder: (_, i) {
                                     if (i == threaded.topLevel.length) {
                                       return Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                                        padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
                                         child: Center(
                                           child: CircularProgressIndicator(
                                             color: ext.accentGold,

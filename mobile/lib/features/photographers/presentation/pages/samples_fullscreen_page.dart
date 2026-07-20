@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class SamplesFullscreenPage extends StatefulWidget {
   const SamplesFullscreenPage({
@@ -75,7 +77,7 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
                 Semantics(button: true, label: 'Close', child: GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
                   child: Container(
-                    margin: EdgeInsets.only(left: 16.w),
+                    margin: EdgeInsets.only(left: AppSpacing.lg.w),
                     width: 36.w,
                     height: 36.h,
                     decoration: const BoxDecoration(
@@ -88,12 +90,12 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
                 )),
                 const Spacer(),
                 Container(
-                  margin: EdgeInsets.only(right: 16.w),
+                  margin: EdgeInsets.only(right: AppSpacing.lg.w),
                   padding:
-                      EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                      EdgeInsets.symmetric(horizontal: 10.w, vertical: AppSpacing.xs.h),
                   decoration: BoxDecoration(
                     color: Colors.black54,
-                    borderRadius: BorderRadius.circular(12.r),
+                    borderRadius: BorderRadius.circular(AppRadius.md.r),
                   ),
                   child: Text(
                     '${_current + 1} / ${widget.samples.length}',

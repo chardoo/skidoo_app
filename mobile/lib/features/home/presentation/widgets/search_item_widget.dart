@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/event/Event.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class SearchItemWidget extends StatelessWidget {
   final Event event;
@@ -28,13 +29,13 @@ class SearchItemWidget extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return Container(
-      margin: EdgeInsets.only(bottom: 8.h),
+      margin: EdgeInsets.only(bottom: AppSpacing.sm.h),
       decoration: BoxDecoration(
         color: ext.searchItemBackground,
         borderRadius: BorderRadius.circular(14.r),
       ),
       child: ListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+        contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.xs.h),
         leading: CircleAvatar(
           radius: 18.r,
           backgroundColor: ext.accentGold,

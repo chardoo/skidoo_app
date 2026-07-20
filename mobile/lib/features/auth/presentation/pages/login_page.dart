@@ -14,6 +14,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 // The teal gradient logo/CTA is the auth flow's fixed brand accent — it stays
@@ -189,7 +190,7 @@ class _LoginViewState extends State<_LoginView>
                               size: 26.sp,
                             ),
                           ),
-                          SizedBox(height: 32.h),
+                          SizedBox(height: AppSpacing.xxxl.h),
 
                           // ── Heading ────────────────────────────────────
                           Text(
@@ -202,7 +203,7 @@ class _LoginViewState extends State<_LoginView>
                               height: 1.1,
                             ),
                           ),
-                          SizedBox(height: 8.h),
+                          SizedBox(height: AppSpacing.sm.h),
                           Text(
                             AppLocalizations.of(context)!.loginSignInToAccount,
                             style: TextStyle(
@@ -223,7 +224,7 @@ class _LoginViewState extends State<_LoginView>
                             textInputAction: TextInputAction.next,
                             validator: Validators.emailValidator,
                           ),
-                          SizedBox(height: 16.h),
+                          SizedBox(height: AppSpacing.lg.h),
 
                           // ── Password ───────────────────────────────────
                           AppPasswordField(
@@ -233,7 +234,7 @@ class _LoginViewState extends State<_LoginView>
                             validator: (v) =>
                                 Validators.passwordValidator(v),
                           ),
-                          SizedBox(height: 12.h),
+                          SizedBox(height: AppSpacing.md.h),
 
                           // ── Forgot password ────────────────────────────
                           Align(
@@ -292,7 +293,7 @@ class _LoginViewState extends State<_LoginView>
                               ],
                             ),
                           ),
-                          SizedBox(height: 32.h),
+                          SizedBox(height: AppSpacing.xxxl.h),
                         ],
                       ),
                     ),

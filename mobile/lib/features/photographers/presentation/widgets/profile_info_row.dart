@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class PhotographerInfoRow extends StatelessWidget {
   const PhotographerInfoRow({super.key, required this.icon, required this.text, required this.ext});
@@ -14,14 +15,14 @@ class PhotographerInfoRow extends StatelessWidget {
     return Row(
       children: [
         Container(
-          padding: EdgeInsets.all(8.w),
+          padding: EdgeInsets.all(AppSpacing.sm.w),
           decoration: BoxDecoration(
             color: ext.cardSurface,
             borderRadius: BorderRadius.circular(10.r),
           ),
           child: Icon(icon, size: 16.sp, color: ext.searchHintColor),
         ),
-        SizedBox(width: 12.w),
+        SizedBox(width: AppSpacing.md.w),
         Flexible(
           child: Text(
             text,

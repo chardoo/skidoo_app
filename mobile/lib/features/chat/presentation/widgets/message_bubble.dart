@@ -6,6 +6,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Returns true when [url] points to a video, using both explicit path
 /// patterns (Cloudinary /video/upload/) and file extensions as fallback.
@@ -53,7 +55,7 @@ class MessageBubble extends StatelessWidget {
         onLongPress?.call();
       },
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 3.h, horizontal: 12.w),
+        padding: EdgeInsets.symmetric(vertical: 3.h, horizontal: AppSpacing.md.w),
         child: Column(
           crossAxisAlignment:
               isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -62,7 +64,7 @@ class MessageBubble extends StatelessWidget {
             // Sender label
             if (!isMe)
               Padding(
-                padding: EdgeInsets.only(left: 4.w, bottom: 2.h),
+                padding: EdgeInsets.only(left: AppSpacing.xs.w, bottom: 2.h),
                 child: Text(
                   message.displayName.isNotEmpty
                       ? message.displayName
@@ -104,7 +106,7 @@ class MessageBubble extends StatelessWidget {
                         .clamp(0.0, kIsWeb ? 300.0 : 420.0),
                   ),
                   decoration: BoxDecoration(
-                    color: isMe ? ext.accentGold : ext.cardSurface,
+                    color: isMe ? ext.searchFieldFill : ext.cardSurface,
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(18.r),
                       topRight: Radius.circular(18.r),
@@ -167,17 +169,13 @@ class MessageBubble extends StatelessWidget {
                                     Icon(
                                       Icons.lock_outline,
                                       size: 13.sp,
-                                      color: isMe
-                                          ? Colors.white70
-                                          : ext.searchHintColor,
+                                      color: ext.searchHintColor,
                                     ),
-                                    SizedBox(width: 4.w),
+                                    SizedBox(width: AppSpacing.xs.w),
                                     Text(
                                       'Encrypted message',
                                       style: TextStyle(
-                                        color: isMe
-                                            ? Colors.white70
-                                            : ext.searchHintColor,
+                                        color: ext.searchHintColor,
                                         fontSize: 13.sp,
                                         fontStyle: FontStyle.italic,
                                       ),
@@ -188,9 +186,7 @@ class MessageBubble extends StatelessWidget {
                                 Text(
                                   message.content,
                                   style: TextStyle(
-                                    color: isMe
-                                        ? Colors.white
-                                        : ext.greetingColor,
+                                    color: ext.greetingColor,
                                     fontSize: 14.sp,
                                     height: 1.4,
                                   ),
@@ -243,10 +239,8 @@ class _ReplyPreviewStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = isMe
-        ? Colors.white.withValues(alpha: 0.18)
-        : ext.homeBackground.withValues(alpha: 0.6);
-    final accent = isMe ? Colors.white70 : ext.accentGold;
+    final bg = ext.homeBackground.withValues(alpha: 0.6);
+    final accent = ext.searchHintColor;
 
     return Container(
       margin: EdgeInsets.fromLTRB(6.w, 6.h, 6.w, 0),
@@ -280,7 +274,7 @@ class _ReplyPreviewStrip extends StatelessWidget {
                   Text(
                     preview.content!,
                     style: TextStyle(
-                      color: isMe ? Colors.white70 : ext.searchHintColor,
+                      color: ext.searchHintColor,
                       fontSize: 11.sp,
                     ),
                     maxLines: 1,
@@ -294,13 +288,13 @@ class _ReplyPreviewStrip extends StatelessWidget {
                             ? Icons.videocam_rounded
                             : Icons.image_rounded,
                         size: 12.sp,
-                        color: isMe ? Colors.white70 : ext.searchHintColor,
+                        color: ext.searchHintColor,
                       ),
-                      SizedBox(width: 4.w),
+                      SizedBox(width: AppSpacing.xs.w),
                       Text(
                         preview.isVideo ? 'Video' : 'Photo',
                         style: TextStyle(
-                          color: isMe ? Colors.white70 : ext.searchHintColor,
+                          color: ext.searchHintColor,
                           fontSize: 11.sp,
                         ),
                       ),
@@ -311,7 +305,7 @@ class _ReplyPreviewStrip extends StatelessWidget {
           ),
           if (preview.imageUrl != null && !(preview.isVideo || _isVideoUrl(preview.imageUrl!)))
             ClipRRect(
-              borderRadius: BorderRadius.circular(4.r),
+              borderRadius: BorderRadius.circular(AppRadius.xs.r),
               child: Semantics(image: true, label: 'Shared photo', child: CachedNetworkImage(
                 imageUrl: preview.imageUrl!,
                 width: 36.w,
@@ -321,7 +315,7 @@ class _ReplyPreviewStrip extends StatelessWidget {
             )
           else if (preview.imageUrl != null && (preview.isVideo || _isVideoUrl(preview.imageUrl!)))
             ClipRRect(
-              borderRadius: BorderRadius.circular(4.r),
+              borderRadius: BorderRadius.circular(AppRadius.xs.r),
               child: Container(
                 width: 36.w,
                 height: 36.w,
@@ -582,7 +576,7 @@ class _Timestamp extends StatelessWidget {
         readIndicator = Icon(
           allRead ? Icons.done_all_rounded : Icons.done_rounded,
           size: 11.sp,
-          color: allRead ? ext.accentGold : Colors.white70,
+          color: allRead ? ext.infoBlue : ext.searchHintColor,
         );
       } else {
         // Group: double tick when all read; "Read by N" when partial; single tick when none.
@@ -590,13 +584,13 @@ class _Timestamp extends StatelessWidget {
           readIndicator = Icon(
             Icons.done_all_rounded,
             size: 11.sp,
-            color: ext.accentGold,
+            color: ext.infoBlue,
           );
         } else if (someRead) {
           readIndicator = Text(
             'Read by $readCount',
             style: TextStyle(
-              color: Colors.white54,
+              color: ext.searchHintColor,
               fontSize: 9.sp,
             ),
           );
@@ -604,7 +598,7 @@ class _Timestamp extends StatelessWidget {
           readIndicator = Icon(
             Icons.done_rounded,
             size: 11.sp,
-            color: Colors.white70,
+            color: ext.searchHintColor,
           );
         }
       }
@@ -613,7 +607,7 @@ class _Timestamp extends StatelessWidget {
       readIndicator = Icon(
         message.isLocal ? Icons.access_time_rounded : Icons.done_all_rounded,
         size: 11.sp,
-        color: Colors.white70,
+        color: ext.searchHintColor,
       );
     }
 
@@ -623,16 +617,16 @@ class _Timestamp extends StatelessWidget {
         Text(
           timeStr,
           style: TextStyle(
-            color: isMe ? Colors.white70 : ext.searchHintColor,
+            color: ext.searchHintColor,
             fontSize: 9.sp,
           ),
         ),
         if (message.isEdited) ...[
-          SizedBox(width: 4.w),
+          SizedBox(width: AppSpacing.xs.w),
           Text(
             'edited',
             style: TextStyle(
-              color: isMe ? Colors.white54 : ext.searchHintColor,
+              color: ext.searchHintColor,
               fontSize: 9.sp,
               fontStyle: FontStyle.italic,
             ),

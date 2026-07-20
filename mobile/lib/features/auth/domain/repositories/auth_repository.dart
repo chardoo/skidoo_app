@@ -15,4 +15,9 @@ abstract class AuthRepository {
   Future<bool> isPendingInterests();
   Future<void> clearPendingInterests();
   Future<void> becomePhotographer();
+
+  // ── Password reset ────────────────────────────────────────────────────────
+  Future<void> requestPasswordReset(String email);
+  Future<void> verifyResetCode(String email, String code);
+  Future<void> resetPassword(String email, String code, String password);
 }

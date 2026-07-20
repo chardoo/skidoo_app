@@ -10,6 +10,7 @@ import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class CheckoutPage extends StatefulWidget {
   final String url;
@@ -77,7 +78,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.open_in_new_rounded, size: 52.sp, color: ext.accentGold),
-                SizedBox(height: 20.h),
+                SizedBox(height: AppSpacing.xl.h),
                 Text(
                   'Payment opened in a new tab',
                   textAlign: TextAlign.center,
@@ -89,7 +90,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   textAlign: TextAlign.center,
                   style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp, height: 1.5),
                 ),
-                SizedBox(height: 32.h),
+                SizedBox(height: AppSpacing.xxxl.h),
                 AppButton(
                   fullWidth: true,
                   label: 'Payment complete',
@@ -98,7 +99,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     Navigator.of(context).pop();
                   },
                 ),
-                SizedBox(height: 12.h),
+                SizedBox(height: AppSpacing.md.h),
                 TextButton(
                   onPressed: _launchUrl,
                   child: Text('Reopen payment page',

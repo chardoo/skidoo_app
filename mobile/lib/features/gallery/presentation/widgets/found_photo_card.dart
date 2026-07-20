@@ -5,6 +5,7 @@ import 'package:skidoo_app/core/common/widgets/expandable_caption.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// One full-screen page of the "Found" tab's vertically-paged feed — photos
 /// (and videos) the current user was found in via face-match
@@ -39,7 +40,7 @@ class FoundPhotoCard extends StatelessWidget {
         else
           SkidooImage(
             imageUrl: photo.url,
-            fit: BoxFit.contain,
+            fit: BoxFit.cover,
             semanticLabel: 'Found photo',
             placeholder: (_, __) => const ColoredBox(
               color: Color(0xFF111111),
@@ -105,7 +106,7 @@ class FoundPhotoCard extends StatelessWidget {
                 ),
                 SizedBox(height: 3.h),
                 Text('${photo.likeCount}', style: _countStyle),
-                SizedBox(height: 16.h),
+                SizedBox(height: AppSpacing.lg.h),
                 Icon(Icons.mode_comment_rounded,
                     color: Colors.white,
                     size: 26.sp,
@@ -148,7 +149,7 @@ class _ActiveGatedVideo extends StatelessWidget {
         isActive: active == cardIndex,
         autoPlay: true,
         loop: true,
-        fit: BoxFit.contain,
+        fit: BoxFit.cover,
         showControls: true,
         backgroundColor: Colors.black,
         listenToPauseNotifier: true,

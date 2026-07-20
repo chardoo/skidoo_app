@@ -8,6 +8,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/admin/data/models/app_config.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class AdminSettingsPage extends StatefulWidget {
   const AdminSettingsPage({super.key});
@@ -122,7 +123,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
           : _error != null
               ? AppErrorView(message: _error!, onRetry: _load)
               : ListView(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.lg.h),
                   children: [
                     _SectionHeader('Feed Visibility', ext),
                     _ConfigCard(ext: ext, children: [
@@ -143,7 +144,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                       ),
                     ]),
 
-                    SizedBox(height: 20.h),
+                    SizedBox(height: AppSpacing.xl.h),
                     _SectionHeader('Feed Frequency', ext),
                     _ConfigCard(ext: ext, children: [
                       _StepperRow(
@@ -167,7 +168,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                       ),
                     ]),
 
-                    SizedBox(height: 20.h),
+                    SizedBox(height: AppSpacing.xl.h),
                     _SectionHeader('Comments', ext),
                     _ConfigCard(ext: ext, children: [
                       _Toggle(
@@ -179,7 +180,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                       ),
                     ]),
 
-                    SizedBox(height: 20.h),
+                    SizedBox(height: AppSpacing.xl.h),
                     _SectionHeader('Campaign Limits', ext),
                     _ConfigCard(ext: ext, children: [
                       _BudgetRow(
@@ -191,7 +192,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                       ),
                     ]),
 
-                    SizedBox(height: 32.h),
+                    SizedBox(height: AppSpacing.xxxl.h),
                   ],
                 ),
     );
@@ -210,7 +211,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 8.h),
+      padding: EdgeInsets.only(bottom: AppSpacing.sm.h),
       child: Text(
         label.toUpperCase(),
         style: TextStyle(
@@ -309,7 +310,7 @@ class _StepperRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.md.h),
       child: Row(
         children: [
           Expanded(
@@ -326,7 +327,7 @@ class _StepperRow extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(width: 12.w),
+          SizedBox(width: AppSpacing.md.w),
           Row(
             children: [
               _StepBtn(
@@ -334,7 +335,7 @@ class _StepperRow extends StatelessWidget {
                 onTap: value > min ? () => onChanged(value - 1) : null,
                 ext: ext,
               ),
-              SizedBox(width: 8.w),
+              SizedBox(width: AppSpacing.sm.w),
               SizedBox(
                 width: 34.w,
                 child: Text(
@@ -347,7 +348,7 @@ class _StepperRow extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(width: 8.w),
+              SizedBox(width: AppSpacing.sm.w),
               _StepBtn(
                 icon: Icons.add,
                 onTap: value < max ? () => onChanged(value + 1) : null,
@@ -428,7 +429,7 @@ class _BudgetRowState extends State<_BudgetRow> {
   Widget build(BuildContext context) {
     final ext = widget.ext;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.md.h),
       child: Row(
         children: [
           Expanded(
@@ -444,7 +445,7 @@ class _BudgetRowState extends State<_BudgetRow> {
               ],
             ),
           ),
-          SizedBox(width: 12.w),
+          SizedBox(width: AppSpacing.md.w),
           SizedBox(
             width: 80.w,
             child: AppTextField(

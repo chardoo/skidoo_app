@@ -13,6 +13,7 @@ import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_pr
 import 'package:skidoo_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// One full-screen page of the TikTok-style vertical feed — the photo/video
 /// carousel fills the entire page edge-to-edge, with the caption and action
@@ -35,6 +36,7 @@ class FullBleedEventCard extends StatefulWidget {
     required this.activeCardIndex,
     required this.onTap,
     required this.onHide,
+    this.isAuthenticated = true,
   });
 
   final EventDiscovery event;
@@ -42,6 +44,12 @@ class FullBleedEventCard extends StatefulWidget {
   final ValueNotifier<int> activeCardIndex;
   final VoidCallback onTap;
   final VoidCallback? onHide;
+
+  /// Defaults to true (the Home feed, which requires login to reach at
+  /// all). Set to false on the guest-facing Discovery page — [onTap] then
+  /// doubles as the login prompt for every reaction (matches the
+  /// established convention in [EventDiscoveryCard]).
+  final bool isAuthenticated;
 
   @override
   State<FullBleedEventCard> createState() => _FullBleedEventCardState();
@@ -58,20 +66,36 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   }
 
   void _toggleLike() {
+    if (!widget.isAuthenticated) {
+      widget.onTap();
+      return;
+    }
     final liked = widget.event.userReaction == 'like';
     context.read<DiscoveryBloc>().add(
         DiscoveryReactionToggled(widget.event.id, isLike: !liked));
   }
 
   void _toggleSave() {
+    if (!widget.isAuthenticated) {
+      widget.onTap();
+      return;
+    }
     context.read<DiscoveryBloc>().add(DiscoveryEventSaveToggled(widget.event.id));
   }
 
   void _openComments() {
+    if (!widget.isAuthenticated) {
+      widget.onTap();
+      return;
+    }
     EventCommentPage.show(context, widget.event);
   }
 
   void _share() {
+    if (!widget.isAuthenticated) {
+      widget.onTap();
+      return;
+    }
     final event = widget.event;
     if (event.pictures.isEmpty) return;
     GalleryShareSheet.show(
@@ -84,6 +108,10 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   /// Direct native OS share — its own tap target on the rail, not nested
   /// inside the "Send" sheet opened by [_share].
   Future<void> _shareExternal() async {
+    if (!widget.isAuthenticated) {
+      widget.onTap();
+      return;
+    }
     if (_sharingExternal) return;
     final event = widget.event;
     if (event.pictures.isEmpty) return;
@@ -111,6 +139,10 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   }
 
   void _showMoreOptions() {
+    if (!widget.isAuthenticated) {
+      widget.onTap();
+      return;
+    }
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     showModalBottomSheet<void>(
       context: context,
@@ -140,6 +172,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           onTap: widget.onTap,
           cardIndex: widget.cardIndex,
           activeCardIndex: widget.activeCardIndex,
+          fullBleed: true,
         ),
 
         // ── Bottom gradient scrim for text legibility ───────────────────
@@ -181,7 +214,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                 ),
               ),
               if (event.description.isNotEmpty) ...[
-                SizedBox(height: 4.h),
+                SizedBox(height: AppSpacing.xs.h),
                 ExpandableCaption(
                   text: event.description,
                   collapsedMaxLines: 2,
@@ -198,7 +231,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                 ),
               ],
               if (event.contentTags.isNotEmpty) ...[
-                SizedBox(height: 4.h),
+                SizedBox(height: AppSpacing.xs.h),
                 ExpandableCaption(
                   text: event.contentTags.map((t) => '#$t').join(' '),
                   collapsedMaxLines: 2,
@@ -262,6 +295,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                       onImage: true,
                       compact: true,
                       initialFollowing: event.isFollowed,
+                      onLoginRequired: widget.isAuthenticated ? null : widget.onTap,
                     ),
                   ),
                 ],
@@ -273,13 +307,13 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                 label: '${event.likes}',
                 onTap: _toggleLike,
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: AppSpacing.lg.h),
               _RailAction(
                 icon: Icons.mode_comment_rounded,
                 label: '${event.commentCount}',
                 onTap: _openComments,
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: AppSpacing.lg.h),
               BlocBuilder<DiscoveryBloc, DiscoveryState>(
                 buildWhen: (prev, next) => prev.savedEventIds != next.savedEventIds,
                 builder: (context, state) {
@@ -291,18 +325,18 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                   );
                 },
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: AppSpacing.lg.h),
               _RailAction(
                 icon: Icons.near_me_rounded,
                 onTap: _share,
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: AppSpacing.lg.h),
               _RailAction(
                 icon: Icons.ios_share_rounded,
                 busy: _sharingExternal,
                 onTap: _shareExternal,
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: AppSpacing.lg.h),
               _RailAction(
                 icon: Icons.more_horiz_rounded,
                 onTap: _showMoreOptions,

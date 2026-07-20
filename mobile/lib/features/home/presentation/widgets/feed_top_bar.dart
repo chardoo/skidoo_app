@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Feed top bar — collapsed: plain-text Found/For You/Following tabs (active
 /// tab bold + underlined), centred as a group, with a create (+) icon on the
@@ -94,7 +95,7 @@ class _FeedTopBarState extends State<FeedTopBar> {
                     child: GestureDetector(
                       onTap: _closeSearch,
                       child: Padding(
-                        padding: EdgeInsets.only(right: 8.w),
+                        padding: EdgeInsets.only(right: AppSpacing.sm.w),
                         child: Icon(Icons.arrow_back_rounded,
                             color: Colors.white, size: 24.sp),
                       ),
@@ -132,7 +133,7 @@ class _FeedTopBarState extends State<FeedTopBar> {
                     ),
                   ),
                   if (widget.onQrScan != null) ...[
-                    SizedBox(width: 8.w),
+                    SizedBox(width: AppSpacing.sm.w),
                     Semantics(
                       button: true,
                       label: 'Scan QR code',
@@ -182,7 +183,9 @@ class _FeedTopBarState extends State<FeedTopBar> {
                         child: GestureDetector(
                           onTap: widget.onCreatePressed,
                           child: Icon(Icons.add_rounded,
-                              color: Colors.white, size: 26.sp),
+                              color: Colors.white,
+                              size: 26.sp,
+                              shadows: _FeedTextTab._shadows),
                         ),
                       ),
                     ),
@@ -194,7 +197,9 @@ class _FeedTopBarState extends State<FeedTopBar> {
                       child: GestureDetector(
                         onTap: widget.onSearchOpen,
                         child: Icon(Icons.search_rounded,
-                            color: Colors.white, size: 24.sp),
+                            color: Colors.white,
+                            size: 24.sp,
+                            shadows: _FeedTextTab._shadows),
                       ),
                     ),
                   ),
@@ -218,6 +223,10 @@ class _FeedTextTab extends StatelessWidget {
   final AppThemeExtension ext;
   final VoidCallback onTap;
 
+  static const _shadows = [
+    Shadow(blurRadius: 10, color: Colors.black87),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Semantics(
@@ -236,9 +245,10 @@ class _FeedTextTab extends StatelessWidget {
                 color: active ? Colors.white : Colors.white60,
                 fontSize: 15.sp,
                 fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                shadows: _shadows,
               ),
             ),
-            SizedBox(height: 4.h),
+            SizedBox(height: AppSpacing.xs.h),
             AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               width: active ? 16.w : 0,

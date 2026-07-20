@@ -23,8 +23,11 @@ import 'package:skidoo_app/features/auth/domain/usecases/get_token_usecase.dart'
 import 'package:skidoo_app/features/auth/domain/usecases/login_usecase.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/pending_interests_usecases.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/register_usecase.dart';
+import 'package:skidoo_app/features/auth/domain/usecases/request_password_reset_usecase.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/resend_verification_usecase.dart';
+import 'package:skidoo_app/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/verify_code_usecase.dart';
+import 'package:skidoo_app/features/auth/domain/usecases/verify_reset_code_usecase.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/update_profile_usecase.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/interests/interests_bloc.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/login/login_bloc.dart';
@@ -157,6 +160,12 @@ Future<void> setupServiceLocator() async {
       GetPendingInterestsUseCase(sl<AuthRepository>()));
   sl.registerSingleton<ClearPendingInterestsUseCase>(
       ClearPendingInterestsUseCase(sl<AuthRepository>()));
+  sl.registerSingleton<RequestPasswordResetUseCase>(
+      RequestPasswordResetUseCase(sl<AuthRepository>()));
+  sl.registerSingleton<VerifyResetCodeUseCase>(
+      VerifyResetCodeUseCase(sl<AuthRepository>()));
+  sl.registerSingleton<ResetPasswordUseCase>(
+      ResetPasswordUseCase(sl<AuthRepository>()));
 
   sl.registerFactory<LoginBloc>(() => LoginBloc(
         loginUseCase: sl<LoginUseCase>(),

@@ -136,6 +136,45 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> requestPasswordReset(String email) async {
+    try {
+      await _remoteDataSource.requestPasswordReset(email);
+    } on ServerException {
+      rethrow;
+    } on NetworkException {
+      rethrow;
+    } catch (e) {
+      throw ServerException('Unexpected error requesting a reset code: $e');
+    }
+  }
+
+  @override
+  Future<void> verifyResetCode(String email, String code) async {
+    try {
+      await _remoteDataSource.verifyResetCode(email, code);
+    } on ServerException {
+      rethrow;
+    } on NetworkException {
+      rethrow;
+    } catch (e) {
+      throw ServerException('Unexpected error verifying the reset code: $e');
+    }
+  }
+
+  @override
+  Future<void> resetPassword(String email, String code, String password) async {
+    try {
+      await _remoteDataSource.resetPassword(email, code, password);
+    } on ServerException {
+      rethrow;
+    } on NetworkException {
+      rethrow;
+    } catch (e) {
+      throw ServerException('Unexpected error resetting the password: $e');
+    }
+  }
+
+  @override
   Future<void> setPendingInterests() => _authService.setPendingInterests();
 
   @override

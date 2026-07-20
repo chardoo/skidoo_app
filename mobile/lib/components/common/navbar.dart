@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/constants/icons.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Bottom nav: Home / notifications / chat / profile — floating rounded
 /// pill, only the active tab shows an icon+label (on a filled accent pill);
@@ -30,9 +32,9 @@ class AppNavbar extends StatelessWidget {
 
     return SafeArea(
       top: false,
-      minimum: EdgeInsets.only(bottom: 12.h),
+      minimum: EdgeInsets.only(bottom: AppSpacing.md.h),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.w),
         child: Container(
           height: 58.h,
           padding: EdgeInsets.symmetric(horizontal: 10.w),
@@ -183,7 +185,7 @@ class _NavTab extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: selected ? activeColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(20.r),
+                borderRadius: BorderRadius.circular(AppRadius.xl.r),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

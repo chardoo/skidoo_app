@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/follow/data/follow_repository.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
 
 class CardInteractionBar extends StatelessWidget {
   const CardInteractionBar({
@@ -75,7 +76,7 @@ class CardInteractionBar extends StatelessWidget {
                   child: Icon(
                     Icons.favorite_rounded,
                     key: ValueKey(liked),
-                    color: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
+                    color: liked ? ext.likeRed : ext.greetingColor,
                     size: 26.sp,
                   ),
                 ),
@@ -84,7 +85,7 @@ class CardInteractionBar extends StatelessWidget {
                   Text(
                     _fmt(likeCount),
                     style: TextStyle(
-                      color: liked ? const Color(0xFFFF3B5C) : ext.greetingColor,
+                      color: liked ? ext.likeRed : ext.greetingColor,
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                     ),
@@ -118,7 +119,7 @@ class CardInteractionBar extends StatelessWidget {
                     Icons.thumb_down_rounded,
                     key: ValueKey(disliked),
                     color: disliked
-                        ? const Color(0xFF5B6EF5)
+                        ? ext.dislikeBlue
                         : ext.greetingColor,
                     size: 24.sp,
                   ),
@@ -129,7 +130,7 @@ class CardInteractionBar extends StatelessWidget {
                     _fmt(dislikeCount),
                     style: TextStyle(
                       color: disliked
-                          ? const Color(0xFF5B6EF5)
+                          ? ext.dislikeBlue
                           : ext.greetingColor,
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
@@ -495,7 +496,7 @@ class _FollowButtonState extends State<FollowButton>
                     ? Colors.white.withValues(alpha: 0.18)
                     : ext.glassFill)
                 : (onImg ? Colors.white : ext.accentGold),
-            borderRadius: BorderRadius.circular(20.r),
+            borderRadius: BorderRadius.circular(AppRadius.xl.r),
             border: Border.all(
               color: _following
                   ? (onImg

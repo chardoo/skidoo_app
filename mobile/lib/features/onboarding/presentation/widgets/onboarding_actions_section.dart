@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Primary Continue/Get-Started button with a Skip text button beneath it.
 class OnboardingActionsSection extends StatelessWidget {
@@ -44,7 +45,7 @@ class OnboardingActionsSection extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         Semantics(
           button: true,
           label: 'Skip onboarding',

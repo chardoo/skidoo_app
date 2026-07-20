@@ -8,6 +8,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class GalleryFullscreenPage extends StatefulWidget {
   /// Full set of photos so the viewer can page left/right, and the index of
@@ -92,7 +93,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                 bottom: false,
                 child: Padding(
                   padding:
-                      EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                      EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: AppSpacing.xs.h),
                   child: Row(
                     children: [
                       if (!kIsWeb)
@@ -158,7 +159,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                 top: false,
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                      horizontal: 24.w, vertical: 20.h),
+                      horizontal: AppSpacing.xxl.w, vertical: AppSpacing.xl.h),
                   child: MediaActionButtons(
                     // Keyed so the action row rebuilds for the current photo.
                     key: ValueKey(_photo.id),

@@ -13,6 +13,8 @@ import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class SavedItemsPage extends StatefulWidget {
   static const routeName = '/saved-items';
@@ -235,18 +237,18 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
     if (_error != null) {
       return Center(
         child: Padding(
-          padding: EdgeInsets.all(24.w),
+          padding: EdgeInsets.all(AppSpacing.xxl.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.cloud_off_outlined,
                   size: 48.sp, color: ext.searchHintColor),
-              SizedBox(height: 12.h),
+              SizedBox(height: AppSpacing.md.h),
               Text(_error!,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       color: ext.searchHintColor, fontSize: 14.sp)),
-              SizedBox(height: 16.h),
+              SizedBox(height: AppSpacing.lg.h),
               TextButton(
                 onPressed: _load,
                 child: Text('Retry',
@@ -263,7 +265,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
     if (items.isEmpty) {
       return Center(
         child: Padding(
-          padding: EdgeInsets.all(32.w),
+          padding: EdgeInsets.all(AppSpacing.xxxl.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -295,7 +297,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
       onRefresh: _load,
       color: ext.accentGold,
       child: ListView.separated(
-        padding: EdgeInsets.symmetric(vertical: 8.h),
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
         itemCount: items.length,
         separatorBuilder: (_, __) => Divider(
           height: 1,
@@ -345,9 +347,9 @@ class _SavedItemTile extends StatelessWidget {
     return ListTile(
       onTap: onTap,
       contentPadding:
-          EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+          EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.xs.h),
       leading: ClipRRect(
-        borderRadius: BorderRadius.circular(8.r),
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
         child: item.thumbnailUrl != null
             ? Semantics(image: true, label: 'Saved item', child: Image.network(
                 item.thumbnailUrl!,
@@ -386,7 +388,7 @@ class _SavedItemTile extends StatelessWidget {
         height: 56.w,
         decoration: BoxDecoration(
           color: ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(8.r),
+          borderRadius: BorderRadius.circular(AppRadius.sm.r),
         ),
         child: Icon(Icons.photo_outlined,
             color: ext.searchHintColor, size: 24.sp),

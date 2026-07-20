@@ -111,7 +111,7 @@ class _SidebarShell extends StatelessWidget {
                               height: 30,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [ext.accentGold, const Color(0xFF078368)],
+                                  colors: [ext.accentGold, ext.accentGoldDark],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
@@ -824,7 +824,7 @@ class _NavItemState extends State<_NavItem> {
     final BoxDecoration decoration = widget.active
         ? BoxDecoration(
             gradient: LinearGradient(
-              colors: [ext.accentGold, const Color(0xFF078368)],
+              colors: [ext.accentGold, ext.accentGoldDark],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -915,7 +915,7 @@ class _CreatorTileState extends State<_CreatorTile> {
           decoration: BoxDecoration(
             gradient: _hovered
                 ? LinearGradient(
-                    colors: [widget.ext.accentGold, const Color(0xFF078368)],
+                    colors: [widget.ext.accentGold, widget.ext.accentGoldDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
@@ -997,7 +997,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
             padding: const EdgeInsets.symmetric(vertical: 13),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [widget.ext.accentGold, const Color(0xFF078368)],
+                colors: [widget.ext.accentGold, widget.ext.accentGoldDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -1256,7 +1256,7 @@ class _TopNavBar extends StatelessWidget {
                         height: 24,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [ext.accentGold, const Color(0xFF078368)],
+                            colors: [ext.accentGold, ext.accentGoldDark],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -1880,7 +1880,7 @@ class _ActionAvatar extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [ext.accentGold, const Color(0xFF078368)],
+                colors: [ext.accentGold, ext.accentGoldDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),

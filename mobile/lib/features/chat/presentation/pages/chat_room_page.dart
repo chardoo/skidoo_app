@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -22,6 +23,8 @@ import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/services/notification_prefs_service.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Displays the messages for [room].
 /// Use the [ChatRoomPage.global] constructor to join the global chat room.
@@ -104,7 +107,7 @@ class _GlobalRoomInitializerState extends State<_GlobalRoomInitializer> {
               children: [
                 Icon(Icons.error_outline_rounded,
                     color: Colors.redAccent, size: 48.sp),
-                SizedBox(height: 8.h),
+                SizedBox(height: AppSpacing.sm.h),
                 Text(_error!,
                     style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
                     textAlign: TextAlign.center),
@@ -403,7 +406,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       );
       if (!context.mounted) return;
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
+        CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
       );
     } catch (e) {
       if (!context.mounted) return;
@@ -468,7 +471,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                   ),
                 ),
                 if (widget.room.type == RoomType.group) ...[
-                  SizedBox(width: 4.w),
+                  SizedBox(width: AppSpacing.xs.w),
                   Icon(Icons.keyboard_arrow_right_rounded,
                       color: ext.searchHintColor, size: 16.sp),
                 ],
@@ -599,7 +602,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                           Icon(Icons.lock_rounded,
                               size: 11.sp,
                               color: ext.searchHintColor.withValues(alpha: 0.6)),
-                          SizedBox(width: 4.w),
+                          SizedBox(width: AppSpacing.xs.w),
                           Text(
                             AppLocalizations.of(context)!.chatRoomEndToEndEncrypted,
                             style: TextStyle(
@@ -675,13 +678,13 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                         return ListView.builder(
                           controller: _scrollCtrl,
                           reverse: true,
-                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
                           itemCount: state.messages.length +
                               (state.isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
                             if (index == state.messages.length) {
                               return Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12.h),
+                                padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
                                 child: Center(
                                   child: CircularProgressIndicator(
                                       color: ext.searchHintColor, strokeWidth: 2),
@@ -746,7 +749,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                       if (!canSend) {
                         return Container(
                           padding: EdgeInsets.symmetric(
-                              vertical: 16.h, horizontal: 20.w),
+                              vertical: AppSpacing.lg.h, horizontal: AppSpacing.xl.w),
                           decoration: BoxDecoration(
                             color: ext.cardSurface,
                             border: Border(
@@ -762,7 +765,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                               Icon(Icons.lock_rounded,
                                   size: 14.sp,
                                   color: ext.searchHintColor),
-                              SizedBox(width: 8.w),
+                              SizedBox(width: AppSpacing.sm.w),
                               Text(
                                 AppLocalizations.of(context)!.chatRoomOnlyAdminsCanSend,
                                 style: TextStyle(
@@ -834,9 +837,9 @@ class _LikeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(button: true, label: 'Like', child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20.r),
+      borderRadius: BorderRadius.circular(AppRadius.xl.r),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -846,7 +849,7 @@ class _LikeButton extends StatelessWidget {
               size: 20.sp,
             ),
             if (likes != null) ...[
-              SizedBox(width: 4.w),
+              SizedBox(width: AppSpacing.xs.w),
               Text(
                 '$likes',
                 style: TextStyle(
@@ -916,11 +919,11 @@ class _UserOptionsSheetState extends State<_UserOptionsSheet> {
             children: [
               CircleAvatar(
                 radius: 24.r,
-                backgroundColor: ext.accentGold.withValues(alpha: 0.2),
+                backgroundColor: ext.searchFieldFill,
                 child: Text(
                   _displayName[0].toUpperCase(),
                   style: TextStyle(
-                    color: ext.accentGold,
+                    color: ext.greetingColor,
                     fontSize: 20.sp,
                     fontWeight: FontWeight.bold,
                   ),
@@ -947,9 +950,9 @@ class _UserOptionsSheetState extends State<_UserOptionsSheet> {
               ),
             ],
           ),
-          SizedBox(height: 20.h),
+          SizedBox(height: AppSpacing.xl.h),
           Divider(color: ext.searchHintColor.withValues(alpha: 0.12)),
-          SizedBox(height: 8.h),
+          SizedBox(height: AppSpacing.sm.h),
           _SheetOption(
             icon: Icons.chat_bubble_outline_rounded,
             label: AppLocalizations.of(context)!.chatRoomMessageDirectly,
@@ -986,9 +989,9 @@ class _SheetOption extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     return Semantics(button: true, label: label, child: InkWell(
       onTap: loading ? null : onTap,
-      borderRadius: BorderRadius.circular(12.r),
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 4.w),
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h, horizontal: AppSpacing.xs.w),
         child: Row(
           children: [
             Container(
@@ -1068,7 +1071,7 @@ class _MessageOptionsSheet extends StatelessWidget {
           _SheetOption(
             icon: Icons.reply_rounded,
             label: AppLocalizations.of(context)!.chatRoomReply,
-            accentColor: ext.accentGold,
+            accentColor: Colors.teal,
             onTap: onReply,
           ),
           if (canEdit)
@@ -1107,7 +1110,7 @@ class _BlockedBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w, vertical: 14.h),
       decoration: BoxDecoration(
         color: ext.cardSurface,
         border: Border(

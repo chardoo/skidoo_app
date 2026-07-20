@@ -8,6 +8,8 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/auth/presentation/bloc/interests/interests_bloc.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
 import 'package:skidoo_app/features/follow/presentation/pages/follow_suggestions_page.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class InterestsPage extends StatelessWidget {
   static const routeName = '/interests';
@@ -84,10 +86,10 @@ class _InterestsView extends StatelessWidget {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding:
-                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                        EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 10.h),
                     decoration: BoxDecoration(
                       color: selected ? ext.accentGold : Colors.transparent,
-                      borderRadius: BorderRadius.circular(24.r),
+                      borderRadius: BorderRadius.circular(AppRadius.xxl.r),
                       border: Border.all(
                         color: selected
                             ? ext.accentGold

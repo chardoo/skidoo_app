@@ -12,6 +12,7 @@ import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class FollowingFeedPage extends StatefulWidget {
   const FollowingFeedPage({super.key});
@@ -261,7 +262,7 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
                                 if (i == _events.length) {
                                   return Padding(
                                     padding:
-                                        EdgeInsets.symmetric(vertical: 20.h),
+                                        EdgeInsets.symmetric(vertical: AppSpacing.xl.h),
                                     child: const AppLoadingIndicator(),
                                   );
                                 }

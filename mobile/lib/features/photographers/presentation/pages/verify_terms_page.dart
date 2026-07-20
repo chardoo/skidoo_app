@@ -11,6 +11,8 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/photographers/domain/usecases/photographer_profile_usecases.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// "Verify and accept terms" — part of a photographer's portfolio setup,
 /// done on demand from the Account page (see `portfolio_edit_page.dart`),
@@ -92,7 +94,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(20.w),
+          padding: EdgeInsets.all(AppSpacing.xl.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -100,17 +102,17 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                 'One last step before you start uploading events',
                 style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
               ),
-              SizedBox(height: 20.h),
+              SizedBox(height: AppSpacing.xl.h),
               Semantics(
                 button: true,
                 label: _idDocument != null ? 'Change Ghana Card photo' : 'Upload Ghana Card photo',
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(AppRadius.md.r),
                   onTap: _pickDocument,
                   child: Container(
                     padding: EdgeInsets.all(14.w),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12.r),
+                      borderRadius: BorderRadius.circular(AppRadius.md.r),
                       border: Border.all(color: ext.searchHintColor.withValues(alpha: 0.3)),
                     ),
                     child: Row(
@@ -120,11 +122,11 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                           height: 36.w,
                           decoration: BoxDecoration(
                             color: ext.accentGold.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8.r),
+                            borderRadius: BorderRadius.circular(AppRadius.sm.r),
                           ),
                           child: Icon(Icons.badge_outlined, color: ext.accentGold, size: 20.sp),
                         ),
-                        SizedBox(width: 12.w),
+                        SizedBox(width: AppSpacing.md.w),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,9 +165,9 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                       : Image.file(File(_idDocument!.path), height: 120.h, fit: BoxFit.cover),
                 ),
               ],
-              SizedBox(height: 24.h),
+              SizedBox(height: AppSpacing.xxl.h),
               Divider(color: ext.searchHintColor.withValues(alpha: 0.2)),
-              SizedBox(height: 12.h),
+              SizedBox(height: AppSpacing.md.h),
               _TermsCheckbox(
                 ext: ext,
                 value: _acceptedTerms,
@@ -186,14 +188,14 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                 onChanged: (v) => setState(() => _acceptedPayoutPolicy = v),
                 label: "I agree to Jperg's Payout Policy",
               ),
-              SizedBox(height: 24.h),
+              SizedBox(height: AppSpacing.xxl.h),
               AppButton(
                 fullWidth: true,
                 isLoading: _submitting,
                 onPressed: _canContinue ? _submit : null,
                 label: 'Submit',
               ),
-              SizedBox(height: 12.h),
+              SizedBox(height: AppSpacing.md.h),
             ],
           ),
         ),
@@ -222,7 +224,7 @@ class _TermsCheckbox extends StatelessWidget {
       borderRadius: BorderRadius.circular(10.r),
       onTap: () => onChanged(!value),
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 8.h),
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -238,7 +240,7 @@ class _TermsCheckbox extends StatelessWidget {
             SizedBox(width: 10.w),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.only(top: 4.h),
+                padding: EdgeInsets.only(top: AppSpacing.xs.h),
                 child: Text(
                   label,
                   style: TextStyle(color: ext.greetingColor, fontSize: 13.sp, height: 1.4),

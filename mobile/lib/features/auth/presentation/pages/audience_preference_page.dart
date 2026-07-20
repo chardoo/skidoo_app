@@ -8,6 +8,7 @@ import 'package:skidoo_app/features/auth/domain/usecases/become_photographer_use
 import 'package:skidoo_app/features/auth/presentation/pages/interests_page.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 enum _Audience { discover, share }
 
@@ -114,7 +115,7 @@ class _AudienceOption extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding: EdgeInsets.all(16.w),
+          padding: EdgeInsets.all(AppSpacing.lg.w),
           decoration: BoxDecoration(
             color: ext.cardSurface,
             borderRadius: BorderRadius.circular(14.r),
@@ -155,7 +156,7 @@ class _AudienceOption extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(width: 8.w),
+              SizedBox(width: AppSpacing.sm.w),
               Icon(
                 selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
                 color: selected ? ext.accentGold : ext.searchHintColor,

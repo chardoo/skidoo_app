@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/report_sheet.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Hide / Report bottom sheet for an event — shared by the classic feed
 /// card's post header, the web reactions column, and the full-bleed
@@ -31,7 +32,7 @@ class EventMoreOptionsSheet extends StatelessWidget {
           children: [
             // Drag handle
             Container(
-              margin: EdgeInsets.symmetric(vertical: 12.h),
+              margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
               width: 36.w,
               height: 4.h,
               decoration: BoxDecoration(
@@ -109,7 +110,7 @@ class EventMoreOptionsSheet extends StatelessWidget {
               },
             ),
 
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.sm.h),
           ],
         ),
       ),

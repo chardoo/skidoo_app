@@ -9,13 +9,14 @@ import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/utils/focus_utils.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/responsive.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:skidoo_app/features/auth/presentation/widgets/login_bottom_sheet.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_discovery_card.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class DiscoveryPage extends StatelessWidget {
   static const routeName = '/discovery';
@@ -41,24 +42,14 @@ class _DiscoveryView extends StatefulWidget {
 }
 
 class _DiscoveryViewState extends State<_DiscoveryView> {
-  final _scrollCtrl = ScrollController();
+  final _pageCtrl = PageController();
   final _activeCardIndex = ValueNotifier<int>(0);
-  // Web desktop/laptop: shared "comments open" flag so the panel stays open as
-  // the user scrolls between cards (each card shows its own thread).
-  final _webCommentsOpen = ValueNotifier<bool>(false);
-  final _cardKeys = <String, GlobalKey>{};
   final _feedFocusNode = FocusNode();
-  // Guard: only one _updateActiveCard per frame, no matter how many
-  // ScrollUpdateNotifications fire between frames.
-  bool _activeCardUpdateScheduled = false;
-
-  GlobalKey _keyFor(String id) =>
-      _cardKeys.putIfAbsent(id, () => GlobalKey());
+  int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    _scrollCtrl.addListener(_onScroll);
     // NOTE: deliberately NOT auto-focusing the feed on web — grabbing focus on
     // load captured the browser's input focus and blocked the sidebar search
     // field (above the Navigator) from receiving keystrokes. The j/k/space
@@ -67,81 +58,31 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
 
   @override
   void dispose() {
-    _scrollCtrl.dispose();
+    _pageCtrl.dispose();
     _activeCardIndex.dispose();
-    _webCommentsOpen.dispose();
     _feedFocusNode.dispose();
     super.dispose();
   }
 
-  void _onScroll() {
-    if (!_scrollCtrl.hasClients) return;
-    final bloc = context.read<DiscoveryBloc>();
-    if (!bloc.state.hasMore) return;
-    final pos = _scrollCtrl.position;
-    if (pos.pixels >= pos.maxScrollExtent - 400) {
-      bloc.add(const DiscoveryLoadMoreRequested());
-    }
-  }
-
-  /// Schedule exactly one active-card update per frame.
-  void _scheduleActiveCardUpdate(List<EventDiscovery> events) {
-    // On web, no videos autoplay so active-card tracking adds per-frame
-    // O(n) localToGlobal work with zero benefit — skip entirely.
-    if (kIsWeb) return;
-    if (_activeCardUpdateScheduled) return;
-    _activeCardUpdateScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _activeCardUpdateScheduled = false;
-      _updateActiveCard(events);
-    });
-  }
-
-  /// Mark the card whose centre is closest to the viewport centre as active.
-  void _updateActiveCard(List<EventDiscovery> events) {
-    if (!mounted) return;
-    final screenH = MediaQuery.sizeOf(context).height;
-    final viewportMid = screenH / 2;
-
-    int? bestIdx;
-    double bestDist = double.infinity;
-
-    for (int i = 0; i < events.length; i++) {
-      final key = _cardKeys[events[i].id];
-      if (key == null) continue;
-      final ctx = key.currentContext;
-      if (ctx == null) continue;
-      final box = ctx.findRenderObject() as RenderBox?;
-      if (box == null || !box.attached) continue;
-      final pos = box.localToGlobal(Offset.zero);
-      final cardCenter = pos.dy + box.size.height / 2;
-      final dist = (cardCenter - viewportMid).abs();
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestIdx = i;
+  void _onPageChanged(List<EventDiscovery> events, int index) {
+    _currentPage = index;
+    _activeCardIndex.value = index;
+    if (index >= events.length - 3) {
+      final bloc = context.read<DiscoveryBloc>();
+      if (bloc.state.hasMore && !bloc.state.isLoadingMore) {
+        bloc.add(const DiscoveryLoadMoreRequested());
       }
-    }
-
-    if (bestIdx != null && bestIdx != _activeCardIndex.value) {
-      _activeCardIndex.value = bestIdx;
     }
   }
 
   // ── Keyboard navigation (web desktop/laptop only) ────────────────────────
 
-  /// Scroll the card at [index] into view and update [_activeCardIndex].
-  void _scrollToCard(String eventId, int index) {
-    _activeCardIndex.value = index;
-    final key = _cardKeys[eventId];
-    final ctx = key?.currentContext;
-    if (ctx != null) {
-      Scrollable.ensureVisible(
-        ctx,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-        alignment: 0.0, // align top of card with top of viewport
-      );
-    }
+  void _goToPage(int index) {
+    _pageCtrl.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -154,18 +95,18 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
     }
     final events = context.read<DiscoveryBloc>().state.events;
     if (events.isEmpty) return KeyEventResult.ignored;
-    final current = _activeCardIndex.value;
+    final current = _currentPage;
 
     if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
         event.logicalKey == LogicalKeyboardKey.keyJ) {
       final next = (current + 1).clamp(0, events.length - 1);
-      if (next != current) _scrollToCard(events[next].id, next);
+      if (next != current) _goToPage(next);
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
         event.logicalKey == LogicalKeyboardKey.keyK) {
       final prev = (current - 1).clamp(0, events.length - 1);
-      if (prev != current) _scrollToCard(events[prev].id, prev);
+      if (prev != current) _goToPage(prev);
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.enter ||
@@ -188,8 +129,6 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
     // Capture the bloc before any async gap so the closure stays valid
     // even if the widget is later unmounted.
     final bloc = context.read<DiscoveryBloc>();
-
-    // Mark card as pending-hide → collapses immediately via AnimatedAlign.
     bloc.add(DiscoveryEventHideRequested(eventId));
 
     AppSnackBar.withAction(
@@ -214,15 +153,11 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
       body: Focus(
         focusNode: _feedFocusNode,
         onKeyEvent: kIsWeb ? _handleKeyEvent : null,
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-            // ── App bar — hidden on web (sidebar handles logo + auth) ────
-            if (!kIsWeb) _FeedAppBar(ext: ext),
-
-            // ── Feed ─────────────────────────────────────────────────────
-            Expanded(
+        child: Stack(
+          children: [
+            // ── Feed — fills the entire screen; the app bar floats on top,
+            // matching the logged-in Home feed (no solid bar pushing it down).
+            Positioned.fill(
               child: BlocBuilder<DiscoveryBloc, DiscoveryState>(
                 // Exclude savedEventIds/savedItemRecordIds/hiddenEventIds —
                 // they're handled by inner BlocBuilders inside each card,
@@ -233,7 +168,6 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                     prev.isLoadingMore != next.isLoadingMore ||
                     prev.errorMessage != next.errorMessage ||
                     prev.hasMore != next.hasMore ||
-                    prev.pendingHideEventId != next.pendingHideEventId ||
                     prev.currentUserId != next.currentUserId,
                 builder: (context, state) {
                   if (state.isLoading) return const AppLoadingIndicator();
@@ -255,98 +189,47 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                     );
                   }
 
-                  final feed = RefreshIndicator(
-                    color: ext.accentGold,
-                    onRefresh: () async => context
-                        .read<DiscoveryBloc>()
-                        .add(const DiscoveryLoadRequested()),
-                    child: NotificationListener<ScrollNotification>(
-                    onNotification: (notification) {
-                      if (notification is ScrollUpdateNotification ||
-                          notification is ScrollEndNotification) {
-                        _scheduleActiveCardUpdate(state.events);
-                      }
-                      return false;
+                  // Same full-bleed TikTok-style vertical PageView the
+                  // logged-in Home feed uses — FullBleedEventCard runs in
+                  // guest mode here (isAuthenticated: false), so every
+                  // reaction prompts login via onTap instead of acting.
+                  return PageView.builder(
+                    controller: _pageCtrl,
+                    scrollDirection: Axis.vertical,
+                    itemCount: state.events.length,
+                    onPageChanged: (i) => _onPageChanged(state.events, i),
+                    itemBuilder: (context, index) {
+                      final ev = state.events[index];
+                      return FullBleedEventCard(
+                        key: ValueKey('discovery_${ev.id}'),
+                        event: ev,
+                        cardIndex: index,
+                        activeCardIndex: _activeCardIndex,
+                        onTap: () => _onCardTap(context, ev),
+                        onHide: () => _onHide(ev.id),
+                        isAuthenticated: false,
+                      );
                     },
-                    child: ListView.builder(
-                      controller: _scrollCtrl,
-                      physics: kIsWeb
-                          // AlwaysScrollable so pull-to-refresh works even when
-                          // the feed is shorter than the viewport.
-                          ? const AlwaysScrollableScrollPhysics(
-                              parent: ClampingScrollPhysics(),
-                            )
-                          : const BouncingScrollPhysics(
-                              parent: AlwaysScrollableScrollPhysics(),
-                            ),
-                      cacheExtent: kIsWeb ? 2400 : 800,
-                      // No padding — cards are edge-to-edge
-                      padding: EdgeInsets.zero,
-                      itemCount: state.events.length +
-                          (state.isLoadingMore && state.hasMore ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index == state.events.length) {
-                          return Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24.h),
-                            child: const AppLoadingIndicator(),
-                          );
-                        }
-                        final ev = state.events[index];
-                        final isPending = state.pendingHideEventId == ev.id;
-                        // AnimatedAlign + heightFactor is the most reliable
-                        // way to collapse a ListView item smoothly. The card
-                        // stays in the tree (no child-swap reconciliation
-                        // issues); only the rendered height animates to 0.
-                        return RepaintBoundary(
-                          child: ClipRect(
-                            child: AnimatedAlign(
-                              duration: const Duration(milliseconds: 380),
-                              curve: Curves.easeInOut,
-                              alignment: Alignment.topCenter,
-                              heightFactor: isPending ? 0.0 : 1.0,
-                              child: IgnorePointer(
-                                ignoring: isPending,
-                                child: EventDiscoveryCard(
-                                  key: _keyFor(ev.id),
-                                  event: ev,
-                                  cardIndex: index,
-                                  activeCardIndex: _activeCardIndex,
-                                  webCommentsOpen: _webCommentsOpen,
-                                  onTap: () => _onCardTap(context, ev),
-                                  isOwner: state.currentUserId != null &&
-                                      state.currentUserId == ev.photographerId,
-                                  isAuthenticated: (state.currentUserId ?? '').isNotEmpty,
-                                  onHide: () => _onHide(ev.id),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ));
-
-                  if (!kIsWeb && isTablet(context)) {
-                    return Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 680.w),
-                        child: feed,
-                      ),
-                    );
-                  }
-                  return feed;
+                  );
                 },
               ),
             ),
+
+            // ── App bar — floats on top; hidden on web (sidebar handles
+            // logo + auth) ──────────────────────────────────────────────
+            if (!kIsWeb)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(bottom: false, child: _FeedAppBar(ext: ext)),
+              ),
           ],
         ),
       ),
-    ),
     );
     return page;
   }
-
 }
 
 // ── Feed app bar ──────────────────────────────────────────────────────────────
@@ -357,17 +240,8 @@ class _FeedAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-      decoration: BoxDecoration(
-        color: ext.homeBackground,
-        border: Border(
-          bottom: BorderSide(
-            color: ext.searchHintColor.withValues(alpha: 0.08),
-            width: 0.5,
-          ),
-        ),
-      ),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 10.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -383,7 +257,7 @@ class _FeedAppBar extends StatelessWidget {
                     gradient: LinearGradient(
                       colors: [
                         ext.accentGold,
-                        const Color(0xFF078368),
+                        ext.accentGoldDark,
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -400,14 +274,14 @@ class _FeedAppBar extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(width: 8.w),
+                SizedBox(width: AppSpacing.sm.w),
                 Flexible(
                   child: Text(
                     'JPERG',
                     maxLines: 1,
                     overflow: TextOverflow.clip,
                     style: TextStyle(
-                      color: ext.logoTextColor,
+                      color: Colors.white,
                       fontWeight: FontWeight.w900,
                       fontSize: 20.sp,
                       letterSpacing: 3,
@@ -428,13 +302,13 @@ class _FeedAppBar extends StatelessWidget {
                 child: Text(
                   'Sign up',
                   style: TextStyle(
-                    color: ext.searchHintColor,
+                    color: Colors.white70,
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               )),
-              SizedBox(width: 12.w),
+              SizedBox(width: AppSpacing.md.w),
               Semantics(button: true, label: 'Log in', child: GestureDetector(
                 onTap: () => showLoginSheet(
                   context,
@@ -444,10 +318,10 @@ class _FeedAppBar extends StatelessWidget {
                 ),
                 child: Container(
                   padding: EdgeInsets.symmetric(
-                      horizontal: 16.w, vertical: 8.h),
+                      horizontal: AppSpacing.lg.w, vertical: AppSpacing.sm.h),
                   decoration: BoxDecoration(
                     color: ext.accentGold,
-                    borderRadius: BorderRadius.circular(20.r),
+                    borderRadius: BorderRadius.circular(AppRadius.xl.r),
                   ),
                   child: Text(
                     'Log in',

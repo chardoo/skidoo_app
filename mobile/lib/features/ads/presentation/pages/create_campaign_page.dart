@@ -12,6 +12,8 @@ import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dar
 import 'package:skidoo_app/core/common/widgets/xfile_image.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -602,14 +604,14 @@ class _BottomBar extends StatelessWidget {
                 height: 50.h,
                 decoration: BoxDecoration(
                   color: ext.searchFieldFill,
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(AppRadius.md.r),
                 ),
                 alignment: Alignment.center,
                 child: Icon(Icons.arrow_back_rounded,
                     color: ext.greetingColor, size: 20.sp),
               ),
             )),
-          if (onBack != null) SizedBox(width: 12.w),
+          if (onBack != null) SizedBox(width: AppSpacing.md.w),
           Expanded(
             child: Semantics(button: true, label: 'Next', child: GestureDetector(
               onTap: loading ? null : onNext,
@@ -620,9 +622,9 @@ class _BottomBar extends StatelessWidget {
                     colors: loading
                         ? [
                             ext.accentGold.withValues(alpha: 0.5),
-                            const Color(0xFF078368).withValues(alpha: 0.5),
+                            ext.accentGoldDark.withValues(alpha: 0.5),
                           ]
-                        : [ext.accentGold, const Color(0xFF078368)],
+                        : [ext.accentGold, ext.accentGoldDark],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
@@ -704,12 +706,12 @@ class _Step1 extends StatelessWidget {
       stepSubtitle: 'Set your campaign name, goal, and budget.',
       children: [
         _CLabel('Campaign name', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _CField(controller: nameCtrl, hint: 'e.g. Summer Wedding Promo', ext: ext),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _CLabel('Objective', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _CDropdown<String>(
           value: objective,
           items: _objectives,
@@ -718,7 +720,7 @@ class _Step1 extends StatelessWidget {
           onChanged: onObjectiveChanged,
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -728,7 +730,7 @@ class _Step1 extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _CLabel('Total budget', ext),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: AppSpacing.sm.h),
                   _CField(
                     controller: budgetCtrl,
                     hint: 'e.g. 1000',
@@ -744,7 +746,7 @@ class _Step1 extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _CLabel('Currency', ext),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: AppSpacing.sm.h),
                   _CDropdown<String>(
                     value: currency,
                     items: _currencies,
@@ -758,9 +760,9 @@ class _Step1 extends StatelessWidget {
           ],
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _CLabel('Campaign dates (optional)', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         Row(
           children: [
             Expanded(
@@ -823,7 +825,7 @@ class _Step2 extends StatelessWidget {
       stepSubtitle: 'Choose where and who sees your ad.',
       children: [
         _CLabel('Placement', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _CDropdown<String>(
           value: placement,
           items: _placements,
@@ -832,9 +834,9 @@ class _Step2 extends StatelessWidget {
           onChanged: onPlacementChanged,
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _CLabel('Audience', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _CDropdown<String>(
           value: audience,
           items: _audienceTypes,
@@ -843,9 +845,9 @@ class _Step2 extends StatelessWidget {
           onChanged: onAudienceChanged,
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _CLabel('Daily budget', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _CField(
           controller: dailyBudgetCtrl,
           hint: 'e.g. 50',
@@ -853,9 +855,9 @@ class _Step2 extends StatelessWidget {
           keyboardType: TextInputType.number,
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _CLabel('Target event type (optional)', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _CDropdown<String>(
           value: targetEventType,
           items: _eventTypes,
@@ -866,9 +868,9 @@ class _Step2 extends StatelessWidget {
           nullable: true,
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _CLabel('Target location (optional)', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _CField(controller: locationCtrl, hint: 'e.g. Accra', ext: ext),
       ],
     );
@@ -913,16 +915,16 @@ class _Step3 extends StatelessWidget {
       stepSubtitle: 'Write what people will see in the feed.',
       children: [
         _CLabel('Headline', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _CField(
           controller: headlineCtrl,
           hint: 'Grab attention in one line',
           ext: ext,
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _CLabel('Body text', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _CField(
           controller: bodyCtrl,
           hint: 'Describe what you offer...',
@@ -930,7 +932,7 @@ class _Step3 extends StatelessWidget {
           maxLines: 3,
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         Row(
           children: [
             _CLabel('Creative photos', ext),
@@ -948,7 +950,7 @@ class _Step3 extends StatelessWidget {
             ),
           ],
         ),
-        SizedBox(height: 4.h),
+        SizedBox(height: AppSpacing.xs.h),
         Text(
           'Select up to 5 photos at once to make your ad stand out.',
           style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
@@ -962,25 +964,25 @@ class _Step3 extends StatelessWidget {
           onRemove: onRemoveCreative,
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _CLabel('CTA button text (optional)', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _CField(
           controller: ctaTextCtrl,
           hint: 'e.g. Book Now · View Gallery · Learn More',
           ext: ext,
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
         _CLabel('CTA link', ext),
-        SizedBox(height: 8.h),
+        SizedBox(height: AppSpacing.sm.h),
         _CField(
           controller: ctaLinkCtrl,
           hint: 'https://',
           ext: ext,
           keyboardType: TextInputType.url,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(height: AppSpacing.lg.h),
         SwitchListTile(
           value: commentsEnabled,
           onChanged: onCommentsToggle,
@@ -993,7 +995,7 @@ class _Step3 extends StatelessWidget {
             style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
           ),
           activeThumbColor: ext.accentGold,
-          contentPadding: EdgeInsets.symmetric(horizontal: 4.w),
+          contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w),
         ),
       ],
     );
@@ -1083,7 +1085,7 @@ class _Step4 extends StatelessWidget {
         _ReviewRow('Start date', startDate != null ? _fmt(startDate!) : 'Not set', ext),
         _ReviewRow('End date', endDate != null ? _fmt(endDate!) : 'Not set', ext),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
 
         // ── Ad Set ──────────────────────────────────────────────────────────
         _SectionLabel('Targeting', ext),
@@ -1094,7 +1096,7 @@ class _Step4 extends StatelessWidget {
         _ReviewRow('Event type', targetEventType ?? 'Any', ext),
         _ReviewRow('Location', location.isEmpty ? 'Any' : location, ext),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: AppSpacing.xl.h),
 
         // ── Creative ────────────────────────────────────────────────────────
         _SectionLabel('Creative', ext),
@@ -1106,12 +1108,12 @@ class _Step4 extends StatelessWidget {
         _ReviewRow('Photos', mediaCount == 0 ? 'None (text-only)' : '$mediaCount image${mediaCount == 1 ? '' : 's'}', ext),
         _ReviewRow('Comments', commentsEnabled ? 'Enabled' : 'Disabled', ext),
 
-        SizedBox(height: 24.h),
+        SizedBox(height: AppSpacing.xxl.h),
         Container(
           padding: EdgeInsets.all(14.w),
           decoration: BoxDecoration(
             color: ext.accentGold.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12.r),
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
             border: Border.all(
               color: ext.accentGold.withValues(alpha: 0.3),
               width: 0.8,
@@ -1167,7 +1169,7 @@ class _ReviewRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
+      padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1227,7 +1229,7 @@ class _StepScroll extends StatelessWidget {
             letterSpacing: -0.4,
           ),
         ),
-        SizedBox(height: 4.h),
+        SizedBox(height: AppSpacing.xs.h),
         Text(
           stepSubtitle,
           style: TextStyle(
@@ -1235,7 +1237,7 @@ class _StepScroll extends StatelessWidget {
             fontSize: 13.sp,
           ),
         ),
-        SizedBox(height: 24.h),
+        SizedBox(height: AppSpacing.xxl.h),
         ...children,
       ],
     );
@@ -1314,7 +1316,7 @@ class _CDropdown<T> extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 14.w),
       decoration: BoxDecoration(
         color: ext.searchFieldFill,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
       ),
       child: DropdownButton<T>(
         value: value,
@@ -1381,7 +1383,7 @@ class _CampaignMultiPicker extends StatelessWidget {
         children: [
           ...List.generate(creatives.length, (i) {
             return Padding(
-              padding: EdgeInsets.only(right: 8.w),
+              padding: EdgeInsets.only(right: AppSpacing.sm.w),
               child: Stack(
                 children: [
                   ClipRRect(
@@ -1431,7 +1433,7 @@ class _CampaignMultiPicker extends StatelessWidget {
                   children: [
                     Icon(Icons.add_photo_alternate_outlined,
                         color: ext.accentGold, size: 26.sp),
-                    SizedBox(height: 4.h),
+                    SizedBox(height: AppSpacing.xs.h),
                     Text(
                       'Add Photos',
                       style: TextStyle(
@@ -1468,13 +1470,13 @@ class _DatePickerTile extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
         decoration: BoxDecoration(
           color: ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
         ),
         child: Row(
           children: [
             Icon(Icons.calendar_today_outlined,
                 color: ext.searchHintColor, size: 16.sp),
-            SizedBox(width: 8.w),
+            SizedBox(width: AppSpacing.sm.w),
             Expanded(
               child: Text(
                 label,

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
 /// Branded launch overlay that plays once per app session.
 ///
@@ -76,23 +74,7 @@ class _OverlaySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final size = MediaQuery.sizeOf(context);
-
-    // ── Shimmer sweeps left→right during [0, 0.55] ──────────────────────────
-    final shimmerProgress = Curves.easeInOut
-        .transform((progress / 0.55).clamp(0.0, 1.0));
-    // pos goes from -0.4 (before text) → 1.4 (after text)
-    final shimmerPos = -0.4 + shimmerProgress * 1.8;
-
-    // ── Logo breathes in during [0, 0.28] ───────────────────────────────────
-    final logoScale = Tween<double>(begin: 0.82, end: 1.0).transform(
-      Curves.easeOut.transform((progress / 0.28).clamp(0.0, 1.0)),
-    );
-
-    // ── Tagline fades in during [0.15, 0.45] ────────────────────────────────
-    final taglineOpacity =
-        Curves.easeOut.transform(((progress - 0.15) / 0.30).clamp(0.0, 1.0));
 
     // ── Overlay lifts upward during [0.55, 1.0] ─────────────────────────────
     final liftProgress = Curves.easeInCubic
@@ -111,99 +93,15 @@ class _OverlaySheet extends StatelessWidget {
         child: SizedBox(
           width: size.width,
           height: size.height,
-          child: DecoratedBox(
-            decoration: BoxDecoration(color: ext.homeBackground),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // ── SKIIDO wordmark + smile ──────────────────────────────────
-                Transform.scale(
-                  scale: logoScale,
-                  child: _ShimmerImage(
-                    assetPath: 'assets/logo/jperg_wordmark.png',
-                    shimmerPos: shimmerPos,
-                    shimmerColor: ext.accentGold,
-                    width: 260.w,
-                  ),
-                ),
-
-                SizedBox(height: 14.h),
-
-                // ── Tagline ──────────────────────────────────────────────────
-                Opacity(
-                  opacity: taglineOpacity,
-                  child: Text(
-                    'capture every moment',
-                    style: TextStyle(
-                      color: ext.searchHintColor.withValues(alpha: 0.65),
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 1.6,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          // Same full-bleed gif treatment as SplashPage, so the two
+          // branded moments (cold-start splash, then this feed reveal)
+          // match instead of showing two different animations back to back.
+          child: Image.asset(
+            'assets/splash/splash.gif',
+            fit: BoxFit.cover,
           ),
         ),
       ),
-    );
-  }
-}
-
-// ── Shimmer image — gold highlight sweeps over the wordmark PNG ──────────────
-
-class _ShimmerImage extends StatelessWidget {
-  const _ShimmerImage({
-    required this.assetPath,
-    required this.shimmerPos,
-    required this.shimmerColor,
-    required this.width,
-  });
-
-  final String assetPath;
-
-  /// Ranges from -0.4 (before left edge) to 1.4 (after right edge).
-  final double shimmerPos;
-  final Color shimmerColor;
-  final double width;
-
-  @override
-  Widget build(BuildContext context) {
-    // Map shimmerPos → [0,1] for the gradient space.
-    final p = ((shimmerPos + 0.4) / 1.8).clamp(0.0, 1.0);
-    const half = 0.14;
-    final s0 = (p - half).clamp(0.0, 1.0);
-    final s2 = (p + half).clamp(0.0, 1.0);
-
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Base image
-        ExcludeSemantics(child: Image.asset(assetPath, width: width, fit: BoxFit.contain)),
-        // Gold shimmer beam — blended on top with softLight so the
-        // image colours show through and the highlight feels organic.
-        Positioned.fill(
-          child: ShaderMask(
-            blendMode: BlendMode.softLight,
-            shaderCallback: (bounds) => LinearGradient(
-              colors: [
-                Colors.transparent,
-                Colors.transparent,
-                shimmerColor.withValues(alpha: 0.85),
-                Colors.transparent,
-                Colors.transparent,
-              ],
-              stops: [0.0, s0, p, s2, 1.0],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ).createShader(bounds),
-            child: const DecoratedBox(
-              decoration: BoxDecoration(color: Colors.white),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

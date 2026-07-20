@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/gallery/presentation/pages/gallery_fullscreen_page.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
 
 class GalleryImageWidget extends StatelessWidget {
   final Photo photo;
@@ -34,7 +35,7 @@ class GalleryImageWidget extends StatelessWidget {
       onTap: () => _openFullscreen(context),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
           color: ext.cardSurface,
           boxShadow: [
             BoxShadow(

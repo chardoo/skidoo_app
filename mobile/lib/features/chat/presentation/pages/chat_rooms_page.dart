@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
@@ -11,6 +12,8 @@ import 'package:skidoo_app/features/chat/presentation/widgets/room_tile.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class ChatRoomsPage extends StatelessWidget {
   const ChatRoomsPage({super.key});
@@ -191,7 +194,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
                                 .toList(),
                           ),
                         ),
-                        SliverToBoxAdapter(child: SizedBox(height: 8.h)),
+                        SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm.h)),
                       ],
 
                       // Chats section header
@@ -229,7 +232,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
                           hasScrollBody: false,
                           child: Center(
                             child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 40.h),
+                              padding: EdgeInsets.symmetric(vertical: AppSpacing.huge.h),
                               child: Text(
                                 'No chats match "$_searchQuery"',
                                 style: TextStyle(
@@ -255,13 +258,13 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
 
   void _openRoom(BuildContext context, ChatRoom room) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
+      CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
     );
   }
 
   void _openGlobalChat(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ChatRoomPage.global()),
+      CupertinoPageRoute(builder: (_) => const ChatRoomPage.global()),
     );
   }
 
@@ -272,7 +275,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
     if (result != null && context.mounted) {
       context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ChatRoomPage(room: result)),
+        CupertinoPageRoute(builder: (_) => ChatRoomPage(room: result)),
       );
     }
   }
@@ -316,12 +319,12 @@ class _PendingInviteTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      margin: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 10.h),
       decoration: BoxDecoration(
         color: ext.cardSurface,
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: ext.accentGold.withValues(alpha: 0.3)),
+        border: Border.all(color: ext.searchHintColor.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -393,7 +396,7 @@ class _ActionButton extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8.r),
+          borderRadius: BorderRadius.circular(AppRadius.sm.r),
           border: Border.all(color: color.withValues(alpha: 0.4)),
         ),
         child: Text(

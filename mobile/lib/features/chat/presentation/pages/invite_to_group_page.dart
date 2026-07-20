@@ -11,6 +11,7 @@ import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/models/chat/shareable_user.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Lets an existing group member search for and invite new users to [room].
 class InviteToGroupPage extends StatefulWidget {
@@ -166,7 +167,7 @@ class _InviteToGroupPageState extends State<InviteToGroupPage> {
                     ),
                   ),
           ),
-          SizedBox(width: 8.w),
+          SizedBox(width: AppSpacing.sm.w),
         ],
       ),
       body: Column(
@@ -203,7 +204,7 @@ class _InviteToGroupPageState extends State<InviteToGroupPage> {
                             ),
                           )
                         : ListView.builder(
-                            padding: EdgeInsets.only(top: 4.h, bottom: 24.h),
+                            padding: EdgeInsets.only(top: AppSpacing.xs.h, bottom: AppSpacing.xxl.h),
                             itemCount: _searchResults.length,
                             itemBuilder: (_, i) => _UserTile(
                               user: _searchResults[i],
@@ -257,13 +258,12 @@ class _SelectedChips extends StatelessWidget {
                   label: Text(u.name,
                       style: TextStyle(
                           color: ext.greetingColor, fontSize: 12.sp)),
-                  backgroundColor:
-                      ext.accentGold.withValues(alpha: 0.15),
+                  backgroundColor: ext.searchFieldFill,
                   deleteIcon: Icon(Icons.close_rounded,
                       size: 14.sp, color: ext.greetingColor),
                   onDeleted: () => onRemove(u),
                   side: BorderSide.none,
-                  padding: EdgeInsets.symmetric(horizontal: 4.w),
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w),
                 ))
             .toList(),
       ),
@@ -284,13 +284,13 @@ class _UserTile extends StatelessWidget {
       onTap: onTap,
       leading: CircleAvatar(
         radius: 20.r,
-        backgroundColor: ext.accentGold.withValues(alpha: 0.2),
+        backgroundColor: ext.searchFieldFill,
         backgroundImage:
             user.imageUrl != null ? NetworkImage(user.imageUrl!) : null,
         child: user.imageUrl == null
             ? Text(
                 user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                style: TextStyle(color: ext.accentGold, fontSize: 14.sp),
+                style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
               )
             : null,
       ),

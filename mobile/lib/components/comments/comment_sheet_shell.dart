@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Shared bottom-sheet container: floating frosted-glass card with a thin
 /// neutral border and a single lift shadow.
@@ -30,8 +31,8 @@ class CommentSheetShell extends StatelessWidget {
       curve: Curves.easeOut,
       padding: EdgeInsets.only(
         bottom: keyboardH + 10.h,
-        left: 12.w,
-        right: 12.w,
+        left: AppSpacing.md.w,
+        right: AppSpacing.md.w,
       ),
       child: SizedBox(
         height: screenH * 0.72,

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/widgets/emoji_panel.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Shared text-input bar for both event and photo comments.
 ///
@@ -88,7 +89,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                SizedBox(width: 4.w),
+                SizedBox(width: AppSpacing.xs.w),
                 Semantics(button: true, label: 'Cancel reply', child: GestureDetector(
                   onTap: widget.onCancelReply,
                   child: Icon(Icons.close_rounded,
@@ -125,7 +126,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                 ext: ext,
                 iconSize: 20.sp,
               ),
-              SizedBox(width: 4.w),
+              SizedBox(width: AppSpacing.xs.w),
 
               // ── Text field ────────────────────────────────────────────────
               Expanded(
@@ -155,7 +156,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                   ),
                 ),
               ),
-              SizedBox(width: 8.w),
+              SizedBox(width: AppSpacing.sm.w),
 
               // ── Send button ───────────────────────────────────────────────
               MouseRegion(
@@ -168,7 +169,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                     height: 42.h,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [ext.accentGold, const Color(0xFF078368)],
+                        colors: [ext.accentGold, ext.accentGoldDark],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),

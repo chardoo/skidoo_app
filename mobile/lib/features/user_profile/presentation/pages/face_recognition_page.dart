@@ -11,6 +11,8 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class FaceRecognitionPage extends StatefulWidget {
   const FaceRecognitionPage({super.key});
@@ -144,7 +146,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
                     ? null
                     : () => setState(() => _useAsProfile = !_useAsProfile),
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 4.w),
+                  padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: AppSpacing.xs.w),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -153,13 +155,13 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
                         height: 22.w,
                         child: Checkbox(
                           value: _useAsProfile,
-                          activeColor: ext.accentGold,
+                          activeColor: ext.greetingColor,
                           onChanged: _uploading
                               ? null
                               : (v) => setState(() => _useAsProfile = v ?? false),
                         ),
                       ),
-                      SizedBox(width: 8.w),
+                      SizedBox(width: AppSpacing.sm.w),
                       Flexible(
                         child: Text(
                           'Use my first photo as my profile picture too',
@@ -176,7 +178,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
             // ── Selfie grid ──────────────────────────────────────────────────
             Expanded(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
                 child: GridView.builder(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
@@ -301,7 +303,7 @@ class _SelfieTile extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
             decoration: BoxDecoration(
               color: Colors.green.shade700.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(4.r),
+              borderRadius: BorderRadius.circular(AppRadius.xs.r),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

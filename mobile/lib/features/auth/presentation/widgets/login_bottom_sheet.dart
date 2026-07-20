@@ -10,6 +10,7 @@ import 'package:skidoo_app/features/auth/presentation/bloc/login/login_bloc.dart
 import 'package:skidoo_app/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/forget_password_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Shows the login bottom sheet. [onLoginSuccess] is called after successful
 /// login so the caller can navigate appropriately.
@@ -132,7 +133,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 24.h),
+                  SizedBox(height: AppSpacing.xxl.h),
 
                   // ── Logo ────────────────────────────────────────────────
                   Row(
@@ -156,7 +157,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                           ),
                         ),
                       ),
-                      SizedBox(width: 8.w),
+                      SizedBox(width: AppSpacing.sm.w),
                       Text(
                         'JPERG',
                         style: TextStyle(
@@ -168,7 +169,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: AppSpacing.xl.h),
 
                   // ── Title ───────────────────────────────────────────────
                   Text(
@@ -179,7 +180,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 4.h),
+                  SizedBox(height: AppSpacing.xs.h),
                   Text(
                     'Log in to view event photos',
                     style: TextStyle(
@@ -187,7 +188,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                       fontSize: 13.sp,
                     ),
                   ),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: AppSpacing.xl.h),
 
                   // ── Inline error (shown here so it isn't hidden behind the
                   //    bottom sheet like a SnackBar would be) ────────────────
@@ -199,21 +200,21 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                       }
                       return Container(
                         width: double.infinity,
-                        margin: EdgeInsets.only(bottom: 16.h),
+                        margin: EdgeInsets.only(bottom: AppSpacing.lg.h),
                         padding: EdgeInsets.symmetric(
                             horizontal: 14.w, vertical: 10.h),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF4757).withValues(alpha: 0.12),
+                          color: ext.errorRed.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10.r),
                           border: Border.all(
-                              color: const Color(0xFFFF4757)
+                              color: ext.errorRed
                                   .withValues(alpha: 0.4)),
                         ),
                         child: Row(
                           children: [
                             Icon(Icons.error_outline_rounded,
-                                color: const Color(0xFFFF4757), size: 18.sp),
-                            SizedBox(width: 8.w),
+                                color: ext.errorRed, size: 18.sp),
+                            SizedBox(width: AppSpacing.sm.w),
                             Expanded(
                               child: Text(
                                 state.errorMessage!,
@@ -234,7 +235,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                     validator: (v) => Validators.emailValidator(v),
                     label: 'Email',
                   ),
-                  SizedBox(height: 16.h),
+                  SizedBox(height: AppSpacing.lg.h),
                   AppPasswordField(
                     label: 'Password',
                     validator: (v) => Validators.passwordValidator(v),
@@ -259,7 +260,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 12.h),
+                  SizedBox(height: AppSpacing.md.h),
 
                   // ── Login button ────────────────────────────────────────
                   BlocBuilder<LoginBloc, LoginState>(
@@ -272,7 +273,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                       );
                     },
                   ),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: AppSpacing.xl.h),
 
                   // ── Sign up link ─────────────────────────────────────────
                   Row(

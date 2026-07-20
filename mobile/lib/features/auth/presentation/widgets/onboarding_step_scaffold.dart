@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_button.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Shared chrome for every step of the post-signup onboarding wizard — back
 /// arrow, segmented step-progress bar, title/subtitle, scrollable content,
@@ -65,7 +66,7 @@ class OnboardingStepScaffold extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 8.h),
+                  SizedBox(height: AppSpacing.sm.h),
                   SizedBox(
                     height: 40.h,
                     child: canPop
@@ -98,7 +99,7 @@ class OnboardingStepScaffold extends StatelessWidget {
                     ),
                   ),
                   if (subtitle != null) ...[
-                    SizedBox(height: 8.h),
+                    SizedBox(height: AppSpacing.sm.h),
                     Text(
                       subtitle!,
                       style: TextStyle(
@@ -107,10 +108,10 @@ class OnboardingStepScaffold extends StatelessWidget {
                           height: 1.4),
                     ),
                   ],
-                  SizedBox(height: 24.h),
+                  SizedBox(height: AppSpacing.xxl.h),
                   Expanded(child: content),
                   if (primaryLabel != null) ...[
-                    SizedBox(height: 16.h),
+                    SizedBox(height: AppSpacing.lg.h),
                     AppButton(
                       fullWidth: true,
                       height: 52.h,
@@ -122,7 +123,7 @@ class OnboardingStepScaffold extends StatelessWidget {
                     ),
                   ],
                   if (onSkip != null) ...[
-                    SizedBox(height: 16.h),
+                    SizedBox(height: AppSpacing.lg.h),
                     Center(
                       child: Semantics(
                         button: true,
@@ -138,7 +139,7 @@ class OnboardingStepScaffold extends StatelessWidget {
                       ),
                     ),
                   ],
-                  SizedBox(height: 24.h),
+                  SizedBox(height: AppSpacing.xxl.h),
                 ],
               ),
             ),

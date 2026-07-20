@@ -9,6 +9,7 @@ import 'package:skidoo_app/features/auth/presentation/pages/onboarding_complete_
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 /// Final onboarding step — "Creators to follow" (4/4), the same for every
 /// role. Photographer-only portfolio setup + verification no longer happen
@@ -151,7 +152,7 @@ class _FollowSuggestionsPageState extends State<FollowSuggestionsPage> {
     return Column(
       children: [
         for (var i = 0; i < _suggestions.length; i++) ...[
-          if (i > 0) SizedBox(height: 12.h),
+          if (i > 0) SizedBox(height: AppSpacing.md.h),
           _SuggestionCard(
             suggestion: _suggestions[i],
             following: FollowRepository.followedIds.contains(_suggestions[i].id),
@@ -202,7 +203,7 @@ class _SuggestionCard extends StatelessWidget {
                 child: Row(
                   children: [
                     _SuggestionAvatar(suggestion: suggestion, ext: ext),
-                    SizedBox(width: 12.w),
+                    SizedBox(width: AppSpacing.md.w),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,7 +230,7 @@ class _SuggestionCard extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(width: 8.w),
+          SizedBox(width: AppSpacing.sm.w),
           SizedBox(
             height: 34.h,
             child: Semantics(
@@ -249,7 +250,7 @@ class _SuggestionCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10.r),
                   ),
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
                 ),
                 child: pending
                     ? SizedBox(

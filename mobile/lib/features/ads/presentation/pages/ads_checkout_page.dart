@@ -8,6 +8,7 @@ import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class AdsCheckoutPage extends StatefulWidget {
   const AdsCheckoutPage({
@@ -119,7 +120,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.open_in_new_rounded, size: 52.sp, color: ext.accentGold),
-                SizedBox(height: 20.h),
+                SizedBox(height: AppSpacing.xl.h),
                 Text(
                   'Payment opened in a new tab',
                   textAlign: TextAlign.center,
@@ -131,7 +132,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
                   textAlign: TextAlign.center,
                   style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp, height: 1.5),
                 ),
-                SizedBox(height: 32.h),
+                SizedBox(height: AppSpacing.xxxl.h),
                 AppButton(
                   fullWidth: true,
                   label: 'Payment complete',
@@ -140,7 +141,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
                     Navigator.of(context).pop();
                   },
                 ),
-                SizedBox(height: 12.h),
+                SizedBox(height: AppSpacing.md.h),
                 TextButton(
                   onPressed: _launchWebPayment,
                   child: Text(
@@ -183,7 +184,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
                 children: [
                   CircularProgressIndicator(color: ext.accentGold),
                   if (widget.amountGhs > 0) ...[
-                    SizedBox(height: 20.h),
+                    SizedBox(height: AppSpacing.xl.h),
                     _PaymentInfoCard(
                       amountGhs: widget.amountGhs,
                       originalAmount: widget.originalAmount,
@@ -222,9 +223,9 @@ class _PaymentInfoCard extends StatelessWidget {
     final ghsFormatted = ExchangeRates.formatGhs(amountGhs);
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 32.w),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.w),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w, vertical: AppSpacing.lg.h),
         decoration: BoxDecoration(
           color: ext.cardSurface,
           borderRadius: BorderRadius.circular(14.r),

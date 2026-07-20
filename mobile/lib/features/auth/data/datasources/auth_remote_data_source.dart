@@ -16,6 +16,13 @@ abstract class AuthRemoteDataSource {
   Future<void> resendVerification(String email);
   Future<void> updateProfile(String clientId, Map<String, dynamic> data);
   Future<void> becomePhotographer();
+
+  // ── Password reset (see mobile/docs/FRONTEND_RESET_PASSWORD.md) ──────────
+  // Role-agnostic — `/client/...` works regardless of the account's actual
+  // role, so these don't need a role prefix param.
+  Future<void> requestPasswordReset(String email);
+  Future<void> verifyResetCode(String email, String code);
+  Future<void> resetPassword(String email, String code, String password);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -179,6 +186,66 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       rethrow;
     } catch (e) {
       throw const app_exceptions.ServerException('Unexpected profile update error.');
+    }
+  }
+
+  // ── Password reset ────────────────────────────────────────────────────────
+  // Same `/client/confirm-email` endpoint the sign-up flow's [confirmEmail]
+  // hits, but this is a separate method: the reset flow doesn't log the user
+  // in, so the response here is just `{"message": "..."}"` — not the
+  // `LoginResponseObject` shape [confirmEmail] parses.
+  @override
+  Future<void> requestPasswordReset(String email) async {
+    try {
+      final res = await _api.dio.post(
+        '/client/confirm-email',
+        data: jsonEncode({'email': email}),
+      );
+      if (res.statusCode == 200) return;
+      throw app_exceptions.ServerException(
+          'Could not send reset code. Status: ${res.statusCode}');
+    } on dio.DioException catch (err) {
+      throw _mapDioException(err);
+    } on app_exceptions.ServerException {
+      rethrow;
+    } catch (e) {
+      throw const app_exceptions.NetworkException('Reset request failed.');
+    }
+  }
+
+  @override
+  Future<void> verifyResetCode(String email, String code) async {
+    try {
+      final res = await _api.dio.post(
+        '/client/verify-code',
+        data: jsonEncode({'email': email, 'code': code}),
+      );
+      if (res.statusCode == 200) return;
+      throw const app_exceptions.ServerException('Code verification failed.');
+    } on dio.DioException catch (err) {
+      throw _mapDioException(err);
+    } on app_exceptions.ServerException {
+      rethrow;
+    } catch (e) {
+      throw const app_exceptions.NetworkException('Code verification failed.');
+    }
+  }
+
+  @override
+  Future<void> resetPassword(String email, String code, String password) async {
+    try {
+      final res = await _api.dio.post(
+        '/client/change-password',
+        data: jsonEncode({'email': email, 'code': code, 'password': password}),
+      );
+      if (res.statusCode == 200) return;
+      throw const app_exceptions.ServerException('Password was not reset.');
+    } on dio.DioException catch (err) {
+      throw _mapDioException(err);
+    } on app_exceptions.ServerException {
+      rethrow;
+    } catch (e) {
+      throw const app_exceptions.NetworkException('Password reset failed.');
     }
   }
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class _Country {
   const _Country(this.name, this.iso2, this.dial);
@@ -169,7 +171,7 @@ class _AppPhoneFieldState extends State<AppPhoneField> {
           errorBorder: InputBorder.none,
           focusedErrorBorder: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 18.h),
-          errorStyle: TextStyle(color: const Color(0xFFFF4757), fontSize: 11.5.sp, height: 0.1),
+          errorStyle: TextStyle(color: ext.errorRed, fontSize: 11.5.sp, height: 0.1),
           errorMaxLines: 1,
         ),
       ),
@@ -199,7 +201,7 @@ class _DialCodeDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(left: 12.w, right: 4.w),
+      padding: EdgeInsets.only(left: AppSpacing.md.w, right: AppSpacing.xs.w),
       child: DropdownButtonHideUnderline(
         child: Semantics(
           button: true,
@@ -208,7 +210,7 @@ class _DialCodeDropdown extends StatelessWidget {
             value: iso2,
             isDense: true,
             dropdownColor: fillColor,
-            borderRadius: BorderRadius.circular(12.r),
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
             style: TextStyle(color: textColor, fontSize: 14.sp),
             icon: Icon(Icons.arrow_drop_down_rounded,
                 color: isFocused ? focusedColor : idleColor, size: 20.sp),
