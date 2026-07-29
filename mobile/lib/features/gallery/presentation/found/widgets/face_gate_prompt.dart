@@ -61,9 +61,16 @@ class FaceGatePrompt extends StatelessWidget {
   String get _title => title ?? 'Add your face to get found';
 
   String get _subtitle =>
-      subtitle ?? 'Upload a selfie so we can match you in photos from events.';
+      subtitle ??
+      'Upload a selfie so we can match you in photos from events you attend.';
 
-  String get _actionLabel => actionLabel ?? 'Add my face';
+  /// The two states ask for different things, so they name the action
+  /// differently. A signed-in user is one step from done, and the design says
+  /// exactly what that step is — "Take a selfie". A guest has an account to
+  /// create first, so theirs stays the broader "Add my face".
+  String get _actionLabel =>
+      actionLabel ??
+      (reason == FaceGateReason.noFaceAdded ? 'Take a selfie' : 'Add my face');
 
   @override
   Widget build(BuildContext context) {
@@ -115,12 +122,14 @@ class _FaceGateIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A circle, per the design — the earlier rounded square came from the
+    // guest mock's placeholder box, not from the real screen.
     return Container(
       width: 96.w,
       height: 96.w,
       decoration: BoxDecoration(
         color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(AppRadius.lg.r),
+        shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
       child: Icon(

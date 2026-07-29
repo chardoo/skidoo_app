@@ -201,6 +201,12 @@ class _SignUpViewState extends State<_SignUpView>
                       child: SingleChildScrollView(
                         padding: EdgeInsets.symmetric(horizontal: 28.w),
                         child: Form(
+                      // Validate as the user types, not only on submit: the
+                      // password rules are strict enough that discovering them
+                      // one failure at a time — after each rejected submit — is
+                      // a guessing game. onUserInteraction keeps a pristine
+                      // form quiet, so nothing is flagged before it is typed.
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

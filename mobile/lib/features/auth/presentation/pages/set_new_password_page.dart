@@ -87,6 +87,9 @@ class _SetNewPasswordPageState extends State<SetNewPasswordPage> {
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: 28.w),
               child: Form(
+                // Same reasoning as sign-up: the rules are strict, so show
+                // which one is unmet while the user is still typing.
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

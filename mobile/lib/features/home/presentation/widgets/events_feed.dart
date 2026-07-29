@@ -19,6 +19,9 @@ import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart'
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:skidoo_app/features/discovery/presentation/widgets/swipe_up_hint.dart';
+import 'package:skidoo_app/services/auth_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // ── Virtual feed item types ───────────────────────────────────────────────────
 
@@ -138,6 +141,7 @@ class _EventsFeedState extends State<EventsFeed> {
   @override
   void initState() {
     super.initState();
+    _resolveSwipeHint();
     _fetchInitial();
     // NOTE: deliberately NOT auto-focusing the feed on web. Grabbing focus on
     // load captured the browser's keyboard/input focus, which then blocked the
@@ -288,8 +292,26 @@ class _EventsFeedState extends State<EventsFeed> {
     return 0;
   }
 
+  /// Swipe-up hint over the first card — same affordance as the guest feed,
+  /// and the same device-level flag, so someone who learned the gesture as a
+  /// guest is not taught it again after signing up.
+  bool _showSwipeHint = false;
+
+  Future<void> _resolveSwipeHint() async {
+    if (await sl<AuthService>().getHasSeenSwipeHint()) return;
+    if (mounted) setState(() => _showSwipeHint = true);
+  }
+
+  void _dismissSwipeHint() {
+    if (!_showSwipeHint) return;
+    setState(() => _showSwipeHint = false);
+    sl<AuthService>().setHasSeenSwipeHint();
+  }
+
   void _onPageChanged(List<_FeedItem> virtualItems, int pageIndex) {
-    final item = pageIndex < virtualItems.length ? virtualItems[pageIndex] : null;
+    _dismissSwipeHint();
+    final item =
+        pageIndex < virtualItems.length ? virtualItems[pageIndex] : null;
     _activeCardIndex.value = item is _EventItem ? item.eventIndex : -1;
 
     if (item is _AdItem && !_firedAdImpressions.contains(item.adIndex)) {
@@ -297,7 +319,8 @@ class _EventsFeedState extends State<EventsFeed> {
       _fireAdImpression(item.adIndex);
     }
 
-    if (pageIndex >= virtualItems.length - 2 && !widget.discoveryState.isLoadingMore) {
+    if (pageIndex >= virtualItems.length - 2 &&
+        !widget.discoveryState.isLoadingMore) {
       widget.onLoadMore();
     }
   }
@@ -411,7 +434,9 @@ class _EventsFeedState extends State<EventsFeed> {
               e.message.contains('USER_BLOCKED'));
       AppSnackBar.error(
         context,
-        blocked ? 'This user is not accepting messages.' : 'Could not open chat.',
+        blocked
+            ? 'This user is not accepting messages.'
+            : 'Could not open chat.',
       );
     }
   }
@@ -429,8 +454,8 @@ class _EventsFeedState extends State<EventsFeed> {
     // that slot has resolved or is known to be empty. Rendering those as a
     // PageView page produces a swipeable blank screen; skipping them here
     // means the feed only ever shows a page once there's something on it.
-    final virtualItems = _buildVirtualList(state.events, state.isLoadingMore)
-        .where((item) {
+    final virtualItems =
+        _buildVirtualList(state.events, state.isLoadingMore).where((item) {
       if (item is _AdItem) {
         return item.adIndex < _ads.length && _ads[item.adIndex] != null;
       }
@@ -447,89 +472,104 @@ class _EventsFeedState extends State<EventsFeed> {
           : null,
       child: Padding(
         padding: EdgeInsets.only(top: widget.topPadding),
-        child: PageView.builder(
-          controller: _pageCtrl,
-          scrollDirection: Axis.vertical,
-          itemCount: virtualItems.length,
-          onPageChanged: (i) => _onPageChanged(virtualItems, i),
-          itemBuilder: (context, index) {
-            final item = virtualItems[index];
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _pageCtrl,
+              scrollDirection: Axis.vertical,
+              itemCount: virtualItems.length,
+              onPageChanged: (i) => _onPageChanged(virtualItems, i),
+              itemBuilder: (context, index) {
+                final item = virtualItems[index];
 
-            // ── Loading spinner ───────────────────────────────────────────
-            if (item is _LoadingItem) {
-              return const Center(child: CircularProgressIndicator());
-            }
+                // ── Loading spinner ───────────────────────────────────────────
+                if (item is _LoadingItem) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            // ── Injected ad ───────────────────────────────────────────────
-            if (item is _AdItem) {
-              final adIdx = item.adIndex;
-              final ad = adIdx < _ads.length ? _ads[adIdx] : null;
-              if (ad == null) return const SizedBox.shrink();
+                // ── Injected ad ───────────────────────────────────────────────
+                if (item is _AdItem) {
+                  final adIdx = item.adIndex;
+                  final ad = adIdx < _ads.length ? _ads[adIdx] : null;
+                  if (ad == null) return const SizedBox.shrink();
 
-              return FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: MediaQuery.sizeOf(context).width,
-                  child: FeedItemCard(
-                    key: ValueKey('ad_$adIdx'),
-                    data: FeedItemData.fromAd(
-                      ad,
-                      onCtaTap: () => _repo.trackClick(
-                        adId: ad.adId,
-                        campaignId: ad.campaignId,
-                        impressionId: adIdx < _impressionIds.length
-                            ? _impressionIds[adIdx]
-                            : null,
+                  return FittedBox(
+                    fit: BoxFit.contain,
+                    child: SizedBox(
+                      width: MediaQuery.sizeOf(context).width,
+                      child: FeedItemCard(
+                        key: ValueKey('ad_$adIdx'),
+                        data: FeedItemData.fromAd(
+                          ad,
+                          onCtaTap: () => _repo.trackClick(
+                            adId: ad.adId,
+                            campaignId: ad.campaignId,
+                            impressionId: adIdx < _impressionIds.length
+                                ? _impressionIds[adIdx]
+                                : null,
+                          ),
+                        ),
+                        onHide: () => setState(() {
+                          if (adIdx < _ads.length) _ads[adIdx] = null;
+                        }),
                       ),
                     ),
-                    onHide: () => setState(() {
-                      if (adIdx < _ads.length) _ads[adIdx] = null;
-                    }),
-                  ),
-                ),
-              );
-            }
+                  );
+                }
 
-            // ── Injected request ──────────────────────────────────────────
-            if (item is _RequestItem) {
-              if (item.requestIndex >= visibleRequests.length) {
-                return const SizedBox.shrink();
-              }
-              final req = visibleRequests[item.requestIndex];
-              return FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: MediaQuery.sizeOf(context).width,
-                  child: FeedItemCard(
-                    key: ValueKey('req_${req.id}'),
-                    data: FeedItemData.fromRequest(
-                      req,
-                      onMessageTap: () => _openChat(
-                        context,
-                        req.requesterId,
-                        req.requesterType,
-                        req.requesterName,
+                // ── Injected request ──────────────────────────────────────────
+                if (item is _RequestItem) {
+                  if (item.requestIndex >= visibleRequests.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final req = visibleRequests[item.requestIndex];
+                  return FittedBox(
+                    fit: BoxFit.contain,
+                    child: SizedBox(
+                      width: MediaQuery.sizeOf(context).width,
+                      child: FeedItemCard(
+                        key: ValueKey('req_${req.id}'),
+                        data: FeedItemData.fromRequest(
+                          req,
+                          onMessageTap: () => _openChat(
+                            context,
+                            req.requesterId,
+                            req.requesterType,
+                            req.requesterName,
+                          ),
+                        ),
+                        onHide: () =>
+                            setState(() => _hiddenRequestIds.add(req.id)),
                       ),
                     ),
-                    onHide: () => setState(() => _hiddenRequestIds.add(req.id)),
-                  ),
-                ),
-              );
-            }
+                  );
+                }
 
-            // ── Event card ────────────────────────────────────────────────
-            final eventItem = item as _EventItem;
-            final event = eventItem.event;
+                // ── Event card ────────────────────────────────────────────────
+                final eventItem = item as _EventItem;
+                final event = eventItem.event;
 
-            return FullBleedEventCard(
-              key: ValueKey('event_${event.id}'),
-              event: event,
-              cardIndex: eventItem.eventIndex,
-              activeCardIndex: _activeCardIndex,
-              onTap: () => widget.onCardTap(event),
-              onHide: () => _onHide(event.id),
-            );
-          },
+                return FullBleedEventCard(
+                  key: ValueKey('event_${event.id}'),
+                  event: event,
+                  cardIndex: eventItem.eventIndex,
+                  activeCardIndex: _activeCardIndex,
+                  onTap: () => widget.onCardTap(event),
+                  onHide: () => _onHide(event.id),
+                );
+              },
+            ),
+            // Swipe-up hint — first card, first time on this device. Below the
+            // feed's own overlays and pointer-transparent, so it never
+            // intercepts the gesture it is asking for.
+            if (_showSwipeHint)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 24.h,
+                child: const Center(child: SwipeUpHint(label: '')),
+              ),
+          ],
         ),
       ),
     );

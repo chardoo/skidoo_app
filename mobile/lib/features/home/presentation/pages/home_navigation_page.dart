@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
@@ -15,6 +13,7 @@ import 'package:skidoo_app/features/home/presentation/widgets/events_feed.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/home_empty_state.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/feed_top_bar.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/search_events_list.dart';
+import 'package:skidoo_app/features/home/presentation/widgets/unlock_photos_sheet.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/common/widgets/feed_launch_overlay.dart';
 import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
@@ -23,6 +22,8 @@ import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
+import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/core/di/service_locator.dart';
 
 class HomeNavigationPage extends StatefulWidget {
   const HomeNavigationPage({super.key});
@@ -55,6 +56,11 @@ class HomeNavigationPage extends StatefulWidget {
 
 class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool _isSearchOpen = false;
+
+  /// Text the search field opens with — set when search is opened on the
+  /// user's behalf (an unlock code), null when they tapped the search icon.
+  String? _searchSeed;
+
   // 0 = Found, 1 = For You, 2 = Following. Defaults to For You (unchanged
   // landing tab from before Found was added).
   int _selectedTab = 1;
@@ -62,6 +68,20 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   // Web desktop: show photo results inline (no Navigator push).
   bool _showPhotosInline = false;
   String _inlineEventName = '';
+
+  /// Guests get a two-tab bar — Found and Explore — per the guest designs.
+  /// "For You" and "Following" both presuppose an account, so they collapse
+  /// into one Explore tab rather than showing a Following feed that can only
+  /// ever be empty.
+  ///
+  /// Null until the first check resolves; the bar renders the signed-in set
+  /// meanwhile, since that's what most sessions are.
+  bool? _isGuest;
+
+  static const _guestTabs = ['Found', 'Explore'];
+  static const _memberTabs = ['Found', 'For You', 'Following'];
+
+  List<String> get _tabs => _isGuest == true ? _guestTabs : _memberTabs;
 
   bool _headerVisible = false;
   double _headerDownAccum = 0;
@@ -74,7 +94,22 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   @override
   void initState() {
     super.initState();
+    _resolveGuest();
     HomeNavigationPage.pillTabRequest.addListener(_onPillTabRequest);
+    // A request can be posted *before* this page mounts — the guest shell sets
+    // it as it hands off after sign-up. A ValueNotifier only notifies on
+    // change, so the listener above would never see it; consume it here.
+    // Assigned directly rather than via _selectTab because setState is illegal
+    // before the first build (and pointless — nothing has rendered yet).
+    final pendingTab = HomeNavigationPage.pillTabRequest.value;
+    if (pendingTab != null) {
+      _selectedTab = pendingTab;
+      if (pendingTab == 0) {
+        _headerVisible = true;
+        _headerDownAccum = 0;
+      }
+      HomeNavigationPage.pillTabRequest.value = null;
+    }
     if (kIsWeb) {
       // Typeahead: only dispatch the BLoC event search — don't open the content
       // overlay. The sidebar dropdown shows suggestions; the inline photos panel
@@ -113,6 +148,18 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     super.dispose();
   }
 
+  Future<void> _resolveGuest() async {
+    final isGuest = (await sl<AuthService>().getToken()).isEmpty;
+    if (!mounted || isGuest == _isGuest) return;
+    setState(() {
+      _isGuest = isGuest;
+      // Following (2) has no guest equivalent; anyone parked there when the
+      // check resolves lands on Explore rather than on a tab that no longer
+      // exists.
+      if (isGuest && _selectedTab >= _guestTabs.length) _selectedTab = 1;
+    });
+  }
+
   void _onPillTabRequest() {
     final tab = HomeNavigationPage.pillTabRequest.value;
     if (tab != null) {
@@ -146,19 +193,22 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     });
   }
 
-  void _openSearch() {
+  void _openSearch({String? query}) {
     _headerDownAccum = 0;
     setState(() {
       _isSearchOpen = true;
       _headerVisible = true;
       _selectedTab = 1; // always show For You when searching
+      _searchSeed = query;
     });
+    if (query != null && query.isNotEmpty) _onSearchChanged(query);
   }
 
   void _closeSearch() {
     _headerDownAccum = 0;
     setState(() {
       _isSearchOpen = false;
+      _searchSeed = null;
       _headerVisible = false;
       _showPhotosInline = false;
       _inlineEventName = '';
@@ -190,7 +240,17 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     );
   }
 
-  void _openCreate() => CreateBottomSheet.show(context);
+  /// Leading action on the feed bar: a code the user types, or one scanned
+  /// from the preview embedded in the same sheet.
+  ///
+  /// The code is handed straight to the ordinary event search rather than
+  /// being resolved as a code — the backend does not distinguish the two yet,
+  /// so a code behaves exactly like anything else typed into the search box.
+  Future<void> _openUnlock() async {
+    final code = await UnlockPhotosSheet.show(context);
+    if (!mounted || code == null || code.isEmpty) return;
+    _openSearch(query: code);
+  }
 
   void _openEventImages(BuildContext context, EventDiscovery event) {
     Navigator.of(context).push(
@@ -432,6 +492,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                   key: _headerKey,
                   padding: EdgeInsets.only(top: topPadding),
                   child: FeedTopBar(
+                    tabs: _tabs,
+                    // Found is the one tab on the page's own background — see
+                    // the scrim above, which skips it for the same reason.
+                    overSolidBackground: _selectedTab == 0,
                     selectedTab: _selectedTab,
                     onTabChanged: (i) {
                       VideoPauseNotifier.pauseAll();
@@ -442,10 +506,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                     onSearchClose: _closeSearch,
                     onSearchChanged: _onSearchChanged,
                     onQrScan: _openQrScan,
-                    onCreatePressed: (AppConfigRepository.current.adsEnabled ||
-                            AppConfigRepository.current.requestsEnabled)
-                        ? _openCreate
-                        : null,
+                    initialQuery: _searchSeed,
+                    // Shown to guests too: an event code is exactly how
+                    // someone without an account gets at photos of themselves.
+                    onUnlockPressed: _openUnlock,
                   ),
                 ),
               ),

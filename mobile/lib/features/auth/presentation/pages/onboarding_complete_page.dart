@@ -22,6 +22,14 @@ class OnboardingCompletePage extends StatefulWidget {
 class _OnboardingCompletePageState extends State<OnboardingCompletePage> {
   String _name = '';
 
+  /// Whether a selfie was actually added during the wizard.
+  ///
+  /// The face step is skippable, so this screen is reached both ways. Only the
+  /// people who added a face have anything being scanned — telling the rest
+  /// that we're "scanning photos for your face" describes work that isn't
+  /// happening and promises a notification that will never arrive.
+  bool get _hasFace => AuthService.hasAddedFaces.value;
+
   @override
   void initState() {
     super.initState();
@@ -36,26 +44,60 @@ class _OnboardingCompletePageState extends State<OnboardingCompletePage> {
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     return OnboardingStepScaffold(
       currentStep: 0,
       totalSteps: 0,
       title: _name.isNotEmpty ? "You're all set, $_name!" : "You're all set!",
-      subtitle: "We're scanning photos for your face. You will be notified when we find you.",
+      // No face, no scanning claim — just the confirmation and the way out.
+      subtitle: _hasFace
+          ? "We're scanning photos for your face. You will be notified when "
+              'we find you.'
+          : null,
       primaryLabel: 'Go home',
       onPrimaryPressed: _goHome,
-      child: Center(
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 28.h),
-          decoration: BoxDecoration(
-            color: ext.accentGold.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(14.r),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            'Loader for scanning photos',
-            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
-          ),
+      child: _hasFace ? const _ScanningCard() : const SizedBox.shrink(),
+    );
+  }
+}
+
+/// The "we're working on it" panel, shown only when there is actually a scan
+/// running.
+///
+/// Replaces a box that rendered the literal string "Loader for scanning
+/// photos" — the design mock's own placeholder label, shipped as UI.
+class _ScanningCard extends StatelessWidget {
+  const _ScanningCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    return Center(
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 28.h, horizontal: 20.w),
+        decoration: BoxDecoration(
+          color: ext.accentGold.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 18.w,
+              height: 18.w,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: ext.accentGold,
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Flexible(
+              child: Text(
+                'Scanning event photos…',
+                style: TextStyle(color: ext.greetingColor, fontSize: 13.sp),
+              ),
+            ),
+          ],
         ),
       ),
     );

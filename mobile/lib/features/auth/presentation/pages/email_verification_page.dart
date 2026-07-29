@@ -7,11 +7,11 @@ import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/core/widgets/paste_aware_digit_formatter.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/verify_code_usecase.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/face_capture_step_page.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:flutter/services.dart';
 
 const _kCodeLength = 6;
 const _kResendCooldown = Duration(seconds: 30);
@@ -36,9 +36,16 @@ class EmailVerificationPage extends StatefulWidget {
 }
 
 class _EmailVerificationPageState extends State<EmailVerificationPage> {
-  final _controllers =
-      List.generate(_kCodeLength, (_) => TextEditingController());
-  final _focusNodes = List.generate(_kCodeLength, (_) => FocusNode());
+  // One field, not one per digit.
+  //
+  // Six TextFields meant every keystroke called requestFocus() on the next
+  // one, and moving focus between fields tears down the platform text-input
+  // connection and builds a new one — which the user sees as the keyboard
+  // dropping and springing back on each digit. A single field keeps one
+  // connection for the whole code, so the keyboard never re-negotiates. It
+  // also makes paste and iOS SMS autofill work without special handling.
+  final _controller = TextEditingController();
+  final _focusNode = FocusNode();
   bool _isLoading = false;
   String? _error;
   Duration _resendIn = Duration.zero;
@@ -52,12 +59,8 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
 
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
-    for (final f in _focusNodes) {
-      f.dispose();
-    }
+    _controller.dispose();
+    _focusNode.dispose();
     _resendTimer?.cancel();
     super.dispose();
   }
@@ -77,35 +80,17 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     });
   }
 
-  String get _code => _controllers.map((c) => c.text).join();
+  String get _code => _controller.text;
 
-  void _onDigitChanged(int index, String value) {
-    if (value.isNotEmpty && index < _kCodeLength - 1) {
-      _focusNodes[index + 1].requestFocus();
+  void _onCodeChanged(String value) {
+    // Redraw the boxes for the new digit / caret position.
+    setState(() => _error = null);
+    if (value.length == _kCodeLength) {
+      // Complete — close the keyboard deliberately, once, rather than letting
+      // it flicker on the way there.
+      _focusNode.unfocus();
+      _verify();
     }
-    if (value.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
-    }
-    if (_code.length == _kCodeLength) _verify();
-  }
-
-  // Distributes a pasted code across all boxes except [pastedAtIndex] —
-  // that box's own formatter already keeps its correct digit. Programmatic
-  // controller updates don't fire onChanged, so focus/verify are handled
-  // here explicitly rather than relying on _onDigitChanged.
-  void _handlePaste(String digits, int pastedAtIndex) {
-    setState(() {
-      for (var i = 0; i < _kCodeLength; i++) {
-        if (i == pastedAtIndex) continue;
-        _controllers[i].text = i < digits.length ? digits[i] : '';
-      }
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final lastIndex = (digits.length - 1).clamp(0, _kCodeLength - 1);
-      _focusNodes[lastIndex].requestFocus();
-      if (_code.length == _kCodeLength) _verify();
-    });
   }
 
   Future<void> _verify() async {
@@ -180,44 +165,86 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                   SizedBox(height: AppSpacing.xxxl.h),
 
                   // ── Code boxes ─────────────────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(_kCodeLength, (i) {
-                      return SizedBox(
-                        width: 44.w,
-                        height: 52.h,
+                  // A single transparent TextField laid over the six boxes:
+                  // the boxes are pure decoration driven by the controller, so
+                  // there is exactly one focus node and one keyboard session.
+                  Stack(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: List.generate(_kCodeLength, (i) {
+                          final digits = _code;
+                          final filled = i < digits.length;
+                          // The caret sits on the first empty box — or on the
+                          // last one when the code is complete.
+                          final isCurrent = _focusNode.hasFocus &&
+                              (i == digits.length ||
+                                  (digits.length == _kCodeLength &&
+                                      i == _kCodeLength - 1));
+                          return Container(
+                            width: 44.w,
+                            height: 52.h,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: ext.searchFieldFill,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.md.r),
+                              border: Border.all(
+                                color: isCurrent
+                                    ? ext.accentGold
+                                    : Colors.transparent,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Text(
+                              filled ? digits[i] : '',
+                              style: TextStyle(
+                                color: ext.greetingColor,
+                                fontSize: 20.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                      // Invisible, but real: it owns the input connection and
+                      // takes the taps, so tapping any box opens the keyboard.
+                      Positioned.fill(
                         child: TextField(
-                          controller: _controllers[i],
-                          focusNode: _focusNodes[i],
-                          textAlign: TextAlign.center,
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          autofocus: true,
                           keyboardType: TextInputType.number,
-                          maxLength: 1,
-                          style: TextStyle(
-                            color: ext.greetingColor,
-                            fontSize: 20.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          textInputAction: TextInputAction.done,
+                          // Lets iOS offer the emailed code from the keyboard
+                          // bar instead of making the user retype it.
+                          autofillHints: const [AutofillHints.oneTimeCode],
                           inputFormatters: [
-                            PasteAwareDigitFormatter(
-                                index: i, onPaste: _handlePaste),
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(_kCodeLength),
                           ],
-                          decoration: InputDecoration(
-                            counterText: '',
-                            filled: true,
-                            fillColor: ext.searchFieldFill,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.md.r),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.md.r),
-                              borderSide: BorderSide(color: ext.accentGold, width: 1.5),
-                            ),
+                          // Hidden rather than removed — the boxes above are
+                          // the visible rendering of this field's value.
+                          showCursor: false,
+                          cursorColor: Colors.transparent,
+                          style: const TextStyle(
+                            color: Colors.transparent,
+                            height: 0.01,
                           ),
-                          onChanged: (v) => _onDigitChanged(i, v),
+                          decoration: const InputDecoration(
+                            counterText: '',
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                            fillColor: Colors.transparent,
+                            filled: true,
+                          ),
+                          onChanged: _onCodeChanged,
+                          onSubmitted: (_) => _verify(),
                         ),
-                      );
-                    }),
+                      ),
+                    ],
                   ),
 
                   if (_error != null) ...[

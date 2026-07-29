@@ -65,14 +65,17 @@ void main() {
     )));
     await tester.pumpAndSettle();
 
-    // Identical prompt — the user is missing a face either way.
+    // Same headline — the user is missing a face either way.
     expect(find.text('Add your face to get found'), findsOneWidget);
-    expect(find.text('Add my face'), findsOneWidget);
-    // ...but they are already signed in.
+    // ...but the action is named for the one step they have left, per the
+    // signed-in design, rather than the guest's broader "Add my face".
+    expect(find.text('Take a selfie'), findsOneWidget);
+    expect(find.text('Add my face'), findsNothing);
+    // ...and they are already signed in.
     expect(find.text('Sign in'), findsNothing);
     expect(find.textContaining('Already have an account'), findsNothing);
 
-    await tester.tap(find.text('Add my face'));
+    await tester.tap(find.text('Take a selfie'));
     expect(primaryTaps, 1);
   });
 

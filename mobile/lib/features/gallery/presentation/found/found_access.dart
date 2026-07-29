@@ -72,10 +72,19 @@ Future<void> promptSignUp(
   }
 }
 
-/// Opens the existing face-capture step.
+/// Opens face capture as a standalone errand: capture, upload, come back.
+///
+/// [FaceCaptureStepPage] is also step 1 of the sign-up wizard, where finishing
+/// continues to "what best describes you" and the rest of account setup.
+/// Callers here are users who completed all of that long ago and only lack a
+/// selfie, so [FaceCaptureStepPage.standalone] pops back to the Found tab
+/// instead — and drops the "1 of 4" counter, which would otherwise promise
+/// three more screens that never come.
 Future<void> startFaceCapture(BuildContext context) {
   return Navigator.of(context).push<void>(
-    MaterialPageRoute(builder: (_) => const FaceCaptureStepPage()),
+    MaterialPageRoute(
+      builder: (_) => const FaceCaptureStepPage(standalone: true),
+    ),
   );
 }
 

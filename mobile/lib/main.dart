@@ -94,12 +94,16 @@ void main() async {
     authService.getExpiration(),
     // [3] Whether the first-run onboarding carousel has already been shown.
     authService.getHasSeenOnboarding(),
+    // [4] Whether a reference selfie is on file — gates the Found tab. Seeded
+    //     here so the gate resolves on the first frame instead of flashing.
+    authService.getHasAddedFaces(),
   ]);
 
   final isDeviceCompromised = results[0] as bool;
   final token              = results[1] as String;
   final expiration         = results[2] as String;
   final hasSeenOnboarding  = results[3] as bool;
+  final hasFaces           = results[4] as bool;
 
   // Replicate isTokenExpired() logic without a second Keychain round-trip.
   bool isExpired = token.isEmpty;
@@ -117,6 +121,7 @@ void main() async {
   // Seed the synchronous auth state before the first frame so the web
   // sidebar immediately renders the correct nav without an async round-trip.
   AuthService.isAuthenticated.value = !isExpired && token.isNotEmpty;
+  AuthService.hasAddedFaces.value = hasFaces;
 
   runApp(MyApp(
     token: isExpired ? '' : token,

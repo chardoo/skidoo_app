@@ -22,8 +22,19 @@ enum _Step { intro, scanning, confirmed }
 /// capture, then uploads via the same `/client/train-model` endpoint the
 /// post-signup "add your photos" reminder (FaceRecognitionPage) already uses
 /// — so a face added here or added later end up in the exact same place.
+///
+/// Runs in two modes. During sign-up it is step 1 of the 4-step wizard and
+/// hands off to the audience-preference question when done. Reached later from
+/// the Found gate ([standalone]) it is a single errand: capture, upload, pop —
+/// no wizard chrome, and no re-running questions the user already answered
+/// when they created the account.
 class FaceCaptureStepPage extends StatefulWidget {
-  const FaceCaptureStepPage({super.key});
+  const FaceCaptureStepPage({super.key, this.standalone = false});
+
+  /// True when opened by an already-onboarded user who just needs a face on
+  /// file. Suppresses the step counter and returns to the caller instead of
+  /// continuing into the sign-up wizard.
+  final bool standalone;
 
   @override
   State<FaceCaptureStepPage> createState() => _FaceCaptureStepPageState();
@@ -69,7 +80,7 @@ class _FaceCaptureStepPageState extends State<FaceCaptureStepPage> {
 
   Future<void> _continueWithPhoto() async {
     if (_captured == null) {
-      _goToPreference();
+      _finish();
       return;
     }
     setState(() => _uploading = true);
@@ -98,11 +109,23 @@ class _FaceCaptureStepPageState extends State<FaceCaptureStepPage> {
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
-    _goToPreference();
+    _finish();
   }
 
-  void _goToPreference() {
+  /// Where to go once the face is dealt with — including when the upload
+  /// failed or the user skipped, which both land here.
+  ///
+  /// Standalone callers get popped straight back to where they came from (the
+  /// Found tab), because everything past this point belongs to sign-up: the
+  /// audience question, and the wizard steps after it. Sending an existing
+  /// user back through "what best describes you" is asking them to redo
+  /// account setup to add a selfie.
+  void _finish() {
     if (!mounted) return;
+    if (widget.standalone) {
+      Navigator.of(context).pop();
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const AudiencePreferencePage()),
     );
@@ -115,7 +138,7 @@ class _FaceCaptureStepPageState extends State<FaceCaptureStepPage> {
     if (_step == _Step.confirmed) {
       return OnboardingStepScaffold(
         currentStep: 1,
-        totalSteps: 4,
+        totalSteps: widget.standalone ? 1 : 4,
         title: _name.isNotEmpty ? 'Looks great, $_name!' : 'Looks great!',
         subtitle: "Your face data is encrypted and used only to find your "
             "photos. It's never shared with third parties.",
@@ -135,13 +158,13 @@ class _FaceCaptureStepPageState extends State<FaceCaptureStepPage> {
 
     return OnboardingStepScaffold(
       currentStep: 1,
-      totalSteps: 4,
+      totalSteps: widget.standalone ? 1 : 4,
       title: 'Add your face',
       subtitle: "We use your selfie to find you in photos. It's stored "
           'privately and never shared.',
       primaryLabel: 'Scan my face',
       onPrimaryPressed: _scan,
-      onSkip: _goToPreference,
+      onSkip: _finish,
       child: Builder(builder: (context) {
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
         return Center(child: DottedCircle(color: ext.accentGold, size: 140.w));

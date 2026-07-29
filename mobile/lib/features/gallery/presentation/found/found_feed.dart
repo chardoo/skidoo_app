@@ -15,6 +15,9 @@ import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_alb
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_filter_button.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_filter_sheet.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_header.dart';
+import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_scanning_state.dart';
+import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 
 /// "Found" tab — the photos the user was face-recognized in, grouped by event
 /// into album sections with a six-tile preview each.
@@ -42,10 +45,45 @@ class _FoundFeedState extends State<FoundFeed> {
   /// meanwhile rather than flashing a gate at someone who has full access.
   FoundAccess? _access;
 
+  /// Whether this tab was on screen at the last dependency change — see
+  /// [didChangeDependencies].
+  bool _wasVisible = false;
+
   @override
   void initState() {
     super.initState();
-    _checkAccess();
+    // The face flag can be cleared from the account page ("Delete my face
+    // data") while this tab sits alive in the home IndexedStack. Without this
+    // it would keep showing matches for a face the server no longer has, until
+    // the next app launch.
+    AuthService.hasAddedFaces.addListener(_checkAccess);
+  }
+
+  /// Re-resolves the gate every time the tab comes back on screen.
+  ///
+  /// The listener above catches a deletion made inside this app, but not one
+  /// that happened anywhere else — another device, or an admin action — and
+  /// the tab stays mounted in the home IndexedStack for the whole session, so
+  /// nothing else would ever ask again. Checking on each activation means the
+  /// tab is right whenever it is actually being looked at.
+  ///
+  /// The home page wraps each tab in `TickerMode(enabled: selected == …)`, so
+  /// that is the visibility signal, and it changes exactly when the user
+  /// switches tabs. Hosts that don't gate this way (the guest shell) see
+  /// `true` and get the initial check on mount, which is the same behaviour as
+  /// before.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final visible = TickerMode.valuesOf(context).enabled;
+    if (visible && !_wasVisible) _checkAccess();
+    _wasVisible = visible;
+  }
+
+  @override
+  void dispose() {
+    AuthService.hasAddedFaces.removeListener(_checkAccess);
+    super.dispose();
   }
 
   /// Found needs an account *and* a face on file. Re-run after sign-up or
@@ -128,11 +166,18 @@ class _FoundFeedState extends State<FoundFeed> {
                 context,
                 onAuthenticated: () async {
                   if (!mounted) return;
-                  await startFaceCapture(context);
+                  // Sign-up runs its own face step, so asking again here would
+                  // be a second capture for anyone who completed it. Only
+                  // follow up when they skipped it in the wizard.
+                  if (!AuthService.hasAddedFaces.value) {
+                    await startFaceCapture(context);
+                  }
                   await _checkAccess();
                 },
               );
             } else {
+              // Already onboarded — a face is the only thing missing, so this
+              // goes straight to capture and straight back here.
               await startFaceCapture(context);
             }
             await _checkAccess();
@@ -159,10 +204,10 @@ class _FoundFeedState extends State<FoundFeed> {
         // No filters and nothing back means the face scan hasn't matched
         // anything yet; with filters on it means this selection is empty.
         if (state.albums.isEmpty && !state.filters.isActive) {
-          return const AppEmptyState(
-            icon: Icons.face_retouching_natural_outlined,
-            message: "We're still scanning event photos for your face — "
-                "check back soon.",
+          return FoundScanningState(
+            onEnterCode: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const QrScanPage()),
+            ),
           );
         }
 

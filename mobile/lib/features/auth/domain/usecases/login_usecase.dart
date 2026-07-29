@@ -33,12 +33,21 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
   /// fresh [LoginResponseObject] from the backend and need identical session
   /// establishment.
   Future<void> establishSession(LoginResponseObject user) async {
-    final previousUserId = await _authService.getUserId();
+    // The *last account to hold a session on this device*, not the current
+    // session's id. `getUserId()` is cleared by logout, so it reads empty on
+    // every post-logout sign-in — which made the switch check below silently
+    // pass and left one user's chat history in place for the next person to
+    // sign in on that phone.
+    final previousUserId = await _authService.getLastAccountId();
 
     if (!kIsWeb) {
       // Different user on the same device — wipe all user-scoped local data
       // so that chat history and E2EE keys from the previous account can never
       // bleed into the new session.
+      //
+      // Same account returning (including after a logout) falls through and
+      // keeps its cached rooms and messages, which is the whole point of
+      // caching them.
       if (previousUserId.isNotEmpty && previousUserId != user.id) {
         await Future.wait([
           _chatDb.clearAll().catchError((_) {}),
@@ -46,6 +55,12 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
         ]);
       }
     }
+
+    // Recorded before the session is saved so a crash mid-bring-up still
+    // leaves the device attributed to this account — the next sign-in then
+    // compares against it and wipes if that was somebody else. Getting this
+    // backwards would be the one failure mode that leaks data.
+    await _authService.setLastAccountId(user.id);
 
     await _repository.saveUserSession(user);
 

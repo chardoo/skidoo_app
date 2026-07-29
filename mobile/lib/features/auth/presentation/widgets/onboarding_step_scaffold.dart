@@ -84,11 +84,15 @@ class OnboardingStepScaffold extends StatelessWidget {
                           )
                         : null,
                   ),
-                  _StepProgressBar(
-                    currentStep: currentStep,
-                    totalSteps: totalSteps,
-                    ext: ext,
-                  ),
+                  // Hidden when there is no wizard to be a step of — the page
+                  // is also reached on its own, where "1 of 4" would promise
+                  // three more screens that never come.
+                  if (totalSteps > 1)
+                    _StepProgressBar(
+                      currentStep: currentStep,
+                      totalSteps: totalSteps,
+                      ext: ext,
+                    ),
                   SizedBox(height: 28.h),
                   Text(
                     title,

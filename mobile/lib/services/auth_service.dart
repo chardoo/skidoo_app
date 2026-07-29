@@ -19,6 +19,18 @@ class AuthService {
   /// Used by the web sidebar to show the correct nav without an async check.
   static final isAuthenticated = ValueNotifier<bool>(false);
 
+  /// Reactive mirror of `has_added_faces` — the same attribute the backend
+  /// returns on login.
+  ///
+  /// Exists because the flag changes from screens that are nowhere near the
+  /// ones that depend on it: deleting face data happens on the account page,
+  /// while the Found tab lives in a keep-alive IndexedStack and would
+  /// otherwise go on showing matches until the next app launch. Anything that
+  /// gates on a face should listen here rather than read once.
+  ///
+  /// Seeded from storage at startup and kept in step by [setHasAddedFaces].
+  static final hasAddedFaces = ValueNotifier<bool>(false);
+
   // ── Mobile backend ───────────────────────────────────────────────────────────
   static const _secure = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -48,8 +60,10 @@ class AuthService {
   static const _kHasAddedFaces     = 'auth.has_added_faces';
   static const _kLastFacePrompt    = 'auth.last_face_prompt';
   static const _kHasSeenOnboarding = 'auth.has_seen_onboarding';
+  static const _kHasSeenSwipeHint  = 'auth.has_seen_swipe_hint';
   static const _kAudiencePreference = 'auth.audience_preference';
   static const _kInstallMarker     = 'auth.install_marker';
+  static const _kLastAccountId     = 'auth.last_account_id';
 
   // ── Adaptive helpers ─────────────────────────────────────────────────────────
 
@@ -126,7 +140,10 @@ class AuthService {
 
   // ── Face / reference photos prompt ────────────────────────────────────────────
   /// Whether the user has uploaded their reference photos (from login response).
-  Future<void> setHasAddedFaces(bool v) => _write(_kHasAddedFaces, v.toString());
+  Future<void> setHasAddedFaces(bool v) {
+    hasAddedFaces.value = v;
+    return _write(_kHasAddedFaces, v.toString());
+  }
   Future<bool> getHasAddedFaces() async =>
       (await _read(_kHasAddedFaces)) == 'true';
 
@@ -185,6 +202,32 @@ class AuthService {
   Future<bool> getHasSeenOnboarding() async =>
       (await _read(_kHasSeenOnboarding)) == 'true';
 
+  /// The last account to hold a session on this device.
+  ///
+  /// Deliberately **not** cleared by [removeToken]: it is what tells the next
+  /// sign-in whether it is the same person coming back or somebody new, and
+  /// that question only has an answer if the marker outlives the session.
+  /// [getUserId] cannot serve this purpose — logout deletes it, so after a
+  /// logout every login looked like a first login and the account-switch wipe
+  /// never ran, leaving one user's chat history on screen for the next.
+  ///
+  /// Keyed on the account id rather than the email so that changing an email
+  /// keeps the same person's data, while a fresh sign-up (always a new id)
+  /// wipes.
+  Future<void> setLastAccountId(String id) => _write(_kLastAccountId, id);
+  Future<String> getLastAccountId() async =>
+      await _read(_kLastAccountId) ?? '';
+
+  /// Device-level flag for the feed's swipe-up hint, shown once ever.
+  ///
+  /// Device-level rather than per-account, and deliberately grouped with
+  /// [setHasSeenOnboarding]: the hint teaches a *gesture*, which someone only
+  /// needs to learn once on this phone — not again after signing up, and not
+  /// again on each new account.
+  Future<void> setHasSeenSwipeHint() => _write(_kHasSeenSwipeHint, 'true');
+  Future<bool> getHasSeenSwipeHint() async =>
+      (await _read(_kHasSeenSwipeHint)) == 'true';
+
   /// "I'm here to discover" vs "Share my work" — a local content-personalisation
   /// signal only, does not change the account's role.
   Future<void> setAudiencePreference(String preference) =>
@@ -237,6 +280,7 @@ class AuthService {
   /// Only call this when [isFreshInstall] is true.
   Future<void> resetAllForFreshInstall() async {
     isAuthenticated.value = false;
+    hasAddedFaces.value = false;
     await Future.wait([
       _delete(_kToken),
       _delete(_kExpiration),
@@ -254,6 +298,8 @@ class AuthService {
       _delete(_kHasAddedFaces),
       _delete(_kLastFacePrompt),
       _delete(_kHasSeenOnboarding),
+      _delete(_kHasSeenSwipeHint),
+      _delete(_kLastAccountId),
       _delete(_kAudiencePreference),
       _delete(_kPendingInterests),
     ]);
