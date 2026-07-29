@@ -5,6 +5,8 @@ import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/bloc/found_bloc.dart';
+import 'package:skidoo_app/features/gallery/presentation/found/found_access.dart';
+import 'package:skidoo_app/features/gallery/presentation/found/widgets/face_gate_prompt.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/models/found_album.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/models/found_filters.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/pages/found_album_page.dart';
@@ -36,10 +38,25 @@ class FoundFeed extends StatefulWidget {
 class _FoundFeedState extends State<FoundFeed> {
   bool _sheetOpen = false;
 
+  /// Null until the first check resolves — the tab renders its loader
+  /// meanwhile rather than flashing a gate at someone who has full access.
+  FoundAccess? _access;
+
   @override
   void initState() {
     super.initState();
-    context.read<FoundBloc>().add(const FoundPhotosRequested());
+    _checkAccess();
+  }
+
+  /// Found needs an account *and* a face on file. Re-run after sign-up or
+  /// face capture so the gate clears without the user having to leave the tab.
+  Future<void> _checkAccess() async {
+    final access = await resolveFoundAccess();
+    if (!mounted) return;
+    setState(() => _access = access);
+    if (access == FoundAccess.ready) {
+      context.read<FoundBloc>().add(const FoundPhotosRequested());
+    }
   }
 
   void _reload() =>
@@ -92,6 +109,40 @@ class _FoundFeedState extends State<FoundFeed> {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    if (_access == null) return const AppLoadingIndicator();
+
+    // Same panel either way; only the destination differs. A guest signs up
+    // and continues straight into face capture, so both routes end in the
+    // same place — the gate is about what's missing, not who they are.
+    if (_access != FoundAccess.ready) {
+      return Padding(
+        padding: EdgeInsets.only(top: widget.topPadding),
+        child: FaceGatePrompt(
+          reason: _access == FoundAccess.signedOut
+              ? FaceGateReason.signedOut
+              : FaceGateReason.noFaceAdded,
+          onPrimaryAction: () async {
+            if (_access == FoundAccess.signedOut) {
+              await promptSignUp(
+                context,
+                onAuthenticated: () async {
+                  if (!mounted) return;
+                  await startFaceCapture(context);
+                  await _checkAccess();
+                },
+              );
+            } else {
+              await startFaceCapture(context);
+            }
+            await _checkAccess();
+          },
+          onSignIn: _access == FoundAccess.signedOut
+              ? () => openSignIn(context, onAuthenticated: _checkAccess)
+              : null,
+        ),
+      );
+    }
 
     return BlocBuilder<FoundBloc, FoundState>(
       builder: (context, state) {

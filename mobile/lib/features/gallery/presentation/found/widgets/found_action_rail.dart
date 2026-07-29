@@ -6,6 +6,7 @@ import 'package:skidoo_app/components/media/media_rail_action.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/gallery/presentation/found/found_access.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
 import 'package:skidoo_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
@@ -113,14 +114,14 @@ class _FoundActionRailState extends State<FoundActionRail> {
           iconColor: _liked ? ext.likeRed : Colors.white,
           label: '$_likeCount',
           semanticLabel: _liked ? 'Unlike' : 'Like',
-          onTap: _toggleLike,
+          onTap: () => _gated(_toggleLike),
         ),
         gap,
         MediaRailAction(
           icon: Icons.mode_comment_rounded,
           label: '${widget.photo.commentCount}',
           semanticLabel: 'Comments',
-          onTap: _openComments,
+          onTap: () => _gated(_openComments),
         ),
         gap,
         MediaRailAction(
@@ -129,15 +130,21 @@ class _FoundActionRailState extends State<FoundActionRail> {
           label: _count(0),
           busy: _saving,
           semanticLabel: 'Save photo',
-          onTap: _save,
+          onTap: () => _gated(_save),
         ),
         gap,
         MediaRailAction(
           icon: Icons.near_me_rounded,
           semanticLabel: 'Send',
-          onTap: _send,
+          onTap: () => _gated(_send),
         ),
       ],
     );
   }
+
+  /// Every engagement action is account-gated: a guest is routed to sign-up
+  /// under "Join to get the full experience" and the tap is replayed once the
+  /// account exists, so the like/save they intended still lands.
+  void _gated(VoidCallback action) =>
+      requireAccount(context, action: action);
 }

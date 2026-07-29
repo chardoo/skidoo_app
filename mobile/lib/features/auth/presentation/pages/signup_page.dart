@@ -28,19 +28,48 @@ const _kPrivacyPolicyUrl = 'https://www.piccotechnologies.com/privacy';
 
 class SignUpPage extends StatelessWidget {
   static const routeName = '/signup';
-  const SignUpPage({super.key});
+  const SignUpPage({
+    super.key,
+    this.headline,
+    this.subheadline,
+    this.onContinueBrowsing,
+  });
+
+  /// Overrides the default "Create account" heading. The guest gates pass
+  /// "Join to get the full experience" so the screen explains why it appeared
+  /// rather than looking like an unprompted sign-up.
+  final String? headline;
+  final String? subheadline;
+
+  /// Renders "Continue browsing" at the foot of the page. Only supplied when
+  /// sign-up was *prompted* (a guest tapped a gated action) — a guest who
+  /// chose Sign up from the app bar has the back button and needs no second
+  /// escape.
+  final VoidCallback? onContinueBrowsing;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<SignUpBloc>(),
-      child: const _SignUpView(),
+      child: _SignUpView(
+        headline: headline,
+        subheadline: subheadline,
+        onContinueBrowsing: onContinueBrowsing,
+      ),
     );
   }
 }
 
 class _SignUpView extends StatefulWidget {
-  const _SignUpView();
+  const _SignUpView({
+    this.headline,
+    this.subheadline,
+    this.onContinueBrowsing,
+  });
+
+  final String? headline;
+  final String? subheadline;
+  final VoidCallback? onContinueBrowsing;
 
   @override
   State<_SignUpView> createState() => _SignUpViewState();
@@ -207,7 +236,9 @@ class _SignUpViewState extends State<_SignUpView>
 
                           // ── Heading ────────────────────────────────────
                           Text(
-                            AppLocalizations.of(context)!.signupCreateAccount,
+                            widget.headline ??
+                                AppLocalizations.of(context)!
+                                    .signupCreateAccount,
                             style: TextStyle(
                               color: ext.greetingColor,
                               fontSize: 30.sp,
@@ -218,7 +249,8 @@ class _SignUpViewState extends State<_SignUpView>
                           ),
                           SizedBox(height: AppSpacing.sm.h),
                           Text(
-                            AppLocalizations.of(context)!.signupSubtitle,
+                            widget.subheadline ??
+                                AppLocalizations.of(context)!.signupSubtitle,
                             style: TextStyle(
                               color: ext.searchHintColor,
                               fontSize: 15.sp,
@@ -356,20 +388,41 @@ class _SignUpViewState extends State<_SignUpView>
                           ),
                           SizedBox(height: AppSpacing.md.h),
 
-                          // ── Continue as guest ───────────────────────────
+                          // ── Continue as guest / browsing ────────────────
+                          // A prompted sign-up (guest tapped a gated action)
+                          // returns to the feed they came from; the standalone
+                          // page resets to Discovery as before.
                           Center(
                             child: Semantics(
                               button: true,
-                              label: 'Continue as guest',
+                              label: widget.onContinueBrowsing != null
+                                  ? 'Continue browsing'
+                                  : 'Continue as guest',
                               child: TextButton(
-                                onPressed: _continueAsGuest,
-                                child: Text(
-                                  'Continue as guest',
-                                  style: TextStyle(
-                                    color: ext.searchHintColor,
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                onPressed: widget.onContinueBrowsing ??
+                                    _continueAsGuest,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      widget.onContinueBrowsing != null
+                                          ? 'Continue browsing'
+                                          : 'Continue as guest',
+                                      style: TextStyle(
+                                        color: ext.searchHintColor,
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    if (widget.onContinueBrowsing != null) ...[
+                                      SizedBox(width: AppSpacing.xs.w),
+                                      Icon(
+                                        Icons.arrow_forward_rounded,
+                                        size: 14.sp,
+                                        color: ext.searchHintColor,
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ),
