@@ -76,19 +76,22 @@ class _PicturesFullscreenViewerState extends State<PicturesFullscreenViewer> {
                 child: Row(
                   children: [
                     if (!kIsWeb)
-                      Semantics(button: true, label: 'Close', child: GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: Container(
-                          width: 36.w,
-                          height: 36.w,
-                          decoration: const BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.close,
-                              color: Colors.white, size: 20.sp),
-                        ),
-                      )),
+                      Semantics(
+                          button: true,
+                          label: 'Close',
+                          child: GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            child: Container(
+                              width: 36.w,
+                              height: 36.w,
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.close,
+                                  color: Colors.white, size: 20.sp),
+                            ),
+                          )),
                     const Spacer(),
                     Container(
                       padding: EdgeInsets.symmetric(
@@ -108,8 +111,8 @@ class _PicturesFullscreenViewerState extends State<PicturesFullscreenViewer> {
                             ),
                           Text(
                             '${_currentIndex + 1} / ${widget.pictures.length}',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 13.sp),
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 13.sp),
                           ),
                         ],
                       ),
@@ -138,17 +141,18 @@ class _FullscreenPhoto extends StatelessWidget {
       minScale: 1,
       maxScale: 4,
       child: Center(
-        child: Semantics(image: true, label: 'Event photo', child: CachedNetworkImage(
-          imageUrl: url,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.high,
-          placeholder: (_, __) => const CircularProgressIndicator(
-              color: Colors.white30, strokeWidth: 2),
-          errorWidget: (_, __, ___) => Icon(
-              Icons.broken_image_outlined,
-              color: Colors.white38,
-              size: 64.sp),
-        )),
+        child: Semantics(
+            image: true,
+            label: 'Event photo',
+            child: CachedNetworkImage(
+              imageUrl: url,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              placeholder: (_, __) => const CircularProgressIndicator(
+                  color: Colors.white30, strokeWidth: 2),
+              errorWidget: (_, __, ___) => Icon(Icons.broken_image_outlined,
+                  color: Colors.white38, size: 64.sp),
+            )),
       ),
     );
   }

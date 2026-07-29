@@ -126,33 +126,32 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
                 ? "View ${widget.name}'s profile"
                 : "View creator profile",
             child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: widget.onTap,
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [ext.accentGold, ext.accentGoldDark],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: ext.accentGold.withValues(alpha: 0.35),
-                      blurRadius: 10,
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: widget.onTap,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [ext.accentGold, ext.accentGoldDark],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: ext.accentGold.withValues(alpha: 0.35),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(2.5),
+                  child: _buildInner(initial),
                 ),
-                padding: const EdgeInsets.all(2.5),
-                child: _buildInner(initial),
               ),
             ),
           ),
-          ),
-
           if (!widget.isOwner)
             Positioned(
               bottom: -8,
@@ -160,53 +159,53 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
                 button: true,
                 label: _following ? 'Unfollow' : 'Follow',
                 child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: _toggle,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: _following
-                          ? Colors.white.withValues(alpha: 0.9)
-                          : ext.likeRed,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: ext.homeBackground,
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 4,
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: _toggle,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: _following
+                            ? Colors.white.withValues(alpha: 0.9)
+                            : ext.likeRed,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: ext.homeBackground,
+                          width: 1.5,
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: _loading
-                          ? SizedBox(
-                              width: 10,
-                              height: 10,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.5,
-                                color: _following
-                                    ? Colors.black54
-                                    : Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: _loading
+                            ? SizedBox(
+                                width: 10,
+                                height: 10,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  color: _following
+                                      ? Colors.black54
+                                      : Colors.white,
+                                ),
+                              )
+                            : Icon(
+                                _following
+                                    ? Icons.check_rounded
+                                    : Icons.add_rounded,
+                                size: 13,
+                                color:
+                                    _following ? Colors.black54 : Colors.white,
                               ),
-                            )
-                          : Icon(
-                              _following
-                                  ? Icons.check_rounded
-                                  : Icons.add_rounded,
-                              size: 13,
-                              color:
-                                  _following ? Colors.black54 : Colors.white,
-                            ),
+                      ),
                     ),
                   ),
                 ),
-              ),
               ),
             ),
         ],
@@ -271,39 +270,38 @@ class _WebActionBtnState extends State<WebActionBtn> {
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           onTap: widget.onTap,
-        child: AnimatedScale(
-          scale: _hovered ? 1.14 : 1.0,
-          duration: const Duration(milliseconds: 130),
-          curve: Curves.easeOut,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: (widget.iconSize ?? 28.sp) + 16,
-                height: (widget.iconSize ?? 28.sp) + 16,
-                decoration: BoxDecoration(
-                  color: widget.iconColor.withValues(alpha: 0.10),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Icon(widget.icon,
-                    color: widget.iconColor,
-                    size: widget.iconSize ?? 28.sp),
-              ),
-              if (widget.count != null && widget.count! > 0) ...[
-                const SizedBox(height: 4),
-                Text(
-                  _fmt(widget.count!),
-                  style: TextStyle(
-                    color: widget.countColor,
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
+          child: AnimatedScale(
+            scale: _hovered ? 1.14 : 1.0,
+            duration: const Duration(milliseconds: 130),
+            curve: Curves.easeOut,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: (widget.iconSize ?? 28.sp) + 16,
+                  height: (widget.iconSize ?? 28.sp) + 16,
+                  decoration: BoxDecoration(
+                    color: widget.iconColor.withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
                   ),
+                  alignment: Alignment.center,
+                  child: Icon(widget.icon,
+                      color: widget.iconColor, size: widget.iconSize ?? 28.sp),
                 ),
+                if (widget.count != null && widget.count! > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    _fmt(widget.count!),
+                    style: TextStyle(
+                      color: widget.countColor,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
         ),
       ),
     );

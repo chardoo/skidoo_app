@@ -43,8 +43,14 @@ const _audienceLabels = {
 };
 const _currencies = ['GHS', 'NGN', 'USD', 'ZAR', 'KES', 'EGP', 'XOF', 'RWF'];
 const _eventTypes = [
-  'Wedding', 'Birthday', 'Corporate', 'Concert',
-  'Graduation', 'Engagement', 'Baby Shower', 'Other',
+  'Wedding',
+  'Birthday',
+  'Corporate',
+  'Concert',
+  'Graduation',
+  'Engagement',
+  'Baby Shower',
+  'Other',
 ];
 
 class CreateCampaignPage extends StatefulWidget {
@@ -176,7 +182,8 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   }
 
   Future<void> _createCampaignShell() async {
-    debugPrint('[CreateCampaignPage] _createCampaignShell name="${_nameCtrl.text.trim()}" objective=$_objective budget=${_budgetCtrl.text.trim()} currency=$_currency');
+    debugPrint(
+        '[CreateCampaignPage] _createCampaignShell name="${_nameCtrl.text.trim()}" objective=$_objective budget=${_budgetCtrl.text.trim()} currency=$_currency');
     final result = await _repo.createCampaign(
       name: _nameCtrl.text.trim(),
       objective: _objective,
@@ -186,17 +193,20 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
       endAt: _endDate?.toUtc().toIso8601String(),
     );
     _campaignId = result.id;
-    debugPrint('[CreateCampaignPage] _createCampaignShell — campaignId=$_campaignId');
+    debugPrint(
+        '[CreateCampaignPage] _createCampaignShell — campaignId=$_campaignId');
     if (_campaignId!.isEmpty) {
       throw Exception('Campaign creation failed — no ID returned.');
     }
   }
 
   Future<void> _createAdSet() async {
-    debugPrint('[CreateCampaignPage] _createAdSet campaignId=$_campaignId placement=$_placement audience=$_audience');
+    debugPrint(
+        '[CreateCampaignPage] _createAdSet campaignId=$_campaignId placement=$_placement audience=$_audience');
     final result = await _repo.createAdSet(
       campaignId: _campaignId!,
-      name: '${_nameCtrl.text.trim()} — ${_placementLabels[_placement] ?? _placement}',
+      name:
+          '${_nameCtrl.text.trim()} — ${_placementLabels[_placement] ?? _placement}',
       placement: _placement,
       dailyBudget: double.tryParse(_dailyBudgetCtrl.text.trim()) ?? 0,
       audience: _audience,
@@ -214,7 +224,8 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
 
   Future<void> _createAd() async {
     final mediaType = _creatives.isNotEmpty ? 'image' : 'text';
-    debugPrint('[CreateCampaignPage] _createAd adsetId=$_adsetId headline="${_headlineCtrl.text.trim()}" mediaType=$mediaType');
+    debugPrint(
+        '[CreateCampaignPage] _createAd adsetId=$_adsetId headline="${_headlineCtrl.text.trim()}" mediaType=$mediaType');
     final result = await _repo.createAd(
       adsetId: _adsetId!,
       headline: _headlineCtrl.text.trim(),
@@ -235,10 +246,12 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
       // Upload images at the campaign level so campaign.media is populated in
       // the API response. The ad-creative endpoint replaces rather than appends,
       // so sending N files there would only keep the last one.
-      debugPrint('[CreateCampaignPage] _createAd — uploading ${_creatives.length} image(s) to campaignId=$_campaignId');
+      debugPrint(
+          '[CreateCampaignPage] _createAd — uploading ${_creatives.length} image(s) to campaignId=$_campaignId');
       for (final file in _creatives) {
         final count = await _repo.uploadCampaignMedia(_campaignId!, file);
-        debugPrint('[CreateCampaignPage] _createAd — media_count after upload: $count');
+        debugPrint(
+            '[CreateCampaignPage] _createAd — media_count after upload: $count');
       }
     }
   }
@@ -246,7 +259,8 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   Future<void> _pickCreative() async {
     if (_creatives.length >= _maxCreatives) return;
     final remaining = _maxCreatives - _creatives.length;
-    final picked = await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
+    final picked =
+        await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
     if (picked.isEmpty || !mounted) return;
 
     final valid = <XFile>[];
@@ -268,7 +282,8 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   }
 
   Future<void> _pay() async {
-    debugPrint('[CreateCampaignPage] _pay — requesting authorization URL for campaignId=$_campaignId');
+    debugPrint(
+        '[CreateCampaignPage] _pay — requesting authorization URL for campaignId=$_campaignId');
     final result = await _repo.payCampaign(_campaignId!);
     debugPrint(
       '[CreateCampaignPage] _pay — authorization_url="${result.authorizationUrl.isEmpty ? 'EMPTY' : result.authorizationUrl}" '
@@ -276,7 +291,8 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
     );
     if (!mounted) return;
     if (result.authorizationUrl.isEmpty) {
-      AppSnackBar.error(context, 'Could not get payment URL. Please try again.');
+      AppSnackBar.error(
+          context, 'Could not get payment URL. Please try again.');
       return;
     }
     await Navigator.of(context).push(
@@ -338,12 +354,14 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : IconButton(
-          tooltip: 'Back',
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: ext.greetingColor, size: 20.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb
+            ? null
+            : IconButton(
+                tooltip: 'Back',
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    color: ext.greetingColor, size: 20.sp),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: Text(
           'Create Campaign',
           style: TextStyle(
@@ -371,9 +389,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
             step: _step,
             loading: _loading,
             onNext: _nextStep,
-            onBack: _step > 0
-                ? () => setState(() => _step--)
-                : null,
+            onBack: _step > 0 ? () => setState(() => _step--) : null,
             ext: ext,
           ),
         ],
@@ -381,7 +397,6 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
     );
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
-
 
   Widget _buildStep(BuildContext context, AppThemeExtension ext) {
     switch (_step) {
@@ -395,8 +410,10 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           startDate: _startDate,
           endDate: _endDate,
           ext: ext,
-          onObjectiveChanged: (v) => setState(() => _objective = v ?? _objectives[0]),
-          onCurrencyChanged: (v) => setState(() => _currency = v ?? _currencies[0]),
+          onObjectiveChanged: (v) =>
+              setState(() => _objective = v ?? _objectives[0]),
+          onCurrencyChanged: (v) =>
+              setState(() => _currency = v ?? _currencies[0]),
           onPickStart: () => _pickDate(true),
           onPickEnd: () => _pickDate(false),
         );
@@ -409,8 +426,10 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           locationCtrl: _locationCtrl,
           dailyBudgetCtrl: _dailyBudgetCtrl,
           ext: ext,
-          onPlacementChanged: (v) => setState(() => _placement = v ?? _placements[0]),
-          onAudienceChanged: (v) => setState(() => _audience = v ?? _audienceTypes[0]),
+          onPlacementChanged: (v) =>
+              setState(() => _placement = v ?? _placements[0]),
+          onAudienceChanged: (v) =>
+              setState(() => _audience = v ?? _audienceTypes[0]),
           onEventTypeChanged: (v) => setState(() => _targetEventType = v),
         );
       case 2:
@@ -447,7 +466,9 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           // Creative
           headline: _headlineCtrl.text.trim(),
           body: _bodyCtrl.text.trim(),
-          ctaText: _ctaTextCtrl.text.trim().isEmpty ? 'Learn More' : _ctaTextCtrl.text.trim(),
+          ctaText: _ctaTextCtrl.text.trim().isEmpty
+              ? 'Learn More'
+              : _ctaTextCtrl.text.trim(),
           ctaLink: _ctaLinkCtrl.text.trim(),
           mediaCount: _creatives.length,
           commentsEnabled: _commentsEnabled,
@@ -523,20 +544,15 @@ class _StepDot extends StatelessWidget {
           height: 22.w,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: done || active
-                ? ext.accentGold
-                : ext.searchFieldFill,
+            color: done || active ? ext.accentGold : ext.searchFieldFill,
           ),
           alignment: Alignment.center,
           child: done
-              ? Icon(Icons.check_rounded,
-                  color: Colors.white, size: 12.sp)
+              ? Icon(Icons.check_rounded, color: Colors.white, size: 12.sp)
               : Text(
                   '${_StepIndicator._labels.indexOf(label) + 1}',
                   style: TextStyle(
-                    color: active
-                        ? Colors.white
-                        : ext.searchHintColor,
+                    color: active ? Colors.white : ext.searchHintColor,
                     fontSize: 10.sp,
                     fontWeight: FontWeight.w700,
                   ),
@@ -546,12 +562,9 @@ class _StepDot extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: active || done
-                ? ext.greetingColor
-                : ext.searchHintColor,
+            color: active || done ? ext.greetingColor : ext.searchHintColor,
             fontSize: 9.sp,
-            fontWeight:
-                active ? FontWeight.w700 : FontWeight.w400,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w400,
           ),
         ),
       ],
@@ -597,70 +610,76 @@ class _BottomBar extends StatelessWidget {
       child: Row(
         children: [
           if (onBack != null)
-            Semantics(button: true, label: 'Back', child: GestureDetector(
-              onTap: onBack,
-              child: Container(
-                width: 48.w,
-                height: 50.h,
-                decoration: BoxDecoration(
-                  color: ext.searchFieldFill,
-                  borderRadius: BorderRadius.circular(AppRadius.md.r),
-                ),
-                alignment: Alignment.center,
-                child: Icon(Icons.arrow_back_rounded,
-                    color: ext.greetingColor, size: 20.sp),
-              ),
-            )),
+            Semantics(
+                button: true,
+                label: 'Back',
+                child: GestureDetector(
+                  onTap: onBack,
+                  child: Container(
+                    width: 48.w,
+                    height: 50.h,
+                    decoration: BoxDecoration(
+                      color: ext.searchFieldFill,
+                      borderRadius: BorderRadius.circular(AppRadius.md.r),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(Icons.arrow_back_rounded,
+                        color: ext.greetingColor, size: 20.sp),
+                  ),
+                )),
           if (onBack != null) SizedBox(width: AppSpacing.md.w),
           Expanded(
-            child: Semantics(button: true, label: 'Next', child: GestureDetector(
-              onTap: loading ? null : onNext,
-              child: Container(
-                height: 50.h,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: loading
-                        ? [
-                            ext.accentGold.withValues(alpha: 0.5),
-                            ext.accentGoldDark.withValues(alpha: 0.5),
-                          ]
-                        : [ext.accentGold, ext.accentGoldDark],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(14.r),
-                ),
-                alignment: Alignment.center,
-                child: loading
-                    ? SizedBox(
-                        width: 20.w,
-                        height: 20.w,
-                        child: const CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.5,
-                        ),
-                      )
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _nextLabels[step],
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                          if (step == 3) ...[
-                            SizedBox(width: 6.w),
-                            Icon(Icons.lock_rounded,
-                                color: Colors.white, size: 15.sp),
-                          ],
-                        ],
+            child: Semantics(
+                button: true,
+                label: 'Next',
+                child: GestureDetector(
+                  onTap: loading ? null : onNext,
+                  child: Container(
+                    height: 50.h,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: loading
+                            ? [
+                                ext.accentGold.withValues(alpha: 0.5),
+                                ext.accentGoldDark.withValues(alpha: 0.5),
+                              ]
+                            : [ext.accentGold, ext.accentGoldDark],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
-              ),
-            )),
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                    alignment: Alignment.center,
+                    child: loading
+                        ? SizedBox(
+                            width: 20.w,
+                            height: 20.w,
+                            child: const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _nextLabels[step],
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                              if (step == 3) ...[
+                                SizedBox(width: 6.w),
+                                Icon(Icons.lock_rounded,
+                                    color: Colors.white, size: 15.sp),
+                              ],
+                            ],
+                          ),
+                  ),
+                )),
           ),
         ],
       ),
@@ -707,8 +726,8 @@ class _Step1 extends StatelessWidget {
       children: [
         _CLabel('Campaign name', ext),
         SizedBox(height: AppSpacing.sm.h),
-        _CField(controller: nameCtrl, hint: 'e.g. Summer Wedding Promo', ext: ext),
-
+        _CField(
+            controller: nameCtrl, hint: 'e.g. Summer Wedding Promo', ext: ext),
         SizedBox(height: AppSpacing.xl.h),
         _CLabel('Objective', ext),
         SizedBox(height: AppSpacing.sm.h),
@@ -719,7 +738,6 @@ class _Step1 extends StatelessWidget {
           ext: ext,
           onChanged: onObjectiveChanged,
         ),
-
         SizedBox(height: AppSpacing.xl.h),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -759,7 +777,6 @@ class _Step1 extends StatelessWidget {
             ),
           ],
         ),
-
         SizedBox(height: AppSpacing.xl.h),
         _CLabel('Campaign dates (optional)', ext),
         SizedBox(height: AppSpacing.sm.h),
@@ -833,7 +850,6 @@ class _Step2 extends StatelessWidget {
           ext: ext,
           onChanged: onPlacementChanged,
         ),
-
         SizedBox(height: AppSpacing.xl.h),
         _CLabel('Audience', ext),
         SizedBox(height: AppSpacing.sm.h),
@@ -844,7 +860,6 @@ class _Step2 extends StatelessWidget {
           ext: ext,
           onChanged: onAudienceChanged,
         ),
-
         SizedBox(height: AppSpacing.xl.h),
         _CLabel('Daily budget', ext),
         SizedBox(height: AppSpacing.sm.h),
@@ -854,7 +869,6 @@ class _Step2 extends StatelessWidget {
           ext: ext,
           keyboardType: TextInputType.number,
         ),
-
         SizedBox(height: AppSpacing.xl.h),
         _CLabel('Target event type (optional)', ext),
         SizedBox(height: AppSpacing.sm.h),
@@ -867,7 +881,6 @@ class _Step2 extends StatelessWidget {
           hint: 'Any event type',
           nullable: true,
         ),
-
         SizedBox(height: AppSpacing.xl.h),
         _CLabel('Target location (optional)', ext),
         SizedBox(height: AppSpacing.sm.h),
@@ -921,7 +934,6 @@ class _Step3 extends StatelessWidget {
           hint: 'Grab attention in one line',
           ext: ext,
         ),
-
         SizedBox(height: AppSpacing.xl.h),
         _CLabel('Body text', ext),
         SizedBox(height: AppSpacing.sm.h),
@@ -931,7 +943,6 @@ class _Step3 extends StatelessWidget {
           ext: ext,
           maxLines: 3,
         ),
-
         SizedBox(height: AppSpacing.xl.h),
         Row(
           children: [
@@ -963,7 +974,6 @@ class _Step3 extends StatelessWidget {
           onAdd: onPickCreative,
           onRemove: onRemoveCreative,
         ),
-
         SizedBox(height: AppSpacing.xl.h),
         _CLabel('CTA button text (optional)', ext),
         SizedBox(height: AppSpacing.sm.h),
@@ -972,7 +982,6 @@ class _Step3 extends StatelessWidget {
           hint: 'e.g. Book Now · View Gallery · Learn More',
           ext: ext,
         ),
-
         SizedBox(height: AppSpacing.xl.h),
         _CLabel('CTA link', ext),
         SizedBox(height: AppSpacing.sm.h),
@@ -1058,7 +1067,8 @@ class _Step4 extends StatelessWidget {
       final amount = double.tryParse(budget);
       if (amount != null) {
         final ghsAmount = AppConfigRepository.rates.toGhs(amount, currency);
-        budgetDisplay = '$currency $budget  ≈  ${ExchangeRates.formatGhs(ghsAmount)} (est.)';
+        budgetDisplay =
+            '$currency $budget  ≈  ${ExchangeRates.formatGhs(ghsAmount)} (est.)';
       }
     }
 
@@ -1067,14 +1077,16 @@ class _Step4 extends StatelessWidget {
       final amount = double.tryParse(dailyBudget);
       if (amount != null) {
         final ghsAmount = AppConfigRepository.rates.toGhs(amount, currency);
-        dailyDisplay = '$currency $dailyBudget  ≈  ${ExchangeRates.formatGhs(ghsAmount)}/day (est.)';
+        dailyDisplay =
+            '$currency $dailyBudget  ≈  ${ExchangeRates.formatGhs(ghsAmount)}/day (est.)';
       }
     }
 
     return _StepScroll(
       ext: ext,
       stepTitle: 'Review & Pay',
-      stepSubtitle: 'Your campaign will go live after payment and admin approval.',
+      stepSubtitle:
+          'Your campaign will go live after payment and admin approval.',
       children: [
         // ── Campaign ────────────────────────────────────────────────────────
         _SectionLabel('Campaign', ext),
@@ -1082,8 +1094,10 @@ class _Step4 extends StatelessWidget {
         _ReviewRow('Name', name.isEmpty ? '—' : name, ext),
         _ReviewRow('Objective', _objectiveLabels[objective] ?? objective, ext),
         _ReviewRow('Total budget', budgetDisplay, ext),
-        _ReviewRow('Start date', startDate != null ? _fmt(startDate!) : 'Not set', ext),
-        _ReviewRow('End date', endDate != null ? _fmt(endDate!) : 'Not set', ext),
+        _ReviewRow('Start date',
+            startDate != null ? _fmt(startDate!) : 'Not set', ext),
+        _ReviewRow(
+            'End date', endDate != null ? _fmt(endDate!) : 'Not set', ext),
 
         SizedBox(height: AppSpacing.xl.h),
 
@@ -1105,7 +1119,12 @@ class _Step4 extends StatelessWidget {
         _ReviewRow('Body', body.isEmpty ? '—' : body, ext),
         _ReviewRow('CTA button', ctaText, ext),
         _ReviewRow('CTA link', ctaLink.isEmpty ? '—' : ctaLink, ext),
-        _ReviewRow('Photos', mediaCount == 0 ? 'None (text-only)' : '$mediaCount image${mediaCount == 1 ? '' : 's'}', ext),
+        _ReviewRow(
+            'Photos',
+            mediaCount == 0
+                ? 'None (text-only)'
+                : '$mediaCount image${mediaCount == 1 ? '' : 's'}',
+            ext),
         _ReviewRow('Comments', commentsEnabled ? 'Enabled' : 'Disabled', ext),
 
         SizedBox(height: AppSpacing.xxl.h),
@@ -1121,7 +1140,8 @@ class _Step4 extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.lock_outline_rounded, color: ext.accentGold, size: 16.sp),
+              Icon(Icons.lock_outline_rounded,
+                  color: ext.accentGold, size: 16.sp),
               SizedBox(width: 10.w),
               Expanded(
                 child: Text(
@@ -1328,8 +1348,7 @@ class _CDropdown<T> extends StatelessWidget {
             color: ext.searchHintColor, size: 20.sp),
         hint: hint != null
             ? Text(hint!,
-                style:
-                    TextStyle(color: ext.searchHintColor, fontSize: 14.sp))
+                style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp))
             : null,
         items: [
           if (nullable)
@@ -1337,8 +1356,7 @@ class _CDropdown<T> extends StatelessWidget {
               value: null,
               child: Text(
                 hint ?? 'None',
-                style:
-                    TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
+                style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
               ),
             ),
           ...items.map(
@@ -1397,55 +1415,61 @@ class _CampaignMultiPicker extends StatelessWidget {
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: Semantics(button: true, label: 'Remove media', child: GestureDetector(
-                      onTap: () => onRemove(i),
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.65),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.close_rounded,
-                            color: Colors.white, size: 14.sp),
-                      ),
-                    )),
+                    child: Semantics(
+                        button: true,
+                        label: 'Remove media',
+                        child: GestureDetector(
+                          onTap: () => onRemove(i),
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.close_rounded,
+                                color: Colors.white, size: 14.sp),
+                          ),
+                        )),
                   ),
                 ],
               ),
             );
           }),
           if (!atLimit)
-            Semantics(button: true, label: 'Add', child: GestureDetector(
-              onTap: onAdd,
-              child: Container(
-                width: _thumbSize,
-                height: _thumbSize,
-                decoration: BoxDecoration(
-                  color: ext.searchFieldFill,
-                  borderRadius: BorderRadius.circular(10.r),
-                  border: Border.all(
-                    color: ext.searchHintColor.withValues(alpha: 0.25),
-                    width: 1.2,
-                  ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add_photo_alternate_outlined,
-                        color: ext.accentGold, size: 26.sp),
-                    SizedBox(height: AppSpacing.xs.h),
-                    Text(
-                      'Add Photos',
-                      style: TextStyle(
-                        color: ext.searchHintColor,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
+            Semantics(
+                button: true,
+                label: 'Add',
+                child: GestureDetector(
+                  onTap: onAdd,
+                  child: Container(
+                    width: _thumbSize,
+                    height: _thumbSize,
+                    decoration: BoxDecoration(
+                      color: ext.searchFieldFill,
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: Border.all(
+                        color: ext.searchHintColor.withValues(alpha: 0.25),
+                        width: 1.2,
                       ),
                     ),
-                  ],
-                ),
-              ),
-            )),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_photo_alternate_outlined,
+                            color: ext.accentGold, size: 26.sp),
+                        SizedBox(height: AppSpacing.xs.h),
+                        Text(
+                          'Add Photos',
+                          style: TextStyle(
+                            color: ext.searchHintColor,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
         ],
       ),
     );
@@ -1464,32 +1488,35 @@ class _DatePickerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: label, child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
-        decoration: BoxDecoration(
-          color: ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(AppRadius.md.r),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.calendar_today_outlined,
-                color: ext.searchHintColor, size: 16.sp),
-            SizedBox(width: AppSpacing.sm.w),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: ext.searchHintColor,
-                  fontSize: 13.sp,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
+    return Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
+            decoration: BoxDecoration(
+              color: ext.searchFieldFill,
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
             ),
-          ],
-        ),
-      ),
-    ));
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_outlined,
+                    color: ext.searchHintColor, size: 16.sp),
+                SizedBox(width: AppSpacing.sm.w),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: ext.searchHintColor,
+                      fontSize: 13.sp,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ));
   }
 }

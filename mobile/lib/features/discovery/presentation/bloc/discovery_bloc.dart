@@ -7,7 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
-import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart' show EventReaction;
+import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart'
+    show EventReaction;
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
@@ -39,7 +40,6 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   final Set<String> _roomFetchQueue = {};
   final Map<String, List<Completer<void>>> _roomFetchCompleters = {};
   Timer? _roomFetchTimer;
-
 
   // Tracks rooms already subscribed on the shared WS this session.
   // When the WS reconnects, this set is cleared so rooms re-subscribe.
@@ -87,7 +87,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       _setupLikeListener();
       _wsConnectionSub = _bgService.connectionEvents.listen((connected) {
         if (connected && !isClosed) {
-          _subscribedRoomIds.clear(); // server resets subscriptions on reconnect
+          _subscribedRoomIds
+              .clear(); // server resets subscriptions on reconnect
           _setupLikeListener();
         }
       });
@@ -235,8 +236,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     }
     // Chain onto any prior prefetch so _prefetchFuture always represents
     // all outstanding room-fetch work (initial load + load-more pages).
-    _prefetchFuture = (_prefetchFuture ?? Future<void>.value())
-        .then((_) => chain);
+    _prefetchFuture =
+        (_prefetchFuture ?? Future<void>.value()).then((_) => chain);
   }
 
   // ── Load ──────────────────────────────────────────────────────────────────
@@ -249,7 +250,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     // restore() is synchronous (SharedPreferences is already in memory).
     final cached = _feedCache.restore();
     if (cached.isNotEmpty) {
-      debugPrint('[DiscoveryBloc] cache hit — ${cached.length} events shown instantly');
+      debugPrint(
+          '[DiscoveryBloc] cache hit — ${cached.length} events shown instantly');
       emit(DiscoveryState(events: cached, hasMore: true));
     } else {
       emit(const DiscoveryState(isLoading: true));
@@ -340,7 +342,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       }
       _prefetchRooms(more);
     } on NetworkException {
-      emit(state.copyWith(isLoadingMore: false, errorMessage: 'No internet connection.'));
+      emit(state.copyWith(
+          isLoadingMore: false, errorMessage: 'No internet connection.'));
     } on ServerException catch (e) {
       debugPrint('[DiscoveryBloc] ServerException on loadMore: $e');
       emit(state.copyWith(isLoadingMore: false));
@@ -401,9 +404,11 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       _subscribedRoomIds.add(id);
     } on ServerException catch (e) {
       // 504 / upstream timeout — server is slow, not a client bug. Skip silently.
-      debugPrint('[DiscoveryBloc] _onEventVisible: chat API error for $id — ${e.message}');
+      debugPrint(
+          '[DiscoveryBloc] _onEventVisible: chat API error for $id — ${e.message}');
     } catch (e) {
-      debugPrint('[DiscoveryBloc] _onEventVisible: unexpected error for $id — $e');
+      debugPrint(
+          '[DiscoveryBloc] _onEventVisible: unexpected error for $id — $e');
     }
   }
 
@@ -426,7 +431,11 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     // Always use the server-authoritative counts.
     // Only change userReaction if this update came from the current user.
     final reaction = isOwnAction
-        ? (update.liked ? 'like' : update.disliked ? 'dislike' : null)
+        ? (update.liked
+            ? 'like'
+            : update.disliked
+                ? 'dislike'
+                : null)
         : current.userReaction;
 
     final updated = List<EventDiscovery>.from(state.events);
@@ -596,7 +605,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     _DiscoveryHiddenIdsLoaded event,
     Emitter<DiscoveryState> emit,
   ) {
-    final filtered = state.events.where((e) => !event.ids.contains(e.id)).toList();
+    final filtered =
+        state.events.where((e) => !event.ids.contains(e.id)).toList();
     emit(state.copyWith(hiddenEventIds: event.ids, events: filtered));
   }
 
@@ -651,8 +661,8 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
               assetType: 'event', assetId: event.eventId);
         }
       } else {
-        final saved = await _savedDs.saveItem(
-            assetType: 'event', assetId: event.eventId);
+        final saved =
+            await _savedDs.saveItem(assetType: 'event', assetId: event.eventId);
         // Update record ID so unsave can use it later.
         final updated = Map<String, String>.from(state.savedItemRecordIds);
         updated[event.eventId] = saved.savedItemId;

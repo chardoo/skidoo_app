@@ -28,6 +28,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
   final _ds = sl<ClientSavedDataSource>();
   final _remoteDs = sl<DiscoveryRemoteDataSource>();
   List<SavedItem>? _items;
+
   /// eventId → resolved event name (populated after load).
   final Map<String, String> _resolvedNames = {};
   String? _error;
@@ -48,12 +49,18 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
     try {
       final items = await _ds.listSaved();
       if (!mounted) return;
-      setState(() { _items = items; _loading = false; });
+      setState(() {
+        _items = items;
+        _loading = false;
+      });
       // Resolve event names in background — no spinner needed.
       _resolveEventNames(items);
     } catch (_) {
       if (mounted) {
-        setState(() { _error = 'Could not load saved items.'; _loading = false; });
+        setState(() {
+          _error = 'Could not load saved items.';
+          _loading = false;
+        });
       }
     }
   }
@@ -62,9 +69,8 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
   /// Tries DiscoveryBloc first (zero network cost), then fetches from
   /// the backend for any whose name is still unknown.
   Future<void> _resolveEventNames(List<SavedItem> items) async {
-    final eventItems = items
-        .where((i) => i.assetType.toLowerCase() == 'event')
-        .toList();
+    final eventItems =
+        items.where((i) => i.assetType.toLowerCase() == 'event').toList();
     if (eventItems.isEmpty) return;
 
     // 1 — Synchronous lookup in DiscoveryBloc state.
@@ -107,7 +113,8 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
   }
 
   Future<void> _openEvent(SavedItem item) async {
-    debugPrint('[SavedItems] tap assetType="${item.assetType}" assetId="${item.assetId}" title="${item.title}"');
+    debugPrint(
+        '[SavedItems] tap assetType="${item.assetType}" assetId="${item.assetId}" title="${item.title}"');
     // Only handle event assets.
     if (item.assetType.toLowerCase() != 'event') {
       debugPrint('[SavedItems] skipping — assetType is not event');
@@ -120,7 +127,8 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
     try {
       final discoveryState = context.read<DiscoveryBloc>().state;
       event = discoveryState.events.where((e) => e.id == eventId).firstOrNull;
-      debugPrint('[SavedItems] DiscoveryBloc lookup eventId=$eventId → found=${event != null} name=${event?.eventName}');
+      debugPrint(
+          '[SavedItems] DiscoveryBloc lookup eventId=$eventId → found=${event != null} name=${event?.eventName}');
     } catch (e) {
       debugPrint('[SavedItems] DiscoveryBloc not accessible: $e');
     }
@@ -131,12 +139,14 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
       setState(() => _loading = true);
       try {
         event = await sl<DiscoveryRemoteDataSource>().getEventById(eventId);
-        debugPrint('[SavedItems] fetched eventId=$eventId name=${event.eventName} pics=${event.pictures.length}');
+        debugPrint(
+            '[SavedItems] fetched eventId=$eventId name=${event.eventName} pics=${event.pictures.length}');
       } catch (e) {
         debugPrint('[SavedItems] fetch failed: $e');
         if (mounted) {
           setState(() => _loading = false);
-          AppSnackBar.error(context, AppLocalizations.of(context)!.savedItemsCouldNotLoadEvent);
+          AppSnackBar.error(context,
+              AppLocalizations.of(context)!.savedItemsCouldNotLoadEvent);
         }
         return;
       }
@@ -176,7 +186,8 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
       if (item.savedItemId.isNotEmpty) {
         await _ds.unsaveById(item.savedItemId);
       } else {
-        await _ds.unsaveByAsset(assetType: item.assetType, assetId: item.assetId);
+        await _ds.unsaveByAsset(
+            assetType: item.assetType, assetId: item.assetId);
       }
       if (mounted) {
         setState(() =>
@@ -184,7 +195,8 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
       }
     } catch (_) {
       if (!mounted) return;
-      AppSnackBar.error(context, AppLocalizations.of(context)!.savedItemsFailedToRemove);
+      AppSnackBar.error(
+          context, AppLocalizations.of(context)!.savedItemsFailedToRemove);
     }
   }
 
@@ -206,12 +218,14 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
             fontSize: 18.sp,
           ),
         ),
-        leading: kIsWeb ? null : IconButton(
-          tooltip: 'Back',
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: ext.greetingColor, size: 18.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb
+            ? null
+            : IconButton(
+                tooltip: 'Back',
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    color: ext.greetingColor, size: 18.sp),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Divider(
@@ -225,7 +239,6 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
     );
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
-
 
   Widget _buildBody(AppThemeExtension ext) {
     if (_loading) {
@@ -246,8 +259,8 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
               SizedBox(height: AppSpacing.md.h),
               Text(_error!,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 14.sp)),
+                  style:
+                      TextStyle(color: ext.searchHintColor, fontSize: 14.sp)),
               SizedBox(height: AppSpacing.lg.h),
               TextButton(
                 onPressed: _load,
@@ -284,8 +297,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
               Text(
                 'Bookmark events to find them here.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: ext.searchHintColor, fontSize: 13.sp),
+                style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
               ),
             ],
           ),
@@ -306,8 +318,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
         ),
         itemBuilder: (_, i) {
           final item = items[i];
-          final resolvedName =
-              _resolvedNames[item.assetId] ?? item.title;
+          final resolvedName = _resolvedNames[item.assetId] ?? item.title;
           return Reveal(
             delay: AppMotion.stagger * (i < 8 ? i : 0),
             offset: const Offset(0, 16),
@@ -346,18 +357,21 @@ class _SavedItemTile extends StatelessWidget {
     final displayName = resolvedName ?? item.title ?? 'Saved Event';
     return ListTile(
       onTap: onTap,
-      contentPadding:
-          EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.xs.h),
+      contentPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg.w, vertical: AppSpacing.xs.h),
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.sm.r),
         child: item.thumbnailUrl != null
-            ? Semantics(image: true, label: 'Saved item', child: Image.network(
-                item.thumbnailUrl!,
-                width: 56.w,
-                height: 56.w,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _thumb(ext),
-              ))
+            ? Semantics(
+                image: true,
+                label: 'Saved item',
+                child: Image.network(
+                  item.thumbnailUrl!,
+                  width: 56.w,
+                  height: 56.w,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _thumb(ext),
+                ))
             : _thumb(ext),
       ),
       title: Text(
@@ -390,7 +404,7 @@ class _SavedItemTile extends StatelessWidget {
           color: ext.searchFieldFill,
           borderRadius: BorderRadius.circular(AppRadius.sm.r),
         ),
-        child: Icon(Icons.photo_outlined,
-            color: ext.searchHintColor, size: 24.sp),
+        child:
+            Icon(Icons.photo_outlined, color: ext.searchHintColor, size: 24.sp),
       );
 }

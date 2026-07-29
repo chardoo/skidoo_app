@@ -61,8 +61,8 @@ class _PostRequestPageState extends State<PostRequestPage> {
 
   Future<void> _pickMedia() async {
     if (_assets.length >= _maxAssets) return;
-    final file = await _picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 85);
+    final file =
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (file == null) return;
 
     final error = await MediaValidator.validate(file, isVideo: false);
@@ -100,7 +100,8 @@ class _PostRequestPageState extends State<PostRequestPage> {
       debugPrint('[PostRequestPage] _submit — requestId=$requestId');
 
       if (_assets.isNotEmpty && requestId.isNotEmpty) {
-        debugPrint('[PostRequestPage] _submit — uploading ${_assets.length} asset(s)');
+        debugPrint(
+            '[PostRequestPage] _submit — uploading ${_assets.length} asset(s)');
         for (final file in _assets) {
           await _repo.uploadRequestMedia(requestId, file);
         }
@@ -130,12 +131,14 @@ class _PostRequestPageState extends State<PostRequestPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : IconButton(
-          tooltip: 'Back',
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: ext.greetingColor, size: 20.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb
+            ? null
+            : IconButton(
+                tooltip: 'Back',
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    color: ext.greetingColor, size: 20.sp),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: Text(
           'Post a Request',
           style: TextStyle(
@@ -150,14 +153,16 @@ class _PostRequestPageState extends State<PostRequestPage> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w, vertical: AppSpacing.sm.h),
+          padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl.w, vertical: AppSpacing.sm.h),
           children: [
             _SectionLabel('What are you looking for?', ext),
             SizedBox(height: AppSpacing.sm.h),
             _Field(
               controller: _titleCtrl,
               hint: 'e.g. Wedding photographer needed',
-              validator: (v) => Validators.lengthBetween(v, 3, 100, field: 'Title'),
+              validator: (v) =>
+                  Validators.lengthBetween(v, 3, 100, field: 'Title'),
             ),
 
             SizedBox(height: AppSpacing.xl.h),
@@ -208,8 +213,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
                 SizedBox(width: 6.w),
                 Text(
                   '(optional)',
-                  style:
-                      TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
                 ),
                 const Spacer(),
                 Text(
@@ -241,8 +245,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
             SizedBox(height: AppSpacing.xs.h),
             Text(
               'Enter a rough budget so photographers know what to expect.',
-              style:
-                  TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
             SizedBox(height: AppSpacing.sm.h),
             _Field(
@@ -286,7 +289,6 @@ class _PostRequestPageState extends State<PostRequestPage> {
     );
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
-
 }
 
 // ── Multi-image picker ────────────────────────────────────────────────────────
@@ -333,18 +335,21 @@ class _MultiMediaPicker extends StatelessWidget {
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: Semantics(button: true, label: 'Remove media', child: GestureDetector(
-                      onTap: () => onRemove(i),
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.65),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.close_rounded,
-                            color: Colors.white, size: 14.sp),
-                      ),
-                    )),
+                    child: Semantics(
+                        button: true,
+                        label: 'Remove media',
+                        child: GestureDetector(
+                          onTap: () => onRemove(i),
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.close_rounded,
+                                color: Colors.white, size: 14.sp),
+                          ),
+                        )),
                   ),
                 ],
               ),
@@ -353,37 +358,40 @@ class _MultiMediaPicker extends StatelessWidget {
 
           // Add button (shown when under limit)
           if (!atLimit)
-            Semantics(button: true, label: 'Add', child: GestureDetector(
-              onTap: onAdd,
-              child: Container(
-                width: _thumbSize,
-                height: _thumbSize,
-                decoration: BoxDecoration(
-                  color: ext.searchFieldFill,
-                  borderRadius: BorderRadius.circular(10.r),
-                  border: Border.all(
-                    color: ext.searchHintColor.withValues(alpha: 0.25),
-                    width: 1.2,
-                  ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add_photo_alternate_outlined,
-                        color: ext.accentGold, size: 26.sp),
-                    SizedBox(height: AppSpacing.xs.h),
-                    Text(
-                      'Add photo',
-                      style: TextStyle(
-                        color: ext.searchHintColor,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
+            Semantics(
+                button: true,
+                label: 'Add',
+                child: GestureDetector(
+                  onTap: onAdd,
+                  child: Container(
+                    width: _thumbSize,
+                    height: _thumbSize,
+                    decoration: BoxDecoration(
+                      color: ext.searchFieldFill,
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: Border.all(
+                        color: ext.searchHintColor.withValues(alpha: 0.25),
+                        width: 1.2,
                       ),
                     ),
-                  ],
-                ),
-              ),
-            )),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_photo_alternate_outlined,
+                            color: ext.accentGold, size: 26.sp),
+                        SizedBox(height: AppSpacing.xs.h),
+                        Text(
+                          'Add photo',
+                          style: TextStyle(
+                            color: ext.searchHintColor,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
         ],
       ),
     );
@@ -505,44 +513,47 @@ class _SubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: 'Submit', child: GestureDetector(
-      onTap: submitting ? null : onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.lg.h),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: submitting
-                ? [
-                    ext.accentGold.withValues(alpha: 0.5),
-                    ext.accentGoldDark.withValues(alpha: 0.5),
-                  ]
-                : [ext.accentGold, ext.accentGoldDark],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(14.r),
-        ),
-        alignment: Alignment.center,
-        child: submitting
-            ? SizedBox(
-                width: 20.w,
-                height: 20.w,
-                child: const CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2.5,
-                ),
-              )
-            : Text(
-                'Submit Request',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.2,
-                ),
+    return Semantics(
+        button: true,
+        label: 'Submit',
+        child: GestureDetector(
+          onTap: submitting ? null : onTap,
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.lg.h),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: submitting
+                    ? [
+                        ext.accentGold.withValues(alpha: 0.5),
+                        ext.accentGoldDark.withValues(alpha: 0.5),
+                      ]
+                    : [ext.accentGold, ext.accentGoldDark],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
               ),
-      ),
-    ));
+              borderRadius: BorderRadius.circular(14.r),
+            ),
+            alignment: Alignment.center,
+            child: submitting
+                ? SizedBox(
+                    width: 20.w,
+                    height: 20.w,
+                    child: const CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : Text(
+                    'Submit Request',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+          ),
+        ));
   }
 }
 
@@ -607,33 +618,36 @@ class _VisibleToChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: label, child: GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
-        padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 11.h),
-        decoration: BoxDecoration(
-          color: selected
-              ? ext.accentGold.withValues(alpha: 0.12)
-              : ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(10.r),
-          border: Border.all(
-            color: selected
-                ? ext.accentGold
-                : ext.searchHintColor.withValues(alpha: 0.25),
-            width: selected ? 1.5 : 1.0,
+    return Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 11.h),
+            decoration: BoxDecoration(
+              color: selected
+                  ? ext.accentGold.withValues(alpha: 0.12)
+                  : ext.searchFieldFill,
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(
+                color: selected
+                    ? ext.accentGold
+                    : ext.searchHintColor.withValues(alpha: 0.25),
+                width: selected ? 1.5 : 1.0,
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? ext.accentGold : ext.searchHintColor,
+                fontSize: 13.sp,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? ext.accentGold : ext.searchHintColor,
-            fontSize: 13.sp,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
-      ),
-    ));
+        ));
   }
 }

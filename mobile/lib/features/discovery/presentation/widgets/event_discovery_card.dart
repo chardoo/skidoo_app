@@ -13,7 +13,8 @@ import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.d
 import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart' show CardInteractionBar;
+import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart'
+    show CardInteractionBar;
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_description_text.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
@@ -30,7 +31,6 @@ import 'package:skidoo_app/features/admin/data/repositories/app_config_repositor
 
 /// Width of the main content column on web — must match app.dart's _kWebColumnWidth.
 const double _kWebColumnWidth = 480.0;
-
 
 class EventDiscoveryCard extends StatefulWidget {
   const EventDiscoveryCard({
@@ -51,16 +51,20 @@ class EventDiscoveryCard extends StatefulWidget {
   final bool isAuthenticated;
   final bool isOwner;
   final VoidCallback? onCommentTap;
+
   /// Position of this card in the feed list.
   final int cardIndex;
+
   /// Shared notifier; its value is the currently active card index.
   /// When null the card is treated as always active (e.g. discovery page).
   final ValueNotifier<int>? activeCardIndex;
+
   /// Web desktop/laptop only: feed-level "comments open" flag shared by every
   /// card, so that opening comments stays open as the user scrolls between
   /// cards (each card then shows its own event's thread). Null on mobile, where
   /// the per-card local flag is used instead.
   final ValueNotifier<bool>? webCommentsOpen;
+
   /// Called when the user hides this event from their feed.
   final VoidCallback? onHide;
 
@@ -244,8 +248,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     // showing — so the frame never resizes as the user (or auto-scroll) swipes.
     final ar = _frameAspectRatio;
     if (ar != null && ar > 0) {
-      return (availableWidth / ar)
-          .clamp(_kMinMediaHeight, screenHeight * 0.92);
+      return (availableWidth / ar).clamp(_kMinMediaHeight, screenHeight * 0.92);
     }
 
     // Fallback for events whose media lack server dimensions: 4:5 portrait.
@@ -371,7 +374,8 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   Widget _buildMediaStack(BuildContext context, AppThemeExtension ext,
       List<EventPicture> pics, double width, double height) {
     final visible = pics.take(_visibleCount).toList();
-    final curIdx = visible.isEmpty ? 0 : _currentPage.clamp(0, visible.length - 1);
+    final curIdx =
+        visible.isEmpty ? 0 : _currentPage.clamp(0, visible.length - 1);
     final onVideo = curIdx < visible.length && visible[curIdx].isVideo;
     // On video slides, reserve the bottom strip occupied by the player's
     // control bar (scrubber + timestamps + fullscreen, anchored at bottom: 0)
@@ -379,123 +383,125 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     // controls stay visible and tappable.
     final controlsReserve = onVideo ? 60.h : 0.0;
     // Web: show prev/next carousel arrows when hovering a multi-photo card.
-    final showArrows =
-        kIsWeb && widget.isAuthenticated && visible.length > 1;
+    final showArrows = kIsWeb && widget.isAuthenticated && visible.length > 1;
     return MouseRegion(
-      onEnter: showArrows ? (_) => setState(() => _mediaHovered = true) : null,
-      onExit: showArrows ? (_) => setState(() => _mediaHovered = false) : null,
-      child: GestureDetector(
-      onTap: widget.isAuthenticated ? null : widget.onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        width: width,
-        height: height,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            pics.isEmpty
-                ? CardGradientPlaceholder(name: widget.event.eventName)
-                : PostPhotoCarousel(
-                    pics: visible,
-                    pageController: _pageCtrl,
-                    showBlur: !widget.isAuthenticated && pics.length > 3,
-                    onTap: handleTap,
-                    scrollable: widget.isAuthenticated,
-                    onDoubleTap: widget.isAuthenticated
-                        ? _handleDoubleTap
-                        : widget.onTap,
-                    cardIndex: widget.cardIndex,
-                    activeCardIndex: widget.activeCardIndex,
-                  ),
-            Positioned(
-              bottom: controlsReserve,
-              left: 0,
-              right: 0,
-              height: 160.h,
-              child: const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    stops: [0.0, 0.55, 1.0],
-                    colors: [
-                      Color(0x99000000), // 60 % — text shadows handle legibility
-                      Color(0x33000000), // 20 %
-                      Color(0x00000000), // 0 %
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 16.h + controlsReserve,
-              left: 14.w,
-              right: kIsWeb ? 14.w : 82.w,
-              child: ImageFooter(event: widget.event),
-            ),
-            if (_showHeartBurst)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: Center(child: HeartBurst(ctrl: _heartCtrl)),
-                ),
-              ),
-            if (pics.length > 1)
-              Positioned(
-                bottom: 10.h + controlsReserve,
-                left: 0,
-                right: 0,
-                child: PageDots(
-                  totalCount: _visibleCount,
-                  controller: _pageCtrl,
-                  maxRevealedPage: _maxRevealedPage,
-                ),
-              ),
-            if (!widget.isAuthenticated && pics.isEmpty)
-              UnauthCta(onTap: widget.onTap),
-
-            // ── Web: prev / next carousel arrows (hover-revealed) ───────────
-            if (showArrows)
-              Positioned.fill(
-                child: IgnorePointer(
-                  ignoring: !_mediaHovered,
-                  child: AnimatedOpacity(
-                    opacity: _mediaHovered ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 160),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 8, vertical: controlsReserve),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Semantics(
-                            button: true,
-                            label: 'Previous photo',
-                            child: CarouselArrow(
-                              isLeft: true,
-                              enabled: curIdx > 0,
-                              onTap: () => _goToCarouselPage(curIdx - 1),
-                            ),
-                          ),
-                          Semantics(
-                            button: true,
-                            label: 'Next photo',
-                            child: CarouselArrow(
-                              isLeft: false,
-                              enabled: curIdx < visible.length - 1,
-                              onTap: () => _goToCarouselPage(curIdx + 1),
-                            ),
-                          ),
+        onEnter:
+            showArrows ? (_) => setState(() => _mediaHovered = true) : null,
+        onExit:
+            showArrows ? (_) => setState(() => _mediaHovered = false) : null,
+        child: GestureDetector(
+          onTap: widget.isAuthenticated ? null : widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            width: width,
+            height: height,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                pics.isEmpty
+                    ? CardGradientPlaceholder(name: widget.event.eventName)
+                    : PostPhotoCarousel(
+                        pics: visible,
+                        pageController: _pageCtrl,
+                        showBlur: !widget.isAuthenticated && pics.length > 3,
+                        onTap: handleTap,
+                        scrollable: widget.isAuthenticated,
+                        onDoubleTap: widget.isAuthenticated
+                            ? _handleDoubleTap
+                            : widget.onTap,
+                        cardIndex: widget.cardIndex,
+                        activeCardIndex: widget.activeCardIndex,
+                      ),
+                Positioned(
+                  bottom: controlsReserve,
+                  left: 0,
+                  right: 0,
+                  height: 160.h,
+                  child: const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        stops: [0.0, 0.55, 1.0],
+                        colors: [
+                          Color(
+                              0x99000000), // 60 % — text shadows handle legibility
+                          Color(0x33000000), // 20 %
+                          Color(0x00000000), // 0 %
                         ],
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
-        ),
-      ),
-    ));
+                Positioned(
+                  bottom: 16.h + controlsReserve,
+                  left: 14.w,
+                  right: kIsWeb ? 14.w : 82.w,
+                  child: ImageFooter(event: widget.event),
+                ),
+                if (_showHeartBurst)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Center(child: HeartBurst(ctrl: _heartCtrl)),
+                    ),
+                  ),
+                if (pics.length > 1)
+                  Positioned(
+                    bottom: 10.h + controlsReserve,
+                    left: 0,
+                    right: 0,
+                    child: PageDots(
+                      totalCount: _visibleCount,
+                      controller: _pageCtrl,
+                      maxRevealedPage: _maxRevealedPage,
+                    ),
+                  ),
+                if (!widget.isAuthenticated && pics.isEmpty)
+                  UnauthCta(onTap: widget.onTap),
+
+                // ── Web: prev / next carousel arrows (hover-revealed) ───────────
+                if (showArrows)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      ignoring: !_mediaHovered,
+                      child: AnimatedOpacity(
+                        opacity: _mediaHovered ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 160),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 8, vertical: controlsReserve),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Semantics(
+                                button: true,
+                                label: 'Previous photo',
+                                child: CarouselArrow(
+                                  isLeft: true,
+                                  enabled: curIdx > 0,
+                                  onTap: () => _goToCarouselPage(curIdx - 1),
+                                ),
+                              ),
+                              Semantics(
+                                button: true,
+                                label: 'Next photo',
+                                child: CarouselArrow(
+                                  isLeft: false,
+                                  enabled: curIdx < visible.length - 1,
+                                  onTap: () => _goToCarouselPage(curIdx + 1),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ));
   }
 
   /// Animate the photo carousel to [target], clamped to the visible range.
@@ -558,7 +564,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                     _likeCount += _liked ? 1 : -1;
                   });
                   context.read<DiscoveryBloc>().add(
-                        DiscoveryReactionToggled(widget.event.id, isLike: true));
+                      DiscoveryReactionToggled(widget.event.id, isLike: true));
                 }
               : widget.onTap,
           onDislike: widget.isAuthenticated
@@ -572,7 +578,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                     _dislikeCount += _disliked ? 1 : -1;
                   });
                   context.read<DiscoveryBloc>().add(
-                        DiscoveryReactionToggled(widget.event.id, isLike: false));
+                      DiscoveryReactionToggled(widget.event.id, isLike: false));
                 }
               : widget.onTap,
           // Toggle: tapping the comment icon closes the panel when it's open.
@@ -646,7 +652,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     final commentsEnabled = AppConfigRepository.current.commentsEnabled &&
         widget.event.commentsEnabled &&
         (widget.event.pictures.isEmpty ||
-            widget.event.pictures[
+            widget
+                .event
+                .pictures[
                     _currentPage.clamp(0, widget.event.pictures.length - 1)]
                 .commentsEnabled);
 
@@ -753,8 +761,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       AppConfigRepository.current.commentsEnabled &&
       widget.event.commentsEnabled &&
       (widget.event.pictures.isEmpty ||
-          widget.event.pictures[
-                  _currentPage.clamp(0, widget.event.pictures.length - 1)]
+          widget
+              .event
+              .pictures[_currentPage.clamp(0, widget.event.pictures.length - 1)]
               .commentsEnabled);
 
   /// Builds the interaction bar with all reaction handlers wired up.
@@ -776,15 +785,13 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 setState(() {
                   if (!_liked && _disliked) {
                     _disliked = false;
-                    _dislikeCount =
-                        (_dislikeCount - 1).clamp(0, 999999999);
+                    _dislikeCount = (_dislikeCount - 1).clamp(0, 999999999);
                   }
                   _liked = !_liked;
                   _likeCount += _liked ? 1 : -1;
                 });
                 ctx.read<DiscoveryBloc>().add(
-                      DiscoveryReactionToggled(widget.event.id,
-                          isLike: true),
+                      DiscoveryReactionToggled(widget.event.id, isLike: true),
                     );
               }
             : widget.onTap,
@@ -799,14 +806,12 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                   _dislikeCount += _disliked ? 1 : -1;
                 });
                 ctx.read<DiscoveryBloc>().add(
-                      DiscoveryReactionToggled(widget.event.id,
-                          isLike: false),
+                      DiscoveryReactionToggled(widget.event.id, isLike: false),
                     );
               }
             : widget.onTap,
         onComment: widget.isAuthenticated
-            ? (widget.onCommentTap ??
-                () => _showCommentSheet(context, ext))
+            ? (widget.onCommentTap ?? () => _showCommentSheet(context, ext))
             : widget.onTap,
         onShare: widget.isAuthenticated
             ? () {
@@ -875,8 +880,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
         // ── Full-width image ─────────────────────────────────────────────
         LayoutBuilder(
           builder: (ctx, constraints) {
-            final mediaH =
-                _computeMediaHeight(constraints.maxWidth, screenH);
+            final mediaH = _computeMediaHeight(constraints.maxWidth, screenH);
             return _buildMediaStack(
                 ctx, ext, pics, constraints.maxWidth, mediaH);
           },
@@ -895,8 +899,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             event: widget.event,
             ext: ext,
             expanded: _descExpanded,
-            onToggle: () =>
-                setState(() => _descExpanded = !_descExpanded),
+            onToggle: () => setState(() => _descExpanded = !_descExpanded),
           ),
         ),
 

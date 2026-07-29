@@ -60,11 +60,16 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
-        onPageStarted: (_) { if (mounted) setState(() => _loading = true); },
-        onPageFinished: (_) { if (mounted) setState(() => _loading = false); },
+        onPageStarted: (_) {
+          if (mounted) setState(() => _loading = true);
+        },
+        onPageFinished: (_) {
+          if (mounted) setState(() => _loading = false);
+        },
         onWebResourceError: (error) {
           if (mounted) {
-            AppSnackBar.error(context, 'Payment page error: ${error.description}');
+            AppSnackBar.error(
+                context, 'Payment page error: ${error.description}');
           }
         },
         onNavigationRequest: (request) {
@@ -103,14 +108,20 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         appBar: AppBar(
           backgroundColor: ext.homeBackground,
           elevation: 0,
-          leading: kIsWeb ? null : IconButton(
-            tooltip: 'Close',
-            icon: Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+          leading: kIsWeb
+              ? null
+              : IconButton(
+                  tooltip: 'Close',
+                  icon: Icon(Icons.close_rounded,
+                      color: ext.greetingColor, size: 22.sp),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
           title: Text(
             'Complete Payment',
-            style: TextStyle(color: ext.greetingColor, fontSize: 17.sp, fontWeight: FontWeight.w700),
+            style: TextStyle(
+                color: ext.greetingColor,
+                fontSize: 17.sp,
+                fontWeight: FontWeight.w700),
           ),
         ),
         body: SafeArea(
@@ -119,18 +130,23 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.open_in_new_rounded, size: 52.sp, color: ext.accentGold),
+                Icon(Icons.open_in_new_rounded,
+                    size: 52.sp, color: ext.accentGold),
                 SizedBox(height: AppSpacing.xl.h),
                 Text(
                   'Payment opened in a new tab',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: ext.greetingColor, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                      color: ext.greetingColor,
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: 10.h),
                 Text(
                   'Complete your payment in the browser tab that just opened, then tap the button below.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp, height: 1.5),
+                  style: TextStyle(
+                      color: ext.searchHintColor, fontSize: 14.sp, height: 1.5),
                 ),
                 SizedBox(height: AppSpacing.xxxl.h),
                 AppButton(
@@ -146,7 +162,8 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
                   onPressed: _launchWebPayment,
                   child: Text(
                     'Reopen payment page',
-                    style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+                    style:
+                        TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
                   ),
                 ),
               ],
@@ -163,14 +180,20 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : IconButton(
-          tooltip: 'Close',
-          icon: Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb
+            ? null
+            : IconButton(
+                tooltip: 'Close',
+                icon: Icon(Icons.close_rounded,
+                    color: ext.greetingColor, size: 22.sp),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: Text(
           'Complete Payment',
-          style: TextStyle(color: ext.greetingColor, fontSize: 17.sp, fontWeight: FontWeight.w700),
+          style: TextStyle(
+              color: ext.greetingColor,
+              fontSize: 17.sp,
+              fontWeight: FontWeight.w700),
         ),
         centerTitle: false,
       ),
@@ -200,7 +223,6 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
     );
     return webWrap(mobilePage, backgroundColor: ext.homeBackground);
   }
-
 }
 
 // ── Payment amount info card shown while WebView loads ────────────────────────
@@ -225,7 +247,8 @@ class _PaymentInfoCard extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.w),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w, vertical: AppSpacing.lg.h),
+        padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl.w, vertical: AppSpacing.lg.h),
         decoration: BoxDecoration(
           color: ext.cardSurface,
           borderRadius: BorderRadius.circular(14.r),

@@ -9,21 +9,24 @@ class UnauthCta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: Semantics(button: true, label: 'Tap to explore', child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          color: Colors.black.withValues(alpha: 0.4),
-          alignment: Alignment.center,
-          child: Text(
-            'Tap to explore',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w600,
+      child: Semantics(
+          button: true,
+          label: 'Tap to explore',
+          child: GestureDetector(
+            onTap: onTap,
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.4),
+              alignment: Alignment.center,
+              child: Text(
+                'Tap to explore',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-          ),
-        ),
-      )),
+          )),
     );
   }
 }

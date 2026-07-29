@@ -27,6 +27,7 @@ class FeedRequestModel {
   final String id;
   final String requesterId;
   final String requesterName;
+
   /// "client" | "photographer"
   final String requesterType;
   final String title;
@@ -36,13 +37,17 @@ class FeedRequestModel {
   final double? budgetAmount;
   final String currency;
   final String? requesterPhoto;
+
   /// Who can see this request: "photographers" | "clients"
   final String? visibleTo;
   final String? promotedCampaignId;
+
   /// "pending_review" | "open" | "promoted" | "filled" | "closed" | "rejected"
   final String status;
+
   /// Cloudinary URL for the attached media asset (legacy)
   final String? assetUrl;
+
   /// "image" | "video" (legacy)
   final String? assetType;
   final DateTime? createdAt;
@@ -55,8 +60,7 @@ class FeedRequestModel {
         .whereType<Map<String, dynamic>>()
         .map(AdMedia.fromJson)
         .toList();
-    final legacyUrl =
-        (json['asset_url'] ?? json['media_url']) as String?;
+    final legacyUrl = (json['asset_url'] ?? json['media_url']) as String?;
     final legacyType =
         (json['asset_type'] ?? json['media_type']) as String? ?? 'image';
     final media = rawMedia.isNotEmpty

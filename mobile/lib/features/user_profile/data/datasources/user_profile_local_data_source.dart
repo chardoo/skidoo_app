@@ -81,14 +81,15 @@ class UserProfileLocalDataSourceImpl implements UserProfileLocalDataSource {
         futures.add(_authService.setLocale(data['locale'] as String));
       }
       if (data.containsKey('preferredLanguage')) {
-        futures.add(_authService.setPreferredLanguage(data['preferredLanguage'] as String));
+        futures.add(_authService
+            .setPreferredLanguage(data['preferredLanguage'] as String));
       }
       if (data.containsKey('timezone')) {
         futures.add(_authService.setTimezone(data['timezone'] as String));
       }
       if (data.containsKey('interestTags')) {
-        futures.add(_authService.setInterestTags(
-            List<String>.from(data['interestTags'] as List)));
+        futures.add(_authService
+            .setInterestTags(List<String>.from(data['interestTags'] as List)));
       }
       await Future.wait(futures);
     } catch (e) {

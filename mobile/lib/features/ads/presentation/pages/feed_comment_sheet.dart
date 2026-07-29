@@ -90,7 +90,8 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
 
   void _onScroll() {
     if (!_scrollCtrl.hasClients) return;
-    if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 200) {
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 200) {
       context.read<FeedCommentBloc>().add(const FeedCommentLoadMoreRequested());
     }
   }
@@ -174,20 +175,21 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
                         backgroundColor: Colors.transparent,
                         color: ext.accentGold.withValues(alpha: 0.6),
                       ),
-
                     Expanded(
                       child: state.comments.isEmpty
                           ? CommentEmptyState(ext: ext)
                           : ListView.builder(
                               controller: _scrollCtrl,
                               padding: EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.lg.w, vertical: AppSpacing.sm.h),
+                                  horizontal: AppSpacing.lg.w,
+                                  vertical: AppSpacing.sm.h),
                               itemCount: state.comments.length +
                                   (state.isLoadingMore ? 1 : 0),
                               itemBuilder: (_, i) {
                                 if (i == state.comments.length) {
                                   return Padding(
-                                    padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                                    padding: EdgeInsets.symmetric(
+                                        vertical: AppSpacing.md.h),
                                     child: Center(
                                       child: CircularProgressIndicator(
                                         color: ext.accentGold,
@@ -199,8 +201,8 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
                                 final comment = state.comments[i];
                                 final replies =
                                     state.repliesMap[comment.id] ?? [];
-                                final isExpanded =
-                                    state.expandedRepliesFor.contains(comment.id);
+                                final isExpanded = state.expandedRepliesFor
+                                    .contains(comment.id);
 
                                 return ThreadedCommentWidget(
                                   key: ValueKey(comment.id),
@@ -219,15 +221,15 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
                                       .toList(),
                                   ext: ext,
                                   isExpanded: isExpanded,
-                                  onToggleReplies: () =>
-                                      context.read<FeedCommentBloc>().add(
-                                            FeedCommentRepliesRequested(comment.id),
-                                          ),
+                                  onToggleReplies: () => context
+                                      .read<FeedCommentBloc>()
+                                      .add(
+                                        FeedCommentRepliesRequested(comment.id),
+                                      ),
                                 );
                               },
                             ),
                     ),
-
                     if (widget.commentsEnabled)
                       CommentInputBarWidget(
                         controller: _inputCtrl,
@@ -246,7 +248,8 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
                         decoration: BoxDecoration(
                           border: Border(
                             top: BorderSide(
-                                color: ext.searchHintColor.withValues(alpha: 0.15)),
+                                color: ext.searchHintColor
+                                    .withValues(alpha: 0.15)),
                           ),
                         ),
                         child: Text(

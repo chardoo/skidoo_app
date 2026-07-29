@@ -34,8 +34,7 @@ class PageDots extends StatelessWidget {
     return ListenableBuilder(
       listenable: controller,
       builder: (_, __) {
-        final page =
-            controller.hasClients ? (controller.page ?? 0.0) : 0.0;
+        final page = controller.hasClients ? (controller.page ?? 0.0) : 0.0;
         return AnimatedSize(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOut,

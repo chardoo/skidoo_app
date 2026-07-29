@@ -22,84 +22,87 @@ class EventCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Semantics(button: true, label: 'Event', child: GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.lg.r),
-        child: SizedBox(
-          height: height,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // ── Background image or gradient placeholder ───────────────
-              photo.url.isNotEmpty
-                  ? SkidooImage(
-                      imageUrl: photo.url,
-                      fit: BoxFit.cover,
-                      semanticLabel: photo.eventName.isNotEmpty
-                          ? '${photo.eventName} event cover'
-                          : 'Event cover',
-                      placeholder: (_, __) =>
-                          _GradientPlaceholder(name: photo.eventName),
-                      errorWidget: (_, __, ___) =>
-                          _GradientPlaceholder(name: photo.eventName),
-                    )
-                  : _GradientPlaceholder(name: photo.eventName),
+    return Semantics(
+        button: true,
+        label: 'Event',
+        child: GestureDetector(
+          onTap: onTap,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.lg.r),
+            child: SizedBox(
+              height: height,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // ── Background image or gradient placeholder ───────────────
+                  photo.url.isNotEmpty
+                      ? SkidooImage(
+                          imageUrl: photo.url,
+                          fit: BoxFit.cover,
+                          semanticLabel: photo.eventName.isNotEmpty
+                              ? '${photo.eventName} event cover'
+                              : 'Event cover',
+                          placeholder: (_, __) =>
+                              _GradientPlaceholder(name: photo.eventName),
+                          errorWidget: (_, __, ___) =>
+                              _GradientPlaceholder(name: photo.eventName),
+                        )
+                      : _GradientPlaceholder(name: photo.eventName),
 
-              // ── Bottom gradient overlay ───────────────────────────────
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: const [0.45, 1.0],
-                      colors: [ext.cardOverlayStart, ext.cardOverlayEnd],
-                    ),
-                  ),
-                ),
-              ),
-
-              // ── Event name + date ─────────────────────────────────────
-              Positioned(
-                left: 10.w,
-                right: 10.w,
-                bottom: 10.h,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      photo.eventName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
-                        shadows: const [
-                          Shadow(blurRadius: 4, color: Colors.black45),
-                        ],
-                      ),
-                    ),
-                    if (photo.eventDate.isNotEmpty) ...[
-                      SizedBox(height: 3.h),
-                      Text(
-                        _formatDate(photo.eventDate),
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11.sp,
+                  // ── Bottom gradient overlay ───────────────────────────────
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.45, 1.0],
+                          colors: [ext.cardOverlayStart, ext.cardOverlayEnd],
                         ),
                       ),
-                    ],
-                  ],
-                ),
+                    ),
+                  ),
+
+                  // ── Event name + date ─────────────────────────────────────
+                  Positioned(
+                    left: 10.w,
+                    right: 10.w,
+                    bottom: 10.h,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          photo.eventName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w600,
+                            shadows: const [
+                              Shadow(blurRadius: 4, color: Colors.black45),
+                            ],
+                          ),
+                        ),
+                        if (photo.eventDate.isNotEmpty) ...[
+                          SizedBox(height: 3.h),
+                          Text(
+                            _formatDate(photo.eventDate),
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11.sp,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
-    ));
+        ));
   }
 
   String _formatDate(String raw) {

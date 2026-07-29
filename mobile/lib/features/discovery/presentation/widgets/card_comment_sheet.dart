@@ -5,7 +5,8 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class CardCommentSheet extends StatefulWidget {
-  const CardCommentSheet({super.key, required this.ext, required this.eventName});
+  const CardCommentSheet(
+      {super.key, required this.ext, required this.eventName});
   final AppThemeExtension ext;
   final String eventName;
 
@@ -65,7 +66,8 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
             Flexible(
               child: _comments.isEmpty
                   ? Padding(
-                      padding: EdgeInsets.symmetric(vertical: AppSpacing.xxxl.h),
+                      padding:
+                          EdgeInsets.symmetric(vertical: AppSpacing.xxxl.h),
                       child: Text(
                         'No comments yet. Be the first!',
                         style: TextStyle(
@@ -75,10 +77,11 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
                   : ListView.builder(
                       shrinkWrap: true,
                       reverse: false,
-                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
                       itemCount: _comments.length,
-                      itemBuilder: (_, i) => CardCommentTile(
-                          comment: _comments[i], ext: ext),
+                      itemBuilder: (_, i) =>
+                          CardCommentTile(comment: _comments[i], ext: ext),
                     ),
             ),
 
@@ -87,8 +90,7 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
               padding: EdgeInsets.fromLTRB(16.w, 8.h, 12.w, 16.h),
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(
-                      color: ext.searchFieldFill, width: 1),
+                  top: BorderSide(color: ext.searchFieldFill, width: 1),
                 ),
               ),
               child: Row(
@@ -103,19 +105,22 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
                     ),
                   ),
                   SizedBox(width: AppSpacing.sm.w),
-                  Semantics(button: true, label: 'Submit', child: GestureDetector(
-                    onTap: _submit,
-                    child: Container(
-                      width: 40.w,
-                      height: 40.w,
-                      decoration: BoxDecoration(
-                        color: ext.accentGold,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.send_rounded,
-                          color: Colors.white, size: 18.sp),
-                    ),
-                  )),
+                  Semantics(
+                      button: true,
+                      label: 'Submit',
+                      child: GestureDetector(
+                        onTap: _submit,
+                        child: Container(
+                          width: 40.w,
+                          height: 40.w,
+                          decoration: BoxDecoration(
+                            color: ext.accentGold,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.send_rounded,
+                              color: Colors.white, size: 18.sp),
+                        ),
+                      )),
                 ],
               ),
             ),
@@ -171,8 +176,7 @@ class CardCommentTile extends StatelessWidget {
                 SizedBox(height: 2.h),
                 Text(
                   comment.text,
-                  style: TextStyle(
-                      color: ext.greetingColor, fontSize: 13.sp),
+                  style: TextStyle(color: ext.greetingColor, fontSize: 13.sp),
                 ),
               ],
             ),

@@ -25,8 +25,7 @@ class DiscoveryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) =>
-          sl<DiscoveryBloc>()..add(const DiscoveryLoadRequested()),
+      create: (_) => sl<DiscoveryBloc>()..add(const DiscoveryLoadRequested()),
       child: const _DiscoveryView(),
     );
   }
@@ -241,7 +240,8 @@ class _FeedAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 10.h),
+      padding:
+          EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 10.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -296,43 +296,50 @@ class _FeedAppBar extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Semantics(button: true, label: 'Sign up', child: GestureDetector(
-                onTap: () => Navigator.of(context)
-                    .pushNamed(SignUpPage.routeName),
-                child: Text(
-                  'Sign up',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              )),
-              SizedBox(width: AppSpacing.md.w),
-              Semantics(button: true, label: 'Log in', child: GestureDetector(
-                onTap: () => showLoginSheet(
-                  context,
-                  onLoginSuccess: () => Navigator.of(context)
-                      .pushNamedAndRemoveUntil(
-                          HomePage.routeName, (route) => false),
-                ),
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg.w, vertical: AppSpacing.sm.h),
-                  decoration: BoxDecoration(
-                    color: ext.accentGold,
-                    borderRadius: BorderRadius.circular(AppRadius.xl.r),
-                  ),
-                  child: Text(
-                    'Log in',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w700,
+              Semantics(
+                  button: true,
+                  label: 'Sign up',
+                  child: GestureDetector(
+                    onTap: () =>
+                        Navigator.of(context).pushNamed(SignUpPage.routeName),
+                    child: Text(
+                      'Sign up',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ),
-              )),
+                  )),
+              SizedBox(width: AppSpacing.md.w),
+              Semantics(
+                  button: true,
+                  label: 'Log in',
+                  child: GestureDetector(
+                    onTap: () => showLoginSheet(
+                      context,
+                      onLoginSuccess: () => Navigator.of(context)
+                          .pushNamedAndRemoveUntil(
+                              HomePage.routeName, (route) => false),
+                    ),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg.w,
+                          vertical: AppSpacing.sm.h),
+                      decoration: BoxDecoration(
+                        color: ext.accentGold,
+                        borderRadius: BorderRadius.circular(AppRadius.xl.r),
+                      ),
+                      child: Text(
+                        'Log in',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  )),
             ],
           ),
         ],
@@ -340,5 +347,3 @@ class _FeedAppBar extends StatelessWidget {
     );
   }
 }
-
-

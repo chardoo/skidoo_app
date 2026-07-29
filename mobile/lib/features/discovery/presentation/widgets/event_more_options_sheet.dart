@@ -25,93 +25,101 @@ class EventMoreOptionsSheet extends StatelessWidget {
         color: ext.homeBackground,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Drag handle
-            Container(
-              margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
-              width: 36.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: ext.searchHintColor.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-
-            // Hide option
-            ListTile(
-              leading: Container(
-                width: 40.w,
-                height: 40.w,
+      // ListTile ink paints on the nearest Material ancestor; this decorated
+      // Container sits between the sheet's Material and the tiles and would
+      // swallow it (and assert in debug). A transparency Material paints
+      // nothing and just gives the ink somewhere to land.
+      child: Material(
+        type: MaterialType.transparency,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Container(
+                margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                width: 36.w,
+                height: 4.h,
                 decoration: BoxDecoration(
-                  color: ext.searchFieldFill,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.visibility_off_outlined,
-                    color: ext.greetingColor, size: 20.sp),
-              ),
-              title: Text(
-                'Hide event',
-                style: TextStyle(
-                  color: ext.greetingColor,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15.sp,
+                  color: ext.searchHintColor.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
-              subtitle: Text(
-                "You won't see this event again",
-                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-              ),
-              onTap: () {
-                Navigator.of(context).pop();
-                onHide?.call();
-              },
-            ),
 
-            Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
-
-            // Report option — opens the reason picker sheet
-            ListTile(
-              leading: Container(
-                width: 40.w,
-                height: 40.w,
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+              // Hide option
+              ListTile(
+                leading: Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: ext.searchFieldFill,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.visibility_off_outlined,
+                      color: ext.greetingColor, size: 20.sp),
                 ),
-                child: Icon(Icons.flag_outlined,
-                    color: Colors.redAccent, size: 20.sp),
-              ),
-              title: Text(
-                'Report event',
-                style: TextStyle(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15.sp,
+                title: Text(
+                  'Hide event',
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15.sp,
+                  ),
                 ),
+                subtitle: Text(
+                  "You won't see this event again",
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onHide?.call();
+                },
               ),
-              subtitle: Text(
-                'Inappropriate, misleading or harmful content',
-                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-              ),
-              trailing: Icon(Icons.chevron_right_rounded,
-                  color: ext.searchHintColor, size: 20.sp),
-              onTap: () {
-                Navigator.of(context).pop();
-                ReportSheet.show(
-                  context,
-                  ext: ext,
-                  assetType: 'event',
-                  assetId: eventId,
-                );
-              },
-            ),
 
-            SizedBox(height: AppSpacing.sm.h),
-          ],
+              Divider(
+                  height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
+
+              // Report option — opens the reason picker sheet
+              ListTile(
+                leading: Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.flag_outlined,
+                      color: Colors.redAccent, size: 20.sp),
+                ),
+                title: Text(
+                  'Report event',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15.sp,
+                  ),
+                ),
+                subtitle: Text(
+                  'Inappropriate, misleading or harmful content',
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                ),
+                trailing: Icon(Icons.chevron_right_rounded,
+                    color: ext.searchHintColor, size: 20.sp),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  ReportSheet.show(
+                    context,
+                    ext: ext,
+                    assetType: 'event',
+                    assetId: eventId,
+                  );
+                },
+              ),
+
+              SizedBox(height: AppSpacing.sm.h),
+            ],
+          ),
         ),
       ),
     );

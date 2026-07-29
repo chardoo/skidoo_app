@@ -122,9 +122,19 @@ class FeedCommentState extends Equatable {
 
   @override
   List<Object?> get props => [
-        targetType, targetId, myUserId, comments, repliesMap,
-        loadedRepliesFor, expandedRepliesFor, isLoading, isLoadingMore,
-        isPosting, hasReachedEnd, page, errorMessage,
+        targetType,
+        targetId,
+        myUserId,
+        comments,
+        repliesMap,
+        loadedRepliesFor,
+        expandedRepliesFor,
+        isLoading,
+        isLoadingMore,
+        isPosting,
+        hasReachedEnd,
+        page,
+        errorMessage,
       ];
 }
 
@@ -173,8 +183,7 @@ class FeedCommentBloc extends Bloc<FeedCommentEvent, FeedCommentState> {
     }
   }
 
-  Future<void> _onLoadMore(
-      FeedCommentLoadMoreRequested event,
+  Future<void> _onLoadMore(FeedCommentLoadMoreRequested event,
       Emitter<FeedCommentState> emit) async {
     if (state.isLoadingMore || state.hasReachedEnd) return;
     emit(state.copyWith(isLoadingMore: true, clearError: true));
@@ -208,17 +217,21 @@ class FeedCommentBloc extends Bloc<FeedCommentEvent, FeedCommentState> {
         parentId: event.parentId,
       );
       if (event.parentId != null) {
-        final updatedReplies = Map<String, List<PhotoComment>>.from(state.repliesMap);
+        final updatedReplies =
+            Map<String, List<PhotoComment>>.from(state.repliesMap);
         updatedReplies[event.parentId!] = [
           ...(updatedReplies[event.parentId!] ?? []),
           comment,
         ];
         final updatedComments = state.comments.map((c) {
-          if (c.id == event.parentId) return c.copyWith(replyCount: c.replyCount + 1);
+          if (c.id == event.parentId)
+            return c.copyWith(replyCount: c.replyCount + 1);
           return c;
         }).toList();
-        final updatedExpanded = Set<String>.from(state.expandedRepliesFor)..add(event.parentId!);
-        final updatedLoaded = Set<String>.from(state.loadedRepliesFor)..add(event.parentId!);
+        final updatedExpanded = Set<String>.from(state.expandedRepliesFor)
+          ..add(event.parentId!);
+        final updatedLoaded = Set<String>.from(state.loadedRepliesFor)
+          ..add(event.parentId!);
         emit(state.copyWith(
           repliesMap: updatedReplies,
           comments: updatedComments,
@@ -238,8 +251,7 @@ class FeedCommentBloc extends Bloc<FeedCommentEvent, FeedCommentState> {
   }
 
   Future<void> _onRepliesRequested(
-      FeedCommentRepliesRequested event,
-      Emitter<FeedCommentState> emit) async {
+      FeedCommentRepliesRequested event, Emitter<FeedCommentState> emit) async {
     if (state.loadedRepliesFor.contains(event.commentId)) {
       final updated = Set<String>.from(state.expandedRepliesFor);
       if (updated.contains(event.commentId)) {
@@ -252,10 +264,13 @@ class FeedCommentBloc extends Bloc<FeedCommentEvent, FeedCommentState> {
     }
     try {
       final replies = await _dataSource.getReplies(event.commentId);
-      final updatedReplies = Map<String, List<PhotoComment>>.from(state.repliesMap)
-        ..[event.commentId] = replies;
-      final updatedLoaded = Set<String>.from(state.loadedRepliesFor)..add(event.commentId);
-      final updatedExpanded = Set<String>.from(state.expandedRepliesFor)..add(event.commentId);
+      final updatedReplies =
+          Map<String, List<PhotoComment>>.from(state.repliesMap)
+            ..[event.commentId] = replies;
+      final updatedLoaded = Set<String>.from(state.loadedRepliesFor)
+        ..add(event.commentId);
+      final updatedExpanded = Set<String>.from(state.expandedRepliesFor)
+        ..add(event.commentId);
       emit(state.copyWith(
         repliesMap: updatedReplies,
         loadedRepliesFor: updatedLoaded,
@@ -271,12 +286,18 @@ class FeedCommentBloc extends Bloc<FeedCommentEvent, FeedCommentState> {
       FeedCommentDeleted event, Emitter<FeedCommentState> emit) async {
     try {
       await _dataSource.deleteComment(event.commentId);
-      final updatedComments = state.comments.where((c) => c.id != event.commentId).toList();
-      final updatedReplies = Map<String, List<PhotoComment>>.from(state.repliesMap);
+      final updatedComments =
+          state.comments.where((c) => c.id != event.commentId).toList();
+      final updatedReplies =
+          Map<String, List<PhotoComment>>.from(state.repliesMap);
       for (final key in updatedReplies.keys.toList()) {
-        updatedReplies[key] = updatedReplies[key]!.where((c) => c.id != event.commentId).toList();
+        updatedReplies[key] =
+            updatedReplies[key]!.where((c) => c.id != event.commentId).toList();
       }
-      emit(state.copyWith(comments: updatedComments, repliesMap: updatedReplies, clearError: true));
+      emit(state.copyWith(
+          comments: updatedComments,
+          repliesMap: updatedReplies,
+          clearError: true));
     } catch (e) {
       emit(state.copyWith(errorMessage: e.toString()));
     }
@@ -285,15 +306,22 @@ class FeedCommentBloc extends Bloc<FeedCommentEvent, FeedCommentState> {
   Future<void> _onEdited(
       FeedCommentEdited event, Emitter<FeedCommentState> emit) async {
     try {
-      final updated = await _dataSource.editComment(event.commentId, event.content);
-      final updatedComments = state.comments.map((c) => c.id == event.commentId ? updated : c).toList();
-      final updatedReplies = Map<String, List<PhotoComment>>.from(state.repliesMap);
+      final updated =
+          await _dataSource.editComment(event.commentId, event.content);
+      final updatedComments = state.comments
+          .map((c) => c.id == event.commentId ? updated : c)
+          .toList();
+      final updatedReplies =
+          Map<String, List<PhotoComment>>.from(state.repliesMap);
       for (final key in updatedReplies.keys.toList()) {
         updatedReplies[key] = updatedReplies[key]!
             .map((c) => c.id == event.commentId ? updated : c)
             .toList();
       }
-      emit(state.copyWith(comments: updatedComments, repliesMap: updatedReplies, clearError: true));
+      emit(state.copyWith(
+          comments: updatedComments,
+          repliesMap: updatedReplies,
+          clearError: true));
     } catch (e) {
       emit(state.copyWith(errorMessage: e.toString()));
     }

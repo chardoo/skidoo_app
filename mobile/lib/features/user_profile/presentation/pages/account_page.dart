@@ -34,7 +34,8 @@ import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 String _resolveErrorMessage(String key, AppLocalizations l10n) => switch (key) {
-      'accountAnonymousModeUpdateFailed' => l10n.accountAnonymousModeUpdateFailed,
+      'accountAnonymousModeUpdateFailed' =>
+        l10n.accountAnonymousModeUpdateFailed,
       'accountHideProfileUpdateFailed' => l10n.accountHideProfileUpdateFailed,
       _ => key,
     };
@@ -78,7 +79,8 @@ class _AccountView extends StatelessWidget {
           AppSnackBar.error(context, state.updateErrorMessage!);
         }
         if (state.errorMessage != null) {
-          AppSnackBar.error(context, _resolveErrorMessage(state.errorMessage!, l10n));
+          AppSnackBar.error(
+              context, _resolveErrorMessage(state.errorMessage!, l10n));
         }
       },
       builder: (context, state) {
@@ -111,119 +113,118 @@ class _AccountView extends StatelessWidget {
                     child: SingleChildScrollView(
                       padding: EdgeInsets.all(AppSpacing.xxl.w),
                       child: Column(
-                          children: [
-                            SizedBox(height: AppSpacing.xxl.h),
-                            CircleAvatar(
-                              radius: 48.r,
-                              backgroundColor: ext.avatarBackground,
-                              child: Text(
-                                state.name.isNotEmpty
-                                    ? state.name[0].toUpperCase()
-                                    : '?',
-                                style: TextStyle(
-                                  color: ext.avatarForeground,
-                                  fontSize: 36.sp,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: AppSpacing.xl.h),
-                            Text(
-                              state.name,
+                        children: [
+                          SizedBox(height: AppSpacing.xxl.h),
+                          CircleAvatar(
+                            radius: 48.r,
+                            backgroundColor: ext.avatarBackground,
+                            child: Text(
+                              state.name.isNotEmpty
+                                  ? state.name[0].toUpperCase()
+                                  : '?',
                               style: TextStyle(
-                                color: ext.greetingColor,
-                                fontSize: 22.sp,
+                                color: ext.avatarForeground,
+                                fontSize: 36.sp,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            SizedBox(height: 6.h),
-                            Text(
-                              state.email,
-                              style: TextStyle(
-                                color: ext.searchHintColor,
-                                fontSize: 14.sp,
-                              ),
+                          ),
+                          SizedBox(height: AppSpacing.xl.h),
+                          Text(
+                            state.name,
+                            style: TextStyle(
+                              color: ext.greetingColor,
+                              fontSize: 22.sp,
+                              fontWeight: FontWeight.bold,
                             ),
-                            SizedBox(height: AppSpacing.xxxl.h),
-                            Reveal(
-                              delay: AppMotion.stagger * 0,
-                              child: _ConnectionsCard(ext: ext),
+                          ),
+                          SizedBox(height: 6.h),
+                          Text(
+                            state.email,
+                            style: TextStyle(
+                              color: ext.searchHintColor,
+                              fontSize: 14.sp,
                             ),
-                            SizedBox(height: AppSpacing.md.h),
-                            Reveal(
-                              delay: AppMotion.stagger * 1,
-                              child: _EditProfileCard(state: state, ext: ext),
+                          ),
+                          SizedBox(height: AppSpacing.xxxl.h),
+                          Reveal(
+                            delay: AppMotion.stagger * 0,
+                            child: _ConnectionsCard(ext: ext),
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+                          Reveal(
+                            delay: AppMotion.stagger * 1,
+                            child: _EditProfileCard(state: state, ext: ext),
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+                          Reveal(
+                            delay: AppMotion.stagger * 2,
+                            child: _PhotographerPortfolioCard(ext: ext),
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+                          Reveal(
+                            delay: AppMotion.stagger * 3,
+                            child: _ThemeToggleCard(ext: ext),
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+                          Reveal(
+                            delay: AppMotion.stagger * 4,
+                            child: _NotificationSettingsCard(
+                                isMuted: state.isMuted, ext: ext),
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+                          Reveal(
+                            delay: AppMotion.stagger * 5,
+                            child: _PublicationSettingsCard(
+                                alwaysPublic: state.alwaysPublicImages,
+                                ext: ext),
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+                          Reveal(
+                            delay: AppMotion.stagger * 6,
+                            child: _FaceRecognitionCard(ext: ext),
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+                          Reveal(
+                            delay: AppMotion.stagger * 7,
+                            child: _AdsCard(ext: ext),
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+                          Reveal(
+                            delay: AppMotion.stagger * 8,
+                            child: _PrivacySettingsCard(
+                              anonymousMode: state.anonymousMode,
+                              hideProfile: state.hideProfile,
+                              isAnonymousModeUpdating:
+                                  state.isAnonymousModeUpdating,
+                              isHideProfileUpdating:
+                                  state.isHideProfileUpdating,
+                              ext: ext,
                             ),
-                            SizedBox(height: AppSpacing.md.h),
-                            Reveal(
-                              delay: AppMotion.stagger * 2,
-                              child: _PhotographerPortfolioCard(ext: ext),
-                            ),
-                            SizedBox(height: AppSpacing.md.h),
-                            Reveal(
-                              delay: AppMotion.stagger * 3,
-                              child: _ThemeToggleCard(ext: ext),
-                            ),
-                            SizedBox(height: AppSpacing.md.h),
-                            Reveal(
-                              delay: AppMotion.stagger * 4,
-                              child: _NotificationSettingsCard(
-                                  isMuted: state.isMuted, ext: ext),
-                            ),
-                            SizedBox(height: AppSpacing.md.h),
-                            Reveal(
-                              delay: AppMotion.stagger * 5,
-                              child: _PublicationSettingsCard(
-                                  alwaysPublic: state.alwaysPublicImages,
-                                  ext: ext),
-                            ),
-                            SizedBox(height: AppSpacing.md.h),
-                            Reveal(
-                              delay: AppMotion.stagger * 6,
-                              child: _FaceRecognitionCard(ext: ext),
-                            ),
-                            SizedBox(height: AppSpacing.md.h),
-                            Reveal(
-                              delay: AppMotion.stagger * 7,
-                              child: _AdsCard(ext: ext),
-                            ),
-                            SizedBox(height: AppSpacing.md.h),
-                            Reveal(
-                              delay: AppMotion.stagger * 8,
-                              child: _PrivacySettingsCard(
-                                anonymousMode: state.anonymousMode,
-                                hideProfile: state.hideProfile,
-                                isAnonymousModeUpdating:
-                                    state.isAnonymousModeUpdating,
-                                isHideProfileUpdating:
-                                    state.isHideProfileUpdating,
-                                ext: ext,
-                              ),
-                            ),
-                            // const Spacer(),
-                            SizedBox(height: AppSpacing.xxl.h),
-                            AppButton(
-                              fullWidth: true,
-                              variant: AppButtonVariant.destructive,
-                              label: AppLocalizations.of(context)!.accountLogout,
-                              onPressed: () {
-                                context
-                                    .read<UserProfileBloc>()
-                                    .add(const UserLogoutRequested());
-                              },
-                            ),
-                            SizedBox(height: AppSpacing.xxxl.h),
-                          ],
-                        ),
+                          ),
+                          // const Spacer(),
+                          SizedBox(height: AppSpacing.xxl.h),
+                          AppButton(
+                            fullWidth: true,
+                            variant: AppButtonVariant.destructive,
+                            label: AppLocalizations.of(context)!.accountLogout,
+                            onPressed: () {
+                              context
+                                  .read<UserProfileBloc>()
+                                  .add(const UserLogoutRequested());
+                            },
+                          ),
+                          SizedBox(height: AppSpacing.xxxl.h),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
         );
         return webWrap(page, backgroundColor: ext.homeBackground);
       },
     );
   }
-
 }
 
 // ── Edit Profile card ──────────────────────────────────────────────────────────
@@ -250,38 +251,54 @@ class _EditProfileCardState extends State<_EditProfileCard> {
   late Set<String> _selectedTags;
 
   static const _allTags = [
-    'Portrait', 'Landscape', 'Street', 'Wildlife', 'Architecture',
-    'Sports', 'Travel', 'Macro', 'Fashion', 'Wedding',
-    'Event', 'Food', 'Aerial', 'Night', 'Documentary',
-    'Abstract', 'Fine Art', 'Photojournalism',
+    'Portrait',
+    'Landscape',
+    'Street',
+    'Wildlife',
+    'Architecture',
+    'Sports',
+    'Travel',
+    'Macro',
+    'Fashion',
+    'Wedding',
+    'Event',
+    'Food',
+    'Aerial',
+    'Night',
+    'Documentary',
+    'Abstract',
+    'Fine Art',
+    'Photojournalism',
   ];
 
   @override
   void initState() {
     super.initState();
-    _nameCtrl        = TextEditingController(text: widget.state.name);
-    _usernameCtrl    = TextEditingController(text: widget.state.uniqueName);
-    _contactCtrl     = TextEditingController(text: widget.state.contact);
+    _nameCtrl = TextEditingController(text: widget.state.name);
+    _usernameCtrl = TextEditingController(text: widget.state.uniqueName);
+    _contactCtrl = TextEditingController(text: widget.state.contact);
     _countryCodeCtrl = TextEditingController(text: widget.state.countryCode);
-    _localeCtrl      = TextEditingController(text: widget.state.locale);
-    _languageCtrl    = TextEditingController(text: widget.state.preferredLanguage);
-    _timezoneCtrl    = TextEditingController(text: widget.state.timezone);
-    _selectedTags    = Set<String>.from(widget.state.interestTags);
+    _localeCtrl = TextEditingController(text: widget.state.locale);
+    _languageCtrl = TextEditingController(text: widget.state.preferredLanguage);
+    _timezoneCtrl = TextEditingController(text: widget.state.timezone);
+    _selectedTags = Set<String>.from(widget.state.interestTags);
   }
 
   @override
   void didUpdateWidget(_EditProfileCard old) {
     super.didUpdateWidget(old);
     // Sync controllers when the profile is freshly loaded (not during an update)
-    if (!widget.state.isUpdateLoading && old.state.isLoading && !widget.state.isLoading) {
-      _nameCtrl.text        = widget.state.name;
-      _usernameCtrl.text    = widget.state.uniqueName;
-      _contactCtrl.text     = widget.state.contact;
+    if (!widget.state.isUpdateLoading &&
+        old.state.isLoading &&
+        !widget.state.isLoading) {
+      _nameCtrl.text = widget.state.name;
+      _usernameCtrl.text = widget.state.uniqueName;
+      _contactCtrl.text = widget.state.contact;
       _countryCodeCtrl.text = widget.state.countryCode;
-      _localeCtrl.text      = widget.state.locale;
-      _languageCtrl.text    = widget.state.preferredLanguage;
-      _timezoneCtrl.text    = widget.state.timezone;
-      _selectedTags         = Set<String>.from(widget.state.interestTags);
+      _localeCtrl.text = widget.state.locale;
+      _languageCtrl.text = widget.state.preferredLanguage;
+      _timezoneCtrl.text = widget.state.timezone;
+      _selectedTags = Set<String>.from(widget.state.interestTags);
     }
   }
 
@@ -313,45 +330,53 @@ class _EditProfileCardState extends State<_EditProfileCard> {
   @override
   Widget build(BuildContext context) {
     final ext = widget.ext;
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-      ),
+    return Material(
+      // Material, not a decorated Container: ListTile paints its highlight and
+      // ink splash onto the nearest Material ancestor, so a DecoratedBox
+      // between the two swallows them (and trips an assertion in debug).
+      // Giving the card itself a Material means the ink lands on top of the
+      // card, clipped to its corners.
+      color: ext.cardSurface,
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Header row ────────────────────────────────────────────────────
-          Semantics(button: true, label: 'Expanded', child: InkWell(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 14.h),
-              child: Row(
-                children: [
-                  Icon(Icons.edit_outlined, color: ext.accentGold, size: 18.sp),
-                  SizedBox(width: 10.w),
-                  Expanded(
-                    child: Text(
-                      AppLocalizations.of(context)!.accountEditProfile,
-                      style: TextStyle(
-                        color: ext.greetingColor,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w600,
+          Semantics(
+              button: true,
+              label: 'Expanded',
+              child: InkWell(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 14.h),
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_outlined,
+                          color: ext.accentGold, size: 18.sp),
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        child: Text(
+                          AppLocalizations.of(context)!.accountEditProfile,
+                          style: TextStyle(
+                            color: ext.greetingColor,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
+                      Icon(
+                        _expanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        color: ext.searchHintColor,
+                        size: 22.sp,
+                      ),
+                    ],
                   ),
-                  Icon(
-                    _expanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    color: ext.searchHintColor,
-                    size: 22.sp,
-                  ),
-                ],
-              ),
-            ),
-          )),
+                ),
+              )),
           // ── Expandable form ───────────────────────────────────────────────
           AnimatedCrossFade(
             duration: const Duration(milliseconds: 250),
@@ -368,7 +393,8 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   SizedBox(height: AppSpacing.lg.h),
 
                   // ── Basic info section ─────────────────────────────────
-                  _SectionLabel(AppLocalizations.of(context)!.accountBasicInfo, ext),
+                  _SectionLabel(
+                      AppLocalizations.of(context)!.accountBasicInfo, ext),
                   SizedBox(height: 10.h),
                   _ProfileField(
                       controller: _nameCtrl,
@@ -388,7 +414,8 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   SizedBox(height: AppSpacing.xl.h),
 
                   // ── Locale section ─────────────────────────────────────
-                  _SectionLabel(AppLocalizations.of(context)!.accountLocaleRegion, ext),
+                  _SectionLabel(
+                      AppLocalizations.of(context)!.accountLocaleRegion, ext),
                   SizedBox(height: 10.h),
                   _ProfileDropdown(
                       controller: _countryCodeCtrl,
@@ -406,7 +433,8 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   SizedBox(height: 10.h),
                   _ProfileDropdown(
                       controller: _languageCtrl,
-                      label: AppLocalizations.of(context)!.accountPreferredLanguage,
+                      label: AppLocalizations.of(context)!
+                          .accountPreferredLanguage,
                       icon: Icons.translate_rounded,
                       options: _kLanguageOptions,
                       ext: ext),
@@ -420,7 +448,9 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   SizedBox(height: AppSpacing.xl.h),
 
                   // ── Interests section ──────────────────────────────────
-                  _SectionLabel(AppLocalizations.of(context)!.accountPhotographyInterests, ext),
+                  _SectionLabel(
+                      AppLocalizations.of(context)!.accountPhotographyInterests,
+                      ext),
                   SizedBox(height: 10.h),
                   StatefulBuilder(
                     builder: (context, setChipState) => Wrap(
@@ -447,9 +477,8 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                                 ? ext.greetingColor
                                 : ext.searchHintColor,
                             fontSize: 12.sp,
-                            fontWeight: selected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
+                            fontWeight:
+                                selected ? FontWeight.w600 : FontWeight.w400,
                           ),
                           side: BorderSide(
                             color: selected
@@ -471,9 +500,8 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                       return AppButton(
                         fullWidth: true,
                         isLoading: state.isUpdateLoading,
-                        onPressed: state.isUpdateLoading
-                            ? null
-                            : () => _save(context),
+                        onPressed:
+                            state.isUpdateLoading ? null : () => _save(context),
                         label: AppLocalizations.of(context)!.accountSaveChanges,
                       );
                     },
@@ -538,39 +566,84 @@ class _ProfileField extends StatelessWidget {
 // isn't in a list is preserved as a selectable fallback by [_ProfileDropdown].
 
 const Map<String, String> _kCountryOptions = {
-  'GH': 'Ghana', 'NG': 'Nigeria', 'KE': 'Kenya', 'ZA': 'South Africa',
-  'EG': 'Egypt', 'MA': 'Morocco', 'US': 'United States', 'CA': 'Canada',
-  'GB': 'United Kingdom', 'IE': 'Ireland', 'DE': 'Germany', 'FR': 'France',
-  'ES': 'Spain', 'PT': 'Portugal', 'IT': 'Italy', 'NL': 'Netherlands',
-  'BE': 'Belgium', 'CH': 'Switzerland', 'SE': 'Sweden', 'NO': 'Norway',
-  'DK': 'Denmark', 'AE': 'United Arab Emirates', 'SA': 'Saudi Arabia',
-  'IN': 'India', 'CN': 'China', 'JP': 'Japan', 'SG': 'Singapore',
-  'AU': 'Australia', 'NZ': 'New Zealand', 'BR': 'Brazil', 'MX': 'Mexico',
+  'GH': 'Ghana',
+  'NG': 'Nigeria',
+  'KE': 'Kenya',
+  'ZA': 'South Africa',
+  'EG': 'Egypt',
+  'MA': 'Morocco',
+  'US': 'United States',
+  'CA': 'Canada',
+  'GB': 'United Kingdom',
+  'IE': 'Ireland',
+  'DE': 'Germany',
+  'FR': 'France',
+  'ES': 'Spain',
+  'PT': 'Portugal',
+  'IT': 'Italy',
+  'NL': 'Netherlands',
+  'BE': 'Belgium',
+  'CH': 'Switzerland',
+  'SE': 'Sweden',
+  'NO': 'Norway',
+  'DK': 'Denmark',
+  'AE': 'United Arab Emirates',
+  'SA': 'Saudi Arabia',
+  'IN': 'India',
+  'CN': 'China',
+  'JP': 'Japan',
+  'SG': 'Singapore',
+  'AU': 'Australia',
+  'NZ': 'New Zealand',
+  'BR': 'Brazil',
+  'MX': 'Mexico',
 };
 
 const Map<String, String> _kLanguageOptions = {
-  'en': 'English', 'de': 'German', 'fr': 'French', 'es': 'Spanish',
-  'pt': 'Portuguese', 'ar': 'Arabic',
+  'en': 'English',
+  'de': 'German',
+  'fr': 'French',
+  'es': 'Spanish',
+  'pt': 'Portuguese',
+  'ar': 'Arabic',
 };
 
 const Map<String, String> _kLocaleOptions = {
-  'en_US': 'English (US)', 'en_GB': 'English (UK)', 'de_DE': 'German (Germany)',
-  'fr_FR': 'French (France)', 'es_ES': 'Spanish (Spain)',
-  'pt_PT': 'Portuguese (Portugal)', 'it_IT': 'Italian (Italy)',
+  'en_US': 'English (US)',
+  'en_GB': 'English (UK)',
+  'de_DE': 'German (Germany)',
+  'fr_FR': 'French (France)',
+  'es_ES': 'Spanish (Spain)',
+  'pt_PT': 'Portuguese (Portugal)',
+  'it_IT': 'Italian (Italy)',
   'nl_NL': 'Dutch (Netherlands)',
 };
 
 const Map<String, String> _kTimezoneOptions = {
-  'UTC': 'UTC', 'Africa/Accra': 'Accra', 'Africa/Lagos': 'Lagos',
-  'Africa/Nairobi': 'Nairobi', 'Africa/Johannesburg': 'Johannesburg',
-  'Africa/Cairo': 'Cairo', 'Europe/London': 'London', 'Europe/Berlin': 'Berlin',
-  'Europe/Paris': 'Paris', 'Europe/Madrid': 'Madrid', 'Europe/Rome': 'Rome',
-  'Europe/Amsterdam': 'Amsterdam', 'America/New_York': 'New York',
-  'America/Chicago': 'Chicago', 'America/Denver': 'Denver',
-  'America/Los_Angeles': 'Los Angeles', 'America/Sao_Paulo': 'São Paulo',
-  'America/Mexico_City': 'Mexico City', 'Asia/Dubai': 'Dubai',
-  'Asia/Kolkata': 'Kolkata', 'Asia/Shanghai': 'Shanghai', 'Asia/Tokyo': 'Tokyo',
-  'Asia/Singapore': 'Singapore', 'Australia/Sydney': 'Sydney',
+  'UTC': 'UTC',
+  'Africa/Accra': 'Accra',
+  'Africa/Lagos': 'Lagos',
+  'Africa/Nairobi': 'Nairobi',
+  'Africa/Johannesburg': 'Johannesburg',
+  'Africa/Cairo': 'Cairo',
+  'Europe/London': 'London',
+  'Europe/Berlin': 'Berlin',
+  'Europe/Paris': 'Paris',
+  'Europe/Madrid': 'Madrid',
+  'Europe/Rome': 'Rome',
+  'Europe/Amsterdam': 'Amsterdam',
+  'America/New_York': 'New York',
+  'America/Chicago': 'Chicago',
+  'America/Denver': 'Denver',
+  'America/Los_Angeles': 'Los Angeles',
+  'America/Sao_Paulo': 'São Paulo',
+  'America/Mexico_City': 'Mexico City',
+  'Asia/Dubai': 'Dubai',
+  'Asia/Kolkata': 'Kolkata',
+  'Asia/Shanghai': 'Shanghai',
+  'Asia/Tokyo': 'Tokyo',
+  'Asia/Singapore': 'Singapore',
+  'Australia/Sydney': 'Sydney',
   'Pacific/Auckland': 'Auckland',
 };
 
@@ -627,7 +700,8 @@ class _ProfileDropdownState extends State<_ProfileDropdown> {
           borderRadius: BorderRadius.circular(10.r),
           borderSide: BorderSide(color: ext.accentGold, width: 1.5),
         ),
-        contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 6.h),
+        contentPadding:
+            EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 6.h),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -671,11 +745,12 @@ class _PhotographerPortfolioCard extends StatelessWidget {
       future: sl<AuthService>().getRole(),
       builder: (context, snap) {
         if (snap.data != 'photographer') return const SizedBox.shrink();
-        return Container(
-          decoration: BoxDecoration(
-            color: ext.cardSurface,
-            borderRadius: BorderRadius.circular(AppRadius.md.r),
-          ),
+        return Material(
+          // See the sibling cards: the ink has to land on a Material, and a
+          // decorated Container between tile and Material eats it.
+          color: ext.cardSurface,
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -722,11 +797,12 @@ class _ThemeToggleCard extends StatelessWidget {
       bloc: sl<ThemeCubit>(),
       builder: (context, themeMode) {
         final isDark = themeMode == ThemeMode.dark;
-        return Container(
-          decoration: BoxDecoration(
-            color: ext.cardSurface,
-            borderRadius: BorderRadius.circular(AppRadius.md.r),
-          ),
+        return Material(
+          // See the sibling cards: the ink has to land on a Material, and a
+          // decorated Container between tile and Material eats it.
+          color: ext.cardSurface,
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -743,25 +819,22 @@ class _ThemeToggleCard extends StatelessWidget {
                 ),
               ),
               SwitchListTile(
-                contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
                 activeThumbColor: ext.greetingColor,
                 activeTrackColor: ext.searchHintColor.withValues(alpha: 0.4),
                 title: Text(
                   AppLocalizations.of(context)!.accountDarkMode,
-                  style: TextStyle(
-                      color: ext.greetingColor, fontSize: 14.sp),
+                  style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                 ),
                 subtitle: Text(
                   isDark
                       ? AppLocalizations.of(context)!.accountDarkThemeOn
                       : AppLocalizations.of(context)!.accountLightThemeOn,
-                  style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 12.sp),
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
                 ),
                 secondary: Icon(
-                  isDark
-                      ? Icons.dark_mode_outlined
-                      : Icons.light_mode_outlined,
+                  isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
                   color: isDark ? ext.greetingColor : ext.searchHintColor,
                 ),
                 value: isDark,
@@ -787,11 +860,15 @@ class _PublicationSettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-      ),
+    return Material(
+      // Material, not a decorated Container: ListTile paints its highlight and
+      // ink splash onto the nearest Material ancestor, so a DecoratedBox
+      // between the two swallows them (and trips an assertion in debug).
+      // Giving the card itself a Material means the ink lands on top of the
+      // card, clipped to its corners.
+      color: ext.cardSurface,
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -818,7 +895,8 @@ class _PublicationSettingsCard extends StatelessWidget {
             subtitle: Text(
               alwaysPublic
                   ? AppLocalizations.of(context)!.accountUploadsPublicByDefault
-                  : AppLocalizations.of(context)!.accountUploadsPrivateByDefault,
+                  : AppLocalizations.of(context)!
+                      .accountUploadsPrivateByDefault,
               style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
             secondary: Icon(
@@ -827,9 +905,7 @@ class _PublicationSettingsCard extends StatelessWidget {
             ),
             value: alwaysPublic,
             onChanged: (value) {
-              context
-                  .read<UserProfileBloc>()
-                  .add(PublicImagesToggled(value));
+              context.read<UserProfileBloc>().add(PublicImagesToggled(value));
             },
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
@@ -887,11 +963,15 @@ class _PrivacySettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-      ),
+    return Material(
+      // Material, not a decorated Container: ListTile paints its highlight and
+      // ink splash onto the nearest Material ancestor, so a DecoratedBox
+      // between the two swallows them (and trips an assertion in debug).
+      // Giving the card itself a Material means the ink lands on top of the
+      // card, clipped to its corners.
+      color: ext.cardSurface,
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -930,7 +1010,8 @@ class _PrivacySettingsCard extends StatelessWidget {
                   )
                 : Icon(
                     Icons.person_off_outlined,
-                    color: anonymousMode ? ext.greetingColor : ext.searchHintColor,
+                    color:
+                        anonymousMode ? ext.greetingColor : ext.searchHintColor,
                   ),
             value: anonymousMode,
             onChanged: isAnonymousModeUpdating
@@ -965,7 +1046,8 @@ class _PrivacySettingsCard extends StatelessWidget {
                   )
                 : Icon(
                     Icons.visibility_off_outlined,
-                    color: hideProfile ? ext.greetingColor : ext.searchHintColor,
+                    color:
+                        hideProfile ? ext.greetingColor : ext.searchHintColor,
                   ),
             value: hideProfile,
             onChanged: isHideProfileUpdating
@@ -986,19 +1068,22 @@ class _PrivacySettingsCard extends StatelessWidget {
 // ── Notification settings card ────────────────────────────────────────────────
 
 class _NotificationSettingsCard extends StatelessWidget {
-  const _NotificationSettingsCard(
-      {required this.isMuted, required this.ext});
+  const _NotificationSettingsCard({required this.isMuted, required this.ext});
 
   final bool isMuted;
   final AppThemeExtension ext;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-      ),
+    return Material(
+      // Material, not a decorated Container: ListTile paints its highlight and
+      // ink splash onto the nearest Material ancestor, so a DecoratedBox
+      // between the two swallows them (and trips an assertion in debug).
+      // Giving the card itself a Material means the ink lands on top of the
+      // card, clipped to its corners.
+      color: ext.cardSurface,
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1154,8 +1239,7 @@ class _AdsCard extends StatelessWidget {
                 subtitle: 'Configure feed, ads, and app-wide settings',
                 ext: ext,
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const AdminSettingsPage()),
+                  MaterialPageRoute(builder: (_) => const AdminSettingsPage()),
                 ),
               ));
             }
@@ -1229,8 +1313,7 @@ class _FaceRecognitionCardState extends State<_FaceRecognitionCard> {
       if (res.statusCode == 200) {
         await sl<AuthService>().setHasAddedFaces(false);
         if (!mounted) return;
-        final status =
-            (res.data is Map) ? res.data['status'] as String? : null;
+        final status = (res.data is Map) ? res.data['status'] as String? : null;
         AppSnackBar.success(
           context,
           status == 'not_found'
@@ -1263,11 +1346,15 @@ class _FaceRecognitionCardState extends State<_FaceRecognitionCard> {
   @override
   Widget build(BuildContext context) {
     final ext = widget.ext;
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-      ),
+    return Material(
+      // Material, not a decorated Container: ListTile paints its highlight and
+      // ink splash onto the nearest Material ancestor, so a DecoratedBox
+      // between the two swallows them (and trips an assertion in debug).
+      // Giving the card itself a Material means the ink lands on top of the
+      // card, clipped to its corners.
+      color: ext.cardSurface,
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1344,11 +1431,15 @@ class _ConnectionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-      ),
+    return Material(
+      // Material, not a decorated Container: ListTile paints its highlight and
+      // ink splash onto the nearest Material ancestor, so a DecoratedBox
+      // between the two swallows them (and trips an assertion in debug).
+      // Giving the card itself a Material means the ink lands on top of the
+      // card, clipped to its corners.
+      color: ext.cardSurface,
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

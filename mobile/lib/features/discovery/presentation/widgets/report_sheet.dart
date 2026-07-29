@@ -44,7 +44,8 @@ class ReportSheet extends StatefulWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => ReportSheet(ext: ext, assetType: assetType, assetId: assetId),
+      builder: (_) =>
+          ReportSheet(ext: ext, assetType: assetType, assetId: assetId),
     );
   }
 
@@ -76,7 +77,8 @@ class _ReportSheetState extends State<ReportSheet> {
     }
     if (!mounted) return;
     Navigator.of(context).pop();
-    AppSnackBar.success(context, 'Report submitted. Thank you for your feedback.');
+    AppSnackBar.success(
+        context, 'Report submitted. Thank you for your feedback.');
   }
 
   @override
@@ -87,81 +89,86 @@ class _ReportSheetState extends State<ReportSheet> {
         color: ext.homeBackground,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
-              width: 36.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: ext.searchHintColor.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(2.r),
+      // ListTile ink paints on the nearest Material ancestor; this decorated
+      // Container sits between the sheet's Material and the tiles and would
+      // swallow it (and assert in debug). A transparency Material paints
+      // nothing and just gives the ink somewhere to land.
+      child: Material(
+        type: MaterialType.transparency,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                width: 36.w,
+                height: 4.h,
+                decoration: BoxDecoration(
+                  color: ext.searchHintColor.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
               ),
-            ),
-
-            Padding(
-              padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 12.h),
-              child: Row(
-                children: [
-                  if (!kIsWeb)
-                    Semantics(button: true, label: 'Close', child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Icon(Icons.arrow_back_ios_new_rounded,
-                          color: ext.greetingColor, size: 18.sp),
-                    )),
-                  SizedBox(width: AppSpacing.md.w),
-                  Text(
-                    'Why are you reporting this?',
+              Padding(
+                padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 12.h),
+                child: Row(
+                  children: [
+                    if (!kIsWeb)
+                      Semantics(
+                          button: true,
+                          label: 'Close',
+                          child: GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            child: Icon(Icons.arrow_back_ios_new_rounded,
+                                color: ext.greetingColor, size: 18.sp),
+                          )),
+                    SizedBox(width: AppSpacing.md.w),
+                    Text(
+                      'Why are you reporting this?',
+                      style: TextStyle(
+                        color: ext.greetingColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.sp,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Divider(
+                  height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
+              ...reportReasons.entries.map((entry) {
+                final selected = _selected == entry.key;
+                return ListTile(
+                  title: Text(
+                    entry.value,
                     style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.sp,
+                      color: selected ? Colors.redAccent : ext.greetingColor,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 14.sp,
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
-
-            ...reportReasons.entries.map((entry) {
-              final selected = _selected == entry.key;
-              return ListTile(
-                title: Text(
-                  entry.value,
-                  style: TextStyle(
-                    color: selected ? Colors.redAccent : ext.greetingColor,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 14.sp,
-                  ),
+                  trailing: selected
+                      ? Icon(Icons.check_circle_rounded,
+                          color: Colors.redAccent, size: 20.sp)
+                      : Icon(Icons.radio_button_unchecked_rounded,
+                          color: ext.searchHintColor, size: 20.sp),
+                  onTap: () => setState(() => _selected = entry.key),
+                );
+              }),
+              SizedBox(height: AppSpacing.md.h),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+                child: AppButton(
+                  fullWidth: true,
+                  variant: AppButtonVariant.destructive,
+                  isLoading: _submitting,
+                  onPressed: _selected == null || _submitting ? null : _submit,
+                  label: 'Submit Report',
                 ),
-                trailing: selected
-                    ? Icon(Icons.check_circle_rounded,
-                        color: Colors.redAccent, size: 20.sp)
-                    : Icon(Icons.radio_button_unchecked_rounded,
-                        color: ext.searchHintColor, size: 20.sp),
-                onTap: () => setState(() => _selected = entry.key),
-              );
-            }),
-
-            SizedBox(height: AppSpacing.md.h),
-
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-              child: AppButton(
-                fullWidth: true,
-                variant: AppButtonVariant.destructive,
-                isLoading: _submitting,
-                onPressed: _selected == null || _submitting ? null : _submit,
-                label: 'Submit Report',
               ),
-            ),
-
-            SizedBox(height: AppSpacing.lg.h),
-          ],
+              SizedBox(height: AppSpacing.lg.h),
+            ],
+          ),
         ),
       ),
     );

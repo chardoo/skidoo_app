@@ -61,9 +61,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
       if (!mounted) return;
       AppSnackBar.success(
         context,
-        status == 'filled'
-            ? 'Request marked as filled.'
-            : 'Request closed.',
+        status == 'filled' ? 'Request marked as filled.' : 'Request closed.',
       );
       _load();
     } catch (e) {
@@ -77,7 +75,8 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
     debugPrint('[MyRequestsPage] _promote id=${req.id}');
     try {
       final result = await _repo.promoteRequest(req.id);
-      final campaignId = result['campaign_id'] as String? ?? result['id'] as String?;
+      final campaignId =
+          result['campaign_id'] as String? ?? result['id'] as String?;
       debugPrint('[MyRequestsPage] _promote — campaignId=$campaignId');
       if (campaignId == null || campaignId.isEmpty) {
         if (!mounted) return;
@@ -89,8 +88,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) =>
-              CreateCampaignPage(existingCampaignId: campaignId),
+          builder: (_) => CreateCampaignPage(existingCampaignId: campaignId),
         ),
       );
       if (mounted) _load();
@@ -101,7 +99,8 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
     }
   }
 
-  void _showActions(BuildContext context, FeedRequestModel req, AppThemeExtension ext) {
+  void _showActions(
+      BuildContext context, FeedRequestModel req, AppThemeExtension ext) {
     final canEdit = req.status == 'open';
     final isActive = req.status == 'open' || req.status == 'promoted';
     showModalBottomSheet<void>(
@@ -112,73 +111,79 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
           color: ext.homeBackground,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
-                width: 36.w,
-                height: 4.h,
-                decoration: BoxDecoration(
-                  color: ext.searchHintColor.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(2.r),
+        // _ActionTile is a ListTile; its ink needs a Material beneath this
+        // decorated Container rather than above it.
+        child: Material(
+          type: MaterialType.transparency,
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                  width: 36.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: ext.searchHintColor.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
                 ),
-              ),
-              if (canEdit)
-                _ActionTile(
-                  icon: Icons.edit_outlined,
-                  label: 'Edit Request',
-                  color: ext.infoBlue,
-                  ext: ext,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _showEditSheet(context, req, ext);
-                  },
-                ),
-              if (isActive && req.promotedCampaignId == null)
-                _ActionTile(
-                  icon: Icons.rocket_launch_rounded,
-                  label: 'Promote to Campaign',
-                  color: ext.accentGold,
-                  ext: ext,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _promote(req);
-                  },
-                ),
-              if (isActive)
-                _ActionTile(
-                  icon: Icons.check_circle_outline_rounded,
-                  label: 'Mark as Filled',
-                  color: const Color(0xFF10B981),
-                  ext: ext,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _close(req, 'filled');
-                  },
-                ),
-              if (isActive)
-                _ActionTile(
-                  icon: Icons.cancel_outlined,
-                  label: 'Close Request',
-                  color: Colors.redAccent,
-                  ext: ext,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _close(req, 'closed');
-                  },
-                ),
-              SizedBox(height: AppSpacing.sm.h),
-            ],
+                if (canEdit)
+                  _ActionTile(
+                    icon: Icons.edit_outlined,
+                    label: 'Edit Request',
+                    color: ext.infoBlue,
+                    ext: ext,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _showEditSheet(context, req, ext);
+                    },
+                  ),
+                if (isActive && req.promotedCampaignId == null)
+                  _ActionTile(
+                    icon: Icons.rocket_launch_rounded,
+                    label: 'Promote to Campaign',
+                    color: ext.accentGold,
+                    ext: ext,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _promote(req);
+                    },
+                  ),
+                if (isActive)
+                  _ActionTile(
+                    icon: Icons.check_circle_outline_rounded,
+                    label: 'Mark as Filled',
+                    color: const Color(0xFF10B981),
+                    ext: ext,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _close(req, 'filled');
+                    },
+                  ),
+                if (isActive)
+                  _ActionTile(
+                    icon: Icons.cancel_outlined,
+                    label: 'Close Request',
+                    color: Colors.redAccent,
+                    ext: ext,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _close(req, 'closed');
+                    },
+                  ),
+                SizedBox(height: AppSpacing.sm.h),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  void _showEditSheet(BuildContext context, FeedRequestModel req, AppThemeExtension ext) {
+  void _showEditSheet(
+      BuildContext context, FeedRequestModel req, AppThemeExtension ext) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -207,12 +212,14 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : IconButton(
-          tooltip: 'Back',
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: ext.greetingColor, size: 20.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb
+            ? null
+            : IconButton(
+                tooltip: 'Back',
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    color: ext.greetingColor, size: 20.sp),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: Text(
           'My Requests',
           style: TextStyle(
@@ -248,8 +255,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
                           return _MyRequestTile(
                             request: req,
                             ext: ext,
-                            onActionTap: () =>
-                                _showActions(context, req, ext),
+                            onActionTap: () => _showActions(context, req, ext),
                           );
                         },
                       ),
@@ -257,7 +263,6 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
     );
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
-
 }
 
 // ── My request tile ───────────────────────────────────────────────────────────
@@ -316,9 +321,13 @@ class _MyRequestTile extends StatelessWidget {
             runSpacing: 4.h,
             children: [
               if (r.eventType.isNotEmpty)
-                _MetaText(icon: Icons.event_rounded, label: r.eventType, ext: ext),
+                _MetaText(
+                    icon: Icons.event_rounded, label: r.eventType, ext: ext),
               if (r.location.isNotEmpty)
-                _MetaText(icon: Icons.location_on_outlined, label: r.location, ext: ext),
+                _MetaText(
+                    icon: Icons.location_on_outlined,
+                    label: r.location,
+                    ext: ext),
               if (r.budgetAmount != null)
                 _MetaText(
                   icon: Icons.payments_outlined,
@@ -349,25 +358,28 @@ class _MyRequestTile extends StatelessWidget {
           ],
           if (r.status == 'open' || r.status == 'promoted') ...[
             SizedBox(height: AppSpacing.md.h),
-            Semantics(button: true, label: 'Action tap', child: GestureDetector(
-              onTap: onActionTap,
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 10.h),
-                decoration: BoxDecoration(
-                  color: ext.searchFieldFill,
-                  borderRadius: BorderRadius.circular(AppRadius.md.r),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Manage',
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w700,
+            Semantics(
+                button: true,
+                label: 'Action tap',
+                child: GestureDetector(
+                  onTap: onActionTap,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                    decoration: BoxDecoration(
+                      color: ext.searchFieldFill,
+                      borderRadius: BorderRadius.circular(AppRadius.md.r),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Manage',
+                      style: TextStyle(
+                        color: ext.greetingColor,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            )),
+                )),
           ],
         ],
       ),
@@ -387,7 +399,8 @@ class _MyRequestTile extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status, required this.color, required this.ext});
+  const _StatusBadge(
+      {required this.status, required this.color, required this.ext});
   final String status;
   final Color color;
   final AppThemeExtension ext;
@@ -425,7 +438,8 @@ class _StatusBadge extends StatelessWidget {
 }
 
 class _MetaText extends StatelessWidget {
-  const _MetaText({required this.icon, required this.label, required this.ext, this.color});
+  const _MetaText(
+      {required this.icon, required this.label, required this.ext, this.color});
   final IconData icon;
   final String label;
   final AppThemeExtension ext;
@@ -441,7 +455,8 @@ class _MetaText extends StatelessWidget {
         SizedBox(width: 3.w),
         Text(
           label,
-          style: TextStyle(color: c, fontSize: 11.sp, fontWeight: FontWeight.w500),
+          style:
+              TextStyle(color: c, fontSize: 11.sp, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -451,8 +466,16 @@ class _MetaText extends StatelessWidget {
 // ── Edit request bottom sheet ─────────────────────────────────────────────────
 
 const _editEventTypes = [
-  'Wedding', 'Birthday', 'Corporate', 'Concert',
-  'Graduation', 'Engagement', 'Baby Shower', 'Anniversary', 'Sports', 'Other',
+  'Wedding',
+  'Birthday',
+  'Corporate',
+  'Concert',
+  'Graduation',
+  'Engagement',
+  'Baby Shower',
+  'Anniversary',
+  'Sports',
+  'Other',
 ];
 
 class _EditRequestSheet extends StatefulWidget {
@@ -511,9 +534,12 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
       final updated = await widget.repo.updateRequest(
         widget.request.id,
         title: title,
-        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        description:
+            _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         eventType: _eventType,
-        location: _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
+        location: _locationCtrl.text.trim().isEmpty
+            ? null
+            : _locationCtrl.text.trim(),
         budgetAmount: double.tryParse(_budgetCtrl.text.trim()),
         commentsEnabled: _commentsEnabled,
       );
@@ -539,134 +565,150 @@ class _EditRequestSheetState extends State<_EditRequestSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
       padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 20.h + bottom),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Center(
-                child: Container(
-                  margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
-                  width: 36.w,
-                  height: 4.h,
-                  decoration: BoxDecoration(
-                    color: ext.searchHintColor.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(2.r),
-                  ),
-                ),
-              ),
-              Text(
-                'Edit Request',
-                style: TextStyle(
-                  color: ext.greetingColor,
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.4,
-                ),
-              ),
-              SizedBox(height: AppSpacing.lg.h),
-              _EditField(label: 'Title *', ctrl: _titleCtrl, ext: ext),
-              SizedBox(height: AppSpacing.md.h),
-              _EditField(label: 'Description', ctrl: _descCtrl, ext: ext, maxLines: 3),
-              SizedBox(height: AppSpacing.md.h),
-              _EditField(label: 'Location', ctrl: _locationCtrl, ext: ext),
-              SizedBox(height: AppSpacing.md.h),
-              _EditField(
-                label: 'Budget (${widget.request.currency})',
-                ctrl: _budgetCtrl,
-                ext: ext,
-                keyboardType: TextInputType.number,
-              ),
-              SizedBox(height: AppSpacing.lg.h),
-              Text(
-                'Event Type',
-                style: TextStyle(
-                  color: ext.greetingColor,
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              SizedBox(height: AppSpacing.sm.h),
-              Wrap(
-                spacing: 8.w,
-                runSpacing: 8.h,
-                children: [
-                  _Chip(
-                    label: 'Any',
-                    selected: _eventType == null,
-                    ext: ext,
-                    onTap: () => setState(() => _eventType = null),
-                  ),
-                  ..._editEventTypes.map((t) => _Chip(
-                        label: t,
-                        selected: _eventType == t.toLowerCase(),
-                        ext: ext,
-                        onTap: () => setState(() => _eventType = t.toLowerCase()),
-                      )),
-                ],
-              ),
-              SizedBox(height: AppSpacing.xl.h),
-              Container(
-                decoration: BoxDecoration(
-                  color: ext.searchFieldFill,
-                  borderRadius: BorderRadius.circular(AppRadius.md.r),
-                ),
-                child: SwitchListTile(
-                  value: _commentsEnabled,
-                  onChanged: (v) => setState(() => _commentsEnabled = v),
-                  activeThumbColor: ext.accentGold,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
-                  title: Text(
-                    'Allow comments',
-                    style: TextStyle(
-                      color: ext.greetingColor,
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
+      // See the sibling sheets: tile ink has to land on a Material, and this
+      // decorated Container would otherwise sit between the two.
+      child: Material(
+        type: MaterialType.transparency,
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                    width: 36.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: ext.searchHintColor.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(2.r),
                     ),
                   ),
-                  subtitle: Text(
-                    'Let people comment on this request',
-                    style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                ),
+                Text(
+                  'Edit Request',
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.4,
                   ),
                 ),
-              ),
-              SizedBox(height: AppSpacing.xxl.h),
-              Semantics(button: true, label: 'Save', child: GestureDetector(
-                onTap: _saving ? null : _save,
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 15.h),
-                  decoration: BoxDecoration(
-                    gradient: _saving
-                        ? null
-                        : LinearGradient(
-                            colors: [ext.accentGold, ext.accentGoldDark],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                    color: _saving ? ext.searchFieldFill : null,
-                    borderRadius: BorderRadius.circular(14.r),
+                SizedBox(height: AppSpacing.lg.h),
+                _EditField(label: 'Title *', ctrl: _titleCtrl, ext: ext),
+                SizedBox(height: AppSpacing.md.h),
+                _EditField(
+                    label: 'Description',
+                    ctrl: _descCtrl,
+                    ext: ext,
+                    maxLines: 3),
+                SizedBox(height: AppSpacing.md.h),
+                _EditField(label: 'Location', ctrl: _locationCtrl, ext: ext),
+                SizedBox(height: AppSpacing.md.h),
+                _EditField(
+                  label: 'Budget (${widget.request.currency})',
+                  ctrl: _budgetCtrl,
+                  ext: ext,
+                  keyboardType: TextInputType.number,
+                ),
+                SizedBox(height: AppSpacing.lg.h),
+                Text(
+                  'Event Type',
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
                   ),
-                  alignment: Alignment.center,
-                  child: _saving
-                      ? SizedBox(
-                          width: 20.w,
-                          height: 20.w,
-                          child: CircularProgressIndicator(
-                              color: ext.accentGold, strokeWidth: 2),
-                        )
-                      : Text(
-                          'Save changes',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15.sp,
-                            fontWeight: FontWeight.w800,
-                          ),
+                ),
+                SizedBox(height: AppSpacing.sm.h),
+                Wrap(
+                  spacing: 8.w,
+                  runSpacing: 8.h,
+                  children: [
+                    _Chip(
+                      label: 'Any',
+                      selected: _eventType == null,
+                      ext: ext,
+                      onTap: () => setState(() => _eventType = null),
+                    ),
+                    ..._editEventTypes.map((t) => _Chip(
+                          label: t,
+                          selected: _eventType == t.toLowerCase(),
+                          ext: ext,
+                          onTap: () =>
+                              setState(() => _eventType = t.toLowerCase()),
+                        )),
+                  ],
+                ),
+                SizedBox(height: AppSpacing.xl.h),
+                Material(
+                  // Not a decorated Container: the tile's ink needs a Material
+                  // beneath it, and a DecoratedBox in between swallows it.
+                  color: ext.searchFieldFill,
+                  borderRadius: BorderRadius.circular(AppRadius.md.r),
+                  clipBehavior: Clip.antiAlias,
+                  child: SwitchListTile(
+                    value: _commentsEnabled,
+                    onChanged: (v) => setState(() => _commentsEnabled = v),
+                    activeThumbColor: ext.accentGold,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
+                    title: Text(
+                      'Allow comments',
+                      style: TextStyle(
+                        color: ext.greetingColor,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Let people comment on this request',
+                      style: TextStyle(
+                          color: ext.searchHintColor, fontSize: 12.sp),
+                    ),
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xxl.h),
+                Semantics(
+                    button: true,
+                    label: 'Save',
+                    child: GestureDetector(
+                      onTap: _saving ? null : _save,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 15.h),
+                        decoration: BoxDecoration(
+                          gradient: _saving
+                              ? null
+                              : LinearGradient(
+                                  colors: [ext.accentGold, ext.accentGoldDark],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                          color: _saving ? ext.searchFieldFill : null,
+                          borderRadius: BorderRadius.circular(14.r),
                         ),
-                ),
-              )),
-            ],
+                        alignment: Alignment.center,
+                        child: _saving
+                            ? SizedBox(
+                                width: 20.w,
+                                height: 20.w,
+                                child: CircularProgressIndicator(
+                                    color: ext.accentGold, strokeWidth: 2),
+                              )
+                            : Text(
+                                'Save changes',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                      ),
+                    )),
+              ],
+            ),
           ),
         ),
       ),
@@ -714,31 +756,35 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: label, child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 7.h),
-        decoration: BoxDecoration(
-          color: selected
-              ? ext.accentGold.withValues(alpha: 0.15)
-              : ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(AppRadius.xl.r),
-          border: Border.all(
-            color: selected
-                ? ext.accentGold.withValues(alpha: 0.6)
-                : Colors.transparent,
+    return Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md.w, vertical: 7.h),
+            decoration: BoxDecoration(
+              color: selected
+                  ? ext.accentGold.withValues(alpha: 0.15)
+                  : ext.searchFieldFill,
+              borderRadius: BorderRadius.circular(AppRadius.xl.r),
+              border: Border.all(
+                color: selected
+                    ? ext.accentGold.withValues(alpha: 0.6)
+                    : Colors.transparent,
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? ext.accentGold : ext.searchHintColor,
+                fontSize: 12.sp,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? ext.accentGold : ext.searchHintColor,
-            fontSize: 12.sp,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
-      ),
-    ));
+        ));
   }
 }
 

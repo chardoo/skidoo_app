@@ -1,7 +1,8 @@
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/error/exceptions.dart' show CacheException, ServerException;
+import 'package:skidoo_app/core/error/exceptions.dart'
+    show CacheException, ServerException;
 import 'package:skidoo_app/core/usecases/usecase.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/update_profile_usecase.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart'
@@ -74,8 +75,8 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
         locale: profile['locale'] as String? ?? '',
         preferredLanguage: profile['preferredLanguage'] as String? ?? '',
         timezone: profile['timezone'] as String? ?? '',
-        interestTags: List<String>.from(
-            (profile['interestTags'] as List?) ?? []),
+        interestTags:
+            List<String>.from((profile['interestTags'] as List?) ?? []),
         isMuted: _notifPrefs.isMuted,
         alwaysPublicImages: _notifPrefs.alwaysPublicImages,
         anonymousMode: features['anonymous_comments'] ?? state.anonymousMode,
@@ -154,20 +155,26 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
   Future<void> _onProfileUpdateSubmitted(
       ProfileUpdateSubmitted event, Emitter<UserProfileState> emit) async {
     emit(state.copyWith(
-        isUpdateLoading: true, clearUpdateError: true, clearUpdateSuccess: true));
+        isUpdateLoading: true,
+        clearUpdateError: true,
+        clearUpdateSuccess: true));
     try {
       final clientId = await _authService.getUserId();
 
       // Build server payload using backend field names
       final serverData = <String, dynamic>{};
       if (event.name.isNotEmpty) serverData['name'] = event.name;
-      if (event.uniqueName.isNotEmpty) serverData['uiqueName'] = event.uniqueName;
+      if (event.uniqueName.isNotEmpty)
+        serverData['uiqueName'] = event.uniqueName;
       if (event.contact.isNotEmpty) serverData['contact'] = event.contact;
-      if (event.countryCode.isNotEmpty) serverData['country_code'] = event.countryCode;
+      if (event.countryCode.isNotEmpty)
+        serverData['country_code'] = event.countryCode;
       if (event.locale.isNotEmpty) serverData['locale'] = event.locale;
-      if (event.preferredLanguage.isNotEmpty) serverData['preferred_language'] = event.preferredLanguage;
+      if (event.preferredLanguage.isNotEmpty)
+        serverData['preferred_language'] = event.preferredLanguage;
       if (event.timezone.isNotEmpty) serverData['timezone'] = event.timezone;
-      if (event.interestTags.isNotEmpty) serverData['interest_tags'] = event.interestTags;
+      if (event.interestTags.isNotEmpty)
+        serverData['interest_tags'] = event.interestTags;
 
       await _updateProfileUseCase(
           UpdateProfileParams(clientId: clientId, data: serverData));

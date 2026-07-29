@@ -19,8 +19,14 @@ import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 const _eventTypes = [
-  'Wedding', 'Birthday', 'Corporate', 'Concert',
-  'Graduation', 'Engagement', 'Baby Shower', 'Other',
+  'Wedding',
+  'Birthday',
+  'Corporate',
+  'Concert',
+  'Graduation',
+  'Engagement',
+  'Baby Shower',
+  'Other',
 ];
 
 class RequestBoardPage extends StatefulWidget {
@@ -62,7 +68,8 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
   }
 
   Future<void> _load() async {
-    debugPrint('[RequestBoardPage] _load eventType=$_selectedEventType location="${_locationCtrl.text.trim()}"');
+    debugPrint(
+        '[RequestBoardPage] _load eventType=$_selectedEventType location="${_locationCtrl.text.trim()}"');
     setState(() {
       _loading = true;
       _errorMessage = null;
@@ -84,7 +91,8 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
       if (!mounted) return;
       final requests = results[0] as List<FeedRequestModel>;
       final ad = results[1] as AdModel?;
-      debugPrint('[RequestBoardPage] _load done — ${requests.length} requests, ad=${ad?.adId}');
+      debugPrint(
+          '[RequestBoardPage] _load done — ${requests.length} requests, ad=${ad?.adId}');
       setState(() {
         _requests = requests;
         _sponsoredAd = ad;
@@ -129,7 +137,8 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
   }
 
   Future<void> _openChat(FeedRequestModel req) async {
-    debugPrint('[RequestBoardPage] _openChat requesterId=${req.requesterId} name="${req.requesterName}"');
+    debugPrint(
+        '[RequestBoardPage] _openChat requesterId=${req.requesterId} name="${req.requesterName}"');
     final role = req.requesterType == 'photographer'
         ? ChatConfig.rolePhotographer
         : ChatConfig.roleClient;
@@ -149,7 +158,9 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
       final blocked = e is ServerException && e.message.contains('400');
       AppSnackBar.error(
         context,
-        blocked ? 'This user is not accepting messages.' : 'Could not open chat.',
+        blocked
+            ? 'This user is not accepting messages.'
+            : 'Could not open chat.',
       );
     }
   }
@@ -183,12 +194,14 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : IconButton(
-          tooltip: 'Back',
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: ext.greetingColor, size: 20.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb
+            ? null
+            : IconButton(
+                tooltip: 'Back',
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    color: ext.greetingColor, size: 20.sp),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: Text(
           'Request Board',
           style: TextStyle(
@@ -237,8 +250,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                   return NotificationListener<ScrollNotification>(
                     onNotification: (n) {
                       if (n is ScrollUpdateNotification &&
-                          n.metrics.pixels >=
-                              n.metrics.maxScrollExtent - 800) {
+                          n.metrics.pixels >= n.metrics.maxScrollExtent - 800) {
                         _loadMore();
                       }
                       return false;
@@ -253,7 +265,8 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                           // Loading spinner at the very end
                           if (i == adOffset + visible.length) {
                             return Padding(
-                              padding: EdgeInsets.symmetric(vertical: AppSpacing.xl.h),
+                              padding: EdgeInsets.symmetric(
+                                  vertical: AppSpacing.xl.h),
                               child: const AppLoadingIndicator(),
                             );
                           }
@@ -283,8 +296,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                                   }
                                 },
                               ),
-                              onHide: () =>
-                                  setState(() => _sponsoredAd = null),
+                              onHide: () => setState(() => _sponsoredAd = null),
                             );
                           }
 
@@ -305,7 +317,6 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
     );
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
-
 }
 
 // ── Filter bottom sheet ───────────────────────────────────────────────────────
@@ -374,7 +385,6 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ),
               ),
               SizedBox(height: AppSpacing.xl.h),
-
               Text(
                 'Event type',
                 style: TextStyle(
@@ -402,7 +412,6 @@ class _FilterSheetState extends State<_FilterSheet> {
                       )),
                 ],
               ),
-
               SizedBox(height: AppSpacing.xl.h),
               Text(
                 'Location',
@@ -418,34 +427,36 @@ class _FilterSheetState extends State<_FilterSheet> {
                 dense: true,
                 hint: 'e.g. Accra',
               ),
-
               SizedBox(height: AppSpacing.xxl.h),
-              Semantics(button: true, label: 'Event type', child: GestureDetector(
-                onTap: () {
-                  Navigator.of(context).pop();
-                  widget.onApply(_eventType);
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: 15.h),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [ext.accentGold, ext.accentGoldDark],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
+              Semantics(
+                  button: true,
+                  label: 'Event type',
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      widget.onApply(_eventType);
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 15.h),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [ext.accentGold, ext.accentGoldDark],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14.r),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Apply Filters',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    'Apply Filters',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              )),
+                  )),
             ],
           ),
         ),
@@ -468,31 +479,35 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: label, child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 7.h),
-        decoration: BoxDecoration(
-          color: selected
-              ? ext.accentGold.withValues(alpha: 0.15)
-              : ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(AppRadius.xl.r),
-          border: Border.all(
-            color: selected
-                ? ext.accentGold.withValues(alpha: 0.6)
-                : Colors.transparent,
-            width: 1.0,
+    return Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md.w, vertical: 7.h),
+            decoration: BoxDecoration(
+              color: selected
+                  ? ext.accentGold.withValues(alpha: 0.15)
+                  : ext.searchFieldFill,
+              borderRadius: BorderRadius.circular(AppRadius.xl.r),
+              border: Border.all(
+                color: selected
+                    ? ext.accentGold.withValues(alpha: 0.6)
+                    : Colors.transparent,
+                width: 1.0,
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? ext.accentGold : ext.searchHintColor,
+                fontSize: 12.sp,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? ext.accentGold : ext.searchHintColor,
-            fontSize: 12.sp,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
-      ),
-    ));
+        ));
   }
 }

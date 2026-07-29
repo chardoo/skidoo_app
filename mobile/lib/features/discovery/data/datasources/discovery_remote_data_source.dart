@@ -30,7 +30,8 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
     try {
       final params = <String, dynamic>{'take': take, 'skip': skip};
       if (userId != null && userId.isNotEmpty) params['userId'] = userId;
-      if (followedPhotographerIds != null && followedPhotographerIds.isNotEmpty) {
+      if (followedPhotographerIds != null &&
+          followedPhotographerIds.isNotEmpty) {
         params['followed_photographer_ids'] = followedPhotographerIds;
       }
 
@@ -51,10 +52,11 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
           debugPrint('[Discovery] item[$i] = ${body[i]}');
         }
       }
-      
+
       return events;
     } on dio.DioException catch (err) {
-      debugPrint('[Discovery] DioException: ${err.message} | status: ${err.response?.statusCode} | body: ${err.response?.data}');
+      debugPrint(
+          '[Discovery] DioException: ${err.message} | status: ${err.response?.statusCode} | body: ${err.response?.data}');
       if (err.response == null) throw const app_ex.NetworkException();
       throw app_ex.ServerException(
           'Failed to load events: ${err.response?.statusCode}');
@@ -99,7 +101,14 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
     if (data is Map<String, dynamic>) {
       debugPrint('[Discovery] response keys: ${data.keys.toList()}');
       // Try common wrapper keys first, then fall back to first list value.
-      for (final key in ['data', 'events', 'results', 'items', 'randomImages', 'randomEvents']) {
+      for (final key in [
+        'data',
+        'events',
+        'results',
+        'items',
+        'randomImages',
+        'randomEvents'
+      ]) {
         if (data[key] is List) return data[key] as List;
       }
       // Last resort: return the first value that is a List.

@@ -27,8 +27,10 @@ class PostPhotoCarousel extends StatefulWidget {
   final VoidCallback onDoubleTap;
   final bool scrollable;
   final VoidCallback onTap;
+
   /// Which position this card occupies in the feed.
   final int cardIndex;
+
   /// Feed-level notifier for which card should be playing. Null = always play.
   final ValueNotifier<int>? activeCardIndex;
 
@@ -75,51 +77,56 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                 activeCardIndex: widget.activeCardIndex,
                 fit: BoxFit.contain,
               ),
-              if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
+              if (isLastLocked)
+                _LockedOverlay(remaining: widget.pics.length - 3),
               // if (pic.owner) const _OwnerCornerRibbon(),
             ],
           );
         }
 
-        return Semantics(button: true, label: 'Photo', child: GestureDetector(
-          onTap: widget.onTap,
-          onDoubleTap: widget.onDoubleTap,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // ── Blurred background — tiny decode, blur hides all detail ─
-              ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                child: SkidooImage(
-                  imageUrl: pic.url,
-                  fit: BoxFit.cover,
-                  isBlurBackground: true,
-                  placeholder: (_, __) => const SkidooImagePlaceholder(spinner: true),
-                  errorWidget: (_, __, ___) =>
-                      const SkidooImagePlaceholder(),
-                ),
+        return Semantics(
+            button: true,
+            label: 'Photo',
+            child: GestureDetector(
+              onTap: widget.onTap,
+              onDoubleTap: widget.onDoubleTap,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // ── Blurred background — tiny decode, blur hides all detail ─
+                  ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    child: SkidooImage(
+                      imageUrl: pic.url,
+                      fit: BoxFit.cover,
+                      isBlurBackground: true,
+                      placeholder: (_, __) =>
+                          const SkidooImagePlaceholder(spinner: true),
+                      errorWidget: (_, __, ___) =>
+                          const SkidooImagePlaceholder(),
+                    ),
+                  ),
+                  // Dim the blur layer so it doesn't compete with the main image
+                  const ColoredBox(color: Color(0x55000000)),
+                  // ── Sharp full image, uncropped — actual size, no forced fill ──
+                  SkidooImage(
+                    imageUrl: pic.url,
+                    fit: BoxFit.contain,
+                    semanticLabel: 'Event photo',
+                    // Non-opaque — the blurred backdrop stays visible behind the
+                    // spinner while the full-res image is still loading.
+                    placeholder: (_, __) => const Center(
+                      child: CircularProgressIndicator(
+                          color: Colors.white70, strokeWidth: 2),
+                    ),
+                    errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
+                  ),
+                  if (isLastLocked)
+                    _LockedOverlay(remaining: widget.pics.length - 3),
+                  // if (pic.owner) const _OwnerCornerRibbon(),
+                ],
               ),
-              // Dim the blur layer so it doesn't compete with the main image
-              const ColoredBox(color: Color(0x55000000)),
-              // ── Sharp full image, uncropped — actual size, no forced fill ──
-              SkidooImage(
-                imageUrl: pic.url,
-                fit: BoxFit.contain,
-                semanticLabel: 'Event photo',
-                // Non-opaque — the blurred backdrop stays visible behind the
-                // spinner while the full-res image is still loading.
-                placeholder: (_, __) => const Center(
-                  child: CircularProgressIndicator(
-                      color: Colors.white70, strokeWidth: 2),
-                ),
-                errorWidget: (_, __, ___) =>
-                    const SkidooImagePlaceholder(),
-              ),
-              if (isLastLocked) _LockedOverlay(remaining: widget.pics.length - 3),
-              // if (pic.owner) const _OwnerCornerRibbon(),
-            ],
-          ),
-        ));
+            ));
       },
     );
   }
@@ -263,8 +270,7 @@ class CardGradientPlaceholder extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: _palette[idx])),
       alignment: Alignment.center,
-      child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : '?',
+      child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
           style: TextStyle(
               color: Colors.white.withValues(alpha: 0.08),
               fontSize: 120,

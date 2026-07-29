@@ -181,46 +181,50 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                   SizedBox(height: AppSpacing.xl.h),
                   AppTextField(
                     controller: ctrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     autofocus: true,
                     dense: true,
                     hint: 'Amount to add (e.g. 200)',
                   ),
                   SizedBox(height: AppSpacing.xl.h),
-                  Semantics(button: true, label: 'Amount', child: GestureDetector(
-                    onTap: () async {
-                      final amount = double.tryParse(ctrl.text.trim());
-                      if (amount == null || amount <= 0) {
-                        AppSnackBar.error(context, 'Enter a valid amount.');
-                        return;
-                      }
-                      Navigator.of(context).pop();
-                      await _topUp(
-                        campaign.id,
-                        amount,
-                      );
-                    },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 15.h),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [ext.accentGold, ext.accentGoldDark],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
+                  Semantics(
+                      button: true,
+                      label: 'Amount',
+                      child: GestureDetector(
+                        onTap: () async {
+                          final amount = double.tryParse(ctrl.text.trim());
+                          if (amount == null || amount <= 0) {
+                            AppSnackBar.error(context, 'Enter a valid amount.');
+                            return;
+                          }
+                          Navigator.of(context).pop();
+                          await _topUp(
+                            campaign.id,
+                            amount,
+                          );
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 15.h),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [ext.accentGold, ext.accentGoldDark],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14.r),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Pay & Top Up',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(14.r),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Pay & Top Up',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  )),
+                      )),
                 ],
               ),
             ),
@@ -290,7 +294,8 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
   }
 
   Future<void> _topUp(String campaignId, double amount) async {
-    debugPrint('[MyCampaignsPage] _topUp campaignId=$campaignId amount=$amount');
+    debugPrint(
+        '[MyCampaignsPage] _topUp campaignId=$campaignId amount=$amount');
     try {
       final result = await _repo.topUpCampaign(campaignId, amount);
       debugPrint(
@@ -332,12 +337,14 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : IconButton(
-          tooltip: 'Back',
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: ext.greetingColor, size: 20.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb
+            ? null
+            : IconButton(
+                tooltip: 'Back',
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    color: ext.greetingColor, size: 20.sp),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: Text(
           'My Campaigns',
           style: TextStyle(
@@ -384,7 +391,6 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
     );
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
-
 }
 
 // ── Campaign tile ─────────────────────────────────────────────────────────────
@@ -445,16 +451,20 @@ class _CampaignTile extends StatelessWidget {
               ),
               SizedBox(width: 10.w),
               _Badge(label: campaign.status.label, color: statusColor),
-              if (campaign.status.isEditable && !campaign.status.canPause &&
+              if (campaign.status.isEditable &&
+                  !campaign.status.canPause &&
                   !campaign.status.canResume &&
                   campaign.status != CampaignStatus.rejected) ...[
                 SizedBox(width: 6.w),
-                Semantics(button: true, label: 'Edit', child: GestureDetector(
-                  onTap: onEdit,
-                  child: Icon(Icons.edit_outlined,
-                      size: 16.sp,
-                      color: ext.searchHintColor.withValues(alpha: 0.7)),
-                )),
+                Semantics(
+                    button: true,
+                    label: 'Edit',
+                    child: GestureDetector(
+                      onTap: onEdit,
+                      child: Icon(Icons.edit_outlined,
+                          size: 16.sp,
+                          color: ext.searchHintColor.withValues(alpha: 0.7)),
+                    )),
               ],
             ],
           ),
@@ -468,8 +478,7 @@ class _CampaignTile extends StatelessWidget {
               children: [
                 Text(
                   'Budget',
-                  style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 11.sp),
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
                 ),
                 Text(
                   '${campaign.currency} ${campaign.spent.toStringAsFixed(0)} / ${campaign.budgetAmount.toStringAsFixed(0)}',
@@ -487,7 +496,8 @@ class _CampaignTile extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: campaign.spentPercent,
                 backgroundColor: ext.searchFieldFill,
-                color: campaign.remaining <= 0 ? Colors.redAccent : ext.accentGold,
+                color:
+                    campaign.remaining <= 0 ? Colors.redAccent : ext.accentGold,
                 minHeight: 5.h,
               ),
             ),
@@ -503,37 +513,40 @@ class _CampaignTile extends StatelessWidget {
           // ── Pay & Submit button (draft / pending payment) ─────────────
           if (campaign.status.canPay) ...[
             SizedBox(height: AppSpacing.md.h),
-            Semantics(button: true, label: 'Pay', child: GestureDetector(
-              onTap: onPay,
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 10.h),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [ext.accentGold, ext.accentGoldDark],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(AppRadius.md.r),
-                ),
-                alignment: Alignment.center,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.payment_rounded,
-                        color: Colors.white, size: 16.sp),
-                    SizedBox(width: 5.w),
-                    Text(
-                      'Pay & Submit for Review',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w800,
+            Semantics(
+                button: true,
+                label: 'Pay',
+                child: GestureDetector(
+                  onTap: onPay,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [ext.accentGold, ext.accentGoldDark],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
+                      borderRadius: BorderRadius.circular(AppRadius.md.r),
                     ),
-                  ],
-                ),
-              ),
-            )),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.payment_rounded,
+                            color: Colors.white, size: 16.sp),
+                        SizedBox(width: 5.w),
+                        Text(
+                          'Pay & Submit for Review',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
           ],
 
           // ── Active: Edit + Pause side by side ────────────────────────
@@ -568,71 +581,77 @@ class _CampaignTile extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Semantics(button: true, label: 'Resume', child: GestureDetector(
-                    onTap: onResume,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 10.h),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF10B981), Color(0xFF059669)],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(AppRadius.md.r),
-                      ),
-                      alignment: Alignment.center,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.play_circle_outline_rounded,
-                              color: Colors.white, size: 16.sp),
-                          SizedBox(width: 5.w),
-                          Text(
-                            'Resume',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w800,
+                  child: Semantics(
+                      button: true,
+                      label: 'Resume',
+                      child: GestureDetector(
+                        onTap: onResume,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 10.h),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF10B981), Color(0xFF059669)],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
                             ),
+                            borderRadius: BorderRadius.circular(AppRadius.md.r),
                           ),
-                        ],
-                      ),
-                    ),
-                  )),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.play_circle_outline_rounded,
+                                  color: Colors.white, size: 16.sp),
+                              SizedBox(width: 5.w),
+                              Text(
+                                'Resume',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
                 ),
                 SizedBox(width: AppSpacing.sm.w),
                 Expanded(
-                  child: Semantics(button: true, label: 'Top up', child: GestureDetector(
-                    onTap: onTopUp,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 10.h),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [ext.accentGold, ext.accentGoldDark],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(AppRadius.md.r),
-                      ),
-                      alignment: Alignment.center,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add_rounded,
-                              color: Colors.white, size: 16.sp),
-                          SizedBox(width: 5.w),
-                          Text(
-                            'Top Up',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w800,
+                  child: Semantics(
+                      button: true,
+                      label: 'Top up',
+                      child: GestureDetector(
+                        onTap: onTopUp,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 10.h),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [ext.accentGold, ext.accentGoldDark],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
                             ),
+                            borderRadius: BorderRadius.circular(AppRadius.md.r),
                           ),
-                        ],
-                      ),
-                    ),
-                  )),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add_rounded,
+                                  color: Colors.white, size: 16.sp),
+                              SizedBox(width: 5.w),
+                              Text(
+                                'Top Up',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
                 ),
               ],
             ),
@@ -648,36 +667,40 @@ class _CampaignTile extends StatelessWidget {
           // ── Rejected: Fix & Resubmit (gold) ──────────────────────────
           if (campaign.status == CampaignStatus.rejected) ...[
             SizedBox(height: AppSpacing.md.h),
-            Semantics(button: true, label: 'Edit', child: GestureDetector(
-              onTap: onEdit,
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 10.h),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [ext.accentGold, ext.accentGoldDark],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(AppRadius.md.r),
-                ),
-                alignment: Alignment.center,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.edit_outlined, color: Colors.white, size: 16.sp),
-                    SizedBox(width: 5.w),
-                    Text(
-                      'Fix & Resubmit',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w800,
+            Semantics(
+                button: true,
+                label: 'Edit',
+                child: GestureDetector(
+                  onTap: onEdit,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [ext.accentGold, ext.accentGoldDark],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
+                      borderRadius: BorderRadius.circular(AppRadius.md.r),
                     ),
-                  ],
-                ),
-              ),
-            )),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.edit_outlined,
+                            color: Colors.white, size: 16.sp),
+                        SizedBox(width: 5.w),
+                        Text(
+                          'Fix & Resubmit',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
             if (campaign.rejectionReason != null &&
                 campaign.rejectionReason!.isNotEmpty) ...[
               SizedBox(height: AppSpacing.sm.h),
@@ -715,37 +738,40 @@ class _CampaignTile extends StatelessWidget {
           // ── Delete button (draft only) ────────────────────────────────
           if (campaign.status.canDelete) ...[
             SizedBox(height: 10.h),
-            Semantics(button: true, label: 'Delete', child: GestureDetector(
-              onTap: onDelete,
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 10.h),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(AppRadius.md.r),
-                  border: Border.all(
-                    color: Colors.redAccent.withValues(alpha: 0.3),
-                    width: 1.0,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.delete_outline_rounded,
-                        color: Colors.redAccent, size: 16.sp),
-                    SizedBox(width: 5.w),
-                    Text(
-                      'Delete Draft',
-                      style: TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
+            Semantics(
+                button: true,
+                label: 'Delete',
+                child: GestureDetector(
+                  onTap: onDelete,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppRadius.md.r),
+                      border: Border.all(
+                        color: Colors.redAccent.withValues(alpha: 0.3),
+                        width: 1.0,
                       ),
                     ),
-                  ],
-                ),
-              ),
-            )),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.delete_outline_rounded,
+                            color: Colors.redAccent, size: 16.sp),
+                        SizedBox(width: 5.w),
+                        Text(
+                          'Delete Draft',
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
           ],
         ],
       ),
@@ -777,36 +803,39 @@ class _OutlinedActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: label, child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 10.h),
-        decoration: BoxDecoration(
-          color: ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(AppRadius.md.r),
-          border: Border.all(
-            color: ext.searchHintColor.withValues(alpha: 0.25),
-            width: 1.0,
-          ),
-        ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: ext.greetingColor, size: 15.sp),
-            SizedBox(width: 5.w),
-            Text(
-              label,
-              style: TextStyle(
-                color: ext.greetingColor,
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w700,
+    return Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: 10.h),
+            decoration: BoxDecoration(
+              color: ext.searchFieldFill,
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
+              border: Border.all(
+                color: ext.searchHintColor.withValues(alpha: 0.25),
+                width: 1.0,
               ),
             ),
-          ],
-        ),
-      ),
-    ));
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: ext.greetingColor, size: 15.sp),
+                SizedBox(width: 5.w),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ));
   }
 }
 

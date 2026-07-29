@@ -170,7 +170,10 @@ class _AppPhoneFieldState extends State<AppPhoneField> {
           focusedBorder: InputBorder.none,
           errorBorder: InputBorder.none,
           focusedErrorBorder: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 18.h),
+          // Matches AppTextField's vertical rhythm — the phone field sits
+          // directly beside those in the signup form, so the two have to be
+          // the same height.
+          contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 12.h),
           errorStyle: TextStyle(color: ext.errorRed, fontSize: 11.5.sp, height: 0.1),
           errorMaxLines: 1,
         ),

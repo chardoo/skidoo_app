@@ -23,40 +23,46 @@ void showCommentOptionsSheet(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
       padding: EdgeInsets.fromLTRB(0, 12.h, 0, 32.h),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40.w,
-            height: 4.h,
-            margin: EdgeInsets.only(bottom: AppSpacing.lg.h),
-            decoration: BoxDecoration(
-              color: ext.searchHintColor.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2.r),
+      // ListTile ink paints on the nearest Material ancestor; this decorated
+      // Container sits between the sheet's Material and the tiles and would
+      // swallow it (and assert in debug). A transparency Material paints
+      // nothing and just gives the ink somewhere to land.
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40.w,
+              height: 4.h,
+              margin: EdgeInsets.only(bottom: AppSpacing.lg.h),
+              decoration: BoxDecoration(
+                color: ext.searchHintColor.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2.r),
+              ),
             ),
-          ),
-          ListTile(
-            leading:
-                Icon(Icons.edit_rounded, color: ext.accentGold, size: 22.sp),
-            title: Text('Edit comment',
-                style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
-            onTap: () {
-              Navigator.of(context).pop();
-              onEdit();
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline_rounded,
-                color: Colors.redAccent),
-            title: Text('Delete comment',
-                style:
-                    TextStyle(color: Colors.redAccent, fontSize: 15.sp)),
-            onTap: () {
-              Navigator.of(context).pop();
-              onDelete();
-            },
-          ),
-        ],
+            ListTile(
+              leading:
+                  Icon(Icons.edit_rounded, color: ext.accentGold, size: 22.sp),
+              title: Text('Edit comment',
+                  style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
+              onTap: () {
+                Navigator.of(context).pop();
+                onEdit();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded,
+                  color: Colors.redAccent),
+              title: Text('Delete comment',
+                  style: TextStyle(color: Colors.redAccent, fontSize: 15.sp)),
+              onTap: () {
+                Navigator.of(context).pop();
+                onDelete();
+              },
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -75,8 +81,8 @@ void showEditCommentDialog(
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: ext.cardSurface,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg.r)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg.r)),
       title: Text('Edit comment',
           style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
       content: AppTextField(
@@ -89,8 +95,7 @@ void showEditCommentDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(),
-          child: Text('Cancel',
-              style: TextStyle(color: ext.searchHintColor)),
+          child: Text('Cancel', style: TextStyle(color: ext.searchHintColor)),
         ),
         TextButton(
           onPressed: () {
@@ -117,8 +122,8 @@ void showDeleteCommentDialog(
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: ext.cardSurface,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg.r)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg.r)),
       title: Text('Delete comment',
           style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
       content: Text(
@@ -128,8 +133,7 @@ void showDeleteCommentDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(),
-          child: Text('Cancel',
-              style: TextStyle(color: ext.searchHintColor)),
+          child: Text('Cancel', style: TextStyle(color: ext.searchHintColor)),
         ),
         TextButton(
           onPressed: () {

@@ -79,7 +79,8 @@ class CommentSheetShell extends StatelessWidget {
                             Text(
                               title!,
                               style: TextStyle(
-                                color: isDark ? Colors.white : ext.greetingColor,
+                                color:
+                                    isDark ? Colors.white : ext.greetingColor,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 15.sp,
                                 letterSpacing: -0.3,

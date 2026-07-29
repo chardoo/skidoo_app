@@ -28,8 +28,14 @@ const _audienceLabels = {
 };
 const _currencies = ['GHS', 'NGN', 'USD', 'ZAR', 'KES', 'EGP', 'XOF', 'RWF'];
 const _eventTypes = [
-  'Wedding', 'Birthday', 'Corporate', 'Concert',
-  'Graduation', 'Engagement', 'Baby Shower', 'Other',
+  'Wedding',
+  'Birthday',
+  'Corporate',
+  'Concert',
+  'Graduation',
+  'Engagement',
+  'Baby Shower',
+  'Other',
 ];
 
 class EditCampaignPage extends StatefulWidget {
@@ -117,7 +123,8 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
     for (final s in _adsetStates) {
       final daily = double.tryParse(s.dailyBudgetCtrl.text.trim());
       if (daily == null || daily <= 0) {
-        AppSnackBar.error(context, 'Enter a valid daily budget for each ad set.');
+        AppSnackBar.error(
+            context, 'Enter a valid daily budget for each ad set.');
         return;
       }
     }
@@ -173,13 +180,19 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
           await _repo.updateAd(
             a.adId,
             headline: a.headlineCtrl.text.trim(),
-            body: a.bodyCtrl.text.trim().isEmpty ? null : a.bodyCtrl.text.trim(),
-            ctaText: a.ctaTextCtrl.text.trim().isEmpty ? null : a.ctaTextCtrl.text.trim(),
-            ctaUrl: a.ctaUrlCtrl.text.trim().isEmpty ? null : a.ctaUrlCtrl.text.trim(),
+            body:
+                a.bodyCtrl.text.trim().isEmpty ? null : a.bodyCtrl.text.trim(),
+            ctaText: a.ctaTextCtrl.text.trim().isEmpty
+                ? null
+                : a.ctaTextCtrl.text.trim(),
+            ctaUrl: a.ctaUrlCtrl.text.trim().isEmpty
+                ? null
+                : a.ctaUrlCtrl.text.trim(),
             commentsEnabled: a.commentsEnabled,
           );
           if (a.newMedia != null) {
-            await _repo.uploadAdCreative(a.adId, a.newMedia!, a.newMediaIsVideo);
+            await _repo.uploadAdCreative(
+                a.adId, a.newMedia!, a.newMediaIsVideo);
           }
         }
       }
@@ -204,12 +217,14 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : IconButton(
-          tooltip: 'Back',
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: ext.greetingColor, size: 20.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb
+            ? null
+            : IconButton(
+                tooltip: 'Back',
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    color: ext.greetingColor, size: 20.sp),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: Text(
           'Edit Campaign',
           style: TextStyle(
@@ -233,7 +248,10 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
 
                 _ELabel('Campaign name', ext),
                 SizedBox(height: AppSpacing.sm.h),
-                _EField(controller: _nameCtrl, hint: 'e.g. Summer Wedding Promo', ext: ext),
+                _EField(
+                    controller: _nameCtrl,
+                    hint: 'e.g. Summer Wedding Promo',
+                    ext: ext),
 
                 SizedBox(height: AppSpacing.xl.h),
                 _ELabel('Objective', ext),
@@ -243,7 +261,8 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                   items: _objectives,
                   itemLabel: (v) => _objectiveLabels[v] ?? v,
                   ext: ext,
-                  onChanged: (v) => setState(() => _objective = v ?? _objectives[0]),
+                  onChanged: (v) =>
+                      setState(() => _objective = v ?? _objectives[0]),
                 ),
 
                 SizedBox(height: AppSpacing.xl.h),
@@ -330,9 +349,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                   SizedBox(height: AppSpacing.xxl.h),
                   for (var i = 0; i < _adsetStates.length; i++) ...[
                     _SectionHeader(
-                      _adsetStates.length == 1
-                          ? 'Ad Set'
-                          : 'Ad Set ${i + 1}',
+                      _adsetStates.length == 1 ? 'Ad Set' : 'Ad Set ${i + 1}',
                       ext,
                     ),
                     SizedBox(height: AppSpacing.xs.h),
@@ -394,48 +411,50 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                     color: ext.searchHintColor.withValues(alpha: 0.1)),
               ),
             ),
-            child: Semantics(button: true, label: 'Save', child: GestureDetector(
-              onTap: _saving ? null : _save,
-              child: Container(
-                height: 50.h,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: _saving
-                        ? [
-                            ext.accentGold.withValues(alpha: 0.5),
-                            ext.accentGoldDark.withValues(alpha: 0.5),
-                          ]
-                        : [ext.accentGold, ext.accentGoldDark],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(14.r),
-                ),
-                alignment: Alignment.center,
-                child: _saving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2.5, color: Colors.white),
-                      )
-                    : Text(
-                        'Save changes',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.w800,
-                        ),
+            child: Semantics(
+                button: true,
+                label: 'Save',
+                child: GestureDetector(
+                  onTap: _saving ? null : _save,
+                  child: Container(
+                    height: 50.h,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: _saving
+                            ? [
+                                ext.accentGold.withValues(alpha: 0.5),
+                                ext.accentGoldDark.withValues(alpha: 0.5),
+                              ]
+                            : [ext.accentGold, ext.accentGoldDark],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
-              ),
-            )),
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                    alignment: Alignment.center,
+                    child: _saving
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2.5, color: Colors.white),
+                          )
+                        : Text(
+                            'Save changes',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                  ),
+                )),
           ),
         ],
       ),
     );
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
-
 }
 
 // ── Per-adset mutable state ───────────────────────────────────────────────────
@@ -576,8 +595,7 @@ class _AdSetForm extends StatelessWidget {
         SizedBox(height: AppSpacing.xl.h),
         _ELabel('Target location (optional)', ext),
         SizedBox(height: AppSpacing.sm.h),
-        _EField(
-            controller: state.locationCtrl, hint: 'e.g. Accra', ext: ext),
+        _EField(controller: state.locationCtrl, hint: 'e.g. Accra', ext: ext),
       ],
     );
   }
@@ -603,11 +621,10 @@ class _AdForm extends StatelessWidget {
     XFile? file;
     if (video) {
       file = await picker.pickVideo(
-          source: ImageSource.gallery,
-          maxDuration: const Duration(minutes: 2));
+          source: ImageSource.gallery, maxDuration: const Duration(minutes: 2));
     } else {
-      file = await picker.pickImage(
-          source: ImageSource.gallery, imageQuality: 85);
+      file =
+          await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     }
     if (file == null) return;
     // XFile.length() is web-safe (File from dart:io is not available on web).
@@ -735,76 +752,86 @@ class _MediaPreview extends StatelessWidget {
             borderRadius: BorderRadius.circular(14.r),
             child: AspectRatio(
               aspectRatio: 16 / 9,
-              child: Semantics(image: true, label: 'Campaign image', child: CachedNetworkImage(
-                imageUrl: state.existingMediaUrl!,
-                fit: BoxFit.cover,
-                placeholder: (_, __) =>
-                    ColoredBox(color: ext.searchFieldFill),
-                errorWidget: (_, __, ___) =>
-                    ColoredBox(color: ext.searchFieldFill),
-              )),
+              child: Semantics(
+                  image: true,
+                  label: 'Campaign image',
+                  child: CachedNetworkImage(
+                    imageUrl: state.existingMediaUrl!,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) =>
+                        ColoredBox(color: ext.searchFieldFill),
+                    errorWidget: (_, __, ___) =>
+                        ColoredBox(color: ext.searchFieldFill),
+                  )),
             ),
           ),
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: Semantics(button: true, label: 'Media', child: GestureDetector(
-              onTap: onTap,
-              child: ClipRRect(
-                borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(14.r)),
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.edit_rounded,
-                          color: Colors.white70, size: 14.sp),
-                      SizedBox(width: 6.w),
-                      Text(
-                        'Change media',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
+            child: Semantics(
+                button: true,
+                label: 'Media',
+                child: GestureDetector(
+                  onTap: onTap,
+                  child: ClipRRect(
+                    borderRadius:
+                        BorderRadius.vertical(bottom: Radius.circular(14.r)),
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.edit_rounded,
+                              color: Colors.white70, size: 14.sp),
+                          SizedBox(width: 6.w),
+                          Text(
+                            'Change media',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            )),
+                )),
           ),
         ],
       );
     }
     // No media yet
-    return Semantics(button: true, label: 'Media', child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 100.h,
-        decoration: BoxDecoration(
-          color: ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(
-              color: ext.searchHintColor.withValues(alpha: 0.25), width: 1.2),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.add_photo_alternate_outlined,
-                color: ext.searchHintColor, size: 28.sp),
-            SizedBox(height: 6.h),
-            Text(
-              'Tap to add photo or video',
-              style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+    return Semantics(
+        button: true,
+        label: 'Media',
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: 100.h,
+            decoration: BoxDecoration(
+              color: ext.searchFieldFill,
+              borderRadius: BorderRadius.circular(14.r),
+              border: Border.all(
+                  color: ext.searchHintColor.withValues(alpha: 0.25),
+                  width: 1.2),
             ),
-          ],
-        ),
-      ),
-    ));
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.add_photo_alternate_outlined,
+                    color: ext.searchHintColor, size: 28.sp),
+                SizedBox(height: 6.h),
+                Text(
+                  'Tap to add photo or video',
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                ),
+              ],
+            ),
+          ),
+        ));
   }
 }
 
@@ -861,45 +888,52 @@ class _LocalMediaTile extends StatelessWidget {
           Positioned(
             top: 6.h,
             right: 8.w,
-            child: Semantics(button: true, label: 'Remove', child: GestureDetector(
-              onTap: onRemove,
-              child: Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.close_rounded,
-                    color: Colors.white, size: 16.sp),
-              ),
-            )),
+            child: Semantics(
+                button: true,
+                label: 'Remove',
+                child: GestureDetector(
+                  onTap: onRemove,
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.close_rounded,
+                        color: Colors.white, size: 16.sp),
+                  ),
+                )),
           ),
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: Semantics(button: true, label: 'Media', child: GestureDetector(
-              onTap: onTap,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.45),
-                padding: EdgeInsets.symmetric(vertical: 7.h),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.edit_rounded, color: Colors.white70, size: 14.sp),
-                    SizedBox(width: 5.w),
-                    Text(
-                      'Change media',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
+            child: Semantics(
+                button: true,
+                label: 'Media',
+                child: GestureDetector(
+                  onTap: onTap,
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    padding: EdgeInsets.symmetric(vertical: 7.h),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.edit_rounded,
+                            color: Colors.white70, size: 14.sp),
+                        SizedBox(width: 5.w),
+                        Text(
+                          'Change media',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            )),
+                  ),
+                )),
           ),
         ],
       ),
@@ -923,81 +957,87 @@ class _MediaPickerSheet extends StatelessWidget {
         color: ext.homeBackground,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
-              width: 36.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: ext.searchHintColor.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(2.r),
+      // ListTile ink paints on the nearest Material ancestor; this decorated
+      // Container sits between the sheet's Material and the tiles and would
+      // swallow it (and assert in debug). A transparency Material paints
+      // nothing and just gives the ink somewhere to land.
+      child: Material(
+        type: MaterialType.transparency,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                width: 36.w,
+                height: 4.h,
+                decoration: BoxDecoration(
+                  color: ext.searchHintColor.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
               ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 8.h),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Change Creative',
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16.sp,
+              Padding(
+                padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 8.h),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Change Creative',
+                    style: TextStyle(
+                      color: ext.greetingColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16.sp,
+                    ),
                   ),
                 ),
               ),
-            ),
-            Divider(
-                height: 1,
-                color: ext.searchHintColor.withValues(alpha: 0.1)),
-            ListTile(
-              onTap: () {
-                Navigator.of(context).pop();
-                onPhoto();
-              },
-              leading: Container(
-                width: 40.w,
-                height: 40.w,
-                decoration: BoxDecoration(
-                  color: ext.accentGold.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+              Divider(
+                  height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
+              ListTile(
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onPhoto();
+                },
+                leading: Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: ext.accentGold.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.image_rounded,
+                      color: ext.accentGold, size: 20.sp),
                 ),
-                child: Icon(Icons.image_rounded,
-                    color: ext.accentGold, size: 20.sp),
+                title: Text('Photo from Gallery',
+                    style: TextStyle(
+                        color: ext.greetingColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp)),
               ),
-              title: Text('Photo from Gallery',
-                  style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14.sp)),
-            ),
-            ListTile(
-              onTap: () {
-                Navigator.of(context).pop();
-                onVideo();
-              },
-              leading: Container(
-                width: 40.w,
-                height: 40.w,
-                decoration: const BoxDecoration(
-                  color: Color(0x1A8B5CF6),
-                  shape: BoxShape.circle,
+              ListTile(
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onVideo();
+                },
+                leading: Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: const BoxDecoration(
+                    color: Color(0x1A8B5CF6),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.videocam_rounded,
+                      color: Color(0xFF8B5CF6)),
                 ),
-                child: const Icon(Icons.videocam_rounded,
-                    color: Color(0xFF8B5CF6)),
+                title: Text('Video from Gallery',
+                    style: TextStyle(
+                        color: ext.greetingColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp)),
               ),
-              title: Text('Video from Gallery',
-                  style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14.sp)),
-            ),
-            SizedBox(height: AppSpacing.sm.h),
-          ],
+              SizedBox(height: AppSpacing.sm.h),
+            ],
+          ),
         ),
       ),
     );
@@ -1119,16 +1159,15 @@ class _EDropdown<T> extends StatelessWidget {
             color: ext.searchHintColor, size: 20.sp),
         hint: hint != null
             ? Text(hint!,
-                style: TextStyle(
-                    color: ext.searchHintColor, fontSize: 14.sp))
+                style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp))
             : null,
         items: [
           if (nullable)
             DropdownMenuItem<T>(
               value: null,
               child: Text(hint ?? 'None',
-                  style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 14.sp)),
+                  style:
+                      TextStyle(color: ext.searchHintColor, fontSize: 14.sp)),
             ),
           ...items.map(
             (t) => DropdownMenuItem<T>(
@@ -1159,11 +1198,11 @@ class _EToggleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: ext.searchFieldFill,
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-      ),
+    return Material(
+      // Not a decorated Container: the tile's ink needs a Material beneath it.
+      color: ext.searchFieldFill,
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      clipBehavior: Clip.antiAlias,
       child: SwitchListTile(
         value: value,
         onChanged: onChanged,
@@ -1187,42 +1226,44 @@ class _EToggleRow extends StatelessWidget {
 }
 
 class _DateBtn extends StatelessWidget {
-  const _DateBtn(
-      {required this.label, required this.ext, required this.onTap});
+  const _DateBtn({required this.label, required this.ext, required this.onTap});
   final String label;
   final AppThemeExtension ext;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: label, child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
-        decoration: BoxDecoration(
-          color: ext.searchFieldFill,
-          borderRadius: BorderRadius.circular(AppRadius.md.r),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.calendar_today_outlined,
-                color: ext.searchHintColor, size: 16.sp),
-            SizedBox(width: AppSpacing.sm.w),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: (label == 'Start date' || label == 'End date')
-                      ? ext.searchHintColor
-                      : ext.greetingColor,
-                  fontSize: 13.sp,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
+    return Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
+            decoration: BoxDecoration(
+              color: ext.searchFieldFill,
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
             ),
-          ],
-        ),
-      ),
-    ));
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_outlined,
+                    color: ext.searchHintColor, size: 16.sp),
+                SizedBox(width: AppSpacing.sm.w),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: (label == 'Start date' || label == 'End date')
+                          ? ext.searchHintColor
+                          : ext.greetingColor,
+                      fontSize: 13.sp,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ));
   }
 }

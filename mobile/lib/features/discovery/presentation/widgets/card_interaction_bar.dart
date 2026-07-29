@@ -118,9 +118,7 @@ class CardInteractionBar extends StatelessWidget {
                   child: Icon(
                     Icons.thumb_down_rounded,
                     key: ValueKey(disliked),
-                    color: disliked
-                        ? ext.dislikeBlue
-                        : ext.greetingColor,
+                    color: disliked ? ext.dislikeBlue : ext.greetingColor,
                     size: 24.sp,
                   ),
                 ),
@@ -129,9 +127,7 @@ class CardInteractionBar extends StatelessWidget {
                   Text(
                     _fmt(dislikeCount),
                     style: TextStyle(
-                      color: disliked
-                          ? ext.dislikeBlue
-                          : ext.greetingColor,
+                      color: disliked ? ext.dislikeBlue : ext.greetingColor,
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                     ),
@@ -482,55 +478,58 @@ class _FollowButtonState extends State<FollowButton>
       );
     }
 
-    return Semantics(button: true, label: 'Toggle', child: GestureDetector(
-      onTap: _toggle,
-      child: ScaleTransition(
-        scale: _ctrl,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.symmetric(horizontal: 13.w, vertical: 5.h),
-          decoration: BoxDecoration(
-            color: _following
-                ? (onImg
-                    ? Colors.white.withValues(alpha: 0.18)
-                    : ext.glassFill)
-                : (onImg ? Colors.white : ext.accentGold),
-            borderRadius: BorderRadius.circular(AppRadius.xl.r),
-            border: Border.all(
-              color: _following
-                  ? (onImg
-                      ? Colors.white.withValues(alpha: 0.45)
-                      : ext.glassBorder)
-                  : Colors.transparent,
-              width: 0.8,
+    return Semantics(
+        button: true,
+        label: 'Toggle',
+        child: GestureDetector(
+          onTap: _toggle,
+          child: ScaleTransition(
+            scale: _ctrl,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              padding: EdgeInsets.symmetric(horizontal: 13.w, vertical: 5.h),
+              decoration: BoxDecoration(
+                color: _following
+                    ? (onImg
+                        ? Colors.white.withValues(alpha: 0.18)
+                        : ext.glassFill)
+                    : (onImg ? Colors.white : ext.accentGold),
+                borderRadius: BorderRadius.circular(AppRadius.xl.r),
+                border: Border.all(
+                  color: _following
+                      ? (onImg
+                          ? Colors.white.withValues(alpha: 0.45)
+                          : ext.glassBorder)
+                      : Colors.transparent,
+                  width: 0.8,
+                ),
+              ),
+              child: _loading
+                  ? SizedBox(
+                      width: 12.w,
+                      height: 12.w,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: _following
+                            ? (onImg ? Colors.white70 : ext.searchHintColor)
+                            : (onImg ? ext.accentGold : Colors.white),
+                      ),
+                    )
+                  : Text(
+                      _following ? 'Following' : 'Follow',
+                      style: TextStyle(
+                        color: _following
+                            ? (onImg ? Colors.white70 : ext.greetingColor)
+                            : (onImg ? ext.accentGold : Colors.white),
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
             ),
           ),
-          child: _loading
-              ? SizedBox(
-                  width: 12.w,
-                  height: 12.w,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.5,
-                    color: _following
-                        ? (onImg ? Colors.white70 : ext.searchHintColor)
-                        : (onImg ? ext.accentGold : Colors.white),
-                  ),
-                )
-              : Text(
-                  _following ? 'Following' : 'Follow',
-                  style: TextStyle(
-                    color: _following
-                        ? (onImg ? Colors.white70 : ext.greetingColor)
-                        : (onImg ? ext.accentGold : Colors.white),
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.1,
-                  ),
-                ),
-        ),
-      ),
-    ));
+        ));
   }
 }
 
@@ -553,23 +552,26 @@ class CardActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: label, child: GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: iconColor, size: 22.sp),
-          if (label.isNotEmpty) ...[
-            SizedBox(width: 5.w),
-            Text(label,
-                style: TextStyle(
-                    color: ext.searchHintColor,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w500)),
-          ],
-        ],
-      ),
-    ));
+    return Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: iconColor, size: 22.sp),
+              if (label.isNotEmpty) ...[
+                SizedBox(width: 5.w),
+                Text(label,
+                    style: TextStyle(
+                        color: ext.searchHintColor,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w500)),
+              ],
+            ],
+          ),
+        ));
   }
 }

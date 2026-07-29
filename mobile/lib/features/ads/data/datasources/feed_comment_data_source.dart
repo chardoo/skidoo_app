@@ -38,14 +38,18 @@ class FeedCommentDataSourceImpl implements FeedCommentDataSource {
 
   List<PhotoComment> _parseList(dynamic data) {
     if (data is List) {
-      return data.map((e) => PhotoComment.fromJson(e as Map<String, dynamic>)).toList();
+      return data
+          .map((e) => PhotoComment.fromJson(e as Map<String, dynamic>))
+          .toList();
     }
     if (data is Map<String, dynamic>) {
       final list = data['comments'] as List? ??
           data['data'] as List? ??
           data['replies'] as List? ??
           [];
-      return list.map((e) => PhotoComment.fromJson(e as Map<String, dynamic>)).toList();
+      return list
+          .map((e) => PhotoComment.fromJson(e as Map<String, dynamic>))
+          .toList();
     }
     return [];
   }
@@ -68,11 +72,14 @@ class FeedCommentDataSourceImpl implements FeedCommentDataSource {
     final url = '/chat/comments/$targetType/$targetId';
     debugPrint('[FeedComment] GET $url page=$page');
     try {
-      final res = await _dio.get(url, queryParameters: {'page': page, 'limit': limit});
+      final res =
+          await _dio.get(url, queryParameters: {'page': page, 'limit': limit});
       return _parseList(res.data);
     } on DioException catch (e) {
-      debugPrint('[FeedComment] getComments ERROR ${e.response?.statusCode} ${e.response?.data}');
-      throw Exception('Failed to load comments: ${e.response?.data ?? e.message}');
+      debugPrint(
+          '[FeedComment] getComments ERROR ${e.response?.statusCode} ${e.response?.data}');
+      throw Exception(
+          'Failed to load comments: ${e.response?.data ?? e.message}');
     }
   }
 
@@ -91,8 +98,10 @@ class FeedCommentDataSourceImpl implements FeedCommentDataSource {
       final res = await _dio.post(url, data: body);
       return _parseOne(res.data);
     } on DioException catch (e) {
-      debugPrint('[FeedComment] postComment ERROR ${e.response?.statusCode} ${e.response?.data}');
-      throw Exception('Failed to post comment: ${e.response?.data ?? e.message}');
+      debugPrint(
+          '[FeedComment] postComment ERROR ${e.response?.statusCode} ${e.response?.data}');
+      throw Exception(
+          'Failed to post comment: ${e.response?.data ?? e.message}');
     }
   }
 
@@ -105,11 +114,14 @@ class FeedCommentDataSourceImpl implements FeedCommentDataSource {
     final url = '/chat/comments/$commentId/replies';
     debugPrint('[FeedComment] GET $url');
     try {
-      final res = await _dio.get(url, queryParameters: {'page': page, 'limit': limit});
+      final res =
+          await _dio.get(url, queryParameters: {'page': page, 'limit': limit});
       return _parseList(res.data);
     } on DioException catch (e) {
-      debugPrint('[FeedComment] getReplies ERROR ${e.response?.statusCode} ${e.response?.data}');
-      throw Exception('Failed to load replies: ${e.response?.data ?? e.message}');
+      debugPrint(
+          '[FeedComment] getReplies ERROR ${e.response?.statusCode} ${e.response?.data}');
+      throw Exception(
+          'Failed to load replies: ${e.response?.data ?? e.message}');
     }
   }
 
@@ -121,8 +133,10 @@ class FeedCommentDataSourceImpl implements FeedCommentDataSource {
       final res = await _dio.put(url, data: {'content': content});
       return _parseOne(res.data);
     } on DioException catch (e) {
-      debugPrint('[FeedComment] editComment ERROR ${e.response?.statusCode} ${e.response?.data}');
-      throw Exception('Failed to edit comment: ${e.response?.data ?? e.message}');
+      debugPrint(
+          '[FeedComment] editComment ERROR ${e.response?.statusCode} ${e.response?.data}');
+      throw Exception(
+          'Failed to edit comment: ${e.response?.data ?? e.message}');
     }
   }
 
@@ -133,8 +147,10 @@ class FeedCommentDataSourceImpl implements FeedCommentDataSource {
     try {
       await _dio.delete(url);
     } on DioException catch (e) {
-      debugPrint('[FeedComment] deleteComment ERROR ${e.response?.statusCode} ${e.response?.data}');
-      throw Exception('Failed to delete comment: ${e.response?.data ?? e.message}');
+      debugPrint(
+          '[FeedComment] deleteComment ERROR ${e.response?.statusCode} ${e.response?.data}');
+      throw Exception(
+          'Failed to delete comment: ${e.response?.data ?? e.message}');
     }
   }
 }

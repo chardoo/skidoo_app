@@ -13,7 +13,8 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/time_formatter.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart' show GetEventRoomUseCase;
+import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart'
+    show GetEventRoomUseCase;
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
@@ -88,7 +89,10 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() { _error = e.toString(); _loading = false; });
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
       }
     }
   }
@@ -163,9 +167,9 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
     String rootOf(ChatMessage m) {
       var pid = m.replyToId!;
       while (!topLevelIds.contains(pid)) {
-        final parent = messages.cast<ChatMessage?>().firstWhere(
-            (x) => x?.id == pid,
-            orElse: () => null);
+        final parent = messages
+            .cast<ChatMessage?>()
+            .firstWhere((x) => x?.id == pid, orElse: () => null);
         if (parent == null || parent.replyToId == null) break;
         pid = parent.replyToId!;
       }
@@ -215,7 +219,6 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           // ── Comments ────────────────────────────────────────────────────────
           Expanded(
             child: _loading
@@ -235,27 +238,24 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
                         children: [
                           // WebSocket syncing bar
                           BlocBuilder<ChatRoomBloc, ChatRoomState>(
-                            buildWhen: (p, c) =>
-                                p.isSyncing != c.isSyncing,
+                            buildWhen: (p, c) => p.isSyncing != c.isSyncing,
                             builder: (_, s) => s.isSyncing
                                 ? LinearProgressIndicator(
                                     minHeight: 2,
                                     backgroundColor: Colors.transparent,
-                                    color: ext.accentGold
-                                        .withValues(alpha: 0.6),
+                                    color:
+                                        ext.accentGold.withValues(alpha: 0.6),
                                   )
                                 : const SizedBox.shrink(),
                           ),
 
                           Expanded(
-                            child: BlocConsumer<ChatRoomBloc,
-                                ChatRoomState>(
+                            child: BlocConsumer<ChatRoomBloc, ChatRoomState>(
                               listenWhen: (prev, curr) =>
                                   curr.errorMessage != null &&
                                   curr.errorMessage != prev.errorMessage,
                               listener: (_, state) {
-                                AppSnackBar.error(
-                                    context, state.errorMessage!);
+                                AppSnackBar.error(context, state.errorMessage!);
                               },
                               builder: (_, state) {
                                 if (state.isLoadingHistory &&
@@ -266,8 +266,7 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
                                   return CommentEmptyState(ext: ext);
                                 }
 
-                                final threaded =
-                                    _buildThreads(state.messages);
+                                final threaded = _buildThreads(state.messages);
 
                                 return ListView.builder(
                                   controller: _scrollCtrl,
@@ -277,26 +276,21 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
                                   itemCount: threaded.topLevel.length +
                                       (state.isLoadingMore ? 1 : 0),
                                   itemBuilder: (_, i) {
-                                    if (i ==
-                                        threaded.topLevel.length) {
+                                    if (i == threaded.topLevel.length) {
                                       return Padding(
-                                        padding:
-                                            EdgeInsets.symmetric(
-                                                vertical: AppSpacing.md.h),
+                                        padding: EdgeInsets.symmetric(
+                                            vertical: AppSpacing.md.h),
                                         child: Center(
-                                          child:
-                                              CircularProgressIndicator(
+                                          child: CircularProgressIndicator(
                                             color: ext.accentGold,
                                             strokeWidth: 2,
                                           ),
                                         ),
                                       );
                                     }
-                                    final msg =
-                                        threaded.topLevel[i];
+                                    final msg = threaded.topLevel[i];
                                     final replies =
-                                        threaded.repliesMap[msg.id] ??
-                                            [];
+                                        threaded.repliesMap[msg.id] ?? [];
 
                                     return ThreadedCommentWidget(
                                       key: ValueKey(msg.id),
@@ -308,12 +302,9 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
                                               onReply: _startReply))
                                           .toList(),
                                       ext: ext,
-                                      isExpanded: _expandedIds
-                                          .contains(msg.id),
-                                      onToggleReplies: () =>
-                                          setState(() {
-                                        if (_expandedIds
-                                            .contains(msg.id)) {
+                                      isExpanded: _expandedIds.contains(msg.id),
+                                      onToggleReplies: () => setState(() {
+                                        if (_expandedIds.contains(msg.id)) {
                                           _expandedIds.remove(msg.id);
                                         } else {
                                           _expandedIds.add(msg.id);
@@ -360,6 +351,7 @@ class EventCommentInlinePanel extends StatelessWidget {
 
   final EventDiscovery event;
   final VoidCallback onClose;
+
   /// True when rendered outside the 480px card column (wide desktop layout).
   /// Removes the left border and uses slightly looser padding.
   final bool isExternalPanel;
@@ -391,8 +383,7 @@ class _InlineCommentContent extends StatefulWidget {
   final VoidCallback? onCommentSent;
 
   @override
-  State<_InlineCommentContent> createState() =>
-      _InlineCommentContentState();
+  State<_InlineCommentContent> createState() => _InlineCommentContentState();
 }
 
 class _InlineCommentContentState extends State<_InlineCommentContent> {
@@ -546,8 +537,8 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dividerColor = (isDark ? Colors.white : Colors.black)
-        .withValues(alpha: 0.10);
+    final dividerColor =
+        (isDark ? Colors.white : Colors.black).withValues(alpha: 0.10);
 
     return Container(
       decoration: widget.isExternalPanel
@@ -578,8 +569,7 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                 ),
               ],
             ),
-      clipBehavior:
-          widget.isExternalPanel ? Clip.antiAlias : Clip.none,
+      clipBehavior: widget.isExternalPanel ? Clip.antiAlias : Clip.none,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -608,14 +598,13 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                     : Column(
                         children: [
                           BlocBuilder<ChatRoomBloc, ChatRoomState>(
-                            buildWhen: (p, c) =>
-                                p.isSyncing != c.isSyncing,
+                            buildWhen: (p, c) => p.isSyncing != c.isSyncing,
                             builder: (_, s) => s.isSyncing
                                 ? LinearProgressIndicator(
                                     minHeight: 2,
                                     backgroundColor: Colors.transparent,
-                                    color: ext.accentGold
-                                        .withValues(alpha: 0.6),
+                                    color:
+                                        ext.accentGold.withValues(alpha: 0.6),
                                   )
                                 : const SizedBox.shrink(),
                           ),
@@ -626,8 +615,7 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                                 BlocConsumer<ChatRoomBloc, ChatRoomState>(
                                   listenWhen: (prev, curr) =>
                                       curr.errorMessage != null &&
-                                      curr.errorMessage !=
-                                          prev.errorMessage,
+                                      curr.errorMessage != prev.errorMessage,
                                   listener: (_, state) {
                                     AppSnackBar.error(
                                         context, state.errorMessage!);
@@ -646,48 +634,38 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
                                       controller: _scrollCtrl,
                                       padding: EdgeInsets.fromLTRB(
                                           10.w, 12.h, 10.w, 12.h),
-                                      itemCount:
-                                          threaded.topLevel.length +
-                                              (state.isLoadingMore
-                                                  ? 1
-                                                  : 0),
+                                      itemCount: threaded.topLevel.length +
+                                          (state.isLoadingMore ? 1 : 0),
                                       itemBuilder: (_, i) {
-                                        if (i ==
-                                            threaded.topLevel.length) {
+                                        if (i == threaded.topLevel.length) {
                                           return Padding(
                                             padding: EdgeInsets.symmetric(
                                                 vertical: 10.h),
                                             child: Center(
-                                              child:
-                                                  CircularProgressIndicator(
+                                              child: CircularProgressIndicator(
                                                 color: ext.accentGold,
                                                 strokeWidth: 2,
                                               ),
                                             ),
                                           );
                                         }
-                                        final msg =
-                                            threaded.topLevel[i];
-                                        final replies = threaded
-                                                .repliesMap[msg.id] ??
-                                            [];
+                                        final msg = threaded.topLevel[i];
+                                        final replies =
+                                            threaded.repliesMap[msg.id] ?? [];
                                         return ThreadedCommentWidget(
                                           key: ValueKey(msg.id),
                                           comment: _toRowData(msg,
                                               replies: replies,
                                               onReply: _startReply),
                                           replies: replies
-                                              .map((r) => _toRowData(
-                                                  r,
+                                              .map((r) => _toRowData(r,
                                                   onReply: _startReply))
                                               .toList(),
                                           ext: ext,
-                                          isExpanded: _expandedIds
-                                              .contains(msg.id),
-                                          onToggleReplies: () =>
-                                              setState(() {
-                                            if (_expandedIds
-                                                .contains(msg.id)) {
+                                          isExpanded:
+                                              _expandedIds.contains(msg.id),
+                                          onToggleReplies: () => setState(() {
+                                            if (_expandedIds.contains(msg.id)) {
                                               _expandedIds.remove(msg.id);
                                             } else {
                                               _expandedIds.add(msg.id);
@@ -782,8 +760,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
   @override
   Widget build(BuildContext context) {
     final ext = widget.ext;
-    final dividerColor =
-        ext.glassBorder.withValues(alpha: 0.15);
+    final dividerColor = ext.glassBorder.withValues(alpha: 0.15);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -792,8 +769,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
         if (_emojiOpen)
           EmojiPickerPanel(
             ext: ext,
-            onEmojiSelected: (emoji) =>
-                insertEmoji(widget.controller, emoji),
+            onEmojiSelected: (emoji) => insertEmoji(widget.controller, emoji),
           ),
 
         // Reply strip
@@ -809,8 +785,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
             ),
             child: Row(
               children: [
-                Icon(Icons.reply_rounded,
-                    size: 13.sp, color: ext.accentGold),
+                Icon(Icons.reply_rounded, size: 13.sp, color: ext.accentGold),
                 SizedBox(width: 6.w),
                 Expanded(
                   child: Text(
@@ -854,33 +829,33 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                 button: true,
                 label: 'Emoji',
                 child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: _toggleEmoji,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 120),
-                    width: 34.w,
-                    height: 34.w,
-                    decoration: BoxDecoration(
-                      color: _emojiOpen
-                          ? ext.accentGold.withValues(alpha: 0.18)
-                          : ext.glassFill,
-                      shape: BoxShape.circle,
-                      border: Border.all(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: _toggleEmoji,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 120),
+                      width: 34.w,
+                      height: 34.w,
+                      decoration: BoxDecoration(
                         color: _emojiOpen
-                            ? ext.accentGold.withValues(alpha: 0.50)
-                            : ext.glassBorder.withValues(alpha: 0.25),
-                        width: 1,
+                            ? ext.accentGold.withValues(alpha: 0.18)
+                            : ext.glassFill,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _emojiOpen
+                              ? ext.accentGold.withValues(alpha: 0.50)
+                              : ext.glassBorder.withValues(alpha: 0.25),
+                          width: 1,
+                        ),
                       ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _emojiOpen ? '⌨️' : '😊',
-                      style: TextStyle(fontSize: 16.sp),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _emojiOpen ? '⌨️' : '😊',
+                        style: TextStyle(fontSize: 16.sp),
+                      ),
                     ),
                   ),
                 ),
-              ),
               ),
               SizedBox(width: AppSpacing.sm.w),
 
@@ -890,8 +865,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                   bindings: {
                     const SingleActivator(LogicalKeyboardKey.enter,
                         shift: false): widget.onSend,
-                    const SingleActivator(
-                        LogicalKeyboardKey.numpadEnter,
+                    const SingleActivator(LogicalKeyboardKey.numpadEnter,
                         shift: false): widget.onSend,
                   },
                   child: AppTextField(
@@ -919,33 +893,33 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                 button: true,
                 label: 'Send comment',
                 child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: widget.onSend,
-                  child: Container(
-                    width: 36.w,
-                    height: 36.w,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [ext.accentGold, ext.accentGoldDark],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: ext.accentGold.withValues(alpha: 0.35),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: widget.onSend,
+                    child: Container(
+                      width: 36.w,
+                      height: 36.w,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [ext.accentGold, ext.accentGoldDark],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                      ],
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: ext.accentGold.withValues(alpha: 0.35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(Icons.send_rounded,
+                          color: Colors.white, size: 16.sp),
                     ),
-                    alignment: Alignment.center,
-                    child:
-                        Icon(Icons.send_rounded, color: Colors.white, size: 16.sp),
                   ),
                 ),
-              ),
               ),
             ],
           ),

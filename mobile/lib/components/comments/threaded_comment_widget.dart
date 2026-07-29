@@ -36,8 +36,7 @@ class ThreadedCommentWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Use server count before replies are loaded; use actual count once loaded.
-    final replyCount =
-        replies.isNotEmpty ? replies.length : comment.replyCount;
+    final replyCount = replies.isNotEmpty ? replies.length : comment.replyCount;
     final hasReplies = replyCount > 0;
 
     return Padding(
@@ -58,38 +57,38 @@ class ThreadedCommentWidget extends StatelessWidget {
                     ? 'Hide replies'
                     : 'Show $replyCount ${replyCount == 1 ? 'reply' : 'replies'}',
                 child: GestureDetector(
-                onTap: onToggleReplies,
-                behavior: HitTestBehavior.opaque,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 18.w,
-                      height: 1,
-                      color: ext.accentGold,
-                      margin: EdgeInsets.only(right: 6.w),
-                    ),
-                    Text(
-                      isExpanded
-                          ? 'Hide replies'
-                          : '$replyCount ${replyCount == 1 ? 'reply' : 'replies'}',
-                      style: TextStyle(
+                  onTap: onToggleReplies,
+                  behavior: HitTestBehavior.opaque,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 18.w,
+                        height: 1,
                         color: ext.accentGold,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w700,
+                        margin: EdgeInsets.only(right: 6.w),
                       ),
-                    ),
-                    SizedBox(width: AppSpacing.xs.w),
-                    Icon(
-                      isExpanded
-                          ? Icons.keyboard_arrow_up_rounded
-                          : Icons.keyboard_arrow_down_rounded,
-                      size: 16.sp,
-                      color: ext.accentGold,
-                    ),
-                  ],
+                      Text(
+                        isExpanded
+                            ? 'Hide replies'
+                            : '$replyCount ${replyCount == 1 ? 'reply' : 'replies'}',
+                        style: TextStyle(
+                          color: ext.accentGold,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(width: AppSpacing.xs.w),
+                      Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        size: 16.sp,
+                        color: ext.accentGold,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
               ),
             ),
 

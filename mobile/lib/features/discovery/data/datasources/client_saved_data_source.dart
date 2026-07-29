@@ -27,10 +27,9 @@ class SavedItem {
     final Map<String, dynamic>? asset =
         rawAsset is Map<String, dynamic> ? rawAsset : null;
     // The server may nest under 'event' or expose fields at the top level.
-    final Map<String, dynamic>? event =
-        asset?['event'] is Map<String, dynamic>
-            ? asset!['event'] as Map<String, dynamic>
-            : asset;
+    final Map<String, dynamic>? event = asset?['event'] is Map<String, dynamic>
+        ? asset!['event'] as Map<String, dynamic>
+        : asset;
 
     // Helper: first non-empty value across candidate keys in a map.
     String? firstOf(Map<String, dynamic>? m, List<String> keys) {
@@ -49,8 +48,9 @@ class SavedItem {
         ? (rawPics.first as Map<String, dynamic>)['url']?.toString()
         : firstOf(asset, ['url', 'thumbnailUrl', 'thumbnail_url', 'coverUrl']);
 
-    final title = firstOf(event, ['eventName', 'event_name', 'name', 'title']) ??
-        firstOf(asset, ['eventName', 'event_name', 'name', 'title']);
+    final title =
+        firstOf(event, ['eventName', 'event_name', 'name', 'title']) ??
+            firstOf(asset, ['eventName', 'event_name', 'name', 'title']);
 
     // assetType / assetId may be camelCase at the top level, snake_case, or only
     // present on the nested asset/event object. Falling back through all of

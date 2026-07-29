@@ -157,9 +157,16 @@ class _AppTextFieldState extends State<AppTextField> {
         focusedBorder: InputBorder.none,
         errorBorder: InputBorder.none,
         focusedErrorBorder: InputBorder.none,
+        // 12, not the 18 this used to carry. Because the border is drawn by the
+        // AnimatedContainer below rather than by InputDecorator, a floating
+        // [label] stacks a whole extra row *on top of* this padding — so 18
+        // produced a 75 px field on the signup/onboarding forms against
+        // Material's 56 dp for a filled field. 12 lands at 63.5 with a label
+        // and 50 without; the no-label case can't go below 50 anyway, since
+        // Flutter clamps to the 48 dp minimum touch target.
         contentPadding: widget.dense
             ? EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 10.h)
-            : EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 18.h),
+            : EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 12.h),
         errorStyle: TextStyle(color: ext.errorRed, fontSize: 11.5.sp, height: 0.1),
         errorMaxLines: 1,
       ),

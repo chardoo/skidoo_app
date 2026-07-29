@@ -77,8 +77,8 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
     sl<Api>()
         .dio
         .post('/recommend/${widget.event.id}/view')
-        .then((_) => debugPrint(
-            '[EventView] tracked view for event ${widget.event.id}'))
+        .then((_) =>
+            debugPrint('[EventView] tracked view for event ${widget.event.id}'))
         .catchError((e) => debugPrint('[EventView] view tracking failed: $e'));
   }
 
@@ -113,12 +113,14 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             elevation: 0,
-            leading: kIsWeb ? null : IconButton(
-              tooltip: 'Back',
-              icon: Icon(Icons.arrow_back_ios_new_rounded,
-                  color: ext.greetingColor, size: 18.sp),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+            leading: kIsWeb
+                ? null
+                : IconButton(
+                    tooltip: 'Back',
+                    icon: Icon(Icons.arrow_back_ios_new_rounded,
+                        color: ext.greetingColor, size: 18.sp),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -146,8 +148,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
                         child: Text(
                           event.photographerName,
                           style: TextStyle(
-                            color: ext.searchHintColor
-                                .withValues(alpha: 0.7),
+                            color: ext.searchHintColor.withValues(alpha: 0.7),
                             fontSize: 11.sp,
                             fontWeight: FontWeight.w400,
                           ),
@@ -241,7 +242,6 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
     );
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
-
 }
 
 // ── Masonry grid (2-column) ───────────────────────────────────────────────────
@@ -259,12 +259,12 @@ class _MasonryGrid extends StatelessWidget {
   final int startIndex;
   final void Function(int globalIdx) onTap;
 
-  static const _leftH  = [210.0, 170.0, 195.0, 165.0, 200.0, 175.0];
+  static const _leftH = [210.0, 170.0, 195.0, 165.0, 200.0, 175.0];
   static const _rightH = [175.0, 200.0, 165.0, 195.0, 170.0, 210.0];
 
   @override
   Widget build(BuildContext context) {
-    final leftItems  = <(int, EventPicture)>[];
+    final leftItems = <(int, EventPicture)>[];
     final rightItems = <(int, EventPicture)>[];
     int lc = 0, rc = 0;
     for (int i = 0; i < pictures.length; i++) {
@@ -276,9 +276,8 @@ class _MasonryGrid extends StatelessWidget {
     }
 
     Widget tile(int colIdx, EventPicture pic, bool isLeft) {
-      final picGlobal = isLeft
-          ? startIndex + colIdx * 2
-          : startIndex + colIdx * 2 + 1;
+      final picGlobal =
+          isLeft ? startIndex + colIdx * 2 : startIndex + colIdx * 2 + 1;
       final h = isLeft
           ? _leftH[colIdx % _leftH.length].h
           : _rightH[colIdx % _rightH.length].h;
@@ -334,29 +333,32 @@ class _MediaTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: 'Photo', child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: height,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14.r),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.28),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    return Semantics(
+        button: true,
+        label: 'Photo',
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: height,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14.r),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.28),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14.r),
-          child: picture.isVideo
-              ? _VideoThumbTile(url: picture.url)
-              : _PhotoTile(url: picture.url),
-        ),
-      ),
-    ));
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14.r),
+              child: picture.isVideo
+                  ? _VideoThumbTile(url: picture.url)
+                  : _PhotoTile(url: picture.url),
+            ),
+          ),
+        ));
   }
 }
 
@@ -490,9 +492,8 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
     );
 
     if (isWideWeb) {
-      final leftPad =
-          ((screenW - _kViewerContentW - _kViewerReactionsW) / 2)
-              .clamp(0.0, double.infinity);
+      final leftPad = ((screenW - _kViewerContentW - _kViewerReactionsW) / 2)
+          .clamp(0.0, double.infinity);
 
       return Scaffold(
         backgroundColor: Colors.black,
@@ -505,8 +506,8 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
               child: ValueListenableBuilder<int>(
                 valueListenable: _activeIndex,
                 builder: (_, idx, __) {
-                  final entry = widget.entries
-                      .elementAtOrNull(idx) ?? widget.entries.first;
+                  final entry = widget.entries.elementAtOrNull(idx) ??
+                      widget.entries.first;
                   return _WebViewerReactionsPanel(
                     key: ValueKey(entry.picture.id),
                     entry: entry,
@@ -528,23 +529,26 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
             SafeArea(
               child: Padding(
                 padding: EdgeInsets.only(left: 14.w, top: 10.h),
-                child: Semantics(button: true, label: 'Close', child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    width: 36.w,
-                    height: 36.w,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          width: 1),
-                    ),
-                    child: Icon(Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white, size: 16.sp),
-                  ),
-                )),
+                child: Semantics(
+                    button: true,
+                    label: 'Close',
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        width: 36.w,
+                        height: 36.w,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              width: 1),
+                        ),
+                        child: Icon(Icons.arrow_back_ios_new_rounded,
+                            color: Colors.white, size: 16.sp),
+                      ),
+                    )),
               ),
             ),
         ],
@@ -552,8 +556,8 @@ class _FullscreenViewerPageState extends State<_FullscreenViewerPage> {
     );
     // Centre the narrow viewer on web — matches the _kViewerContentW (480 px)
     // used by the wide-web path so the card width is consistent.
-    return webWrap(page, backgroundColor: Colors.black,
-        width: _kViewerContentW);
+    return webWrap(page,
+        backgroundColor: Colors.black, width: _kViewerContentW);
   }
 }
 
@@ -588,7 +592,11 @@ class _WebViewerReactionsPanelState extends State<_WebViewerReactionsPanel> {
       _likeCount = (_likeCount + (nowLiked ? 1 : -1)).clamp(0, 999999999);
     });
     sl<PictureLikeService>().toggleLike(widget.entry.picture.id).then((r) {
-      if (mounted) setState(() { _liked = r.isLiked; _likeCount = r.likes; });
+      if (mounted)
+        setState(() {
+          _liked = r.isLiked;
+          _likeCount = r.likes;
+        });
     });
   }
 
@@ -626,14 +634,11 @@ class _WebViewerReactionsPanelState extends State<_WebViewerReactionsPanel> {
 
           // Like
           WebActionBtn(
-            icon: _liked
-                ? Icons.favorite_rounded
-                : Icons.favorite_border_rounded,
-            iconColor:
-                _liked ? ext.likeRed : Colors.white,
+            icon:
+                _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            iconColor: _liked ? ext.likeRed : Colors.white,
             count: _likeCount,
-            countColor:
-                _liked ? ext.likeRed : Colors.white,
+            countColor: _liked ? ext.likeRed : Colors.white,
             iconSize: iconSize,
             onTap: _toggleLike,
           ),
@@ -729,7 +734,8 @@ class _FeedCardState extends State<_FeedCard> {
 
   /// Fallback for events with no backend `content_tags` — synthesized from
   /// the event/photographer names so the caption never looks bare.
-  static List<String> _fallbackHashtags(String eventName, String photographerName) {
+  static List<String> _fallbackHashtags(
+      String eventName, String photographerName) {
     final words = eventName
         .split(RegExp(r'[\s\-_&]+'))
         .where((w) => w.length > 2)
@@ -767,7 +773,9 @@ class _FeedCardState extends State<_FeedCard> {
 
         // Bottom gradient
         Positioned(
-          left: 0, right: 0, bottom: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           child: SizedBox(
             height: MediaQuery.sizeOf(context).height * 0.62,
             child: DecoratedBox(
@@ -787,7 +795,9 @@ class _FeedCardState extends State<_FeedCard> {
 
         // Top gradient
         Positioned(
-          left: 0, right: 0, top: 0,
+          left: 0,
+          right: 0,
+          top: 0,
           child: SizedBox(
             height: 120.h,
             child: DecoratedBox(
@@ -885,7 +895,8 @@ class _InfoOverlay extends StatelessWidget {
           children: [
             Semantics(
               button: true,
-              label: "View ${photographerName.isNotEmpty ? photographerName : 'creator'}'s profile",
+              label:
+                  "View ${photographerName.isNotEmpty ? photographerName : 'creator'}'s profile",
               child: GestureDetector(
                 onTap: onAvatarTap,
                 child: _InitialsAvatar(
@@ -942,7 +953,8 @@ class _InfoOverlay extends StatelessWidget {
             fontSize: 18.sp,
             height: 1.2,
             shadows: const [
-              Shadow(color: Colors.black54, blurRadius: 6, offset: Offset(0, 1)),
+              Shadow(
+                  color: Colors.black54, blurRadius: 6, offset: Offset(0, 1)),
             ],
           ),
           maxLines: 2,
@@ -1020,7 +1032,8 @@ class _InfoOverlay extends StatelessWidget {
 // ── Initials avatar ───────────────────────────────────────────────────────────
 
 class _InitialsAvatar extends StatelessWidget {
-  const _InitialsAvatar({required this.name, this.imageUrl, required this.size});
+  const _InitialsAvatar(
+      {required this.name, this.imageUrl, required this.size});
 
   final String name;
 
@@ -1095,7 +1108,8 @@ class _PhotoBackground extends StatelessWidget {
     const errorWidget = ColoredBox(
       color: Color(0xFF0D0D0D),
       child: Center(
-        child: Icon(Icons.broken_image_outlined, color: Colors.white24, size: 48),
+        child:
+            Icon(Icons.broken_image_outlined, color: Colors.white24, size: 48),
       ),
     );
     return Stack(

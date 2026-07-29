@@ -122,8 +122,7 @@ class WebReactionsColumn extends StatelessWidget {
               icon: Icons.thumb_down_rounded,
               iconColor: disliked ? ext.dislikeBlue : ext.greetingColor,
               count: dislikeCount,
-              countColor:
-                  disliked ? ext.dislikeBlue : ext.greetingColor,
+              countColor: disliked ? ext.dislikeBlue : ext.greetingColor,
               iconSize: iconSize,
               onTap: onDislike,
               semanticLabel: disliked ? 'Remove dislike' : 'Dislike',
@@ -142,8 +141,7 @@ class WebReactionsColumn extends StatelessWidget {
                   : ext.searchHintColor.withValues(alpha: 0.4),
               iconSize: iconSize,
               onTap: onComment,
-              semanticLabel:
-                  commentsEnabled ? 'Comments' : 'Comments disabled',
+              semanticLabel: commentsEnabled ? 'Comments' : 'Comments disabled',
             ),
             SizedBox(height: gap),
             WebActionBtn(

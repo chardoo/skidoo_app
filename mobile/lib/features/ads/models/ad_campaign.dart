@@ -66,7 +66,8 @@ class AdCampaign {
         objective:
             CampaignObjective.fromString(j['objective'] as String? ?? ''),
         budgetAmount: (j['budget_amount'] as num).toDouble(),
-        spent: (j['spent'] as num? ?? j['amount_spent'] as num? ?? 0).toDouble(),
+        spent:
+            (j['spent'] as num? ?? j['amount_spent'] as num? ?? 0).toDouble(),
         currency: j['currency'] as String? ?? 'GHS',
         status: CampaignStatus.fromString(j['status'] as String? ?? ''),
         rejectionReason: j['rejection_reason'] as String?,
@@ -88,7 +89,12 @@ class AdCampaign {
             .toList(),
         media: () {
           // Try every key the server might use for campaign-level media.
-          for (final key in const ['media', 'images', 'assets', 'campaign_media']) {
+          for (final key in const [
+            'media',
+            'images',
+            'assets',
+            'campaign_media'
+          ]) {
             final raw = j[key];
             if (raw is List && raw.isNotEmpty) {
               return raw
@@ -103,7 +109,8 @@ class AdCampaign {
               j['cover_image'] as String? ??
               j['image_url'] as String?;
           if (singleUrl != null && singleUrl.isNotEmpty) {
-            debugPrint('[AdCampaign] using single cover URL for id=${j['id']}: $singleUrl');
+            debugPrint(
+                '[AdCampaign] using single cover URL for id=${j['id']}: $singleUrl');
             return [AdMedia(id: '', url: singleUrl, mediaType: 'image')];
           }
           return <AdMedia>[];

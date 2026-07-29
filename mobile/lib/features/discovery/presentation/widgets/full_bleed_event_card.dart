@@ -9,7 +9,8 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/utils/open_photographer_profile.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart' show FollowButton;
+import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart'
+    show FollowButton;
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
@@ -72,8 +73,9 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
       return;
     }
     final liked = widget.event.userReaction == 'like';
-    context.read<DiscoveryBloc>().add(
-        DiscoveryReactionToggled(widget.event.id, isLike: !liked));
+    context
+        .read<DiscoveryBloc>()
+        .add(DiscoveryReactionToggled(widget.event.id, isLike: !liked));
   }
 
   void _toggleSave() {
@@ -81,7 +83,9 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
       widget.onTap();
       return;
     }
-    context.read<DiscoveryBloc>().add(DiscoveryEventSaveToggled(widget.event.id));
+    context
+        .read<DiscoveryBloc>()
+        .add(DiscoveryEventSaveToggled(widget.event.id));
   }
 
   void _openComments() {
@@ -259,89 +263,93 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           child: Align(
             alignment: const Alignment(0, 0.4),
             child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.bottomCenter,
-                children: [
-                  Semantics(
-                    button: true,
-                    label: "View ${event.photographerName}'s profile",
-                    child: GestureDetector(
-                      onTap: _openPhotographerProfile,
-                      child: CircleAvatar(
-                        radius: 20.r,
-                        backgroundColor: Colors.white24,
-                        backgroundImage: event.photographerProfileUrl != null
-                            ? CachedNetworkImageProvider(event.photographerProfileUrl!)
-                            : null,
-                        child: event.photographerProfileUrl == null
-                            ? Text(
-                                event.photographerName.isNotEmpty
-                                    ? event.photographerName[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                    color: Colors.white, fontWeight: FontWeight.w700),
-                              )
-                            : null,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    Semantics(
+                      button: true,
+                      label: "View ${event.photographerName}'s profile",
+                      child: GestureDetector(
+                        onTap: _openPhotographerProfile,
+                        child: CircleAvatar(
+                          radius: 20.r,
+                          backgroundColor: Colors.white24,
+                          backgroundImage: event.photographerProfileUrl != null
+                              ? CachedNetworkImageProvider(
+                                  event.photographerProfileUrl!)
+                              : null,
+                          child: event.photographerProfileUrl == null
+                              ? Text(
+                                  event.photographerName.isNotEmpty
+                                      ? event.photographerName[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700),
+                                )
+                              : null,
+                        ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    bottom: -8.h,
-                    child: FollowButton(
-                      photographerId: event.photographerId,
-                      onImage: true,
-                      compact: true,
-                      initialFollowing: event.isFollowed,
-                      onLoginRequired: widget.isAuthenticated ? null : widget.onTap,
+                    Positioned(
+                      bottom: -8.h,
+                      child: FollowButton(
+                        photographerId: event.photographerId,
+                        onImage: true,
+                        compact: true,
+                        initialFollowing: event.isFollowed,
+                        onLoginRequired:
+                            widget.isAuthenticated ? null : widget.onTap,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 26.h),
-              MediaRailAction(
-                icon: Icons.favorite_rounded,
-                iconColor: liked ? const Color(0xFFFF3B5C) : Colors.white,
-                label: '${event.likes}',
-                onTap: _toggleLike,
-              ),
-              SizedBox(height: AppSpacing.lg.h),
-              MediaRailAction(
-                icon: Icons.mode_comment_rounded,
-                label: '${event.commentCount}',
-                onTap: _openComments,
-              ),
-              SizedBox(height: AppSpacing.lg.h),
-              BlocBuilder<DiscoveryBloc, DiscoveryState>(
-                buildWhen: (prev, next) => prev.savedEventIds != next.savedEventIds,
-                builder: (context, state) {
-                  final saved = state.savedEventIds.contains(event.id);
-                  return MediaRailAction(
-                    icon: Icons.bookmark_rounded,
-                    iconColor: saved ? Colors.amberAccent : Colors.white,
-                    onTap: _toggleSave,
-                  );
-                },
-              ),
-              SizedBox(height: AppSpacing.lg.h),
-              MediaRailAction(
-                icon: Icons.near_me_rounded,
-                onTap: _share,
-              ),
-              SizedBox(height: AppSpacing.lg.h),
-              MediaRailAction(
-                icon: Icons.ios_share_rounded,
-                busy: _sharingExternal,
-                onTap: _shareExternal,
-              ),
-              SizedBox(height: AppSpacing.lg.h),
-              MediaRailAction(
-                icon: Icons.more_horiz_rounded,
-                onTap: _showMoreOptions,
-              ),
-            ],
+                  ],
+                ),
+                SizedBox(height: 26.h),
+                MediaRailAction(
+                  icon: Icons.favorite_rounded,
+                  iconColor: liked ? const Color(0xFFFF3B5C) : Colors.white,
+                  label: '${event.likes}',
+                  onTap: _toggleLike,
+                ),
+                SizedBox(height: AppSpacing.lg.h),
+                MediaRailAction(
+                  icon: Icons.mode_comment_rounded,
+                  label: '${event.commentCount}',
+                  onTap: _openComments,
+                ),
+                SizedBox(height: AppSpacing.lg.h),
+                BlocBuilder<DiscoveryBloc, DiscoveryState>(
+                  buildWhen: (prev, next) =>
+                      prev.savedEventIds != next.savedEventIds,
+                  builder: (context, state) {
+                    final saved = state.savedEventIds.contains(event.id);
+                    return MediaRailAction(
+                      icon: Icons.bookmark_rounded,
+                      iconColor: saved ? Colors.amberAccent : Colors.white,
+                      onTap: _toggleSave,
+                    );
+                  },
+                ),
+                SizedBox(height: AppSpacing.lg.h),
+                MediaRailAction(
+                  icon: Icons.near_me_rounded,
+                  onTap: _share,
+                ),
+                SizedBox(height: AppSpacing.lg.h),
+                MediaRailAction(
+                  icon: Icons.ios_share_rounded,
+                  busy: _sharingExternal,
+                  onTap: _shareExternal,
+                ),
+                SizedBox(height: AppSpacing.lg.h),
+                MediaRailAction(
+                  icon: Icons.more_horiz_rounded,
+                  onTap: _showMoreOptions,
+                ),
+              ],
             ),
           ),
         ),

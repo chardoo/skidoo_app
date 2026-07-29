@@ -65,7 +65,13 @@ class ProfileUpdateSubmitted extends UserProfileEvent {
 
   @override
   List<Object?> get props => [
-        name, uniqueName, contact, countryCode,
-        locale, preferredLanguage, timezone, interestTags,
+        name,
+        uniqueName,
+        contact,
+        countryCode,
+        locale,
+        preferredLanguage,
+        timezone,
+        interestTags,
       ];
 }

@@ -134,7 +134,9 @@ class FeedItemData {
       body: ad.body.isNotEmpty ? ad.body : null,
       commentsEnabled: ad.commentsEnabled,
       commentCount: ad.commentCount,
-      ctaLabel: ad.ctaUrl.isNotEmpty ? (ad.ctaText.isEmpty ? 'Learn More' : ad.ctaText) : null,
+      ctaLabel: ad.ctaUrl.isNotEmpty
+          ? (ad.ctaText.isEmpty ? 'Learn More' : ad.ctaText)
+          : null,
       ctaUrl: ad.ctaUrl.isNotEmpty ? ad.ctaUrl : null,
       onCtaTap: ad.ctaUrl.isNotEmpty ? onCtaTap : null,
       onInit: onInit,
@@ -282,6 +284,7 @@ class FeedItemCard extends StatefulWidget {
   });
   final FeedItemData data;
   final VoidCallback? onHide;
+
   /// Set false for guest/unauthenticated users — all interactive actions will
   /// call [onLoginRequired] instead of performing the real action.
   final bool isAuthenticated;
@@ -291,8 +294,8 @@ class FeedItemCard extends StatefulWidget {
   State<FeedItemCard> createState() => _FeedItemCardState();
 }
 
-class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver {
-
+class _FeedItemCardState extends State<FeedItemCard>
+    with WidgetsBindingObserver {
   final PageController _pageCtrl = PageController();
   int _currentPage = 0;
 
@@ -398,7 +401,9 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
       final isBlocked = e is ServerException && e.message.contains('400');
       AppSnackBar.error(
         context,
-        isBlocked ? 'This user is not accepting messages.' : 'Could not open chat. Try again.',
+        isBlocked
+            ? 'This user is not accepting messages.'
+            : 'Could not open chat. Try again.',
       );
     } finally {
       if (mounted) setState(() => _chatLoading = false);
@@ -440,204 +445,206 @@ class _FeedItemCardState extends State<FeedItemCard> with WidgetsBindingObserver
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final size = MediaQuery.sizeOf(context);
 
-    final isVideo = d.mediaList.length == 1
-        ? d.mediaList[0].isVideo
-        : d.mediaIsVideo;
+    final isVideo =
+        d.mediaList.length == 1 ? d.mediaList[0].isVideo : d.mediaIsVideo;
 
     return LayoutBuilder(builder: (context, constraints) {
-    final availableW = constraints.maxWidth.isFinite ? constraints.maxWidth : size.width;
-    final firstMedia = d.mediaList.isNotEmpty ? d.mediaList[0] : null;
-    final ar = firstMedia?.aspectRatio;
-    final mediaH = ar != null
-        ? (availableW / ar).clamp(380.0, size.height * 0.92)
-        : isVideo
-            ? (size.height * 0.80).clamp(540.0, 780.0)
-            : (size.height * 0.75).clamp(480.0, 740.0);
+      final availableW =
+          constraints.maxWidth.isFinite ? constraints.maxWidth : size.width;
+      final firstMedia = d.mediaList.isNotEmpty ? d.mediaList[0] : null;
+      final ar = firstMedia?.aspectRatio;
+      final mediaH = ar != null
+          ? (availableW / ar).clamp(380.0, size.height * 0.92)
+          : isVideo
+              ? (size.height * 0.80).clamp(540.0, 780.0)
+              : (size.height * 0.75).clamp(480.0, 740.0);
 
-    return Container(
-      color: Colors.transparent,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── 1. Header — above the image ───────────────────────────────────
-          Padding(
-            padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 10.h),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _CreatorAvatar(data: d),
-                SizedBox(width: 10.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        d.creatorName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: ext.greetingColor,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.2,
+      return Container(
+        color: Colors.transparent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── 1. Header — above the image ───────────────────────────────────
+            Padding(
+              padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 10.h),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _CreatorAvatar(data: d),
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          d.creatorName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ext.greetingColor,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 2.h),
-                      _TypeLabel(type: d.type, ext: ext),
-                    ],
+                        SizedBox(height: 2.h),
+                        _TypeLabel(type: d.type, ext: ext),
+                      ],
+                    ),
                   ),
-                ),
-                SizedBox(width: AppSpacing.sm.w),
-                FollowButton(
-                  photographerId: d.creatorId,
-                  onLoginRequired: widget.isAuthenticated
-                      ? null
-                      : widget.onLoginRequired,
-                ),
-                SizedBox(width: 6.w),
-                Semantics(button: true, label: 'Hide', child: GestureDetector(
-                  onTap: () => _FeedItemMoreOptionsSheet.show(
-                    context,
-                    ext: ext,
-                    type: d.type,
-                    assetId: d.id,
-                    onHide: widget.onHide,
+                  SizedBox(width: AppSpacing.sm.w),
+                  FollowButton(
+                    photographerId: d.creatorId,
+                    onLoginRequired:
+                        widget.isAuthenticated ? null : widget.onLoginRequired,
                   ),
-                  child: Icon(Icons.more_horiz_rounded,
-                      color: ext.searchHintColor, size: 22.sp),
-                )),
-              ],
+                  SizedBox(width: 6.w),
+                  Semantics(
+                      button: true,
+                      label: 'Hide',
+                      child: GestureDetector(
+                        onTap: () => _FeedItemMoreOptionsSheet.show(
+                          context,
+                          ext: ext,
+                          type: d.type,
+                          assetId: d.id,
+                          onHide: widget.onHide,
+                        ),
+                        child: Icon(Icons.more_horiz_rounded,
+                            color: ext.searchHintColor, size: 22.sp),
+                      )),
+                ],
+              ),
             ),
-          ),
 
-          // ── 2. Media ───────────────────────────────────────────────────────
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeInOut,
-            width: double.infinity,
-            height: mediaH,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (d.mediaList.length > 1)
-                  PageView.builder(
-                    controller: _pageCtrl,
-                    itemCount: d.mediaList.length,
-                    itemBuilder: (_, i) => _SingleMediaFrame(
-                      media: d.mediaList[i],
+            // ── 2. Media ───────────────────────────────────────────────────────
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeInOut,
+              width: double.infinity,
+              height: mediaH,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (d.mediaList.length > 1)
+                    PageView.builder(
+                      controller: _pageCtrl,
+                      itemCount: d.mediaList.length,
+                      itemBuilder: (_, i) => _SingleMediaFrame(
+                        media: d.mediaList[i],
+                        ext: ext,
+                        title: d.title,
+                        creatorName: d.creatorName,
+                      ),
+                    )
+                  else if (d.mediaList.length == 1 && !d.mediaList[0].isVideo)
+                    // Single image from mediaList — use _SingleMediaFrame so it
+                    // reads media.url directly instead of the legacy data.mediaUrl.
+                    _SingleMediaFrame(
+                      media: d.mediaList[0],
                       ext: ext,
                       title: d.title,
                       creatorName: d.creatorName,
-                    ),
-                  )
-                else if (d.mediaList.length == 1 && !d.mediaList[0].isVideo)
-                  // Single image from mediaList — use _SingleMediaFrame so it
-                  // reads media.url directly instead of the legacy data.mediaUrl.
-                  _SingleMediaFrame(
-                    media: d.mediaList[0],
-                    ext: ext,
-                    title: d.title,
-                    creatorName: d.creatorName,
-                  )
-                else
-                  // Single video or legacy mediaUrl
-                  _MediaBackground(data: d, ext: ext),
+                    )
+                  else
+                    // Single video or legacy mediaUrl
+                    _MediaBackground(data: d, ext: ext),
 
-                // Bottom gradient
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  height: 130.h,
-                  child: const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [Color(0xDD000000), Color(0x00000000)],
+                  // Bottom gradient
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 130.h,
+                    child: const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [Color(0xDD000000), Color(0x00000000)],
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // Footer: title + secondary label
-                Positioned(
-                  bottom: 14.h,
-                  left: 14.w,
-                  right: 14.w,
-                  child: _FooterOverlay(data: d),
-                ),
-
-                // Page dots for multi-image (Instagram-style)
-                if (d.mediaList.length > 1)
+                  // Footer: title + secondary label
                   Positioned(
-                    bottom: 58.h,
-                    left: 0,
-                    right: 0,
-                    child: _AdPageDots(
-                      count: d.mediaList.length,
-                      current: _currentPage,
-                      ext: ext,
-                    ),
+                    bottom: 14.h,
+                    left: 14.w,
+                    right: 14.w,
+                    child: _FooterOverlay(data: d),
                   ),
-              ],
-            ),
-          ),
 
-          // ── 3. CTA strip — between image and reactions ────────────────────
-          // Show when: ad/campaign has a URL, or request has a message handler.
-          if (d.ctaLabel != null &&
-              (d.ctaUrl?.isNotEmpty == true ||
-                  (d.type == FeedItemType.request && d.onCtaTap != null)))
-            _CtaStrip(
-              label: d.ctaLabel!,
-              onTap: _handleCtaTap,
+                  // Page dots for multi-image (Instagram-style)
+                  if (d.mediaList.length > 1)
+                    Positioned(
+                      bottom: 58.h,
+                      left: 0,
+                      right: 0,
+                      child: _AdPageDots(
+                        count: d.mediaList.length,
+                        current: _currentPage,
+                        ext: ext,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // ── 3. CTA strip — between image and reactions ────────────────────
+            // Show when: ad/campaign has a URL, or request has a message handler.
+            if (d.ctaLabel != null &&
+                (d.ctaUrl?.isNotEmpty == true ||
+                    (d.type == FeedItemType.request && d.onCtaTap != null)))
+              _CtaStrip(
+                label: d.ctaLabel!,
+                onTap: _handleCtaTap,
+                ext: ext,
+                type: d.type,
+              ),
+
+            // ── 4. Interaction bar ─────────────────────────────────────────────
+            CardInteractionBar(
+              liked: _liked,
+              disliked: _disliked,
+              saved: _saved,
+              likeCount: 0,
+              dislikeCount: 0,
+              commentCount: d.commentCount,
+              commentsEnabled: d.commentsEnabled,
               ext: ext,
-              type: d.type,
+              onLike: _handleLike,
+              onDislike: _handleDislike,
+              onComment: _handleComment,
+              onShare: _handleShare,
+              onSave: _handleSave,
+              onMessage: d.creatorId.isNotEmpty
+                  ? (_chatLoading ? null : _openChat)
+                  : null,
             ),
 
-          // ── 4. Interaction bar ─────────────────────────────────────────────
-          CardInteractionBar(
-            liked: _liked,
-            disliked: _disliked,
-            saved: _saved,
-            likeCount: 0,
-            dislikeCount: 0,
-            commentCount: d.commentCount,
-            commentsEnabled: d.commentsEnabled,
-            ext: ext,
-            onLike: _handleLike,
-            onDislike: _handleDislike,
-            onComment: _handleComment,
-            onShare: _handleShare,
-            onSave: _handleSave,
-            onMessage: d.creatorId.isNotEmpty
-                ? (_chatLoading ? null : _openChat)
-                : null,
-          ),
+            // ── 5. Caption ─────────────────────────────────────────────────────
+            if (d.body != null)
+              _BodyText(
+                creatorName: d.creatorName,
+                body: d.body!,
+                ext: ext,
+                expanded: _bodyExpanded,
+                onToggle: () => setState(() => _bodyExpanded = !_bodyExpanded),
+              ),
 
-          // ── 5. Caption ─────────────────────────────────────────────────────
-          if (d.body != null)
-            _BodyText(
-              creatorName: d.creatorName,
-              body: d.body!,
-              ext: ext,
-              expanded: _bodyExpanded,
-              onToggle: () => setState(() => _bodyExpanded = !_bodyExpanded),
+            SizedBox(height: 6.h),
+
+            // ── 6. Divider ─────────────────────────────────────────────────────
+            Divider(
+              height: 1,
+              thickness: 0.5,
+              color: ext.searchHintColor.withValues(alpha: 0.1),
             ),
-
-          SizedBox(height: 6.h),
-
-          // ── 6. Divider ─────────────────────────────────────────────────────
-          Divider(
-            height: 1,
-            thickness: 0.5,
-            color: ext.searchHintColor.withValues(alpha: 0.1),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
     }); // LayoutBuilder
   }
 }
@@ -657,8 +664,7 @@ class _MediaBackground extends StatelessWidget {
     final d = data;
 
     // ── Video ──────────────────────────────────────────────────────────────
-    if (d.mediaIsVideo ||
-        (d.mediaList.length == 1 && d.mediaList[0].isVideo)) {
+    if (d.mediaIsVideo || (d.mediaList.length == 1 && d.mediaList[0].isVideo)) {
       final url = d.mediaList.isNotEmpty ? d.mediaList[0].url : d.mediaUrl;
       if (url != null && url.isNotEmpty) {
         return SkidooVideoPlayer(
@@ -798,8 +804,7 @@ class _TypeLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAd = type == FeedItemType.ad;
-    final bgColor =
-        isAd ? ext.accentGold : ext.infoBlue;
+    final bgColor = isAd ? ext.accentGold : ext.infoBlue;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.5.h),
       decoration: BoxDecoration(
@@ -869,12 +874,8 @@ class _CtaStripState extends State<_CtaStrip>
     // Pulse twice to signal this is interactive, then come to rest.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _ctrl
-          .forward()
-          .then((_) => _ctrl.reverse())
-          .then((_) => mounted
-              ? _ctrl.forward().then((_) => _ctrl.reverse())
-              : null);
+      _ctrl.forward().then((_) => _ctrl.reverse()).then(
+          (_) => mounted ? _ctrl.forward().then((_) => _ctrl.reverse()) : null);
     });
   }
 
@@ -894,31 +895,35 @@ class _CtaStripState extends State<_CtaStrip>
       animation: _ctrl,
       builder: (context, child) {
         final p = _ctrl.value;
-        return Semantics(button: true, label: widget.label, child: GestureDetector(
-          onTap: widget.onTap,
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 13.h),
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.07 + p * 0.14),
-              border: Border.symmetric(
-                horizontal: BorderSide(
-                  color: accentColor.withValues(alpha: 0.18 + p * 0.5),
-                  width: 0.8 + p * 0.8,
+        return Semantics(
+            button: true,
+            label: widget.label,
+            child: GestureDetector(
+              onTap: widget.onTap,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg.w, vertical: 13.h),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.07 + p * 0.14),
+                  border: Border.symmetric(
+                    horizontal: BorderSide(
+                      color: accentColor.withValues(alpha: 0.18 + p * 0.5),
+                      width: 0.8 + p * 0.8,
+                    ),
+                  ),
+                  boxShadow: p > 0
+                      ? [
+                          BoxShadow(
+                            color: accentColor.withValues(alpha: 0.18 * p),
+                            blurRadius: 10 * p,
+                            spreadRadius: 0,
+                          ),
+                        ]
+                      : null,
                 ),
+                child: child,
               ),
-              boxShadow: p > 0
-                  ? [
-                      BoxShadow(
-                        color: accentColor.withValues(alpha: 0.18 * p),
-                        blurRadius: 10 * p,
-                        spreadRadius: 0,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: child,
-          ),
-        ));
+            ));
       },
       child: Row(
         children: [
@@ -990,8 +995,7 @@ class _FooterOverlay extends StatelessWidget {
               ],
             ),
           ),
-        if (data.secondaryLabel != null &&
-            data.secondaryLabel!.isNotEmpty) ...[
+        if (data.secondaryLabel != null && data.secondaryLabel!.isNotEmpty) ...[
           SizedBox(height: 3.h),
           Text(
             data.secondaryLabel!,
@@ -1036,40 +1040,44 @@ class _BodyText extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Semantics(button: true, label: 'Toggle', child: GestureDetector(
-            onTap: onToggle,
-            child: RichText(
-              maxLines: expanded ? null : 2,
-              overflow:
-                  expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-              text: TextSpan(
-                style: TextStyle(
-                    fontSize: 13.sp,
-                    height: 1.5,
-                    color: ext.greetingColor),
-                children: [
-                  TextSpan(
-                    text: '$creatorName  ',
+          Semantics(
+              button: true,
+              label: 'Toggle',
+              child: GestureDetector(
+                onTap: onToggle,
+                child: RichText(
+                  maxLines: expanded ? null : 2,
+                  overflow:
+                      expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                  text: TextSpan(
                     style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: ext.greetingColor,
-                    ),
+                        fontSize: 13.sp, height: 1.5, color: ext.greetingColor),
+                    children: [
+                      TextSpan(
+                        text: '$creatorName  ',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: ext.greetingColor,
+                        ),
+                      ),
+                      TextSpan(text: body),
+                    ],
                   ),
-                  TextSpan(text: body),
-                ],
-              ),
-            ),
-          )),
+                ),
+              )),
           if (!expanded) ...[
             SizedBox(height: 2.h),
-            Semantics(button: true, label: 'Toggle', child: GestureDetector(
-              onTap: onToggle,
-              child: Text(
-                'more',
-                style: TextStyle(
-                    color: ext.searchHintColor, fontSize: 12.sp),
-              ),
-            )),
+            Semantics(
+                button: true,
+                label: 'Toggle',
+                child: GestureDetector(
+                  onTap: onToggle,
+                  child: Text(
+                    'more',
+                    style:
+                        TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                  ),
+                )),
           ],
         ],
       ),
@@ -1169,9 +1177,7 @@ class _AdPageDots extends StatelessWidget {
           width: active ? 18.0 : 6.0,
           height: 6.0,
           decoration: BoxDecoration(
-            color: active
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.4),
+            color: active ? Colors.white : Colors.white.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(3),
           ),
         );
@@ -1213,8 +1219,7 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
     );
   }
 
-  String get _assetType =>
-      type == FeedItemType.ad ? 'campaign' : 'request';
+  String get _assetType => type == FeedItemType.ad ? 'campaign' : 'request';
 
   @override
   Widget build(BuildContext context) {
@@ -1224,92 +1229,100 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
         color: ext.homeBackground,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
-              width: 36.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: ext.searchHintColor.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-
-            // Hide
-            ListTile(
-              leading: Container(
-                width: 40.w,
-                height: 40.w,
+      // ListTile ink paints on the nearest Material ancestor; this decorated
+      // Container sits between the sheet's Material and the tiles and would
+      // swallow it (and assert in debug). A transparency Material paints
+      // nothing and just gives the ink somewhere to land.
+      child: Material(
+        type: MaterialType.transparency,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                width: 36.w,
+                height: 4.h,
                 decoration: BoxDecoration(
-                  color: ext.searchFieldFill,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.visibility_off_outlined,
-                    color: ext.greetingColor, size: 20.sp),
-              ),
-              title: Text(
-                'Hide this $label',
-                style: TextStyle(
-                  color: ext.greetingColor,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15.sp,
+                  color: ext.searchHintColor.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
-              subtitle: Text(
-                "You won't see this $label again",
-                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-              ),
-              onTap: () {
-                Navigator.of(context).pop();
-                onHide?.call();
-              },
-            ),
 
-            Divider(height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
-
-            // Report
-            ListTile(
-              leading: Container(
-                width: 40.w,
-                height: 40.w,
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+              // Hide
+              ListTile(
+                leading: Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: ext.searchFieldFill,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.visibility_off_outlined,
+                      color: ext.greetingColor, size: 20.sp),
                 ),
-                child: Icon(Icons.flag_outlined,
-                    color: Colors.redAccent, size: 20.sp),
-              ),
-              title: Text(
-                'Report $label',
-                style: TextStyle(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15.sp,
+                title: Text(
+                  'Hide this $label',
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15.sp,
+                  ),
                 ),
+                subtitle: Text(
+                  "You won't see this $label again",
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onHide?.call();
+                },
               ),
-              subtitle: Text(
-                'Inappropriate, misleading or harmful content',
-                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-              ),
-              trailing: Icon(Icons.chevron_right_rounded,
-                  color: ext.searchHintColor, size: 20.sp),
-              onTap: () {
-                Navigator.of(context).pop();
-                ReportSheet.show(
-                  context,
-                  ext: ext,
-                  assetType: _assetType,
-                  assetId: assetId,
-                );
-              },
-            ),
 
-            SizedBox(height: AppSpacing.sm.h),
-          ],
+              Divider(
+                  height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
+
+              // Report
+              ListTile(
+                leading: Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.flag_outlined,
+                      color: Colors.redAccent, size: 20.sp),
+                ),
+                title: Text(
+                  'Report $label',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15.sp,
+                  ),
+                ),
+                subtitle: Text(
+                  'Inappropriate, misleading or harmful content',
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                ),
+                trailing: Icon(Icons.chevron_right_rounded,
+                    color: ext.searchHintColor, size: 20.sp),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  ReportSheet.show(
+                    context,
+                    ext: ext,
+                    assetType: _assetType,
+                    assetId: assetId,
+                  );
+                },
+              ),
+
+              SizedBox(height: AppSpacing.sm.h),
+            ],
+          ),
         ),
       ),
     );

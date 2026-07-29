@@ -57,49 +57,52 @@ class _ImageFooterState extends State<ImageFooter> {
         // Content tags — inline with "more / less" pinned to the right
         if (tagLine.isNotEmpty) ...[
           SizedBox(height: AppSpacing.xs.h),
-          Semantics(button: true, label: 'Toggle tags', child: GestureDetector(
-            onTap: () => setState(() => _tagsExpanded = !_tagsExpanded),
-            child: _tagsExpanded
-                ? Text(
-                    tagLine,
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4,
-                      shadows: _soft,
-                    ),
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          tagLine,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w500,
-                            height: 1.4,
-                            shadows: _soft,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'more',
+          Semantics(
+              button: true,
+              label: 'Toggle tags',
+              child: GestureDetector(
+                onTap: () => setState(() => _tagsExpanded = !_tagsExpanded),
+                child: _tagsExpanded
+                    ? Text(
+                        tagLine,
                         style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 11.sp,
+                          color: Colors.white70,
+                          fontSize: 12.sp,
                           fontWeight: FontWeight.w500,
+                          height: 1.4,
                           shadows: _soft,
                         ),
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              tagLine,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                height: 1.4,
+                                shadows: _soft,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'more',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w500,
+                              shadows: _soft,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-          )),
+              )),
         ],
       ],
     );

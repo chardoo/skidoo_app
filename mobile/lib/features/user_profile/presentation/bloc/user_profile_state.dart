@@ -76,7 +76,9 @@ class UserProfileState extends Equatable {
     return UserProfileState(
       isLoading: isLoading ?? this.isLoading,
       isUpdateLoading: isUpdateLoading ?? this.isUpdateLoading,
-      isUpdateSuccess: clearUpdateSuccess ? false : (isUpdateSuccess ?? this.isUpdateSuccess),
+      isUpdateSuccess: clearUpdateSuccess
+          ? false
+          : (isUpdateSuccess ?? this.isUpdateSuccess),
       name: name ?? this.name,
       email: email ?? this.email,
       uniqueName: uniqueName ?? this.uniqueName,
@@ -91,10 +93,14 @@ class UserProfileState extends Equatable {
       alwaysPublicImages: alwaysPublicImages ?? this.alwaysPublicImages,
       anonymousMode: anonymousMode ?? this.anonymousMode,
       hideProfile: hideProfile ?? this.hideProfile,
-      isAnonymousModeUpdating: isAnonymousModeUpdating ?? this.isAnonymousModeUpdating,
-      isHideProfileUpdating: isHideProfileUpdating ?? this.isHideProfileUpdating,
+      isAnonymousModeUpdating:
+          isAnonymousModeUpdating ?? this.isAnonymousModeUpdating,
+      isHideProfileUpdating:
+          isHideProfileUpdating ?? this.isHideProfileUpdating,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      updateErrorMessage: clearUpdateError ? null : (updateErrorMessage ?? this.updateErrorMessage),
+      updateErrorMessage: clearUpdateError
+          ? null
+          : (updateErrorMessage ?? this.updateErrorMessage),
     );
   }
 

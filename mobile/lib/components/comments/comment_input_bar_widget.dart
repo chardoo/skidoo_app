@@ -90,11 +90,14 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                   ),
                 ),
                 SizedBox(width: AppSpacing.xs.w),
-                Semantics(button: true, label: 'Cancel reply', child: GestureDetector(
-                  onTap: widget.onCancelReply,
-                  child: Icon(Icons.close_rounded,
-                      size: 16.sp, color: ext.searchHintColor),
-                )),
+                Semantics(
+                    button: true,
+                    label: 'Cancel reply',
+                    child: GestureDetector(
+                      onTap: widget.onCancelReply,
+                      child: Icon(Icons.close_rounded,
+                          size: 16.sp, color: ext.searchHintColor),
+                    )),
               ],
             ),
           ),
@@ -132,10 +135,9 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
               Expanded(
                 child: CallbackShortcuts(
                   bindings: <ShortcutActivator, VoidCallback>{
-                    const SingleActivator(
-                        LogicalKeyboardKey.enter, shift: false): widget.onSend,
-                    const SingleActivator(
-                        LogicalKeyboardKey.numpadEnter,
+                    const SingleActivator(LogicalKeyboardKey.enter,
+                        shift: false): widget.onSend,
+                    const SingleActivator(LogicalKeyboardKey.numpadEnter,
                         shift: false): widget.onSend,
                   },
                   child: AppTextField(
@@ -161,32 +163,35 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
               // ── Send button ───────────────────────────────────────────────
               MouseRegion(
                 cursor: SystemMouseCursors.click,
-                child: Semantics(button: true, label: 'Send', child: GestureDetector(
-                  onTap: widget.onSend,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: 42.w,
-                    height: 42.h,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [ext.accentGold, ext.accentGoldDark],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: ext.accentGold.withValues(alpha: 0.35),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                child: Semantics(
+                    button: true,
+                    label: 'Send',
+                    child: GestureDetector(
+                      onTap: widget.onSend,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        width: 42.w,
+                        height: 42.h,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [ext.accentGold, ext.accentGoldDark],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: ext.accentGold.withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(Icons.send_rounded,
-                        color: Colors.white, size: 18.sp),
-                  ),
-                )),
+                        alignment: Alignment.center,
+                        child: Icon(Icons.send_rounded,
+                            color: Colors.white, size: 18.sp),
+                      ),
+                    )),
               ),
             ],
           ),

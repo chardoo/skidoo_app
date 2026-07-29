@@ -59,14 +59,14 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
         'use_as_profile': _useAsProfile.toString(),
       });
       await sl<Api>().dio.post(
-        '/client/train-model',
-        data: formData,
-        options: dio_pkg.Options(
-          contentType: 'multipart/form-data',
-          receiveTimeout: const Duration(minutes: 3),
-          sendTimeout: const Duration(minutes: 3),
-        ),
-      );
+            '/client/train-model',
+            data: formData,
+            options: dio_pkg.Options(
+              contentType: 'multipart/form-data',
+              receiveTimeout: const Duration(minutes: 3),
+              sendTimeout: const Duration(minutes: 3),
+            ),
+          );
       // Stop the "add your photos" nudge now that the user has uploaded them.
       await sl<AuthService>().setHasAddedFaces(true);
       if (!mounted) return;
@@ -90,12 +90,14 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : IconButton(
-          tooltip: 'Back',
-          icon: Icon(Icons.arrow_back_ios_rounded,
-              color: ext.greetingColor, size: 18.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb
+            ? null
+            : IconButton(
+                tooltip: 'Back',
+                icon: Icon(Icons.arrow_back_ios_rounded,
+                    color: ext.greetingColor, size: 18.sp),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         title: Text(
           'Face Recognition',
           style: TextStyle(
@@ -146,7 +148,8 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
                     ? null
                     : () => setState(() => _useAsProfile = !_useAsProfile),
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: AppSpacing.xs.w),
+                  padding: EdgeInsets.symmetric(
+                      vertical: 6.h, horizontal: AppSpacing.xs.w),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -158,15 +161,16 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
                           activeColor: ext.greetingColor,
                           onChanged: _uploading
                               ? null
-                              : (v) => setState(() => _useAsProfile = v ?? false),
+                              : (v) =>
+                                  setState(() => _useAsProfile = v ?? false),
                         ),
                       ),
                       SizedBox(width: AppSpacing.sm.w),
                       Flexible(
                         child: Text(
                           'Use my first photo as my profile picture too',
-                          style:
-                              TextStyle(color: ext.greetingColor, fontSize: 13.sp),
+                          style: TextStyle(
+                              color: ext.greetingColor, fontSize: 13.sp),
                         ),
                       ),
                     ],
@@ -223,7 +227,6 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
     );
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
-
 }
 
 // ── Grid tiles ────────────────────────────────────────────────────────────────
@@ -243,34 +246,37 @@ class _AddSelfieTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: 'Add selfie', child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: ext.cardSurface,
-          borderRadius: BorderRadius.circular(10.r),
-          border: Border.all(
-            color: ext.accentGold.withValues(alpha: 0.35),
-            width: 1.2,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.add_a_photo_rounded,
-                color: ext.accentGold, size: 26.sp),
-            SizedBox(height: 6.h),
-            Text(
-              '$count / $max',
-              style: TextStyle(
-                  color: ext.searchHintColor,
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w500),
+    return Semantics(
+        button: true,
+        label: 'Add selfie',
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: ext.cardSurface,
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(
+                color: ext.accentGold.withValues(alpha: 0.35),
+                width: 1.2,
+              ),
             ),
-          ],
-        ),
-      ),
-    ));
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.add_a_photo_rounded,
+                    color: ext.accentGold, size: 26.sp),
+                SizedBox(height: 6.h),
+                Text(
+                  '$count / $max',
+                  style: TextStyle(
+                      color: ext.searchHintColor,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ));
   }
 }
 
@@ -287,7 +293,10 @@ class _SelfieTile extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(10.r),
           child: kIsWeb
-              ? Semantics(image: true, label: 'Your photo', child: Image.network(file.path, fit: BoxFit.cover))
+              ? Semantics(
+                  image: true,
+                  label: 'Your photo',
+                  child: Image.network(file.path, fit: BoxFit.cover))
               : FutureBuilder<Uint8List>(
                   future: file.readAsBytes(),
                   builder: (_, snap) => snap.hasData
@@ -308,8 +317,7 @@ class _SelfieTile extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_rounded,
-                    color: Colors.white, size: 10),
+                const Icon(Icons.check_rounded, color: Colors.white, size: 10),
                 SizedBox(width: 2.w),
                 Text('Face OK',
                     style: TextStyle(
@@ -324,18 +332,21 @@ class _SelfieTile extends StatelessWidget {
         Positioned(
           top: 4.h,
           right: 4.w,
-          child: Semantics(button: true, label: 'Remove', child: GestureDetector(
-            onTap: onRemove,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Colors.black54,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.close_rounded,
-                  color: Colors.white, size: 13.sp),
-            ),
-          )),
+          child: Semantics(
+              button: true,
+              label: 'Remove',
+              child: GestureDetector(
+                onTap: onRemove,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.close_rounded,
+                      color: Colors.white, size: 13.sp),
+                ),
+              )),
         ),
       ],
     );

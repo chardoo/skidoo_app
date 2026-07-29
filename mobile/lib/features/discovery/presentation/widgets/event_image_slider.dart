@@ -43,17 +43,20 @@ class _EventImageSliderState extends State<EventImageSlider> {
               padding: EdgeInsets.symmetric(horizontal: 6.w),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14.r),
-                child: Semantics(image: true, label: 'Event photo', child: CachedNetworkImage(
-                  imageUrl: widget.pics[i].url,
-                  fit: BoxFit.cover,
-                  placeholder: (context, __) => Container(
-                      color: SkidooImagePlaceholder.colorOf(context)),
-                  errorWidget: (context, __, ___) => Container(
-                    color: SkidooImagePlaceholder.colorOf(context),
-                    child: const Icon(Icons.broken_image_outlined,
-                        color: Colors.white38),
-                  ),
-                )),
+                child: Semantics(
+                    image: true,
+                    label: 'Event photo',
+                    child: CachedNetworkImage(
+                      imageUrl: widget.pics[i].url,
+                      fit: BoxFit.cover,
+                      placeholder: (context, __) => Container(
+                          color: SkidooImagePlaceholder.colorOf(context)),
+                      errorWidget: (context, __, ___) => Container(
+                        color: SkidooImagePlaceholder.colorOf(context),
+                        child: const Icon(Icons.broken_image_outlined,
+                            color: Colors.white38),
+                      ),
+                    )),
               ),
             ),
           ),

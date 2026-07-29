@@ -197,105 +197,109 @@ class _CreateOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: title, child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(AppSpacing.lg.w),
-        decoration: BoxDecoration(
-          color: ext.cardSurface,
-          borderRadius: BorderRadius.circular(AppRadius.lg.r),
-          border: Border.all(
-            color: ext.searchHintColor.withValues(alpha: 0.1),
-            width: 0.8,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Icon
-            Container(
-              width: 48.w,
-              height: 48.w,
-              decoration: BoxDecoration(
-                color: iconBgColor,
-                borderRadius: BorderRadius.circular(14.r),
+    return Semantics(
+        button: true,
+        label: title,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.all(AppSpacing.lg.w),
+            decoration: BoxDecoration(
+              color: ext.cardSurface,
+              borderRadius: BorderRadius.circular(AppRadius.lg.r),
+              border: Border.all(
+                color: ext.searchHintColor.withValues(alpha: 0.1),
+                width: 0.8,
               ),
-              alignment: Alignment.center,
-              child: Icon(icon, color: iconColor, size: 24.sp),
             ),
-            SizedBox(width: 14.w),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Icon
+                Container(
+                  width: 48.w,
+                  height: 48.w,
+                  decoration: BoxDecoration(
+                    color: iconBgColor,
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(icon, color: iconColor, size: 24.sp),
+                ),
+                SizedBox(width: 14.w),
 
-            // Text block
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                // Text block
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        children: [
+                          Text(
+                            title,
+                            style: TextStyle(
+                              color: ext.greetingColor,
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          SizedBox(width: AppSpacing.sm.w),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 7.w, vertical: 2.h),
+                            decoration: BoxDecoration(
+                              color: badgeColor.withValues(alpha: 0.12),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.xl.r),
+                              border: Border.all(
+                                color: badgeColor.withValues(alpha: 0.35),
+                                width: 0.7,
+                              ),
+                            ),
+                            child: Text(
+                              badgeLabel,
+                              style: TextStyle(
+                                color: badgeColor,
+                                fontSize: 9.sp,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 2.h),
                       Text(
-                        title,
+                        subtitle,
                         style: TextStyle(
-                          color: ext.greetingColor,
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.2,
+                          color: ext.searchHintColor,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      SizedBox(width: AppSpacing.sm.w),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 7.w, vertical: 2.h),
-                        decoration: BoxDecoration(
-                          color: badgeColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(AppRadius.xl.r),
-                          border: Border.all(
-                            color: badgeColor.withValues(alpha: 0.35),
-                            width: 0.7,
-                          ),
-                        ),
-                        child: Text(
-                          badgeLabel,
-                          style: TextStyle(
-                            color: badgeColor,
-                            fontSize: 9.sp,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
-                          ),
+                      SizedBox(height: 6.h),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          color: ext.greetingColor.withValues(alpha: 0.65),
+                          fontSize: 12.sp,
+                          height: 1.4,
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 2.h),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: ext.searchHintColor,
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: 6.h),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      color: ext.greetingColor.withValues(alpha: 0.65),
-                      fontSize: 12.sp,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                ),
 
-            // Chevron
-            Icon(
-              Icons.chevron_right_rounded,
-              color: ext.searchHintColor,
-              size: 20.sp,
+                // Chevron
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: ext.searchHintColor,
+                  size: 20.sp,
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 }

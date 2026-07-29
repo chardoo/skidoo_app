@@ -28,7 +28,8 @@ class UserProfileRemoteDataSourceImpl implements UserProfileRemoteDataSource {
     } on app_exceptions.ServerException {
       rethrow;
     } catch (e) {
-      throw app_exceptions.ServerException('Unexpected profile fetch error: $e');
+      throw app_exceptions.ServerException(
+          'Unexpected profile fetch error: $e');
     }
   }
 

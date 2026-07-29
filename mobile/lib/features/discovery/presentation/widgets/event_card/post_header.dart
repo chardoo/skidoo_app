@@ -65,47 +65,53 @@ class PostHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // ── Avatar ─────────────────────────────────────────────────────
-          Semantics(button: true, label: 'View profile', child: GestureDetector(
-            onTap: onPhotographerTap,
-            child: CreatorInitialsAvatar(
-              name: name,
-              imageUrl: event.photographerProfileUrl,
-              size: 36.w,
-              onImage: onImage,
-            ),
-          )),
+          Semantics(
+              button: true,
+              label: 'View profile',
+              child: GestureDetector(
+                onTap: onPhotographerTap,
+                child: CreatorInitialsAvatar(
+                  name: name,
+                  imageUrl: event.photographerProfileUrl,
+                  size: 36.w,
+                  onImage: onImage,
+                ),
+              )),
 
           SizedBox(width: 10.w),
 
           // ── Name (no subtitle — keeps the header slim) ─────────────────
           Expanded(
-            child: Semantics(button: true, label: 'View profile', child: GestureDetector(
-              onTap: onPhotographerTap,
-              behavior: HitTestBehavior.opaque,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      name,
-                      style: TextStyle(
-                        color: nameColor,
-                        fontSize: 13.5.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.3,
-                        shadows: textShadows,
+            child: Semantics(
+                button: true,
+                label: 'View profile',
+                child: GestureDetector(
+                  onTap: onPhotographerTap,
+                  behavior: HitTestBehavior.opaque,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            color: nameColor,
+                            fontSize: 13.5.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.3,
+                            shadows: textShadows,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      if (isOwner) ...[
+                        SizedBox(width: 6.w),
+                        OwnerPill(ext: ext),
+                      ],
+                    ],
                   ),
-                  if (isOwner) ...[
-                    SizedBox(width: 6.w),
-                    OwnerPill(ext: ext),
-                  ],
-                ],
-              ),
-            )),
+                )),
           ),
 
           // ── Follow pill — hidden for own posts ─────────────────────────
@@ -120,14 +126,18 @@ class PostHeader extends StatelessWidget {
           ],
 
           // ── More options ───────────────────────────────────────────────
-          Semantics(button: true, label: 'Show more options', child: GestureDetector(
-            onTap: () => _showMoreOptions(context),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-              child: Icon(Icons.more_horiz_rounded,
-                  color: iconColor, size: 21.sp),
-            ),
-          )),
+          Semantics(
+              button: true,
+              label: 'Show more options',
+              child: GestureDetector(
+                onTap: () => _showMoreOptions(context),
+                child: Padding(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                  child: Icon(Icons.more_horiz_rounded,
+                      color: iconColor, size: 21.sp),
+                ),
+              )),
         ],
       ),
     );
