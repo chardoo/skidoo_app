@@ -62,8 +62,8 @@ class GroupInfoPage extends StatelessWidget {
           if (room == null) {
             return Center(
               child: Text('No group data.',
-                  style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 14.sp)),
+                  style:
+                      TextStyle(color: ext.searchHintColor, fontSize: 14.sp)),
             );
           }
 
@@ -138,12 +138,13 @@ class GroupInfoPage extends StatelessWidget {
                           size: 15.sp, color: ext.accentGold),
                       label: Text(
                         'Add',
-                        style: TextStyle(
-                            color: ext.accentGold, fontSize: 13.sp),
+                        style:
+                            TextStyle(color: ext.accentGold, fontSize: 13.sp),
                       ),
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm.w, vertical: AppSpacing.xs.h),
+                            horizontal: AppSpacing.sm.w,
+                            vertical: AppSpacing.xs.h),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
@@ -160,29 +161,23 @@ class GroupInfoPage extends StatelessWidget {
                     for (int i = 0; i < allParticipants.length; i++) ...[
                       _ParticipantTile(
                         participant: allParticipants[i],
-                        isSelf: allParticipants[i].userId ==
-                            state.myUserId,
+                        isSelf: allParticipants[i].userId == state.myUserId,
                         amIAdmin: state.amIAdmin,
                         ext: ext,
-                        onGrantAdmin: () => context
-                            .read<ChatRoomBloc>()
-                            .add(ChatRoomGrantAdminRequested(
+                        onGrantAdmin: () => context.read<ChatRoomBloc>().add(
+                            ChatRoomGrantAdminRequested(
                                 allParticipants[i].userId)),
-                        onRevokeAdmin: () => context
-                            .read<ChatRoomBloc>()
-                            .add(ChatRoomRevokeAdminRequested(
+                        onRevokeAdmin: () => context.read<ChatRoomBloc>().add(
+                            ChatRoomRevokeAdminRequested(
                                 allParticipants[i].userId)),
-                        onKick: () => context
-                            .read<ChatRoomBloc>()
-                            .add(ChatRoomKickRequested(
-                                allParticipants[i].userId)),
+                        onKick: () => context.read<ChatRoomBloc>().add(
+                            ChatRoomKickRequested(allParticipants[i].userId)),
                       ),
                       if (i < allParticipants.length - 1)
                         Divider(
                           height: 1,
                           indent: 68.w,
-                          color:
-                              ext.searchHintColor.withValues(alpha: 0.1),
+                          color: ext.searchHintColor.withValues(alpha: 0.1),
                         ),
                     ],
                   ],
@@ -213,7 +208,8 @@ class GroupInfoPage extends StatelessWidget {
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  Future<void> _confirmLeave(BuildContext context, AppThemeExtension ext) async {
+  Future<void> _confirmLeave(
+      BuildContext context, AppThemeExtension ext) async {
     final confirmed = await showAppConfirmDialog(
       context,
       title: 'Leave group?',
@@ -226,7 +222,8 @@ class GroupInfoPage extends StatelessWidget {
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context, AppThemeExtension ext) async {
+  Future<void> _confirmDelete(
+      BuildContext context, AppThemeExtension ext) async {
     final confirmed = await showAppConfirmDialog(
       context,
       title: 'Delete group?',
@@ -280,8 +277,7 @@ class _GroupHeader extends StatelessWidget {
           SizedBox(height: AppSpacing.xs.h),
           Text(
             'Group',
-            style:
-                TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+            style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
           ),
         ],
       ),
@@ -392,22 +388,23 @@ class _SettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // Material rather than a coloured Container — SwitchListTile paints its
+    // background and ink onto the nearest Material ancestor, which a plain
+    // ColoredBox in between would hide (and assert about in debug).
+    return Material(
       color: ext.cardSurface,
       child: SwitchListTile(
-        contentPadding:
-            EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.xs.h),
+        contentPadding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg.w, vertical: AppSpacing.xs.h),
         title: Text(
           'Only admins can send messages',
-          style:
-              TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+          style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
         ),
         subtitle: Text(
           adminOnly
               ? 'Only admins can send messages in this group.'
               : 'All members can send messages.',
-          style: TextStyle(
-              color: ext.searchHintColor, fontSize: 12.sp),
+          style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
         ),
         value: adminOnly,
         activeThumbColor: ext.greetingColor,
@@ -471,103 +468,106 @@ class _ParticipantTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: 'Show options', child: InkWell(
-      onTap: amIAdmin && !isSelf ? () => _showOptions(context) : null,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 10.h),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 22.r,
-              backgroundColor: ext.searchFieldFill,
-              child: Text(
-                _initial,
-                style: TextStyle(
-                  color: ext.greetingColor,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.bold,
+    return Semantics(
+        button: true,
+        label: 'Show options',
+        child: InkWell(
+          onTap: amIAdmin && !isSelf ? () => _showOptions(context) : null,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg.w, vertical: 10.h),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22.r,
+                  backgroundColor: ext.searchFieldFill,
+                  child: Text(
+                    _initial,
+                    style: TextStyle(
+                      color: ext.greetingColor,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            SizedBox(width: 14.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          participant.displayName,
-                          style: TextStyle(
-                            color: ext.greetingColor,
-                            fontSize: 15.sp,
-                            fontWeight: FontWeight.w500,
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              participant.displayName,
+                              style: TextStyle(
+                                color: ext.greetingColor,
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                          if (isSelf) ...[
+                            SizedBox(width: 6.w),
+                            Text(
+                              '(you)',
+                              style: TextStyle(
+                                  color: ext.searchHintColor, fontSize: 12.sp),
+                            ),
+                          ],
+                        ],
                       ),
-                      if (isSelf) ...[
-                        SizedBox(width: 6.w),
+                      // Only show role as subtitle when a real name is present —
+                      // otherwise displayName already shows the capitalised role.
+                      if (participant.userName != null &&
+                          participant.userName!.isNotEmpty)
                         Text(
-                          '(you)',
+                          _capitalise(participant.userRole),
                           style: TextStyle(
-                              color: ext.searchHintColor,
-                              fontSize: 12.sp),
+                              color: ext.searchHintColor, fontSize: 12.sp),
                         ),
-                      ],
                     ],
                   ),
-                  // Only show role as subtitle when a real name is present —
-                  // otherwise displayName already shows the capitalised role.
-                  if (participant.userName != null &&
-                      participant.userName!.isNotEmpty)
-                    Text(
-                      _capitalise(participant.userRole),
-                      style: TextStyle(
-                          color: ext.searchHintColor, fontSize: 12.sp),
+                ),
+                if (participant.isPending)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm.w, vertical: 3.h),
+                    decoration: BoxDecoration(
+                      color: ext.searchHintColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6.r),
                     ),
-                ],
-              ),
+                    child: Text(
+                      'Pending',
+                      style: TextStyle(
+                        color: ext.searchHintColor,
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  )
+                else if (participant.isAdmin)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm.w, vertical: 3.h),
+                    decoration: BoxDecoration(
+                      color: ext.infoBlue.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6.r),
+                    ),
+                    child: Text(
+                      'Admin',
+                      style: TextStyle(
+                        color: ext.infoBlue,
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            if (participant.isPending)
-              Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: ext.searchHintColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6.r),
-                ),
-                child: Text(
-                  'Pending',
-                  style: TextStyle(
-                    color: ext.searchHintColor,
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              )
-            else if (participant.isAdmin)
-              Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: ext.infoBlue.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6.r),
-                ),
-                child: Text(
-                  'Admin',
-                  style: TextStyle(
-                    color: ext.infoBlue,
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 }
 
@@ -682,7 +682,8 @@ class _ParticipantOptionsSheet extends StatelessWidget {
           // longer join at all. ────────────────────────────────────────────
           _SheetOption(
             icon: Icons.person_remove_outlined,
-            label: participant.isPending ? 'Cancel invite' : 'Remove from group',
+            label:
+                participant.isPending ? 'Cancel invite' : 'Remove from group',
             color: Colors.redAccent,
             onTap: onKick,
           ),
@@ -805,35 +806,39 @@ class _SheetOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return Semantics(button: true, label: label, child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md.r),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h, horizontal: AppSpacing.xs.w),
-        child: Row(
-          children: [
-            Container(
-              width: 40.w,
-              height: 40.w,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, color: color, size: 20.sp),
+    return Semantics(
+        button: true,
+        label: label,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+                vertical: AppSpacing.md.h, horizontal: AppSpacing.xs.w),
+            child: Row(
+              children: [
+                Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(icon, color: color, size: 20.sp),
+                ),
+                SizedBox(width: 14.w),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(width: 14.w),
-            Text(
-              label,
-              style: TextStyle(
-                color: ext.greetingColor,
-                fontSize: 15.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 }

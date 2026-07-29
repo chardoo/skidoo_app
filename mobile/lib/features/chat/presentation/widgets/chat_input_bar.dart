@@ -41,7 +41,8 @@ class ChatInputBar extends StatefulWidget {
 
   /// Called with the local file path, optional MIME type, and whether it is a video.
   /// On web [filePath] is a blob URL; [mimeType] is the browser-reported MIME type.
-  final void Function(String filePath, {String? mimeType, bool isVideo})? onImagePicked;
+  final void Function(String filePath, {String? mimeType, bool isVideo})?
+      onImagePicked;
 
   /// Path of the staged local image/video waiting to be uploaded and sent.
   final String? pendingImagePath;
@@ -82,7 +83,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
       AppSnackBar.error(context, error);
       return;
     }
-    widget.onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: false);
+    widget.onImagePicked
+        ?.call(picked.path, mimeType: picked.mimeType, isVideo: false);
   }
 
   Future<void> _pickVideo() async {
@@ -95,7 +97,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
       AppSnackBar.error(context, error);
       return;
     }
-    widget.onImagePicked?.call(picked.path, mimeType: picked.mimeType, isVideo: true);
+    widget.onImagePicked
+        ?.call(picked.path, mimeType: picked.mimeType, isVideo: true);
   }
 
   void _showMediaPicker() {
@@ -130,8 +133,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
         if (_emojiOpen)
           EmojiPickerPanel(
             ext: ext,
-            onEmojiSelected: (emoji) =>
-                insertEmoji(widget.controller, emoji),
+            onEmojiSelected: (emoji) => insertEmoji(widget.controller, emoji),
           ),
 
         // ── Staged media preview ────────────────────────────────────────────
@@ -159,7 +161,9 @@ class _ChatInputBarState extends State<ChatInputBar> {
         // ── Reply preview strip ─────────────────────────────────────────────
         if (widget.replyingTo != null)
           _ReplyBar(
-              message: widget.replyingTo!, ext: ext, onClear: widget.onClearReply),
+              message: widget.replyingTo!,
+              ext: ext,
+              onClear: widget.onClearReply),
 
         // ── Main input row ──────────────────────────────────────────────────
         Container(
@@ -175,27 +179,30 @@ class _ChatInputBarState extends State<ChatInputBar> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               // Media picker — disabled while uploading or already staged
-              Semantics(button: true, label: 'Show media picker', child: GestureDetector(
-                onTap: (widget.isUploadingImage || hasStaged)
-                    ? null
-                    : _showMediaPicker,
-                child: Container(
-                  width: 40.w,
-                  height: 40.h,
-                  decoration: BoxDecoration(
-                    color: ext.searchFieldFill,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.attach_file_rounded,
-                    color: (widget.isUploadingImage || hasStaged)
-                        ? ext.searchHintColor.withValues(alpha: 0.4)
-                        : ext.searchHintColor,
-                    size: 20.sp,
-                  ),
-                ),
-              )),
+              Semantics(
+                  button: true,
+                  label: 'Show media picker',
+                  child: GestureDetector(
+                    onTap: (widget.isUploadingImage || hasStaged)
+                        ? null
+                        : _showMediaPicker,
+                    child: Container(
+                      width: 40.w,
+                      height: 40.h,
+                      decoration: BoxDecoration(
+                        color: ext.searchFieldFill,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.attach_file_rounded,
+                        color: (widget.isUploadingImage || hasStaged)
+                            ? ext.searchHintColor.withValues(alpha: 0.4)
+                            : ext.searchHintColor,
+                        size: 20.sp,
+                      ),
+                    ),
+                  )),
               SizedBox(width: AppSpacing.xs.w),
 
               // Emoji button
@@ -247,30 +254,33 @@ class _ChatInputBarState extends State<ChatInputBar> {
               SizedBox(width: AppSpacing.sm.w),
 
               // Send button
-              Semantics(button: true, label: 'Send', child: GestureDetector(
-                onTap: widget.isUploadingImage ? null : widget.onSend,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 44.w,
-                  height: 44.h,
-                  decoration: BoxDecoration(
-                    color: widget.isUploadingImage
-                        ? ext.accentGold.withValues(alpha: 0.4)
-                        : ext.accentGold,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: widget.isUploadingImage
-                      ? SizedBox(
-                          width: 18.w,
-                          height: 18.w,
-                          child: const CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : Icon(Icons.send_rounded,
-                          color: Colors.white, size: 20.sp),
-                ),
-              )),
+              Semantics(
+                  button: true,
+                  label: 'Send',
+                  child: GestureDetector(
+                    onTap: widget.isUploadingImage ? null : widget.onSend,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 44.w,
+                      height: 44.h,
+                      decoration: BoxDecoration(
+                        color: widget.isUploadingImage
+                            ? ext.accentGold.withValues(alpha: 0.4)
+                            : ext.accentGold,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: widget.isUploadingImage
+                          ? SizedBox(
+                              width: 18.w,
+                              height: 18.w,
+                              child: const CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : Icon(Icons.send_rounded,
+                              color: Colors.white, size: 20.sp),
+                    ),
+                  )),
             ],
           ),
         ),
@@ -294,39 +304,43 @@ class _MediaPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.fromLTRB(12.w, 0, 12.w, 24.h),
-      decoration: BoxDecoration(
+    // Material carries the sheet's surface colour so the tiles' ink splashes
+    // land on it; a decorated Container here would sit between them and the
+    // nearest Material and swallow the ripple (and assert in debug).
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 24.h),
+      child: Material(
         color: ext.cardSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg.r),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(height: AppSpacing.sm.h),
-          Container(
-            width: 36.w,
-            height: 4.h,
-            decoration: BoxDecoration(
-              color: ext.searchHintColor.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2.r),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: AppSpacing.sm.h),
+            Container(
+              width: 36.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: ext.searchHintColor.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2.r),
+              ),
             ),
-          ),
-          SizedBox(height: AppSpacing.sm.h),
-          ListTile(
-            leading: Icon(Icons.image_rounded, color: ext.searchHintColor),
-            title: Text('Photo',
-                style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
-            onTap: onPickImage,
-          ),
-          ListTile(
-            leading: Icon(Icons.videocam_rounded, color: ext.searchHintColor),
-            title: Text('Video',
-                style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
-            onTap: onPickVideo,
-          ),
-          SizedBox(height: AppSpacing.sm.h),
-        ],
+            SizedBox(height: AppSpacing.sm.h),
+            ListTile(
+              leading: Icon(Icons.image_rounded, color: ext.searchHintColor),
+              title: Text('Photo',
+                  style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
+              onTap: onPickImage,
+            ),
+            ListTile(
+              leading: Icon(Icons.videocam_rounded, color: ext.searchHintColor),
+              title: Text('Video',
+                  style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
+              onTap: onPickVideo,
+            ),
+            SizedBox(height: AppSpacing.sm.h),
+          ],
+        ),
       ),
     );
   }
@@ -365,65 +379,73 @@ class _StagedImagePreview extends StatelessWidget {
                 ),
               ),
               child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.sm.r),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // On web, filePath is a blob URL — Image.network handles it.
-                // On mobile, filePath is a local file path.
-                kIsWeb
-                    ? Semantics(image: true, label: 'Selected image', child: Image.network(
-                        filePath,
+                borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // On web, filePath is a blob URL — Image.network handles it.
+                    // On mobile, filePath is a local file path.
+                    kIsWeb
+                        ? Semantics(
+                            image: true,
+                            label: 'Selected image',
+                            child: Image.network(
+                              filePath,
+                              width: 64.w,
+                              height: 64.w,
+                              fit: BoxFit.cover,
+                            ))
+                        : Image.file(
+                            File(filePath),
+                            width: 64.w,
+                            height: 64.w,
+                            fit: BoxFit.cover,
+                          ),
+                    if (isUploading)
+                      Container(
                         width: 64.w,
                         height: 64.w,
-                        fit: BoxFit.cover,
-                      ))
-                    : Image.file(
-                        File(filePath),
-                        width: 64.w,
-                        height: 64.w,
-                        fit: BoxFit.cover,
+                        color: Colors.black.withValues(alpha: 0.45),
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: 22.w,
+                          height: 22.w,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: ext.accentGold),
+                        ),
                       ),
-                if (isUploading)
-                  Container(
-                    width: 64.w,
-                    height: 64.w,
-                    color: Colors.black.withValues(alpha: 0.45),
-                    alignment: Alignment.center,
-                    child: SizedBox(
-                      width: 22.w,
-                      height: 22.w,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2.5, color: ext.accentGold),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+                  ],
+                ),
+              ),
             ),
           ),
           SizedBox(width: 10.w),
           Expanded(
             child: Text(
-              isUploading ? 'Uploading…' : 'Image ready — add a caption or send',
+              isUploading
+                  ? 'Uploading…'
+                  : 'Image ready — add a caption or send',
               style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
           ),
           if (!isUploading)
-            Semantics(button: true, label: 'Clear', child: GestureDetector(
-              onTap: onClear,
-              child: Container(
-                width: 28.w,
-                height: 28.w,
-                decoration: BoxDecoration(
-                  color: ext.searchFieldFill,
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Icon(Icons.close_rounded,
-                    size: 16.sp, color: ext.searchHintColor),
-              ),
-            )),
+            Semantics(
+                button: true,
+                label: 'Clear',
+                child: GestureDetector(
+                  onTap: onClear,
+                  child: Container(
+                    width: 28.w,
+                    height: 28.w,
+                    decoration: BoxDecoration(
+                      color: ext.searchFieldFill,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(Icons.close_rounded,
+                        size: 16.sp, color: ext.searchHintColor),
+                  ),
+                )),
         ],
       ),
     );
@@ -557,20 +579,23 @@ class _StagedVideoPreviewState extends State<_StagedVideoPreview> {
             ),
           ),
           if (!widget.isUploading)
-            Semantics(button: true, label: 'Clear', child: GestureDetector(
-              onTap: widget.onClear,
-              child: Container(
-                width: 28.w,
-                height: 28.w,
-                decoration: BoxDecoration(
-                  color: widget.ext.searchFieldFill,
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Icon(Icons.close_rounded,
-                    size: 16.sp, color: widget.ext.searchHintColor),
-              ),
-            )),
+            Semantics(
+                button: true,
+                label: 'Clear',
+                child: GestureDetector(
+                  onTap: widget.onClear,
+                  child: Container(
+                    width: 28.w,
+                    height: 28.w,
+                    decoration: BoxDecoration(
+                      color: widget.ext.searchFieldFill,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(Icons.close_rounded,
+                        size: 16.sp, color: widget.ext.searchHintColor),
+                  ),
+                )),
         ],
       ),
     );
@@ -599,32 +624,35 @@ class _StagedNetworkImagePreview extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.sm.r),
-            child: Semantics(image: true, label: 'Selected image', child: CachedNetworkImage(
-              imageUrl: imageUrl,
-              width: 64.w,
-              height: 64.w,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => Container(
-                width: 64.w,
-                height: 64.w,
-                color: Colors.black12,
-                alignment: Alignment.center,
-                child: SizedBox(
-                  width: 18.w,
-                  height: 18.w,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: ext.searchHintColor),
-                ),
-              ),
-              errorWidget: (_, __, ___) => Container(
-                width: 64.w,
-                height: 64.w,
-                color: Colors.black12,
-                alignment: Alignment.center,
-                child: Icon(Icons.broken_image_rounded,
-                    color: Colors.white54, size: 24.sp),
-              ),
-            )),
+            child: Semantics(
+                image: true,
+                label: 'Selected image',
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  width: 64.w,
+                  height: 64.w,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(
+                    width: 64.w,
+                    height: 64.w,
+                    color: Colors.black12,
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      width: 18.w,
+                      height: 18.w,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: ext.searchHintColor),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    width: 64.w,
+                    height: 64.w,
+                    color: Colors.black12,
+                    alignment: Alignment.center,
+                    child: Icon(Icons.broken_image_rounded,
+                        color: Colors.white54, size: 24.sp),
+                  ),
+                )),
           ),
           SizedBox(width: 10.w),
           Expanded(
@@ -633,20 +661,23 @@ class _StagedNetworkImagePreview extends StatelessWidget {
               style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
           ),
-          Semantics(button: true, label: 'Clear', child: GestureDetector(
-            onTap: onClear,
-            child: Container(
-              width: 28.w,
-              height: 28.w,
-              decoration: BoxDecoration(
-                color: ext.searchFieldFill,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: Icon(Icons.close_rounded,
-                  size: 16.sp, color: ext.searchHintColor),
-            ),
-          )),
+          Semantics(
+              button: true,
+              label: 'Clear',
+              child: GestureDetector(
+                onTap: onClear,
+                child: Container(
+                  width: 28.w,
+                  height: 28.w,
+                  decoration: BoxDecoration(
+                    color: ext.searchFieldFill,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.close_rounded,
+                      size: 16.sp, color: ext.searchHintColor),
+                ),
+              )),
         ],
       ),
     );
@@ -677,7 +708,8 @@ class _ReplyBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.sm.h),
+      padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg.w, vertical: AppSpacing.sm.h),
       decoration: BoxDecoration(
         color: ext.cardSurface,
         border: Border(
@@ -709,8 +741,7 @@ class _ReplyBar extends StatelessWidget {
                 ),
                 Text(
                   _preview,
-                  style:
-                      TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
