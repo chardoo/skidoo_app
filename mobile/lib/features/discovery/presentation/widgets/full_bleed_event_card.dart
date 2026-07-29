@@ -59,6 +59,24 @@ class FullBleedEventCard extends StatefulWidget {
 
 class _FullBleedEventCardState extends State<FullBleedEventCard> {
   final _mediaPageCtrl = PageController();
+
+  /// Which slide of this card's carousel is showing, so the caption knows
+  /// whether it is sitting over a video.
+  int _mediaIndex = 0;
+
+  /// Vertical space the video player's own controls occupy along the bottom
+  /// edge: a 20 dp scrubber, the timestamp row, and 6 dp of padding
+  /// (`_BottomBar` in skidoo_video_player.dart). The caption is anchored to
+  /// the same edge, so without clearing this band it lands on top of the
+  /// scrubber — covering the progress bar and stealing the drags that would
+  /// seek the video.
+  static const double _videoControlsBand = 40;
+
+  bool get _activeMediaIsVideo {
+    final pics = widget.event.pictures;
+    if (_mediaIndex < 0 || _mediaIndex >= pics.length) return false;
+    return pics[_mediaIndex].isVideo;
+  }
   bool _sharingExternal = false;
 
   @override
@@ -177,6 +195,9 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           onTap: widget.onTap,
           cardIndex: widget.cardIndex,
           activeCardIndex: widget.activeCardIndex,
+          onMediaChanged: (i) {
+            if (i != _mediaIndex) setState(() => _mediaIndex = i);
+          },
         ),
 
         // ── Bottom gradient scrim for text legibility ───────────────────
@@ -199,10 +220,14 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
         ),
 
         // ── Bottom-left caption ──────────────────────────────────────────
+        // Sits above the video's scrubber rather than over it — see
+        // [_videoControlsBand].
         Positioned(
           left: 16.w,
           right: 88.w,
-          bottom: 24.h,
+          bottom: _activeMediaIsVideo
+              ? (24 + _videoControlsBand).h
+              : 24.h,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,

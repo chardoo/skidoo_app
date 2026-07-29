@@ -19,6 +19,7 @@ class PostPhotoCarousel extends StatefulWidget {
     this.scrollable = true,
     this.cardIndex = 0,
     this.activeCardIndex,
+    this.onMediaChanged,
   });
 
   final List<EventPicture> pics;
@@ -27,6 +28,11 @@ class PostPhotoCarousel extends StatefulWidget {
   final VoidCallback onDoubleTap;
   final bool scrollable;
   final VoidCallback onTap;
+
+  /// Fires with the newly-visible slide index. Lets the parent react to *what*
+  /// is on screen — the full-bleed card uses it to lift its caption clear of
+  /// the video's progress bar, which only exists on video slides.
+  final ValueChanged<int>? onMediaChanged;
 
   /// Which position this card occupies in the feed.
   final int cardIndex;
@@ -42,7 +48,10 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
   /// Drives play/pause for all video slides in this carousel.
   final _activeIndex = ValueNotifier<int>(0);
 
-  void _onPageChanged(int i) => _activeIndex.value = i;
+  void _onPageChanged(int i) {
+    _activeIndex.value = i;
+    widget.onMediaChanged?.call(i);
+  }
 
   @override
   void dispose() {

@@ -34,6 +34,10 @@ class FoundPhotoStage extends StatelessWidget {
   /// Fallback shape for records the server never sent dimensions for.
   static const _defaultAspect = 4 / 3;
 
+  /// Height of the video player's own bottom controls — 20 dp scrubber,
+  /// timestamp row, 6 dp padding (`_BottomBar` in skidoo_video_player.dart).
+  static const double _videoControlsBand = 40;
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -88,10 +92,13 @@ class FoundPhotoStage extends StatelessWidget {
               ),
             ),
 
+            // Cleared of the player's own controls on video: the scrubber and
+            // timestamps are anchored to the same bottom edge, so a meta bar
+            // at 0 covers the progress bar and swallows the drags that seek.
             Positioned(
               left: 0,
               right: 0,
-              bottom: 0,
+              bottom: photo.isVideo ? _videoControlsBand.h : 0,
               child: FoundPhotoMetaBar(photo: photo, onViewAlbum: onViewAlbum),
             ),
           ],
