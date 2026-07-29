@@ -18,7 +18,7 @@ import 'package:skidoo_app/features/home/presentation/widgets/search_events_list
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/common/widgets/feed_launch_overlay.dart';
 import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
-import 'package:skidoo_app/features/gallery/presentation/widgets/found_feed.dart';
+import 'package:skidoo_app/features/gallery/presentation/found/found_feed.dart';
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
@@ -116,9 +116,24 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   void _onPillTabRequest() {
     final tab = HomeNavigationPage.pillTabRequest.value;
     if (tab != null) {
-      setState(() => _selectedTab = tab);
+      _selectTab(tab);
       HomeNavigationPage.pillTabRequest.value = null;
     }
+  }
+
+  /// Single entry point for switching pills so the header rule below can't be
+  /// forgotten at one of the call sites.
+  void _selectTab(int index) {
+    setState(() {
+      _selectedTab = index;
+      // Found never hides its header (see [_onScrollNotification]), so make
+      // sure arriving on it from a tab that had scrolled the header away
+      // brings it back.
+      if (index == 0) {
+        _headerVisible = true;
+        _headerDownAccum = 0;
+      }
+    });
   }
 
   void _measureHeaderHeight() {
@@ -199,6 +214,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool _onScrollNotification(ScrollNotification notification) {
     // On web the header is always visible (Column layout) — skip hide logic.
     if (kIsWeb || _isSearchOpen) return false;
+    // Found is a grid, not full-bleed media: its content is padded to start
+    // below the header rather than running under it, so hiding the header
+    // would only open a blank strip. Keep it pinned there.
+    if (_selectedTab == 0) return false;
 
     if (notification is ScrollUpdateNotification) {
       final delta = notification.scrollDelta ?? 0;
@@ -230,6 +249,16 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   /// bar) — the Found/For You/Following header floats transparently on top
   /// of it rather than reserving its own opaque strip, matching the design.
   double get _feedTopPadding => 0;
+
+  /// Found is the one tab that isn't full-bleed media: it's a scrolling grid
+  /// of album sections, so its content has to start *below* the floating
+  /// header instead of running under it. Falls back to a sensible estimate
+  /// until the header has been measured.
+  double get _foundTopPadding {
+    if (kIsWeb) return 0;
+    if (_headerHeight > 0) return _headerHeight;
+    return MediaQuery.of(context).padding.top + 48;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -368,23 +397,26 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
             // Top scrim — media is full-bleed behind the header now, so this
             // keeps the Found/For You/Following labels legible over bright
             // photos/videos instead of relying on an opaque reserved strip.
-            const Positioned(
-              left: 0,
-              right: 0,
-              top: 0,
-              height: 140,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0x99000000), Color(0x00000000)],
+            // Found needs no scrim: its header sits on the solid page
+            // background, where a gradient would just read as a smudge.
+            if (_selectedTab != 0)
+              const Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                height: 140,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0x99000000), Color(0x00000000)],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
 
             // Header slides in/out from top (Transform.translate — no layout
             // shift).
@@ -403,7 +435,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                     selectedTab: _selectedTab,
                     onTabChanged: (i) {
                       VideoPauseNotifier.pauseAll();
-                      setState(() => _selectedTab = i);
+                      _selectTab(i);
                     },
                     isSearchOpen: _isSearchOpen,
                     onSearchOpen: _openSearch,
@@ -441,7 +473,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         // ── Found ────────────────────────────────────────────────────────────
         TickerMode(
           enabled: _selectedTab == 0,
-          child: FoundFeed(topPadding: _feedTopPadding),
+          child: FoundFeed(topPadding: _foundTopPadding),
         ),
         // ── For You ──────────────────────────────────────────────────────────
         TickerMode(

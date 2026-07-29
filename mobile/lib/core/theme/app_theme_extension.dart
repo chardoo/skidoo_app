@@ -10,6 +10,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.searchIconColor,
     required this.accentGold,
     required this.accentGoldDark,
+    required this.publicAmber,
     required this.likeRed,
     required this.errorRed,
     required this.dislikeBlue,
@@ -36,9 +37,18 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color searchIconColor;
   final Color accentGold;
 
-  /// Darker partner shade for [accentGold] gradients — was copy-pasted as
-  /// `Color(0xFF078368)` in ~30 places before being named here.
+  /// Darker partner shade for [accentGold] gradients — was copy-pasted as a
+  /// raw literal in ~30 places before being named here.
   final Color accentGoldDark;
+
+  /// The "Public" half of the visibility pill in the Found viewer, sampled
+  /// from the design at #FAC775.
+  ///
+  /// It is *not* a leftover of the old amber [accentGold] (#F5A623, replaced
+  /// by green in the Jperg rebrand): the current designs pair it with the new
+  /// green in the same export — private photos read green, public ones amber —
+  /// so the two are a semantic pair, not two eras of one brand colour.
+  final Color publicAmber;
 
   /// "Liked"/heart-active red. Distinct from [errorRed] — same hue family,
   /// different semantic role (positive reaction vs validation error), so
@@ -73,56 +83,71 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color glassIcon;    // icon / label colour
   final Color glassHint;    // placeholder / secondary text
 
+  /// Values sampled directly from the Jperg product designs (folders 1 and 4).
+  /// The palette is a **warm neutral** one — R, G and B sit within a few
+  /// points of each other with a slight warm bias — not the green-tinted set
+  /// this used to carry. That tint was why dark mode read as "dark green"
+  /// rather than the near-black the designs show.
+  ///
+  ///   background #111110 · surface/chip #2C2C2A · text #F7F7F2
+  ///   secondary #93928A  · accent #1D9E75
   static const dark = AppThemeExtension(
-    homeBackground: Color(0xFF0E1712),
-    cardSurface: Color(0xFF16241D),
-    searchFieldFill: Color(0xFF1B2A22),
-    searchHintColor: Color(0xFF7A8A85),
-    searchIconColor: Color(0xFFFFFFFF),
-    accentGold: Color(0xFF0BA98A),
-    accentGoldDark: Color(0xFF078368),
+    homeBackground: Color(0xFF111110),
+    cardSurface: Color(0xFF1F1F1D),
+    searchFieldFill: Color(0xFF2C2C2A),
+    searchHintColor: Color(0xFF93928A),
+    searchIconColor: Color(0xFFF7F7F2),
+    accentGold: Color(0xFF1D9E75),
+    accentGoldDark: Color(0xFF16795B),
+    publicAmber: Color(0xFFFAC775),
     likeRed: Color(0xFFFF3B5C),
     errorRed: Color(0xFFFF4757),
     dislikeBlue: Color(0xFF5B6EF5),
     infoBlue: Color(0xFF3B82F6),
-    greetingColor: Color(0xFFFFFFFF),
+    greetingColor: Color(0xFFF7F7F2),
     cardOverlayStart: Color(0x00000000),
     cardOverlayEnd: Color(0xCC000000),
-    avatarBackground: Color(0xFF243830),
-    avatarForeground: Color(0xFFFFFFFF),
-    logoBadgeBackground: Color(0xFF0BA98A),
-    logoTextColor: Color(0xFFFFFFFF),
-    searchItemBackground: Color(0xFF1B2A22),
-    searchItemTextColor: Color(0xFFFFFFFF),
+    avatarBackground: Color(0xFF2C2C2A),
+    avatarForeground: Color(0xFFF7F7F2),
+    logoBadgeBackground: Color(0xFF1D9E75),
+    logoTextColor: Color(0xFFF7F7F2),
+    searchItemBackground: Color(0xFF2C2C2A),
+    searchItemTextColor: Color(0xFFF7F7F2),
     glassFill:   Color(0x1AFFFFFF), // white 10 %
     glassBorder: Color(0x40FFFFFF), // white 25 %
     glassIcon:   Color(0xB3FFFFFF), // white 70 %
     glassHint:   Color(0x8CFFFFFF), // white 55 %
   );
 
+  /// The same warm-neutral system inverted, sampled from the light designs in
+  /// folder 1: background #F7F7F2 · text #2C2C2A · hairline #E0DDD4 ·
+  /// accent #1D9E75 (unchanged across modes).
   static const light = AppThemeExtension(
-    homeBackground: Color(0xFFF2F2F7),
+    homeBackground: Color(0xFFF7F7F2),
     cardSurface: Color(0xFFFFFFFF),
-    searchFieldFill: Color(0xFFE8E8EE),
-    // Darkened for WCAG AA: 0xFF9A9AAA was ~2.5:1 on the light background.
-    // 0xFF5E5E6B is ~5:1 on white while staying clearly "secondary".
-    searchHintColor: Color(0xFF5E5E6B),
-    searchIconColor: Color(0xFF1A1A2E),
-    accentGold: Color(0xFF0BA98A),
-    accentGoldDark: Color(0xFF078368),
+    searchFieldFill: Color(0xFFEFEFE9),
+    // The designs use #9E9D97 for placeholder/secondary text, but that is only
+    // ~2.4:1 on #F7F7F2 and fails WCAG AA. This keeps the design's warm-grey
+    // hue while darkening to ~4.9:1 — same trade-off (and same reason) as the
+    // token it replaces.
+    searchHintColor: Color(0xFF6B6A63),
+    searchIconColor: Color(0xFF2C2C2A),
+    accentGold: Color(0xFF1D9E75),
+    accentGoldDark: Color(0xFF16795B),
+    publicAmber: Color(0xFFFAC775),
     likeRed: Color(0xFFFF3B5C),
     errorRed: Color(0xFFFF4757),
     dislikeBlue: Color(0xFF5B6EF5),
     infoBlue: Color(0xFF3B82F6),
-    greetingColor: Color(0xFF1A1A2E),
+    greetingColor: Color(0xFF2C2C2A),
     cardOverlayStart: Color(0x00000000),
     cardOverlayEnd: Color(0xCC000000),
-    avatarBackground: Color(0xFFE0E0E8),
-    avatarForeground: Color(0xFF1A1A2E),
-    logoBadgeBackground: Color(0xFF0BA98A),
-    logoTextColor: Color(0xFF1A1A2E),
+    avatarBackground: Color(0xFFE0DDD4),
+    avatarForeground: Color(0xFF2C2C2A),
+    logoBadgeBackground: Color(0xFF1D9E75),
+    logoTextColor: Color(0xFF2C2C2A),
     searchItemBackground: Color(0xFFFFFFFF),
-    searchItemTextColor: Color(0xFF1A1A2E),
+    searchItemTextColor: Color(0xFF2C2C2A),
     glassFill:   Color(0x0D000000), // black  5 %
     glassBorder: Color(0x26000000), // black 15 %
     glassIcon:   Color(0xA6000000), // black 65 %
@@ -138,6 +163,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     Color? searchIconColor,
     Color? accentGold,
     Color? accentGoldDark,
+    Color? publicAmber,
     Color? likeRed,
     Color? errorRed,
     Color? dislikeBlue,
@@ -164,6 +190,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       searchIconColor: searchIconColor ?? this.searchIconColor,
       accentGold: accentGold ?? this.accentGold,
       accentGoldDark: accentGoldDark ?? this.accentGoldDark,
+      publicAmber: publicAmber ?? this.publicAmber,
       likeRed: likeRed ?? this.likeRed,
       errorRed: errorRed ?? this.errorRed,
       dislikeBlue: dislikeBlue ?? this.dislikeBlue,
@@ -195,6 +222,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       searchIconColor: Color.lerp(searchIconColor, other.searchIconColor, t)!,
       accentGold: Color.lerp(accentGold, other.accentGold, t)!,
       accentGoldDark: Color.lerp(accentGoldDark, other.accentGoldDark, t)!,
+      publicAmber: Color.lerp(publicAmber, other.publicAmber, t)!,
       likeRed: Color.lerp(likeRed, other.likeRed, t)!,
       errorRed: Color.lerp(errorRed, other.errorRed, t)!,
       dislikeBlue: Color.lerp(dislikeBlue, other.dislikeBlue, t)!,

@@ -693,7 +693,7 @@ class _PhotographerPortfolioCard extends StatelessWidget {
               ),
               _AdsListTile(
                 icon: Icons.photo_library_outlined,
-                iconColor: const Color(0xFF0BA98A),
+                iconColor: const Color(0xFF1D9E75),
                 title: 'Portfolio',
                 subtitle: 'Studio name, bio, specialties, and sample photos',
                 ext: ext,

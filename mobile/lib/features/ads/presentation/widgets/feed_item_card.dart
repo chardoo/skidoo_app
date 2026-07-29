@@ -702,8 +702,8 @@ class _MediaBackground extends StatelessWidget {
             imageUrl: url,
             fit: BoxFit.cover,
             isBlurBackground: true,
-            placeholder: (_, __) => const ColoredBox(color: Color(0xFF111111)),
-            errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
+            placeholder: (_, __) => const SkidooImagePlaceholder(),
+            errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
           ),
         ),
         const ColoredBox(color: Color(0x55000000)),
@@ -717,7 +717,7 @@ class _MediaBackground extends StatelessWidget {
             child: CircularProgressIndicator(
                 color: Colors.white70, strokeWidth: 2),
           ),
-          errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
+          errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
         ),
       ],
     );
@@ -762,7 +762,7 @@ class _CreatorAvatar extends StatelessWidget {
           shape: BoxShape.circle,
           gradient: photo == null
               ? const LinearGradient(
-                  colors: [Color(0xFF3DD9B4), Color(0xFF078368)],
+                  colors: [Color(0xFF3DD9B4), Color(0xFF16795B)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
@@ -1114,8 +1114,8 @@ class _SingleMediaFrame extends StatelessWidget {
             imageUrl: media.url,
             fit: BoxFit.cover,
             isBlurBackground: true,
-            placeholder: (_, __) => const ColoredBox(color: Color(0xFF111111)),
-            errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
+            placeholder: (_, __) => const SkidooImagePlaceholder(),
+            errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
           ),
         ),
         const ColoredBox(color: Color(0x55000000)),
@@ -1129,7 +1129,7 @@ class _SingleMediaFrame extends StatelessWidget {
             child: CircularProgressIndicator(
                 color: Colors.white70, strokeWidth: 2),
           ),
-          errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF111111)),
+          errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
         ),
         if (media.isVideo)
           const Center(

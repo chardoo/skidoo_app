@@ -46,9 +46,9 @@ class _EventImageSliderState extends State<EventImageSlider> {
                   imageUrl: widget.pics[i].url,
                   fit: BoxFit.cover,
                   placeholder: (_, __) =>
-                      Container(color: const Color(0xFF1B2A22)),
+                      Container(color: const Color(0xFF2C2C2A)),
                   errorWidget: (_, __, ___) => Container(
-                    color: const Color(0xFF1B2A22),
+                    color: const Color(0xFF2C2C2A),
                     child: const Icon(Icons.broken_image_outlined,
                         color: Colors.white38),
                   ),

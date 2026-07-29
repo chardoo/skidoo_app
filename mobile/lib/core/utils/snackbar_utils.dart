@@ -16,7 +16,7 @@ class AppSnackBar {
   static const _kSuccess = Color(0xFF2E7D32);
   static const _kInfo    = Color(0xFF37474F);
   static const _kDark    = Color(0xFF2C2C2E);
-  static const _kGold    = Color(0xFF0BA98A);
+  static const _kGold    = Color(0xFF1D9E75);
 
   static const _kDefaultMargin =
       EdgeInsets.fromLTRB(16, 0, 16, 16);

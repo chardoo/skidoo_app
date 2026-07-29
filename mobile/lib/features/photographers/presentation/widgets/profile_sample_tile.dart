@@ -20,13 +20,13 @@ class PhotographerSampleTile extends StatelessWidget {
           imageUrl: sample.url,
           fit: BoxFit.cover,
           placeholder: (_, __) => Container(
-            color: const Color(0xFF1B2A22),
+            color: const Color(0xFF2C2C2A),
             child: const Center(
               child: CircularProgressIndicator(strokeWidth: 1.5),
             ),
           ),
           errorWidget: (_, __, ___) => Container(
-            color: const Color(0xFF1B2A22),
+            color: const Color(0xFF2C2C2A),
             child: const Icon(Icons.broken_image_rounded,
                 color: Colors.white24, size: 24),
           ),

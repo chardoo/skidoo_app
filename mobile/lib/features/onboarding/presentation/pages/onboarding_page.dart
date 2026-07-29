@@ -8,8 +8,8 @@ import 'package:skidoo_app/features/onboarding/presentation/widgets/onboarding_a
 import 'package:skidoo_app/features/onboarding/presentation/widgets/onboarding_slide_view.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
-const _kBg = Color(0xFF0A1310);
-const _kTeal = Color(0xFF0BA98A);
+const _kBg = Color(0xFF111110);
+const _kTeal = Color(0xFF1D9E75);
 
 /// First-run marketing carousel. Shown once ever — [AuthService.setHasSeenOnboarding]
 /// is set when the user leaves this page (Skip or finishing the last slide),

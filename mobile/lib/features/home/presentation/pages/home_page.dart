@@ -10,6 +10,7 @@ import 'package:skidoo_app/core/utils/responsive.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/gallery/presentation/bloc/gallery_bloc.dart';
+import 'package:skidoo_app/features/gallery/presentation/found/bloc/found_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page.dart';
 import 'package:skidoo_app/features/notifications/presentation/pages/notifications_page.dart';
@@ -49,6 +50,7 @@ class HomePage extends StatelessWidget {
             create: (_) =>
                 sl<DiscoveryBloc>()..add(const DiscoveryLoadRequested())),
         BlocProvider(create: (_) => sl<GalleryBloc>()),
+        BlocProvider(create: (_) => sl<FoundBloc>()),
         BlocProvider(create: (_) => sl<PhotographerBloc>()),
         BlocProvider(
             create: (_) => sl<UserProfileBloc>()

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-const _kSplashBg = Color(0xFF0A1310);
+const _kSplashBg = Color(0xFF111110);
 
 /// Branded splash — plays `assets/splash/splash.gif` full-bleed, then hands
 /// off to [nextRoute]. Shown on every cold start (mobile only), including

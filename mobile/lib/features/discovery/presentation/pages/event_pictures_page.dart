@@ -373,7 +373,7 @@ class _PhotoTile extends StatelessWidget {
       fit: BoxFit.cover,
       semanticLabel: 'Event photo',
       fadeInDuration: const Duration(milliseconds: 280),
-      placeholder: (_, __) => const ColoredBox(color: Color(0xFF141414)),
+      placeholder: (_, __) => const SkidooImagePlaceholder(),
       errorWidget: (_, __, ___) => ColoredBox(
         color: const Color(0xFF141414),
         child: Center(
@@ -915,16 +915,16 @@ class _InfoOverlay extends StatelessWidget {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
               decoration: BoxDecoration(
-                color: const Color(0xFF0BA98A).withValues(alpha: 0.18),
+                color: const Color(0xFF1D9E75).withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(AppRadius.xs.r),
                 border: Border.all(
-                    color: const Color(0xFF0BA98A).withValues(alpha: 0.4),
+                    color: const Color(0xFF1D9E75).withValues(alpha: 0.4),
                     width: 0.5),
               ),
               child: Text(
                 'creator',
                 style: TextStyle(
-                  color: const Color(0xFF0BA98A),
+                  color: const Color(0xFF1D9E75),
                   fontSize: 9.sp,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.3,
@@ -956,7 +956,7 @@ class _InfoOverlay extends StatelessWidget {
               .map((tag) => Text(
                     tag,
                     style: TextStyle(
-                      color: const Color(0xFF0BA98A).withValues(alpha: 0.9),
+                      color: const Color(0xFF1D9E75).withValues(alpha: 0.9),
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1046,7 +1046,7 @@ class _InitialsAvatar extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0BA98A), Color(0xFF078368)],
+          colors: [Color(0xFF1D9E75), Color(0xFF16795B)],
         ),
       ),
       child: Center(

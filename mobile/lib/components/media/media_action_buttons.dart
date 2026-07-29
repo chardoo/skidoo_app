@@ -301,7 +301,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
           key: _downloadKey,
           icon: Icons.download_rounded,
           label: '',
-          color: const Color(0xFF0BA98A),
+          color: const Color(0xFF1D9E75),
           size: _btnSize,
           iconSize: _icnSize,
           busy: _downloading,
@@ -455,13 +455,13 @@ class _ProcessingOverlayState extends State<_ProcessingOverlay>
                             child: const CircularProgressIndicator(
                               strokeWidth: 2.5,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF0BA98A),
+                                Color(0xFF1D9E75),
                               ),
                             ),
                           ),
                           Icon(
                             Icons.auto_awesome_rounded,
-                            color: const Color(0xFF0BA98A),
+                            color: const Color(0xFF1D9E75),
                             size: 22.sp,
                           ),
                         ],
@@ -575,7 +575,7 @@ class _MediaBtnState extends State<_MediaBtn>
                   radius: 1.4,
                 ),
                 border: Border.all(
-                  color: const Color(0xFF0BA98A).withValues(alpha: 0.35),
+                  color: const Color(0xFF1D9E75).withValues(alpha: 0.35),
                   width: 1,
                 ),
                 boxShadow: [
@@ -586,7 +586,7 @@ class _MediaBtnState extends State<_MediaBtn>
                     offset: const Offset(0, 3),
                   ),
                   BoxShadow(
-                    color: const Color(0xFF0BA98A).withValues(alpha: 0.08),
+                    color: const Color(0xFF1D9E75).withValues(alpha: 0.08),
                     blurRadius: 8,
                     spreadRadius: 0,
                   ),

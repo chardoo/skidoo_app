@@ -802,7 +802,7 @@ class _EventsTabState extends State<_EventsTab>
                               progress == null
                                   ? child
                                   : Container(
-                                      color: const Color(0xFF1B2A22),
+                                      color: const Color(0xFF2C2C2A),
                                       child: const Center(
                                         child: CircularProgressIndicator(
                                             color: Colors.white38,
@@ -810,7 +810,7 @@ class _EventsTabState extends State<_EventsTab>
                                       ),
                                     ),
                           errorBuilder: (_, __, ___) => Container(
-                            color: const Color(0xFF1B2A22),
+                            color: const Color(0xFF2C2C2A),
                             child: const Center(
                               child: Icon(Icons.broken_image_outlined,
                                   color: Colors.white38, size: 32),
@@ -818,7 +818,7 @@ class _EventsTabState extends State<_EventsTab>
                           ),
                         ))
                       : Container(
-                          color: const Color(0xFF1B2A22),
+                          color: const Color(0xFF2C2C2A),
                           child: Icon(Icons.event_rounded,
                               color: ext.searchHintColor, size: 36.sp),
                         ),

@@ -263,9 +263,9 @@ class _ScanningViewState extends State<_ScanningView>
                 height: 140.w,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF0BA98A).withValues(alpha: 0.15),
+                  color: const Color(0xFF1D9E75).withValues(alpha: 0.15),
                   border: Border.all(
-                      color: const Color(0xFF0BA98A).withValues(alpha: 0.6), width: 2),
+                      color: const Color(0xFF1D9E75).withValues(alpha: 0.6), width: 2),
                 ),
               ),
             ),

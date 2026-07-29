@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
 /// App-wide button — one shape/radius/loading-state recipe, four variants.
@@ -24,6 +25,7 @@ class AppButton extends StatelessWidget {
     this.fullWidth = false,
     this.width,
     this.height,
+    this.borderRadius,
   });
 
   final String label;
@@ -34,6 +36,10 @@ class AppButton extends StatelessWidget {
   final bool fullWidth;
   final double? width;
   final double? height;
+
+  /// Corner radius override. Defaults to the app's standard 14; pass
+  /// [AppRadius.pill] for the fully-rounded pill the Found filter sheet uses.
+  final double? borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +96,7 @@ class AppButton extends StatelessWidget {
           elevation: 0,
           padding: EdgeInsets.symmetric(vertical: 14.h),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14.r),
+            borderRadius: BorderRadius.circular((borderRadius ?? 14).r),
             side: side,
           ),
         ),

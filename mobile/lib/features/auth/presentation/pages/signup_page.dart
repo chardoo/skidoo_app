@@ -19,8 +19,8 @@ import 'package:skidoo_app/core/theme/app_spacing.dart';
 // ── Design tokens ──────────────────────────────────────────────────────────────
 // The teal gradient logo/CTA is the auth flow's fixed brand accent — it stays
 // the same in both themes. Background/text below are theme-aware (see `ext`).
-const _kTeal        = Color(0xFF0BA98A);
-const _kTealDark    = Color(0xFF078368);
+const _kTeal        = Color(0xFF1D9E75);
+const _kTealDark    = Color(0xFF16795B);
 
 // Remote privacy policy — opened in a WebView so it stays up to date without
 // shipping an app update.

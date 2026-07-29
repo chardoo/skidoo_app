@@ -38,15 +38,12 @@ import Metal
     guard let flutterVC = window?.rootViewController as? FlutterViewController,
           let metalLayer = flutterVC.view.layer as? CAMetalLayer else { return }
 
-    if #available(iOS 16.0, *) {
-      metalLayer.pixelFormat = MTLPixelFormat.bgra10_xr_srgb
-      metalLayer.wantsExtendedDynamicRangeContent = true
-    } else {
-      metalLayer.pixelFormat = MTLPixelFormat.bgra8Unorm
+    metalLayer.pixelFormat = .bgra8Unorm
+
+    if let srgb = CGColorSpace(name: CGColorSpace.sRGB) {
+        metalLayer.colorspace = srgb
     }
-    if let p3 = CGColorSpace(name: CGColorSpace.displayP3) {
-      metalLayer.colorspace = p3
-    }
+
     metalLayer.contentsScale = UIScreen.main.scale
-  }
+}
 }

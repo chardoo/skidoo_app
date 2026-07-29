@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/components/media/media_rail_action.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/components/media/media_action_buttons.dart';
@@ -172,7 +173,6 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           onTap: widget.onTap,
           cardIndex: widget.cardIndex,
           activeCardIndex: widget.activeCardIndex,
-          fullBleed: true,
         ),
 
         // ── Bottom gradient scrim for text legibility ───────────────────
@@ -301,14 +301,14 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                 ],
               ),
               SizedBox(height: 26.h),
-              _RailAction(
+              MediaRailAction(
                 icon: Icons.favorite_rounded,
                 iconColor: liked ? const Color(0xFFFF3B5C) : Colors.white,
                 label: '${event.likes}',
                 onTap: _toggleLike,
               ),
               SizedBox(height: AppSpacing.lg.h),
-              _RailAction(
+              MediaRailAction(
                 icon: Icons.mode_comment_rounded,
                 label: '${event.commentCount}',
                 onTap: _openComments,
@@ -318,7 +318,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                 buildWhen: (prev, next) => prev.savedEventIds != next.savedEventIds,
                 builder: (context, state) {
                   final saved = state.savedEventIds.contains(event.id);
-                  return _RailAction(
+                  return MediaRailAction(
                     icon: Icons.bookmark_rounded,
                     iconColor: saved ? Colors.amberAccent : Colors.white,
                     onTap: _toggleSave,
@@ -326,18 +326,18 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                 },
               ),
               SizedBox(height: AppSpacing.lg.h),
-              _RailAction(
+              MediaRailAction(
                 icon: Icons.near_me_rounded,
                 onTap: _share,
               ),
               SizedBox(height: AppSpacing.lg.h),
-              _RailAction(
+              MediaRailAction(
                 icon: Icons.ios_share_rounded,
                 busy: _sharingExternal,
                 onTap: _shareExternal,
               ),
               SizedBox(height: AppSpacing.lg.h),
-              _RailAction(
+              MediaRailAction(
                 icon: Icons.more_horiz_rounded,
                 onTap: _showMoreOptions,
               ),
@@ -346,63 +346,6 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _RailAction extends StatelessWidget {
-  const _RailAction({
-    required this.icon,
-    this.iconColor = Colors.white,
-    this.label,
-    required this.onTap,
-    this.busy = false,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String? label;
-  final VoidCallback onTap;
-
-  /// Shows a small spinner in place of the icon while an async action (e.g.
-  /// the external share round trip) is in flight.
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          children: [
-            busy
-                ? SizedBox(
-                    width: 22.sp,
-                    height: 22.sp,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: iconColor),
-                  )
-                : Icon(icon, color: iconColor, size: 28.sp, shadows: const [
-                    Shadow(color: Colors.black45, blurRadius: 4),
-                  ]),
-            if (label != null) ...[
-              SizedBox(height: 3.h),
-              Text(
-                label!,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w600,
-                  shadows: const [Shadow(color: Colors.black45, blurRadius: 4)],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }

@@ -54,7 +54,12 @@ import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 
+import 'package:skidoo_app/features/gallery/data/datasources/found_remote_data_source.dart';
 import 'package:skidoo_app/features/gallery/data/datasources/gallery_remote_data_source.dart';
+import 'package:skidoo_app/features/gallery/data/repositories/found_repository_impl.dart';
+import 'package:skidoo_app/features/gallery/domain/repositories/found_repository.dart';
+import 'package:skidoo_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
+import 'package:skidoo_app/features/gallery/presentation/found/bloc/found_bloc.dart';
 import 'package:skidoo_app/features/gallery/data/datasources/overlay_remote_data_source.dart';
 import 'package:skidoo_app/features/gallery/data/repositories/gallery_repository_impl.dart';
 import 'package:skidoo_app/features/gallery/data/repositories/overlay_repository_impl.dart';
@@ -222,6 +227,20 @@ Future<void> setupServiceLocator() async {
 
   sl.registerFactory<GalleryBloc>(
       () => GalleryBloc(getGalleryUseCase: sl<GetGalleryUseCase>()));
+
+  // ── Found feature (face recognitions) ─────────────────────────────────────
+  // Separate from Gallery above on purpose: Gallery is the *purchased* photo
+  // list (`/client/dashboard`), Found is the recognition list
+  // (`/client/my-photos`). They are different tables server-side.
+  sl.registerSingleton<FoundRemoteDataSource>(
+      FoundRemoteDataSourceImpl(sl<Api>()));
+  sl.registerSingleton<FoundRepository>(
+      FoundRepositoryImpl(sl<FoundRemoteDataSource>()));
+  sl.registerSingleton<GetFoundPhotosUseCase>(
+      GetFoundPhotosUseCase(sl<FoundRepository>()));
+
+  sl.registerFactory<FoundBloc>(
+      () => FoundBloc(getFoundPhotosUseCase: sl<GetFoundPhotosUseCase>()));
 
   // Overlay (shared across gallery + event pictures)
   sl.registerSingleton<OverlayRemoteDataSource>(

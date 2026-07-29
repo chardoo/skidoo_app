@@ -183,12 +183,21 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
           try {
             // ignore: avoid_dynamic_calls
             final p = platform as dynamic;
-            await p.setProperty('scale', 'ewa_lanczos');
+         
             await p.setProperty('cscale', 'ewa_lanczos');
             await p.setProperty('dscale', 'mitchell');
             await p.setProperty('dither-depth', 'auto');
             await p.setProperty('hwdec', 'auto-safe');
             await p.setProperty('vd-lavc-threads', '0');
+            await p.setProperty("scale", "ewa_lanczos");
+ 
+            await p.setProperty("sigmoid-upscaling", "yes");
+            await p.setProperty("correct-downscaling", "yes");
+            await p.setProperty("linear-upscaling", "yes");
+            await p.setProperty('demuxer-max-bytes', '64MiB');
+await p.setProperty('demuxer-max-back-bytes', '32MiB');
+await p.setProperty('cache', 'yes');
+          
           } catch (_) {}
         }();
       }
@@ -202,7 +211,7 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     final controller = VideoController(
       player,
       configuration: VideoControllerConfiguration(
-        enableHardwareAcceleration: true,
+        enableHardwareAcceleration: false,
         width: physW > 0 ? physW : null,
         // height intentionally omitted — the render buffer height is derived
         // from the video's own aspect ratio, halving GPU memory vs. allocating
@@ -211,14 +220,13 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     );
 
     player.setVolume(_muted ? 0 : 100);
-    player.setPlaylistMode(
-        widget.loop ? PlaylistMode.loop : PlaylistMode.none);
+    player.setPlaylistMode(widget.loop ? PlaylistMode.loop : PlaylistMode.none);
 
-    player
-        .open(Media(widget.url), play: false)
-        .then((_) { if (mounted) _syncPlayback(); })
-        .catchError((_) {});
+     player.open(Media(widget.url), play: false);
 
+ Future.delayed(const Duration(milliseconds: 150));
+
+player.play();
     if (widget.listenToPauseNotifier) {
       _pauseSub = VideoPauseNotifier.listen(_onGlobalPause);
     }
@@ -280,10 +288,9 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     super.didUpdateWidget(old);
     if (!_playerReady) return;
     if (old.url != widget.url) {
-      _player!
-          .open(Media(widget.url), play: false)
-          .then((_) { if (mounted) _syncPlayback(); })
-          .catchError((_) {});
+      _player!.open(Media(widget.url), play: false).then((_) {
+        if (mounted) _syncPlayback();
+      }).catchError((_) {});
     } else if (old.isActive != widget.isActive) {
       _syncPlayback();
     }
@@ -397,23 +404,22 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     final wasPlaying = player.state.playing;
     player.pause();
 
-    Navigator.of(context)
-        .push(MaterialPageRoute<void>(
-          fullscreenDialog: true,
-          builder: (_) => _FullscreenVideoPage(
-            url: widget.url,
-            initialPosition: pos,
-            autoPlay: wasPlaying,
-            muted: _muted,
-            loop: widget.loop,
-            onExit: (finalPos, finalMuted) {
-              setState(() => _muted = finalMuted);
-              player.setVolume(_muted ? 0 : 100);
-              player.seek(finalPos);
-              _syncPlayback();
-            },
-          ),
-        ));
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => _FullscreenVideoPage(
+        url: widget.url,
+        initialPosition: pos,
+        autoPlay: wasPlaying,
+        muted: _muted,
+        loop: widget.loop,
+        onExit: (finalPos, finalMuted) {
+          setState(() => _muted = finalMuted);
+          player.setVolume(_muted ? 0 : 100);
+          player.seek(finalPos);
+          _syncPlayback();
+        },
+      ),
+    ));
   }
 
   @override
@@ -485,7 +491,8 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     // ── Sizing ─────────────────────────────────────────────────────────────
     Widget sized;
     if (widget.width != null && widget.height != null) {
-      sized = SizedBox(width: widget.width, height: widget.height, child: video);
+      sized =
+          SizedBox(width: widget.width, height: widget.height, child: video);
     } else if (widget.aspectRatio != null) {
       sized = AspectRatio(aspectRatio: widget.aspectRatio!, child: video);
     } else if (widget.width != null) {
@@ -511,23 +518,27 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
           ),
         if (widget.showControls && player != null)
           Positioned.fill(
-            child: Semantics(button: true, label: 'Video', child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _onTap,
-              child: AnimatedOpacity(
-                opacity: _controlsVisible ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 220),
-                child: _ControlsOverlay(
-                  player: player,
-                  muted: _muted,
-                  onPlayPause: _togglePlayback,
-                  onMute: _toggleMute,
-                  onSeekBack: () => _seekBy(const Duration(seconds: -10)),
-                  onSeekForward: () => _seekBy(const Duration(seconds: 10)),
-                  onFullscreen: widget.allowFullscreen ? _openFullscreen : null,
-                ),
-              ),
-            )),
+            child: Semantics(
+                button: true,
+                label: 'Video',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _onTap,
+                  child: AnimatedOpacity(
+                    opacity: _controlsVisible ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 220),
+                    child: _ControlsOverlay(
+                      player: player,
+                      muted: _muted,
+                      onPlayPause: _togglePlayback,
+                      onMute: _toggleMute,
+                      onSeekBack: () => _seekBy(const Duration(seconds: -10)),
+                      onSeekForward: () => _seekBy(const Duration(seconds: 10)),
+                      onFullscreen:
+                          widget.allowFullscreen ? _openFullscreen : null,
+                    ),
+                  ),
+                )),
           ),
       ],
     );
@@ -668,18 +679,21 @@ class _CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: 'Player control', child: GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.all(padding),
-        decoration: const BoxDecoration(
-          color: Color(0x66000000),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: Colors.white, size: size ?? 20.sp),
-      ),
-    ));
+    return Semantics(
+        button: true,
+        label: 'Player control',
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: EdgeInsets.all(padding),
+            decoration: const BoxDecoration(
+              color: Color(0x66000000),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: size ?? 20.sp),
+          ),
+        ));
   }
 }
 
@@ -723,7 +737,7 @@ class _BottomBar extends StatelessWidget {
                           const RoundSliderThumbShape(enabledThumbRadius: 5),
                       overlayShape: SliderComponentShape.noOverlay,
                       trackHeight: 2.5,
-                      activeTrackColor: const Color(0xFF0BA98A),
+                      activeTrackColor: const Color(0xFF1D9E75),
                       inactiveTrackColor: Colors.white24,
                       thumbColor: Colors.white,
                     ),
@@ -733,8 +747,7 @@ class _BottomBar extends StatelessWidget {
                         value: frac,
                         onChanged: dur.inMilliseconds > 0
                             ? (v) => player.seek(Duration(
-                                milliseconds:
-                                    (v * dur.inMilliseconds).round()))
+                                milliseconds: (v * dur.inMilliseconds).round()))
                             : null,
                       ),
                     ),
@@ -743,26 +756,29 @@ class _BottomBar extends StatelessWidget {
                     children: [
                       Text(
                         _fmt(pos),
-                        style: TextStyle(
-                            color: Colors.white70, fontSize: 10.sp),
+                        style:
+                            TextStyle(color: Colors.white70, fontSize: 10.sp),
                       ),
                       const Spacer(),
                       Text(
                         _fmt(dur),
-                        style: TextStyle(
-                            color: Colors.white70, fontSize: 10.sp),
+                        style:
+                            TextStyle(color: Colors.white70, fontSize: 10.sp),
                       ),
                       if (onFullscreen != null) ...[
                         SizedBox(width: AppSpacing.sm.w),
-                        Semantics(button: true, label: 'Fullscreen', child: GestureDetector(
-                          onTap: onFullscreen,
-                          behavior: HitTestBehavior.opaque,
-                          child: Icon(
-                            Icons.fullscreen_rounded,
-                            color: Colors.white70,
-                            size: 20.sp,
-                          ),
-                        )),
+                        Semantics(
+                            button: true,
+                            label: 'Fullscreen',
+                            child: GestureDetector(
+                              onTap: onFullscreen,
+                              behavior: HitTestBehavior.opaque,
+                              child: Icon(
+                                Icons.fullscreen_rounded,
+                                color: Colors.white70,
+                                size: 20.sp,
+                              ),
+                            )),
                       ],
                     ],
                   ),
@@ -937,68 +953,69 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Semantics(button: true, label: 'Video', child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _onTap,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Builder(builder: (_) {
-              final w = _videoW;
-              final h = _videoH;
-              if (w != null && h != null && h > 0) {
-                return ColoredBox(
-                  color: Colors.black,
-                  child: Center(
-                    child: AspectRatio(
-                      aspectRatio: w / h,
-                      child: Video(
-                        controller: _controller,
-                        fit: BoxFit.fill,
-                        fill: Colors.black,
-                        filterQuality: FilterQuality.high,
-                        controls: NoVideoControls,
+      body: Semantics(
+          button: true,
+          label: 'Video',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _onTap,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Builder(builder: (_) {
+                  final w = _videoW;
+                  final h = _videoH;
+                  if (w != null && h != null && h > 0) {
+                    return ColoredBox(
+                      color: Colors.black,
+                      child: Center(
+                        child: AspectRatio(
+                          aspectRatio: w / h,
+                          child: Video(
+                            controller: _controller,
+                            fit: BoxFit.fill,
+                            fill: Colors.black,
+                            filterQuality: FilterQuality.high,
+                            controls: NoVideoControls,
+                          ),
+                        ),
                       ),
+                    );
+                  }
+                  return const ColoredBox(color: Colors.black);
+                }),
+                AnimatedOpacity(
+                  opacity: _controlsVisible ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: _ControlsOverlay(
+                    player: _player,
+                    muted: _muted,
+                    onPlayPause: () {
+                      _player.state.playing ? _player.pause() : _player.play();
+                      if (_player.state.playing) _scheduleHide();
+                    },
+                    onMute: _toggleMute,
+                    onSeekBack: () => _seekBy(const Duration(seconds: -10)),
+                    onSeekForward: () => _seekBy(const Duration(seconds: 10)),
+                    onFullscreen: null,
+                  ),
+                ),
+                Positioned(
+                  top: safePad.top + 8.h,
+                  left: 12.w,
+                  child: AnimatedOpacity(
+                    opacity: _controlsVisible ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: _CircleButton(
+                      icon: Icons.close_rounded,
+                      onTap: _exit,
+                      size: 20.sp,
                     ),
                   ),
-                );
-              }
-              return const ColoredBox(color: Colors.black);
-            }),
-
-            AnimatedOpacity(
-              opacity: _controlsVisible ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 200),
-              child: _ControlsOverlay(
-                player: _player,
-                muted: _muted,
-                onPlayPause: () {
-                  _player.state.playing ? _player.pause() : _player.play();
-                  if (_player.state.playing) _scheduleHide();
-                },
-                onMute: _toggleMute,
-                onSeekBack: () => _seekBy(const Duration(seconds: -10)),
-                onSeekForward: () => _seekBy(const Duration(seconds: 10)),
-                onFullscreen: null,
-              ),
-            ),
-
-            Positioned(
-              top: safePad.top + 8.h,
-              left: 12.w,
-              child: AnimatedOpacity(
-                opacity: _controlsVisible ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: _CircleButton(
-                  icon: Icons.close_rounded,
-                  onTap: _exit,
-                  size: 20.sp,
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      )),
+          )),
     );
   }
 }

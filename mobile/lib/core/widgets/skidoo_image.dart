@@ -62,23 +62,8 @@ class SkidooImage extends StatelessWidget {
   /// (no semantics node). Set for content images (photos, samples, covers).
   final String? semanticLabel;
 
-  Widget _defaultPlaceholder(BuildContext context, String url) {
-    final ext = Theme.of(context).extension<AppThemeExtension>();
-    return ColoredBox(
-      color: ext?.searchFieldFill ?? const Color(0x11000000),
-      child: Center(
-        child: SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: (ext?.accentGold ?? const Color(0xFF0BA98A))
-                .withValues(alpha: 0.8),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _defaultPlaceholder(BuildContext context, String url) =>
+      const SkidooImagePlaceholder(spinner: true);
 
   int _cacheWidth(BuildContext context, double availableWidth) {
     if (isBlurBackground) return 120;
@@ -130,5 +115,60 @@ class SkidooImage extends StatelessWidget {
     }
     if (semanticLabel == null) return result;
     return Semantics(image: true, label: semanticLabel, child: result);
+  }
+}
+
+/// The fill shown in an image slot before the image arrives — and the one
+/// every [SkidooImage] should use, whether or not it wants the spinner.
+///
+/// Call sites used to hardcode a near-black each (#111111, #141414, #1A1A1A,
+/// `Colors.black`, and a literal #2C2C2A that was really the dark theme's
+/// surface token copied by hand). Two things were wrong with that. In light
+/// mode a loading grid punched black holes in an otherwise light page. In dark
+/// mode the fills were *darker* than the surfaces around them, so a screen
+/// mid-load read as a checkerboard of black squares rather than as a page
+/// waiting for content — the surround is #111110, so a #111111 tile is
+/// invisible and a `Colors.black` one is a hole.
+///
+/// [searchFieldFill] is the same neutral the search field and filter chips
+/// use: clearly a slot, in both themes, without competing with real content.
+class SkidooImagePlaceholder extends StatelessWidget {
+  const SkidooImagePlaceholder({
+    super.key,
+    this.spinner = false,
+    this.alwaysDark = false,
+  });
+
+  /// Adds the centred progress ring. Off by default: on a thumbnail-sized
+  /// slot a 20 px spinner is noise, and a grid of them flickers.
+  final bool spinner;
+
+  /// Pins to the dark palette for surfaces that stay dark in either app theme
+  /// — the full-screen photo viewers. Without it those flash a light tile in
+  /// light mode, which is the same bug in the other direction.
+  final bool alwaysDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = alwaysDark
+        ? AppThemeExtension.dark
+        : (Theme.of(context).extension<AppThemeExtension>() ??
+            AppThemeExtension.dark);
+
+    return ColoredBox(
+      color: ext.searchFieldFill,
+      child: spinner
+          ? Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: ext.accentGold.withValues(alpha: 0.8),
+                ),
+              ),
+            )
+          : null,
+    );
   }
 }
