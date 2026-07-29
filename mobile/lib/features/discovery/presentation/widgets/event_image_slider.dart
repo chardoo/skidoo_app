@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 
 // ── Image slider ──────────────────────────────────────────────────────────────
 
@@ -45,10 +46,10 @@ class _EventImageSliderState extends State<EventImageSlider> {
                 child: Semantics(image: true, label: 'Event photo', child: CachedNetworkImage(
                   imageUrl: widget.pics[i].url,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) =>
-                      Container(color: const Color(0xFF2C2C2A)),
-                  errorWidget: (_, __, ___) => Container(
-                    color: const Color(0xFF2C2C2A),
+                  placeholder: (context, __) => Container(
+                      color: SkidooImagePlaceholder.colorOf(context)),
+                  errorWidget: (context, __, ___) => Container(
+                    color: SkidooImagePlaceholder.colorOf(context),
                     child: const Icon(Icons.broken_image_outlined,
                         color: Colors.white38),
                   ),

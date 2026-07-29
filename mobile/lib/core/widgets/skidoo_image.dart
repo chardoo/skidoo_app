@@ -148,12 +148,20 @@ class SkidooImagePlaceholder extends StatelessWidget {
   /// light mode, which is the same bug in the other direction.
   final bool alwaysDark;
 
+  /// The same fill as a bare colour, for slots that must stay a [Container]
+  /// because they carry a fixed height or an error icon.
+  static Color colorOf(BuildContext context, {bool alwaysDark = false}) =>
+      _paletteOf(context, alwaysDark).searchFieldFill;
+
+  static AppThemeExtension _paletteOf(BuildContext context, bool alwaysDark) =>
+      alwaysDark
+          ? AppThemeExtension.dark
+          : (Theme.of(context).extension<AppThemeExtension>() ??
+              AppThemeExtension.dark);
+
   @override
   Widget build(BuildContext context) {
-    final ext = alwaysDark
-        ? AppThemeExtension.dark
-        : (Theme.of(context).extension<AppThemeExtension>() ??
-            AppThemeExtension.dark);
+    final ext = _paletteOf(context, alwaysDark);
 
     return ColoredBox(
       color: ext.searchFieldFill,

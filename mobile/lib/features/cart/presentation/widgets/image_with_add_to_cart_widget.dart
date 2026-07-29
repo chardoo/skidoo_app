@@ -6,6 +6,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 
 class ImageWithAddToCartWidget extends StatelessWidget {
   final Photo photo;
@@ -22,17 +23,17 @@ class ImageWithAddToCartWidget extends StatelessWidget {
             imageUrl: photo.url,
             fit: BoxFit.cover,
             width: double.infinity,
-            placeholder: (_, __) => Container(
+            placeholder: (context, __) => Container(
               height: 150.h,
-              color: const Color(0xFF1A1A1A),
+              color: SkidooImagePlaceholder.colorOf(context),
               child: const Center(
                 child: CircularProgressIndicator(
                     color: Colors.white30, strokeWidth: 2),
               ),
             ),
-            errorWidget: (_, __, ___) => Container(
+            errorWidget: (context, __, ___) => Container(
               height: 150.h,
-              color: const Color(0xFF1A1A1A),
+              color: SkidooImagePlaceholder.colorOf(context),
               child: const Icon(Icons.broken_image_outlined,
                   color: Colors.white38, size: 40),
             ),

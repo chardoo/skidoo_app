@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 
 class CartItemWidget extends StatelessWidget {
   final Photo photo;
@@ -21,17 +22,17 @@ class CartItemWidget extends StatelessWidget {
             fit: BoxFit.cover,
             width: double.infinity,
             height: 220.h,
-            placeholder: (_, __) => Container(
+            placeholder: (context, __) => Container(
               height: 220.h,
-              color: const Color(0xFF1A1A1A),
+              color: SkidooImagePlaceholder.colorOf(context),
               child: const Center(
                 child: CircularProgressIndicator(
                     color: Colors.white30, strokeWidth: 2),
               ),
             ),
-            errorWidget: (_, __, ___) => Container(
+            errorWidget: (context, __, ___) => Container(
               height: 220.h,
-              color: const Color(0xFF1A1A1A),
+              color: SkidooImagePlaceholder.colorOf(context),
               child: const Icon(Icons.broken_image_outlined,
                   color: Colors.white38, size: 48),
             ),

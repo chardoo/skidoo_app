@@ -278,5 +278,5 @@ class CardEmptyTile extends StatelessWidget {
   const CardEmptyTile({super.key});
   @override
   Widget build(BuildContext context) =>
-      Container(color: const Color(0xFF111111));
+      ColoredBox(color: SkidooImagePlaceholder.colorOf(context));
 }
