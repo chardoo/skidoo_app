@@ -1,14 +1,17 @@
-import 'dart:ui';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/material.dart';
-// ignore: depend_on_referenced_packages
-import 'package:google_fonts/google_fonts.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/app_typography.dart';
 import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 
 class Styles {
   static ThemeData get dark => themeData(true);
   static ThemeData get light => themeData(false);
+
+  /// Bundled font family — see the `fonts:` block in pubspec.yaml. Declared
+  /// as a plain string rather than via `GoogleFonts.poppins()` so the app
+  /// never depends on a CDN fetch to render its own typeface.
+  static const String fontFamily = 'Poppins';
 
   // Smooth fade + slide page transitions on every platform (mobile + web).
   static const PageTransitionsTheme _pageTransitions = PageTransitionsTheme(
@@ -57,13 +60,13 @@ class Styles {
                 ? Colors.white
                 : const Color.fromARGB(255, 9, 10, 9)),
       ),
-      fontFamily: GoogleFonts.poppins().fontFamily,
+      fontFamily: fontFamily,
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: isDarkTheme
-            ? const Color(0xFF0A1310)
+            ? const Color(0xFF111110)
             : Colors.white,
         selectedItemColor:
-            isDarkTheme ? Colors.white : const Color(0xFF0BA98A),
+            isDarkTheme ? Colors.white : const Color(0xFF1D9E75),
         // Darker grey on the light nav bar so unselected items meet AA contrast
         // (0xFF9A9AAA is ~2.5:1 on white).
         unselectedItemColor:
@@ -77,12 +80,12 @@ class Styles {
           fontWeight: FontWeight.w500,
         ),
       ),
-      primaryColor: const Color(0xFF0BA98A),
+      primaryColor: const Color(0xFF1D9E75),
       indicatorColor: isDarkTheme
-          ? const Color(0xFF0F241C)
+          ? const Color(0xFF2C2C2A)
           : const Color.fromARGB(255, 195, 197, 201),
       hintColor: isDarkTheme
-          ? const Color(0xFF10201A)
+          ? const Color(0xFF1F1F1D)
           : const Color.fromARGB(255, 255, 255, 255),
       dialogTheme: DialogThemeData(
         backgroundColor:
@@ -91,38 +94,10 @@ class Styles {
           borderRadius: BorderRadius.circular(10),
         ),
       ),
-      textTheme: TextTheme(
-        titleLarge: TextStyle(
-            fontWeight: FontWeight.w300,
-            fontStyle: FontStyle.normal,
-            color: isDarkTheme ? Colors.white : Colors.black,
-            fontSize: 12.sp),
-        headlineMedium: TextStyle(
-            color: isDarkTheme ? Colors.white : Colors.black,
-            fontSize: 16.sp),
-        headlineSmall: GoogleFonts.poppins(
-            fontWeight: FontWeight.w300,
-            fontStyle: FontStyle.normal,
-            fontSize: 14.sp,
-            color: isDarkTheme ? Colors.white : const Color(0xff280C0B)),
-        displaySmall: GoogleFonts.poppins(
-          fontFeatures: [const FontFeature.subscripts()],
-          fontSize: 13.sp,
-        ),
-        displayMedium: GoogleFonts.poppins(
-            fontWeight: FontWeight.w500,
-            fontStyle: FontStyle.normal,
-            fontSize: 13.sp,
-            color: isDarkTheme ? Colors.white : const Color(0xff280C0B)),
-        displayLarge: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            fontStyle: FontStyle.normal,
-            fontSize: 24.sp,
-            color: isDarkTheme ? Colors.white : Colors.black),
-      ),
-      focusColor: const Color(0xFF0BA98A),
+      textTheme: _textTheme(isDarkTheme),
+      focusColor: const Color(0xFF1D9E75),
       disabledColor: Colors.grey,
-      cardColor: isDarkTheme ? const Color(0xFF141F19) : Colors.white,
+      cardColor: isDarkTheme ? const Color(0xFF1F1F1D) : Colors.white,
       canvasColor: isDarkTheme ? const Color(0xFF060A08) : Colors.grey[50],
       brightness: isDarkTheme ? Brightness.dark : Brightness.light,
       buttonTheme: ButtonThemeData(
@@ -139,7 +114,7 @@ class Styles {
           color: isDarkTheme ? Colors.white : Colors.black,
           fontSize: 18.sp,
           fontWeight: FontWeight.w600,
-          fontFamily: GoogleFonts.poppins().fontFamily,
+          fontFamily: fontFamily,
         ),
         iconTheme: IconThemeData(
           color: isDarkTheme ? Colors.white : Colors.black,
@@ -149,11 +124,11 @@ class Styles {
         isDarkTheme ? AppThemeExtension.dark : AppThemeExtension.light,
       ],
       scaffoldBackgroundColor: isDarkTheme
-          ? const Color(0xFF0A1310)
-          : const Color(0xFFF2F2F7),
+          ? const Color(0xFF111110)
+          : const Color(0xFFF7F7F2),
       colorScheme: ColorScheme(
         brightness: isDarkTheme ? Brightness.dark : Brightness.light,
-        primary: isDarkTheme ? Colors.white : const Color(0xFF1A1A2E),
+        primary: isDarkTheme ? Colors.white : const Color(0xFF2C2C2A),
         secondaryContainer:
             isDarkTheme ? const Color(0xFF2B2929) : Colors.white,
         onPrimary: isDarkTheme ? Colors.grey : Colors.white,
@@ -161,9 +136,41 @@ class Styles {
         secondary: const Color(0xFF42B546),
         error: isDarkTheme ? Colors.white : Colors.black,
         onError: isDarkTheme ? Colors.white : Colors.black,
-        surface: isDarkTheme ? const Color(0xFF16241D) : Colors.white,
+        surface: isDarkTheme ? const Color(0xFF1F1F1D) : Colors.white,
         onSurface: isDarkTheme ? Colors.white : Colors.black,
       ),
+    );
+  }
+
+  /// Material's [TextTheme] slots mapped onto [AppTypography].
+  ///
+  /// This block used to carry hand-picked values that contradicted Material's
+  /// own semantics — `titleLarge` was 12sp/w300 while `headlineMedium` was
+  /// 16sp and `displayLarge` 24sp, so any widget falling back to a Material
+  /// default got a "large title" smaller and lighter than its own body text.
+  /// No app code reads `Theme.of(context).textTheme` directly, but Material
+  /// widgets do implicitly: AlertDialog titles use `titleLarge`, ListTile uses
+  /// `bodyLarge`/`bodyMedium`, buttons use `labelLarge`. Those now inherit the
+  /// same scale as the rest of the app instead of a parallel one.
+  static TextTheme _textTheme(bool isDarkTheme) {
+    final onSurface = isDarkTheme ? Colors.white : Colors.black;
+
+    return TextTheme(
+      displayLarge: AppTypography.display.copyWith(color: onSurface),
+      displayMedium: AppTypography.display.copyWith(color: onSurface),
+      displaySmall: AppTypography.display.copyWith(color: onSurface),
+      headlineLarge: AppTypography.headline.copyWith(color: onSurface),
+      headlineMedium: AppTypography.headline.copyWith(color: onSurface),
+      headlineSmall: AppTypography.headline.copyWith(color: onSurface),
+      titleLarge: AppTypography.title.copyWith(color: onSurface),
+      titleMedium: AppTypography.subtitle.copyWith(color: onSurface),
+      titleSmall: AppTypography.bodyLargeBold.copyWith(color: onSurface),
+      bodyLarge: AppTypography.bodyLarge.copyWith(color: onSurface),
+      bodyMedium: AppTypography.body.copyWith(color: onSurface),
+      bodySmall: AppTypography.caption.copyWith(color: onSurface),
+      labelLarge: AppTypography.bodyLargeBold.copyWith(color: onSurface),
+      labelMedium: AppTypography.label.copyWith(color: onSurface),
+      labelSmall: AppTypography.micro.copyWith(color: onSurface),
     );
   }
 }

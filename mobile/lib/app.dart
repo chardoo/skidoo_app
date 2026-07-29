@@ -236,7 +236,7 @@ class _AppMaterial extends StatelessWidget {
       // long-press-for-options, and swipe gestures on feed cards/chat
       // bubbles, popping the native "Select All" menu unpredictably, and
       // could crash on nested Scrollables (flutter/flutter#111690).
-      builder: kIsWeb ? _webLayoutBuilder : null,
+      builder: _appBuilder,
       navigatorObservers: kIsWeb ? [WebRouteObserver.instance] : [],
       // Web: always start at Discovery so a hard-refresh (⇧⌘R) gives a clean
       // slate. _GuestGuard redirects authenticated users to /home immediately.
@@ -283,6 +283,24 @@ class _AppMaterial extends StatelessWidget {
             : const DiscoveryPage(),
       ),
     );
+  }
+
+  /// Root builder: clamps the OS font-scale setting, then applies the web
+  /// layout chrome (sidebar + centred column) when running on web.
+  ///
+  /// Every text size in the app is a `.sp` value scaled by flutter_screenutil
+  /// against a 390 dp design width. The OS accessibility font-scale multiplies
+  /// on top of that, so a large phone at 200 % text size compounds both and
+  /// overflows the denser screens (account page, campaign forms, chat). The
+  /// clamp keeps large-text settings meaningfully larger without letting the
+  /// two multipliers stack unbounded.
+  static Widget _appBuilder(BuildContext ctx, Widget? child) {
+    final scaled = MediaQuery.withClampedTextScaling(
+      minScaleFactor: 0.9,
+      maxScaleFactor: 1.3,
+      child: child ?? const SizedBox.shrink(),
+    );
+    return kIsWeb ? _webLayoutBuilder(ctx, scaled) : scaled;
   }
 
   /// Web layout — adapts to viewport width:
@@ -656,7 +674,7 @@ class _SecurityWarningPage extends StatelessWidget {
             children: [
               Icon(
                 Icons.shield_outlined,
-                color: const Color(0xFF0BA98A),
+                color: const Color(0xFF1D9E75),
                 size: 72.sp,
               ),
               SizedBox(height: AppSpacing.xxl.h),

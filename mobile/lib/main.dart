@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:skidoo_app/app.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
@@ -41,11 +40,6 @@ void main() async {
     PaintingBinding.instance.imageCache.maximumSize = 50;
     PaintingBinding.instance.imageCache.maximumSizeBytes = 100 * 1024 * 1024;
   }
-
-  // On web, Flutter 3.22+ no longer generates AssetManifest.json (only the
-  // binary AssetManifest.bin). google_fonts still checks for the JSON file
-  // first — allow CDN fetching so it can fall back cleanly without errors.
-  if (kIsWeb) GoogleFonts.config.allowRuntimeFetching = true;
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
