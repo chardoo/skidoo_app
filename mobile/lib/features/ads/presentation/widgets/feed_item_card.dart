@@ -672,20 +672,23 @@ class _MediaBackground extends StatelessWidget {
           autoPlay: true,
           loop: true,
           fit: BoxFit.contain,
-          backgroundColor: const Color(0xFF0A0A0A),
+          // Letterbox fill, so it follows the theme — these cards are dealt
+          // into the same feed as the event cards and were the one thing in it
+          // that stayed black in light mode.
+          backgroundColor: ext.mediaLetterbox,
           showControls: true,
           allowFullscreen: true,
           listenToPauseNotifier: true,
         );
       }
-      return const ColoredBox(
-        color: Color(0xFF0A0A0A),
+      return ColoredBox(
+        color: ext.mediaLetterbox,
         child: Center(
           child: SizedBox(
             width: 28,
             height: 28,
             child: CircularProgressIndicator(
-                color: Colors.white30, strokeWidth: 2),
+                color: ext.accentGold, strokeWidth: 2),
           ),
         ),
       );
@@ -712,16 +715,16 @@ class _MediaBackground extends StatelessWidget {
             errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
           ),
         ),
-        const ColoredBox(color: Color(0x55000000)),
+        ColoredBox(color: ext.mediaBackdropVeil),
         SkidooImage(
           imageUrl: url,
           fit: BoxFit.contain,
           semanticLabel: 'Advertisement image',
           // Non-opaque — the blurred backdrop stays visible behind the
           // spinner while the full-res image is still loading.
-          placeholder: (_, __) => const Center(
+          placeholder: (_, __) => Center(
             child: CircularProgressIndicator(
-                color: Colors.white70, strokeWidth: 2),
+                color: ext.accentGold, strokeWidth: 2),
           ),
           errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
         ),

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
@@ -69,6 +70,8 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
       itemCount: widget.pics.length,
       onPageChanged: _onPageChanged,
       itemBuilder: (context, index) {
+        final ext = Theme.of(context).extension<AppThemeExtension>() ??
+            AppThemeExtension.dark;
         final pic = widget.pics[index];
         final isLastLocked =
             widget.showBlur && index == 2 && widget.pics.length > 3;
@@ -115,18 +118,23 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                           const SkidooImagePlaceholder(),
                     ),
                   ),
-                  // Dim the blur layer so it doesn't compete with the main image
-                  const ColoredBox(color: Color(0x55000000)),
+                  // Veil the blur layer so it doesn't compete with the main
+                  // image. Follows the theme: a dark scrim in dark mode, a
+                  // light wash in light mode — this fills the letterbox bands,
+                  // so a fixed black one made the whole feed read as dark.
+                  ColoredBox(color: ext.mediaBackdropVeil),
                   // ── Sharp full image, uncropped — actual size, no forced fill ──
                   SkidooImage(
                     imageUrl: pic.url,
                     fit: BoxFit.contain,
                     semanticLabel: 'Event photo',
                     // Non-opaque — the blurred backdrop stays visible behind the
-                    // spinner while the full-res image is still loading.
-                    placeholder: (_, __) => const Center(
+                    // spinner while the full-res image is still loading. The
+                    // accent reads on that backdrop in either theme; white70
+                    // disappeared into the light-mode wash.
+                    placeholder: (_, __) => Center(
                       child: CircularProgressIndicator(
-                          color: Colors.white70, strokeWidth: 2),
+                          color: ext.accentGold, strokeWidth: 2),
                     ),
                     errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
                   ),
@@ -192,6 +200,8 @@ class _SliderVideoItemState extends State<_SliderVideoItem> {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>() ??
+        AppThemeExtension.dark;
     return GestureDetector(
       // Outer tap fires the card's own tap (e.g. open EventPicturesPage)
       // only when the video is not yet considered "tapped" by the player.
@@ -204,7 +214,10 @@ class _SliderVideoItemState extends State<_SliderVideoItem> {
         loop: true,
         fit: widget.fit,
         showControls: true,
-        backgroundColor: Colors.black,
+        // A contained video letterboxes on nearly every card, so this fill is
+        // most of the screen — it has to follow the theme. (The player's own
+        // controls stay light either way: they sit over the video.)
+        backgroundColor: ext.mediaLetterbox,
         listenToPauseNotifier: true,
       ),
     );
@@ -261,7 +274,12 @@ class _LockedOverlay extends StatelessWidget {
 class CardGradientPlaceholder extends StatelessWidget {
   const CardGradientPlaceholder({super.key, required this.name});
   final String name;
-  static const _palette = [
+
+  /// Stands in for the media on a card that has none, so it fills the whole
+  /// card — a background, not an overlay, which is why it has a light set at
+  /// all. Same six hue families in both, just inverted in lightness so the
+  /// tile belongs to the page it sits on.
+  static const _darkPalette = [
     [Color(0xFF1a1a2e), Color(0xFF16213e)],
     [Color(0xFF0f3460), Color(0xFF533483)],
     [Color(0xFF1a0533), Color(0xFF3d0066)],
@@ -269,19 +287,32 @@ class CardGradientPlaceholder extends StatelessWidget {
     [Color(0xFF1a0000), Color(0xFF4d0000)],
     [Color(0xFF002200), Color(0xFF004d00)],
   ];
+  static const _lightPalette = [
+    [Color(0xFFE6E7F2), Color(0xFFDCE0F0)],
+    [Color(0xFFDDE6F5), Color(0xFFE7DDF3)],
+    [Color(0xFFE8E0F2), Color(0xFFE4D9F5)],
+    [Color(0xFFDCE8F2), Color(0xFFDBE6F7)],
+    [Color(0xFFF5E2E2), Color(0xFFF7DCDC)],
+    [Color(0xFFE0F0E0), Color(0xFFDCF0DC)],
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final idx = name.isEmpty ? 0 : name.codeUnitAt(0) % _palette.length;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final palette = isLight ? _lightPalette : _darkPalette;
+    final idx = name.isEmpty ? 0 : name.codeUnitAt(0) % palette.length;
     return Container(
       decoration: BoxDecoration(
           gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: _palette[idx])),
+              colors: palette[idx])),
       alignment: Alignment.center,
       child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
           style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.08),
+              // The watermark has to invert with the tile or it vanishes.
+              color: (isLight ? Colors.black : Colors.white)
+                  .withValues(alpha: isLight ? 0.06 : 0.08),
               fontSize: 120,
               fontWeight: FontWeight.w900)),
     );

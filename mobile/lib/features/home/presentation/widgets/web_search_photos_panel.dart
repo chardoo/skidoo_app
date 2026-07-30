@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:skidoo_app/core/widgets/photo_aspect_box.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -348,28 +349,32 @@ class _PhotoCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(10.r),
       child: Stack(
         children: [
-          SkidooImage(
-            imageUrl: photo.url,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            semanticLabel: 'Photo',
-            placeholder: (_, __) => Container(
-              height: 150.h,
-              color: ext.searchFieldFill,
-              child: Center(
-                child: SizedBox(
-                  width: 18.w,
-                  height: 18.w,
-                  child: CircularProgressIndicator(
-                      color: ext.accentGold, strokeWidth: 2),
+          // Sized from the server's width/height so the masonry column has the
+          // tile's true shape before the image decodes — see [PhotoAspectBox].
+          PhotoAspectBox(
+            aspectRatio: photo.aspectRatio,
+            fallbackHeight: 150.h,
+            child: SkidooImage(
+              imageUrl: photo.url,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              semanticLabel: 'Photo',
+              placeholder: (_, __) => ColoredBox(
+                color: ext.searchFieldFill,
+                child: Center(
+                  child: SizedBox(
+                    width: 18.w,
+                    height: 18.w,
+                    child: CircularProgressIndicator(
+                        color: ext.accentGold, strokeWidth: 2),
+                  ),
                 ),
               ),
-            ),
-            errorWidget: (_, __, ___) => Container(
-              height: 150.h,
-              color: ext.searchFieldFill,
-              child: Icon(Icons.broken_image_outlined,
-                  color: ext.searchHintColor, size: 24.sp),
+              errorWidget: (_, __, ___) => ColoredBox(
+                color: ext.searchFieldFill,
+                child: Icon(Icons.broken_image_outlined,
+                    color: ext.searchHintColor, size: 24.sp),
+              ),
             ),
           ),
           // Price badge

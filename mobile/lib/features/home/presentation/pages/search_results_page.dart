@@ -23,6 +23,7 @@ import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/widgets/photo_aspect_box.dart';
 
 class SearchResultsPage extends StatefulWidget {
   static const routeName = '/searchresults';
@@ -451,37 +452,40 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
           borderRadius: BorderRadius.circular(10.r),
           child: Stack(
             children: [
-              if (photo.mediaType == 'video')
-                SizedBox(
-                  width: double.infinity,
-                  height: 200.h,
-                  child: _VideoThumbCard(url: photo.url, ext: ext),
-                )
-              else
-                SkidooImage(
-                  imageUrl: photo.url,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  semanticLabel: 'Photo',
-                  placeholder: (_, __) => Container(
-                    height: 150.h,
-                    color: ext.searchFieldFill,
-                    child: Center(
-                      child: SizedBox(
-                        width: 18.w,
-                        height: 18.h,
-                        child: CircularProgressIndicator(
-                            color: ext.accentGold, strokeWidth: 2),
+              // Sized from the server's own width/height when it sent them, so
+              // the masonry column takes the tile's true shape on the first
+              // frame. Without it every tile started at a placeholder height
+              // and snapped to its real one on decode, re-laying out the whole
+              // grid under the user's thumb.
+              PhotoAspectBox(
+                aspectRatio: photo.aspectRatio,
+                // What a video tile used to be pinned to.
+                fallbackHeight: photo.mediaType == 'video' ? 200.h : null,
+                child: photo.mediaType == 'video'
+                    ? _VideoThumbCard(url: photo.url, ext: ext)
+                    : SkidooImage(
+                        imageUrl: photo.url,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        semanticLabel: 'Photo',
+                        placeholder: (_, __) => ColoredBox(
+                          color: ext.searchFieldFill,
+                          child: Center(
+                            child: SizedBox(
+                              width: 18.w,
+                              height: 18.h,
+                              child: CircularProgressIndicator(
+                                  color: ext.accentGold, strokeWidth: 2),
+                            ),
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) => ColoredBox(
+                          color: ext.searchFieldFill,
+                          child: Icon(Icons.broken_image_outlined,
+                              color: ext.searchHintColor, size: 28.sp),
+                        ),
                       ),
-                    ),
-                  ),
-                  errorWidget: (_, __, ___) => Container(
-                    height: 150.h,
-                    color: ext.searchFieldFill,
-                    child: Icon(Icons.broken_image_outlined,
-                        color: ext.searchHintColor, size: 28.sp),
-                  ),
-                ),
+              ),
 
               // ── Price badge (bottom-left) ─────────────────────────────────
               Positioned(

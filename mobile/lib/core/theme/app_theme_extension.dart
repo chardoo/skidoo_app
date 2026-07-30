@@ -28,6 +28,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.glassBorder,
     required this.glassIcon,
     required this.glassHint,
+    required this.mediaLetterbox,
+    required this.mediaBackdropVeil,
   });
 
   final Color homeBackground;
@@ -83,6 +85,28 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color glassIcon;    // icon / label colour
   final Color glassHint;    // placeholder / secondary text
 
+  // Media-surround tokens — the area *around* a photo/video shown uncropped
+  // (`BoxFit.contain`), not the media itself.
+  //
+  // These are the reason the For You / Following feeds used to read as dark in
+  // light mode: the media is letterboxed on almost every card, so the surround
+  // is most of what's on screen, and it was hard-coded to black. They are
+  // deliberately NOT the same thing as [cardOverlayStart]/[cardOverlayEnd],
+  // which stay dark in both themes because their job is keeping white text
+  // legible over an arbitrary photo.
+
+  /// Flat fill behind contained media — the letterbox/pillarbox bands. Used
+  /// where there is no blurred backdrop to fall back on (video).
+  final Color mediaLetterbox;
+
+  /// Wash laid over the blurred cover-fit copy of a photo that fills those
+  /// bands, so the backdrop doesn't compete with the sharp image on top.
+  ///
+  /// Light mode needs a heavier veil than dark mode needs a scrim: most photos
+  /// are mid-to-dark, so a light wash has more to cover before the surround
+  /// reads as belonging to a light page.
+  final Color mediaBackdropVeil;
+
   /// Values sampled directly from the Jperg product designs (folders 1 and 4).
   /// The palette is a **warm neutral** one — R, G and B sit within a few
   /// points of each other with a slight warm bias — not the green-tinted set
@@ -117,6 +141,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     glassBorder: Color(0x40FFFFFF), // white 25 %
     glassIcon:   Color(0xB3FFFFFF), // white 70 %
     glassHint:   Color(0x8CFFFFFF), // white 55 %
+    mediaLetterbox:    Color(0xFF000000),
+    mediaBackdropVeil: Color(0x55000000), // black 33 %
   );
 
   /// The same warm-neutral system inverted, sampled from the light designs in
@@ -152,6 +178,13 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     glassBorder: Color(0x26000000), // black 15 %
     glassIcon:   Color(0xA6000000), // black 65 %
     glassHint:   Color(0x99000000), // black 60 % — AA contrast (was 45 %)
+    // The page background itself, so a letterboxed photo sits on the same
+    // surface as the rest of the app rather than in a black box.
+    mediaLetterbox:    Color(0xFFF7F7F2),
+    // 70 %: enough that a dark photo's blur still lands lighter than mid-grey,
+    // while leaving a hint of the photo's colour so the bands read as belonging
+    // to the image. Tune here — it is the one knob for the whole feed.
+    mediaBackdropVeil: Color(0xB3F7F7F2), // background 70 %
   );
 
   @override
@@ -181,6 +214,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     Color? glassBorder,
     Color? glassIcon,
     Color? glassHint,
+    Color? mediaLetterbox,
+    Color? mediaBackdropVeil,
   }) {
     return AppThemeExtension(
       homeBackground: homeBackground ?? this.homeBackground,
@@ -208,6 +243,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       glassBorder: glassBorder ?? this.glassBorder,
       glassIcon: glassIcon ?? this.glassIcon,
       glassHint: glassHint ?? this.glassHint,
+      mediaLetterbox: mediaLetterbox ?? this.mediaLetterbox,
+      mediaBackdropVeil: mediaBackdropVeil ?? this.mediaBackdropVeil,
     );
   }
 
@@ -240,6 +277,9 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       glassBorder: Color.lerp(glassBorder, other.glassBorder, t)!,
       glassIcon: Color.lerp(glassIcon, other.glassIcon, t)!,
       glassHint: Color.lerp(glassHint, other.glassHint, t)!,
+      mediaLetterbox: Color.lerp(mediaLetterbox, other.mediaLetterbox, t)!,
+      mediaBackdropVeil:
+          Color.lerp(mediaBackdropVeil, other.mediaBackdropVeil, t)!,
     );
   }
 }

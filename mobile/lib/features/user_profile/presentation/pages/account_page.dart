@@ -1244,11 +1244,14 @@ class _AdsCard extends StatelessWidget {
               ));
             }
 
-            return Container(
-              decoration: BoxDecoration(
-                color: ext.cardSurface,
-                borderRadius: BorderRadius.circular(AppRadius.md.r),
-              ),
+            return Material(
+              // Material, not a decorated Container: ListTile paints its
+              // highlight and ink splash onto the nearest Material ancestor,
+              // so a DecoratedBox between the two swallows them (and trips an
+              // assertion in debug). Same treatment as every sibling card.
+              color: ext.cardSurface,
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

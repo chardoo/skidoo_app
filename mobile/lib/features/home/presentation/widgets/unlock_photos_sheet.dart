@@ -12,8 +12,11 @@ import 'package:skidoo_app/core/utils/web_wrap.dart';
 ///
 /// Resolves to the code the user supplied, or null if they dismissed the
 /// sheet. Deliberately knows nothing about what a code *means*: the caller
-/// runs the event search and shows the results, so the same sheet works
-/// wherever a code is useful.
+/// resolves it to an event and shows that event's photos, so the same sheet
+/// works wherever a code is useful.
+///
+/// Typing and scanning return the same thing — a raw code — so the caller
+/// treats them identically.
 ///
 /// The scanner is embedded here rather than pushed as a page (per the design)
 /// so that switching between typing and scanning is a toggle rather than a

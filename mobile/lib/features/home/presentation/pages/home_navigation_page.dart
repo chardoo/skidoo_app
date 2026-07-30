@@ -221,15 +221,18 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     context.read<HomeBloc>().add(HomeEventSearched(query));
   }
 
-  Future<void> _openQrScan() async {
-    final eventId = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const QrScanPage()),
-    );
-    if (!mounted || eventId == null || eventId.isEmpty) return;
-
-    // Fire the same event the search flow uses, then push SearchResultsPage.
+  /// Resolves an event code — scanned or typed — into that event's photos.
+  ///
+  /// The code *is* the event id, so it goes to [HomeImagesSearched], which
+  /// fetches the event's pictures directly. It deliberately does not go through
+  /// [HomeEventSearched]: that is a text search over event *names*, and a code
+  /// is an identifier, not a name — it would never match.
+  ///
+  /// Every entry point funnels through here so scanning and typing cannot
+  /// diverge.
+  void _openEventByCode(String code) {
     final homeBloc = context.read<HomeBloc>();
-    homeBloc.add(HomeImagesSearched(eventId: eventId, eventName: ''));
+    homeBloc.add(HomeImagesSearched(eventId: code, eventName: ''));
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => BlocProvider.value(
@@ -240,16 +243,21 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     );
   }
 
+  Future<void> _openQrScan() async {
+    final eventId = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const QrScanPage()),
+    );
+    if (!mounted || eventId == null || eventId.isEmpty) return;
+    _openEventByCode(eventId);
+  }
+
   /// Leading action on the feed bar: a code the user types, or one scanned
-  /// from the preview embedded in the same sheet.
-  ///
-  /// The code is handed straight to the ordinary event search rather than
-  /// being resolved as a code — the backend does not distinguish the two yet,
-  /// so a code behaves exactly like anything else typed into the search box.
+  /// from the preview embedded in the same sheet. Both are the same code and
+  /// take the same path as [_openQrScan].
   Future<void> _openUnlock() async {
     final code = await UnlockPhotosSheet.show(context);
     if (!mounted || code == null || code.isEmpty) return;
-    _openSearch(query: code);
+    _openEventByCode(code);
   }
 
   void _openEventImages(BuildContext context, EventDiscovery event) {

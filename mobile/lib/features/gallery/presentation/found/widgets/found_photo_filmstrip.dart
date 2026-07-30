@@ -70,15 +70,9 @@ class _FoundPhotoFilmstripState extends State<FoundPhotoFilmstrip> {
     );
   }
 
-  /// The filmstrip lives inside the always-dark viewer, so it takes the dark
-  /// palette directly rather than the ambient one — reading the ambient theme
-  /// put white (#FFFFFF `cardSurface`) placeholder tiles on the dark strip
-  /// whenever the app was in light mode.
-  static const _palette = AppThemeExtension.dark;
-
   @override
   Widget build(BuildContext context) {
-    const ext = _palette;
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return SizedBox(
       height: 64.w,
@@ -102,9 +96,8 @@ class _FoundPhotoFilmstripState extends State<FoundPhotoFilmstrip> {
                   borderRadius: BorderRadius.circular(AppRadius.sm.r),
                   // Accent green, per the Found/PhotoSelected designs — not
                   // white. `accentGold` is #1D9E75 in both light and dark, so
-                  // the ring reads the same either way; the viewer itself is
-                  // deliberately always-dark, like every full-screen media
-                  // viewer in the app.
+                  // the ring needs no per-theme variant even though the strip
+                  // around it does.
                   border: Border.all(
                     color: active ? ext.accentGold : Colors.transparent,
                     width: 2,
@@ -115,9 +108,9 @@ class _FoundPhotoFilmstripState extends State<FoundPhotoFilmstrip> {
                   imageUrl: widget.photos[index].url,
                   fit: BoxFit.cover,
                   logicalWidth: 64,
-                  placeholder: (_, __) => const SkidooImagePlaceholder(alwaysDark: true),
+                  placeholder: (_, __) => const SkidooImagePlaceholder(),
                   errorWidget: (_, __, ___) =>
-                      const SkidooImagePlaceholder(alwaysDark: true),
+                      const SkidooImagePlaceholder(),
                 ),
               ),
             ),

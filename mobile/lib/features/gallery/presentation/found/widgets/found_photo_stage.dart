@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_action_rail.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
@@ -40,6 +41,8 @@ class FoundPhotoStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
     return Center(
       child: AspectRatio(
         aspectRatio: photo.aspectRatio ?? _defaultAspect,
@@ -54,7 +57,7 @@ class FoundPhotoStage extends StatelessWidget {
                 loop: true,
                 fit: BoxFit.cover,
                 showControls: true,
-                backgroundColor: Colors.black,
+                backgroundColor: ext.mediaLetterbox,
                 listenToPauseNotifier: true,
               )
             else
@@ -62,9 +65,8 @@ class FoundPhotoStage extends StatelessWidget {
                 imageUrl: photo.url,
                 fit: BoxFit.cover,
                 semanticLabel: 'Found photo',
-                placeholder: (_, __) => const SkidooImagePlaceholder(alwaysDark: true),
-                errorWidget: (_, __, ___) =>
-                    const SkidooImagePlaceholder(alwaysDark: true),
+                placeholder: (_, __) => const SkidooImagePlaceholder(),
+                errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
               ),
 
             Positioned(

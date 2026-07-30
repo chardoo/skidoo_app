@@ -7,15 +7,6 @@ import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_pho
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_photo_stage.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 
-/// The viewer is always dark, in either app theme — a photo reads best on a
-/// dark surround and every full-screen media view in the app agrees, so it
-/// takes the dark palette directly rather than the ambient one.
-///
-/// Dark here is the design's #111110, **not** pure black: the product palette
-/// is a warm near-black throughout, and true black beside it reads as a
-/// different surface rather than the same one.
-const _palette = AppThemeExtension.dark;
-
 /// Full-screen viewer for an album's photos: "n of total" in the app bar, the
 /// photo with its badge/action-rail/photographer overlays, and a filmstrip of
 /// the whole album along the bottom. Swiping the photo and tapping a
@@ -59,14 +50,19 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final total = widget.photos.length;
 
     final page = Scaffold(
-      backgroundColor: _palette.homeBackground,
+      // Follows the app theme. The surround is the page's own background, and
+      // the overlays that sit *on* the photo (badge, action rail, meta bar)
+      // stay light-on-scrim in both themes — the photo underneath is arbitrary.
+      backgroundColor: ext.homeBackground,
       body: SafeArea(
         child: Column(
           children: [
-            _ViewerTopBar(label: '${_index + 1} of $total'),
+         
+                _ViewerTopBar(index: _index,  total: total),
             Expanded(
               child: PageView.builder(
                 controller: _pageCtrl,
@@ -95,17 +91,20 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
       ),
     );
 
-    return webWrap(page, backgroundColor: _palette.homeBackground);
+    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 }
 
 class _ViewerTopBar extends StatelessWidget {
-  const _ViewerTopBar({required this.label});
+  const _ViewerTopBar({required this.index, required this.total});
 
-  final String label;
+  final int index;
+  final int total;
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
     return SizedBox(
       height: 48.h,
       child: Stack(
@@ -113,34 +112,69 @@ class _ViewerTopBar extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: IconButton(
-              // Not const: field access on a const object isn't itself a
-              // constant expression in Dart.
-              icon: Icon(Icons.arrow_back_rounded,
-                  color: _palette.greetingColor),
+              icon: Icon(Icons.arrow_back_rounded, color: ext.greetingColor),
               iconSize: 22.sp,
               tooltip: 'Back',
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
           Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                // The counter sits back from the back arrow in the design —
-                // sampled at #B4B2A9 against the arrow's full-strength
-                // #F7F7F2. It's a position indicator, not a control.
-                color: _palette.greetingColor.withValues(alpha: 0.7),
-                fontSize: 15.sp,
-                fontWeight: FontWeight.w600,
-                // Fixed-width digits: without these, "9 of 14" → "10 of 14"
-                // widens the string and the Center re-centres it, so the
-                // counter visibly jumps sideways on every swipe.
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
+  // One label for the whole counter. Split across spans it reads out as
+  // "1", "of", "2" — three fragments — and the WidgetSpan leaves a
+  // placeholder character in the middle of the plain text.
+  child: Semantics(
+    label: '${index + 1} of $total',
+    child: ExcludeSemantics(
+  child:
+
+  Text.rich(
+    TextSpan(
+      style: TextStyle(
+        color: ext.greetingColor.withValues(alpha: 0.7),
+        fontSize: 15.sp,
+        fontWeight: FontWeight.w600,
+        height: 1.0,
+        leadingDistribution: TextLeadingDistribution.even,
+      ),
+      children: [
+        TextSpan(
+          text: '${index + 1}',
+          style: const TextStyle(
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
+        ),
+        WidgetSpan(
+  alignment: PlaceholderAlignment.baseline,
+  baseline: TextBaseline.alphabetic,
+  child: Transform.translate(
+    offset: Offset(0, 1),  // positive = down; tweak by 0.5–1.5
+    child: Text(
+      ' of ',
+      style: TextStyle(
+        fontWeight: FontWeight.w400,
+        fontSize: 15.sp,
+        color: ext.greetingColor.withValues(alpha: 0.7),
+      ),
+    ),
+  ),
+),
+        TextSpan(
+          text: '$total',
+          style: const TextStyle(
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
+    ),
+    textAlign: TextAlign.center,
+  ),
+    ),
+  ),
+)
         ],
       ),
     );
   }
 }
+
+

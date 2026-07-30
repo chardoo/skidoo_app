@@ -119,7 +119,9 @@ void main() {
       onViewAlbum: () {},
     )));
     await t.pump();
-    expect(find.text('3 of 6'), findsOneWidget);
+    // The counter is a Text.rich split across spans (tabular figures on the
+    // numbers, a nudged WidgetSpan for " of "), so find.text can't reach it.
+    expect(find.bySemanticsLabel('3 of 6'), findsOneWidget);
     expect(find.text('Public'), findsOneWidget);
     expect(find.text('Daniella Daniels'), findsOneWidget);
     expect(find.text('Praise Reloaded 2026 | Accra'), findsOneWidget);

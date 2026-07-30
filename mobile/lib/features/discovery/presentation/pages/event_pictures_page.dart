@@ -259,8 +259,20 @@ class _MasonryGrid extends StatelessWidget {
   final int startIndex;
   final void Function(int globalIdx) onTap;
 
+  /// Fallback heights, cycled per column position. Only reached for records
+  /// the server never sent dimensions for — everything else is sized from the
+  /// media's own shape, so a portrait shot renders tall and a landscape one
+  /// short instead of both being cropped into whatever the cycle handed them.
   static const _leftH = [210.0, 170.0, 195.0, 165.0, 200.0, 175.0];
   static const _rightH = [175.0, 200.0, 165.0, 195.0, 170.0, 210.0];
+
+  /// Clamp on the derived height. A near-square tile needs no help, but a
+  /// panorama would collapse to a sliver and a 1:4 portrait would push the
+  /// next tile off the page, so both ends are bounded.
+  static const _minH = 120.0;
+  static const _maxH = 380.0;
+
+  static const _gutter = 6.0;
 
   @override
   Widget build(BuildContext context) {
@@ -275,45 +287,55 @@ class _MasonryGrid extends StatelessWidget {
       }
     }
 
-    Widget tile(int colIdx, EventPicture pic, bool isLeft) {
-      final picGlobal =
-          isLeft ? startIndex + colIdx * 2 : startIndex + colIdx * 2 + 1;
-      final h = isLeft
-          ? _leftH[colIdx % _leftH.length].h
-          : _rightH[colIdx % _rightH.length].h;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Two equal columns with one gutter between them.
+        final colW = (constraints.maxWidth - _gutter.w) / 2;
 
-      return Padding(
-        padding: EdgeInsets.only(bottom: 6.h),
-        child: RepaintBoundary(
-          child: _MediaTile(
-            picture: pic,
-            height: h,
-            onTap: () => onTap(picGlobal),
-          ),
-        ),
-      );
-    }
+        Widget tile(int colIdx, EventPicture pic, bool isLeft) {
+          final picGlobal =
+              isLeft ? startIndex + colIdx * 2 : startIndex + colIdx * 2 + 1;
+          final ar = pic.aspectRatio;
+          final h = (ar != null && ar > 0)
+              ? (colW / ar).clamp(_minH.h, _maxH.h)
+              : (isLeft
+                  ? _leftH[colIdx % _leftH.length].h
+                  : _rightH[colIdx % _rightH.length].h);
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            children: [
-              for (final (ci, pic) in leftItems) tile(ci, pic, true),
-            ],
-          ),
-        ),
-        SizedBox(width: 6.w),
-        Expanded(
-          child: Column(
-            children: [
-              SizedBox(height: 44.h),
-              for (final (ci, pic) in rightItems) tile(ci, pic, false),
-            ],
-          ),
-        ),
-      ],
+          return Padding(
+            padding: EdgeInsets.only(bottom: _gutter.h),
+            child: RepaintBoundary(
+              child: _MediaTile(
+                picture: pic,
+                height: h,
+                onTap: () => onTap(picGlobal),
+              ),
+            ),
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  for (final (ci, pic) in leftItems) tile(ci, pic, true),
+                ],
+              ),
+            ),
+            SizedBox(width: _gutter.w),
+            Expanded(
+              child: Column(
+                children: [
+                  SizedBox(height: 44.h),
+                  for (final (ci, pic) in rightItems) tile(ci, pic, false),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
