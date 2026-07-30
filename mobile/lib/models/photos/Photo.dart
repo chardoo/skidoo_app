@@ -29,6 +29,13 @@ class Photo {
   /// Whether the currently logged-in user has liked this photo.
   final bool isLikedByUser;
 
+  /// The owner's engagement switch for this picture. False silences comments
+  /// *and* reactions on it — see CardInteractionBar.reactionsEnabled.
+  ///
+  /// Defaults true: a payload that omits the field predates the setting, and
+  /// the server's own default is enabled.
+  final bool commentsEnabled;
+
   /// 'image' or 'video' — matches the server's media_type field.
   final String mediaType;
 
@@ -58,8 +65,9 @@ class Photo {
   /// the recognition endpoints.
   final DateTime? identifiedAt;
 
-  double? get aspectRatio =>
-      (width != null && height != null && height! > 0) ? width! / height! : null;
+  double? get aspectRatio => (width != null && height != null && height! > 0)
+      ? width! / height!
+      : null;
 
   bool get isVideo => mediaType == 'video';
 
@@ -78,6 +86,7 @@ class Photo {
       this.likeCount = 0,
       this.commentCount = 0,
       this.isLikedByUser = false,
+      this.commentsEnabled = true,
       this.mediaType = 'image',
       this.width,
       this.height,
@@ -163,12 +172,15 @@ class Photo {
       likeCount: (picture['likeCount'] as num?)?.toInt() ?? 0,
       commentCount: (picture['commentCount'] as num?)?.toInt() ?? 0,
       isLikedByUser: (picture['isLikedByUser'] ?? false) as bool,
+      commentsEnabled: (picture['comments_enabled'] ??
+          picture['commentsEnabled'] ??
+          true) as bool,
       mediaType: mediaType.isEmpty ? 'image' : mediaType,
       width: (picture['width'] as num?)?.toInt(),
       height: (picture['height'] as num?)?.toInt(),
-      durationSeconds: ((picture['durationSeconds'] ??
-          picture['duration_seconds']) as num?)
-          ?.toDouble(),
+      durationSeconds:
+          ((picture['durationSeconds'] ?? picture['duration_seconds']) as num?)
+              ?.toDouble(),
       photographerName:
           _pick([user, event], ['name', 'userName', 'photographerName']),
       photographerAvatarUrl: _avatarOf(user),
@@ -196,7 +208,10 @@ class Photo {
       likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
       commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
       isLikedByUser: json['isLikedByUser'] as bool? ?? false,
-      mediaType: (json['media_type'] ?? json['mediaType'] as String?) ?? 'image',
+      commentsEnabled:
+          (json['comments_enabled'] ?? json['commentsEnabled'] ?? true) as bool,
+      mediaType:
+          (json['media_type'] ?? json['mediaType'] as String?) ?? 'image',
       width: (json['width'] as num?)?.toInt(),
       height: (json['height'] as num?)?.toInt(),
       durationSeconds: (json['duration_seconds'] as num?)?.toDouble(),

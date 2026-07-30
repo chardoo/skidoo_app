@@ -72,6 +72,19 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   /// seek the video.
   static const double _videoControlsBand = 40;
 
+  /// Whether the owner permits engagement on what is on screen.
+  ///
+  /// `comments_enabled` is the "no feedback on this" switch, so a disabled
+  /// event collects neither comments nor reactions — including the
+  /// double-tap-to-like shortcut, which would otherwise be a silent way past
+  /// a hidden button.
+  bool get _engagementAllowed {
+    final pics = widget.event.pictures;
+    if (!widget.event.commentsEnabled) return false;
+    if (pics.isEmpty) return true;
+    return pics[_mediaIndex.clamp(0, pics.length - 1)].commentsEnabled;
+  }
+
   bool get _activeMediaIsVideo {
     final pics = widget.event.pictures;
     if (_mediaIndex < 0 || _mediaIndex >= pics.length) return false;
@@ -191,7 +204,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           pics: event.pictures,
           pageController: _mediaPageCtrl,
           showBlur: false,
-          onDoubleTap: _toggleLike,
+          onDoubleTap: _engagementAllowed ? _toggleLike : () {},
           onTap: widget.onTap,
           cardIndex: widget.cardIndex,
           activeCardIndex: widget.activeCardIndex,
@@ -333,19 +346,21 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                   ],
                 ),
                 SizedBox(height: 26.h),
-                MediaRailAction(
-                  icon: Icons.favorite_rounded,
-                  iconColor: liked ? const Color(0xFFFF3B5C) : Colors.white,
-                  label: '${event.likes}',
-                  onTap: _toggleLike,
-                ),
-                SizedBox(height: AppSpacing.lg.h),
-                MediaRailAction(
-                  icon: Icons.mode_comment_rounded,
-                  label: '${event.commentCount}',
-                  onTap: _openComments,
-                ),
-                SizedBox(height: AppSpacing.lg.h),
+                if (_engagementAllowed) ...[
+                  MediaRailAction(
+                    icon: Icons.favorite_rounded,
+                    iconColor: liked ? const Color(0xFFFF3B5C) : Colors.white,
+                    label: '${event.likes}',
+                    onTap: _toggleLike,
+                  ),
+                  SizedBox(height: AppSpacing.lg.h),
+                  MediaRailAction(
+                    icon: Icons.mode_comment_rounded,
+                    label: '${event.commentCount}',
+                    onTap: _openComments,
+                  ),
+                  SizedBox(height: AppSpacing.lg.h),
+                ],
                 BlocBuilder<DiscoveryBloc, DiscoveryState>(
                   buildWhen: (prev, next) =>
                       prev.savedEventIds != next.savedEventIds,

@@ -15,6 +15,7 @@ class WebReactionsColumn extends StatelessWidget {
     required this.dislikeCount,
     required this.commentCount,
     required this.commentsEnabled,
+    this.reactionsEnabled = true,
     required this.ext,
     required this.isExternalPanel,
     required this.onLike,
@@ -41,6 +42,10 @@ class WebReactionsColumn extends StatelessWidget {
   final int dislikeCount;
   final int commentCount;
   final bool commentsEnabled;
+
+  /// Like and dislike, following the owner's `comments_enabled` setting — see
+  /// CardInteractionBar.reactionsEnabled for the reasoning.
+  final bool reactionsEnabled;
   final AppThemeExtension ext;
   final bool isExternalPanel;
   final VoidCallback onLike;
@@ -108,26 +113,28 @@ class WebReactionsColumn extends StatelessWidget {
             ],
 
             // ── Reactions ─────────────────────────────────────────────────────
-            WebActionBtn(
-              icon: Icons.favorite_rounded,
-              iconColor: liked ? ext.likeRed : ext.greetingColor,
-              count: likeCount,
-              countColor: liked ? ext.likeRed : ext.greetingColor,
-              iconSize: iconSize,
-              onTap: onLike,
-              semanticLabel: liked ? 'Unlike' : 'Like',
-            ),
-            SizedBox(height: gap),
-            WebActionBtn(
-              icon: Icons.thumb_down_rounded,
-              iconColor: disliked ? ext.dislikeBlue : ext.greetingColor,
-              count: dislikeCount,
-              countColor: disliked ? ext.dislikeBlue : ext.greetingColor,
-              iconSize: iconSize,
-              onTap: onDislike,
-              semanticLabel: disliked ? 'Remove dislike' : 'Dislike',
-            ),
-            SizedBox(height: gap),
+            if (reactionsEnabled) ...[
+              WebActionBtn(
+                icon: Icons.favorite_rounded,
+                iconColor: liked ? ext.likeRed : ext.greetingColor,
+                count: likeCount,
+                countColor: liked ? ext.likeRed : ext.greetingColor,
+                iconSize: iconSize,
+                onTap: onLike,
+                semanticLabel: liked ? 'Unlike' : 'Like',
+              ),
+              SizedBox(height: gap),
+              WebActionBtn(
+                icon: Icons.thumb_down_rounded,
+                iconColor: disliked ? ext.dislikeBlue : ext.greetingColor,
+                count: dislikeCount,
+                countColor: disliked ? ext.dislikeBlue : ext.greetingColor,
+                iconSize: iconSize,
+                onTap: onDislike,
+                semanticLabel: disliked ? 'Remove dislike' : 'Dislike',
+              ),
+              SizedBox(height: gap),
+            ],
             WebActionBtn(
               icon: commentsEnabled
                   ? Icons.mode_comment_rounded

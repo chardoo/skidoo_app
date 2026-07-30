@@ -6,6 +6,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/features/chat/presentation/bloc/rooms/room_sync_reconciler.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/models/chat/chat_room.dart';
 import 'package:skidoo_app/services/auth_service.dart';
@@ -21,8 +22,13 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
   final GetRoomMessagesUseCase _getRoomMessages;
   final AcceptRoomInviteUseCase _acceptInvite;
   final DeclineRoomInviteUseCase _declineInvite;
+  final ClearRoomCacheUseCase _clearRoomCache;
   final ChatBackgroundService _bgService;
   final AuthService _authService;
+
+  /// Decides when a room the server has stopped listing is really gone —
+  /// see [RoomSyncReconciler] for why this needs a grace sync.
+  final _reconciler = RoomSyncReconciler();
 
   StreamSubscription<ChatRoom>? _groupInviteSub;
   StreamSubscription<ChatMessage>? _bgMsgSub;
@@ -37,6 +43,7 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     required GetRoomMessagesUseCase getRoomMessages,
     required AcceptRoomInviteUseCase acceptInvite,
     required DeclineRoomInviteUseCase declineInvite,
+    required ClearRoomCacheUseCase clearRoomCache,
     required ChatBackgroundService bgService,
     required AuthService authService,
   })  : _getMyRooms = getMyRooms,
@@ -46,6 +53,7 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
         _getRoomMessages = getRoomMessages,
         _acceptInvite = acceptInvite,
         _declineInvite = declineInvite,
+        _clearRoomCache = clearRoomCache,
         _bgService = bgService,
         _authService = authService,
         super(const ChatRoomsState()) {
@@ -170,16 +178,29 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
                 if (r.unreadCount > 0) r.id: r.unreadCount,
             }
           : counts;
+      // Rooms the server has now omitted often enough to be gone. Purged from
+      // the cache too, or getCachedRooms() would put them straight back on the
+      // next cold start.
+      // Counted over both buckets at once: _splitRooms divides one server list
+      // into active and pending, so a room moving between them is not a miss.
+      final stale = _reconciler.onSync(
+        fresh.map((r) => r.id).toSet(),
+        [...state.rooms, ...state.pendingInvites].map((r) => r.id),
+      );
+      for (final id in stale) {
+        _clearRoomCache(id).ignore();
+      }
+
       emit(state.copyWith(
         // Merge rather than replace: a room just joined/created is written
         // to the local cache synchronously (see ChatRepositoryImpl's
         // _fetchAndCacheRoom), but the server's "list my rooms" response can
         // still be a beat behind that write. Blindly trusting `fresh` here
-        // would erase a room the user only just joined. Genuine removals
-        // still take effect via _onRoomRemoved (which also purges the local
-        // cache), so this can't resurrect a room that was actually deleted.
-        rooms: _mergeRooms(split.$1, state.rooms),
-        pendingInvites: _mergeRooms(split.$2, state.pendingInvites),
+        // would erase a room the user only just joined — so a locally-known
+        // room survives one sync without the server, and is dropped on the
+        // next (see [_staleRoomIds]).
+        rooms: _mergeRooms(split.$1, state.rooms, stale),
+        pendingInvites: _mergeRooms(split.$2, state.pendingInvites, stale),
         unreadCounts: effectiveCounts,
         lastMessageAt: lastTimes,
         isLoading: false,
@@ -207,11 +228,17 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
   /// Unions [fresh] (just fetched from the server) with any [known] rooms
   /// that aren't in it yet, keyed by id — [fresh]'s copy of a room wins
   /// where both have it, since it's the more up-to-date one.
-  List<ChatRoom> _mergeRooms(List<ChatRoom> fresh, List<ChatRoom> known) {
+  List<ChatRoom> _mergeRooms(
+    List<ChatRoom> fresh,
+    List<ChatRoom> known,
+    Set<String> stale,
+  ) {
     final freshIds = fresh.map((r) => r.id).toSet();
-    final onlyLocal = known.where((r) => !freshIds.contains(r.id));
+    final onlyLocal = known
+        .where((r) => !freshIds.contains(r.id) && !stale.contains(r.id));
     return [...fresh, ...onlyLocal];
   }
+
 
   /// Splits all rooms into (activeRooms, pendingInvites) for [myUserId].
   (List<ChatRoom>, List<ChatRoom>) _splitRooms(
@@ -319,6 +346,11 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     final inRooms = state.rooms.any((r) => r.id == event.roomId);
     final inPending = state.pendingInvites.any((r) => r.id == event.roomId);
     if (!inRooms && !inPending) return;
+    // Purge the cache, not just the in-memory list. Without this the row
+    // survives in SQLite and getCachedRooms() re-renders the room on the next
+    // cold start, even though it was removed live.
+    _clearRoomCache(event.roomId).ignore();
+    _reconciler.forget(event.roomId);
     final counts = Map<String, int>.from(state.unreadCounts)
       ..remove(event.roomId);
     emit(state.copyWith(

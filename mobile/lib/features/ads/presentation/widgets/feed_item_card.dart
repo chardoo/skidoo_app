@@ -613,6 +613,9 @@ class _FeedItemCardState extends State<FeedItemCard>
               dislikeCount: 0,
               commentCount: d.commentCount,
               commentsEnabled: d.commentsEnabled,
+              // An ad or campaign with engagement switched off collects no
+              // reactions either, same rule as events.
+              reactionsEnabled: d.commentsEnabled,
               ext: ext,
               onLike: _handleLike,
               onDislike: _handleDislike,

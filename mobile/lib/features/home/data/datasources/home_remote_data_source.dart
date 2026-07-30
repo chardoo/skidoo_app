@@ -4,9 +4,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart' as dio;
 import 'package:skidoo_app/api/dio_client_service.dart';
+import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
 import 'package:skidoo_app/models/event/Event.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 abstract class HomeRemoteDataSource {
   Future<List<Event>> searchEvents(String query);
@@ -50,10 +52,23 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   Stream<Photo> streamEventImages(String eventId, String email, bool alwaysPublicImages) async* {
   final uri = Uri.parse('${_api.dio.options.baseUrl}/client/search-images');
 
+  // This endpoint is authenticated, but the request is a raw http.Request
+  // rather than a Dio call — SSE needs the streamed response body, which Dio
+  // does not give us here. That means Dio's interceptors do not run, so the
+  // Authorization header AppInterceptors would have added has to be attached
+  // by hand. Without it the endpoint answers 401 and no photos ever arrive.
+  String token = '';
+  try {
+    token = await sl<AuthService>().getToken();
+  } catch (_) {
+    // Service locator not ready — send unauthenticated and let the server say.
+  }
+
   final request = http.Request('POST', uri)
     ..headers.addAll({
       'Accept': 'text/event-stream',
       'Content-Type': 'application/json',
+      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
     })
     ..body = jsonEncode({
       'eventId': eventId,
@@ -63,8 +78,12 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   final response = await request.send();
 
+  if (response.statusCode == 401) {
+    throw const app_ex.UnauthorizedException();
+  }
   if (response.statusCode != 200) {
-    throw Exception('Stream failed: ${response.statusCode}');
+    throw app_ex.ServerException(
+        'Image search failed: ${response.statusCode}');
   }
 
   yield* _parsePhotoStream(response.stream, DateTime.now());

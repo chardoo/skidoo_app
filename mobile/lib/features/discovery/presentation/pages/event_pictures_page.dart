@@ -654,17 +654,21 @@ class _WebViewerReactionsPanelState extends State<_WebViewerReactionsPanel> {
             const SizedBox(height: gap),
           ],
 
-          // Like
-          WebActionBtn(
-            icon:
-                _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-            iconColor: _liked ? ext.likeRed : Colors.white,
-            count: _likeCount,
-            countColor: _liked ? ext.likeRed : Colors.white,
-            iconSize: iconSize,
-            onTap: _toggleLike,
-          ),
-          const SizedBox(height: gap),
+          // Like — hidden when the owner has engagement switched off for this
+          // event or picture, same predicate the comment button uses.
+          if (widget.entry.commentsAllowed) ...[
+            WebActionBtn(
+              icon: _liked
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              iconColor: _liked ? ext.likeRed : Colors.white,
+              count: _likeCount,
+              countColor: _liked ? ext.likeRed : Colors.white,
+              iconSize: iconSize,
+              onTap: _toggleLike,
+            ),
+            const SizedBox(height: gap),
+          ],
 
           // Comment
           if (widget.entry.commentsAllowed)
@@ -853,6 +857,8 @@ class _FeedCardState extends State<_FeedCard> {
               initiallyLiked: pic.isLikedByUser,
               axis: Axis.vertical,
               showDownload: false,
+              // Both follow the owner's engagement switch for this event/picture.
+              showLike: widget.entry.commentsAllowed,
               showComment: widget.entry.commentsAllowed,
               onSend: () => GalleryShareSheet.show(
                 context,

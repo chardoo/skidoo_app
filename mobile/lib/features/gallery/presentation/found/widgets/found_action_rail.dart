@@ -109,21 +109,25 @@ class _FoundActionRailState extends State<FoundActionRail> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        MediaRailAction(
-          icon: Icons.favorite_rounded,
-          iconColor: _liked ? ext.likeRed : Colors.white,
-          label: '$_likeCount',
-          semanticLabel: _liked ? 'Unlike' : 'Like',
-          onTap: () => _gated(_toggleLike),
-        ),
-        gap,
-        MediaRailAction(
-          icon: Icons.mode_comment_rounded,
-          label: '${widget.photo.commentCount}',
-          semanticLabel: 'Comments',
-          onTap: () => _gated(_openComments),
-        ),
-        gap,
+        // Like and comment follow the owner's engagement switch for this
+        // picture; send and save stay available either way.
+        if (widget.photo.commentsEnabled)
+          MediaRailAction(
+            icon: Icons.favorite_rounded,
+            iconColor: _liked ? ext.likeRed : Colors.white,
+            label: '$_likeCount',
+            semanticLabel: _liked ? 'Unlike' : 'Like',
+            onTap: () => _gated(_toggleLike),
+          ),
+        if (widget.photo.commentsEnabled) gap,
+        if (widget.photo.commentsEnabled)
+          MediaRailAction(
+            icon: Icons.mode_comment_rounded,
+            label: '${widget.photo.commentCount}',
+            semanticLabel: 'Comments',
+            onTap: () => _gated(_openComments),
+          ),
+        if (widget.photo.commentsEnabled) gap,
         MediaRailAction(
           key: _bookmarkKey,
           icon: Icons.bookmark_rounded,
@@ -145,6 +149,5 @@ class _FoundActionRailState extends State<FoundActionRail> {
   /// Every engagement action is account-gated: a guest is routed to sign-up
   /// under "Join to get the full experience" and the tap is replayed once the
   /// account exists, so the like/save they intended still lands.
-  void _gated(VoidCallback action) =>
-      requireAccount(context, action: action);
+  void _gated(VoidCallback action) => requireAccount(context, action: action);
 }

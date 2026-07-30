@@ -407,8 +407,11 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                         showBlur: !widget.isAuthenticated && pics.length > 3,
                         onTap: handleTap,
                         scrollable: widget.isAuthenticated,
+                        // Double-tap-to-like answers to the same switch as the
+                        // like button — otherwise it is a silent way past a
+                        // hidden control.
                         onDoubleTap: widget.isAuthenticated
-                            ? _handleDoubleTap
+                            ? (_engagementAllowed ? _handleDoubleTap : () {})
                             : widget.onTap,
                         cardIndex: widget.cardIndex,
                         activeCardIndex: widget.activeCardIndex,
@@ -537,6 +540,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           dislikeCount: _dislikeCount,
           commentCount: widget.event.commentCount,
           commentsEnabled: commentsEnabled,
+          reactionsEnabled: _engagementAllowed,
           ext: ext,
           isExternalPanel: isExternalPanel,
           mediaH: mediaH! * 1.5,
@@ -649,14 +653,10 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
 
   Widget _buildWebCard(BuildContext context, AppThemeExtension ext,
       List<EventPicture> pics, double screenH) {
-    final commentsEnabled = AppConfigRepository.current.commentsEnabled &&
-        widget.event.commentsEnabled &&
-        (widget.event.pictures.isEmpty ||
-            widget
-                .event
-                .pictures[
-                    _currentPage.clamp(0, widget.event.pictures.length - 1)]
-                .commentsEnabled);
+    // Same split as the native path: comments also answer to the admin
+    // kill-switch, reactions only to the owner's own setting.
+    final commentsEnabled =
+        AppConfigRepository.current.commentsEnabled && _engagementAllowed;
 
     return LayoutBuilder(builder: (ctx, cons) {
       // External panel activates when the card has ≥ 60px of room beyond the
@@ -758,7 +758,18 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   // ── Shared helpers: used by both native and mobile-web layouts ───────────────
 
   bool get _commentsEnabled =>
-      AppConfigRepository.current.commentsEnabled &&
+      AppConfigRepository.current.commentsEnabled && _engagementAllowed;
+
+  /// Whether the owner permits engagement on what is currently on screen.
+  ///
+  /// Gates reactions as well as comments: `comments_enabled` is the owner's
+  /// "no feedback on this" switch, so a disabled event should not collect
+  /// likes or dislikes either.
+  ///
+  /// Unlike [_commentsEnabled] this ignores the global admin comments toggle —
+  /// that kill-switch is about written comments, and it would be wrong for an
+  /// admin disabling comments app-wide to also silence every like.
+  bool get _engagementAllowed =>
       widget.event.commentsEnabled &&
       (widget.event.pictures.isEmpty ||
           widget
@@ -779,6 +790,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
         dislikeCount: _dislikeCount,
         commentCount: widget.event.commentCount,
         commentsEnabled: _commentsEnabled,
+        reactionsEnabled: _engagementAllowed,
         ext: ext,
         onLike: widget.isAuthenticated
             ? () {

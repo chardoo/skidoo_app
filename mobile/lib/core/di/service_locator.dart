@@ -445,6 +445,7 @@ Future<void> setupServiceLocator() async {
         getRoomMessages: sl<GetRoomMessagesUseCase>(),
         acceptInvite: sl<AcceptRoomInviteUseCase>(),
         declineInvite: sl<DeclineRoomInviteUseCase>(),
+        clearRoomCache: sl<ClearRoomCacheUseCase>(),
         bgService: sl<ChatBackgroundService>(),
         authService: sl<AuthService>(),
       ));
