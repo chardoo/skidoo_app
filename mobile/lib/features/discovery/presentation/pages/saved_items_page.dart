@@ -15,6 +15,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:skidoo_app/core/common/widgets/app_error_view.dart';
 
 class SavedItemsPage extends StatefulWidget {
   static const routeName = '/saved-items';
@@ -220,12 +223,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
         ),
         leading: kIsWeb
             ? null
-            : IconButton(
-                tooltip: 'Back',
-                icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    color: ext.greetingColor, size: 18.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Divider(
@@ -248,29 +246,10 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
     }
 
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.all(AppSpacing.xxl.w),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off_outlined,
-                  size: 48.sp, color: ext.searchHintColor),
-              SizedBox(height: AppSpacing.md.h),
-              Text(_error!,
-                  textAlign: TextAlign.center,
-                  style:
-                      TextStyle(color: ext.searchHintColor, fontSize: 14.sp)),
-              SizedBox(height: AppSpacing.lg.h),
-              TextButton(
-                onPressed: _load,
-                child: Text('Retry',
-                    style: TextStyle(
-                        color: ext.accentGold, fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
-        ),
+      return AppErrorView(
+        message: _error!,
+        icon: Icons.cloud_off_outlined,
+        onRetry: _load,
       );
     }
 
@@ -362,16 +341,15 @@ class _SavedItemTile extends StatelessWidget {
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.sm.r),
         child: item.thumbnailUrl != null
-            ? Semantics(
-                image: true,
-                label: 'Saved item',
-                child: Image.network(
-                  item.thumbnailUrl!,
-                  width: 56.w,
-                  height: 56.w,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _thumb(ext),
-                ))
+            ? SkidooImage(
+                imageUrl: item.thumbnailUrl!,
+                semanticLabel: 'Saved item',
+                width: 56.w,
+                height: 56.w,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => _thumb(ext),
+                errorWidget: (_, __, ___) => _thumb(ext),
+              )
             : _thumb(ext),
       ),
       title: Text(

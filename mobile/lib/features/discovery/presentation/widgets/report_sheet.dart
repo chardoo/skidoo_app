@@ -9,6 +9,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 const reportReasons = <String, String>{
   'inappropriate_content': 'Inappropriate content',
@@ -119,7 +120,7 @@ class _ReportSheetState extends State<ReportSheet> {
                           label: 'Close',
                           child: GestureDetector(
                             onTap: () => Navigator.of(context).pop(),
-                            child: Icon(Icons.arrow_back_ios_new_rounded,
+                            child: Icon(AppBackButton.icon,
                                 color: ext.greetingColor, size: 18.sp),
                           )),
                     SizedBox(width: AppSpacing.md.w),

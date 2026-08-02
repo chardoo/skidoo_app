@@ -10,12 +10,15 @@ class EventCardWidget extends StatelessWidget {
   const EventCardWidget({
     super.key,
     required this.photo,
-    required this.height,
+    this.height,
     this.onTap,
   });
 
   final Photo photo;
-  final double height;
+
+  /// Fixed height for the rare caller that places the card outside a grid.
+  /// Null in a grid: the cell is already the size, and the card fills it.
+  final double? height;
   final VoidCallback? onTap;
 
   @override

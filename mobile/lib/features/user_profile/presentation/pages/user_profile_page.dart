@@ -8,11 +8,11 @@ import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/number_format.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/broadcasts_page.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
+import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart'
+    show EventPicturesPage, photosOfEvent;
 import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
@@ -168,52 +168,74 @@ class UserProfilePageState extends State<UserProfilePage>
     }
   }
 
-  /// Open what the tile stands for: an event goes to its pictures, a photo to
-  /// the viewer with the rest of the tab around it, so swiping works the same
-  /// way it does everywhere else in the app.
+  /// Open what the tile stands for — always inside its own event's album.
+  ///
+  /// A tile is a photo out of an album, so tapping it opens that album's
+  /// viewer positioned on it, with the rest of the event to swipe through and
+  /// "View album" to step back to the grid. Swiping through the other things
+  /// the user happened to bookmark would be a different album every photo.
   Future<void> _openTile(List<ProfilePhoto> tab, ProfilePhoto photo) async {
-    if (photo.isEvent) {
-      await _openEvent(photo);
+    final eventId = photo.isEvent ? (photo.eventId ?? photo.id) : photo.eventId;
+    if (eventId == null || eventId.isEmpty || _openingEvent) {
+      _openWithinTab(tab, photo);
       return;
     }
+
+    setState(() => _openingEvent = true);
+    try {
+      // The tile carries a cover and a name, not the event — the album is
+      // fetched the same way the Saved screen fetches it.
+      final event = await sl<DiscoveryRemoteDataSource>().getEventById(eventId);
+      final photos = photosOfEvent(event);
+      if (!mounted) return;
+      if (photos.isEmpty) {
+        _openWithinTab(tab, photo);
+        return;
+      }
+      // An event tile has no photo of its own to land on, so it starts at the
+      // beginning of its album.
+      final index = photo.isEvent
+          ? 0
+          : photos.indexWhere((p) => p.id == photo.id).clamp(0, photos.length - 1);
+
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (viewerContext) => FoundPhotoViewerPage(
+          photos: photos,
+          initialIndex: index,
+          onViewAlbum: () => Navigator.of(viewerContext).push(
+            MaterialPageRoute<void>(
+              builder: (_) => EventPicturesPage(event: event),
+            ),
+          ),
+        ),
+      ));
+      // The viewer can like and unlike, so the tabs may be stale coming back.
+      // Silent by now — the lists are already populated, so this swaps content
+      // in rather than clearing the screen.
+      if (mounted) unawaited(_load());
+    } catch (e) {
+      debugPrint('[UserProfilePage] openTile ERROR: $e');
+      if (mounted) {
+        // The album could not be loaded; the photo itself still opens.
+        _openWithinTab(tab, photo);
+      }
+    } finally {
+      if (mounted) setState(() => _openingEvent = false);
+    }
+  }
+
+  /// Fallback for a photo whose event cannot be resolved — better than a tap
+  /// that does nothing.
+  void _openWithinTab(List<ProfilePhoto> tab, ProfilePhoto photo) {
     final photos = tab.where((p) => !p.isEvent).toList();
     final index = photos.indexWhere((p) => p.id == photo.id);
     if (index < 0) return;
-    if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute<void>(
+    Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => FoundPhotoViewerPage(
         photos: [for (final p in photos) _asPhoto(p)],
         initialIndex: index,
       ),
     ));
-    // The viewer can like and unlike, so the tabs may be stale coming back.
-    // Silent by now — the lists are already populated, so this swaps content
-    // in rather than clearing the screen.
-    unawaited(_load());
-  }
-
-  Future<void> _openEvent(ProfilePhoto photo) async {
-    final eventId = photo.eventId ?? photo.id;
-    // Fetching the event takes a moment, and an impatient second tap would
-    // otherwise start a second fetch and push the page twice.
-    if (eventId.isEmpty || _openingEvent) return;
-    setState(() => _openingEvent = true);
-    try {
-      // The tile carries a cover and a name, not the event — the pictures page
-      // needs the whole thing, so it is fetched the same way the Saved screen
-      // fetches it.
-      final event = await sl<DiscoveryRemoteDataSource>().getEventById(eventId);
-      if (!mounted) return;
-      await Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => EventPicturesPage(event: event),
-      ));
-      if (mounted) unawaited(_load());
-    } catch (e) {
-      debugPrint('[UserProfilePage] openEvent ERROR: $e');
-      if (mounted) AppSnackBar.error(context, 'Could not open that event.');
-    } finally {
-      if (mounted) setState(() => _openingEvent = false);
-    }
   }
 
   /// The viewer speaks [Photo]; a tile is the little the grid needed.

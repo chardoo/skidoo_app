@@ -85,7 +85,9 @@ class CardInteractionBar extends StatelessWidget {
                       child: child,
                     ),
                     child: Icon(
-                      Icons.favorite_rounded,
+                      liked
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
                       key: ValueKey(liked),
                       color: liked ? ext.likeRed : ext.greetingColor,
                       size: 26.sp,
@@ -128,7 +130,9 @@ class CardInteractionBar extends StatelessWidget {
                       child: child,
                     ),
                     child: Icon(
-                      Icons.thumb_down_rounded,
+                      disliked
+                          ? Icons.thumb_down_rounded
+                          : Icons.thumb_down_outlined,
                       key: ValueKey(disliked),
                       color: disliked ? ext.dislikeBlue : ext.greetingColor,
                       size: 24.sp,
@@ -159,7 +163,7 @@ class CardInteractionBar extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.mode_comment_rounded,
+                  Icon(Icons.mode_comment_outlined,
                       color: ext.greetingColor, size: 24.sp),
                   if (commentCount > 0) ...[
                     SizedBox(width: 5.w),
@@ -202,7 +206,7 @@ class CardInteractionBar extends StatelessWidget {
           _AnimatedActionBtn(
             semanticLabel: 'Send',
             onTap: onShare,
-            child: Icon(Icons.near_me_rounded,
+            child: Icon(Icons.near_me_outlined,
                 color: ext.greetingColor, size: 24.sp),
           ),
 
@@ -225,7 +229,7 @@ class CardInteractionBar extends StatelessWidget {
                 onMessage!();
               },
               child: Icon(
-                Icons.chat_bubble_rounded,
+                Icons.chat_bubble_outline_rounded,
                 color: ext.accentGold,
                 size: 24.sp,
               ),
@@ -247,7 +251,7 @@ class CardInteractionBar extends StatelessWidget {
                 child: child,
               ),
               child: Icon(
-                Icons.bookmark_rounded,
+                saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                 key: ValueKey(saved),
                 color: saved ? ext.accentGold : ext.greetingColor,
                 size: 26.sp,

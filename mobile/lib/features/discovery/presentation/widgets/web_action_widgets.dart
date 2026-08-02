@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/follow/data/follow_repository.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 
 // ── Shared web UI primitives used by both the discovery feed and the
 //    fullscreen picture viewer on web desktop/laptop. ──────────────────────────
@@ -100,7 +100,7 @@ class _WebCreatorPinState extends State<WebCreatorPin> {
     final url = widget.imageUrl;
     if (url == null || url.isEmpty) return _fallback(initial);
     return ClipOval(
-      child: CachedNetworkImage(
+      child: SkidooImage(
         imageUrl: url,
         fit: BoxFit.cover,
         placeholder: (_, __) => _fallback(initial),

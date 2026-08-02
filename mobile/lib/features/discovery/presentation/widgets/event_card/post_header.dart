@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -6,6 +5,7 @@ import 'package:skidoo_app/features/discovery/presentation/widgets/card_interact
 import 'package:skidoo_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 
 /// Slim header row shown above a feed card's media: creator avatar + name,
 /// an "owner" badge for the current user's own posts, a Follow pill, and a
@@ -239,9 +239,10 @@ class CreatorInitialsAvatar extends StatelessWidget {
     final inner = (url == null || url.isEmpty)
         ? fallback
         : ClipOval(
-            child: CachedNetworkImage(
+            child: SkidooImage(
               imageUrl: url,
               fit: BoxFit.cover,
+              logicalWidth: size,
               placeholder: (_, __) => fallback,
               errorWidget: (_, __, ___) => fallback,
             ),

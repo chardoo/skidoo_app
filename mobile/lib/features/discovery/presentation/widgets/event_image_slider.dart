@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -43,20 +42,18 @@ class _EventImageSliderState extends State<EventImageSlider> {
               padding: EdgeInsets.symmetric(horizontal: 6.w),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14.r),
-                child: Semantics(
-                    image: true,
-                    label: 'Event photo',
-                    child: CachedNetworkImage(
-                      imageUrl: widget.pics[i].url,
-                      fit: BoxFit.cover,
-                      placeholder: (context, __) => Container(
-                          color: SkidooImagePlaceholder.colorOf(context)),
-                      errorWidget: (context, __, ___) => Container(
-                        color: SkidooImagePlaceholder.colorOf(context),
-                        child: const Icon(Icons.broken_image_outlined,
-                            color: Colors.white38),
-                      ),
-                    )),
+                child: SkidooImage(
+                  imageUrl: widget.pics[i].url,
+                  semanticLabel: 'Event photo',
+                  fit: BoxFit.cover,
+                  placeholder: (context, __) =>
+                      Container(color: SkidooImagePlaceholder.colorOf(context)),
+                  errorWidget: (context, __, ___) => Container(
+                    color: SkidooImagePlaceholder.colorOf(context),
+                    child: const Icon(Icons.broken_image_outlined,
+                        color: Colors.white38),
+                  ),
+                ),
               ),
             ),
           ),

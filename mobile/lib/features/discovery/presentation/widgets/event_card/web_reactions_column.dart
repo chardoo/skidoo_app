@@ -115,7 +115,7 @@ class WebReactionsColumn extends StatelessWidget {
             // ── Reactions ─────────────────────────────────────────────────────
             if (reactionsEnabled) ...[
               WebActionBtn(
-                icon: Icons.favorite_rounded,
+                icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                 iconColor: liked ? ext.likeRed : ext.greetingColor,
                 count: likeCount,
                 countColor: liked ? ext.likeRed : ext.greetingColor,
@@ -125,7 +125,7 @@ class WebReactionsColumn extends StatelessWidget {
               ),
               SizedBox(height: gap),
               WebActionBtn(
-                icon: Icons.thumb_down_rounded,
+                icon: disliked ? Icons.thumb_down_rounded : Icons.thumb_down_outlined,
                 iconColor: disliked ? ext.dislikeBlue : ext.greetingColor,
                 count: dislikeCount,
                 countColor: disliked ? ext.dislikeBlue : ext.greetingColor,
@@ -137,7 +137,7 @@ class WebReactionsColumn extends StatelessWidget {
             ],
             WebActionBtn(
               icon: commentsEnabled
-                  ? Icons.mode_comment_rounded
+                  ? Icons.mode_comment_outlined
                   : Icons.comments_disabled_rounded,
               iconColor: commentsEnabled
                   ? ext.greetingColor
@@ -152,7 +152,7 @@ class WebReactionsColumn extends StatelessWidget {
             ),
             SizedBox(height: gap),
             WebActionBtn(
-              icon: Icons.bookmark_rounded,
+              icon: saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
               iconColor: saved ? ext.accentGold : ext.greetingColor,
               count: null,
               countColor: ext.greetingColor,
@@ -162,7 +162,7 @@ class WebReactionsColumn extends StatelessWidget {
             ),
             SizedBox(height: gap),
             WebActionBtn(
-              icon: Icons.near_me_rounded,
+              icon: Icons.near_me_outlined,
               iconColor: ext.greetingColor,
               count: null,
               countColor: ext.greetingColor,

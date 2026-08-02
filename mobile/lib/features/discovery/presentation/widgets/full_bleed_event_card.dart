@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/components/media/media_rail_action.dart';
+import 'package:skidoo_app/components/media/media_reaction_rail.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/components/media/media_action_buttons.dart';
@@ -346,48 +346,36 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                   ],
                 ),
                 SizedBox(height: 26.h),
-                if (_engagementAllowed) ...[
-                  MediaRailAction(
-                    icon: Icons.favorite_rounded,
-                    iconColor: liked ? const Color(0xFFFF3B5C) : Colors.white,
-                    label: '${event.likes}',
-                    onTap: _toggleLike,
-                  ),
-                  SizedBox(height: AppSpacing.lg.h),
-                  MediaRailAction(
-                    icon: Icons.mode_comment_rounded,
-                    label: '${event.commentCount}',
-                    onTap: _openComments,
-                  ),
-                  SizedBox(height: AppSpacing.lg.h),
-                ],
+                // Only the bookmark reads bloc state, but the rail is one
+                // widget now, so the builder wraps the lot.
                 BlocBuilder<DiscoveryBloc, DiscoveryState>(
                   buildWhen: (prev, next) =>
                       prev.savedEventIds != next.savedEventIds,
-                  builder: (context, state) {
-                    final saved = state.savedEventIds.contains(event.id);
-                    return MediaRailAction(
-                      icon: Icons.bookmark_rounded,
-                      iconColor: saved ? Colors.amberAccent : Colors.white,
-                      onTap: _toggleSave,
-                    );
-                  },
-                ),
-                SizedBox(height: AppSpacing.lg.h),
-                MediaRailAction(
-                  icon: Icons.near_me_rounded,
-                  onTap: _share,
-                ),
-                SizedBox(height: AppSpacing.lg.h),
-                MediaRailAction(
-                  icon: Icons.ios_share_rounded,
-                  busy: _sharingExternal,
-                  onTap: _shareExternal,
-                ),
-                SizedBox(height: AppSpacing.lg.h),
-                MediaRailAction(
-                  icon: Icons.more_horiz_rounded,
-                  onTap: _showMoreOptions,
+                  builder: (context, state) => MediaReactionRail(
+                    actions: [
+                      if (_engagementAllowed) ...[
+                        MediaReaction.like(
+                          liked: liked,
+                          count: event.likes,
+                          onTap: _toggleLike,
+                        ),
+                        MediaReaction.comment(
+                          count: event.commentCount,
+                          onTap: _openComments,
+                        ),
+                      ],
+                      MediaReaction.bookmark(
+                        saved: state.savedEventIds.contains(event.id),
+                        onTap: _toggleSave,
+                      ),
+                      MediaReaction.send(onTap: _share),
+                      MediaReaction.shareExternally(
+                        busy: _sharingExternal,
+                        onTap: _shareExternal,
+                      ),
+                      MediaReaction.more(onTap: _showMoreOptions),
+                    ],
+                  ),
                 ),
               ],
             ),
