@@ -75,6 +75,46 @@ void main() {
     expect(opened, 0, reason: 'removing must not also open the photo');
   });
 
+  testWidgets('the tile gives under a finger and springs back', (tester) async {
+    await _pump(tester, onOpen: () {}, onRemove: () {});
+
+    double tileScale() => tester
+        .widgetList<AnimatedScale>(find.byType(AnimatedScale))
+        .first
+        .scale;
+
+    expect(tileScale(), 1, reason: 'at rest the tile is full size');
+
+    final press =
+        await tester.startGesture(tester.getCenter(find.byType(ProfilePhotoTile)));
+    await tester.pump();
+    expect(tileScale(), lessThan(1), reason: 'a held finger presses the tile in');
+
+    await press.up();
+    await tester.pump();
+    expect(tileScale(), 1, reason: 'letting go releases it');
+  });
+
+  testWidgets('dragging off a pressed tile releases it', (tester) async {
+    var opened = 0;
+    await _pump(tester, onOpen: () => opened++, onRemove: () {});
+
+    final press =
+        await tester.startGesture(tester.getCenter(find.byType(ProfilePhotoTile)));
+    await tester.pump();
+    // Scrolling the grid starts as a press on a tile; it must not stay stuck
+    // down, and it must not count as a tap.
+    await press.moveBy(const Offset(0, 220));
+    await press.up();
+    await tester.pump();
+
+    expect(
+      tester.widgetList<AnimatedScale>(find.byType(AnimatedScale)).first.scale,
+      1,
+    );
+    expect(opened, 0);
+  });
+
   testWidgets('an event tile is marked and still opens', (tester) async {
     var opened = 0;
     await _pump(
