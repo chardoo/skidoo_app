@@ -16,7 +16,7 @@ import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page
 import 'package:skidoo_app/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
-import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
+import 'package:skidoo_app/features/user_profile/presentation/pages/user_profile_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/pages/face_recognition_page.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:skidoo_app/services/auth_service.dart';
@@ -407,7 +407,7 @@ class _HomeViewState extends State<_HomeView> {
             HomeNavigationPage(),
             ChatRoomsPage(),
             NotificationsPage(),
-            AccountPage(),
+            UserProfilePage(),
           ],
         ),
         bottomNavigationBar: kIsWeb ? null : AnimatedSlide(
@@ -490,7 +490,7 @@ class _HomeViewState extends State<_HomeView> {
                 HomeNavigationPage(),
                 ChatRoomsPage(),
                 NotificationsPage(),
-                AccountPage(),
+                UserProfilePage(),
               ],
             ),
           ),

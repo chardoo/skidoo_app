@@ -439,6 +439,51 @@ class AdsRepository {
     return _unwrap<Map<String, dynamic>>(resp) ?? {};
   }
 
+  /// Put a closed request back on the board. The same request, so the
+  /// photographers who had already answered it stay attached.
+  Future<FeedRequestModel?> republishRequest(String requestId) async {
+    debugPrint('$_tag republishRequest → id=$requestId');
+    final resp = await _dio.post('/ads/requests/$requestId/republish');
+    debugPrint('$_tag republishRequest ← status=${resp.statusCode}');
+    final data = _unwrap<Map<String, dynamic>>(resp);
+    return data == null ? null : FeedRequestModel.fromJson(data);
+  }
+
+  /// Answer someone's request. Safe to call twice — the server treats a repeat
+  /// as the same interest, so a double tap cannot double the count.
+  Future<int> expressInterest(String requestId, {String? message}) async {
+    debugPrint('$_tag expressInterest → id=$requestId');
+    final resp = await _dio.post(
+      '/ads/requests/$requestId/interest',
+      data: {if (message != null && message.isNotEmpty) 'message': message},
+    );
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? const {};
+    return (data['interested_count'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<int> withdrawInterest(String requestId) async {
+    debugPrint('$_tag withdrawInterest → id=$requestId');
+    final resp = await _dio.delete('/ads/requests/$requestId/interest');
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? const {};
+    return (data['interested_count'] as num?)?.toInt() ?? 0;
+  }
+
+  /// Everyone who answered — the requester's own list, 403 for anyone else.
+  Future<List<RequestInterest>> getRequestInterests(
+    String requestId, {
+    int page = 1,
+    int limit = 25,
+  }) async {
+    debugPrint('$_tag getRequestInterests → id=$requestId page=$page');
+    final resp = await _dio.get(
+      '/ads/requests/$requestId/interests',
+      queryParameters: {'page': page, 'limit': limit},
+    );
+    return _unwrapList<Map<String, dynamic>>(resp)
+        .map(RequestInterest.fromJson)
+        .toList();
+  }
+
   // ── Campaign management ───────────────────────────────────────────────────
 
   Future<AdCampaign> createCampaign({

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:skidoo_app/core/utils/skidoo_filters.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -54,6 +53,9 @@ class FeedItemData {
     this.secondaryLabel,
     this.commentsEnabled = true,
     this.commentCount = 0,
+    this.interestedCount = 0,
+    this.viewerInterested = false,
+    this.onInterestTap,
     this.ctaLabel,
     this.ctaUrl,
     this.onCtaTap,
@@ -94,6 +96,13 @@ class FeedItemData {
 
   final bool commentsEnabled;
   final int commentCount;
+
+  /// Request cards only: how many photographers have answered, whether this
+  /// viewer is one of them, and the toggle. Null handler on your own request —
+  /// you cannot answer yourself, and the count still shows.
+  final int interestedCount;
+  final bool viewerInterested;
+  final Future<void> Function()? onInterestTap;
 
   final String? ctaLabel;
 
@@ -231,6 +240,7 @@ class FeedItemData {
   factory FeedItemData.fromRequest(
     FeedRequestModel req, {
     required VoidCallback onMessageTap,
+    Future<void> Function()? onInterestTap,
   }) {
     final parts = <String>[];
     if (req.eventType.isNotEmpty) parts.add(req.eventType);
@@ -263,6 +273,9 @@ class FeedItemData {
       secondaryLabel: parts.isEmpty ? null : parts.join(' · '),
       commentsEnabled: req.commentsEnabled,
       commentCount: req.commentCount,
+      interestedCount: req.interestedCount,
+      viewerInterested: req.viewerInterested,
+      onInterestTap: onInterestTap,
       ctaLabel: 'Message Requester',
       ctaUrl: null,
       onCtaTap: onMessageTap,
@@ -594,6 +607,15 @@ class _FeedItemCardState extends State<FeedItemCard>
 
             // ── 3. CTA strip — between image and reactions ────────────────────
             // Show when: ad/campaign has a URL, or request has a message handler.
+            if (d.type == FeedItemType.request &&
+                (d.interestedCount > 0 || d.onInterestTap != null))
+              _InterestStrip(
+                count: d.interestedCount,
+                interested: d.viewerInterested,
+                onTap: d.onInterestTap,
+                ext: ext,
+              ),
+
             if (d.ctaLabel != null &&
                 (d.ctaUrl?.isNotEmpty == true ||
                     (d.type == FeedItemType.request && d.onCtaTap != null)))
@@ -1330,6 +1352,136 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// "3 interested" beside the button a photographer answers with.
+///
+/// The count is the server's; the button is optimistic — answering is a toggle
+/// people tap twice, and waiting on a round trip before the state moves makes
+/// it feel broken. A failure puts it back.
+class _InterestStrip extends StatefulWidget {
+  const _InterestStrip({
+    required this.count,
+    required this.interested,
+    required this.ext,
+    this.onTap,
+  });
+
+  final int count;
+  final bool interested;
+  final AppThemeExtension ext;
+  final Future<void> Function()? onTap;
+
+  @override
+  State<_InterestStrip> createState() => _InterestStripState();
+}
+
+class _InterestStripState extends State<_InterestStrip> {
+  late bool _interested = widget.interested;
+  late int _count = widget.count;
+  bool _busy = false;
+
+  @override
+  void didUpdateWidget(_InterestStrip old) {
+    super.didUpdateWidget(old);
+    // A reload re-seeds from the server, unless a tap is still in flight.
+    if (!_busy && old.count != widget.count) {
+      _count = widget.count;
+      _interested = widget.interested;
+    }
+  }
+
+  Future<void> _toggle() async {
+    if (_busy || widget.onTap == null) return;
+    final wasInterested = _interested;
+    final wasCount = _count;
+    setState(() {
+      _busy = true;
+      _interested = !wasInterested;
+      _count = wasInterested ? (wasCount - 1).clamp(0, 1 << 30) : wasCount + 1;
+    });
+    try {
+      await widget.onTap!();
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _interested = wasInterested;
+          _count = wasCount;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = widget.ext;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 0),
+      child: Row(
+        children: [
+          if (_count > 0)
+            Text(
+              _count == 1 ? '1 interested' : '$_count interested',
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          const Spacer(),
+          if (widget.onTap != null)
+            Semantics(
+              button: true,
+              label: _interested ? 'Withdraw interest' : 'Express interest',
+              child: GestureDetector(
+                onTap: _toggle,
+                child: Container(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 14.w, vertical: 7.h),
+                  decoration: BoxDecoration(
+                    color: _interested
+                        ? ext.accentGold.withValues(alpha: 0.15)
+                        : ext.searchFieldFill,
+                    borderRadius: BorderRadius.circular(AppRadius.md.r),
+                    border: Border.all(
+                      color: _interested
+                          ? ext.accentGold
+                          : ext.searchHintColor.withValues(alpha: 0.2),
+                      width: 0.9,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _interested
+                            ? Icons.check_rounded
+                            : Icons.pan_tool_alt_outlined,
+                        size: 15.r,
+                        color:
+                            _interested ? ext.accentGold : ext.greetingColor,
+                      ),
+                      SizedBox(width: 6.w),
+                      Text(
+                        _interested ? "You're interested" : "I'm interested",
+                        style: TextStyle(
+                          color:
+                              _interested ? ext.accentGold : ext.greetingColor,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

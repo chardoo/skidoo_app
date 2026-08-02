@@ -6,13 +6,20 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/create_campaign_page.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/request_interests_page.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/interested_row.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class MyRequestsPage extends StatefulWidget {
-  const MyRequestsPage({super.key});
+  const MyRequestsPage({super.key, this.embedded = false});
+
+  /// True when this list is a tab inside Broadcasts, which already provides
+  /// the header and the back button — so it renders as a bare list rather
+  /// than a second page stacked inside the first.
+  final bool embedded;
 
   @override
   State<MyRequestsPage> createState() => _MyRequestsPageState();
@@ -52,6 +59,33 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
         _loading = false;
       });
     }
+  }
+
+  /// Put a closed request back on the board. The answers it already collected
+  /// come with it, so the count on the card does not reset.
+  Future<void> _republish(FeedRequestModel req) async {
+    debugPrint('[MyRequestsPage] _republish id=${req.id}');
+    try {
+      final updated = await _repo.republishRequest(req.id);
+      if (!mounted) return;
+      setState(() {
+        _requests = [
+          for (final r in _requests)
+            if (r.id == req.id) updated ?? r.copyWith(status: 'open') else r,
+        ];
+      });
+      AppSnackBar.success(context, 'Request is back on the board.');
+    } catch (e) {
+      debugPrint('[MyRequestsPage] _republish ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Could not republish this request.');
+    }
+  }
+
+  void _openInterests(FeedRequestModel req) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => RequestInterestsPage(requestId: req.id, title: req.title),
+    ));
   }
 
   Future<void> _close(FeedRequestModel req, String status) async {
@@ -209,17 +243,12 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
 
     final page = Scaffold(
       backgroundColor: ext.homeBackground,
-      appBar: AppBar(
+      appBar: widget.embedded ? null : AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
         leading: kIsWeb
             ? null
-            : IconButton(
-                tooltip: 'Back',
-                icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    color: ext.greetingColor, size: 20.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
           'My Requests',
           style: TextStyle(
@@ -256,12 +285,16 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
                             request: req,
                             ext: ext,
                             onActionTap: () => _showActions(context, req, ext),
+                            onRepublish: () => _republish(req),
+                            onInterestedTap: () => _openInterests(req),
                           );
                         },
                       ),
                     ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return widget.embedded
+        ? page
+        : webWrap(page, backgroundColor: ext.homeBackground);
   }
 }
 
@@ -272,10 +305,14 @@ class _MyRequestTile extends StatelessWidget {
     required this.request,
     required this.ext,
     required this.onActionTap,
+    this.onRepublish,
+    this.onInterestedTap,
   });
   final FeedRequestModel request;
   final AppThemeExtension ext;
   final VoidCallback onActionTap;
+  final VoidCallback? onRepublish;
+  final VoidCallback? onInterestedTap;
 
   @override
   Widget build(BuildContext context) {
@@ -353,6 +390,36 @@ class _MyRequestTile extends StatelessWidget {
                 color: ext.searchHintColor,
                 fontSize: 12.sp,
                 height: 1.4,
+              ),
+            ),
+          ],
+          if (r.interestedCount > 0) ...[
+            SizedBox(height: AppSpacing.md.h),
+            InterestedRow(
+              interested: r.interested,
+              count: r.interestedCount,
+              ext: ext,
+              onTap: onInterestedTap,
+            ),
+          ],
+          // A closed request keeps its answers, so republishing is offered
+          // right on the card rather than buried in the actions sheet.
+          if ((r.status == 'closed' || r.status == 'filled') &&
+              onRepublish != null) ...[
+            SizedBox(height: AppSpacing.md.h),
+            Semantics(
+              button: true,
+              label: 'Republish request',
+              child: GestureDetector(
+                onTap: onRepublish,
+                child: Text(
+                  'Republish',
+                  style: TextStyle(
+                    color: ext.accentGold,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
           ],

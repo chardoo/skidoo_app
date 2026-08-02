@@ -10,6 +10,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/feed_item_card.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
@@ -49,6 +50,10 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
   String? _errorMessage;
   String? _selectedEventType;
 
+  /// Read once so the board can tell your own requests apart from everyone
+  /// else's — you cannot answer your own.
+  String _myUserId = '';
+
   // Sponsored ad at top of the board (null = show nothing)
   AdModel? _sponsoredAd;
   String? _sponsoredImpressionId;
@@ -58,7 +63,13 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
   @override
   void initState() {
     super.initState();
+    _loadMyUserId();
     _load();
+  }
+
+  Future<void> _loadMyUserId() async {
+    final id = await AuthService().getUserId();
+    if (mounted) setState(() => _myUserId = id);
   }
 
   @override
@@ -136,6 +147,26 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
     }
   }
 
+  /// Answer a request, or take the answer back. The card moves optimistically;
+  /// this just records it and keeps the list in step so leaving and coming back
+  /// shows the same thing.
+  Future<void> _toggleInterest(FeedRequestModel req) async {
+    final nowInterested = !req.viewerInterested;
+    final count = nowInterested
+        ? await _repo.expressInterest(req.id)
+        : await _repo.withdrawInterest(req.id);
+    if (!mounted) return;
+    setState(() {
+      _requests = [
+        for (final r in _requests)
+          if (r.id == req.id)
+            r.copyWith(interestedCount: count, viewerInterested: nowInterested)
+          else
+            r,
+      ];
+    });
+  }
+
   Future<void> _openChat(FeedRequestModel req) async {
     debugPrint(
         '[RequestBoardPage] _openChat requesterId=${req.requesterId} name="${req.requesterName}"');
@@ -196,12 +227,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : IconButton(
-                tooltip: 'Back',
-                icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    color: ext.greetingColor, size: 20.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
           'Request Board',
           style: TextStyle(
@@ -305,6 +331,11 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                             data: FeedItemData.fromRequest(
                               req,
                               onMessageTap: () => _openChat(req),
+                              // Your own request is one you cannot answer, so
+                              // the card shows its count without the button.
+                              onInterestTap: req.requesterId == _myUserId
+                                  ? null
+                                  : () => _toggleInterest(req),
                             ),
                             onHide: () =>
                                 setState(() => _hiddenIds.add(req.id)),

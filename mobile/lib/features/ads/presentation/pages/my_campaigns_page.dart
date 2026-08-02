@@ -13,7 +13,12 @@ import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class MyCampaignsPage extends StatefulWidget {
-  const MyCampaignsPage({super.key});
+  const MyCampaignsPage({super.key, this.embedded = false});
+
+  /// True when this list is a tab inside Broadcasts, which already provides
+  /// the header and the back button — so it renders as a bare list rather
+  /// than a second page stacked inside the first.
+  final bool embedded;
 
   @override
   State<MyCampaignsPage> createState() => _MyCampaignsPageState();
@@ -334,17 +339,12 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
 
     final page = Scaffold(
       backgroundColor: ext.homeBackground,
-      appBar: AppBar(
+      appBar: widget.embedded ? null : AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
         leading: kIsWeb
             ? null
-            : IconButton(
-                tooltip: 'Back',
-                icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    color: ext.greetingColor, size: 20.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
           'My Campaigns',
           style: TextStyle(
@@ -389,7 +389,9 @@ class _MyCampaignsPageState extends State<MyCampaignsPage> {
                       ),
                     ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return widget.embedded
+        ? page
+        : webWrap(page, backgroundColor: ext.homeBackground);
   }
 }
 
