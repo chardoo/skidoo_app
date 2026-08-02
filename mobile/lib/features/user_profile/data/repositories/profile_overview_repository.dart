@@ -32,14 +32,27 @@ class ProfileOverviewRepository {
     return ProfileOverview.fromJson(_asMap(resp.data));
   }
 
-  /// Photos the user liked, newest like first.
-  Future<List<ProfilePhoto>> getLikedPhotos({int page = 1, int limit = 30}) async {
+  /// Everything the user liked — photos and events together, newest first.
+  ///
+  /// Asks for both rather than just pictures: a liked event is a like, and a
+  /// tab that dropped it would look like the like had failed. An event renders
+  /// by its own cover.
+  Future<List<ProfilePhoto>> getLikedPhotos({int limit = 30}) async {
     final resp = await _dio.get('/client/my-likes', queryParameters: {
-      'type': 'pictures',
-      'page': page,
+      'type': 'all',
       'limit': limit,
     });
-    return _listUnder(resp.data, 'data').map(ProfilePhoto.fromJson).toList();
+
+    final liked = <ProfilePhoto>[
+      ..._listUnder(resp.data, 'pictures').map(ProfilePhoto.fromJson),
+      ..._listUnder(resp.data, 'events')
+          .map(ProfilePhoto.fromLikedEvent)
+          .whereType<ProfilePhoto>(),
+    ];
+    // Each list arrives sorted, but they are two lists — one grid means one
+    // order, and the only one that makes sense is when it was liked.
+    liked.sort((a, b) => (b.likedAt ?? '').compareTo(a.likedAt ?? ''));
+    return liked;
   }
 
   /// Everything bookmarked — the same list the Saved screen shows, from the
@@ -83,6 +96,15 @@ class ProfileOverviewRepository {
   /// feed uses, so calling it on something already liked removes it.
   Future<void> unlikePhoto(String pictureId) async {
     await _dio.post('/chat/pictures/$pictureId/like');
+  }
+
+  /// Unlike an event. Sending the reaction already held clears it, so this
+  /// toggles the like off the same way the photo call does.
+  Future<void> unlikeEvent(String eventId) async {
+    await _dio.post(
+      '/chat/events/$eventId/reaction',
+      queryParameters: {'reaction': 'like'},
+    );
   }
 }
 
@@ -149,6 +171,7 @@ class ProfilePhoto {
     this.eventName,
     this.savedItemId,
     this.isEvent = false,
+    this.likedAt,
   });
 
   final String id;
@@ -166,8 +189,12 @@ class ProfilePhoto {
   /// photos, which are unliked by picture id instead.
   final String? savedItemId;
 
-  /// A bookmarked event rather than a photo — the tile shows its cover.
+  /// An event rather than a photo — the tile shows its cover, and removing it
+  /// clears an event reaction rather than a picture like.
   final bool isEvent;
+
+  /// When it was liked. Sorts the two liked lists into one grid.
+  final String? likedAt;
 
   bool get isVideo => mediaType == 'video';
 
@@ -183,6 +210,24 @@ class ProfilePhoto {
       mediaType: json['mediaType'] as String? ?? 'image',
       eventId: event['id'] as String? ?? json['eventId'] as String?,
       eventName: event['eventName'] as String?,
+      likedAt: json['likedAt'] as String?,
+    );
+  }
+
+  /// A liked event. Its cover is the tile — `coverUrl` is the event's own
+  /// image, which is what stands in for a photo it has none of.
+  static ProfilePhoto? fromLikedEvent(Map<String, dynamic> json) {
+    final url = (json['coverUrl'] ?? json['url']) as String?;
+    if (url == null || url.isEmpty) return null;
+    return ProfilePhoto(
+      id: json['id'] as String? ?? '',
+      url: url,
+      width: (json['coverWidth'] as num?)?.toInt(),
+      height: (json['coverHeight'] as num?)?.toInt(),
+      eventId: json['id'] as String?,
+      eventName: json['eventName'] as String?,
+      isEvent: true,
+      likedAt: json['likedAt'] as String?,
     );
   }
 

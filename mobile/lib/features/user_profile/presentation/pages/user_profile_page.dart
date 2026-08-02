@@ -118,7 +118,12 @@ class UserProfilePageState extends State<UserProfilePage>
             if (p.id != photo.id) p,
         ]);
     try {
-      await _repo.unlikePhoto(photo.id);
+      // An event's like lives on a different endpoint to a photo's.
+      if (photo.isEvent) {
+        await _repo.unlikeEvent(photo.id);
+      } else {
+        await _repo.unlikePhoto(photo.id);
+      }
       _loadHeader();
     } catch (e) {
       debugPrint('[UserProfilePage] unlike ERROR: $e');
