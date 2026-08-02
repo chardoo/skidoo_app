@@ -40,10 +40,20 @@ String _resolveErrorMessage(String key, AppLocalizations l10n) => switch (key) {
     };
 
 class AccountPage extends StatelessWidget {
-  const AccountPage({super.key});
+  const AccountPage({super.key, this.reuseHostBloc = false});
+
+  /// True when an ancestor already provides a loaded [UserProfileBloc].
+  ///
+  /// This page used to be the Profile tab itself, built once inside the nav's
+  /// IndexedStack and kept warm. Pushing it as a route instead meant a fresh
+  /// bloc and a fresh fetch on every open, which is why settings went from
+  /// instant to a wait — the data was already sitting in the bloc the host
+  /// provides.
+  final bool reuseHostBloc;
 
   @override
   Widget build(BuildContext context) {
+    if (reuseHostBloc) return const _AccountView();
     return BlocProvider(
       create: (_) =>
           sl<UserProfileBloc>()..add(const UserProfileLoadRequested()),

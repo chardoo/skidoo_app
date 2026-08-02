@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
@@ -16,6 +17,7 @@ import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo
 import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
 import 'package:skidoo_app/features/user_profile/data/repositories/profile_overview_repository.dart';
+import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
@@ -80,31 +82,35 @@ class UserProfilePageState extends State<UserProfilePage>
   }
 
   Future<void> _loadHeader() async {
-    if (mounted) setState(() => _loadingHeader = true);
+    // A spinner only the first time. Every visit refetches — that is how a
+    // like made elsewhere shows up here — but replacing loaded content with a
+    // spinner on each visit is what made the screen look like it never settles.
+    final first = _overview.id.isEmpty;
+    if (first && mounted) setState(() => _loadingHeader = true);
     try {
       final overview = await _repo.getOverview();
       if (mounted) setState(() => _overview = overview);
     } catch (e) {
       debugPrint('[UserProfilePage] header ERROR: $e');
     } finally {
-      if (mounted) setState(() => _loadingHeader = false);
+      if (mounted && _loadingHeader) setState(() => _loadingHeader = false);
     }
   }
 
   Future<void> _loadLiked() async {
-    if (mounted) setState(() => _loadingLiked = true);
+    if (_liked.isEmpty && mounted) setState(() => _loadingLiked = true);
     try {
       final liked = await _repo.getLikedPhotos();
       if (mounted) setState(() => _liked = liked);
     } catch (e) {
       debugPrint('[UserProfilePage] liked ERROR: $e');
     } finally {
-      if (mounted) setState(() => _loadingLiked = false);
+      if (mounted && _loadingLiked) setState(() => _loadingLiked = false);
     }
   }
 
   Future<void> _loadBookmarks() async {
-    if (mounted) setState(() => _loadingBookmarks = true);
+    if (_bookmarked.isEmpty && mounted) setState(() => _loadingBookmarks = true);
     try {
       // The bookmarks endpoint is addressed by client id and only ever serves
       // the caller's own, so it takes the signed-in id rather than a param.
@@ -116,7 +122,7 @@ class UserProfilePageState extends State<UserProfilePage>
     } catch (e) {
       debugPrint('[UserProfilePage] bookmarks ERROR: $e');
     } finally {
-      if (mounted) setState(() => _loadingBookmarks = false);
+      if (mounted && _loadingBookmarks) setState(() => _loadingBookmarks = false);
     }
   }
 
@@ -136,7 +142,7 @@ class UserProfilePageState extends State<UserProfilePage>
       } else {
         await _repo.unlikePhoto(photo.id);
       }
-      _loadHeader();
+      unawaited(_loadHeader());
     } catch (e) {
       debugPrint('[UserProfilePage] unlike ERROR: $e');
       if (mounted) setState(() => _liked = previous);
@@ -154,6 +160,8 @@ class UserProfilePageState extends State<UserProfilePage>
     try {
       final userId = await AuthService().getUserId();
       await _repo.removeBookmark(userId, savedItemId);
+      // The figures above the tabs move with what is in them.
+      unawaited(_loadHeader());
     } catch (e) {
       debugPrint('[UserProfilePage] removeBookmark ERROR: $e');
       if (mounted) setState(() => _bookmarked = previous);
@@ -179,6 +187,8 @@ class UserProfilePageState extends State<UserProfilePage>
       ),
     ));
     // The viewer can like and unlike, so the tabs may be stale coming back.
+    // Silent by now — the lists are already populated, so this swaps content
+    // in rather than clearing the screen.
     unawaited(_load());
   }
 
@@ -224,8 +234,26 @@ class UserProfilePageState extends State<UserProfilePage>
       );
 
   void _openSettings() {
+    // Handed the bloc the host already keeps loaded, rather than letting the
+    // page build its own and refetch: a route gets a new context, and without
+    // this the settings screen reloads the account every single time it opens.
+    UserProfileBloc? host;
+    try {
+      host = context.read<UserProfileBloc>();
+    } catch (_) {
+      // No host bloc — this page is only ever built inside one today, but a
+      // settings screen that opens slowly beats one that cannot open at all.
+      host = null;
+    }
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const AccountPage()),
+      MaterialPageRoute<void>(
+        builder: (_) => host == null
+            ? const AccountPage()
+            : BlocProvider<UserProfileBloc>.value(
+                value: host,
+                child: const AccountPage(reuseHostBloc: true),
+              ),
+      ),
     );
   }
 
