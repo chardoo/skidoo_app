@@ -22,10 +22,15 @@ class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
 
   @override
-  State<UserProfilePage> createState() => _UserProfilePageState();
+  State<UserProfilePage> createState() => UserProfilePageState();
 }
 
-class _UserProfilePageState extends State<UserProfilePage>
+/// Public so the nav can reach it through a [GlobalKey]: this page lives in an
+/// IndexedStack and is built once at start-up, well before the user opens it —
+/// often before there is even a token to load with. Without a nudge when the
+/// tab is opened it would sit on whatever it fetched at launch, and a photo
+/// liked elsewhere would not show up until the app restarted.
+class UserProfilePageState extends State<UserProfilePage>
     with SingleTickerProviderStateMixin {
   final _repo = ProfileOverviewRepository();
   late final TabController _tabs;
@@ -50,6 +55,10 @@ class _UserProfilePageState extends State<UserProfilePage>
     _tabs.dispose();
     super.dispose();
   }
+
+  /// Called by the nav each time the Profile tab is opened, so likes and
+  /// bookmarks made elsewhere in the app are there on arrival.
+  Future<void> refresh() => _load();
 
   /// Each piece loads on its own so a slow or failing tab never holds up the
   /// header — the figures are the first thing on screen and the cheapest to
@@ -128,8 +137,12 @@ class _UserProfilePageState extends State<UserProfilePage>
           icon: Icon(Icons.add_rounded, color: ext.greetingColor, size: 26.r),
           onPressed: () => CreateBottomSheet.show(context),
         ),
+        // The name, not the username: uiqueName doubles as the face-recognition
+        // person id and is an email on most accounts.
         title: Text(
-          _overview.username,
+          _overview.name?.isNotEmpty == true
+              ? _overview.name!
+              : _overview.username,
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
@@ -146,10 +159,10 @@ class _UserProfilePageState extends State<UserProfilePage>
           SizedBox(width: AppSpacing.xs.w),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        color: ext.accentGold,
-        child: NestedScrollView(
+      // The indicator sits inside each tab rather than around the
+      // NestedScrollView: the tab's own list owns the drag, so an outer one
+      // never sees the gesture.
+      body: NestedScrollView(
           headerSliverBuilder: (context, _) => [
             SliverToBoxAdapter(
               child: _Header(
@@ -178,36 +191,68 @@ class _UserProfilePageState extends State<UserProfilePage>
               ),
             ),
           ],
-          body: TabBarView(
-            controller: _tabs,
-            children: [
-              _PhotoGrid(
+        body: TabBarView(
+          controller: _tabs,
+          children: [
+            _Refreshable(
+              onRefresh: _load,
+              ext: ext,
+              child: _PhotoGrid(
                 photos: _liked,
                 loading: _loadingLiked,
                 ext: ext,
                 emptyTitle: 'Nothing liked yet',
                 emptyHint: 'Photos you like show up here.',
               ),
-              _PhotoGrid(
+            ),
+            _Refreshable(
+              onRefresh: _load,
+              ext: ext,
+              child: _PhotoGrid(
                 photos: _bookmarked,
                 loading: _loadingBookmarks,
                 ext: ext,
                 emptyTitle: 'Nothing bookmarked yet',
                 emptyHint: 'Bookmark a photo to find it here.',
               ),
-              _BroadcastsTab(
+            ),
+            _Refreshable(
+              onRefresh: _load,
+              ext: ext,
+              child: _BroadcastsTab(
                 requests: _overview.requests,
                 campaigns: _overview.campaigns,
                 ext: ext,
                 onOpen: _openBroadcasts,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
 
     return webWrap(page, backgroundColor: ext.homeBackground);
+  }
+}
+
+class _Refreshable extends StatelessWidget {
+  const _Refreshable({
+    required this.child,
+    required this.onRefresh,
+    required this.ext,
+  });
+
+  final Widget child;
+  final Future<void> Function() onRefresh;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      color: ext.accentGold,
+      child: child,
+    );
   }
 }
 

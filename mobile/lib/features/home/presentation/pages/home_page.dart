@@ -329,6 +329,11 @@ class _HomeViewState extends State<_HomeView> {
   // No longer used — nav visibility is driven by scroll direction only.
   void _onHomeTap() {}
 
+  /// The Profile tab's index, and a handle on its state so it can be told to
+  /// reload when the tab is opened.
+  static const _profileTab = 3;
+  final _profileKey = GlobalKey<UserProfilePageState>();
+
   void _changeTab(int index) {
     if (kIsWeb) {
       // Pop any sub-pages (SearchResults, EventPictures, AccountPage, etc.)
@@ -356,6 +361,14 @@ class _HomeViewState extends State<_HomeView> {
     if (index == 1) {
       // Full reload so any newly created rooms appear immediately.
       context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
+    }
+
+    if (index == _profileTab) {
+      // Same reason as the chat reload above. The IndexedStack builds this page
+      // once at start-up — before there is a token to load with, and long
+      // before anything is liked or bookmarked — so opening the tab is what
+      // makes it fetch.
+      _profileKey.currentState?.refresh();
     }
 
     _loadedTabs.add(index);
@@ -403,11 +416,11 @@ class _HomeViewState extends State<_HomeView> {
         extendBody: true,
         body: IndexedStack(
           index: _selectedTab,
-          children: const [
-            HomeNavigationPage(),
-            ChatRoomsPage(),
-            NotificationsPage(),
-            UserProfilePage(),
+          children: [
+            const HomeNavigationPage(),
+            const ChatRoomsPage(),
+            const NotificationsPage(),
+            UserProfilePage(key: _profileKey),
           ],
         ),
         bottomNavigationBar: kIsWeb ? null : AnimatedSlide(
@@ -486,11 +499,11 @@ class _HomeViewState extends State<_HomeView> {
           Expanded(
             child: IndexedStack(
               index: _selectedTab,
-              children: const [
-                HomeNavigationPage(),
-                ChatRoomsPage(),
-                NotificationsPage(),
-                UserProfilePage(),
+              children: [
+                const HomeNavigationPage(),
+                const ChatRoomsPage(),
+                const NotificationsPage(),
+                UserProfilePage(key: _profileKey),
               ],
             ),
           ),
