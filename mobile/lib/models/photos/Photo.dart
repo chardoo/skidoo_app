@@ -10,6 +10,8 @@
 }
 */
 
+import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
+
 class Photo {
   final String id;
   final String eventId;
@@ -69,7 +71,12 @@ class Photo {
       ? width! / height!
       : null;
 
-  bool get isVideo => mediaType == 'video';
+  /// True for a clip. `media_type` is the server's answer, but not every
+  /// endpoint sends it — where it's missing the url still gives it away, and
+  /// without this such a record loses its play badge and opens in the photo
+  /// viewer instead of the player.
+  bool get isVideo =>
+      mediaType == 'video' || CloudinaryTransform.isVideoUrl(url);
 
   /// [eventDate] parsed for date filtering/sorting. Null when the server
   /// sent an empty or non-ISO value.
@@ -214,7 +221,9 @@ class Photo {
           (json['media_type'] ?? json['mediaType'] as String?) ?? 'image',
       width: (json['width'] as num?)?.toInt(),
       height: (json['height'] as num?)?.toInt(),
-      durationSeconds: (json['duration_seconds'] as num?)?.toDouble(),
+      durationSeconds:
+          ((json['durationSeconds'] ?? json['duration_seconds']) as num?)
+              ?.toDouble(),
       photographerName:
           _pick([user, event], ['name', 'userName', 'photographerName']),
       photographerAvatarUrl: _avatarOf(user),

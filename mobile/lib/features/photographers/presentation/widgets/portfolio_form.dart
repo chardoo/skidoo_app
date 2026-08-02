@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/constants/photography_specialties.dart';
+import 'package:skidoo_app/core/utils/image_pick.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
@@ -134,8 +137,21 @@ class _PortfolioFormState extends State<PortfolioForm> {
     _notify();
   }
 
+  /// Adds to a batch rather than replacing one, so the cap is on what has piled
+  /// up across taps — not on any single trip to the gallery. All of it goes up
+  /// in one inline request when the form is saved.
   Future<void> _addSamplePhotos() async {
-    final picked = await ImagePicker().pickMultiImage(imageQuality: 85);
+    final remaining = UploadSamplesUseCase.maxPerUpload - _newSamples.length;
+    if (remaining <= 0) {
+      AppSnackBar.error(
+        context,
+        'You can add up to ${UploadSamplesUseCase.maxPerUpload} photos at a '
+        'time. Save these first, then add more.',
+      );
+      return;
+    }
+
+    final picked = await pickImagesUpTo(ImagePicker(), limit: remaining);
     if (picked.isEmpty) return;
     setState(() => _newSamples.addAll(picked));
     _notify();

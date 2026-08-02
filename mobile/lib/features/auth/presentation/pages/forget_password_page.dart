@@ -11,6 +11,7 @@ import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/validators/validators.dart';
 import 'package:skidoo_app/features/auth/domain/usecases/request_password_reset_usecase.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/verify_reset_code_page.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 /// Step 1 of password reset — "Reset your password" (see
 /// mobile/docs/FRONTEND_RESET_PASSWORD.md). Sends a 6-digit code to the
@@ -83,7 +84,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                         padding: EdgeInsets.zero,
                         alignment: Alignment.centerLeft,
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: Icon(Icons.arrow_back_ios_new_rounded,
+                        icon: Icon(AppBackButton.icon,
                             color: ext.greetingColor, size: 20.sp),
                       ),
                     SizedBox(height: AppSpacing.lg.h),

@@ -1,13 +1,11 @@
 import 'dart:ui';
 
-import 'package:skidoo_app/core/widgets/photo_aspect_box.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/widgets/media_grid.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/responsive.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
@@ -15,6 +13,7 @@ import 'package:skidoo_app/features/home/presentation/pages/search_results_page.
 import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 /// Full-page, routed version of [WebSearchPhotosPanel] used on web so that
 /// selecting an event from the sidebar search opens the photos regardless of
@@ -153,7 +152,7 @@ class _Header extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.arrow_back_ios_new_rounded,
+                    Icon(AppBackButton.icon,
                         color: ext.greetingColor, size: 14.sp),
                     SizedBox(width: 6.w),
                     Text(
@@ -299,17 +298,13 @@ class _PhotoGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = responsiveColumnCount(constraints.maxWidth, minColWidth: 160);
         return CustomScrollView(
           cacheExtent: 800,
           slivers: [
             SliverPadding(
               padding: EdgeInsets.fromLTRB(10.w, 12.h, 10.w, 16.h),
-              sliver: SliverMasonryGrid.count(
-                crossAxisCount: cols,
-                mainAxisSpacing: 8.h,
-                crossAxisSpacing: 8.w,
-                childCount: photos.length,
+              sliver: MediaGridSliver(
+                itemCount: photos.length,
                 itemBuilder: (_, i) => _PhotoCard(photo: photos[i], ext: ext),
               ),
             ),
@@ -348,33 +343,30 @@ class _PhotoCard extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10.r),
       child: Stack(
+        fit: StackFit.expand,
         children: [
-          // Sized from the server's width/height so the masonry column has the
-          // tile's true shape before the image decodes — see [PhotoAspectBox].
-          PhotoAspectBox(
-            aspectRatio: photo.aspectRatio,
-            fallbackHeight: 150.h,
-            child: SkidooImage(
-              imageUrl: photo.url,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              semanticLabel: 'Photo',
-              placeholder: (_, __) => ColoredBox(
-                color: ext.searchFieldFill,
-                child: Center(
-                  child: SizedBox(
-                    width: 18.w,
-                    height: 18.w,
-                    child: CircularProgressIndicator(
-                        color: ext.accentGold, strokeWidth: 2),
-                  ),
+          // The grid cell is a fixed square, so the photo fills and crops to it
+          // rather than being sized from its own dimensions.
+          SkidooImage(
+            imageUrl: photo.url,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            semanticLabel: 'Photo',
+            placeholder: (_, __) => ColoredBox(
+              color: ext.searchFieldFill,
+              child: Center(
+                child: SizedBox(
+                  width: 18.w,
+                  height: 18.w,
+                  child: CircularProgressIndicator(
+                      color: ext.accentGold, strokeWidth: 2),
                 ),
               ),
-              errorWidget: (_, __, ___) => ColoredBox(
-                color: ext.searchFieldFill,
-                child: Icon(Icons.broken_image_outlined,
-                    color: ext.searchHintColor, size: 24.sp),
-              ),
+            ),
+            errorWidget: (_, __, ___) => ColoredBox(
+              color: ext.searchFieldFill,
+              child: Icon(Icons.broken_image_outlined,
+                  color: ext.searchHintColor, size: 24.sp),
             ),
           ),
           // Price badge

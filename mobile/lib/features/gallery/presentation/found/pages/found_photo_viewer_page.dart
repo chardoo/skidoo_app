@@ -1,11 +1,16 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/widgets/image_aspect.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/dark_media_surface.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_photo_filmstrip.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_photo_stage.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 /// Full-screen viewer for an album's photos: "n of total" in the app bar, the
 /// photo with its badge/action-rail/photographer overlays, and a filmstrip of
@@ -48,34 +53,27 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
     );
   }
 
+  /// Dark in a light app as well: the photo is the whole point of this screen,
+  /// and the surround's job is to get out of its way. It is also most of the
+  /// screen — the media is boxed to its own shape — and the overlays that sit
+  /// *on* it (badge, action rail, meta bar) are white-on-scrim for an arbitrary
+  /// photo underneath, which a pale surround undercuts.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      DarkMediaSurface(child: Builder(builder: _buildViewer));
+
+  Widget _buildViewer(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final total = widget.photos.length;
 
     final page = Scaffold(
-      // Follows the app theme. The surround is the page's own background, and
-      // the overlays that sit *on* the photo (badge, action rail, meta bar)
-      // stay light-on-scrim in both themes — the photo underneath is arbitrary.
       backgroundColor: ext.homeBackground,
       body: SafeArea(
         child: Column(
           children: [
          
                 _ViewerTopBar(index: _index,  total: total),
-            Expanded(
-              child: PageView.builder(
-                controller: _pageCtrl,
-                itemCount: total,
-                onPageChanged: (i) => setState(() => _index = i),
-                itemBuilder: (_, i) => FoundPhotoStage(
-                  key: ValueKey('stage_${widget.photos[i].id}'),
-                  photo: widget.photos[i],
-                  isActive: i == _index,
-                  onViewAlbum: widget.onViewAlbum,
-                ),
-              ),
-            ),
+            _buildMedia(total),
             if (total > 1) ...[
               SizedBox(height: AppSpacing.lg.h),
               FoundPhotoFilmstrip(
@@ -92,6 +90,63 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
     );
 
     return webWrap(page, backgroundColor: ext.homeBackground);
+  }
+
+  /// The pager: centred in the space between the top bar and the filmstrip,
+  /// and exactly as tall as the current photo needs.
+  ///
+  /// Two separate things, and both matter. The media sits in the middle of the
+  /// page — that is the design, and it is what makes a wide shot and a tall one
+  /// feel like the same screen. But its *height* is the image's own
+  /// (`width ÷ aspect ratio`) rather than every pixel the column had left, so
+  /// the pager's bounds are the photo's bounds: the overlays hang off the
+  /// image's edges, swipes and taps land on the photo rather than on empty
+  /// background, and a page of an unknown shape can't be handed a fixed slab.
+  ///
+  /// [Expanded] + [Center] is what centres it; the inner [SizedBox] is what
+  /// keeps it the photo's size. The height is capped at what is actually
+  /// available so a tall portrait fills the screen instead of overflowing,
+  /// without this having to know what the top bar and filmstrip cost.
+  Widget _buildMedia(int total) {
+    final photo = widget.photos[_index];
+
+    return Expanded(
+      child: Center(
+        child: ResolvedAspect(
+          imageUrl: photo.url,
+          knownAspect: photo.aspectRatio,
+          builder: (context, aspect) => LayoutBuilder(
+            builder: (context, constraints) {
+              final natural = constraints.maxWidth / aspect;
+              return AnimatedSize(
+                // Pages differ in shape, and onPageChanged fires as the swipe
+                // crosses the midpoint — without this the media would jump
+                // under the user's thumb.
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                child: SizedBox(
+                  // Width is pinned as well as height: [Center] passes loose
+                  // constraints, which would leave the pager unbounded.
+                  width: constraints.maxWidth,
+                  height: math.min(natural, constraints.maxHeight),
+                  child: PageView.builder(
+                    controller: _pageCtrl,
+                    itemCount: total,
+                    onPageChanged: (i) => setState(() => _index = i),
+                    itemBuilder: (_, i) => FoundPhotoStage(
+                      key: ValueKey('stage_${widget.photos[i].id}'),
+                      photo: widget.photos[i],
+                      isActive: i == _index,
+                      onViewAlbum: widget.onViewAlbum,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -111,12 +166,7 @@ class _ViewerTopBar extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: IconButton(
-              icon: Icon(Icons.arrow_back_rounded, color: ext.greetingColor),
-              iconSize: 22.sp,
-              tooltip: 'Back',
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+            child: AppBackButton(onPressed: () => Navigator.of(context).pop()),
           ),
           Center(
   // One label for the whole counter. Split across spans it reads out as

@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -300,10 +300,11 @@ class _SuggestionAvatar extends StatelessWidget {
     if (url == null) return fallback;
 
     return ClipOval(
-      child: CachedNetworkImage(
+      child: SkidooImage(
         imageUrl: url,
         width: size,
         height: size,
+        logicalWidth: size,
         fit: BoxFit.cover,
         placeholder: (_, __) => fallback,
         errorWidget: (_, __, ___) => fallback,

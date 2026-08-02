@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/utils/image_pick.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
@@ -14,6 +15,8 @@ import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:skidoo_app/core/common/widgets/app_section_label.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -259,8 +262,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   Future<void> _pickCreative() async {
     if (_creatives.length >= _maxCreatives) return;
     final remaining = _maxCreatives - _creatives.length;
-    final picked =
-        await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
+    final picked = await pickImagesUpTo(_picker, limit: remaining);
     if (picked.isEmpty || !mounted) return;
 
     final valid = <XFile>[];
@@ -356,12 +358,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : IconButton(
-                tooltip: 'Back',
-                icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    color: ext.greetingColor, size: 20.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
           'Create Campaign',
           style: TextStyle(
@@ -623,7 +620,7 @@ class _BottomBar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppRadius.md.r),
                     ),
                     alignment: Alignment.center,
-                    child: Icon(Icons.arrow_back_rounded,
+                    child: Icon(AppBackButton.icon,
                         color: ext.greetingColor, size: 20.sp),
                   ),
                 )),
@@ -1089,7 +1086,7 @@ class _Step4 extends StatelessWidget {
           'Your campaign will go live after payment and admin approval.',
       children: [
         // ── Campaign ────────────────────────────────────────────────────────
-        _SectionLabel('Campaign', ext),
+        const AppSectionLabel('Campaign'),
         SizedBox(height: 10.h),
         _ReviewRow('Name', name.isEmpty ? '—' : name, ext),
         _ReviewRow('Objective', _objectiveLabels[objective] ?? objective, ext),
@@ -1102,7 +1099,7 @@ class _Step4 extends StatelessWidget {
         SizedBox(height: AppSpacing.xl.h),
 
         // ── Ad Set ──────────────────────────────────────────────────────────
-        _SectionLabel('Targeting', ext),
+        const AppSectionLabel('Targeting'),
         SizedBox(height: 10.h),
         _ReviewRow('Placement', _placementLabels[placement] ?? placement, ext),
         _ReviewRow('Audience', _audienceLabels[audience] ?? audience, ext),
@@ -1113,7 +1110,7 @@ class _Step4 extends StatelessWidget {
         SizedBox(height: AppSpacing.xl.h),
 
         // ── Creative ────────────────────────────────────────────────────────
-        _SectionLabel('Creative', ext),
+        const AppSectionLabel('Creative'),
         SizedBox(height: 10.h),
         _ReviewRow('Headline', headline.isEmpty ? '—' : headline, ext),
         _ReviewRow('Body', body.isEmpty ? '—' : body, ext),
@@ -1157,25 +1154,6 @@ class _Step4 extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text, this.ext);
-  final String text;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text.toUpperCase(),
-      style: TextStyle(
-        color: ext.searchHintColor,
-        fontSize: 11.sp,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.8,
-      ),
     );
   }
 }

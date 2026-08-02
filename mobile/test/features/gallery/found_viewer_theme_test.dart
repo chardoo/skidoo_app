@@ -6,10 +6,13 @@ import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_photo_filmstrip.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 
-/// The Found viewer used to pin itself to the dark palette in both app themes.
-/// These hold it to the ambient theme: the surround is the page's own
-/// background, and only the overlays that sit *on* the photo stay light-on-
-/// scrim regardless of theme.
+/// The viewer is dark in both app themes — the photo is the point of the
+/// screen and the surround's job is to disappear behind it, so viewing
+/// photographs is the one place the reader's theme preference loses.
+///
+/// This flipped once before, from pinned-dark to theme-following, and back. The
+/// tests below assert the *current* rule against both themes, so whichever way
+/// it goes next, the loop shows it rather than only half of it.
 
 Photo photo(String id) => Photo(
       id,
@@ -54,17 +57,19 @@ void main() {
     ('dark', AppThemeExtension.dark),
     ('light', AppThemeExtension.light),
   ]) {
-    testWidgets('the viewer surround follows the theme — $name', (t) async {
+    testWidgets('the viewer surround is dark whatever the app theme — $name',
+        (t) async {
       await t.pumpWidget(host(
         ext,
         FoundPhotoViewerPage(photos: [photo('a'), photo('b')]),
       ));
 
       final scaffold = t.widget<Scaffold>(find.byType(Scaffold));
-      expect(scaffold.backgroundColor, ext.homeBackground);
+      expect(scaffold.backgroundColor, AppThemeExtension.dark.homeBackground);
     });
 
-    testWidgets('the "n of total" bar follows the theme — $name', (t) async {
+    testWidgets('the "n of total" bar reads against that dark ground — $name',
+        (t) async {
       await t.pumpWidget(host(
         ext,
         FoundPhotoViewerPage(photos: [photo('a'), photo('b')]),
@@ -79,13 +84,15 @@ void main() {
       final counter = t
           .widgetList<Text>(find.byType(Text))
           .firstWhere((w) => w.textSpan != null);
+      // The chrome resolves the dark palette too, because the surface under it
+      // is dark — the light theme's near-black text would all but vanish on it.
       expect(
         counter.textSpan!.style!.color,
-        ext.greetingColor.withValues(alpha: 0.7),
+        AppThemeExtension.dark.greetingColor.withValues(alpha: 0.7),
       );
       expect(
         t.widget<Icon>(find.byIcon(Icons.arrow_back_rounded)).color,
-        ext.greetingColor,
+        AppThemeExtension.dark.greetingColor,
       );
     });
 

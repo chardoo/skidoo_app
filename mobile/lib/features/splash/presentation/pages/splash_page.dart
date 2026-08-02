@@ -1,11 +1,31 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:skidoo_app/features/discovery/data/services/feed_cache_service.dart';
+import 'package:skidoo_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
+import 'package:skidoo_app/features/onboarding/presentation/pages/onboarding_page.dart';
+import 'package:skidoo_app/services/auth_service.dart';
 
-const _kSplashBg = Color(0xFF111110);
+/// The asset's own colour. The gif is a near-white field, so a dark scaffold
+/// behind it showed as a black flash for the frame or two before it decoded.
+const _kSplashBg = Color(0xFFF7F7F2);
 
-/// Branded splash — plays `assets/splash/splash.gif` full-bleed, then hands
-/// off to [nextRoute]. Shown on every cold start (mobile only), including
-/// for already-logged-in users, who previously skipped straight to Home with
-/// no branded moment at all.
+/// Branded splash — plays `assets/splash/splash.gif` full-bleed, then hands off
+/// to [nextRoute]. Shown on every cold start (mobile only).
+///
+/// It holds until the screen behind it can actually show something, rather than
+/// for a fixed beat. Both destinations that matter open on the feed, and
+/// [DiscoveryBloc] paints instantly *if* [FeedCacheService] has something to
+/// restore — that read is synchronous. With a cold cache it emits a loading
+/// state and waits on the network instead, which is what used to leak through:
+/// the splash left after 1.8 s regardless, so a slow first launch went from
+/// brand animation to an empty screen.
+///
+/// So the wait is bounded on both sides. [_kMinDisplay] stops the gif being a
+/// flicker on a warm start, and [_kMaxWait] stops a dead network stranding
+/// anyone here — past it the app goes on and the feed shows its own loading
+/// state, which is the honest thing to do at that point.
 class SplashPage extends StatefulWidget {
   static const routeName = '/splash';
 
@@ -19,15 +39,59 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
-  static const _kMinDisplay = Duration(milliseconds: 1800);
+  /// Floor: below about this the animation reads as a glitch rather than a
+  /// brand moment.
+  static const _kMinDisplay = Duration(milliseconds: 1200);
+
+  /// Ceiling on waiting for content. Long enough for a slow first fetch, short
+  /// enough that a request which is never coming back doesn't trap the user.
+  static const _kMaxWait = Duration(seconds: 6);
+
+  /// One page of events — matches `DiscoveryBloc`'s own first request, so the
+  /// cache this leaves behind is the size that bloc expects to restore.
+  static const _kPageSize = 10;
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(_kMinDisplay, () {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed(widget.nextRoute);
-    });
+    _run();
+  }
+
+  Future<void> _run() async {
+    await Future.wait([
+      Future<void>.delayed(_kMinDisplay),
+      _warmFirstScreen().timeout(_kMaxWait, onTimeout: () {}),
+    ]);
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed(widget.nextRoute);
+  }
+
+  /// Gets the destination to the point where it has something to draw.
+  ///
+  /// Nothing here talks to [DiscoveryBloc] — it is registered as a factory, so
+  /// the instance this page could build is not the one the destination will
+  /// use. It works through the cache instead, which both share: fetch the first
+  /// page, persist it, and the bloc's synchronous `restore()` hits on its very
+  /// first frame. That also means a failure here costs nothing — the bloc still
+  /// makes its own request, and the user sees its loading state exactly as they
+  /// would have.
+  Future<void> _warmFirstScreen() async {
+    // The onboarding carousel is local; there is no feed behind it to wait for.
+    if (widget.nextRoute == OnboardingPage.routeName) return;
+
+    final cache = sl<FeedCacheService>();
+    if (cache.restore().isNotEmpty) return;
+
+    try {
+      final events = await sl<GetRandomImagesUseCase>()(
+        take: _kPageSize,
+        skip: 0,
+        userId: await sl<AuthService>().getUserId(),
+      );
+      if (events.isNotEmpty) await cache.save(events);
+    } catch (e) {
+      debugPrint('[Splash] feed warm-up failed, going on anyway: $e');
+    }
   }
 
   @override

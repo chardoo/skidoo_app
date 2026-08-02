@@ -6,6 +6,7 @@ import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:skidoo_app/core/common/widgets/app_drag_handle.dart';
 
 /// "Unlock private photos" — the entry point for an event code a photographer
 /// shared, either typed or scanned.
@@ -127,7 +128,7 @@ class _UnlockPhotosSheetState extends State<UnlockPhotosSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _DragHandle(color: ext.searchHintColor),
+              const AppDragHandle(),
               Padding(
                 padding: EdgeInsets.fromLTRB(AppSpacing.xxl.w, AppSpacing.lg.h,
                     AppSpacing.xxl.w, AppSpacing.xxl.h),
@@ -417,23 +418,3 @@ class _ScannerPane extends StatelessWidget {
   }
 }
 
-class _DragHandle extends StatelessWidget {
-  const _DragHandle({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(top: AppSpacing.md.h),
-      child: Container(
-        width: 36.w,
-        height: 4.h,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(AppRadius.pill.r),
-        ),
-      ),
-    );
-  }
-}

@@ -5,7 +5,7 @@ import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page
 /// page exists, then navigating. A ValueNotifier only notifies on change, so a
 /// listener attached in the new page's initState never sees a value that was
 /// already there — the request would be silently dropped and the user would
-/// land on For You instead of Found.
+/// land on Feed instead of Found.
 ///
 /// The page consumes any pending value on mount and clears it. These pin the
 /// contract that makes that safe; the consumption itself is exercised by the

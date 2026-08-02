@@ -4,7 +4,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
 
-/// The For You / Following feeds letterbox almost every card, so the area
+/// The Feed / Following feeds letterbox almost every card, so the area
 /// *around* the media is most of what is on screen. These guard the regression
 /// that made those two tabs read as dark in light mode: the surround was
 /// hard-coded black while the rest of the app followed the theme.

@@ -19,6 +19,7 @@ import 'package:skidoo_app/models/chat/shareable_user.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_section_label.dart';
 
 /// Bottom sheet with an in-app user search to send a photo directly to
 /// another app user's DM room. The native OS share sheet is a separate,
@@ -453,7 +454,9 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
       padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
       children: [
         if (_rooms.isNotEmpty) ...[
-          _SectionLabel(text: 'Recent chats', ext: ext),
+          AppSectionLabel('Recent chats',
+              padding: EdgeInsets.fromLTRB(AppSpacing.lg.w, AppSpacing.sm.h,
+                  AppSpacing.lg.w, AppSpacing.xs.h)),
           for (final room in _rooms)
             RoomTile(
               room: room,
@@ -463,7 +466,9 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
           SizedBox(height: AppSpacing.xs.h),
         ],
         if (_recommended.isNotEmpty) ...[
-          _SectionLabel(text: 'Suggested', ext: ext),
+          AppSectionLabel('Suggested',
+              padding: EdgeInsets.fromLTRB(AppSpacing.lg.w, AppSpacing.sm.h,
+                  AppSpacing.lg.w, AppSpacing.xs.h)),
           for (final p in _recommended)
             ListTile(
               leading: CircleAvatar(
@@ -514,24 +519,3 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.text, required this.ext});
-  final String text;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(AppSpacing.lg.w, AppSpacing.sm.h, AppSpacing.lg.w, AppSpacing.xs.h),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: ext.searchHintColor,
-          fontSize: 11.sp,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}

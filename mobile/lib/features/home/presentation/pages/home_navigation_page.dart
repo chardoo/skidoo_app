@@ -2,26 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/theme/dark_media_surface.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
+import 'package:skidoo_app/features/search/presentation/pages/search_page.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/web_search_photos_panel.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/events_feed.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/home_empty_state.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/feed_top_bar.dart';
-import 'package:skidoo_app/features/home/presentation/widgets/search_events_list.dart';
 import 'package:skidoo_app/features/home/presentation/widgets/unlock_photos_sheet.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/core/common/widgets/feed_launch_overlay.dart';
 import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/found_feed.dart';
 import 'package:flutter/foundation.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 
@@ -45,7 +43,7 @@ class HomeNavigationPage extends StatefulWidget {
   static void dispatchEventTap(String eventId, String eventName) =>
       _webEventTapHandler?.call(eventId, eventName);
 
-  /// Any caller can write a pill index here (0 = Found, 1 = For You,
+  /// Any caller can write a pill index here (0 = Found, 1 = Feed,
   /// 2 = Following) to request a pill switch, e.g. after a purchase that
   /// lands new photos in the Found tab. Cleared after being handled.
   static final pillTabRequest = ValueNotifier<int?>(null);
@@ -55,22 +53,12 @@ class HomeNavigationPage extends StatefulWidget {
 }
 
 class _HomeNavigationPageState extends State<HomeNavigationPage> {
-  bool _isSearchOpen = false;
-
-  /// Text the search field opens with — set when search is opened on the
-  /// user's behalf (an unlock code), null when they tapped the search icon.
-  String? _searchSeed;
-
-  // 0 = Found, 1 = For You, 2 = Following. Defaults to For You (unchanged
+  // 0 = Found, 1 = Feed, 2 = Following. Defaults to Feed (unchanged
   // landing tab from before Found was added).
   int _selectedTab = 1;
 
-  // Web desktop: show photo results inline (no Navigator push).
-  bool _showPhotosInline = false;
-  String _inlineEventName = '';
-
   /// Guests get a two-tab bar — Found and Explore — per the guest designs.
-  /// "For You" and "Following" both presuppose an account, so they collapse
+  /// "Feed" and "Following" both presuppose an account, so they collapse
   /// into one Explore tab rather than showing a Following feed that can only
   /// ever be empty.
   ///
@@ -79,7 +67,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool? _isGuest;
 
   static const _guestTabs = ['Found', 'Explore'];
-  static const _memberTabs = ['Found', 'For You', 'Following'];
+  static const _memberTabs = ['Found', 'Feed', 'Following'];
+
+  /// True while the unlock sheet is up, so the bar's QR glyph can show it.
+  bool _unlockSheetOpen = false;
 
   List<String> get _tabs => _isGuest == true ? _guestTabs : _memberTabs;
 
@@ -193,32 +184,15 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     });
   }
 
+  /// Search is a screen of its own — recents, three result chips and a
+  /// suggestion grid — rather than an overlay on the feed. [query] pre-fills
+  /// the field when search is opened on the user's behalf.
   void _openSearch({String? query}) {
-    _headerDownAccum = 0;
-    setState(() {
-      _isSearchOpen = true;
-      _headerVisible = true;
-      _selectedTab = 1; // always show For You when searching
-      _searchSeed = query;
-    });
-    if (query != null && query.isNotEmpty) _onSearchChanged(query);
-  }
-
-  void _closeSearch() {
-    _headerDownAccum = 0;
-    setState(() {
-      _isSearchOpen = false;
-      _searchSeed = null;
-      _headerVisible = false;
-      _showPhotosInline = false;
-      _inlineEventName = '';
-    });
-    HomeNavigationPage.webEventResults.value = [];
-    context.read<HomeBloc>().add(const HomeSearchClosed());
-  }
-
-  void _onSearchChanged(String query) {
-    context.read<HomeBloc>().add(HomeEventSearched(query));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SearchPage(initialQuery: query),
+      ),
+    );
   }
 
   /// Resolves an event code — scanned or typed — into that event's photos.
@@ -243,21 +217,20 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     );
   }
 
-  Future<void> _openQrScan() async {
-    final eventId = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const QrScanPage()),
-    );
-    if (!mounted || eventId == null || eventId.isEmpty) return;
-    _openEventByCode(eventId);
-  }
-
   /// Leading action on the feed bar: a code the user types, or one scanned
   /// from the preview embedded in the same sheet. Both are the same code and
   /// take the same path as [_openQrScan].
   Future<void> _openUnlock() async {
-    final code = await UnlockPhotosSheet.show(context);
-    if (!mounted || code == null || code.isEmpty) return;
-    _openEventByCode(code);
+    setState(() => _unlockSheetOpen = true);
+    try {
+      final code = await UnlockPhotosSheet.show(context);
+      if (!mounted || code == null || code.isEmpty) return;
+      _openEventByCode(code);
+    } finally {
+      // In a finally so the glyph un-tints however the sheet went away —
+      // submitted, dismissed by the handle, or tapped out of.
+      if (mounted) setState(() => _unlockSheetOpen = false);
+    }
   }
 
   void _openEventImages(BuildContext context, EventDiscovery event) {
@@ -281,7 +254,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
   bool _onScrollNotification(ScrollNotification notification) {
     // On web the header is always visible (Column layout) — skip hide logic.
-    if (kIsWeb || _isSearchOpen) return false;
+    if (kIsWeb) return false;
     // Found is a grid, not full-bleed media: its content is padded to start
     // below the header rather than running under it, so hiding the header
     // would only open a blank strip. Keep it pinned there.
@@ -314,15 +287,20 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   }
 
   /// Media is always full-bleed edge-to-edge (including under the status
-  /// bar) — the Found/For You/Following header floats transparently on top
+  /// bar) — the Found/Feed/Following header floats transparently on top
   /// of it rather than reserving its own opaque strip, matching the design.
   double get _feedTopPadding => 0;
 
-  /// Found is the one tab that isn't full-bleed media: it's a scrolling grid
-  /// of album sections, so its content has to start *below* the floating
-  /// header instead of running under it. Falls back to a sensible estimate
-  /// until the header has been measured.
-  double get _foundTopPadding {
+  /// How far a surface has to start below the floating header to clear it.
+  ///
+  /// Full-bleed media runs *under* the header by design — see
+  /// [_feedTopPadding]. Anything made of text cannot: it lands on the status
+  /// bar and behind the tab labels. That covers the Found grid, and the
+  /// Following tab whenever it is showing its empty state or a suggested-
+  /// creators card rather than a photo.
+  ///
+  /// Falls back to a sensible estimate until the header has been measured.
+  double get _headerClearance {
     if (kIsWeb) return 0;
     if (_headerHeight > 0) return _headerHeight;
     return MediaQuery.of(context).padding.top + 48;
@@ -331,109 +309,98 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final homeState = context.watch<HomeBloc>().state;
     final discoveryState = context.watch<DiscoveryBloc>().state;
 
     // ── Web: compact top bar (tabs + avatar) + Column layout ─────────────────
     if (kIsWeb) {
       // Keep webEventResults in sync with BLoC state so the sidebar typeahead
-      // dropdown can display results without direct BLoC access.
+      // dropdown can display results without direct BLoC access. Watched here
+      // and not above: the feed itself no longer reads HomeBloc — search moved
+      // to its own screen — so on mobile this would only cost rebuilds.
+      final homeState = context.watch<HomeBloc>().state;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           HomeNavigationPage.webEventResults.value = homeState.events;
         }
       });
 
-      return FeedLaunchOverlay(
-        child: Stack(
-          children: [
-            Scaffold(
-              backgroundColor: ext.homeBackground,
-              body: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Compact top bar: tabs + avatar, or search-open state ────────
-                  SizedBox(
-                    height: 54,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                      child: Row(
-                        children: [
-                          if (_isSearchOpen) ...[
-                            Icon(Icons.search_rounded,
-                                size: 16, color: ext.accentGold),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Search results',
-                              style: TextStyle(
-                                color: ext.greetingColor,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
+      return Stack(
+        children: [
+          Scaffold(
+            backgroundColor: ext.homeBackground,
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Compact top bar: tabs + search ──────────────────────────────
+                SizedBox(
+                  height: 54,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+                    child: Row(
+                      children: [
+                        _PillTab(
+                          label: 'Found',
+                          active: _selectedTab == 0,
+                          ext: ext,
+                          onTap: () {
+                            VideoPauseNotifier.pauseAll();
+                            setState(() => _selectedTab = 0);
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _PillTab(
+                          label: 'Feed',
+                          active: _selectedTab == 1,
+                          ext: ext,
+                          onTap: () {
+                            VideoPauseNotifier.pauseAll();
+                            setState(() => _selectedTab = 1);
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _PillTab(
+                          label: 'Following',
+                          active: _selectedTab == 2,
+                          ext: ext,
+                          onTap: () {
+                            VideoPauseNotifier.pauseAll();
+                            setState(() => _selectedTab = 2);
+                          },
+                        ),
+                        const SizedBox(width: 12),
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Semantics(
+                            button: true,
+                            label: 'Open search',
+                            child: GestureDetector(
+                              onTap: _openSearch,
+                              child: Icon(Icons.search_rounded,
+                                  color: ext.glassIcon, size: 20),
                             ),
-                            const Spacer(),
-                            MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: Semantics(button: true, label: 'Close search', child: GestureDetector(
-                                onTap: _closeSearch,
-                                child: Icon(Icons.close_rounded,
-                                    color: ext.searchHintColor, size: 20),
-                              )),
-                            ),
-                          ] else ...[
-                            _PillTab(
-                              label: 'Found',
-                              active: _selectedTab == 0,
-                              ext: ext,
-                              onTap: () {
-                                VideoPauseNotifier.pauseAll();
-                                setState(() => _selectedTab = 0);
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            _PillTab(
-                              label: 'For You',
-                              active: _selectedTab == 1,
-                              ext: ext,
-                              onTap: () {
-                                VideoPauseNotifier.pauseAll();
-                                setState(() => _selectedTab = 1);
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            _PillTab(
-                              label: 'Following',
-                              active: _selectedTab == 2,
-                              ext: ext,
-                              onTap: () {
-                                VideoPauseNotifier.pauseAll();
-                                setState(() => _selectedTab = 2);
-                              },
-                            ),
-                            const Spacer(),
-                            // Get-the-app / Messages / Profile now live in the
-                            // global WebTopActions cluster (app shell) so they
-                            // appear on every screen at the same position. Leave
-                            // room here so the tabs don't sit under it.
-                            const SizedBox(width: 240),
-                          ],
-                        ],
-                      ),
+                          ),
+                        ),
+                        const Spacer(),
+                        // Get-the-app / Messages / Profile now live in the
+                        // global WebTopActions cluster (app shell) so they
+                        // appear on every screen at the same position. Leave
+                        // room here so the tabs don't sit under it.
+                        const SizedBox(width: 240),
+                      ],
                     ),
                   ),
-                  // ── Feed content ────────────────────────────────────────────────
-                  Expanded(
-                    child: NotificationListener<ScrollNotification>(
-                      onNotification: _onScrollNotification,
-                      child:
-                          _buildBody(context, ext, homeState, discoveryState),
-                    ),
+                ),
+                // ── Feed content ────────────────────────────────────────────────
+                Expanded(
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: _onScrollNotification,
+                    child: _buildBody(context, ext, discoveryState),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
@@ -441,90 +408,75 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     final topPadding = MediaQuery.of(context).padding.top;
     _measureHeaderHeight();
 
-    return FeedLaunchOverlay(
-      child: PopScope(
-        // While search is open, the system back gesture/button closes search
-        // instead of leaving the tab (there was previously no way back other
-        // than spotting the small close icon in the header).
-        canPop: !_isSearchOpen,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop && _isSearchOpen) _closeSearch();
-        },
-        child: Scaffold(
-        backgroundColor: ext.homeBackground,
-        body: Stack(
-          children: [
-            // Body fills entire screen — header/tab bar float above it.
-            Positioned.fill(
-              child: NotificationListener<ScrollNotification>(
-                onNotification: _onScrollNotification,
-                child: _buildBody(context, ext, homeState, discoveryState),
-              ),
+    return Scaffold(
+      backgroundColor: ext.homeBackground,
+      body: Stack(
+        children: [
+          // Body fills entire screen — header/tab bar float above it.
+          Positioned.fill(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onScrollNotification,
+              child: _buildBody(context, ext, discoveryState),
             ),
+          ),
 
-            // Top scrim — media is full-bleed behind the header now, so this
-            // keeps the Found/For You/Following labels legible over bright
-            // photos/videos instead of relying on an opaque reserved strip.
-            // Found needs no scrim: its header sits on the solid page
-            // background, where a gradient would just read as a smudge.
-            if (_selectedTab != 0)
-              const Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                height: 140,
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0x99000000), Color(0x00000000)],
-                      ),
+          // Top scrim — media is full-bleed behind the header now, so this
+          // keeps the Found/Feed/Following labels legible over bright
+          // photos/videos instead of relying on an opaque reserved strip.
+          // Found needs no scrim: its header sits on the solid page
+          // background, where a gradient would just read as a smudge.
+          if (_selectedTab != 0)
+            const Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: 140,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x99000000), Color(0x00000000)],
                     ),
                   ),
                 ),
               ),
+            ),
 
-            // Header slides in/out from top (Transform.translate — no layout
-            // shift).
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: AnimatedSlide(
-                offset: _headerVisible ? Offset.zero : const Offset(0, -1),
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                child: Padding(
-                  key: _headerKey,
-                  padding: EdgeInsets.only(top: topPadding),
-                  child: FeedTopBar(
-                    tabs: _tabs,
-                    // Found is the one tab on the page's own background — see
-                    // the scrim above, which skips it for the same reason.
-                    overSolidBackground: _selectedTab == 0,
-                    selectedTab: _selectedTab,
-                    onTabChanged: (i) {
-                      VideoPauseNotifier.pauseAll();
-                      _selectTab(i);
-                    },
-                    isSearchOpen: _isSearchOpen,
-                    onSearchOpen: _openSearch,
-                    onSearchClose: _closeSearch,
-                    onSearchChanged: _onSearchChanged,
-                    onQrScan: _openQrScan,
-                    initialQuery: _searchSeed,
-                    // Shown to guests too: an event code is exactly how
-                    // someone without an account gets at photos of themselves.
-                    onUnlockPressed: _openUnlock,
-                  ),
+          // Header slides in/out from top (Transform.translate — no layout
+          // shift).
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: AnimatedSlide(
+              offset: _headerVisible ? Offset.zero : const Offset(0, -1),
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: Padding(
+                key: _headerKey,
+                padding: EdgeInsets.only(top: topPadding),
+                child: FeedTopBar(
+                  tabs: _tabs,
+                  // Found is the one tab on the page's own background — see
+                  // the scrim above, which skips it for the same reason.
+                  overSolidBackground: _selectedTab == 0,
+                  selectedTab: _selectedTab,
+                  onTabChanged: (i) {
+                    VideoPauseNotifier.pauseAll();
+                    _selectTab(i);
+                  },
+                  onSearchOpen: _openSearch,
+                  // Shown to guests too: an event code is exactly how
+                  // someone without an account gets at photos of themselves.
+                  onUnlockPressed: _openUnlock,
+                  unlockActive: _unlockSheetOpen,
                 ),
               ),
             ),
-          ],
-        ),
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -532,7 +484,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   Widget _buildBody(
     BuildContext context,
     AppThemeExtension ext,
-    HomeState homeState,
     DiscoveryState discoveryState,
   ) {
     // IndexedStack keeps both tabs mounted, so without gating the inactive
@@ -545,22 +496,36 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         // ── Found ────────────────────────────────────────────────────────────
         TickerMode(
           enabled: _selectedTab == 0,
-          child: FoundFeed(topPadding: _foundTopPadding),
+          child: FoundFeed(topPadding: _headerClearance),
         ),
-        // ── For You ──────────────────────────────────────────────────────────
+        // ── Feed ─────────────────────────────────────────────────────────────
+        // Both media feeds are dark whatever the app's theme is — see
+        // [DarkMediaSurface]. Read `ext` from inside the wrapper, not the
+        // outer one this method was handed, or the feed's own chrome keeps
+        // resolving light colours onto a dark surround.
         TickerMode(
           enabled: _selectedTab == 1,
-          child: RefreshIndicator(
-            onRefresh: _onRefresh,
-            color: ext.accentGold,
-            backgroundColor: ext.homeBackground,
-            child: _buildForYouContent(context, ext, homeState, discoveryState),
+          child: DarkMediaSurface(
+            child: Builder(
+              builder: (context) {
+                final darkExt =
+                    Theme.of(context).extension<AppThemeExtension>()!;
+                return RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  color: darkExt.accentGold,
+                  backgroundColor: darkExt.homeBackground,
+                  child: _buildForYouContent(context, darkExt, discoveryState),
+                );
+              },
+            ),
           ),
         ),
         // ── Following ────────────────────────────────────────────────────────
         TickerMode(
           enabled: _selectedTab == 2,
-          child: FollowingFeed(topPadding: _feedTopPadding),
+          child: DarkMediaSurface(
+            child: FollowingFeed(chromeTopPadding: _headerClearance),
+          ),
         ),
       ],
     );
@@ -569,7 +534,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   Widget _buildForYouContent(
     BuildContext context,
     AppThemeExtension ext,
-    HomeState homeState,
     DiscoveryState discoveryState,
   ) {
     // EventsFeed stays mounted at all times so its ad/request state is never
@@ -611,90 +575,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
               ]),
             ),
           ),
-        if (_isSearchOpen)
-          Positioned.fill(
-            child: ColoredBox(
-              color: ext.homeBackground,
-              child: _showPhotosInline
-                  // ── Web desktop: inline photo results panel ────────────────
-                  // Constrained to the standard centred web column (webWrap),
-                  // matching Gallery/Photographers. The back arrow returns to
-                  // the home feed (not the in-content suggestion overlay).
-                  ? webWrap(
-                      WebSearchPhotosPanel(
-                        ext: ext,
-                        eventName: _inlineEventName,
-                        onBack: _closeSearch,
-                        onClose: _closeSearch,
-                      ),
-                      backgroundColor: ext.homeBackground,
-                      width: kWebColumnWidthWide,
-                    )
-                  // ── Event suggestion list (all platforms) ──────────────────
-                  // Offset below the floating header (status bar + search bar)
-                  // plus a little breathing room, so results never slide up
-                  // under the app bar. Falls back to a sensible estimate until
-                  // the header has been measured.
-                  : Padding(
-                      padding: EdgeInsets.only(
-                        top: (_headerHeight > 0
-                                ? _headerHeight
-                                : MediaQuery.of(context).padding.top + 64) +
-                            12,
-                      ),
-                      child: _buildSearchOverlay(context, ext, homeState),
-                    ),
-            ),
-          ),
       ],
     );
-  }
-
-  Widget _buildSearchOverlay(
-    BuildContext context,
-    AppThemeExtension ext,
-    HomeState homeState,
-  ) {
-    if (homeState.isLoadingEvents) {
-      return const AppLoadingIndicator();
-    }
-    if (homeState.events.isNotEmpty) {
-      return SearchEventsList(
-        homeState: homeState,
-        ext: ext,
-        onEventTap: (event) {
-          context.read<HomeBloc>().add(HomeImagesSearched(
-                eventId: event.id,
-                eventName: event.eventName,
-              ));
-          if (kIsWeb) {
-            // Desktop/laptop web: show photos inline — no page transition.
-            setState(() {
-              _showPhotosInline = true;
-              _inlineEventName = '${event.eventName}';
-            });
-          } else {
-            // Mobile: navigate to the full SearchResultsPage.
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => BlocProvider.value(
-                  value: context.read<HomeBloc>(),
-                  child: const SearchResultsPage(),
-                ),
-              ),
-            );
-          }
-        },
-      );
-    }
-    if (homeState.isSearching && homeState.events.isEmpty) {
-      return HomeEmptyState(
-        ext: ext,
-        icon: Icons.event_busy_outlined,
-        message: AppLocalizations.of(context)!.homeNoEventsFound,
-      );
-    }
-    return const SizedBox.shrink();
   }
 }
 

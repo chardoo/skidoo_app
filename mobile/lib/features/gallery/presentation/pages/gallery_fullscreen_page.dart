@@ -1,14 +1,16 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/components/media/media_action_buttons.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
+import 'package:skidoo_app/core/widgets/zoomable_photo.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 class GalleryFullscreenPage extends StatefulWidget {
   /// Full set of photos so the viewer can page left/right, and the index of
@@ -70,6 +72,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
               key: ValueKey(widget.photos[i].id),
               photo: widget.photos[i],
               ext: ext,
+              isActive: i == _currentIndex,
               onTap: _toggleBars,
             ),
           ),
@@ -97,10 +100,8 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                   child: Row(
                     children: [
                       if (!kIsWeb)
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                              color: Colors.white),
-                          iconSize: 22.sp,
+                        AppBackButton(
+                          color: Colors.white,
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       const Spacer(),
@@ -186,60 +187,52 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
   }
 }
 
-/// A single zoomable image page. Owns its own [TransformationController] so the
-/// zoom level resets when the user swipes to another photo. At rest (scale 1)
-/// the image is contained, so horizontal drags pass through to the [PageView];
-/// once zoomed in, the [InteractiveViewer] pans instead.
-class _ZoomablePhoto extends StatefulWidget {
+/// One page of the viewer: [ZoomablePhoto] for a still — boxed to the photo's
+/// own `width`/`height` so the loading state occupies the footprint the image
+/// is about to fill — or the player for a clip, same swipe and no zoom.
+class _ZoomablePhoto extends StatelessWidget {
   const _ZoomablePhoto({
     super.key,
     required this.photo,
     required this.ext,
     required this.onTap,
+    this.isActive = true,
   });
 
   final Photo photo;
   final AppThemeExtension ext;
   final VoidCallback onTap;
 
-  @override
-  State<_ZoomablePhoto> createState() => _ZoomablePhotoState();
-}
-
-class _ZoomablePhotoState extends State<_ZoomablePhoto> {
-  final TransformationController _transformCtrl = TransformationController();
-
-  @override
-  void dispose() {
-    _transformCtrl.dispose();
-    super.dispose();
-  }
+  /// Whether this page is the one on screen — only that one's video plays.
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: 'Photo', child: GestureDetector(
-      onTap: widget.onTap,
-      child: InteractiveViewer(
-        transformationController: _transformCtrl,
-        minScale: 1.0,
-        maxScale: 4.0,
-        child: Center(
-          child: CachedNetworkImage(
-            imageUrl: widget.photo.url,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-            placeholder: (_, __) => Center(
-              child: CircularProgressIndicator(
-                  color: widget.ext.accentGold, strokeWidth: 2),
-            ),
-            errorWidget: (_, __, ___) => Icon(
-              Icons.broken_image_outlined,
-              color: widget.ext.searchHintColor,
-              size: 64.sp,
-            ),
-          ),
+    if (photo.isVideo) {
+      return SkidooVideoPlayer(
+        url: photo.url,
+        isActive: isActive,
+        autoPlay: true,
+        loop: true,
+        fit: BoxFit.contain,
+        showControls: true,
+        backgroundColor: Colors.black,
+        listenToPauseNotifier: true,
+      );
+    }
+
+    return ZoomablePhoto(
+      imageUrl: photo.url,
+      knownAspect: photo.aspectRatio,
+      semanticLabel: 'Photo',
+      onTap: onTap,
+      errorWidget: (_, __, ___) => Center(
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: ext.searchHintColor,
+          size: 64.sp,
         ),
       ),
-    ));
+    );
   }
 }

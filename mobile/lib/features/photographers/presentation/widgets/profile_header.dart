@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 
 class PhotographerProfileHeader extends StatelessWidget {
   const PhotographerProfileHeader({super.key, required this.photographer, required this.ext});
@@ -23,12 +23,13 @@ class PhotographerProfileHeader extends StatelessWidget {
       children: [
         // Background
         if (hasImage)
-          Semantics(image: true, label: 'Photographer photo', child: CachedNetworkImage(
+          SkidooImage(
             imageUrl: photographer.imageUrl!,
             fit: BoxFit.cover,
-            errorWidget: (_, __, ___) =>
-                Container(color: ext.cardSurface),
-          ))
+            semanticLabel: 'Photographer photo',
+            placeholder: (_, __) => ColoredBox(color: ext.cardSurface),
+            errorWidget: (_, __, ___) => ColoredBox(color: ext.cardSurface),
+          )
         else
           Container(
             decoration: BoxDecoration(

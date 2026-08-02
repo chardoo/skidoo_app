@@ -1,17 +1,15 @@
 import 'dart:async';
+import 'dart:io' show File;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 import 'package:skidoo_app/core/common/widgets/app_loading_indicator.dart';
 import 'package:skidoo_app/core/utils/video_mute_preference.dart';
 import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
-
-export 'package:media_kit/media_kit.dart' show PlaylistMode;
+import 'package:video_player/video_player.dart';
 
 // ── Public widget ─────────────────────────────────────────────────────────────
 
@@ -22,11 +20,17 @@ export 'package:media_kit/media_kit.dart' show PlaylistMode;
 /// tab-visibility pausing, app-lifecycle pausing, and
 /// [VideoPauseNotifier] sync — all in one drop-in widget.
 ///
+/// Playback runs on the platform's own player — AVPlayer on iOS, ExoPlayer on
+/// Android, `<video>` on web — through `video_player`. That is the reason this
+/// widget exists in this shape: the app used to carry libmpv + FFmpeg for the
+/// same job, which cost ~20 MB of the iOS download for decoders the OS already
+/// ships. Everything below is the same player, driven by a different engine.
+///
 /// **Sizing** (mutually exclusive, evaluated top-to-bottom):
 /// 1. Both [width] & [height] set → fixed SizedBox.
 /// 2. Only [aspectRatio] set → AspectRatio widget.
 /// 3. One of [width] / [height] → SizedBox on that axis.
-/// 4. None → fills available space ([SizedBox.expand]).
+/// 4. None → the video's own aspect ratio.
 ///
 /// **Usage:**
 /// ```dart
@@ -88,7 +92,7 @@ class SkidooVideoPlayer extends StatefulWidget {
   /// Loop the video indefinitely. Defaults to true.
   final bool loop;
 
-  /// Whether to start muted. `null` (default) → muted on web, unmuted on native.
+  /// Whether to start muted. `null` (default) → follows [VideoMutePreference].
   final bool? initiallyMuted;
 
   /// Show the tap-to-reveal controls overlay. Defaults to true.
@@ -120,15 +124,22 @@ class SkidooVideoPlayer extends StatefulWidget {
   State<SkidooVideoPlayer> createState() => _SkidooVideoPlayerState();
 }
 
+/// Builds the controller for [url], picking the network or file constructor.
+/// `file://` paths are what the chat's staged-media preview passes.
+VideoPlayerController _controllerFor(String url) {
+  if (!kIsWeb && url.startsWith('file://')) {
+    return VideoPlayerController.file(File(Uri.parse(url).toFilePath()));
+  }
+  return VideoPlayerController.networkUrl(Uri.parse(url));
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     with WidgetsBindingObserver {
-  // Nullable until _initPlayer() fires on the first post-frame callback.
-  // This defers the heavy libmpv thread spawn + GPU texture allocation
-  // off the first render frame, eliminating first-video lag and audio pop.
-  Player? _player;
-  VideoController? _controller;
+  // Nullable until _initPlayer() fires on the first post-frame callback, which
+  // keeps the decoder/surface setup off the first render frame.
+  VideoPlayerController? _ctrl;
   bool _playerReady = false;
 
   bool _muted = false;
@@ -137,21 +148,15 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   bool _tickerEnabled = true;
   bool _appActive = true;
 
-  // Video pixel dimensions — populated from the player stream once media loads.
-  int? _videoW;
-  int? _videoH;
-
-  // True while media_kit is fetching/decoding data — covers both the
-  // initial network load and any mid-playback rebuffer stall. Surfaced as a
-  // spinner overlay so a slow network doesn't just look like a stuck video.
+  /// Last seen playing/buffering flags. The controller notifies on every
+  /// position tick; comparing against these keeps rebuilds to real changes —
+  /// the scrubber redraws through its own [ValueListenableBuilder].
+  bool _wasPlaying = false;
   bool _buffering = false;
+  Size? _videoSize;
 
   Timer? _hideTimer;
   StreamSubscription<void>? _pauseSub;
-  StreamSubscription<bool>? _playingSub;
-  StreamSubscription<bool>? _bufferingSub;
-  StreamSubscription<int?>? _widthSub;
-  StreamSubscription<int?>? _heightSub;
 
   bool get _startMuted => widget.initiallyMuted ?? VideoMutePreference.muted;
 
@@ -161,72 +166,9 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
     WidgetsBinding.instance.addObserver(this);
     _muted = _startMuted;
 
-    // Defer Player + VideoController creation to after the first frame.
-    // Creates libmpv threads and allocates the GPU render texture off the
-    // critical render path — prevents first-video lag and audio pop on mobile.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _initPlayer();
-    });
-  }
-
-  void _initPlayer() {
-    final player = Player();
-
-    // ── Native libmpv quality tuning (native only) ────────────────────────
-    // Cast to dynamic before calling setProperty: dart2js type-checks even
-    // dead branches, and the web NativePlayer stub has no setProperty method.
-    // dynamic dispatch skips compile-time resolution entirely.
-    if (!kIsWeb) {
-      final platform = player.platform;
-      if (platform is NativePlayer) {
-        () async {
-          try {
-            // ignore: avoid_dynamic_calls
-            final p = platform as dynamic;
-         
-            await p.setProperty('cscale', 'ewa_lanczos');
-            await p.setProperty('dscale', 'mitchell');
-            await p.setProperty('dither-depth', 'auto');
-            await p.setProperty('hwdec', 'auto-safe');
-            await p.setProperty('vd-lavc-threads', '0');
-            await p.setProperty("scale", "ewa_lanczos");
- 
-            await p.setProperty("sigmoid-upscaling", "yes");
-            await p.setProperty("correct-downscaling", "yes");
-            await p.setProperty("linear-upscaling", "yes");
-            await p.setProperty('demuxer-max-bytes', '64MiB');
-await p.setProperty('demuxer-max-back-bytes', '32MiB');
-await p.setProperty('cache', 'yes');
-          
-          } catch (_) {}
-        }();
-      }
-    }
-
-    // Width-only render buffer: matches the physical screen width for
-    // pixel-perfect rendering without allocating a full-screen-height GPU
-    // texture for every player instance.
-    final view = WidgetsBinding.instance.platformDispatcher.views.first;
-    final physW = view.physicalSize.width.round();
-    final controller = VideoController(
-      player,
-      configuration: VideoControllerConfiguration(
-        enableHardwareAcceleration: false,
-        width: physW > 0 ? physW : null,
-        // height intentionally omitted — the render buffer height is derived
-        // from the video's own aspect ratio, halving GPU memory vs. allocating
-        // a full-screen buffer for every player.
-      ),
-    );
-
-    player.setVolume(_muted ? 0 : 100);
-    player.setPlaylistMode(widget.loop ? PlaylistMode.loop : PlaylistMode.none);
-
-     player.open(Media(widget.url), play: false);
-
- Future.delayed(const Duration(milliseconds: 150));
-
-player.play();
+    // Subscribed once for the widget's lifetime, not per controller: a url
+    // change rebuilds the controller, and re-subscribing there would stack a
+    // second listener on every swap.
     if (widget.listenToPauseNotifier) {
       _pauseSub = VideoPauseNotifier.listen(_onGlobalPause);
     }
@@ -234,42 +176,61 @@ player.play();
       VideoMutePreference.notifier.addListener(_onGlobalMuteChanged);
     }
 
-    _widthSub = player.stream.width.listen((w) {
-      if (mounted && w != null && w > 0 && w != _videoW) {
-        setState(() => _videoW = w);
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initPlayer();
     });
-    _heightSub = player.stream.height.listen((h) {
-      if (mounted && h != null && h > 0 && h != _videoH) {
-        setState(() => _videoH = h);
-      }
+  }
+
+  Future<void> _initPlayer() async {
+    final ctrl = _controllerFor(widget.url);
+    _ctrl = ctrl;
+    ctrl.addListener(_onValue);
+
+    try {
+      await ctrl.initialize();
+    } catch (_) {
+      // A dead URL leaves the surface on its background colour rather than
+      // throwing out of a post-frame callback.
+      return;
+    }
+    if (!mounted) {
+      ctrl.dispose();
+      return;
+    }
+
+    await ctrl.setLooping(widget.loop);
+    await ctrl.setVolume(_muted ? 0 : 1);
+
+    setState(() {
+      _playerReady = true;
+      _videoSize = ctrl.value.size;
+      _controlsVisible = true;
     });
 
-    _playingSub = player.stream.playing.listen((playing) {
-      if (!mounted) return;
-      if (playing) {
+    _syncPlayback();
+  }
+
+  /// Single listener for the controller's value. Only meaningful transitions
+  /// rebuild this widget.
+  void _onValue() {
+    final value = _ctrl?.value;
+    if (value == null || !mounted) return;
+
+    if (value.isPlaying != _wasPlaying) {
+      _wasPlaying = value.isPlaying;
+      if (value.isPlaying) {
         _scheduleHide();
       } else {
         _hideTimer?.cancel();
         setState(() => _controlsVisible = true);
       }
-    });
-
-    _bufferingSub = player.stream.buffering.listen((buffering) {
-      if (mounted && buffering != _buffering) {
-        setState(() => _buffering = buffering);
-      }
-    });
-
-    if (!widget.autoPlay) _controlsVisible = true;
-
-    setState(() {
-      _player = player;
-      _controller = controller;
-      _videoW = player.state.width;
-      _videoH = player.state.height;
-      _playerReady = true;
-    });
+    }
+    if (value.isBuffering != _buffering) {
+      setState(() => _buffering = value.isBuffering);
+    }
+    if (value.isInitialized && value.size != _videoSize) {
+      setState(() => _videoSize = value.size);
+    }
   }
 
   @override
@@ -286,12 +247,15 @@ player.play();
   @override
   void didUpdateWidget(SkidooVideoPlayer old) {
     super.didUpdateWidget(old);
-    if (!_playerReady) return;
     if (old.url != widget.url) {
-      _player!.open(Media(widget.url), play: false).then((_) {
-        if (mounted) _syncPlayback();
-      }).catchError((_) {});
-    } else if (old.isActive != widget.isActive) {
+      // A new source means a new controller — video_player has no re-open.
+      _disposeController();
+      setState(() {
+        _playerReady = false;
+        _videoSize = null;
+      });
+      _initPlayer();
+    } else if (_playerReady && old.isActive != widget.isActive) {
       _syncPlayback();
     }
   }
@@ -303,7 +267,7 @@ player.play();
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:
         _appActive = false;
-        if (_player?.state.playing == true) _player!.pause();
+        if (_ctrl?.value.isPlaying == true) _ctrl!.pause();
       case AppLifecycleState.resumed:
         _appActive = true;
         if (_playerReady) _syncPlayback();
@@ -313,8 +277,8 @@ player.play();
   }
 
   void _onGlobalPause() {
-    if (_player?.state.playing == true) {
-      _player!.pause();
+    if (_ctrl?.value.isPlaying == true) {
+      _ctrl!.pause();
       _manuallyPaused = true;
     }
   }
@@ -323,26 +287,24 @@ player.play();
     if (!mounted) return;
     final globalMuted = VideoMutePreference.muted;
     if (_muted == globalMuted) return;
-    setState(() {
-      _muted = globalMuted;
-      _player?.setVolume(_muted ? 0 : 100);
-    });
+    setState(() => _muted = globalMuted);
+    _ctrl?.setVolume(_muted ? 0 : 1);
   }
 
   void _syncPlayback() {
-    final player = _player;
-    if (player == null) return;
+    final ctrl = _ctrl;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
     final shouldPlay = widget.autoPlay &&
         widget.isActive &&
         _tickerEnabled &&
         _appActive &&
         !_manuallyPaused;
 
-    if (shouldPlay && !player.state.playing) {
-      player.play();
-    } else if (!shouldPlay && player.state.playing) {
+    if (shouldPlay && !ctrl.value.isPlaying) {
+      ctrl.play();
+    } else if (!shouldPlay && ctrl.value.isPlaying) {
       if (!widget.isActive) _manuallyPaused = false;
-      player.pause();
+      ctrl.pause();
     }
   }
 
@@ -351,58 +313,56 @@ player.play();
   void _onTap() {
     if (!_controlsVisible) {
       setState(() => _controlsVisible = true);
-      if (_player?.state.playing == true) _scheduleHide();
+      if (_ctrl?.value.isPlaying == true) _scheduleHide();
     } else {
       _togglePlayback();
     }
   }
 
   void _togglePlayback() {
-    final player = _player;
-    if (player == null) return;
-    if (player.state.playing) {
-      player.pause();
+    final ctrl = _ctrl;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+    if (ctrl.value.isPlaying) {
+      ctrl.pause();
       _manuallyPaused = true;
     } else {
-      player.play();
+      ctrl.play();
       _manuallyPaused = false;
       _scheduleHide();
     }
   }
 
   void _toggleMute() {
-    setState(() {
-      _muted = !_muted;
-      _player?.setVolume(_muted ? 0 : 100);
-    });
+    setState(() => _muted = !_muted);
+    _ctrl?.setVolume(_muted ? 0 : 1);
     VideoMutePreference.muted = _muted;
   }
 
   void _seekBy(Duration delta) {
-    final player = _player;
-    if (player == null) return;
-    final cur = player.state.position + delta;
-    final dur = player.state.duration;
-    player.seek(
-      cur < Duration.zero ? Duration.zero : (cur > dur ? dur : cur),
+    final ctrl = _ctrl;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+    final target = ctrl.value.position + delta;
+    final dur = ctrl.value.duration;
+    ctrl.seekTo(
+      target < Duration.zero ? Duration.zero : (target > dur ? dur : target),
     );
   }
 
   void _scheduleHide() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && _player?.state.playing == true) {
+      if (mounted && _ctrl?.value.isPlaying == true) {
         setState(() => _controlsVisible = false);
       }
     });
   }
 
   void _openFullscreen() {
-    final player = _player;
-    if (player == null) return;
-    final pos = player.state.position;
-    final wasPlaying = player.state.playing;
-    player.pause();
+    final ctrl = _ctrl;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+    final pos = ctrl.value.position;
+    final wasPlaying = ctrl.value.isPlaying;
+    ctrl.pause();
 
     Navigator.of(context).push(MaterialPageRoute<void>(
       fullscreenDialog: true,
@@ -414,12 +374,21 @@ player.play();
         loop: widget.loop,
         onExit: (finalPos, finalMuted) {
           setState(() => _muted = finalMuted);
-          player.setVolume(_muted ? 0 : 100);
-          player.seek(finalPos);
+          ctrl.setVolume(_muted ? 0 : 1);
+          ctrl.seekTo(finalPos);
           _syncPlayback();
         },
       ),
     ));
+  }
+
+  void _disposeController() {
+    final ctrl = _ctrl;
+    _ctrl = null;
+    if (ctrl == null) return;
+    ctrl.removeListener(_onValue);
+    ctrl.pause();
+    ctrl.dispose();
   }
 
   @override
@@ -429,53 +398,35 @@ player.play();
       VideoMutePreference.notifier.removeListener(_onGlobalMuteChanged);
     }
     _pauseSub?.cancel();
-    _playingSub?.cancel();
-    _bufferingSub?.cancel();
-    _widthSub?.cancel();
-    _heightSub?.cancel();
     _hideTimer?.cancel();
-    _player?.dispose();
+    _disposeController();
     super.dispose();
   }
 
   Widget _buildVideoSurface() {
-    final controller = _controller;
-    if (controller == null) {
+    final ctrl = _ctrl;
+    final size = _videoSize;
+
+    if (ctrl == null || !_playerReady || size == null || size.isEmpty) {
       return ColoredBox(
         color: widget.backgroundColor,
         child: const AppLoadingIndicator(),
       );
     }
 
-    final w = _videoW;
-    final h = _videoH;
-
-    if (widget.fit == BoxFit.contain && w != null && h != null && h > 0) {
-      return ColoredBox(
-        color: widget.backgroundColor,
-        child: Center(
-          child: AspectRatio(
-            aspectRatio: w / h,
-            child: Video(
-              controller: controller,
-              fit: BoxFit.fill,
-              fill: widget.backgroundColor,
-              filterQuality: FilterQuality.high,
-              controls: NoVideoControls,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return ClipRect(
-      child: Video(
-        controller: controller,
+    // [VideoPlayer] fills whatever box it is given, so the fit has to be
+    // applied around it: the sized box below carries the video's real pixel
+    // dimensions and FittedBox scales that to the slot.
+    return ColoredBox(
+      color: widget.backgroundColor,
+      child: FittedBox(
         fit: widget.fit,
-        fill: widget.backgroundColor,
-        alignment: Alignment.center,
-        filterQuality: FilterQuality.high,
-        controls: NoVideoControls,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(
+          width: size.width,
+          height: size.height,
+          child: VideoPlayer(ctrl),
+        ),
       ),
     );
   }
@@ -489,6 +440,15 @@ player.play();
     }
 
     // ── Sizing ─────────────────────────────────────────────────────────────
+    //
+    // Every branch has to end up bounded on both axes. The surface scales the
+    // video's pixel dimensions to its slot, so an unbounded axis would let it
+    // lay out at the source's full pixel height (1080, 2160…) instead of at
+    // the size the screen wanted.
+    final size = _videoSize;
+    final ratio =
+        (size != null && size.height > 0) ? size.width / size.height : 16 / 9;
+
     Widget sized;
     if (widget.width != null && widget.height != null) {
       sized =
@@ -496,18 +456,17 @@ player.play();
     } else if (widget.aspectRatio != null) {
       sized = AspectRatio(aspectRatio: widget.aspectRatio!, child: video);
     } else if (widget.width != null) {
-      sized = SizedBox(width: widget.width, child: video);
+      sized = SizedBox(
+          width: widget.width, height: widget.width! / ratio, child: video);
     } else if (widget.height != null) {
-      sized = SizedBox(height: widget.height, child: video);
+      sized = SizedBox(
+          width: widget.height! * ratio, height: widget.height, child: video);
     } else {
-      final ratio = (_videoW != null && _videoH != null && _videoH! > 0)
-          ? _videoW! / _videoH!
-          : 16 / 9;
       sized = AspectRatio(aspectRatio: ratio, child: video);
     }
 
     // ── Controls overlay ───────────────────────────────────────────────────
-    final player = _player;
+    final ctrl = _ctrl;
     Widget playerWidget = Stack(
       alignment: Alignment.center,
       children: [
@@ -516,7 +475,7 @@ player.play();
           const IgnorePointer(
             child: AppLoadingIndicator(),
           ),
-        if (widget.showControls && player != null)
+        if (widget.showControls && ctrl != null && _playerReady)
           Positioned.fill(
             child: Semantics(
                 button: true,
@@ -528,7 +487,7 @@ player.play();
                     opacity: _controlsVisible ? 1.0 : 0.0,
                     duration: const Duration(milliseconds: 220),
                     child: _ControlsOverlay(
-                      player: player,
+                      controller: ctrl,
                       muted: _muted,
                       onPlayPause: _togglePlayback,
                       onMute: _toggleMute,
@@ -550,14 +509,14 @@ player.play();
 
     // ── Web: reveal the controls (mute, scrubber, fullscreen…) as soon as the
     //    pointer enters the video, and hide again on exit while playing. ──────
-    if (kIsWeb && widget.showControls && player != null) {
+    if (kIsWeb && widget.showControls && ctrl != null) {
       playerWidget = MouseRegion(
         onEnter: (_) {
           _hideTimer?.cancel();
           if (!_controlsVisible) setState(() => _controlsVisible = true);
         },
         onExit: (_) {
-          if (_player?.state.playing == true && _controlsVisible) {
+          if (_ctrl?.value.isPlaying == true && _controlsVisible) {
             setState(() => _controlsVisible = false);
           }
         },
@@ -573,7 +532,7 @@ player.play();
 
 class _ControlsOverlay extends StatelessWidget {
   const _ControlsOverlay({
-    required this.player,
+    required this.controller,
     required this.muted,
     required this.onPlayPause,
     required this.onMute,
@@ -582,7 +541,7 @@ class _ControlsOverlay extends StatelessWidget {
     this.onFullscreen,
   });
 
-  final Player player;
+  final VideoPlayerController controller;
   final bool muted;
   final VoidCallback onPlayPause;
   final VoidCallback onMute;
@@ -629,11 +588,10 @@ class _ControlsOverlay extends StatelessWidget {
                   size: 26.sp,
                 ),
                 SizedBox(width: AppSpacing.xxl.w),
-                StreamBuilder<bool>(
-                  stream: player.stream.playing,
-                  initialData: player.state.playing,
-                  builder: (_, snap) => _CircleButton(
-                    icon: (snap.data ?? false)
+                ValueListenableBuilder<VideoPlayerValue>(
+                  valueListenable: controller,
+                  builder: (_, value, __) => _CircleButton(
+                    icon: value.isPlaying
                         ? Icons.pause_rounded
                         : Icons.play_arrow_rounded,
                     onTap: onPlayPause,
@@ -656,7 +614,7 @@ class _ControlsOverlay extends StatelessWidget {
             left: 0,
             right: 0,
             bottom: 0,
-            child: _BottomBar(player: player, onFullscreen: onFullscreen),
+            child: _BottomBar(controller: controller, onFullscreen: onFullscreen),
           ),
         ],
       ),
@@ -698,9 +656,9 @@ class _CircleButton extends StatelessWidget {
 }
 
 class _BottomBar extends StatelessWidget {
-  const _BottomBar({required this.player, this.onFullscreen});
+  const _BottomBar({required this.controller, this.onFullscreen});
 
-  final Player player;
+  final VideoPlayerController controller;
   final VoidCallback? onFullscreen;
 
   String _fmt(Duration d) {
@@ -714,77 +672,68 @@ class _BottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 6.h),
-      child: StreamBuilder<Duration>(
-        stream: player.stream.duration,
-        initialData: player.state.duration,
-        builder: (_, durSnap) {
-          final dur = durSnap.data ?? Duration.zero;
-          return StreamBuilder<Duration>(
-            stream: player.stream.position,
-            initialData: player.state.position,
-            builder: (_, posSnap) {
-              final pos = posSnap.data ?? Duration.zero;
-              final frac = dur.inMilliseconds > 0
-                  ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0)
-                  : 0.0;
+      child: ValueListenableBuilder<VideoPlayerValue>(
+        valueListenable: controller,
+        builder: (context, value, __) {
+          final dur = value.duration;
+          final pos = value.position;
+          final frac = dur.inMilliseconds > 0
+              ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0)
+              : 0.0;
 
-              return Column(
-                mainAxisSize: MainAxisSize.min,
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  thumbShape:
+                      const RoundSliderThumbShape(enabledThumbRadius: 5),
+                  overlayShape: SliderComponentShape.noOverlay,
+                  trackHeight: 2.5,
+                  activeTrackColor: const Color(0xFF1D9E75),
+                  inactiveTrackColor: Colors.white24,
+                  thumbColor: Colors.white,
+                ),
+                child: SizedBox(
+                  height: 20.h,
+                  child: Slider(
+                    value: frac,
+                    onChanged: dur.inMilliseconds > 0
+                        ? (v) => controller.seekTo(Duration(
+                            milliseconds: (v * dur.inMilliseconds).round()))
+                        : null,
+                  ),
+                ),
+              ),
+              Row(
                 children: [
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      thumbShape:
-                          const RoundSliderThumbShape(enabledThumbRadius: 5),
-                      overlayShape: SliderComponentShape.noOverlay,
-                      trackHeight: 2.5,
-                      activeTrackColor: const Color(0xFF1D9E75),
-                      inactiveTrackColor: Colors.white24,
-                      thumbColor: Colors.white,
-                    ),
-                    child: SizedBox(
-                      height: 20.h,
-                      child: Slider(
-                        value: frac,
-                        onChanged: dur.inMilliseconds > 0
-                            ? (v) => player.seek(Duration(
-                                milliseconds: (v * dur.inMilliseconds).round()))
-                            : null,
-                      ),
-                    ),
+                  Text(
+                    _fmt(pos),
+                    style: TextStyle(color: Colors.white70, fontSize: 10.sp),
                   ),
-                  Row(
-                    children: [
-                      Text(
-                        _fmt(pos),
-                        style:
-                            TextStyle(color: Colors.white70, fontSize: 10.sp),
-                      ),
-                      const Spacer(),
-                      Text(
-                        _fmt(dur),
-                        style:
-                            TextStyle(color: Colors.white70, fontSize: 10.sp),
-                      ),
-                      if (onFullscreen != null) ...[
-                        SizedBox(width: AppSpacing.sm.w),
-                        Semantics(
-                            button: true,
-                            label: 'Fullscreen',
-                            child: GestureDetector(
-                              onTap: onFullscreen,
-                              behavior: HitTestBehavior.opaque,
-                              child: Icon(
-                                Icons.fullscreen_rounded,
-                                color: Colors.white70,
-                                size: 20.sp,
-                              ),
-                            )),
-                      ],
-                    ],
+                  const Spacer(),
+                  Text(
+                    _fmt(dur),
+                    style: TextStyle(color: Colors.white70, fontSize: 10.sp),
                   ),
+                  if (onFullscreen != null) ...[
+                    SizedBox(width: AppSpacing.sm.w),
+                    Semantics(
+                        button: true,
+                        label: 'Fullscreen',
+                        child: GestureDetector(
+                          onTap: onFullscreen,
+                          behavior: HitTestBehavior.opaque,
+                          child: Icon(
+                            Icons.fullscreen_rounded,
+                            color: Colors.white70,
+                            size: 20.sp,
+                          ),
+                        )),
+                  ],
                 ],
-              );
-            },
+              ),
+            ],
           );
         },
       ),
@@ -817,17 +766,13 @@ class _FullscreenVideoPage extends StatefulWidget {
 
 class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
     with WidgetsBindingObserver {
-  late final Player _player;
-  late final VideoController _controller;
+  late final VideoPlayerController _ctrl;
+  bool _ready = false;
 
   bool _muted = false;
   bool _controlsVisible = true;
+  bool _wasPlaying = false;
   Timer? _hideTimer;
-
-  int? _videoW;
-  int? _videoH;
-  StreamSubscription<int?>? _widthSub;
-  StreamSubscription<int?>? _heightSub;
 
   @override
   void initState() {
@@ -835,48 +780,9 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
     WidgetsBinding.instance.addObserver(this);
     _muted = widget.muted;
 
-    _player = Player();
-    final view = WidgetsBinding.instance.platformDispatcher.views.first;
-    final physW = view.physicalSize.width.round();
-    _controller = VideoController(
-      _player,
-      configuration: VideoControllerConfiguration(
-        enableHardwareAcceleration: true,
-        width: physW > 0 ? physW : null,
-      ),
-    );
-
-    _videoW = _player.state.width;
-    _videoH = _player.state.height;
-
-    _widthSub = _player.stream.width.listen((w) {
-      if (mounted && w != null && w > 0 && w != _videoW) {
-        setState(() => _videoW = w);
-      }
-    });
-    _heightSub = _player.stream.height.listen((h) {
-      if (mounted && h != null && h > 0 && h != _videoH) {
-        setState(() => _videoH = h);
-      }
-    });
-
-    _player.setVolume(_muted ? 0 : 100);
-    _player.setPlaylistMode(
-      widget.loop ? PlaylistMode.loop : PlaylistMode.none,
-    );
-
-    _player.open(Media(widget.url), play: false).then((_) async {
-      if (!mounted) return;
-      if (widget.initialPosition > Duration.zero) {
-        await _player.seek(widget.initialPosition);
-      }
-      if (widget.autoPlay) _player.play();
-    }).catchError((_) {});
-
-    _player.stream.playing.listen((playing) {
-      if (!mounted) return;
-      if (playing) _scheduleHide();
-    });
+    _ctrl = _controllerFor(widget.url);
+    _ctrl.addListener(_onValue);
+    _open();
 
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     SystemChrome.setPreferredOrientations([
@@ -886,15 +792,41 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
     ]);
   }
 
+  Future<void> _open() async {
+    try {
+      await _ctrl.initialize();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
+
+    await _ctrl.setLooping(widget.loop);
+    await _ctrl.setVolume(_muted ? 0 : 1);
+    if (widget.initialPosition > Duration.zero) {
+      await _ctrl.seekTo(widget.initialPosition);
+    }
+    if (widget.autoPlay) await _ctrl.play();
+
+    if (mounted) setState(() => _ready = true);
+  }
+
+  void _onValue() {
+    final playing = _ctrl.value.isPlaying;
+    if (playing != _wasPlaying) {
+      _wasPlaying = playing;
+      if (playing) _scheduleHide();
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:
-        if (_player.state.playing) _player.pause();
+        if (_ctrl.value.isPlaying) _ctrl.pause();
       case AppLifecycleState.resumed:
-        _player.play();
+        if (_ready) _ctrl.play();
       case AppLifecycleState.inactive:
         break;
     }
@@ -903,7 +835,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
   void _scheduleHide() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && _player.state.playing) {
+      if (mounted && _ctrl.value.isPlaying) {
         setState(() => _controlsVisible = false);
       }
     });
@@ -911,27 +843,25 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
 
   void _onTap() {
     setState(() => _controlsVisible = !_controlsVisible);
-    if (_controlsVisible && _player.state.playing) _scheduleHide();
+    if (_controlsVisible && _ctrl.value.isPlaying) _scheduleHide();
   }
 
   void _toggleMute() {
-    setState(() {
-      _muted = !_muted;
-      _player.setVolume(_muted ? 0 : 100);
-    });
+    setState(() => _muted = !_muted);
+    _ctrl.setVolume(_muted ? 0 : 1);
     VideoMutePreference.muted = _muted;
   }
 
   void _seekBy(Duration delta) {
-    final cur = _player.state.position + delta;
-    final dur = _player.state.duration;
-    _player.seek(
-      cur < Duration.zero ? Duration.zero : (cur > dur ? dur : cur),
+    final target = _ctrl.value.position + delta;
+    final dur = _ctrl.value.duration;
+    _ctrl.seekTo(
+      target < Duration.zero ? Duration.zero : (target > dur ? dur : target),
     );
   }
 
   void _exit() {
-    widget.onExit(_player.state.position, _muted);
+    widget.onExit(_ctrl.value.position, _muted);
     Navigator.of(context).pop();
   }
 
@@ -939,9 +869,8 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
-    _widthSub?.cancel();
-    _heightSub?.cancel();
-    _player.dispose();
+    _ctrl.removeListener(_onValue);
+    _ctrl.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
@@ -962,44 +891,35 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Builder(builder: (_) {
-                  final w = _videoW;
-                  final h = _videoH;
-                  if (w != null && h != null && h > 0) {
-                    return ColoredBox(
-                      color: Colors.black,
-                      child: Center(
-                        child: AspectRatio(
-                          aspectRatio: w / h,
-                          child: Video(
-                            controller: _controller,
-                            fit: BoxFit.fill,
-                            fill: Colors.black,
-                            filterQuality: FilterQuality.high,
-                            controls: NoVideoControls,
-                          ),
-                        ),
+                if (_ready && !_ctrl.value.size.isEmpty)
+                  ColoredBox(
+                    color: Colors.black,
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: _ctrl.value.aspectRatio,
+                        child: VideoPlayer(_ctrl),
                       ),
-                    );
-                  }
-                  return const ColoredBox(color: Colors.black);
-                }),
-                AnimatedOpacity(
-                  opacity: _controlsVisible ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: _ControlsOverlay(
-                    player: _player,
-                    muted: _muted,
-                    onPlayPause: () {
-                      _player.state.playing ? _player.pause() : _player.play();
-                      if (_player.state.playing) _scheduleHide();
-                    },
-                    onMute: _toggleMute,
-                    onSeekBack: () => _seekBy(const Duration(seconds: -10)),
-                    onSeekForward: () => _seekBy(const Duration(seconds: 10)),
-                    onFullscreen: null,
+                    ),
+                  )
+                else
+                  const ColoredBox(color: Colors.black),
+                if (_ready)
+                  AnimatedOpacity(
+                    opacity: _controlsVisible ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: _ControlsOverlay(
+                      controller: _ctrl,
+                      muted: _muted,
+                      onPlayPause: () {
+                        _ctrl.value.isPlaying ? _ctrl.pause() : _ctrl.play();
+                        if (_ctrl.value.isPlaying) _scheduleHide();
+                      },
+                      onMute: _toggleMute,
+                      onSeekBack: () => _seekBy(const Duration(seconds: -10)),
+                      onSeekForward: () => _seekBy(const Duration(seconds: 10)),
+                      onFullscreen: null,
+                    ),
                   ),
-                ),
                 Positioned(
                   top: safePad.top + 8.h,
                   left: 12.w,

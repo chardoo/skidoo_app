@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 
 /// Circular avatar that shows a network image when [imageUrl] is set,
 /// or a themed initial/letter when no image is available.
@@ -36,10 +36,17 @@ class UserAvatar extends StatelessWidget {
         child: Semantics(
           image: true,
           label: 'Profile picture',
-          child: CachedNetworkImage(
+          // A profile photo is the one image in the app that changes under a
+          // widget that stays put — swapped the moment an upload finishes, on
+          // every screen showing it at once. SkidooImage cross-fades that
+          // instead of blinking through the initials placeholder, and sizes the
+          // decode to the avatar rather than downloading a full-resolution
+          // portrait for a 40 px circle.
+          child: SkidooImage(
             imageUrl: imageUrl!,
             width: radius * 2,
             height: radius * 2,
+            logicalWidth: radius * 2,
             fit: BoxFit.cover,
             placeholder: (_, __) => _Initials(initial: initial, radius: radius, bg: bg, fg: fg),
             errorWidget: (_, __, ___) => _Initials(initial: initial, radius: radius, bg: bg, fg: fg),

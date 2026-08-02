@@ -1,6 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
+import 'package:skidoo_app/core/widgets/zoomable_photo.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
@@ -48,21 +49,34 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
             itemCount: widget.samples.length,
             onPageChanged: (i) => setState(() => _current = i),
             itemBuilder: (_, i) {
-              return InteractiveViewer(
-                minScale: 1.0,
-                maxScale: 4.0,
-                child: Semantics(image: true, label: 'Photographer sample', child: CachedNetworkImage(
-                  imageUrl: widget.samples[i].url,
+              final sample = widget.samples[i];
+
+              // A video sample plays here rather than being handed to an image
+              // loader, which could only ever show a broken frame.
+              if (sample.isVideo) {
+                return SkidooVideoPlayer(
+                  url: sample.url,
+                  isActive: i == _current,
+                  autoPlay: true,
+                  loop: true,
                   fit: BoxFit.contain,
-                  filterQuality: FilterQuality.high,
-                  placeholder: (_, __) => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                  errorWidget: (_, __, ___) => const Center(
-                    child: Icon(Icons.broken_image_rounded,
-                        color: Colors.white24, size: 60),
-                  ),
-                )),
+                  showControls: true,
+                  backgroundColor: Colors.black,
+                  listenToPauseNotifier: true,
+                );
+              }
+
+              return ZoomablePhoto(
+                key: ValueKey(sample.id),
+                imageUrl: sample.url,
+                // `POST/PUT /photographer/samples` records these, so a sample
+                // opens at its real shape rather than resolving into it.
+                knownAspect: sample.aspectRatio,
+                semanticLabel: 'Photographer sample',
+                errorWidget: (_, __, ___) => const Center(
+                  child: Icon(Icons.broken_image_rounded,
+                      color: Colors.white24, size: 60),
+                ),
               );
             },
           ),

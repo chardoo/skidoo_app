@@ -79,6 +79,15 @@ class SuggestedPhotographer {
   final double? matchScore;
   final String? profileUrl;
 
+  /// What this creator shoots — "Events & Nature". Shown beside the follower
+  /// count.
+  ///
+  /// The server builds it from the first two `specialties` joined with " & ",
+  /// and sends null — never "" — for a creator with none, in which case the
+  /// suggestion row reads as the follower count alone. Two is the cap on
+  /// purpose: a third speciality pushes the follower count off the row.
+  final String? category;
+
   const SuggestedPhotographer({
     required this.id,
     required this.name,
@@ -87,7 +96,48 @@ class SuggestedPhotographer {
     required this.followerCount,
     this.matchScore,
     this.profileUrl,
+    this.category,
   });
+
+  /// The creator's category line, in the order the payload is worth reading.
+  ///
+  /// `category` is the server-built line and wins outright. The rest is for
+  /// deploys that predate it: the **arrays** come next, because `specialties`
+  /// carries the same two-speciality line this joins itself, whereas the
+  /// singular `specialty` is only ever the first one — reading it earlier
+  /// would settle for "Events" while "Events & Nature" was sitting in the
+  /// same payload.
+  static String? _categoryOf(Map<String, dynamic> json) {
+    final category = json['category'];
+    if (category is String && category.trim().isNotEmpty) {
+      return category.trim();
+    }
+
+    for (final key in const [
+      'specialties',
+      'categories',
+      'tags',
+      'specializations',
+    ]) {
+      final value = json[key];
+      if (value is List && value.isNotEmpty) {
+        final parts = value
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            // Same cap the server applies: a third would push the follower
+            // count off the row.
+            .take(2)
+            .toList();
+        if (parts.isNotEmpty) return parts.join(' & ');
+      }
+    }
+
+    for (final key in const ['specialty', 'specialization', 'speciality']) {
+      final value = json[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+    return null;
+  }
 
   factory SuggestedPhotographer.fromJson(Map<String, dynamic> json) {
     // `profile_url` is the canonical field name across the backend (see
@@ -101,6 +151,7 @@ class SuggestedPhotographer {
       followerCount: (json['follower_count'] as num?)?.toInt() ?? 0,
       matchScore: (json['match_score'] as num?)?.toDouble(),
       profileUrl: rawUrl is String && rawUrl.isNotEmpty ? rawUrl : null,
+      category: _categoryOf(json),
     );
   }
 }
@@ -144,10 +195,43 @@ class FollowRepository {
   /// Read-only snapshot of the currently followed photographer IDs.
   static Set<String> get followedIds => Set.unmodifiable(_followedIds);
 
+  /// Bumped on every change to [followedIds], from anywhere in the app.
+  ///
+  /// The set is session state that several screens write to — a profile
+  /// page, the following list, the suggestion rows — and the Following feed
+  /// has to react to it: unfollowing the last creator empties that feed, and
+  /// it should say so at once rather than the next time it is rebuilt.
+  static final ValueNotifier<int> followedRevision = ValueNotifier<int>(0);
+
+  static void _followedChanged() => followedRevision.value++;
+
   /// Seed the cache from feed responses that include is_followed.
   /// Safe to call multiple times — merges into the existing set.
   static void seedFollowed(Iterable<String> photographerIds) {
+    final before = _followedIds.length;
     _followedIds.addAll(photographerIds);
+    if (_followedIds.length != before) _followedChanged();
+  }
+
+  /// Empties the session cache. The cache is static, so a test that seeds it
+  /// would otherwise leak follows into every test that runs after it.
+  @visibleForTesting
+  static void debugClearFollowed() {
+    _followedIds.clear();
+    _followedChanged();
+  }
+
+  /// Replaces the session cache in one go, notifying once.
+  ///
+  /// A test dropping one of two follows has to land in a single step, the way
+  /// [unfollow] does — clearing and re-seeding would pass through empty, which
+  /// is exactly the transition the Following feed watches for.
+  @visibleForTesting
+  static void debugSetFollowed(Iterable<String> photographerIds) {
+    _followedIds
+      ..clear()
+      ..addAll(photographerIds);
+    _followedChanged();
   }
 
   // ── Follow / Unfollow ─────────────────────────────────────────────────────
@@ -157,12 +241,14 @@ class FollowRepository {
     if (photographerId.isEmpty) return;
     debugPrint('$_tag follow → photographerId=$photographerId');
     _followedIds.add(photographerId); // optimistic
+    _followedChanged();
     try {
       final resp = await _dio.post('/follow/photographer/$photographerId');
       debugPrint('$_tag follow ← status=${resp.statusCode}');
     } catch (e, st) {
       debugPrint('$_tag follow ERROR: $e\n$st');
       _followedIds.remove(photographerId); // revert
+      _followedChanged();
       rethrow;
     }
   }
@@ -172,12 +258,14 @@ class FollowRepository {
     if (photographerId.isEmpty) return;
     debugPrint('$_tag unfollow → photographerId=$photographerId');
     _followedIds.remove(photographerId); // optimistic
+    _followedChanged();
     try {
       final resp = await _dio.delete('/follow/photographer/$photographerId');
       debugPrint('$_tag unfollow ← status=${resp.statusCode}');
     } catch (e, st) {
       debugPrint('$_tag unfollow ERROR: $e\n$st');
       _followedIds.add(photographerId); // revert
+      _followedChanged();
       rethrow;
     }
   }
@@ -215,6 +303,14 @@ class FollowRepository {
           }
         }
       }
+      // A row shows "Events & Nature · 12 followers" only when the creator has
+      // a category; otherwise the count stands alone, by design. That makes an
+      // absent line ambiguous from the outside — a creator with no specialties
+      // on record looks exactly like a payload that isn't carrying the field
+      // yet. This says which.
+      final withCategory = result.where((p) => p.category != null).length;
+      debugPrint('$_tag getSuggestedPhotographers ← ${result.length} creators, '
+          '$withCategory with a category');
       return result;
     } catch (e, st) {
       debugPrint('$_tag getSuggestedPhotographers ERROR: $e\n$st');

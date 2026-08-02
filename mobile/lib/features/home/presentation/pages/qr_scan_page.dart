@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 class QrScanPage extends StatefulWidget {
   const QrScanPage({super.key});
@@ -60,12 +61,7 @@ class _QrScanPageState extends State<QrScanPage> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
-        leading: kIsWeb ? null : IconButton(
-          tooltip: 'Back',
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white, size: 20.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb ? null : AppBackButton(color: Colors.white, onPressed: () => Navigator.of(context).pop()),
         title: Text(
           'Scan Event QR',
           style: TextStyle(

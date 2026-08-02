@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -19,8 +18,9 @@ class ImageWithAddToCartWidget extends StatelessWidget {
       child: Stack(
         children: [
           // ── Image ───────────────────────────────────────────────────────
-          Semantics(image: true, label: 'Photo', child: CachedNetworkImage(
+          SkidooImage(
             imageUrl: photo.url,
+            semanticLabel: 'Photo',
             fit: BoxFit.cover,
             width: double.infinity,
             placeholder: (context, __) => Container(
@@ -37,7 +37,7 @@ class ImageWithAddToCartWidget extends StatelessWidget {
               child: const Icon(Icons.broken_image_outlined,
                   color: Colors.white38, size: 40),
             ),
-          )),
+          ),
 
           // ── Price badge ─────────────────────────────────────────────────
           Positioned(

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:skidoo_app/app.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 // Temporarily disabled for presentation screenshots — re-enable with the call below.
@@ -13,7 +12,6 @@ import 'package:skidoo_app/services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized(); // must be after WidgetsFlutterBinding
 
   // Flutter Web ships with the semantic tree disabled until a screen reader is
   // detected. Force-enabling it (ensureSemantics) makes our Semantics labels

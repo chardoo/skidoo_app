@@ -29,6 +29,7 @@ class AppNavbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final isLight = Theme.of(context).brightness == Brightness.light;
 
     return SafeArea(
       top: false,
@@ -39,8 +40,23 @@ class AppNavbar extends StatelessWidget {
           height: 58.h,
           padding: EdgeInsets.symmetric(horizontal: 10.w),
           decoration: BoxDecoration(
-            color: Colors.black,
+            // The pill floats over arbitrary content, so it has to read as a
+            // surface in front of the page rather than a hole in it. Dark mode
+            // gets that from being blacker than everything behind it; light
+            // mode can't, so it takes the palette's white and earns its edge
+            // from a shadow instead — white on the light background is only a
+            // few percent apart.
+            color: isLight ? ext.cardSurface : Colors.black,
             borderRadius: BorderRadius.circular(29.r),
+            boxShadow: isLight
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.12),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
           ),
           // Tabs size to their own content (not 4 equal Expanded slots) so
           // the active tab's icon+label pill gets exactly the room it
@@ -114,8 +130,18 @@ class _NavTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = ext.accentGold;
-    final iconColor = selected ? Colors.black : Colors.white70;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+
+    // On the black pill the active tab is a solid accent chip with the label
+    // knocked out of it. That inverts on white: a solid green chip would be
+    // the loudest thing on a light screen, so the chip becomes a tint of the
+    // accent and the label is drawn *in* the accent instead of out of it.
+    final activeColor =
+        isLight ? ext.accentGold.withValues(alpha: 0.14) : ext.accentGold;
+    final activeForeground = isLight ? ext.accentGold : Colors.black;
+    final iconColor = selected
+        ? activeForeground
+        : (isLight ? ext.searchHintColor : Colors.white70);
 
     Widget iconWidget = icon != null
         ? Icon(
@@ -203,7 +229,7 @@ class _NavTab extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.black,
+                        color: activeForeground,
                         fontSize: 12.5.sp,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.1,

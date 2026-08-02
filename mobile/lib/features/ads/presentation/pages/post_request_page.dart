@@ -10,8 +10,10 @@ import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/core/common/widgets/xfile_image.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:skidoo_app/core/theme/app_input.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 const _eventTypes = [
   'Wedding',
@@ -133,12 +135,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : IconButton(
-                tooltip: 'Back',
-                icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    color: ext.greetingColor, size: 20.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
           'Post a Request',
           style: TextStyle(
@@ -156,7 +153,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
           padding: EdgeInsets.symmetric(
               horizontal: AppSpacing.xl.w, vertical: AppSpacing.sm.h),
           children: [
-            _SectionLabel('What are you looking for?', ext),
+            _FieldLabel('What are you looking for?', ext),
             SizedBox(height: AppSpacing.sm.h),
             _Field(
               controller: _titleCtrl,
@@ -166,7 +163,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
             ),
 
             SizedBox(height: AppSpacing.xl.h),
-            _SectionLabel('Event type', ext),
+            _FieldLabel('Event type', ext),
             SizedBox(height: AppSpacing.sm.h),
             _EventTypeDropdown(
               value: _selectedEventType,
@@ -175,7 +172,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
             ),
 
             SizedBox(height: AppSpacing.xl.h),
-            _SectionLabel('Visible to', ext),
+            _FieldLabel('Visible to', ext),
             SizedBox(height: AppSpacing.sm.h),
             _VisibleToSelector(
               value: _visibleTo,
@@ -184,7 +181,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
             ),
 
             SizedBox(height: AppSpacing.xl.h),
-            _SectionLabel('Location', ext),
+            _FieldLabel('Location', ext),
             SizedBox(height: AppSpacing.sm.h),
             _Field(
               controller: _locationCtrl,
@@ -194,7 +191,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
             ),
 
             SizedBox(height: AppSpacing.xl.h),
-            _SectionLabel('Description', ext),
+            _FieldLabel('Description', ext),
             SizedBox(height: AppSpacing.sm.h),
             _Field(
               controller: _descCtrl,
@@ -209,7 +206,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
             // ── Media picker ──────────────────────────────────────────────
             Row(
               children: [
-                _SectionLabel('Photos', ext),
+                _FieldLabel('Photos', ext),
                 SizedBox(width: 6.w),
                 Text(
                   '(optional)',
@@ -241,7 +238,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
             ),
 
             SizedBox(height: AppSpacing.xl.h),
-            _SectionLabel('Budget (optional)', ext),
+            _FieldLabel('Budget (optional)', ext),
             SizedBox(height: AppSpacing.xs.h),
             Text(
               'Enter a rough budget so photographers know what to expect.',
@@ -398,10 +395,10 @@ class _MultiMediaPicker extends StatelessWidget {
   }
 }
 
-// ── Section label ─────────────────────────────────────────────────────────────
+// ── Field label ───────────────────────────────────────────────────────────────
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text, this.ext);
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text, this.ext);
   final String text;
   final AppThemeExtension ext;
 
@@ -484,10 +481,11 @@ class _EventTypeDropdown extends StatelessWidget {
         style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
         icon: Icon(Icons.expand_more_rounded,
             color: ext.searchHintColor, size: 20.sp),
-        decoration: const InputDecoration(
-          border: InputBorder.none,
+        // The container this sits in draws the only outline — see
+        // [kBorderlessInput].
+        decoration: kBorderlessInput.copyWith(
           isDense: true,
-          contentPadding: EdgeInsets.symmetric(vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
         ),
         validator: (v) => v == null ? 'Required' : null,
         items: _eventTypes

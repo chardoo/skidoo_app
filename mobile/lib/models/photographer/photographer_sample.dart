@@ -1,3 +1,5 @@
+import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
+
 class PhotographerSample {
   final String id;
   final String url;
@@ -11,7 +13,10 @@ class PhotographerSample {
   double? get aspectRatio =>
       (width != null && height != null && height! > 0) ? width! / height! : null;
 
-  bool get isVideo => mediaType == 'video';
+  /// Same fallback as `Photo.isVideo`: the url settles it when the record
+  /// carries no `media_type`.
+  bool get isVideo =>
+      mediaType == 'video' || CloudinaryTransform.isVideoUrl(url);
 
   const PhotographerSample({
     required this.id,

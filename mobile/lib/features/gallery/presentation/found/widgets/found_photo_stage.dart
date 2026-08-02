@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_action_rail.dart';
+import 'package:skidoo_app/core/widgets/image_aspect.dart';
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_photo_meta_bar.dart';
@@ -32,7 +33,10 @@ class FoundPhotoStage extends StatelessWidget {
 
   final VoidCallback? onViewAlbum;
 
-  /// Fallback shape for records the server never sent dimensions for.
+  /// Shape used for the first frame of a record the server sent no dimensions
+  /// for. It is a starting point, not the answer: [ResolvedAspect] measures the
+  /// image and rebuilds with its real shape, so a panorama is never boxed into
+  /// a 4:3 slot.
   static const _defaultAspect = 4 / 3;
 
   /// Height of the video player's own bottom controls — 20 dp scrubber,
@@ -44,66 +48,80 @@ class FoundPhotoStage extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return Center(
-      child: AspectRatio(
-        aspectRatio: photo.aspectRatio ?? _defaultAspect,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (photo.isVideo)
-              SkidooVideoPlayer(
-                url: photo.url,
-                isActive: isActive,
-                autoPlay: true,
-                loop: true,
-                fit: BoxFit.cover,
-                showControls: true,
-                backgroundColor: ext.mediaLetterbox,
-                listenToPauseNotifier: true,
-              )
-            else
-              SkidooImage(
-                imageUrl: photo.url,
-                fit: BoxFit.cover,
-                semanticLabel: 'Found photo',
-                placeholder: (_, __) => const SkidooImagePlaceholder(),
-                errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
+      child: ResolvedAspect(
+        imageUrl: photo.url,
+        // Videos measure too — [ResolvedAspect] reads their poster frame, so a
+        // clip the server sent no dimensions for still gets its real shape
+        // instead of the stand-in.
+        knownAspect: photo.aspectRatio,
+        fallback: _defaultAspect,
+        builder: (context, aspect) => AspectRatio(
+          aspectRatio: aspect,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (photo.isVideo)
+                SkidooVideoPlayer(
+                  url: photo.url,
+                  isActive: isActive,
+                  autoPlay: true,
+                  loop: true,
+                  fit: BoxFit.cover,
+                  showControls: true,
+                  backgroundColor: ext.mediaLetterbox,
+                  listenToPauseNotifier: true,
+                )
+              else
+                SkidooImage(
+                  imageUrl: photo.url,
+                  // Identical to `cover` once the box is the photo's own
+                  // shape, which is the steady state. It differs only in the
+                  // moment before an unmeasured photo resolves, and there
+                  // `contain` shows the whole frame rather than cropping into
+                  // it and then jumping.
+                  fit: BoxFit.contain,
+                  semanticLabel: 'Found photo',
+                  placeholder: (_, __) => const SkidooImagePlaceholder(),
+                  errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
+                ),
+
+              Positioned(
+                left: AppSpacing.md.w,
+                top: AppSpacing.md.h,
+                child: FoundVisibilityBadge(isPublic: photo.isPublic),
               ),
 
-            Positioned(
-              left: AppSpacing.md.w,
-              top: AppSpacing.md.h,
-              child: FoundVisibilityBadge(isPublic: photo.isPublic),
-            ),
-
-            Positioned(
-              right: AppSpacing.md.w,
-              top: AppSpacing.sm.h,
-              bottom: AppSpacing.huge.h,
-              child: Align(
-                alignment: const Alignment(0, -0.1),
-                // The rail is sized to the *photo*, and a wide landscape shot
-                // leaves it very little height — scaleDown keeps every action
-                // reachable instead of clipping the bottom one off.
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: FoundActionRail(
-                    key: ValueKey('found_actions_${photo.id}'),
-                    photo: photo,
+              Positioned(
+                right: AppSpacing.md.w,
+                top: AppSpacing.sm.h,
+                bottom: AppSpacing.huge.h,
+                child: Align(
+                  alignment: const Alignment(0, -0.1),
+                  // The rail is sized to the *photo*, and a wide landscape shot
+                  // leaves it very little height — scaleDown keeps every action
+                  // reachable instead of clipping the bottom one off.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: FoundActionRail(
+                      key: ValueKey('found_actions_${photo.id}'),
+                      photo: photo,
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Cleared of the player's own controls on video: the scrubber and
-            // timestamps are anchored to the same bottom edge, so a meta bar
-            // at 0 covers the progress bar and swallows the drags that seek.
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: photo.isVideo ? _videoControlsBand.h : 0,
-              child: FoundPhotoMetaBar(photo: photo, onViewAlbum: onViewAlbum),
-            ),
-          ],
+              // Cleared of the player's own controls on video: the scrubber and
+              // timestamps are anchored to the same bottom edge, so a meta bar
+              // at 0 covers the progress bar and swallows the drags that seek.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: photo.isVideo ? _videoControlsBand.h : 0,
+                child:
+                    FoundPhotoMetaBar(photo: photo, onViewAlbum: onViewAlbum),
+              ),
+            ],
+          ),
         ),
       ),
     );

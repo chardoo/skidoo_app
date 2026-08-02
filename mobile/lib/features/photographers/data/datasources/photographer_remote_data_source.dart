@@ -136,7 +136,15 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
         data: formData,
         options: dio.Options(
           contentType: 'multipart/form-data',
+          // Two clocks, and they cover different halves of this request.
+          // sendTimeout is the upload of the multipart body; receiveTimeout is
+          // the wait afterwards, while the server pushes each file to
+          // Cloudinary and only then answers. It is the second one that this
+          // endpoint spends its time in, and it was the one left implicit —
+          // inheriting 60 s from the base client while sendTimeout had been
+          // raised to two minutes. Stated here so the pair is visible together.
           sendTimeout: const Duration(minutes: 2),
+          receiveTimeout: const Duration(seconds: 60),
         ),
       );
       final body = res.data as List<dynamic>;

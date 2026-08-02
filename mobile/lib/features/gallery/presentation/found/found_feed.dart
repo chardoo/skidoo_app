@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/utils/responsive.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
@@ -30,7 +31,7 @@ import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
 class FoundFeed extends StatefulWidget {
   const FoundFeed({super.key, this.topPadding = 0});
 
-  /// Space reserved for the floating Found/For You/Following header that
+  /// Space reserved for the floating Found/Feed/Following header that
   /// overlays this tab.
   final double topPadding;
 
@@ -282,7 +283,10 @@ class _FoundFeedState extends State<FoundFeed> {
                     ),
                   ),
                 // Next-page spinner, then the run-out that clears the floating
-                // bottom nav bar.
+                // bottom nav bar. Measured rather than a fixed 96: the bar is
+                // its own height plus the home indicator, so the number that
+                // cleared it on one phone left the last row under it on
+                // another.
                 if (state.isLoadingMore)
                   SliverToBoxAdapter(
                     child: Padding(
@@ -290,7 +294,10 @@ class _FoundFeedState extends State<FoundFeed> {
                       child: const AppLoadingIndicator(),
                     ),
                   ),
-                SliverToBoxAdapter(child: SizedBox(height: 96.h)),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                      height: AppSpacing.md.h + bottomBarClearance(context)),
+                ),
               ],
             ),
           ),

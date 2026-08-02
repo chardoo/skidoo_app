@@ -13,6 +13,7 @@ import 'package:skidoo_app/features/gallery/domain/usecases/get_found_photos_use
 import 'package:skidoo_app/features/gallery/presentation/found/models/found_filter_options.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/models/found_filters.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_filter_chip.dart';
+import 'package:skidoo_app/core/common/widgets/app_drag_handle.dart';
 
 /// Bottom sheet holding the Found tab's date / visibility / photographer
 /// filters.
@@ -257,7 +258,7 @@ class _FoundFilterSheetState extends State<FoundFilterSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (!widget.isWeb) _DragHandle(color: ext.searchHintColor),
+            if (!widget.isWeb) const AppDragHandle(),
             Flexible(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(AppSpacing.xxl.w, AppSpacing.md.h,
@@ -430,23 +431,3 @@ class _FilterGroup extends StatelessWidget {
   }
 }
 
-class _DragHandle extends StatelessWidget {
-  const _DragHandle({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(top: AppSpacing.md.h),
-      child: Container(
-        width: 36.w,
-        height: 4.h,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(AppRadius.pill.r),
-        ),
-      ),
-    );
-  }
-}

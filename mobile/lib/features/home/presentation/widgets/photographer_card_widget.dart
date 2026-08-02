@@ -9,12 +9,15 @@ class PhotographerCardWidget extends StatelessWidget {
   const PhotographerCardWidget({
     super.key,
     required this.photographer,
-    required this.height,
+    this.height,
     this.onTap,
   });
 
   final PhotographerModel photographer;
-  final double height;
+
+  /// Fixed height for the rare caller that places the card outside a grid.
+  /// Null in a grid: the cell is already the size, and the card fills it.
+  final double? height;
   final VoidCallback? onTap;
 
   @override

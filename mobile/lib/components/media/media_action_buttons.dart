@@ -9,6 +9,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:skidoo_app/components/media/media_rail_action.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
@@ -16,10 +17,11 @@ import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dar
 import 'package:skidoo_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 
 /// Fetches the creator-branded overlay image and hands it to the native OS
 /// share sheet. This is THE external-share routine for the whole app — every
-/// card's "share to other apps" icon (discovery page, Home "For You"/
+/// card's "share to other apps" icon (discovery page, Home "Feed"/
 /// "Following", the Found tab, the event-pictures feed) calls this exact
 /// function so the branding behaviour never diverges between screens. Also
 /// used internally by [MediaActionButtons]'s own Share/Download buttons.
@@ -132,6 +134,13 @@ void _dismissProcessingDialog(BuildContext context) {
 ///   • [Axis.vertical]   → TikTok-style sidebar (event pictures page).
 ///   • [Axis.horizontal] → flat row with dividers  (fullscreen page).
 ///
+/// The buttons themselves are [MediaRailAction]s — the same control the
+/// [MediaReactionRail] draws — so the glyph set, the shadow that keeps a white
+/// icon legible over a photo and the press-scale match the feed card and the
+/// Found viewer. Only the layout differs: this one is a row across the bottom
+/// of the frame rather than a column down its edge. Download is the one action
+/// here that no rail offers.
+///
 /// Provide [pictureId] (defaults to [imageId]) to show the Comment button.
 ///
 /// [onLikeToggled] is called with the new liked state after an optimistic UI
@@ -213,8 +222,10 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
     _commentCount = widget.initialCommentCount;
   }
 
-  static String _fmt(int n) {
-    if (n <= 0) return '';
+  /// Null for a count of zero — the shared button then draws the glyph alone
+  /// rather than an empty caption slot under it.
+  static String? _fmt(int n) {
+    if (n <= 0) return null;
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
     if (n >= 1000) return '${(n / 1000).toStringAsFixed(n >= 10000 ? 0 : 1)}K';
     return '$n';
@@ -285,56 +296,65 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    Widget btn({
+      Key? key,
+      required IconData icon,
+      required VoidCallback onTap,
+      Color color = Colors.white,
+      String? label,
+      bool busy = false,
+      String? semanticLabel,
+    }) =>
+        MediaRailAction(
+          key: key,
+          icon: icon,
+          iconColor: color,
+          label: label,
+          busy: busy,
+          semanticLabel: semanticLabel,
+          iconSize: _icnSize,
+          tapTargetSize: _btnSize,
+          onTap: onTap,
+        );
+
     final btns = <Widget>[
       if (widget.showLike)
-        _MediaBtn(
+        btn(
           icon: _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
           label: _fmt(_likeCount),
-          color: _liked ? const Color(0xFFFF3B5C) : Colors.white,
-          size: _btnSize,
-          iconSize: _icnSize,
-          busy: false,
+          color: _liked ? ext.likeRed : Colors.white,
+          semanticLabel: _liked ? 'Unlike' : 'Like',
           onTap: _toggleLike,
         ),
       if (widget.showDownload)
-        _MediaBtn(
+        btn(
           key: _downloadKey,
-          icon: Icons.download_rounded,
-          label: '',
-          color: const Color(0xFF1D9E75),
-          size: _btnSize,
-          iconSize: _icnSize,
+          icon: Icons.download_outlined,
+          color: ext.accentGold,
           busy: _downloading,
+          semanticLabel: 'Download',
           onTap: () => _handleAction(isDownload: true),
         ),
-      _MediaBtn(
+      btn(
         key: _shareKey,
         icon: Icons.ios_share_rounded,
-        label: '',
-        color: Colors.white.withValues(alpha: 0.9),
-        size: _btnSize,
-        iconSize: _icnSize,
         busy: _sharing,
+        semanticLabel: 'Share photo',
         onTap: () => _handleAction(isDownload: false),
       ),
       if (widget.onSend != null)
-        _MediaBtn(
-          icon: Icons.send_rounded,
-          label: '',
-          color: Colors.white.withValues(alpha: 0.9),
-          size: _btnSize,
-          iconSize: _icnSize,
-          busy: false,
+        btn(
+          icon: Icons.near_me_outlined,
+          semanticLabel: 'Send',
           onTap: widget.onSend!,
         ),
       if (widget.showComment)
-        _MediaBtn(
-          icon: Icons.chat_bubble_outline_rounded,
+        btn(
+          icon: Icons.mode_comment_outlined,
           label: _fmt(_commentCount),
-          color: Colors.white.withValues(alpha: 0.9),
-          size: _btnSize,
-          iconSize: _icnSize,
-          busy: false,
+          semanticLabel: 'Comments',
           onTap: () => PhotoCommentSheet.show(
             context,
             pictureId: widget.pictureId,
@@ -496,133 +516,6 @@ class _ProcessingOverlayState extends State<_ProcessingOverlay>
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ── Single action button (circle icon + label) ────────────────────────────────
-
-class _MediaBtn extends StatefulWidget {
-  const _MediaBtn({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.size,
-    required this.iconSize,
-    required this.busy,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final double size;
-  final double iconSize;
-  final bool busy;
-  final VoidCallback onTap;
-
-  @override
-  State<_MediaBtn> createState() => _MediaBtnState();
-}
-
-class _MediaBtnState extends State<_MediaBtn>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 100),
-    lowerBound: 0.82,
-    upperBound: 1.0,
-    value: 1.0,
-  );
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: widget.label,
-      child: GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _ctrl.reverse(),
-      onTapUp: (_) {
-        _ctrl.forward();
-        widget.onTap();
-      },
-      onTapCancel: () => _ctrl.forward(),
-      child: ScaleTransition(
-        scale: _ctrl,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: widget.size,
-              height: widget.size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF2C2C2E).withValues(alpha: 0.92),
-                    const Color(0xFF1A1A1C).withValues(alpha: 0.96),
-                  ],
-                  center: Alignment.topLeft,
-                  radius: 1.4,
-                ),
-                border: Border.all(
-                  color: const Color(0xFF1D9E75).withValues(alpha: 0.35),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 3),
-                  ),
-                  BoxShadow(
-                    color: const Color(0xFF1D9E75).withValues(alpha: 0.08),
-                    blurRadius: 8,
-                    spreadRadius: 0,
-                  ),
-                ],
-              ),
-              child: widget.busy
-                  ? Padding(
-                      padding: EdgeInsets.all(widget.size * 0.22),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            widget.color.withValues(alpha: 0.8)),
-                      ),
-                    )
-                  : Icon(widget.icon, color: widget.color, size: widget.iconSize),
-            ),
-            SizedBox(height: AppSpacing.xs.h),
-            Text(
-              widget.label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.85),
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.3,
-                shadows: const [
-                  Shadow(
-                    color: Colors.black54,
-                    blurRadius: 4,
-                    offset: Offset(0, 1),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
       ),
     );
   }

@@ -1,25 +1,19 @@
 
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
 import 'package:skidoo_app/models/chat/chat_message.dart';
 import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/user_avatar.dart';
 
 /// Returns true when [url] points to a video, using both explicit path
 /// patterns (Cloudinary /video/upload/) and file extensions as fallback.
-bool _isVideoUrl(String url) {
-  final lower = url.toLowerCase().split('?').first;
-  if (lower.contains('/video/upload/')) return true;
-  return lower.endsWith('.mp4') ||
-      lower.endsWith('.mov') ||
-      lower.endsWith('.avi') ||
-      lower.endsWith('.mkv') ||
-      lower.endsWith('.webm');
-}
+bool _isVideoUrl(String url) => CloudinaryTransform.isVideoUrl(url);
 
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
@@ -87,9 +81,9 @@ class MessageBubble extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (!isMe) ...[
-                  _Avatar(
-                    senderId: message.senderId,
-                    ext: ext,
+                  UserAvatar(
+                    initial: message.senderId,
+                    radius: 14,
                     onTap: onUserTap,
                   ),
                   SizedBox(width: 6.w),
@@ -306,12 +300,14 @@ class _ReplyPreviewStrip extends StatelessWidget {
           if (preview.imageUrl != null && !(preview.isVideo || _isVideoUrl(preview.imageUrl!)))
             ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.xs.r),
-              child: Semantics(image: true, label: 'Shared photo', child: CachedNetworkImage(
+              child: SkidooImage(
                 imageUrl: preview.imageUrl!,
                 width: 36.w,
                 height: 36.w,
+                logicalWidth: 36.w,
                 fit: BoxFit.cover,
-              )),
+                semanticLabel: 'Shared photo',
+              ),
             )
           else if (preview.imageUrl != null && (preview.isVideo || _isVideoUrl(preview.imageUrl!)))
             ClipRRect(
@@ -344,10 +340,10 @@ class _MessageImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final img = Semantics(image: true, label: 'Shared photo', child: CachedNetworkImage(
+    final img = SkidooImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
-      filterQuality: FilterQuality.high,
+      semanticLabel: 'Shared photo',
       placeholder: (_, __) => Container(
         // Use known aspect ratio so bubble height is correct before decode.
         height: aspectRatio != null ? null : 180.h,
@@ -359,7 +355,7 @@ class _MessageImage extends StatelessWidget {
         color: Colors.black12,
         child: const Icon(Icons.broken_image_rounded, color: Colors.white54),
       ),
-    ));
+    );
     final tappable = Semantics(
       button: true,
       label: 'Open photo',
@@ -473,19 +469,15 @@ class _ZoomableImageViewState extends State<_ZoomableImageView>
                     }
                   },
                   child: Center(
-                    child: Semantics(
-                      image: true,
-                      label: 'Shared photo',
-                      child: CachedNetworkImage(
-                        imageUrl: widget.imageUrl,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.high,
-                        placeholder: (_, __) => const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        errorWidget: (_, __, ___) => const Icon(
-                            Icons.broken_image_rounded, color: Colors.white54),
+                    child: SkidooImage(
+                      imageUrl: widget.imageUrl,
+                      fit: BoxFit.contain,
+                      semanticLabel: 'Shared photo',
+                      placeholder: (_, __) => const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
+                      errorWidget: (_, __, ___) => const Icon(
+                          Icons.broken_image_rounded, color: Colors.white54),
                     ),
                   ),
                 ),
@@ -643,28 +635,3 @@ class _Timestamp extends StatelessWidget {
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.senderId, required this.ext, this.onTap});
-  final String senderId;
-  final AppThemeExtension ext;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = senderId.isNotEmpty ? senderId[0].toUpperCase() : '?';
-    final avatar = CircleAvatar(
-      radius: 14.r,
-      backgroundColor: ext.avatarBackground,
-      child: Text(
-        initial,
-        style: TextStyle(
-          color: ext.avatarForeground,
-          fontSize: 11.sp,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-    if (onTap == null) return avatar;
-    return Semantics(button: true, label: 'Sender avatar', child: GestureDetector(onTap: onTap, child: avatar));
-  }
-}

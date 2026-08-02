@@ -78,11 +78,7 @@ class _FoundAlbumView extends StatelessWidget {
         backgroundColor: ext.homeBackground,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: ext.greetingColor),
-          tooltip: 'Back',
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
           album.title,
           maxLines: 1,

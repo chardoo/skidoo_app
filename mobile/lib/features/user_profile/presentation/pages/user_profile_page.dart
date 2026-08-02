@@ -8,6 +8,7 @@ import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/number_format.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/broadcasts_page.dart';
 import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
@@ -192,7 +193,13 @@ class UserProfilePageState extends State<UserProfilePage>
       final photos = photosOfEvent(event);
       if (!mounted) return;
       if (photos.isEmpty) {
-        _openWithinTab(tab, photo);
+        // An album with nothing in it still opens — as the album, which says
+        // so — rather than falling through to a photo fallback that has no
+        // photo to show and silently does nothing.
+        await Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => EventPicturesPage(event: event),
+        ));
+        if (mounted) unawaited(_load());
         return;
       }
       // An event tile has no photo of its own to land on, so it starts at the
@@ -218,7 +225,12 @@ class UserProfilePageState extends State<UserProfilePage>
       if (mounted) unawaited(_load());
     } catch (e) {
       debugPrint('[UserProfilePage] openTile ERROR: $e');
-      if (mounted) {
+      if (!mounted) return;
+      if (photo.isEvent) {
+        // There is no photo to fall back to for an event tile, and a tap that
+        // does nothing at all is the worst answer available.
+        AppSnackBar.error(context, 'Could not open that event.');
+      } else {
         // The album could not be loaded; the photo itself still opens.
         _openWithinTab(tab, photo);
       }

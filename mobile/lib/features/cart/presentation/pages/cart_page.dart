@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/widgets/media_grid.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:skidoo_app/core/common/widgets/app_button.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
@@ -91,17 +91,11 @@ class _CartView extends StatelessWidget {
                   )
                 : Padding(
                     padding: EdgeInsets.all(10.w),
-                    child: MasonryGridView.count(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      cacheExtent: 800,
-                      addAutomaticKeepAlives: false,
-                      addRepaintBoundaries: true,
+                    child: MediaGrid(
+                      density: MediaGridDensity.cards,
                       itemCount: state.items.length,
-                      itemBuilder: (context, index) {
-                        return CartItemWidget(photo: state.items[index]);
-                      },
+                      itemBuilder: (context, index) =>
+                          CartItemWidget(photo: state.items[index]),
                     ),
                   ),
           ),

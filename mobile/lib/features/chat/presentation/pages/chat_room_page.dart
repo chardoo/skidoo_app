@@ -25,6 +25,7 @@ import 'package:skidoo_app/services/notification_prefs_service.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 /// Displays the messages for [room].
 /// Use the [ChatRoomPage.global] constructor to join the global chat room.
@@ -443,12 +444,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : IconButton(
-          tooltip: 'Back',
-          icon: Icon(Icons.arrow_back_ios_rounded,
-              color: ext.greetingColor, size: 18.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: kIsWeb ? null : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Semantics(button: true, label: 'Open group info', child: GestureDetector(
           onTap: widget.room.type == RoomType.group
               ? () => _openGroupInfo(context)

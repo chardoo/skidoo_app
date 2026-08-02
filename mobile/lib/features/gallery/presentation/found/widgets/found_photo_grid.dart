@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/widgets/media_grid.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_photo_tile.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 
@@ -37,18 +37,17 @@ class FoundPhotoGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gutter = 6.w;
+    const gutter = 6.0;
     final lastIndex = photos.length - 1;
 
-    return GridView.builder(
+    return MediaGrid(
       padding: padding,
       shrinkWrap: !scrollable,
       physics: scrollable ? null : const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: columns,
-        mainAxisSpacing: gutter,
-        crossAxisSpacing: gutter,
-      ),
+      // An album preview shows a fixed number across regardless of width, so
+      // the caller's count wins over the responsive one.
+      columns: columns,
+      gutter: gutter,
       itemCount: photos.length,
       itemBuilder: (_, index) {
         final isOverflowTile = overflowCount > 0 && index == lastIndex;

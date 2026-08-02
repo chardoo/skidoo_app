@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 
 class PhotographerSampleTile extends StatelessWidget {
   const PhotographerSampleTile({super.key, required this.sample, required this.onTap});
@@ -12,24 +12,33 @@ class PhotographerSampleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: 'Sample photo', child: GestureDetector(
+    return Semantics(button: true, label: sample.isVideo ? 'Sample video' : 'Sample photo', child: GestureDetector(
       onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.xs.r),
-        child: CachedNetworkImage(
-          imageUrl: sample.url,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => Container(
-            color: const Color(0xFF2C2C2A),
-            child: const Center(
-              child: CircularProgressIndicator(strokeWidth: 1.5),
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            SkidooImage(
+              imageUrl: sample.url,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => const SkidooImagePlaceholder(),
+              errorWidget: (_, __, ___) => Container(
+                color: SkidooImagePlaceholder.colorOf(context),
+                child: const Icon(Icons.broken_image_rounded,
+                    color: Colors.white24, size: 24),
+              ),
             ),
-          ),
-          errorWidget: (_, __, ___) => Container(
-            color: const Color(0xFF2C2C2A),
-            child: const Icon(Icons.broken_image_rounded,
-                color: Colors.white24, size: 24),
-          ),
+            // Same badge the found / search grids use, so a clip reads as one
+            // wherever it's tiled.
+            if (sample.isVideo)
+              Positioned(
+                right: 6.w,
+                top: 6.h,
+                child: Icon(Icons.play_circle_fill_rounded,
+                    color: Colors.white.withValues(alpha: 0.9), size: 18.sp),
+              ),
+          ],
         ),
       ),
     ));

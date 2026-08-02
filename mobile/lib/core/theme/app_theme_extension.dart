@@ -88,7 +88,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   // Media-surround tokens — the area *around* a photo/video shown uncropped
   // (`BoxFit.contain`), not the media itself.
   //
-  // These are the reason the For You / Following feeds used to read as dark in
+  // These are the reason the Feed / Following feeds used to read as dark in
   // light mode: the media is letterboxed on almost every card, so the surround
   // is most of what's on screen, and it was hard-coded to black. They are
   // deliberately NOT the same thing as [cardOverlayStart]/[cardOverlayEnd],

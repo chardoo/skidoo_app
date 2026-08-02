@@ -47,11 +47,19 @@ class Styles {
       inputDecorationTheme: InputDecorationTheme(
         hintStyle: TextStyle(
             color: isDarkTheme ? Colors.white54 : Colors.black54),
+        // `border` only — deliberately no `focusedBorder`/`enabledBorder`.
+        //
+        // A field resolves its outline as `focusedBorder ?? border` when it has
+        // focus, so a theme-level `focusedBorder` outranks whatever the call
+        // site passed as `border`. Every field that draws its own container and
+        // asks for `border: InputBorder.none` therefore grew a second grey
+        // outline inside the first the moment the user tapped it — the search
+        // bar, the shared SearchField, the ad-request form.
+        //
+        // The `focusedBorder` this replaces was a byte-for-byte copy of
+        // `border`, so fields that don't override look exactly as they did:
+        // every state now falls through to this one.
         border: OutlineInputBorder(
-          borderSide: const BorderSide(color: Colors.grey),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        focusedBorder: OutlineInputBorder(
           borderSide: const BorderSide(color: Colors.grey),
           borderRadius: BorderRadius.circular(8),
         ),

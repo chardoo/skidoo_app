@@ -1,3 +1,5 @@
+import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
+
 enum MediaType { photo, video }
 
 class EventPicture {
@@ -37,7 +39,10 @@ class EventPicture {
     this.durationSeconds,
   });
 
-  bool get isVideo => mediaType == MediaType.video;
+  /// Same fallback as `Photo.isVideo`: the url settles it when the record
+  /// carries no `media_type`.
+  bool get isVideo =>
+      mediaType == MediaType.video || CloudinaryTransform.isVideoUrl(url);
 
   /// Aspect ratio (width ÷ height). Returns null when dimensions are unknown.
   double? get aspectRatio =>
@@ -76,7 +81,9 @@ class EventPicture {
       commentsEnabled: json['comments_enabled'] as bool? ?? true,
       width: (json['width'] as num?)?.toInt(),
       height: (json['height'] as num?)?.toInt(),
-      durationSeconds: (json['duration_seconds'] as num?)?.toDouble(),
+      durationSeconds:
+          ((json['durationSeconds'] ?? json['duration_seconds']) as num?)
+              ?.toDouble(),
     );
   }
 }

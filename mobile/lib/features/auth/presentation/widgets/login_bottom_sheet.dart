@@ -11,6 +11,8 @@ import 'package:skidoo_app/features/auth/presentation/pages/email_verification_p
 import 'package:skidoo_app/features/auth/presentation/pages/forget_password_page.dart';
 import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/jperg_logo.dart';
+import 'package:skidoo_app/core/common/widgets/app_drag_handle.dart';
 
 /// Shows the login bottom sheet. [onLoginSuccess] is called after successful
 /// login so the caller can navigate appropriately.
@@ -123,52 +125,11 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // ── Drag handle ─────────────────────────────────────────
-                  Center(
-                    child: Container(
-                      width: 40.w,
-                      height: 4.h,
-                      decoration: BoxDecoration(
-                        color: ext.searchHintColor,
-                        borderRadius: BorderRadius.circular(2.r),
-                      ),
-                    ),
-                  ),
+                  const AppDragHandle(),
                   SizedBox(height: AppSpacing.xxl.h),
 
                   // ── Logo ────────────────────────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 28.w,
-                        height: 28.h,
-                        decoration: BoxDecoration(
-                          color: ext.logoBadgeBackground,
-                          borderRadius: BorderRadius.circular(6.r),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'S',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16.sp,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: AppSpacing.sm.w),
-                      Text(
-                        'JPERG',
-                        style: TextStyle(
-                          color: ext.logoTextColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18.sp,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Center(child: JpergLogo(height: 30.h)),
                   SizedBox(height: AppSpacing.xl.h),
 
                   // ── Title ───────────────────────────────────────────────

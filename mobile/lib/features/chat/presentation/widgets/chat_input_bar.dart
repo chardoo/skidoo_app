@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MaxLengthEnforcement;
@@ -627,10 +627,11 @@ class _StagedNetworkImagePreview extends StatelessWidget {
             child: Semantics(
                 image: true,
                 label: 'Selected image',
-                child: CachedNetworkImage(
+                child: SkidooImage(
                   imageUrl: imageUrl,
                   width: 64.w,
                   height: 64.w,
+                  logicalWidth: 64.w,
                   fit: BoxFit.cover,
                   placeholder: (_, __) => Container(
                     width: 64.w,

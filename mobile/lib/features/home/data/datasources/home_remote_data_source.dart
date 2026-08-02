@@ -79,7 +79,15 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   final response = await request.send();
 
   if (response.statusCode == 401) {
-    throw const app_ex.UnauthorizedException();
+    // The body distinguishes the two causes — "Authentication required" means
+    // no Authorization header reached the server, "Invalid or expired token"
+    // means it arrived but was rejected. Carrying it through turns the next
+    // 401 into a one-line diagnosis instead of another investigation.
+    final body = await response.stream.bytesToString().catchError((_) => '');
+    _dbg('search-images 401 — $body', DateTime.now(), DateTime.now());
+    throw app_ex.UnauthorizedException(
+      body.isEmpty ? 'Unauthorized. Please log in.' : body,
+    );
   }
   if (response.statusCode != 200) {
     throw app_ex.ServerException(

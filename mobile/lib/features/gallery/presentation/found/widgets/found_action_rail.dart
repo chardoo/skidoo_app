@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/components/media/media_action_buttons.dart';
-import 'package:skidoo_app/components/media/media_rail_action.dart';
+import 'package:skidoo_app/components/media/media_reaction_rail.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/found_access.dart';
 import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
@@ -14,10 +11,14 @@ import 'package:skidoo_app/models/photos/Photo.dart';
 
 /// The Found viewer's right-hand action rail.
 ///
-/// Deliberately the same control and the same icon set as the home feed's
-/// full-bleed card — like, comment, bookmark, send — built on the shared
-/// [MediaRailAction] rather than the glassy [MediaActionButtons] used
-/// elsewhere, because that's what the design shows on both screens.
+/// Literally the same control as the home feed's full-bleed card: both are a
+/// [MediaReactionRail], and the glyphs, the active fill and the spacing come
+/// from there. This widget only decides *which* reactions the Found viewer
+/// offers and what each one does.
+///
+/// The three outbound actions are distinct and all three earn their place:
+/// bookmark saves to the device, share hands off to the OS sheet, send opens
+/// the in-app DM picker.
 class FoundActionRail extends StatefulWidget {
   const FoundActionRail({super.key, required this.photo});
 
@@ -31,8 +32,13 @@ class _FoundActionRailState extends State<FoundActionRail> {
   late bool _liked = widget.photo.isLikedByUser;
   late int _likeCount = widget.photo.likeCount;
   bool _saving = false;
+  bool _sharing = false;
 
   final _bookmarkKey = GlobalKey();
+
+  /// The share sheet is anchored to this button on iPad/macOS, where a popover
+  /// has to originate from something.
+  final _shareKey = GlobalKey();
 
   @override
   void didUpdateWidget(FoundActionRail old) {
@@ -91,57 +97,68 @@ class _FoundActionRailState extends State<FoundActionRail> {
     if (mounted) setState(() => _saving = false);
   }
 
+  /// Hands the photo to the OS share sheet — other apps, Messages, AirDrop.
+  ///
+  /// Not the same action as either neighbour: [_save] writes the file to the
+  /// device and [_send] opens the in-app DM picker. All three go through the
+  /// branded-overlay pipeline, so a photo leaving the app is watermarked
+  /// however it leaves.
+  Future<void> _shareExternally() async {
+    if (_sharing) return;
+    setState(() => _sharing = true);
+
+    final box = _shareKey.currentContext?.findRenderObject() as RenderBox?;
+    final origin = (box != null && box.hasSize)
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+
+    await shareOverlayPhotoExternally(
+      context,
+      imageId: widget.photo.id,
+      photographerName: widget.photo.photographerName,
+      eventName: widget.photo.eventName,
+      shareOrigin: origin,
+    );
+    if (mounted) setState(() => _sharing = false);
+  }
+
   void _send() => GalleryShareSheet.show(
         context,
         imageUrl: widget.photo.url,
         photoLabel: widget.photo.eventName,
       );
 
-  /// Counts are only rendered where the record actually carries one — a
-  /// hardcoded "0" under an action with no count behind it would be a lie.
-  static String? _count(int value) => value > 0 ? '$value' : null;
-
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final gap = SizedBox(height: AppSpacing.lg.h);
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
+    return MediaReactionRail(
+      actions: [
         // Like and comment follow the owner's engagement switch for this
         // picture; send and save stay available either way.
-        if (widget.photo.commentsEnabled)
-          MediaRailAction(
-            icon: Icons.favorite_rounded,
-            iconColor: _liked ? ext.likeRed : Colors.white,
-            label: '$_likeCount',
-            semanticLabel: _liked ? 'Unlike' : 'Like',
+        if (widget.photo.commentsEnabled) ...[
+          MediaReaction.like(
+            liked: _liked,
+            count: _likeCount,
             onTap: () => _gated(_toggleLike),
           ),
-        if (widget.photo.commentsEnabled) gap,
-        if (widget.photo.commentsEnabled)
-          MediaRailAction(
-            icon: Icons.mode_comment_rounded,
-            label: '${widget.photo.commentCount}',
-            semanticLabel: 'Comments',
+          MediaReaction.comment(
+            count: widget.photo.commentCount,
             onTap: () => _gated(_openComments),
           ),
-        if (widget.photo.commentsEnabled) gap,
-        MediaRailAction(
-          key: _bookmarkKey,
-          icon: Icons.bookmark_rounded,
-          label: _count(0),
+        ],
+        // Saving writes the file to the device, so there is no count behind
+        // this one — the rail renders the glyph alone rather than a fake "0".
+        MediaReaction.bookmark(
+          anchorKey: _bookmarkKey,
           busy: _saving,
           semanticLabel: 'Save photo',
           onTap: () => _gated(_save),
         ),
-        gap,
-        MediaRailAction(
-          icon: Icons.near_me_rounded,
-          semanticLabel: 'Send',
-          onTap: () => _gated(_send),
+        MediaReaction.shareExternally(
+          anchorKey: _shareKey,
+          busy: _sharing,
+          onTap: () => _gated(_shareExternally),
         ),
+        MediaReaction.send(onTap: () => _gated(_send)),
       ],
     );
   }

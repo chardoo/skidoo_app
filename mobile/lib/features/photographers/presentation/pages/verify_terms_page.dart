@@ -13,6 +13,7 @@ import 'package:skidoo_app/features/photographers/domain/usecases/photographer_p
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 /// "Verify and accept terms" — part of a photographer's portfolio setup,
 /// done on demand from the Account page (see `portfolio_edit_page.dart`),
@@ -79,12 +80,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : IconButton(
-                tooltip: 'Back',
-                icon: Icon(Icons.arrow_back_ios_rounded,
-                    color: ext.greetingColor, size: 18.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
           'Verify and accept terms',
           style: TextStyle(

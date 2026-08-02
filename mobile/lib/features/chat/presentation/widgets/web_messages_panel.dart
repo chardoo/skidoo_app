@@ -284,7 +284,7 @@ class _PanelHeader extends StatelessWidget {
         children: [
           if (activeRoom != null)
             _HeaderIconBtn(
-              icon: Icons.arrow_back_ios_new_rounded,
+              icon: AppBackButton.icon,
               color: ext.greetingColor,
               onTap: onBack,
               semanticLabel: 'Back to conversations',

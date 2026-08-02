@@ -1,35 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 
-/// Feed top bar — collapsed: plain-text Found/For You/Following tabs (active
-/// tab bold + underlined), centred as a group, with the QR glyph on the far
-/// left and a search icon on the far right; no persistent search field or
-/// avatar. Tapping the search icon swaps the whole row for a full-width
-/// search input with a scan icon and a close button, matching the design
-/// screenshot this was built from (no separate search-bar row above it, and
-/// no scan entry point until search is open).
-class FeedTopBar extends StatefulWidget {
+/// Feed top bar — plain-text Found/Feed/Following tabs (active tab bold +
+/// underlined) centred as a group, with the QR glyph on the far left and a
+/// search icon on the far right.
+///
+/// The search icon opens the Search screen as its own route rather than
+/// swapping this row for a field: search is a screen with recents, chips and a
+/// suggestion grid of its own, none of which fits in a 32 dp strip.
+class FeedTopBar extends StatelessWidget {
   const FeedTopBar({
     super.key,
     required this.selectedTab,
     required this.onTabChanged,
-    required this.isSearchOpen,
     required this.onSearchOpen,
-    required this.onSearchClose,
-    required this.onSearchChanged,
-    this.tabs = const ['Found', 'For You', 'Following'],
+    this.tabs = const ['Found', 'Feed', 'Following'],
     this.overSolidBackground = false,
-    this.onQrScan,
     this.onUnlockPressed,
-    this.initialQuery,
+    this.unlockActive = false,
   });
 
   /// Tab labels, in index order. Guests get `['Found', 'Explore']` per the
   /// guest designs — two tabs, and "Explore" standing in for the signed-in
-  /// For You/Following split, which means nothing without an account to
+  /// Feed/Following split, which means nothing without an account to
   /// follow from.
   final List<String> tabs;
 
@@ -45,196 +40,141 @@ class FeedTopBar extends StatefulWidget {
 
   final int selectedTab;
   final ValueChanged<int> onTabChanged;
-  final bool isSearchOpen;
-  final VoidCallback onSearchOpen;
-  final VoidCallback onSearchClose;
-  final ValueChanged<String> onSearchChanged;
 
-  /// Only reachable once search is open — sits next to the search field.
-  final VoidCallback? onQrScan;
+  /// Opens the Search screen.
+  final VoidCallback onSearchOpen;
 
   /// Opens the "unlock private photos" sheet (type a code or scan a QR).
-  /// Shown as the QR glyph on the far left of the collapsed bar — the design's
-  /// leading action — and hidden entirely when null.
+  /// Shown as the QR glyph on the far left — the design's leading action —
+  /// and hidden entirely when null.
   final VoidCallback? onUnlockPressed;
 
-  /// Pre-fills the search field when the bar switches into its open state, so
-  /// a code coming back from the unlock sheet lands in the box the user would
-  /// have typed it into. Ignored while search is already open.
-  final String? initialQuery;
+  /// True while that sheet is open.
+  ///
+  /// The glyph takes the accent for as long as it is, so the sheet is visibly
+  /// anchored to the control that opened it rather than appearing from nowhere
+  /// — and so a sheet dismissed by tapping away leaves no doubt about which
+  /// button was pressed.
+  final bool unlockActive;
 
-  @override
-  State<FeedTopBar> createState() => _FeedTopBarState();
-}
-
-class _FeedTopBarState extends State<FeedTopBar> {
-  final _textCtrl = TextEditingController();
-  final _focusNode = FocusNode();
-
-  @override
-  void didUpdateWidget(FeedTopBar old) {
-    super.didUpdateWidget(old);
-    if (widget.isSearchOpen && !old.isSearchOpen) {
-      final seed = widget.initialQuery ?? '';
-      _textCtrl.value = TextEditingValue(
-        text: seed,
-        selection: TextSelection.collapsed(offset: seed.length),
-      );
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _focusNode.requestFocus();
-      });
-    } else if (!widget.isSearchOpen && old.isSearchOpen) {
-      _textCtrl.clear();
-      _focusNode.unfocus();
-    }
-  }
-
-  @override
-  void dispose() {
-    _textCtrl.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  /// Icon colour for the create/search buttons — same reasoning as the tab
-  /// labels: white over media, the theme's icon colour on the solid page.
+  /// Icon colour for the leading/trailing buttons — same reasoning as the tab
+  /// labels: white over media, the theme's text colour on the solid page.
   Color _chromeColor(AppThemeExtension ext) =>
-      widget.overSolidBackground ? ext.greetingColor : Colors.white;
+      overSolidBackground ? ext.greetingColor : Colors.white;
+
+  Color _qrColor(AppThemeExtension ext) =>
+      unlockActive ? ext.accentGold : _chromeColor(ext);
 
   List<Shadow>? get _chromeShadows =>
-      widget.overSolidBackground ? null : _FeedTextTab._shadows;
+      overSolidBackground ? null : _FeedTextTab._shadows;
 
-  void _closeSearch() {
-    SystemChannels.textInput.invokeMethod('TextInput.hide');
-    widget.onSearchClose();
-  }
+  /// The bar's full height, and every control's tap height inside it.
+  ///
+  /// This used to be a 32 dp strip inside 8 dp of vertical padding. Same 48 dp
+  /// overall, but the padding belonged to the *parent*, so the tallest thing a
+  /// tab could be was 27 dp — under the 48 dp minimum, and with its top edge
+  /// flush against the top of the glyphs. A tap aimed at a label that landed a
+  /// couple of pixels high fell outside the box entirely and did nothing, while
+  /// the same tap slightly low landed in the underline's share of the box and
+  /// worked. Owning the whole 48 dp is what lets the controls fill it.
+  static const double _barHeight = 48;
 
-  void _clearText() {
-    _textCtrl.clear();
-    widget.onSearchChanged('');
-  }
+  /// Half the 18 dp gap between labels, applied to each tab instead of being a
+  /// bare spacer between them, so neighbouring tap boxes meet rather than
+  /// leaving the gap dead. The gap the eye sees is unchanged.
+  static const double _tabGap = 9;
 
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: SizedBox(
-        height: 32.h,
-        child: widget.isSearchOpen
-            ? Row(
+        height: _barHeight.h,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // The labels are the one part of this bar whose width isn't ours to
+            // choose — a long tab set, a translation, or a large system text
+            // scale can all outgrow the strip between the two icons. Scaling the
+            // group down as a unit keeps it centred and legible; letting it
+            // overflow would just clip the last label.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Leading back arrow — the primary, unambiguous way out of
-                  // search (the old trailing "X" read as "clear", not "back",
-                  // and was easy to miss next to the scan icon).
-                  Semantics(
-                    button: true,
-                    label: 'Back',
-                    child: GestureDetector(
-                      onTap: _closeSearch,
-                      child: Padding(
-                        padding: EdgeInsets.only(right: AppSpacing.sm.w),
-                        child: Icon(Icons.arrow_back_rounded,
-                            color: Colors.white, size: 24.sp),
-                      ),
+                  for (var i = 0; i < tabs.length; i++)
+                    _FeedTextTab(
+                      label: tabs[i],
+                      active: selectedTab == i,
+                      ext: ext,
+                      onSolid: overSolidBackground,
+                      height: _barHeight.h,
+                      horizontalPadding: _tabGap.w,
+                      onTap: () => onTabChanged(i),
                     ),
-                  ),
-                  Expanded(
-                    child: ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _textCtrl,
-                      builder: (context, value, _) => TextField(
-                        controller: _textCtrl,
-                        focusNode: _focusNode,
-                        autofocus: true,
-                        style: TextStyle(color: ext.greetingColor, fontSize: 15.sp),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          hintText: 'Search',
-                          hintStyle: TextStyle(color: ext.searchHintColor, fontSize: 15.sp),
-                          prefixIcon: Icon(Icons.search_rounded,
-                              color: ext.accentGold, size: 20.sp),
-                          suffixIcon: value.text.isEmpty
-                              ? null
-                              : Semantics(
-                                  button: true,
-                                  label: 'Clear search',
-                                  child: GestureDetector(
-                                    onTap: _clearText,
-                                    child: Icon(Icons.close_rounded,
-                                        color: ext.searchHintColor, size: 18.sp),
-                                  ),
-                                ),
-                          border: InputBorder.none,
-                        ),
-                        onChanged: widget.onSearchChanged,
-                      ),
-                    ),
-                  ),
-                  if (widget.onQrScan != null) ...[
-                    SizedBox(width: AppSpacing.sm.w),
-                    Semantics(
-                      button: true,
-                      label: 'Scan QR code',
-                      child: GestureDetector(
-                        onTap: widget.onQrScan,
-                        child: Icon(Icons.qr_code_scanner_rounded,
-                            color: ext.searchHintColor, size: 20.sp),
-                      ),
-                    ),
-                  ],
                 ],
-              )
-            : Stack(
-                alignment: Alignment.center,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (var i = 0; i < widget.tabs.length; i++) ...[
-                        if (i > 0) SizedBox(width: 18.w),
-                        _FeedTextTab(
-                          label: widget.tabs[i],
-                          active: widget.selectedTab == i,
-                          ext: ext,
-                          onSolid: widget.overSolidBackground,
-                          onTap: () => widget.onTabChanged(i),
-                        ),
-                      ],
-                    ],
-                  ),
-                  if (widget.onUnlockPressed != null)
-                    Positioned(
-                      left: 0,
-                      child: Semantics(
-                        button: true,
-                        label: 'Unlock private photos',
-                        child: GestureDetector(
-                          onTap: widget.onUnlockPressed,
-                          behavior: HitTestBehavior.opaque,
-                          child: _QrGlyph(
-                            color: _chromeColor(ext),
+              ),
+            ),
+            if (onUnlockPressed != null)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Semantics(
+                  button: true,
+                  label: 'Unlock private photos',
+                  child: GestureDetector(
+                    onTap: onUnlockPressed,
+                    behavior: HitTestBehavior.opaque,
+                    // Full bar height, and reaching inwards from the edge, so
+                    // the target is 36 × 48 rather than the glyph's own 24 × 24.
+                    // The glyph itself does not move.
+                    child: Padding(
+                      padding: EdgeInsets.only(right: AppSpacing.md.w),
+                      child: Center(
+                        // Tweened rather than switched: the sheet takes a beat
+                        // to arrive, and a glyph that snaps to the accent ahead
+                        // of it reads as a glitch rather than as a response.
+                        child: TweenAnimationBuilder<Color?>(
+                          tween: ColorTween(end: _qrColor(ext)),
+                          duration: const Duration(milliseconds: 150),
+                          builder: (_, color, __) => _QrGlyph(
+                            color: color ?? _qrColor(ext),
                             size: 24.sp,
-                            shadow: !widget.overSolidBackground,
+                            shadow: !overSolidBackground,
                           ),
                         ),
                       ),
                     ),
-                  Positioned(
-                    right: 0,
-                    child: Semantics(
-                      button: true,
-                      label: 'Open search',
-                      child: GestureDetector(
-                        onTap: widget.onSearchOpen,
-                        child: Icon(Icons.search_rounded,
-                            color: _chromeColor(ext),
-                            size: 24.sp,
-                            shadows: _chromeShadows),
-                      ),
+                  ),
+                ),
+              ),
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Semantics(
+                button: true,
+                label: 'Open search',
+                child: GestureDetector(
+                  onTap: onSearchOpen,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: AppSpacing.md.w),
+                    child: Center(
+                      child: Icon(Icons.search_rounded,
+                          color: _chromeColor(ext),
+                          size: 24.sp,
+                          shadows: _chromeShadows),
                     ),
                   ),
-                ],
+                ),
               ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -353,6 +293,8 @@ class _FeedTextTab extends StatelessWidget {
     required this.active,
     required this.ext,
     required this.onTap,
+    required this.height,
+    required this.horizontalPadding,
     this.onSolid = false,
   });
 
@@ -361,12 +303,22 @@ class _FeedTextTab extends StatelessWidget {
   final AppThemeExtension ext;
   final VoidCallback onTap;
 
+  /// Tap height — the bar's full height, not just the label's.
+  final double height;
+
+  /// Half the gap to each neighbour, so adjacent tabs' tap boxes meet.
+  final double horizontalPadding;
+
   /// See [FeedTopBar.overSolidBackground].
   final bool onSolid;
 
   static const _shadows = [
     Shadow(blurRadius: 10, color: Colors.black87),
   ];
+
+  /// Height of the underline and of the gap above it — mirrored as a spacer on
+  /// the other side of the label. See [build].
+  static const double _underlineHeight = 2;
 
   Color get _foreground => onSolid
       ? (active ? ext.greetingColor : ext.searchHintColor)
@@ -376,8 +328,49 @@ class _FeedTextTab extends StatelessWidget {
   /// rather than leaving a white bar under dark text.
   Color get _underline => onSolid ? ext.greetingColor : Colors.white;
 
+  TextStyle _style({required bool bold}) => TextStyle(
+        color: _foreground,
+        fontSize: 15.sp,
+        fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+        // The shadow only earns its keep over a photo; on the solid
+        // background it just smudges the text.
+        shadows: onSolid ? null : _shadows,
+      );
+
+  /// Width this label takes at its *active* weight.
+  ///
+  /// The active label is heavier than the others, so it is also wider. The row
+  /// is sized to its contents and centred, which meant selecting a different
+  /// tab changed the row's width and slid every label sideways by a couple of
+  /// pixels. Reserving the bold width in both states holds them still.
+  ///
+  /// Measured rather than reserved with a hidden second [Text]: a phantom label
+  /// would be a duplicate in the semantics tree and would make `find.text` in
+  /// tests match two widgets for every tab.
+  ///
+  /// The style has to be resolved against [DefaultTextStyle] first. A [Text]
+  /// merges its style onto the ambient one, which is where the app's font comes
+  /// from — [_style] never names a family. A bare [TextPainter] inherits
+  /// nothing, so measuring the raw style would size the slot in the fallback
+  /// font and leave every label sitting in a box of the wrong width.
+  double _activeWidth(BuildContext context) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: DefaultTextStyle.of(context).style.merge(_style(bold: true)),
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    final width = painter.width;
+    painter.dispose();
+    return width;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final belowLabel = AppSpacing.xs.h + _underlineHeight;
+
     return Semantics(
       button: true,
       selected: active,
@@ -385,31 +378,40 @@ class _FeedTextTab extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: _foreground,
-                fontSize: 15.sp,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                // The shadow only earns its keep over a photo; on the solid
-                // background it just smudges the text.
-                shadows: onSolid ? null : _shadows,
-              ),
+        child: SizedBox(
+          height: height,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Mirrors the gap + underline below, so what ends up centred in
+                // the bar is the *label* rather than the label-and-underline
+                // block. Without it the underline's 6 dp pushed every label
+                // 3 dp above the leading and trailing icons, which is visible
+                // as the labels sitting high against them.
+                SizedBox(height: belowLabel),
+                SizedBox(
+                  width: _activeWidth(context),
+                  child: Text(
+                    label,
+                    style: _style(bold: active),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs.h),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: active ? 16.w : 0,
+                  height: _underlineHeight,
+                  decoration: BoxDecoration(
+                    color: _underline,
+                    borderRadius: BorderRadius.circular(1.r),
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: AppSpacing.xs.h),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              width: active ? 16.w : 0,
-              height: 2,
-              decoration: BoxDecoration(
-                color: _underline,
-                borderRadius: BorderRadius.circular(1.r),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

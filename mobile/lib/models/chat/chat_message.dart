@@ -1,3 +1,5 @@
+import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
+
 class ReplyPreview {
   final String id;
   final String senderName;
@@ -179,16 +181,7 @@ class ChatMessage {
     );
   }
 
-  static bool _isVideoUrl(String url) {
-    final lower = url.toLowerCase().split('?').first;
-    // Cloudinary video URLs always contain /video/upload/ in the path.
-    if (lower.contains('/video/upload/')) return true;
-    return lower.endsWith('.mp4') ||
-        lower.endsWith('.mov') ||
-        lower.endsWith('.avi') ||
-        lower.endsWith('.mkv') ||
-        lower.endsWith('.webm');
-  }
+  static bool _isVideoUrl(String url) => CloudinaryTransform.isVideoUrl(url);
 
   Map<String, dynamic> toJson() => {
         'id': id,

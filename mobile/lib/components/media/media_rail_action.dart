@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-/// One button in a vertical action rail over full-bleed media: a filled white
-/// icon with its count underneath, both shadowed so they stay legible on any
-/// photo.
+/// One button in an action rail over media: an icon with its count underneath,
+/// both shadowed so they stay legible on any photo, and a press-scale so the
+/// tap has some weight to it.
 ///
-/// Shared by the home feed's [FullBleedEventCard] and the Found tab's photo
-/// viewer so the two rails can't drift — they are the same control in the
-/// design, and the icon set (`favorite` / `mode_comment` / `bookmark` /
-/// `near_me`) is part of that.
-class MediaRailAction extends StatelessWidget {
+/// The single button primitive for every reaction surface drawn over media —
+/// the home feed's full-bleed card, the Found tab's photo viewer, and the
+/// gallery viewer's bottom bar. Assemble a rail out of [MediaReactionRail]
+/// rather than reaching for this directly: the rail owns which glyph a
+/// reaction uses and what it looks like once active, which is the part that
+/// used to drift between screens.
+class MediaRailAction extends StatefulWidget {
   const MediaRailAction({
     super.key,
     required this.icon,
@@ -18,6 +20,8 @@ class MediaRailAction extends StatelessWidget {
     required this.onTap,
     this.busy = false,
     this.semanticLabel,
+    this.iconSize,
+    this.tapTargetSize,
   });
 
   final IconData icon;
@@ -35,40 +39,90 @@ class MediaRailAction extends StatelessWidget {
 
   final String? semanticLabel;
 
+  /// Glyph size. Defaults to the rail's 28sp.
+  final double? iconSize;
+
+  /// Pads the glyph out to a fixed square so a row of these keeps a finger-
+  /// sized tap target even where the icons themselves are small. Null leaves
+  /// the target the size of the glyph, which is what a vertical rail wants.
+  final double? tapTargetSize;
+
+  @override
+  State<MediaRailAction> createState() => _MediaRailActionState();
+}
+
+class _MediaRailActionState extends State<MediaRailAction>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 100),
+    lowerBound: 0.85,
+    upperBound: 1.0,
+    value: 1.0,
+  );
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final size = widget.iconSize ?? 28.sp;
+    final glyph = widget.busy
+        ? SizedBox(
+            width: size * 0.8,
+            height: size * 0.8,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: widget.iconColor),
+          )
+        : Icon(widget.icon, color: widget.iconColor, size: size, shadows: const [
+            Shadow(color: Colors.black45, blurRadius: 4),
+          ]);
+
     return Semantics(
       button: true,
-      label: semanticLabel ?? label,
+      label: widget.semanticLabel ?? widget.label,
       child: GestureDetector(
-        onTap: busy ? null : onTap,
         behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            busy
-                ? SizedBox(
-                    width: 22.sp,
-                    height: 22.sp,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: iconColor),
-                  )
-                : Icon(icon, color: iconColor, size: 28.sp, shadows: const [
-                    Shadow(color: Colors.black45, blurRadius: 4),
-                  ]),
-            if (label != null) ...[
-              SizedBox(height: 3.h),
-              Text(
-                label!,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w600,
-                  shadows: const [Shadow(color: Colors.black45, blurRadius: 4)],
+        onTapDown: widget.busy ? null : (_) => _ctrl.reverse(),
+        onTapUp: widget.busy
+            ? null
+            : (_) {
+                _ctrl.forward();
+                widget.onTap();
+              },
+        onTapCancel: () => _ctrl.forward(),
+        child: ScaleTransition(
+          scale: _ctrl,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.tapTargetSize != null)
+                SizedBox(
+                  width: widget.tapTargetSize,
+                  height: widget.tapTargetSize,
+                  child: Center(child: glyph),
+                )
+              else
+                glyph,
+              if (widget.label != null) ...[
+                SizedBox(height: 3.h),
+                Text(
+                  widget.label!,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                    shadows: const [
+                      Shadow(color: Colors.black45, blurRadius: 4)
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

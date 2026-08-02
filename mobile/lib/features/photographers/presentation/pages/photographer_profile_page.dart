@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/utils/image_pick.dart';
+import 'package:skidoo_app/core/widgets/media_grid.dart';
 import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -8,6 +10,7 @@ import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart'
     show CanMessageResult;
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
@@ -39,6 +42,7 @@ import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 class PhotographerProfilePage extends StatefulWidget {
   const PhotographerProfilePage({super.key, required this.photographer});
@@ -184,12 +188,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
             pinned: true,
             forceElevated: innerBoxIsScrolled,
             backgroundColor: ext.homeBackground,
-            leading: kIsWeb ? null : IconButton(
-              tooltip: 'Back',
-              icon: Icon(Icons.arrow_back_ios_rounded,
-                  color: ext.greetingColor, size: 20.sp),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+            leading: kIsWeb ? null : AppBackButton(onPressed: () => Navigator.of(context).pop()),
             flexibleSpace: FlexibleSpaceBar(
               background: PhotographerProfileHeader(photographer: p, ext: ext),
             ),
@@ -247,11 +246,18 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                     ),
                   SizedBox(height: AppSpacing.lg.h),
 
-                  PhotographerInfoRow(
-                      icon: Icons.mail_outline_rounded,
-                      text: p.email,
-                      ext: ext),
-                  SizedBox(height: AppSpacing.sm.h),
+                  // Guarded like the contact row below it. Search reaches this
+                  // page with only the id, name and avatar the public search
+                  // endpoint returns — it deliberately does not carry an email
+                  // — so without this the row renders as a mail icon with
+                  // nothing beside it.
+                  if (p.email.isNotEmpty) ...[
+                    PhotographerInfoRow(
+                        icon: Icons.mail_outline_rounded,
+                        text: p.email,
+                        ext: ext),
+                    SizedBox(height: AppSpacing.sm.h),
+                  ],
                   if (p.contact.isNotEmpty)
                     PhotographerInfoRow(
                         icon: Icons.phone_outlined,
@@ -395,7 +401,32 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return _withHomeBloc(webWrap(page, backgroundColor: ext.homeBackground));
+  }
+
+  /// Guarantees a [HomeBloc] over the page.
+  ///
+  /// The Events tab drives its search through one, so this page cannot be
+  /// pushed without it — and it is reachable from places that have none: the
+  /// suggested-creator rows, the discovery card, onboarding. Those call sites
+  /// each guessed defensively, which meant a route that looked fine until the
+  /// first tap on an event, then threw a ProviderNotFoundException.
+  ///
+  /// The ancestor's bloc is preferred when there is one, so a tap here still
+  /// drives the same search state the rest of that tree is reading. Only when
+  /// there is genuinely none does this create one, and [BlocProvider] closes
+  /// what it creates when the route pops.
+  Widget _withHomeBloc(Widget child) {
+    HomeBloc? inherited;
+    try {
+      inherited = context.read<HomeBloc>();
+    } catch (_) {}
+
+    if (inherited != null) return child;
+    return BlocProvider<HomeBloc>(
+      create: (_) => sl<HomeBloc>()..add(const HomeInitialized()),
+      child: child,
+    );
   }
 
   /// On web desktop, centre the page in a 480 dp column so fonts and spacing
@@ -461,7 +492,13 @@ class _SamplesTabState extends State<_SamplesTab>
   }
 
   Future<void> _pickAndUpload() async {
-    final picked = await _picker.pickMultiImage(imageQuality: 85);
+    // Capped rather than unbounded: samples are uploaded inline, so the
+    // photographer waits on however many they pick. See
+    // [UploadSamplesUseCase.maxPerUpload].
+    final picked = await pickImagesUpTo(
+      _picker,
+      limit: UploadSamplesUseCase.maxPerUpload,
+    );
     if (picked.isEmpty || !mounted) return;
 
     for (final file in picked) {
@@ -550,14 +587,9 @@ class _SamplesTabState extends State<_SamplesTab>
         RefreshIndicator(
           color: ext.searchHintColor,
           onRefresh: _refreshSamples,
-          child: GridView.builder(
+          child: MediaGrid(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.all(AppSpacing.xs.w),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 4.w,
-            mainAxisSpacing: 4.h,
-          ),
           itemCount: cellCount,
           itemBuilder: (context, index) {
             // Last cell is the "add" button for owners
@@ -749,15 +781,10 @@ class _EventsTabState extends State<_EventsTab>
     }
 
     // 2-column grid: image card with event name beneath
-    return GridView.builder(
+    return MediaGrid(
+      density: MediaGridDensity.cards,
       controller: _scrollCtrl,
       padding: EdgeInsets.all(AppSpacing.md.w),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 10.w,
-        mainAxisSpacing: 10.h,
-        childAspectRatio: 0.78,
-      ),
       itemCount: _events.length + (_hasMore || _loading ? 1 : 0),
       itemBuilder: (context, index) {
         // Trailing spinner / load-more trigger
@@ -795,28 +822,25 @@ class _EventsTabState extends State<_EventsTab>
               children: [
                 Expanded(
                   child: event.url.isNotEmpty
-                      ? Semantics(image: true, label: 'Event photo', child: Image.network(
-                          event.url,
+                      ? SkidooImage(
+                          imageUrl: event.url,
+                          semanticLabel: 'Event photo',
                           fit: BoxFit.cover,
-                          loadingBuilder: (_, child, progress) =>
-                              progress == null
-                                  ? child
-                                  : Container(
-                                      color: const Color(0xFF2C2C2A),
-                                      child: const Center(
-                                        child: CircularProgressIndicator(
-                                            color: Colors.white38,
-                                            strokeWidth: 2),
-                                      ),
-                                    ),
-                          errorBuilder: (_, __, ___) => Container(
+                          placeholder: (_, __) => Container(
+                            color: const Color(0xFF2C2C2A),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                  color: Colors.white38, strokeWidth: 2),
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
                             color: const Color(0xFF2C2C2A),
                             child: const Center(
                               child: Icon(Icons.broken_image_outlined,
                                   color: Colors.white38, size: 32),
                             ),
                           ),
-                        ))
+                        )
                       : Container(
                           color: const Color(0xFF2C2C2A),
                           child: Icon(Icons.event_rounded,

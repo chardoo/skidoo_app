@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,6 +13,7 @@ import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -219,12 +220,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : IconButton(
-                tooltip: 'Back',
-                icon: Icon(Icons.arrow_back_ios_new_rounded,
-                    color: ext.greetingColor, size: 20.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
           'Edit Campaign',
           style: TextStyle(
@@ -755,7 +751,7 @@ class _MediaPreview extends StatelessWidget {
               child: Semantics(
                   image: true,
                   label: 'Campaign image',
-                  child: CachedNetworkImage(
+                  child: SkidooImage(
                     imageUrl: state.existingMediaUrl!,
                     fit: BoxFit.cover,
                     placeholder: (_, __) =>

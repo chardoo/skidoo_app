@@ -13,6 +13,7 @@ import 'package:skidoo_app/features/photographers/presentation/widgets/portfolio
 import 'package:skidoo_app/models/photographer/photographer_sample.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 /// Account-section "Portfolio" screen — a photographer's portfolio setup,
 /// done on demand from Account rather than automatically during onboarding.
@@ -146,12 +147,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : IconButton(
-                tooltip: 'Back',
-                icon: Icon(Icons.arrow_back_ios_rounded,
-                    color: ext.greetingColor, size: 18.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

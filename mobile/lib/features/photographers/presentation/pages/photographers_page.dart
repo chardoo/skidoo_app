@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/widgets/media_grid.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
@@ -127,15 +128,10 @@ class _PhotographersPageState extends State<PhotographersPage> {
                   onRefresh: () async => context
                       .read<PhotographerBloc>()
                       .add(const PhotographersLoadRequested()),
-                  child: GridView.builder(
+                  child: MediaGrid(
+                  density: MediaGridDensity.cards,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
-                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 190,
-                    mainAxisSpacing: 12.h,
-                    crossAxisSpacing: 12.w,
-                    childAspectRatio: 0.72,
-                  ),
+                  padding: MediaGrid.pagePadding,
                   itemCount: state.photographers.length,
                   itemBuilder: (context, index) {
                     final p = state.photographers[index];

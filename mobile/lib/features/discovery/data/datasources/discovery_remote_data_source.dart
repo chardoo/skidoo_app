@@ -85,6 +85,22 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
       }
       debugPrint('[Discovery] getEventById raw keys: ${data.keys.toList()}');
       debugPrint('[Discovery] getEventById raw: $data');
+
+      // This endpoint pages the pictures at the top level and puts the event
+      // beside them, while EventDiscovery looks for them *inside* the event —
+      // so without folding them in, every event fetched by id came back with
+      // an empty album, and anything that opened one opened nothing.
+      final rawEvent = data['event'];
+      if (rawEvent is Map<String, dynamic>) {
+        final merged = Map<String, dynamic>.from(rawEvent);
+        if (merged['pictures'] == null && merged['images'] == null) {
+          final pictures = data['data'];
+          if (pictures is List) merged['pictures'] = pictures;
+        }
+        debugPrint(
+            '[Discovery] getEventById folded ${(merged['pictures'] as List?)?.length ?? 0} picture(s)');
+        return EventDiscovery.fromMap(merged);
+      }
       return EventDiscovery.fromMap(data);
     } on dio.DioException catch (err) {
       if (err.response == null) throw const app_ex.NetworkException();

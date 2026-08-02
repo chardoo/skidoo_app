@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -17,8 +16,9 @@ class CartItemWidget extends StatelessWidget {
       child: Stack(
         children: [
           // ── Image ─────────────────────────────────────────────────────
-          Semantics(image: true, label: 'Photo', child: CachedNetworkImage(
+          SkidooImage(
             imageUrl: photo.url,
+            semanticLabel: 'Photo',
             fit: BoxFit.cover,
             width: double.infinity,
             height: 220.h,
@@ -36,7 +36,7 @@ class CartItemWidget extends StatelessWidget {
               child: const Icon(Icons.broken_image_outlined,
                   color: Colors.white38, size: 48),
             ),
-          )),
+          ),
 
           // ── Remove button ──────────────────────────────────────────────
           Positioned(

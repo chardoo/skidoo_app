@@ -74,6 +74,11 @@ import 'package:skidoo_app/features/home/domain/repositories/home_repository.dar
 import 'package:skidoo_app/features/home/domain/usecases/search_events_usecase.dart';
 import 'package:skidoo_app/features/home/domain/usecases/search_images_usecase.dart';
 import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:skidoo_app/features/search/data/datasources/search_remote_data_source.dart';
+import 'package:skidoo_app/features/search/data/repositories/search_repository_impl.dart';
+import 'package:skidoo_app/features/search/domain/repositories/search_repository.dart';
+import 'package:skidoo_app/features/search/domain/usecases/search_usecase.dart';
+import 'package:skidoo_app/features/search/presentation/bloc/search_bloc.dart';
 import 'package:skidoo_app/features/photographers/data/datasources/photographer_remote_data_source.dart';
 import 'package:skidoo_app/features/photographers/data/repositories/photographer_repository_impl.dart';
 import 'package:skidoo_app/features/photographers/domain/repositories/photographer_repository.dart';
@@ -201,6 +206,18 @@ Future<void> setupServiceLocator() async {
         searchImagesUseCase: sl<SearchImagesUseCase>(),
         saveImagesFree: sl<SaveImagesForFreeUseCase>(),
       ));
+
+  // ── Search feature ────────────────────────────────────────────────────────
+  // The Search screen (`/client/search/*`) — separate from the Home feature's
+  // legacy event search above, which is the web sidebar's typeahead.
+  sl.registerSingleton<SearchRemoteDataSource>(
+      SearchRemoteDataSourceImpl(sl<Api>()));
+  sl.registerSingleton<SearchRepository>(
+      SearchRepositoryImpl(sl<SearchRemoteDataSource>()));
+  sl.registerSingleton<SearchUseCase>(SearchUseCase(sl<SearchRepository>()));
+
+  sl.registerFactory<SearchBloc>(
+      () => SearchBloc(searchUseCase: sl<SearchUseCase>()));
 
   // ── Discovery feature ─────────────────────────────────────────────────────
   sl.registerSingleton<DiscoveryRemoteDataSource>(

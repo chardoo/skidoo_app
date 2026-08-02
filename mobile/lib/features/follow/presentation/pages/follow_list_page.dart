@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -9,6 +8,8 @@ import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/follow/data/follow_repository.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:skidoo_app/core/common/widgets/user_avatar.dart';
+import 'package:skidoo_app/core/common/widgets/app_error_view.dart';
 
 /// Viewport width at/above which web shows the sidebar + content layout, so the
 /// follow list opens as the right-side floating panel (matches app.dart).
@@ -228,7 +229,11 @@ class _FollowListViewState extends State<_FollowListView>
 
     // Initial load failed with nothing to show.
     if (!_initialLoaded && _error != null) {
-      return _ErrorState(ext: ext, onRetry: _loadNext);
+      return AppErrorView(
+        message: 'Couldn’t load this list',
+        icon: Icons.wifi_off_rounded,
+        onRetry: _loadNext,
+      );
     }
 
     if (_initialLoaded && _items.isEmpty) {
@@ -342,7 +347,13 @@ class _FollowTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          _Avatar(entry: entry, ext: ext),
+          UserAvatar(
+            initial: entry.name,
+            imageUrl: entry.profileUrl,
+            radius: 24,
+            backgroundColor: ext.accentGold,
+            foregroundColor: Colors.white,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -407,51 +418,6 @@ class _FollowTile extends StatelessWidget {
   }
 }
 
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.entry, required this.ext});
-  final FollowEntry entry;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    final initial =
-        entry.name.isNotEmpty ? entry.name[0].toUpperCase() : '?';
-    final fallback = Container(
-      width: 48,
-      height: 48,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [ext.accentGold, ext.accentGoldDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Text(
-        initial,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w800,
-          fontSize: 18,
-        ),
-      ),
-    );
-
-    if (entry.profileUrl == null) return fallback;
-
-    return ClipOval(
-      child: CachedNetworkImage(
-        imageUrl: entry.profileUrl!,
-        width: 48,
-        height: 48,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => fallback,
-        errorWidget: (_, __, ___) => fallback,
-      ),
-    );
-  }
-}
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.ext, required this.kind});
@@ -498,41 +464,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.ext, required this.onRetry});
-  final AppThemeExtension ext;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.wifi_off_rounded,
-              size: 48, color: ext.searchHintColor),
-          const SizedBox(height: 12),
-          Text(
-            'Couldn’t load this list',
-            style: TextStyle(
-              color: ext.greetingColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: onRetry,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: ext.accentGold,
-              side: BorderSide(color: ext.accentGold),
-            ),
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _PaginationError extends StatelessWidget {
   const _PaginationError({required this.ext, required this.onRetry});

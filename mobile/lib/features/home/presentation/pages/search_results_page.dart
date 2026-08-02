@@ -2,15 +2,13 @@ import 'dart:ui';
 
 import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
+import 'package:skidoo_app/core/widgets/media_grid.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/responsive.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
 import 'package:skidoo_app/features/cart/domain/repositories/cart_repository.dart';
@@ -23,7 +21,7 @@ import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/widgets/photo_aspect_box.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 class SearchResultsPage extends StatefulWidget {
   static const routeName = '/searchresults';
@@ -246,8 +244,6 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
               }
 
               final photos = state.searchImages;
-              final colCount =
-                  responsiveColumnCount(constraints.maxWidth, minColWidth: 160);
 
               return Stack(
                 children: [
@@ -279,11 +275,8 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                       SliverPadding(
                         padding: EdgeInsets.fromLTRB(
                             10.w, 12.h, 10.w, _selectionMode ? 140.h : 120.h),
-                        sliver: SliverMasonryGrid.count(
-                          crossAxisCount: colCount,
-                          mainAxisSpacing: 8.h,
-                          crossAxisSpacing: 8.w,
-                          childCount: photos.length,
+                        sliver: MediaGridSliver(
+                          itemCount: photos.length,
                           itemBuilder: (context, index) =>
                               _buildCard(photos[index], ext),
                         ),
@@ -391,7 +384,8 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
-      leading: kIsWeb ? null : BackButton(onPressed: () => Navigator.of(ctx).pop(), color: ext.greetingColor),
+      leading:
+          kIsWeb ? null : AppBackButton(onPressed: () => Navigator.of(ctx).pop()),
       title: Text(
         AppLocalizations.of(ctx)!.searchResultsTitle,
         style: TextStyle(
@@ -451,41 +445,35 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10.r),
           child: Stack(
+            fit: StackFit.expand,
             children: [
-              // Sized from the server's own width/height when it sent them, so
-              // the masonry column takes the tile's true shape on the first
-              // frame. Without it every tile started at a placeholder height
-              // and snapped to its real one on decode, re-laying out the whole
-              // grid under the user's thumb.
-              PhotoAspectBox(
-                aspectRatio: photo.aspectRatio,
-                // What a video tile used to be pinned to.
-                fallbackHeight: photo.mediaType == 'video' ? 200.h : null,
-                child: photo.mediaType == 'video'
-                    ? _VideoThumbCard(url: photo.url, ext: ext)
-                    : SkidooImage(
-                        imageUrl: photo.url,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        semanticLabel: 'Photo',
-                        placeholder: (_, __) => ColoredBox(
-                          color: ext.searchFieldFill,
-                          child: Center(
-                            child: SizedBox(
-                              width: 18.w,
-                              height: 18.h,
-                              child: CircularProgressIndicator(
-                                  color: ext.accentGold, strokeWidth: 2),
-                            ),
-                          ),
-                        ),
-                        errorWidget: (_, __, ___) => ColoredBox(
-                          color: ext.searchFieldFill,
-                          child: Icon(Icons.broken_image_outlined,
-                              color: ext.searchHintColor, size: 28.sp),
-                        ),
+              // The grid cell is a fixed square, so the media fills and crops
+              // to it rather than being sized from the photo's own dimensions.
+              if (photo.mediaType == 'video')
+                _VideoThumbCard(url: photo.url, ext: ext)
+              else
+                SkidooImage(
+                  imageUrl: photo.url,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  semanticLabel: 'Photo',
+                  placeholder: (_, __) => ColoredBox(
+                    color: ext.searchFieldFill,
+                    child: Center(
+                      child: SizedBox(
+                        width: 18.w,
+                        height: 18.h,
+                        child: CircularProgressIndicator(
+                            color: ext.accentGold, strokeWidth: 2),
                       ),
-              ),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => ColoredBox(
+                    color: ext.searchFieldFill,
+                    child: Icon(Icons.broken_image_outlined,
+                        color: ext.searchHintColor, size: 28.sp),
+                  ),
+                ),
 
               // ── Price badge (bottom-left) ─────────────────────────────────
               Positioned(
@@ -848,59 +836,31 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
 
 // ── Video thumbnail card ──────────────────────────────────────────────────────
 
-class _VideoThumbCard extends StatefulWidget {
+/// A video's tile in the results grid.
+///
+/// This used to spin up a [VideoPlayerController] per tile — downloading and
+/// decoding whole videos so a *still* could be painted, which cost a player
+/// instance and megabytes of transfer per cell. [SkidooImage] renders the
+/// clip's poster frame instead: one small image, from cache after the first
+/// time. Dropping that controller was also the last use of `video_player` in
+/// the app, so the plugin came out with it.
+class _VideoThumbCard extends StatelessWidget {
   const _VideoThumbCard({required this.url, required this.ext});
   final String url;
   final AppThemeExtension ext;
-
-  @override
-  State<_VideoThumbCard> createState() => _VideoThumbCardState();
-}
-
-class _VideoThumbCardState extends State<_VideoThumbCard> {
-  late final VideoPlayerController _ctrl;
-  bool _ready = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..setVolume(0)
-      ..initialize().then((_) async {
-        if (!mounted) return;
-        await _ctrl.seekTo(Duration.zero);
-        await _ctrl.pause();
-        if (mounted) setState(() => _ready = true);
-      }).catchError((_) {
-        if (mounted) setState(() => _ready = false);
-      });
-  }
-
-  @override
-  void dispose() {
-    _ctrl
-      ..pause()
-      ..dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (_ready)
-          FittedBox(
-            fit: BoxFit.cover,
-            clipBehavior: Clip.hardEdge,
-            child: SizedBox(
-              width: _ctrl.value.size.width,
-              height: _ctrl.value.size.height,
-              child: VideoPlayer(_ctrl),
-            ),
-          )
-        else
-          ColoredBox(color: widget.ext.searchFieldFill),
+        SkidooImage(
+          imageUrl: url,
+          fit: BoxFit.cover,
+          semanticLabel: 'Video',
+          placeholder: (_, __) => ColoredBox(color: ext.searchFieldFill),
+          errorWidget: (_, __, ___) => ColoredBox(color: ext.searchFieldFill),
+        ),
 
         // Play badge
         Center(

@@ -13,6 +13,7 @@ import 'package:skidoo_app/core/utils/web_panel_route.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 /// WhatsApp-style group info page.
 ///
@@ -30,12 +31,7 @@ class GroupInfoPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: IconButton(
-          tooltip: 'Back',
-          icon: Icon(Icons.arrow_back_ios_rounded,
-              color: ext.greetingColor, size: 18.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
           'Group info',
           style: TextStyle(

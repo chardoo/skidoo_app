@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/theme/app_input.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 
@@ -53,10 +54,12 @@ class SearchField extends StatelessWidget {
               onChanged: onChanged,
               onSubmitted: onSubmitted,
               style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-              decoration: InputDecoration(
+              // The pill above is the only outline this field gets — see
+              // [kBorderlessInput] for why `border: InputBorder.none` alone
+              // left a second one inside it whenever the field had focus.
+              decoration: kBorderlessInput.copyWith(
                 hintText: hint,
                 hintStyle: TextStyle(color: ext.glassHint, fontSize: 14.sp),
-                border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
               ),

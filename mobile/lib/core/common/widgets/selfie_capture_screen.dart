@@ -2,10 +2,11 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:skidoo_app/core/platform/face_check.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 /// Full-screen front-camera selfie capture with on-device face validation.
 ///
@@ -38,20 +39,9 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
   // After a failed detection, let the user bypass the ML check.
   XFile? _lastCapturedFile;
 
-  // ML Kit is not available on web — initialized only on mobile.
-  FaceDetector? _faceDetector;
-
   @override
   void initState() {
     super.initState();
-    if (!kIsWeb) {
-      _faceDetector = FaceDetector(
-        options: FaceDetectorOptions(
-          performanceMode: FaceDetectorMode.fast,
-          minFaceSize: 0.15,
-        ),
-      );
-    }
     WidgetsBinding.instance.addObserver(this);
     _initCamera();
   }
@@ -107,7 +97,6 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _ctrl?.dispose();
-    _faceDetector?.close();
     super.dispose();
   }
 
@@ -120,17 +109,11 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     });
     try {
       final xFile = await _ctrl!.takePicture();
-      if (kIsWeb) {
-        // ML Kit is unavailable on web — skip face detection and accept the photo.
-        if (!mounted) return;
-        Navigator.of(context).pop(xFile);
-        return;
-      }
-      // Mobile: validate with ML Kit before accepting.
-      final inputImage = InputImage.fromFilePath(xFile.path);
-      final faces = await _faceDetector!.processImage(inputImage);
+      // [FaceCheck] answers true where it can't tell — on web, or when the
+      // platform detector is unavailable — so the photo is simply accepted.
+      final hasFace = await FaceCheck.hasFace(xFile.path);
       if (!mounted) return;
-      if (faces.isEmpty) {
+      if (!hasFace) {
         setState(() {
           _checking = false;
           _lastCapturedFile = xFile;
@@ -195,7 +178,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                 children: [
                   if (!kIsWeb)
                     _CircleIconBtn(
-                      icon: Icons.arrow_back_ios_new_rounded,
+                      icon: AppBackButton.icon,
                       onTap: () => Navigator.of(context).pop(null),
                     ),
                   const Spacer(),

@@ -4,6 +4,7 @@ import 'package:skidoo_app/core/common/widgets/app_button.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 /// Shared chrome for every step of the post-signup onboarding wizard — back
 /// arrow, segmented step-progress bar, title/subtitle, scrollable content,
@@ -72,15 +73,8 @@ class OnboardingStepScaffold extends StatelessWidget {
                     child: canPop
                         ? Align(
                             alignment: Alignment.centerLeft,
-                            child: Semantics(
-                              button: true,
-                              label: 'Back',
-                              child: IconButton(
-                                icon: Icon(Icons.arrow_back_ios_rounded,
-                                    color: ext.greetingColor, size: 18.sp),
-                                onPressed: () => Navigator.of(context).pop(),
-                              ),
-                            ),
+                            child: AppBackButton(
+                                onPressed: () => Navigator.of(context).pop()),
                           )
                         : null,
                   ),

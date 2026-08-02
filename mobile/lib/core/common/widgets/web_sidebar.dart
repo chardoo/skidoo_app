@@ -22,6 +22,8 @@ import 'package:skidoo_app/features/photographers/presentation/bloc/photographer
 import 'package:skidoo_app/features/photographers/presentation/pages/photographers_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
 import 'package:skidoo_app/services/auth_service.dart';
+import 'package:skidoo_app/core/common/widgets/jperg_logo.dart';
+import 'package:skidoo_app/core/common/widgets/app_section_label.dart';
 
 const double _kSidebarWidth = 240.0;
 const String _kCreatorUrl = 'https://picco-v2.onrender.com/photographer/dashboard';
@@ -102,50 +104,9 @@ class _SidebarShell extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // ── Logo ────────────────────────────────────────────
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 30,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [ext.accentGold, ext.accentGoldDark],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(9),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: ext.accentGold.withValues(alpha: 0.40),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              alignment: Alignment.center,
-                              child: const Text(
-                                'S',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'JPERG',
-                              style: TextStyle(
-                                color: ext.logoTextColor,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 20,
-                                letterSpacing: 3,
-                              ),
-                            ),
-                          ],
-                        ),
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(20, 20, 20, 28),
+                        child: JpergLogo(height: 30),
                       ),
 
                       // The sidebar lives above the Navigator, so it has no
@@ -582,7 +543,8 @@ class _DiscoveryModeNav extends StatelessWidget {
           onTap: () {},
         ),
         const SizedBox(height: 18),
-        _SectionLabel(text: 'Create', ext: ext),
+        const AppSectionLabel('Create',
+            padding: EdgeInsets.fromLTRB(20, 4, 16, 8)),
 
         // Sign up as Creator
         Padding(
@@ -686,7 +648,8 @@ class _LoggedInNav extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SidebarSearchField(ext: ext),
-        _SectionLabel(text: 'Menu', ext: ext),
+        const AppSectionLabel('Menu',
+            padding: EdgeInsets.fromLTRB(20, 4, 16, 8)),
         _NavItem(
           icon: Icons.home_rounded,
           label: 'Home',
@@ -710,7 +673,8 @@ class _LoggedInNav extends StatelessWidget {
         ),
 
         const SizedBox(height: 18),
-        _SectionLabel(text: 'Create', ext: ext),
+        const AppSectionLabel('Create',
+            padding: EdgeInsets.fromLTRB(20, 4, 16, 8)),
 
         // Post a Request / Create Campaign — opens the create dialog.
         if (AppConfigRepository.current.adsEnabled ||
@@ -766,29 +730,6 @@ class _LoggedInNav extends StatelessWidget {
 // ── Shared sub-widgets ────────────────────────────────────────────────────────
 
 /// Small muted uppercase section heading used to group sidebar items.
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.text, required this.ext});
-  final String text;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 16, 8),
-      child: Text(
-        text.toUpperCase(),
-        style: TextStyle(
-          color: ext.searchHintColor.withValues(alpha: 0.55),
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.4,
-          decoration: TextDecoration.none,
-        ),
-      ),
-    );
-  }
-}
-
 /// Tappable nav row with hover highlight — no Material/InkWell required.
 class _NavItem extends StatefulWidget {
   const _NavItem({
@@ -1246,44 +1187,9 @@ class _TopNavBar extends StatelessWidget {
             child: Row(
               children: [
                 // ── Logo (pinned) ────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [ext.accentGold, ext.accentGoldDark],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'S',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'JPERG',
-                        style: TextStyle(
-                          color: ext.logoTextColor,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 15,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ],
-                  ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: JpergLogo(height: 24),
                 ),
 
                 // ── Divider ───────────────────────────────────────────────────

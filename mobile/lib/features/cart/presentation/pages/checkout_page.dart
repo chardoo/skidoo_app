@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 class CheckoutPage extends StatefulWidget {
   final String url;
@@ -69,7 +70,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
           elevation: 0,
           title: Text(AppLocalizations.of(context)!.checkoutTitle,
               style: TextStyle(color: ext.greetingColor, fontSize: 17.sp, fontWeight: FontWeight.w700)),
-          leading: kIsWeb ? null : BackButton(onPressed: () => Navigator.of(context).pop()),
+          leading: kIsWeb
+              ? null
+              : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         ),
         body: SafeArea(
           child: Padding(
@@ -117,7 +120,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final page = Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.checkoutTitle),
-        leading: kIsWeb ? null : BackButton(onPressed: () => Navigator.of(context).pop()),
+        leading: kIsWeb
+            ? null
+            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
       ),
       body: WebViewWidget(controller: _controller!),
     );

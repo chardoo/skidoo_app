@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart'
     show
         ChatWebSocketService,
@@ -119,7 +120,37 @@ class ChatBackgroundService {
     this._authService,
     this._notifPrefs, [
     this._sound = const NotificationSoundService(),
-  ]);
+  ]) {
+    // Coming back to the foreground is the clearest signal that connectivity
+    // may have returned. Without this, a device that lost DNS for long enough
+    // to exhaust the retry budget (8 attempts, backing off to 60s — a few
+    // minutes) stayed disconnected until the process restarted, because
+    // _scheduleReconnect refuses to arm another timer once the budget is gone.
+    _lifecycle = AppLifecycleListener(onResume: _retryFromScratch);
+  }
+
+  AppLifecycleListener? _lifecycle;
+
+  /// Clears the spent retry budget and tries again immediately.
+  ///
+  /// Only for deliberate "you should be connected now" moments — app resume, or
+  /// an explicit [connectAll]. The drop handler must keep using
+  /// [_scheduleReconnect] so a genuinely unreachable server is still backed off
+  /// rather than hammered.
+  void _retryFromScratch() {
+    if (_connected || _connecting) return;
+    _reconnectAttempts = 0;
+    _reconnectTimer?.cancel();
+    _connect();
+  }
+
+  /// Releases the lifecycle listener. The service is a singleton for the life
+  /// of the app, so this is mainly for tests.
+  void dispose() {
+    _lifecycle?.dispose();
+    _lifecycle = null;
+    _reconnectTimer?.cancel();
+  }
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
@@ -152,7 +183,12 @@ class ChatBackgroundService {
 
     // Connect even if rooms is empty — the /chat/ws/me endpoint delivers
     // user-level events (e.g. group_invite) regardless of room subscriptions.
-    if (!_connecting) _connect();
+    //
+    // Reset the retry budget first: this call is an explicit request to be
+    // connected (a rooms load/refresh), so it deserves a full set of attempts.
+    // Otherwise, once the budget was spent, each refresh got a single doomed
+    // try and chat never came back.
+    if (!_connecting) _retryFromScratch();
   }
 
   /// Hands off [roomId] to [ChatRoomBloc]. Incoming messages for this room

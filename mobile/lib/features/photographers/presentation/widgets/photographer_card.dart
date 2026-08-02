@@ -5,6 +5,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/models/photographer/photographerModel.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/widgets/skidoo_image.dart';
 
 class PhotographerCard extends StatelessWidget {
   const PhotographerCard({
@@ -116,9 +117,10 @@ class PhotographerGridCard extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: hasImage
-                    ? CachedNetworkImage(
+                    ? SkidooImage(
                         imageUrl: photographer.imageUrl!,
                         fit: BoxFit.cover,
+                        semanticLabel: 'Photo by ${photographer.name}',
                         placeholder: (_, __) =>
                             ColoredBox(color: ext.searchFieldFill),
                         errorWidget: (_, __, ___) =>

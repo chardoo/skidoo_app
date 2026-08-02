@@ -64,9 +64,9 @@ void main() {
           host(bar(commentsEnabled: true, reactionsEnabled: true)));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.thumb_down_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.mode_comment_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.thumb_down_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.mode_comment_outlined), findsOneWidget);
     });
 
     testWidgets('engagement off: no like, no dislike, no comment',
@@ -75,9 +75,9 @@ void main() {
           host(bar(commentsEnabled: false, reactionsEnabled: false)));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.favorite_rounded), findsNothing);
-      expect(find.byIcon(Icons.thumb_down_rounded), findsNothing);
-      expect(find.byIcon(Icons.mode_comment_rounded), findsNothing);
+      expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
+      expect(find.byIcon(Icons.thumb_down_outlined), findsNothing);
+      expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
       // The bar shows a struck-through comment icon in place of the button.
       expect(find.byIcon(Icons.comments_disabled_rounded), findsOneWidget);
     });
@@ -100,9 +100,9 @@ void main() {
           host(bar(commentsEnabled: false, reactionsEnabled: true)));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.mode_comment_rounded), findsNothing);
-      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.thumb_down_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
+      expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.thumb_down_outlined), findsOneWidget);
     });
   });
 
