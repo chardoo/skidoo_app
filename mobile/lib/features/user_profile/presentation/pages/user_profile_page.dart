@@ -19,6 +19,7 @@ import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet
 import 'package:skidoo_app/features/user_profile/data/repositories/profile_overview_repository.dart';
 import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
+import 'package:skidoo_app/features/user_profile/presentation/widgets/profile_photo_tile.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 
 /// The profile screen.
@@ -176,6 +177,8 @@ class UserProfilePageState extends State<UserProfilePage>
   /// the user happened to bookmark would be a different album every photo.
   Future<void> _openTile(List<ProfilePhoto> tab, ProfilePhoto photo) async {
     final eventId = photo.isEvent ? (photo.eventId ?? photo.id) : photo.eventId;
+    debugPrint('[UserProfilePage] open tile id=${photo.id} '
+        'event=$eventId isEvent=${photo.isEvent}');
     if (eventId == null || eventId.isEmpty || _openingEvent) {
       _openWithinTab(tab, photo);
       return;
@@ -229,7 +232,10 @@ class UserProfilePageState extends State<UserProfilePage>
   void _openWithinTab(List<ProfilePhoto> tab, ProfilePhoto photo) {
     final photos = tab.where((p) => !p.isEvent).toList();
     final index = photos.indexWhere((p) => p.id == photo.id);
-    if (index < 0) return;
+    if (index < 0) {
+      debugPrint('[UserProfilePage] nothing to open for ${photo.id}');
+      return;
+    }
     Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => FoundPhotoViewerPage(
         photos: [for (final p in photos) _asPhoto(p)],
@@ -621,70 +627,13 @@ class _PhotoGrid extends StatelessWidget {
       itemCount: photos.length,
       itemBuilder: (_, i) {
         final photo = photos[i];
-        return GestureDetector(
-          onTap: () => onOpen(photo),
-          child: ColoredBox(
-          color: ext.avatarBackground,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.network(
-                photo.url,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Icon(
-                  Icons.broken_image_outlined,
-                  color: ext.searchHintColor,
-                  size: 20.r,
-                ),
-              ),
-              if (photo.isVideo)
-                Positioned(
-                  left: 6.w,
-                  top: 6.h,
-                  child: Icon(
-                    Icons.play_circle_fill_rounded,
-                    color: Colors.white.withValues(alpha: 0.9),
-                    size: 18.r,
-                  ),
-                ),
-              if (photo.isEvent)
-                Positioned(
-                  left: 6.w,
-                  bottom: 6.h,
-                  child: Icon(
-                    Icons.event_rounded,
-                    color: Colors.white.withValues(alpha: 0.9),
-                    size: 16.r,
-                  ),
-                ),
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Semantics(
-                  button: true,
-                  label: removeTooltip,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => onRemove(photo),
-                    child: Padding(
-                      // Padded rather than sized: the icon is small, and the
-                      // tap target around it needs to be a finger wide.
-                      padding: EdgeInsets.all(6.r),
-                      child: Icon(
-                        removeIcon,
-                        size: 18.r,
-                        color: Colors.white.withValues(alpha: 0.95),
-                        shadows: const [
-                          Shadow(color: Colors.black54, blurRadius: 4),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          ),
+        return ProfilePhotoTile(
+          photo: photo,
+          ext: ext,
+          removeIcon: removeIcon,
+          removeTooltip: removeTooltip,
+          onRemove: () => onRemove(photo),
+          onOpen: () => onOpen(photo),
         );
       },
     );
