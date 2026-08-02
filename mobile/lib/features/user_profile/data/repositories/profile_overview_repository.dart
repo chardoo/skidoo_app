@@ -92,19 +92,18 @@ class ProfileOverviewRepository {
     await _dio.delete('/client/$userId/saved/$savedItemId');
   }
 
-  /// Unlike a photo. The chat service owns likes; this is the same toggle the
-  /// feed uses, so calling it on something already liked removes it.
+  /// Remove a like outright — not a toggle.
+  ///
+  /// The heart on this screen means "take this off the list". Sending the
+  /// feed's toggle instead asked the server to flip whatever state it thought
+  /// it had, and when it thought "not liked" the removal put the photo back.
   Future<void> unlikePhoto(String pictureId) async {
-    await _dio.post('/chat/pictures/$pictureId/like');
+    await _dio.delete('/chat/pictures/$pictureId/like');
   }
 
-  /// Unlike an event. Sending the reaction already held clears it, so this
-  /// toggles the like off the same way the photo call does.
+  /// Same for an event: no reaction means clear it, whatever it was.
   Future<void> unlikeEvent(String eventId) async {
-    await _dio.post(
-      '/chat/events/$eventId/reaction',
-      queryParameters: {'reaction': 'like'},
-    );
+    await _dio.post('/chat/events/$eventId/reaction');
   }
 }
 
