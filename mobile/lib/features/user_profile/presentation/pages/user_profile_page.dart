@@ -1,11 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/number_format.dart';
+import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/broadcasts_page.dart';
+import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
+import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
+import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
+import 'package:skidoo_app/models/photos/Photo.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
 import 'package:skidoo_app/features/user_profile/data/repositories/profile_overview_repository.dart';
 import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
@@ -38,6 +46,10 @@ class UserProfilePageState extends State<UserProfilePage>
   ProfileOverview _overview = ProfileOverview.empty;
   List<ProfilePhoto> _liked = const [];
   List<ProfilePhoto> _bookmarked = const [];
+
+  /// An event tile has to fetch the event before it can open it; this keeps a
+  /// second tap from starting a second fetch.
+  bool _openingEvent = false;
 
   bool _loadingHeader = true;
   bool _loadingLiked = true;
@@ -148,6 +160,69 @@ class UserProfilePageState extends State<UserProfilePage>
     }
   }
 
+  /// Open what the tile stands for: an event goes to its pictures, a photo to
+  /// the viewer with the rest of the tab around it, so swiping works the same
+  /// way it does everywhere else in the app.
+  Future<void> _openTile(List<ProfilePhoto> tab, ProfilePhoto photo) async {
+    if (photo.isEvent) {
+      await _openEvent(photo);
+      return;
+    }
+    final photos = tab.where((p) => !p.isEvent).toList();
+    final index = photos.indexWhere((p) => p.id == photo.id);
+    if (index < 0) return;
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => FoundPhotoViewerPage(
+        photos: [for (final p in photos) _asPhoto(p)],
+        initialIndex: index,
+      ),
+    ));
+    // The viewer can like and unlike, so the tabs may be stale coming back.
+    unawaited(_load());
+  }
+
+  Future<void> _openEvent(ProfilePhoto photo) async {
+    final eventId = photo.eventId ?? photo.id;
+    // Fetching the event takes a moment, and an impatient second tap would
+    // otherwise start a second fetch and push the page twice.
+    if (eventId.isEmpty || _openingEvent) return;
+    setState(() => _openingEvent = true);
+    try {
+      // The tile carries a cover and a name, not the event — the pictures page
+      // needs the whole thing, so it is fetched the same way the Saved screen
+      // fetches it.
+      final event = await sl<DiscoveryRemoteDataSource>().getEventById(eventId);
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => EventPicturesPage(event: event),
+      ));
+      if (mounted) unawaited(_load());
+    } catch (e) {
+      debugPrint('[UserProfilePage] openEvent ERROR: $e');
+      if (mounted) AppSnackBar.error(context, 'Could not open that event.');
+    } finally {
+      if (mounted) setState(() => _openingEvent = false);
+    }
+  }
+
+  /// The viewer speaks [Photo]; a tile is the little the grid needed.
+  Photo _asPhoto(ProfilePhoto photo) => Photo(
+        photo.id,
+        photo.eventName ?? '',
+        '',
+        photo.url,
+        '',
+        0,
+        '',
+        null,
+        true,
+        eventId: photo.eventId ?? '',
+        mediaType: photo.mediaType,
+        width: photo.width,
+        height: photo.height,
+      );
+
   void _openSettings() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const AccountPage()),
@@ -246,6 +321,7 @@ class UserProfilePageState extends State<UserProfilePage>
                 removeIcon: Icons.favorite_rounded,
                 removeTooltip: 'Unlike',
                 onRemove: _unlike,
+                onOpen: (photo) => _openTile(_liked, photo),
               ),
             ),
             _Refreshable(
@@ -260,6 +336,7 @@ class UserProfilePageState extends State<UserProfilePage>
                 removeIcon: Icons.bookmark_rounded,
                 removeTooltip: 'Remove bookmark',
                 onRemove: _removeBookmark,
+                onOpen: (photo) => _openTile(_bookmarked, photo),
               ),
             ),
             _Refreshable(
@@ -456,6 +533,7 @@ class _PhotoGrid extends StatelessWidget {
     required this.removeIcon,
     required this.removeTooltip,
     required this.onRemove,
+    required this.onOpen,
   });
 
   final List<ProfilePhoto> photos;
@@ -469,6 +547,9 @@ class _PhotoGrid extends StatelessWidget {
   final IconData removeIcon;
   final String removeTooltip;
   final Future<void> Function(ProfilePhoto) onRemove;
+
+  /// Tapping the tile opens what it stands for.
+  final void Function(ProfilePhoto) onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -490,7 +571,9 @@ class _PhotoGrid extends StatelessWidget {
       itemCount: photos.length,
       itemBuilder: (_, i) {
         final photo = photos[i];
-        return ColoredBox(
+        return GestureDetector(
+          onTap: () => onOpen(photo),
+          child: ColoredBox(
           color: ext.avatarBackground,
           child: Stack(
             fit: StackFit.expand,
@@ -550,6 +633,7 @@ class _PhotoGrid extends StatelessWidget {
                 ),
               ),
             ],
+          ),
           ),
         );
       },
