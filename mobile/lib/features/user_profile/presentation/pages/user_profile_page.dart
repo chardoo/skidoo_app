@@ -64,6 +64,10 @@ class UserProfilePageState extends State<UserProfilePage>
     super.initState();
     _tabs = TabController(length: 3, vsync: this);
     _load();
+    // initState has no inherited widgets to read yet.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _warmAccount();
+    });
   }
 
   @override
@@ -74,7 +78,30 @@ class UserProfilePageState extends State<UserProfilePage>
 
   /// Called by the nav each time the Profile tab is opened, so likes and
   /// bookmarks made elsewhere in the app are there on arrival.
-  Future<void> refresh() => _load();
+  Future<void> refresh() {
+    _warmAccount();
+    return _load();
+  }
+
+  /// Fetch the account while the user is looking at this screen, not after
+  /// they tap the gear.
+  ///
+  /// Settings reads the same bloc, and shows a spinner until it has something.
+  /// Nothing else asks for it — the host requests it once at start-up, which
+  /// can be before there is a token — so the first open was paying for the
+  /// fetch and every later one was instant. Asking here moves that wait to
+  /// where nobody is waiting.
+  void _warmAccount() {
+    try {
+      final bloc = context.read<UserProfileBloc>();
+      final state = bloc.state;
+      if (!state.isLoading && state.name.isEmpty && state.email.isEmpty) {
+        bloc.add(const UserProfileLoadRequested());
+      }
+    } catch (_) {
+      // No host bloc: settings will build its own, as it always could.
+    }
+  }
 
   /// Each piece loads on its own so a slow or failing tab never holds up the
   /// header — the figures are the first thing on screen and the cheapest to
