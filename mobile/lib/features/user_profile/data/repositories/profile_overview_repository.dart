@@ -42,25 +42,47 @@ class ProfileOverviewRepository {
     return _listUnder(resp.data, 'data').map(ProfilePhoto.fromJson).toList();
   }
 
-  /// Bookmarked photos. The endpoint carries the client id in the path and
-  /// only ever serves the caller's own, so the id has to be the signed-in one.
+  /// Everything bookmarked — the same list the Saved screen shows, from the
+  /// same endpoint. Not filtered to pictures: people bookmark events too, and
+  /// a tab that silently dropped them would look like the bookmark had failed.
+  ///
+  /// The endpoint carries the client id in the path and only ever serves the
+  /// caller's own, so the id has to be the signed-in one.
   Future<List<ProfilePhoto>> getBookmarkedPhotos(
     String userId, {
     int page = 1,
     int limit = 30,
   }) async {
     final resp = await _dio.get('/client/$userId/saved', queryParameters: {
-      'assetType': 'picture',
       'page': page,
       'limit': limit,
     });
-    // A saved row wraps the picture it points at; a picture deleted since it
-    // was bookmarked comes back with no asset at all, so those are dropped.
-    return _listUnder(resp.data, 'data')
-        .map((row) => row['asset'])
-        .whereType<Map<String, dynamic>>()
-        .map(ProfilePhoto.fromJson)
-        .toList();
+
+    final photos = <ProfilePhoto>[];
+    for (final row in _listUnder(resp.data, 'data')) {
+      final asset = row['asset'];
+      // An asset deleted since it was bookmarked comes back null, and requests
+      // and campaigns live in another service and arrive without one.
+      if (asset is! Map<String, dynamic>) continue;
+      final photo = ProfilePhoto.fromSavedAsset(
+        asset,
+        assetType: row['assetType'] as String? ?? 'picture',
+        savedItemId: row['id'] as String?,
+      );
+      if (photo != null) photos.add(photo);
+    }
+    return photos;
+  }
+
+  /// Un-bookmark. Takes the saved-row id, which is what the list returns.
+  Future<void> removeBookmark(String userId, String savedItemId) async {
+    await _dio.delete('/client/$userId/saved/$savedItemId');
+  }
+
+  /// Unlike a photo. The chat service owns likes; this is the same toggle the
+  /// feed uses, so calling it on something already liked removes it.
+  Future<void> unlikePhoto(String pictureId) async {
+    await _dio.post('/chat/pictures/$pictureId/like');
   }
 }
 
@@ -125,6 +147,8 @@ class ProfilePhoto {
     this.mediaType = 'image',
     this.eventId,
     this.eventName,
+    this.savedItemId,
+    this.isEvent = false,
   });
 
   final String id;
@@ -137,6 +161,13 @@ class ProfilePhoto {
   final String mediaType;
   final String? eventId;
   final String? eventName;
+
+  /// The bookmark row this tile came from, needed to remove it. Null on liked
+  /// photos, which are unliked by picture id instead.
+  final String? savedItemId;
+
+  /// A bookmarked event rather than a photo — the tile shows its cover.
+  final bool isEvent;
 
   bool get isVideo => mediaType == 'video';
 
@@ -152,6 +183,29 @@ class ProfilePhoto {
       mediaType: json['mediaType'] as String? ?? 'image',
       eventId: event['id'] as String? ?? json['eventId'] as String?,
       eventName: event['eventName'] as String?,
+    );
+  }
+
+  /// A saved row's asset. Pictures carry `url`; events carry their cover under
+  /// `url` too, so both render as a tile. Anything without one is skipped.
+  static ProfilePhoto? fromSavedAsset(
+    Map<String, dynamic> asset, {
+    required String assetType,
+    String? savedItemId,
+  }) {
+    final url = asset['url'] as String?;
+    if (url == null || url.isEmpty) return null;
+    final isEvent = assetType == 'event';
+    return ProfilePhoto(
+      id: asset['id'] as String? ?? '',
+      url: url,
+      width: (asset['width'] ?? asset['coverWidth']) as int?,
+      height: (asset['height'] ?? asset['coverHeight']) as int?,
+      mediaType: asset['mediaType'] as String? ?? 'image',
+      eventId: isEvent ? asset['id'] as String? : asset['eventId'] as String?,
+      eventName: asset['eventName'] as String?,
+      savedItemId: savedItemId,
+      isEvent: isEvent,
     );
   }
 }

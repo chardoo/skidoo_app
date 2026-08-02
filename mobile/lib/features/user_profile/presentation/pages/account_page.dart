@@ -20,8 +20,6 @@ import 'package:skidoo_app/features/ads/presentation/pages/my_campaigns_page.dar
 import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/request_board_page.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
-import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/photographers_page.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/portfolio_edit_page.dart';
 import 'package:skidoo_app/features/user_profile/presentation/pages/face_recognition_page.dart';
 import 'package:skidoo_app/services/auth_service.dart';
@@ -32,6 +30,7 @@ import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_section_label.dart';
 
 String _resolveErrorMessage(String key, AppLocalizations l10n) => switch (key) {
       'accountAnonymousModeUpdateFailed' =>
@@ -393,8 +392,8 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   SizedBox(height: AppSpacing.lg.h),
 
                   // ── Basic info section ─────────────────────────────────
-                  _SectionLabel(
-                      AppLocalizations.of(context)!.accountBasicInfo, ext),
+                  AppSectionLabel(
+                      AppLocalizations.of(context)!.accountBasicInfo),
                   SizedBox(height: 10.h),
                   _ProfileField(
                       controller: _nameCtrl,
@@ -414,8 +413,8 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   SizedBox(height: AppSpacing.xl.h),
 
                   // ── Locale section ─────────────────────────────────────
-                  _SectionLabel(
-                      AppLocalizations.of(context)!.accountLocaleRegion, ext),
+                  AppSectionLabel(
+                      AppLocalizations.of(context)!.accountLocaleRegion),
                   SizedBox(height: 10.h),
                   _ProfileDropdown(
                       controller: _countryCodeCtrl,
@@ -448,9 +447,8 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   SizedBox(height: AppSpacing.xl.h),
 
                   // ── Interests section ──────────────────────────────────
-                  _SectionLabel(
-                      AppLocalizations.of(context)!.accountPhotographyInterests,
-                      ext),
+                  AppSectionLabel(
+                      AppLocalizations.of(context)!.accountPhotographyInterests),
                   SizedBox(height: 10.h),
                   StatefulBuilder(
                     builder: (context, setChipState) => Wrap(
@@ -516,25 +514,6 @@ class _EditProfileCardState extends State<_EditProfileCard> {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label, this.ext);
-
-  final String label;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      style: TextStyle(
-        color: ext.searchHintColor,
-        fontSize: 11.sp,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.8,
-      ),
-    );
-  }
-}
 
 class _ProfileField extends StatelessWidget {
   const _ProfileField({
@@ -1151,30 +1130,15 @@ class _AdsCard extends StatelessWidget {
             final showRequests = cfg.requestsEnabled;
             final showAds = cfg.adsEnabled;
 
-            final tiles = <Widget>[
-              _AdsListTile(
-                icon: Icons.camera_alt_outlined,
-                iconColor: const Color(0xFF8B5CF6),
-                title: 'Creators',
-                subtitle: 'Browse photographers',
-                ext: ext,
-                onTap: () {
-                  final bloc = context.read<PhotographerBloc>()
-                    ..add(const PhotographersLoadRequested());
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => BlocProvider.value(
-                        value: bloc,
-                        child: const PhotographersPage(),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ];
+            // "Creators" used to seed this list — it has moved elsewhere. Every
+            // block below guards its own leading divider, so the list starting
+            // empty is fine.
+            final tiles = <Widget>[];
 
             if (showRequests || showAds) {
-              tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+              if (tiles.isNotEmpty) {
+                tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+              }
               tiles.add(_AdsListTile(
                 icon: Icons.add_circle_outline_rounded,
                 iconColor: const Color(0xFF10B981),
@@ -1243,6 +1207,12 @@ class _AdsCard extends StatelessWidget {
                 ),
               ));
             }
+
+            // Nothing to promote: requests and ads both switched off for a
+            // non-admin. Reachable now that "Creators" no longer holds the list
+            // open — a card with a heading and no rows under it would read as
+            // something that failed to load.
+            if (tiles.isEmpty) return const SizedBox.shrink();
 
             return Material(
               // Material, not a decorated Container: ListTile paints its

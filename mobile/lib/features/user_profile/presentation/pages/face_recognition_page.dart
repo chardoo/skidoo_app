@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:dio/dio.dart' as dio_pkg;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:skidoo_app/core/widgets/media_grid.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/api/dio_client_service.dart';
 import 'package:skidoo_app/core/common/widgets/selfie_capture_screen.dart';
@@ -13,6 +14,7 @@ import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
 
 class FaceRecognitionPage extends StatefulWidget {
   const FaceRecognitionPage({super.key});
@@ -92,12 +94,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : IconButton(
-                tooltip: 'Back',
-                icon: Icon(Icons.arrow_back_ios_rounded,
-                    color: ext.greetingColor, size: 18.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
           'Face Recognition',
           style: TextStyle(
@@ -183,12 +180,9 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
             Expanded(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
-                child: GridView.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 10.w,
-                    mainAxisSpacing: 10.h,
-                  ),
+                child: MediaGrid(
+                  columns: 3,
+                  gutter: 10,
                   itemCount: _selfies.length + (canAdd ? 1 : 0),
                   itemBuilder: (_, i) {
                     if (i == _selfies.length) {

@@ -108,6 +108,41 @@ class UserProfilePageState extends State<UserProfilePage>
     }
   }
 
+  /// Unlike from the grid. The tile goes straight away — the row is written on
+  /// the server as the tap lands, so there is nothing to wait for — and comes
+  /// back if the call fails.
+  Future<void> _unlike(ProfilePhoto photo) async {
+    final previous = _liked;
+    setState(() => _liked = [
+          for (final p in _liked)
+            if (p.id != photo.id) p,
+        ]);
+    try {
+      await _repo.unlikePhoto(photo.id);
+      _loadHeader();
+    } catch (e) {
+      debugPrint('[UserProfilePage] unlike ERROR: $e');
+      if (mounted) setState(() => _liked = previous);
+    }
+  }
+
+  Future<void> _removeBookmark(ProfilePhoto photo) async {
+    final savedItemId = photo.savedItemId;
+    if (savedItemId == null) return;
+    final previous = _bookmarked;
+    setState(() => _bookmarked = [
+          for (final p in _bookmarked)
+            if (p.savedItemId != savedItemId) p,
+        ]);
+    try {
+      final userId = await AuthService().getUserId();
+      await _repo.removeBookmark(userId, savedItemId);
+    } catch (e) {
+      debugPrint('[UserProfilePage] removeBookmark ERROR: $e');
+      if (mounted) setState(() => _bookmarked = previous);
+    }
+  }
+
   void _openSettings() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const AccountPage()),
@@ -203,6 +238,9 @@ class UserProfilePageState extends State<UserProfilePage>
                 ext: ext,
                 emptyTitle: 'Nothing liked yet',
                 emptyHint: 'Photos you like show up here.',
+                removeIcon: Icons.favorite_rounded,
+                removeTooltip: 'Unlike',
+                onRemove: _unlike,
               ),
             ),
             _Refreshable(
@@ -213,7 +251,10 @@ class UserProfilePageState extends State<UserProfilePage>
                 loading: _loadingBookmarks,
                 ext: ext,
                 emptyTitle: 'Nothing bookmarked yet',
-                emptyHint: 'Bookmark a photo to find it here.',
+                emptyHint: 'Bookmark a photo or an event to find it here.',
+                removeIcon: Icons.bookmark_rounded,
+                removeTooltip: 'Remove bookmark',
+                onRemove: _removeBookmark,
               ),
             ),
             _Refreshable(
@@ -407,6 +448,9 @@ class _PhotoGrid extends StatelessWidget {
     required this.ext,
     required this.emptyTitle,
     required this.emptyHint,
+    required this.removeIcon,
+    required this.removeTooltip,
+    required this.onRemove,
   });
 
   final List<ProfilePhoto> photos;
@@ -414,6 +458,12 @@ class _PhotoGrid extends StatelessWidget {
   final AppThemeExtension ext;
   final String emptyTitle;
   final String emptyHint;
+
+  /// The filled heart / bookmark on each tile — tapping it takes the photo out
+  /// of the list it is in.
+  final IconData removeIcon;
+  final String removeTooltip;
+  final Future<void> Function(ProfilePhoto) onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -451,7 +501,7 @@ class _PhotoGrid extends StatelessWidget {
               ),
               if (photo.isVideo)
                 Positioned(
-                  right: 6.w,
+                  left: 6.w,
                   top: 6.h,
                   child: Icon(
                     Icons.play_circle_fill_rounded,
@@ -459,6 +509,41 @@ class _PhotoGrid extends StatelessWidget {
                     size: 18.r,
                   ),
                 ),
+              if (photo.isEvent)
+                Positioned(
+                  left: 6.w,
+                  bottom: 6.h,
+                  child: Icon(
+                    Icons.event_rounded,
+                    color: Colors.white.withValues(alpha: 0.9),
+                    size: 16.r,
+                  ),
+                ),
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Semantics(
+                  button: true,
+                  label: removeTooltip,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => onRemove(photo),
+                    child: Padding(
+                      // Padded rather than sized: the icon is small, and the
+                      // tap target around it needs to be a finger wide.
+                      padding: EdgeInsets.all(6.r),
+                      child: Icon(
+                        removeIcon,
+                        size: 18.r,
+                        color: Colors.white.withValues(alpha: 0.95),
+                        shadows: const [
+                          Shadow(color: Colors.black54, blurRadius: 4),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         );
