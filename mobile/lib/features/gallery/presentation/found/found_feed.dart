@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:skidoo_app/core/utils/responsive.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,6 +18,9 @@ import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_alb
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_filter_button.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_filter_sheet.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_header.dart';
+import 'package:skidoo_app/features/gallery/data/repositories/found_review_repository.dart';
+import 'package:skidoo_app/features/gallery/presentation/found/pages/review_found_photos_page.dart';
+import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_review_banner.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_scanning_state.dart';
 import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
@@ -50,6 +55,11 @@ class _FoundFeedState extends State<FoundFeed> {
   /// [didChangeDependencies].
   bool _wasVisible = false;
 
+  /// Photos found of this person that they have not answered for. Empty until
+  /// the first check, so the banner appears rather than reserving space for
+  /// something that may not be there.
+  PendingFound _pending = PendingFound.none;
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +68,34 @@ class _FoundFeedState extends State<FoundFeed> {
     // it would keep showing matches for a face the server no longer has, until
     // the next app launch.
     AuthService.hasAddedFaces.addListener(_checkAccess);
+    _loadPending();
+  }
+
+  /// Quiet: the grid below does not wait on it, and a failure just means no
+  /// banner this time rather than an error over someone's photos.
+  Future<void> _loadPending() async {
+    try {
+      final pending = await FoundReviewRepository().getPending();
+      if (mounted) setState(() => _pending = pending);
+    } catch (e) {
+      debugPrint('[FoundFeed] pending review check failed: $e');
+    }
+  }
+
+  Future<void> _openReview() async {
+    final answered = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ReviewFoundPhotosPage(pending: _pending),
+      ),
+    );
+    if (!mounted) return;
+    if (answered == true) {
+      // Rejections leave the grid and confirmations stay, so the list below
+      // has changed either way.
+      setState(() => _pending = PendingFound.none);
+      _reload();
+      unawaited(_loadPending());
+    }
   }
 
   /// Re-resolves the gate every time the tab comes back on screen.
@@ -213,7 +251,10 @@ class _FoundFeedState extends State<FoundFeed> {
         }
 
         return RefreshIndicator(
-          onRefresh: () async => _reload(),
+          onRefresh: () async {
+            _reload();
+            await _loadPending();
+          },
           color: ext.accentGold,
           backgroundColor: ext.homeBackground,
           child: NotificationListener<ScrollNotification>(
@@ -237,6 +278,14 @@ class _FoundFeedState extends State<FoundFeed> {
                         // with, so it covers every page rather than what's
                         // scrolled in, and it narrows with the chips.
                         FoundHeader(count: state.totalPhotos),
+                        if (!_pending.isEmpty) ...[
+                          SizedBox(height: AppSpacing.md.h),
+                          FoundReviewBanner(
+                            pending: _pending,
+                            ext: ext,
+                            onTap: _openReview,
+                          ),
+                        ],
                         SizedBox(height: AppSpacing.md.h),
                         Align(
                           alignment: Alignment.centerLeft,
