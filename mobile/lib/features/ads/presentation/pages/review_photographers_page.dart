@@ -15,6 +15,8 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart'
+    show EditRequestSheet;
 import 'package:skidoo_app/features/ads/presentation/pages/request_photographer_page.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
@@ -200,6 +202,35 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     }
   }
 
+  Future<void> _edit() async {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => EditRequestSheet(
+        request: _request,
+        ext: ext,
+        repo: _repo,
+        onSave: (updated) {
+          if (mounted) setState(() => _request = updated);
+        },
+      ),
+    );
+  }
+
+  Future<void> _close() async {
+    try {
+      await _repo.closeRequest(_request.id, status: 'closed');
+      if (!mounted) return;
+      setState(() => _request = _request.copyWith(status: 'closed'));
+      AppSnackBar.success(context, 'Request closed.');
+    } catch (e) {
+      debugPrint('[ReviewPhotographers] close ERROR: $e');
+      if (mounted) AppSnackBar.error(context, 'Could not close this request.');
+    }
+  }
+
   Future<void> _republish() async {
     try {
       final updated = await _repo.republishRequest(_request.id);
@@ -239,11 +270,23 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert_rounded, color: ext.greetingColor),
             onSelected: (value) {
+              if (value == 'edit') _edit();
+              if (value == 'close') _close();
               if (value == 'delete') _delete();
               if (value == 'republish') _republish();
               if (value == 'unselect') _clearSelection();
             },
+            // Everything that used to sit behind the card's "Manage" button
+            // lives here now, since the card itself opens this screen.
             itemBuilder: (_) => [
+              if (!closed)
+                const PopupMenuItem(
+                  value: 'edit', child: Text('Edit request'),
+                ),
+              if (!closed)
+                const PopupMenuItem(
+                  value: 'close', child: Text('Close request'),
+                ),
               // Republishing is only meaningful once it has stopped running.
               if (closed && selected == null)
                 const PopupMenuItem(

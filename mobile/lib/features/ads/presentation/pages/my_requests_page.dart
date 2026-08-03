@@ -228,7 +228,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _EditRequestSheet(
+      builder: (_) => EditRequestSheet(
         request: req,
         ext: ext,
         onSave: (updated) {
@@ -367,47 +367,14 @@ class _MyRequestTile extends StatelessWidget {
               _StatusBadge(status: r.status, color: statusColor, ext: ext),
             ],
           ),
-          SizedBox(height: AppSpacing.sm.h),
-          Wrap(
-            spacing: 8.w,
-            runSpacing: 4.h,
-            children: [
-              if (r.eventType.isNotEmpty)
-                _MetaText(
-                    icon: Icons.event_rounded, label: r.eventType, ext: ext),
-              if (r.location.isNotEmpty)
-                _MetaText(
-                    icon: Icons.location_on_outlined,
-                    label: r.location,
-                    ext: ext),
-              if (r.budgetAmount != null)
-                _MetaText(
-                  icon: Icons.payments_outlined,
-                  label: '${r.currency} ${r.budgetAmount!.toStringAsFixed(0)}',
-                  ext: ext,
-                ),
-              if (r.promotedCampaignId != null)
-                _MetaText(
-                  icon: Icons.rocket_launch_rounded,
-                  label: 'Promoted',
-                  ext: ext,
-                  color: ext.accentGold,
-                ),
-            ],
-          ),
-          if (r.description.isNotEmpty) ...[
-            SizedBox(height: AppSpacing.sm.h),
-            Text(
-              r.description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: ext.searchHintColor,
-                fontSize: 12.sp,
-                height: 1.4,
-              ),
+          SizedBox(height: AppSpacing.xs.h),
+          Text(
+            _dateAndPlace(r),
+            style: TextStyle(
+              color: ext.searchHintColor,
+              fontSize: 12.sp,
             ),
-          ],
+          ),
           if (r.interestedCount > 0) ...[
             SizedBox(height: AppSpacing.md.h),
             InterestedRow(
@@ -438,35 +405,23 @@ class _MyRequestTile extends StatelessWidget {
               ),
             ),
           ],
-          if (r.status == 'open' || r.status == 'promoted') ...[
-            SizedBox(height: AppSpacing.md.h),
-            Semantics(
-                button: true,
-                label: 'Action tap',
-                child: GestureDetector(
-                  onTap: onActionTap,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 10.h),
-                    decoration: BoxDecoration(
-                      color: ext.searchFieldFill,
-                      borderRadius: BorderRadius.circular(AppRadius.md.r),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Manage',
-                      style: TextStyle(
-                        color: ext.greetingColor,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                )),
-          ],
         ],
       ),
       ),
     );
+  }
+
+  /// "28.07.2026 | Accra" — the two things the card carries under the title.
+  /// Either may be missing, and the separator goes with whichever one is.
+  static String _dateAndPlace(FeedRequestModel r) {
+    final parts = <String>[
+      if (r.createdAt != null)
+        '${r.createdAt!.day.toString().padLeft(2, '0')}.'
+            '${r.createdAt!.month.toString().padLeft(2, '0')}.'
+            '${r.createdAt!.year}',
+      if (r.location.isNotEmpty) r.location,
+    ];
+    return parts.join(' | ');
   }
 
   static Color _statusColor(String status) {
@@ -488,13 +443,14 @@ class _StatusBadge extends StatelessWidget {
   final Color color;
   final AppThemeExtension ext;
 
+  /// The card says Active or Closed. The server has more states than that —
+  /// promoted, filled, rejected — but from the requester's side the only
+  /// question the card answers is whether photographers can still apply. In
+  /// Review is kept: a request waiting on a moderator is neither.
   static String _label(String s) => switch (s) {
-        'open' => 'Open',
-        'promoted' => 'Promoted',
+        'open' || 'promoted' => 'Active',
         'pending_review' => 'In Review',
-        'filled' => 'Filled',
-        'closed' => 'Closed',
-        'rejected' => 'Rejected',
+        'filled' || 'closed' || 'rejected' => 'Closed',
         _ => s,
       };
 
@@ -520,32 +476,6 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-class _MetaText extends StatelessWidget {
-  const _MetaText(
-      {required this.icon, required this.label, required this.ext, this.color});
-  final IconData icon;
-  final String label;
-  final AppThemeExtension ext;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = color ?? ext.searchHintColor;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 11.sp, color: c),
-        SizedBox(width: 3.w),
-        Text(
-          label,
-          style:
-              TextStyle(color: c, fontSize: 11.sp, fontWeight: FontWeight.w500),
-        ),
-      ],
-    );
-  }
-}
-
 // ── Edit request bottom sheet ─────────────────────────────────────────────────
 
 const _editEventTypes = [
@@ -561,8 +491,11 @@ const _editEventTypes = [
   'Other',
 ];
 
-class _EditRequestSheet extends StatefulWidget {
-  const _EditRequestSheet({
+/// Shared with the review screen, which is where editing a request is reached
+/// from now that the card opens it rather than a "Manage" button.
+class EditRequestSheet extends StatefulWidget {
+  const EditRequestSheet({
+    super.key,
     required this.request,
     required this.ext,
     required this.onSave,
@@ -574,10 +507,10 @@ class _EditRequestSheet extends StatefulWidget {
   final AdsRepository repo;
 
   @override
-  State<_EditRequestSheet> createState() => _EditRequestSheetState();
+  State<EditRequestSheet> createState() => _EditRequestSheetState();
 }
 
-class _EditRequestSheetState extends State<_EditRequestSheet> {
+class _EditRequestSheetState extends State<EditRequestSheet> {
   late final TextEditingController _titleCtrl;
   late final TextEditingController _descCtrl;
   late final TextEditingController _locationCtrl;
