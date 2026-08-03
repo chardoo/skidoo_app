@@ -375,7 +375,16 @@ class _MyRequestTile extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 10.w),
-              _StatusBadge(status: r.status, color: statusColor, ext: ext),
+              _StatusBadge(
+                // Expiry is not a status the server writes, so the card has to
+                // work it out: a request whose window has closed is off the
+                // board however "open" it still says it is.
+                status: r.isExpired && r.status == 'open' ? 'expired' : r.status,
+                color: r.isExpired && r.status == 'open'
+                    ? ext.searchHintColor
+                    : statusColor,
+                ext: ext,
+              ),
             ],
           ),
           SizedBox(height: AppSpacing.xs.h),
@@ -397,7 +406,7 @@ class _MyRequestTile extends StatelessWidget {
           ],
           // A closed request keeps its answers, so republishing is offered
           // right on the card rather than buried in the actions sheet.
-          if ((r.status == 'closed' || r.status == 'filled') &&
+          if ((r.status == 'closed' || r.status == 'filled' || r.isExpired) &&
               onRepublish != null) ...[
             SizedBox(height: AppSpacing.md.h),
             Semantics(
@@ -461,6 +470,7 @@ class _StatusBadge extends StatelessWidget {
   static String _label(String s) => switch (s) {
         'open' || 'promoted' => 'Active',
         'pending_review' => 'In Review',
+        'expired' => 'Expired',
         'filled' || 'closed' || 'rejected' => 'Closed',
         _ => s,
       };

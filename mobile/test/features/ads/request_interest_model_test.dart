@@ -55,6 +55,8 @@ void main() {
     expect(RequestInterest.fromJson(_interest(selected: true)).selected, isTrue);
   });
 
+  group('expiry', _expiryTests);
+
   test('an older payload without the new fields still parses', () {
     // Rolling deploys: the app can be newer than the service it is talking to.
     final person = RequestInterest.fromJson({'id': 'ph-1', 'name': 'Kwame'});
@@ -63,5 +65,47 @@ void main() {
     expect(person.selected, isFalse);
     expect(person.followerCount, 0);
     expect(person.portfolio, isEmpty);
+  });
+}
+
+/// A request stops being visible when its window closes, but nothing rewrites
+/// its status — so "open" and "on the board" are different questions, and the
+/// card has to answer the second one.
+void _expiryTests() {
+  FeedRequestModel request({String status = 'open', DateTime? expires}) =>
+      FeedRequestModel.fromJson({
+        'id': 'req-1',
+        'title': 'wedding',
+        'status': status,
+        'location': 'Accra',
+        if (expires != null) 'expires_at': expires.toIso8601String(),
+      });
+
+  test('an open request inside its window is live', () {
+    final r = request(expires: DateTime.now().add(const Duration(days: 3)));
+
+    expect(r.isExpired, isFalse);
+    expect(r.isLive, isTrue);
+  });
+
+  test('an open request past its window is not', () {
+    // The state the board was silently in: status open, invisible to everyone.
+    final r = request(expires: DateTime.now().subtract(const Duration(days: 1)));
+
+    expect(r.isExpired, isTrue);
+    expect(r.isLive, isFalse);
+  });
+
+  test('a request with no expiry never expires', () {
+    expect(request().isExpired, isFalse);
+    expect(request().isLive, isTrue);
+  });
+
+  test('a closed request is not live whatever its dates say', () {
+    final r = request(
+      status: 'closed', expires: DateTime.now().add(const Duration(days: 3)),
+    );
+
+    expect(r.isLive, isFalse);
   });
 }

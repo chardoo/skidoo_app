@@ -19,6 +19,7 @@ class FeedRequestModel {
     this.assetUrl,
     this.assetType,
     this.createdAt,
+    this.expiresAt,
     this.commentsEnabled = true,
     this.commentCount = 0,
     this.media = const [],
@@ -54,9 +55,24 @@ class FeedRequestModel {
   /// "image" | "video" (legacy)
   final String? assetType;
   final DateTime? createdAt;
+
+  /// When it drops off the board. Requests are only live for a window — the
+  /// board filters on this — so a request can be "open" and invisible to
+  /// everyone at the same time, which is what the card has to say.
+  final DateTime? expiresAt;
+
   final bool commentsEnabled;
   final int commentCount;
   final List<AdMedia> media;
+
+  /// Off the board, whatever the status says. The two are independent: nothing
+  /// rewrites `status` when the window closes, so a request sits at "open"
+  /// while nobody can see it.
+  bool get isExpired =>
+      expiresAt != null && expiresAt!.isBefore(DateTime.now());
+
+  /// Whether photographers can still answer it.
+  bool get isLive => (status == 'open' || status == 'promoted') && !isExpired;
 
   /// Photographers who answered this request — the card's "4 interested".
   final int interestedCount;
@@ -107,6 +123,9 @@ class FeedRequestModel {
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String)
           : null,
+      expiresAt: json['expires_at'] != null
+          ? DateTime.tryParse(json['expires_at'] as String)
+          : null,
       media: media,
       interestedCount: (json['interested_count'] as num?)?.toInt() ?? 0,
       interested: (json['interested'] as List<dynamic>? ?? [])
@@ -140,6 +159,7 @@ class FeedRequestModel {
       assetUrl: assetUrl,
       assetType: assetType,
       createdAt: createdAt,
+      expiresAt: expiresAt,
       commentsEnabled: commentsEnabled,
       commentCount: commentCount,
       media: media,

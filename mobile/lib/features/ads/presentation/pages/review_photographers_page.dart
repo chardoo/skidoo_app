@@ -278,7 +278,9 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final selected = _selected;
-    final closed = _request.status == 'closed' || _request.status == 'filled';
+    // Expired counts as closed here: nobody can answer it, so editing it is
+    // pointless and republishing is the only thing that helps.
+    final closed = !_request.isLive;
 
     final page = Scaffold(
       backgroundColor: ext.homeBackground,
@@ -437,7 +439,7 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = request.status == 'open' || request.status == 'promoted';
+    final active = request.isLive;
     return Container(
       margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
       padding: EdgeInsets.all(AppSpacing.lg.w),
@@ -471,7 +473,11 @@ class _RequestCard extends StatelessWidget {
             ),
           ),
           Text(
-            active ? 'Active' : 'Closed',
+            active
+                ? 'Active'
+                : (request.isExpired && request.status == 'open'
+                    ? 'Expired'
+                    : 'Closed'),
             style: TextStyle(
               color: active ? ext.accentGold : ext.searchHintColor,
               fontSize: 11.sp,
