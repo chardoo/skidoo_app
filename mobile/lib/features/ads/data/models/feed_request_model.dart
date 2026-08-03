@@ -159,13 +159,45 @@ class RequestInterest {
     this.profileUrl,
     this.message,
     this.createdAt,
+    this.bio,
+    this.location,
+    this.followerCount = 0,
+    this.eventCount = 0,
+    this.rating,
+    this.ratingCount = 0,
+    this.verified = false,
+    this.portfolio = const [],
+    this.viewed = false,
+    this.selected = false,
   });
 
   final String id;
   final String? name;
   final String? profileUrl;
+
+  /// The note they sent with their answer — "Additional Message" on their
+  /// profile. Only ever filled in on the requester's own list.
   final String? message;
   final DateTime? createdAt;
+
+  final String? bio;
+
+  /// The line under the name: "Accra | 1.2K followers | 4.7".
+  final String? location;
+  final int followerCount;
+  final int eventCount;
+  final double? rating;
+  final int ratingCount;
+  final bool verified;
+
+  /// Their sample shots.
+  final List<AdMedia> portfolio;
+
+  /// Whether the requester has opened this profile — Pending versus Viewed.
+  final bool viewed;
+
+  /// Whether this is the one they chose.
+  final bool selected;
 
   factory RequestInterest.fromJson(Map<String, dynamic> json) {
     return RequestInterest(
@@ -176,6 +208,25 @@ class RequestInterest {
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String)
           : null,
+      bio: json['bio'] as String?,
+      location: json['location'] as String?,
+      followerCount: (json['follower_count'] as num?)?.toInt() ?? 0,
+      eventCount: (json['event_count'] as num?)?.toInt() ?? 0,
+      rating: (json['rating'] as num?)?.toDouble(),
+      ratingCount: (json['rating_count'] as num?)?.toInt() ?? 0,
+      verified: json['verified_by_admin'] as bool? ?? false,
+      portfolio: (json['portfolio'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map((m) => AdMedia(
+                id: m['id'] as String? ?? '',
+                url: m['url'] as String? ?? '',
+                mediaType: 'image',
+                width: (m['width'] as num?)?.toInt(),
+                height: (m['height'] as num?)?.toInt(),
+              ))
+          .toList(),
+      viewed: json['viewed'] as bool? ?? false,
+      selected: json['selected'] as bool? ?? false,
     );
   }
 }

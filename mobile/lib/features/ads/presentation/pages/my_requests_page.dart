@@ -6,7 +6,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/create_campaign_page.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/request_interests_page.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/review_photographers_page.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/interested_row.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -82,10 +82,16 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
     }
   }
 
-  void _openInterests(FeedRequestModel req) {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => RequestInterestsPage(requestId: req.id, title: req.title),
-    ));
+  /// The card opens the request itself — who answered, and choosing one of
+  /// them. Deleting from in there pops with true, so the list reloads without
+  /// the request that no longer exists.
+  Future<void> _openRequest(FeedRequestModel req) async {
+    final deleted = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => ReviewPhotographersPage(request: req)),
+    );
+    if (!mounted) return;
+    if (deleted == true) AppSnackBar.success(context, 'Request deleted.');
+    await _load();
   }
 
   Future<void> _close(FeedRequestModel req, String status) async {
@@ -285,8 +291,9 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
                             request: req,
                             ext: ext,
                             onActionTap: () => _showActions(context, req, ext),
+                            onOpen: () => _openRequest(req),
                             onRepublish: () => _republish(req),
-                            onInterestedTap: () => _openInterests(req),
+                            onInterestedTap: () => _openRequest(req),
                           );
                         },
                       ),
@@ -307,10 +314,14 @@ class _MyRequestTile extends StatelessWidget {
     required this.onActionTap,
     this.onRepublish,
     this.onInterestedTap,
+    this.onOpen,
   });
   final FeedRequestModel request;
   final AppThemeExtension ext;
   final VoidCallback onActionTap;
+
+  /// Tapping the card opens the request and who answered it.
+  final VoidCallback? onOpen;
   final VoidCallback? onRepublish;
   final VoidCallback? onInterestedTap;
 
@@ -319,7 +330,11 @@ class _MyRequestTile extends StatelessWidget {
     final r = request;
     final statusColor = _statusColor(r.status);
 
-    return Container(
+    return GestureDetector(
+      // Opaque, so the whole card takes the tap and not just its text.
+      behavior: HitTestBehavior.opaque,
+      onTap: onOpen,
+      child: Container(
       margin: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 0),
       padding: EdgeInsets.all(AppSpacing.lg.w),
       decoration: BoxDecoration(
@@ -449,6 +464,7 @@ class _MyRequestTile extends StatelessWidget {
                 )),
           ],
         ],
+      ),
       ),
     );
   }

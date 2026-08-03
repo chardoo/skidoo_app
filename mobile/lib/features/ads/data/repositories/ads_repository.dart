@@ -472,7 +472,7 @@ class AdsRepository {
   Future<List<RequestInterest>> getRequestInterests(
     String requestId, {
     int page = 1,
-    int limit = 25,
+    int limit = 50,
   }) async {
     debugPrint('$_tag getRequestInterests → id=$requestId page=$page');
     final resp = await _dio.get(
@@ -482,6 +482,32 @@ class AdsRepository {
     return _unwrapList<Map<String, dynamic>>(resp)
         .map(RequestInterest.fromJson)
         .toList();
+  }
+
+  /// Note that the requester opened this photographer's profile — what moves
+  /// them from Pending to Viewed.
+  Future<void> markInterestViewed(String requestId, String photographerId) async {
+    await _dio.post('/ads/requests/$requestId/interests/$photographerId/viewed');
+  }
+
+  /// Choose the photographer. Closes the request to further answers, and
+  /// replaces an earlier choice rather than erroring.
+  Future<void> selectPhotographer(String requestId, String photographerId) async {
+    debugPrint('$_tag selectPhotographer → $requestId / $photographerId');
+    await _dio.post(
+      '/ads/requests/$requestId/select',
+      data: {'photographer_id': photographerId},
+    );
+  }
+
+  /// Un-choose, putting the request back on the board.
+  Future<void> clearSelection(String requestId) async {
+    await _dio.delete('/ads/requests/$requestId/select');
+  }
+
+  Future<void> deleteRequest(String requestId) async {
+    debugPrint('$_tag deleteRequest → $requestId');
+    await _dio.delete('/ads/requests/$requestId');
   }
 
   // ── Campaign management ───────────────────────────────────────────────────
