@@ -21,6 +21,14 @@ import 'package:skidoo_app/features/ads/presentation/pages/request_photographer_
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 
+/// What happened to a request while it was open, so the list behind it knows
+/// whether it is out of date.
+///
+/// Looking at a request changes nothing about it, and the list is expensive to
+/// refetch — so "I went in and came out" has to be distinguishable from "I
+/// changed something".
+enum RequestOutcome { unchanged, changed, deleted }
+
 /// The photographers who answered one request.
 ///
 /// Split by whether the requester has opened them yet — pending is a to-do
@@ -45,6 +53,10 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
   List<RequestInterest> _people = const [];
   bool _loading = true;
   String? _errorMessage;
+
+  /// Anything that makes the card behind this screen wrong: a new status, a
+  /// chosen photographer, an edit. Viewing does not count.
+  bool _changed = false;
 
   @override
   void initState() {
@@ -123,6 +135,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
   Future<bool> _select(RequestInterest person) async {
     try {
       await _repo.selectPhotographer(_request.id, person.id);
+      _changed = true;
       return true;
     } catch (e) {
       debugPrint('[ReviewPhotographers] select ERROR: $e');
@@ -137,7 +150,10 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     try {
       await _repo.clearSelection(_request.id);
       if (!mounted) return;
-      setState(() => _request = _request.copyWith(status: 'open'));
+      setState(() {
+        _request = _request.copyWith(status: 'open');
+        _changed = true;
+      });
       await _load();
       if (mounted) {
         AppSnackBar.success(context, 'Request is open to photographers again.');
@@ -195,7 +211,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     if (sure != true) return;
     try {
       await _repo.deleteRequest(_request.id);
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) Navigator.of(context).pop(RequestOutcome.deleted);
     } catch (e) {
       debugPrint('[ReviewPhotographers] delete ERROR: $e');
       if (mounted) AppSnackBar.error(context, 'Could not delete this request.');
@@ -213,7 +229,12 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
         ext: ext,
         repo: _repo,
         onSave: (updated) {
-          if (mounted) setState(() => _request = updated);
+          if (mounted) {
+            setState(() {
+              _request = updated;
+              _changed = true;
+            });
+          }
         },
       ),
     );
@@ -223,7 +244,10 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     try {
       await _repo.closeRequest(_request.id, status: 'closed');
       if (!mounted) return;
-      setState(() => _request = _request.copyWith(status: 'closed'));
+      setState(() {
+        _request = _request.copyWith(status: 'closed');
+        _changed = true;
+      });
       AppSnackBar.success(context, 'Request closed.');
     } catch (e) {
       debugPrint('[ReviewPhotographers] close ERROR: $e');
@@ -235,13 +259,20 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     try {
       final updated = await _repo.republishRequest(_request.id);
       if (!mounted) return;
-      setState(() => _request = updated ?? _request.copyWith(status: 'open'));
+      setState(() {
+        _request = updated ?? _request.copyWith(status: 'open');
+        _changed = true;
+      });
       AppSnackBar.success(context, 'Request is back on the board.');
     } catch (e) {
       debugPrint('[ReviewPhotographers] republish ERROR: $e');
       if (mounted) AppSnackBar.error(context, 'Could not republish this.');
     }
   }
+
+  void _leave() => Navigator.of(context).pop(
+        _changed ? RequestOutcome.changed : RequestOutcome.unchanged,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -257,7 +288,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
         backgroundColor: Colors.transparent,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : AppBackButton(onPressed: _leave),
         title: Text(
           'Review Photographers',
           style: TextStyle(
@@ -375,7 +406,15 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
             ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    // The system back gesture does not go through the app bar's button, and
+    // popping with nothing would tell the list "unchanged" after a selection.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _leave();
+      },
+      child: webWrap(page, backgroundColor: ext.homeBackground),
+    );
   }
 }
 
@@ -416,8 +455,9 @@ class _RequestCard extends StatelessWidget {
                   request.title,
                   style: TextStyle(
                     color: ext.greetingColor,
-                    fontSize: 14.sp,
+                    fontSize: 15.sp,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 SizedBox(height: 2.h),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:skidoo_app/core/validators/media_validator.dart';
+import 'package:skidoo_app/features/ads/models/ad_media.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
@@ -83,14 +86,22 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
   }
 
   /// The card opens the request itself — who answered, and choosing one of
-  /// them. Deleting from in there pops with true, so the list reloads without
-  /// the request that no longer exists.
+  /// them.
+  ///
+  /// Coming back reloads only if something actually changed in there. Merely
+  /// looking at a request and pressing back used to refetch the whole list,
+  /// which is a request per glance and the list is identical to the one
+  /// already on screen.
   Future<void> _openRequest(FeedRequestModel req) async {
-    final deleted = await Navigator.of(context).push<bool>(
+    final outcome = await Navigator.of(context).push<RequestOutcome>(
       MaterialPageRoute(builder: (_) => ReviewPhotographersPage(request: req)),
     );
-    if (!mounted) return;
-    if (deleted == true) AppSnackBar.success(context, 'Request deleted.');
+    if (!mounted || outcome == null || outcome == RequestOutcome.unchanged) {
+      return;
+    }
+    if (outcome == RequestOutcome.deleted) {
+      AppSnackBar.success(context, 'Request deleted.');
+    }
     await _load();
   }
 
@@ -356,7 +367,7 @@ class _MyRequestTile extends StatelessWidget {
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontSize: 15.sp,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: -0.2,
                   ),
                   maxLines: 2,
@@ -511,6 +522,10 @@ class EditRequestSheet extends StatefulWidget {
 }
 
 class _EditRequestSheetState extends State<EditRequestSheet> {
+  final _picker = ImagePicker();
+  late List<AdMedia> _media = widget.request.media;
+  bool _mediaBusy = false;
+
   late final TextEditingController _titleCtrl;
   late final TextEditingController _descCtrl;
   late final TextEditingController _locationCtrl;
@@ -540,6 +555,57 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
     _locationCtrl.dispose();
     _budgetCtrl.dispose();
     super.dispose();
+  }
+
+  /// Photos are saved as they are changed, not on Save.
+  ///
+  /// They go over their own endpoints — a picture is uploaded, a picture is
+  /// deleted — so batching them behind the button would mean a half-applied
+  /// edit if one upload failed, and no way to tell which half.
+  Future<void> _addPhoto() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.gallery, imageQuality: 85,
+    );
+    if (file == null) return;
+    final error = await MediaValidator.validate(file, isVideo: false);
+    if (!mounted) return;
+    if (error != null) {
+      AppSnackBar.error(context, error);
+      return;
+    }
+
+    setState(() => _mediaBusy = true);
+    try {
+      await widget.repo.uploadRequestMedia(widget.request.id, file);
+      final refreshed = await widget.repo.getRequest(widget.request.id);
+      if (!mounted) return;
+      if (refreshed != null) {
+        setState(() => _media = refreshed.media);
+        widget.onSave(refreshed);
+      }
+    } catch (e) {
+      debugPrint('[EditRequestSheet] addPhoto ERROR: $e');
+      if (mounted) AppSnackBar.error(context, 'Could not add that photo.');
+    } finally {
+      if (mounted) setState(() => _mediaBusy = false);
+    }
+  }
+
+  Future<void> _removePhoto(AdMedia media) async {
+    setState(() => _mediaBusy = true);
+    try {
+      await widget.repo.deleteRequestMedia(widget.request.id, media.id);
+      if (!mounted) return;
+      setState(() => _media = [
+            for (final m in _media)
+              if (m.id != media.id) m,
+          ]);
+    } catch (e) {
+      debugPrint('[EditRequestSheet] removePhoto ERROR: $e');
+      if (mounted) AppSnackBar.error(context, 'Could not remove that photo.');
+    } finally {
+      if (mounted) setState(() => _mediaBusy = false);
+    }
   }
 
   Future<void> _save() async {
@@ -657,6 +723,23 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
                               setState(() => _eventType = t.toLowerCase()),
                         )),
                   ],
+                ),
+                SizedBox(height: AppSpacing.xl.h),
+                Text(
+                  'Photos',
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.sm.h),
+                _EditPhotos(
+                  media: _media,
+                  ext: ext,
+                  busy: _mediaBusy,
+                  onAdd: _addPhoto,
+                  onRemove: _removePhoto,
                 ),
                 SizedBox(height: AppSpacing.xl.h),
                 Material(
@@ -840,6 +923,121 @@ class _ActionTile extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+}
+
+/// The request's photos while editing: what is on it, and a tile to add more.
+///
+/// Changes here are applied as they are made rather than on Save — each photo
+/// is its own upload or delete — so the thumbnails always show what the
+/// request actually has.
+class _EditPhotos extends StatelessWidget {
+  const _EditPhotos({
+    required this.media,
+    required this.ext,
+    required this.busy,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  final List<AdMedia> media;
+  final AppThemeExtension ext;
+  final bool busy;
+  final VoidCallback onAdd;
+  final void Function(AdMedia) onRemove;
+
+  static const _tile = 72.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8.w,
+      runSpacing: 8.h,
+      children: [
+        for (final item in media)
+          SizedBox(
+            width: _tile.w,
+            height: _tile.w,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                    child: ColoredBox(
+                      color: ext.searchFieldFill,
+                      child: Image.network(
+                        item.url,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.broken_image_outlined,
+                          size: 18.r,
+                          color: ext.searchHintColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Semantics(
+                    button: true,
+                    label: 'Remove photo',
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: busy ? null : () => onRemove(item),
+                      child: Padding(
+                        padding: EdgeInsets.all(4.r),
+                        child: Container(
+                          padding: EdgeInsets.all(2.r),
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.close_rounded,
+                              size: 12.r, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        Semantics(
+          button: true,
+          label: 'Add photo',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: busy ? null : onAdd,
+            child: Container(
+              width: _tile.w,
+              height: _tile.w,
+              decoration: BoxDecoration(
+                color: ext.searchFieldFill,
+                borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                border: Border.all(
+                  color: ext.searchHintColor.withValues(alpha: 0.25),
+                  width: 0.8,
+                ),
+              ),
+              child: busy
+                  ? Center(
+                      child: SizedBox(
+                        width: 16.r,
+                        height: 16.r,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2, color: ext.accentGold,
+                        ),
+                      ),
+                    )
+                  : Icon(Icons.add_rounded,
+                      color: ext.searchHintColor, size: 22.r),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
