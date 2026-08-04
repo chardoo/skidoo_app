@@ -1350,10 +1350,10 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
   }
 }
 
-/// "3 invitations sent" — how many photographers have offered.
+/// "3 interested" — how many photographers have answered.
 ///
-/// Count only. Sending happens once, through the invitation sheet below it;
-/// there is no toggle here to disagree with the server about.
+/// Count only. Answering happens once, through the sheet below it; there is no
+/// toggle here to disagree with the server about.
 class _InterestStrip extends StatelessWidget {
   const _InterestStrip({required this.count, required this.ext});
 
@@ -1365,7 +1365,7 @@ class _InterestStrip extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 0),
       child: Text(
-        count == 1 ? '1 invitation sent' : '$count invitations sent',
+        count == 1 ? '1 interested' : '$count interested',
         style: TextStyle(
           color: ext.searchHintColor,
           fontSize: 12.sp,

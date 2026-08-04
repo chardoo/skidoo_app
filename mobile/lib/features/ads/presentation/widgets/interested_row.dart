@@ -4,10 +4,10 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/number_format.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 
-/// The faces under a request card: who has sent an invitation, and how many.
+/// The faces under a request card: who has answered it, and how many.
 ///
 /// The server sends the first few for the stack and the full count separately,
-/// so "4 invitations" is right even when only three faces fit.
+/// so "4 interested" is right even when only three faces fit.
 class InterestedRow extends StatelessWidget {
   const InterestedRow({
     super.key,
@@ -36,8 +36,7 @@ class InterestedRow extends StatelessWidget {
     if (count == 0) return const SizedBox.shrink();
 
     final faces = interested.take(_maxFaces).toList();
-    final label =
-        count == 1 ? '1 invitation' : '${compactCount(count)} invitations';
+    final label = count == 1 ? '1 interested' : '${compactCount(count)} interested';
 
     final row = Row(
       mainAxisSize: MainAxisSize.min,
@@ -71,7 +70,7 @@ class InterestedRow extends StatelessWidget {
     if (onTap == null) return row;
     return Semantics(
       button: true,
-      label: '$label — see who sent them',
+      label: '$label — see who answered',
       child: GestureDetector(onTap: onTap, child: row),
     );
   }

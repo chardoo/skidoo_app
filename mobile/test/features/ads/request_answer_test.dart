@@ -41,7 +41,7 @@ void main() {
       expect(answered, 1);
     });
 
-    test('once answered the label says so', () {
+    test('once sent the label says so', () {
       final data = FeedItemData.fromRequest(
         _request(viewerInterested: true),
         onAnswerTap: () {},
