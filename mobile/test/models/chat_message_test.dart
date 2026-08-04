@@ -42,7 +42,7 @@ void main() {
     });
 
     test('displayName masks admin sender name', () {
-      expect(make(role: 'admin', name: 'Bob').displayName, 'Skidoo Admin');
+      expect(make(role: 'admin', name: 'Bob').displayName, 'Jperg Admin');
       expect(make(role: 'user', name: 'Bob').displayName, 'Bob');
     });
 

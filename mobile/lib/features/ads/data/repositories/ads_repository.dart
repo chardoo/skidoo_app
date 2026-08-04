@@ -270,8 +270,11 @@ class AdsRepository {
     required String description,
     required String eventType,
     required String location,
+    DateTime? eventDate,
+    double? budgetMin,
+    double? budgetMax,
     double? budgetAmount,
-    String currency = 'USD',
+    String currency = 'GHS',
     bool commentsEnabled = true,
     String? visibleTo,
   }) async {
@@ -282,6 +285,10 @@ class AdsRepository {
       'description': description,
       'event_type': eventType,
       'location': location,
+      if (eventDate != null)
+        'event_date': eventDate.toIso8601String().split('T').first,
+      if (budgetMin != null) 'budget_min': budgetMin,
+      if (budgetMax != null) 'budget_max': budgetMax,
       if (budgetAmount != null) 'budget_amount': budgetAmount,
       'currency': currency,
       'comments_enabled': commentsEnabled,
@@ -404,6 +411,9 @@ class AdsRepository {
     String? description,
     String? eventType,
     String? location,
+    DateTime? eventDate,
+    double? budgetMin,
+    double? budgetMax,
     double? budgetAmount,
     bool? commentsEnabled,
   }) async {
@@ -414,6 +424,10 @@ class AdsRepository {
       if (description != null) 'description': description,
       if (eventType != null) 'event_type': eventType,
       if (location != null) 'location': location,
+      if (eventDate != null)
+        'event_date': eventDate.toIso8601String().split('T').first,
+      if (budgetMin != null) 'budget_min': budgetMin,
+      if (budgetMax != null) 'budget_max': budgetMax,
       if (budgetAmount != null) 'budget_amount': budgetAmount,
       if (commentsEnabled != null) 'comments_enabled': commentsEnabled,
     });
@@ -503,6 +517,12 @@ class AdsRepository {
   /// Un-choose, putting the request back on the board.
   Future<void> clearSelection(String requestId) async {
     await _dio.delete('/ads/requests/$requestId/select');
+  }
+
+  /// Take the week the "about to expire" nudge offers.
+  Future<void> extendRequest(String requestId) async {
+    debugPrint('$_tag extendRequest → $requestId');
+    await _dio.post('/ads/requests/$requestId/extend');
   }
 
   Future<void> deleteRequest(String requestId) async {

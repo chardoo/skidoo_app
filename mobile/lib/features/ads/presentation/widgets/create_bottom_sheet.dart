@@ -5,7 +5,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/create_campaign_page.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/post_request_page.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/create_request_flow.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 
@@ -118,7 +118,7 @@ class CreateBottomSheet extends StatelessWidget {
                   iconColor: ext.infoBlue,
                   iconBgColor: ext.infoBlue.withValues(alpha: 0.12),
                   title: 'Post a Request',
-                  subtitle: 'Free  ·  Goes live after review',
+                  subtitle: 'Free  ·  Live straight away',
                   description:
                       'Looking for a photographer? Post your event details and let them come to you.',
                   badgeLabel: 'Free',
@@ -128,7 +128,7 @@ class CreateBottomSheet extends StatelessWidget {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const PostRequestPage(),
+                        builder: (_) => const CreateRequestFlow(),
                       ),
                     );
                   },

@@ -13,6 +13,9 @@ class FeedRequestModel {
     required this.currency,
     required this.status,
     this.budgetAmount,
+    this.eventDate,
+    this.budgetMin,
+    this.budgetMax,
     this.requesterPhoto,
     this.visibleTo,
     this.promotedCampaignId,
@@ -39,6 +42,15 @@ class FeedRequestModel {
   final String eventType;
   final String location;
   final double? budgetAmount;
+
+  /// When the shoot is — what the card shows, and the thing a photographer
+  /// needs before answering. Not the day it was posted.
+  final DateTime? eventDate;
+
+  /// What it pays, as a range. budgetAmount holds the midpoint for anything
+  /// that still reads a single figure.
+  final double? budgetMin;
+  final double? budgetMax;
   final String currency;
   final String? requesterPhoto;
 
@@ -64,6 +76,16 @@ class FeedRequestModel {
   final bool commentsEnabled;
   final int commentCount;
   final List<AdMedia> media;
+
+  /// "GHS 5,000 - GHS 8,000", or one figure, or nothing.
+  String? get budgetLabel {
+    String money(double v) => '$currency ${v.toStringAsFixed(0)}';
+    if (budgetMin != null && budgetMax != null && budgetMin != budgetMax) {
+      return '${money(budgetMin!)} - ${money(budgetMax!)}';
+    }
+    final single = budgetMin ?? budgetMax ?? budgetAmount;
+    return single == null ? null : money(single);
+  }
 
   /// Off the board, whatever the status says. The two are independent: nothing
   /// rewrites `status` when the window closes, so a request sits at "open"
@@ -123,6 +145,11 @@ class FeedRequestModel {
       eventType: json['event_type'] as String? ?? '',
       location: json['location'] as String? ?? '',
       budgetAmount: (json['budget_amount'] as num?)?.toDouble(),
+      eventDate: json['event_date'] != null
+          ? DateTime.tryParse(json['event_date'] as String)
+          : null,
+      budgetMin: (json['budget_min'] as num?)?.toDouble(),
+      budgetMax: (json['budget_max'] as num?)?.toDouble(),
       currency: json['currency'] as String? ?? 'USD',
       requesterPhoto: json['requester_photo'] as String?,
       visibleTo: json['visible_to'] as String?,
@@ -165,6 +192,9 @@ class FeedRequestModel {
       currency: currency,
       status: status ?? this.status,
       budgetAmount: budgetAmount,
+      eventDate: eventDate,
+      budgetMin: budgetMin,
+      budgetMax: budgetMax,
       requesterPhoto: requesterPhoto,
       visibleTo: visibleTo,
       promotedCampaignId: promotedCampaignId,
@@ -192,6 +222,8 @@ class RequestInterest {
     this.message,
     this.createdAt,
     this.bio,
+    this.studioImageUrl,
+    this.specialties = const [],
     this.location,
     this.followerCount = 0,
     this.eventCount = 0,
@@ -213,6 +245,10 @@ class RequestInterest {
   final DateTime? createdAt;
 
   final String? bio;
+
+  /// The banner behind their avatar, and the chips beside the bio.
+  final String? studioImageUrl;
+  final List<String> specialties;
 
   /// The line under the name: "Accra | 1.2K followers | 4.7".
   final String? location;
@@ -241,6 +277,10 @@ class RequestInterest {
           ? DateTime.tryParse(json['createdAt'] as String)
           : null,
       bio: json['bio'] as String?,
+      studioImageUrl: json['studio_image_url'] as String?,
+      specialties: (json['specialties'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
       location: json['location'] as String?,
       followerCount: (json['follower_count'] as num?)?.toInt() ?? 0,
       eventCount: (json['event_count'] as num?)?.toInt() ?? 0,

@@ -433,11 +433,14 @@ class _MyRequestTile extends StatelessWidget {
   /// "28.07.2026 | Accra" — the two things the card carries under the title.
   /// Either may be missing, and the separator goes with whichever one is.
   static String _dateAndPlace(FeedRequestModel r) {
+    // The event's date, not the posting date: "15.09.2026 | Cape Coast" is
+    // where the photographer has to be. Falls back to when it was posted for
+    // requests made before the field existed.
+    final date = r.eventDate ?? r.createdAt;
     final parts = <String>[
-      if (r.createdAt != null)
-        '${r.createdAt!.day.toString().padLeft(2, '0')}.'
-            '${r.createdAt!.month.toString().padLeft(2, '0')}.'
-            '${r.createdAt!.year}',
+      if (date != null)
+        '${date.day.toString().padLeft(2, '0')}.'
+            '${date.month.toString().padLeft(2, '0')}.${date.year}',
       if (r.location.isNotEmpty) r.location,
     ];
     return parts.join(' | ');

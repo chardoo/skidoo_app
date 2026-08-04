@@ -19,7 +19,9 @@ import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart
     show EditRequestSheet;
 import 'package:skidoo_app/features/ads/presentation/pages/request_photographer_page.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/change_photographer_page.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
+import 'package:skidoo_app/features/photographers/presentation/pages/reviews_pages.dart';
 
 /// What happened to a request while it was open, so the list behind it knows
 /// whether it is out of date.
@@ -188,6 +190,39 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     }
   }
 
+  Future<void> _changePhotographer() async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ChangePhotographerPage(
+          request: _request,
+          people: _people,
+          currentId: _selected?.id,
+        ),
+      ),
+    );
+    if (!mounted || changed != true) return;
+    _changed = true;
+    await _load();
+    if (mounted) AppSnackBar.success(context, 'Photographer changed successfully');
+  }
+
+  Future<void> _leaveReview(RequestInterest person) async {
+    final done = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => WriteReviewPage(
+          photographerId: person.id,
+          photographerName: person.name ?? 'Photographer',
+          photographerPhotoUrl: person.profileUrl,
+          photographerMeta: person.location,
+          requestTitle: _request.title,
+          requestId: _request.id,
+        ),
+      ),
+    );
+    // The rating on their row moved, so the list is stale either way.
+    if (done == true && mounted) await _load();
+  }
+
   Future<void> _delete() async {
     final sure = await showDialog<bool>(
       context: context,
@@ -292,7 +327,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
             ? null
             : AppBackButton(onPressed: _leave),
         title: Text(
-          'Review Photographers',
+          'Request Details',
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
@@ -370,6 +405,28 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                       // talk to them.
                       onMessage: () => _message(selected),
                     ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _changePhotographer,
+                        child: Text(
+                          'Change photographer?',
+                          style: TextStyle(
+                            color: ext.searchHintColor,
+                            fontSize: 12.sp,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Offered once there is someone to review. Nothing here
+                    // knows whether the shoot has happened, so it is a prompt
+                    // rather than a demand.
+                    _ReviewPrompt(
+                      name: selected.name ?? 'them',
+                      ext: ext,
+                      onTap: () => _leaveReview(selected),
+                    ),
                     if (_pending.isNotEmpty || _viewed.isNotEmpty)
                       _SectionHeader(text: 'All Requests', ext: ext),
                     for (final person in [..._pending, ..._viewed])
@@ -420,6 +477,75 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
   }
 }
 
+/// "How was your experience?" — the way a review ever gets written.
+class _ReviewPrompt extends StatelessWidget {
+  const _ReviewPrompt({
+    required this.name,
+    required this.ext,
+    required this.onTap,
+  });
+
+  final String name;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(top: AppSpacing.lg.h),
+      padding: EdgeInsets.all(AppSpacing.lg.w),
+      decoration: BoxDecoration(
+        color: ext.accentGold.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.lg.r),
+        border: Border.all(color: ext.accentGold.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'How was your experience?',
+            style: TextStyle(
+              color: ext.greetingColor,
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            'Share your feedback on $name to help others in the community '
+            'find great photographers.',
+            style: TextStyle(
+              color: ext.searchHintColor, fontSize: 13.sp, height: 1.4,
+            ),
+          ),
+          SizedBox(height: AppSpacing.md.h),
+          SizedBox(
+            width: double.infinity,
+            height: 44.h,
+            child: ElevatedButton(
+              onPressed: onTap,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ext.accentGold,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999.r),
+                ),
+              ),
+              child: Text(
+                'Leave a Review',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RequestCard extends StatelessWidget {
   const _RequestCard({required this.request, required this.ext});
 
@@ -427,11 +553,11 @@ class _RequestCard extends StatelessWidget {
   final AppThemeExtension ext;
 
   String get _meta {
+    final date = request.eventDate ?? request.createdAt;
     final parts = <String>[
-      if (request.createdAt != null)
-        '${request.createdAt!.day.toString().padLeft(2, '0')}.'
-            '${request.createdAt!.month.toString().padLeft(2, '0')}.'
-            '${request.createdAt!.year}',
+      if (date != null)
+        '${date.day.toString().padLeft(2, '0')}.'
+            '${date.month.toString().padLeft(2, '0')}.${date.year}',
       if (request.location.isNotEmpty) request.location,
     ];
     return parts.join(' | ');
@@ -588,6 +714,20 @@ class _PersonTile extends StatelessWidget {
                     SizedBox(height: 2.h),
                     Row(
                       children: [
+                        // Rating leads the line — it is the first thing the
+                        // requester weighs, and the design puts it there.
+                        if (person.rating != null) ...[
+                          Icon(Icons.star_rounded,
+                              size: 12.r, color: ext.accentGold),
+                          Text(
+                            '${person.rating!.toStringAsFixed(1)}  ',
+                            style: TextStyle(
+                              color: ext.accentGold,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                         Flexible(
                           child: Text(
                             _meta,
@@ -598,17 +738,6 @@ class _PersonTile extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (person.rating != null) ...[
-                          SizedBox(width: 6.w),
-                          Icon(Icons.star_rounded,
-                              size: 12.r, color: ext.accentGold),
-                          Text(
-                            person.rating!.toStringAsFixed(1),
-                            style: TextStyle(
-                              color: ext.searchHintColor, fontSize: 12.sp,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ],
