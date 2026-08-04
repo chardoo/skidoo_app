@@ -153,100 +153,125 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.only(bottom: AppSpacing.xxl.h),
         children: [
-          _Banner(photographer: _p, name: _displayName, ext: ext),
+          // Banner, then the identity row beneath it — avatar on the left,
+          // name and location beside it, rating in its own pill on the right.
+          _Banner(photographer: _p, ext: ext),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg.w, AppSpacing.md.h, AppSpacing.lg.w, 0,
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 26.r,
+                  backgroundColor: ext.avatarBackground,
+                  backgroundImage: (_p.profileUrl?.isNotEmpty ?? false)
+                      ? NetworkImage(_p.profileUrl!)
+                      : null,
+                  child: (_p.profileUrl?.isNotEmpty ?? false)
+                      ? null
+                      : Text(
+                          _displayName[0].toUpperCase(),
+                          style: TextStyle(
+                            color: ext.avatarForeground, fontSize: 18.sp,
+                          ),
+                        ),
+                ),
+                SizedBox(width: AppSpacing.md.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: ext.greetingColor,
+                                fontSize: 17.sp,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ),
+                          if (_p.verified) ...[
+                            SizedBox(width: 4.w),
+                            Icon(Icons.verified_rounded,
+                                size: 15.r, color: ext.infoBlue),
+                          ],
+                        ],
+                      ),
+                      SizedBox(height: 3.h),
+                      Row(
+                        children: [
+                          if (_p.location?.isNotEmpty ?? false) ...[
+                            Icon(Icons.place_outlined,
+                                size: 13.r, color: ext.searchHintColor),
+                            SizedBox(width: 3.w),
+                          ],
+                          Flexible(
+                            child: Text(
+                              _meta,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: ext.searchHintColor, fontSize: 12.sp,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // The one number on this screen someone scans for, so it gets
+                // its own pill. Nothing at all until somebody has rated them —
+                // an empty star reads as a bad score.
+                if (_p.rating != null)
+                  Container(
+                    margin: EdgeInsets.only(left: AppSpacing.sm.w),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10.w, vertical: 5.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: ext.accentGold.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star_rounded,
+                            size: 14.r, color: ext.accentGold),
+                        SizedBox(width: 3.w),
+                        Text(
+                          _p.rating!.toStringAsFixed(1),
+                          style: TextStyle(
+                            color: ext.accentGold,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(height: AppSpacing.md.h),
+          Divider(
+            height: 1,
+            thickness: 0.7,
+            color: ext.searchHintColor.withValues(alpha: 0.15),
+          ),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: AppSpacing.md.h),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  _displayName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: ext.greetingColor,
-                                    fontSize: 18.sp,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.3,
-                                  ),
-                                ),
-                              ),
-                              if (_p.verified) ...[
-                                SizedBox(width: 4.w),
-                                Icon(Icons.verified_rounded,
-                                    size: 16.r, color: ext.infoBlue),
-                              ],
-                            ],
-                          ),
-                          SizedBox(height: 4.h),
-                          Row(
-                            children: [
-                              if (_p.location?.isNotEmpty ?? false) ...[
-                                Icon(Icons.place_outlined,
-                                    size: 13.r, color: ext.searchHintColor),
-                                SizedBox(width: 3.w),
-                              ],
-                              Flexible(
-                                child: Text(
-                                  _meta,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: ext.searchHintColor,
-                                    fontSize: 12.sp,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    // The rating gets its own pill rather than a place in the
-                    // line above: it is the one number on this screen someone
-                    // scans for. No pill at all until somebody has rated them —
-                    // an empty one reads as a bad score.
-                    if (_p.rating != null)
-                      Container(
-                        margin: EdgeInsets.only(left: AppSpacing.sm.w),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 10.w, vertical: 5.h,
-                        ),
-                        decoration: BoxDecoration(
-                          color: ext.accentGold.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(AppRadius.sm.r),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.star_rounded,
-                                size: 14.r, color: ext.accentGold),
-                            SizedBox(width: 3.w),
-                            Text(
-                              _p.rating!.toStringAsFixed(1),
-                              style: TextStyle(
-                                color: ext.accentGold,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-
+                SizedBox(height: AppSpacing.lg.h),
                 if (_p.specialties.isNotEmpty ||
                     (_p.bio?.isNotEmpty ?? false)) ...[
                   SizedBox(height: AppSpacing.xl.h),
@@ -348,16 +373,19 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
           ],
 
           SizedBox(height: AppSpacing.xxl.h),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+          // Centred and only as wide as it needs to be, the way the design
+          // draws it — a full-bleed bar would read as the end of the page
+          // rather than one choice on it.
+          Center(
             child: SizedBox(
-              height: 48.h,
+              height: 46.h,
               child: ElevatedButton(
                 onPressed:
                     widget.alreadySelected ? null : () => _confirm(ext),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: ext.accentGold,
                   disabledBackgroundColor: ext.accentGold.withValues(alpha: 0.5),
+                  padding: EdgeInsets.symmetric(horizontal: 30.w),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(999.r),
                   ),
@@ -391,70 +419,38 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
   }
 }
 
-/// The studio shot across the top with the avatar sitting on it. Falls back to
-/// a plain tinted band rather than a broken image when there is no banner.
+/// The studio shot across the top. Falls back to a tinted band rather than a
+/// broken image when there is no banner — the identity row sits below it
+/// either way, so nothing depends on this having loaded.
 class _Banner extends StatelessWidget {
-  const _Banner({
-    required this.photographer,
-    required this.name,
-    required this.ext,
-  });
+  const _Banner({required this.photographer, required this.ext});
 
   final RequestInterest photographer;
-  final String name;
   final AppThemeExtension ext;
 
   @override
   Widget build(BuildContext context) {
     final banner = photographer.studioImageUrl;
     return SizedBox(
-      height: 150.h,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: (banner?.isNotEmpty ?? false)
-                ? Image.network(
-                    banner!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        ColoredBox(color: ext.avatarBackground),
-                  )
-                : ColoredBox(color: ext.accentGold.withValues(alpha: 0.15)),
-          ),
-          Positioned(
-            left: AppSpacing.lg.w,
-            bottom: -22.r,
-            child: Container(
-              padding: EdgeInsets.all(3.r),
-              decoration: BoxDecoration(
-                color: ext.homeBackground,
-                shape: BoxShape.circle,
-              ),
-              child: CircleAvatar(
-                radius: 30.r,
-                backgroundColor: ext.avatarBackground,
-                backgroundImage:
-                    (photographer.profileUrl?.isNotEmpty ?? false)
-                        ? NetworkImage(photographer.profileUrl!)
-                        : null,
-                child: (photographer.profileUrl?.isNotEmpty ?? false)
-                    ? null
-                    : Text(
-                        name[0].toUpperCase(),
-                        style: TextStyle(
-                          color: ext.avatarForeground, fontSize: 20.sp,
-                        ),
-                      ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      height: 140.h,
+      width: double.infinity,
+      child: (banner?.isNotEmpty ?? false)
+          ? Image.network(
+              banner!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  ColoredBox(color: ext.avatarBackground),
+            )
+          : ColoredBox(color: ext.accentGold.withValues(alpha: 0.15)),
     );
   }
 }
 
+/// Portfolio | Reviews (142).
+///
+/// Left-aligned and only as wide as their labels, with the rule under the
+/// active word rather than a bar spanning half the screen — two tabs stretched
+/// across the width read as buttons.
 class _Tabs extends StatelessWidget {
   const _Tabs({
     required this.ext,
@@ -473,16 +469,22 @@ class _Tabs extends StatelessWidget {
     return Row(
       children: [
         for (var i = 0; i < labels.length; i++)
-          Expanded(
+          Padding(
+            padding: EdgeInsets.only(right: AppSpacing.xl.w),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => onChanged(i),
-              child: Padding(
-                padding: EdgeInsets.only(bottom: AppSpacing.sm.h),
+              // IntrinsicWidth so the rule is exactly as wide as the word:
+              // inside a Row the column would otherwise be handed the whole
+              // remaining width to stretch into.
+              child: IntrinsicWidth(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
                       labels[i],
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         color: i == index
                             ? ext.greetingColor
@@ -492,12 +494,10 @@ class _Tabs extends StatelessWidget {
                             i == index ? FontWeight.w700 : FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: AppSpacing.sm.h),
+                    SizedBox(height: 6.h),
                     Container(
                       height: 2.h,
-                      color: i == index
-                          ? ext.accentGold
-                          : ext.searchHintColor.withValues(alpha: 0.15),
+                      color: i == index ? ext.accentGold : Colors.transparent,
                     ),
                   ],
                 ),
@@ -587,27 +587,64 @@ class _ReviewsPreview extends StatelessWidget {
       return _Empty(text: 'No reviews yet.', ext: ext);
     }
 
+    final preview = data.reviews.take(2).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final review in data.reviews.take(2))
-          Padding(
-            padding: EdgeInsets.only(bottom: AppSpacing.sm.h),
-            child: ReviewCard(review: review, ext: ext),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton(
-            onPressed: onViewAll,
-            style: TextButton.styleFrom(padding: EdgeInsets.zero),
-            child: Text(
-              'View all ${data.count} reviews  →',
-              style: TextStyle(
-                color: ext.accentGold,
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w600,
-              ),
+        // One bordered box holding both reviews and the way through to the
+        // rest, as the design groups them — separate cards would read as two
+        // unrelated things above a link.
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            border: Border.all(
+              color: ext.searchHintColor.withValues(alpha: 0.16),
+              width: 0.8,
             ),
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < preview.length; i++) ...[
+                if (i > 0)
+                  Divider(
+                    height: 1,
+                    thickness: 0.7,
+                    indent: AppSpacing.md.w,
+                    endIndent: AppSpacing.md.w,
+                    color: ext.searchHintColor.withValues(alpha: 0.16),
+                  ),
+                Padding(
+                  padding: EdgeInsets.all(AppSpacing.md.w),
+                  child: ReviewCard(
+                    review: preview[i], ext: ext, bordered: false,
+                  ),
+                ),
+              ],
+              Divider(
+                height: 1,
+                thickness: 0.7,
+                color: ext.searchHintColor.withValues(alpha: 0.16),
+              ),
+              InkWell(
+                onTap: onViewAll,
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(AppRadius.md.r),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                  child: Center(
+                    child: Text(
+                      'View all ${data.count} reviews  →',
+                      style: TextStyle(
+                        color: ext.accentGold,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],

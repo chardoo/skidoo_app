@@ -9,7 +9,6 @@ import 'package:skidoo_app/core/di/service_locator.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/number_format.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
@@ -17,6 +16,7 @@ import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart'
     show EditRequestSheet;
 import 'package:skidoo_app/features/ads/presentation/pages/request_photographer_page.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/photographer_tile.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/change_photographer_page.dart';
 import 'package:skidoo_app/features/chat/presentation/chat_error_text.dart';
@@ -395,7 +395,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                   ],
                   if (selected != null) ...[
                     _SectionHeader(text: 'Your Selection', ext: ext),
-                    _PersonTile(
+                    PhotographerTile(
                       person: selected,
                       ext: ext,
                       highlighted: true,
@@ -434,7 +434,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                     if (_pending.isNotEmpty)
                       _SectionHeader(text: 'Pending Requests', ext: ext),
                     for (final person in _pending)
-                      _PersonTile(
+                      PhotographerTile(
                         person: person,
                         ext: ext,
                         onTap: () => _open(person),
@@ -442,7 +442,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                     if (_viewed.isNotEmpty)
                       _SectionHeader(text: 'Viewed Requests', ext: ext),
                     for (final person in _viewed)
-                      _PersonTile(
+                      PhotographerTile(
                         person: person,
                         ext: ext,
                         onTap: () => _open(person),
@@ -573,6 +573,7 @@ class _RequestCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg.r),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
@@ -637,125 +638,3 @@ class _SectionHeader extends StatelessWidget {
       );
 }
 
-class _PersonTile extends StatelessWidget {
-  const _PersonTile({
-    required this.person,
-    required this.ext,
-    required this.onTap,
-    this.highlighted = false,
-    this.onMessage,
-  });
-
-  final RequestInterest person;
-  final AppThemeExtension ext;
-  final VoidCallback onTap;
-  final bool highlighted;
-  final VoidCallback? onMessage;
-
-  String get _name => (person.name?.trim().isNotEmpty ?? false)
-      ? person.name!.trim()
-      : 'Photographer';
-
-  String get _meta {
-    final parts = <String>[
-      if (person.location?.isNotEmpty ?? false) person.location!,
-      '${compactCount(person.followerCount)} followers',
-    ];
-    return parts.join(' | ');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: '$_name, $_meta',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Container(
-          margin: EdgeInsets.only(bottom: AppSpacing.sm.h),
-          padding: EdgeInsets.all(AppSpacing.md.w),
-          decoration: BoxDecoration(
-            color: ext.cardSurface,
-            borderRadius: BorderRadius.circular(AppRadius.md.r),
-            border: highlighted
-                ? Border(left: BorderSide(color: ext.accentGold, width: 3))
-                : null,
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 18.r,
-                backgroundColor: ext.avatarBackground,
-                backgroundImage: (person.profileUrl?.isNotEmpty ?? false)
-                    ? NetworkImage(person.profileUrl!)
-                    : null,
-                child: (person.profileUrl?.isNotEmpty ?? false)
-                    ? null
-                    : Text(
-                        _name[0].toUpperCase(),
-                        style: TextStyle(color: ext.avatarForeground),
-                      ),
-              ),
-              SizedBox(width: AppSpacing.md.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _name,
-                      style: TextStyle(
-                        color: ext.greetingColor,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Row(
-                      children: [
-                        // Rating leads the line — it is the first thing the
-                        // requester weighs, and the design puts it there.
-                        if (person.rating != null) ...[
-                          Icon(Icons.star_rounded,
-                              size: 12.r, color: ext.accentGold),
-                          Text(
-                            '${person.rating!.toStringAsFixed(1)}  ',
-                            style: TextStyle(
-                              color: ext.accentGold,
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                        Flexible(
-                          child: Text(
-                            _meta,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: ext.searchHintColor, fontSize: 12.sp,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              if (onMessage != null)
-                IconButton(
-                  tooltip: 'Message',
-                  icon: Icon(Icons.chat_bubble_outline_rounded,
-                      size: 20.r, color: ext.accentGold),
-                  onPressed: onMessage,
-                )
-              else
-                Icon(Icons.chevron_right_rounded,
-                    color: ext.searchHintColor, size: 20.r),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
