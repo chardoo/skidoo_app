@@ -136,10 +136,9 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
     } catch (e) {
       // Fallback for the race where the setting changed between the upfront
       // can-message check and this send: handle the server error codes.
-      final msg = e is ServerException ? e.message : e.toString();
-      final notAccepting =
-          msg.contains('RECIPIENT_NOT_ACCEPTING_DMS') || msg.contains('400');
-      final blocked = msg.contains('USER_BLOCKED');
+      final code = e is ApiException ? e.code : null;
+      final notAccepting = code == 'RECIPIENT_NOT_ACCEPTING_DMS';
+      final blocked = code == 'USER_BLOCKED';
       if (notAccepting && mounted) {
         // Reflect it on the button immediately.
         setState(() => _canMsg = const CanMessageResult(

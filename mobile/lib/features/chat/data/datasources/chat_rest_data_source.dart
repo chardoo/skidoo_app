@@ -732,8 +732,13 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
       return await fn();
     } on dio_pkg.DioException catch (e) {
       if (e.response == null) throw const NetworkException();
-      throw ServerException(
-          'Chat API error ${e.response?.statusCode}: ${e.response?.data}');
+      final data = e.response?.data;
+      final error = data is Map<String, dynamic> ? data['error'] : null;
+      throw ApiException(
+        'Chat API error ${e.response?.statusCode}: $data',
+        statusCode: e.response?.statusCode,
+        code: error is Map<String, dynamic> ? error['code'] as String? : null,
+      );
     } catch (e) {
       if (e is NetworkException || e is ServerException) rethrow;
       throw ServerException('Unexpected chat error: $e');

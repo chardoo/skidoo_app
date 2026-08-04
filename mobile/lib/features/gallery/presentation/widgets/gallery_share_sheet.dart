@@ -5,12 +5,12 @@ import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/search_field.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/chat/data/datasources/user_search_data_source.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/features/chat/presentation/chat_error_text.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:skidoo_app/features/chat/presentation/widgets/room_tile.dart';
 import 'package:skidoo_app/features/follow/data/follow_repository.dart';
@@ -217,12 +217,13 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
     } catch (e) {
       if (mounted) {
         setState(() => _sendingTo = null);
-        final isBlocked = e is ServerException && e.message.contains('400');
         AppSnackBar.error(
           context,
-          isBlocked
-              ? AppLocalizations.of(context)!.shareSheetNotAcceptingMessages
-              : AppLocalizations.of(context)!.shareSheetCouldNotOpenChat(e.toString()),
+          chatErrorText(
+            e,
+            fallback: AppLocalizations.of(context)!
+                .shareSheetCouldNotOpenChat(e.toString()),
+          ),
         );
       }
     }
@@ -244,12 +245,13 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
     } catch (e) {
       if (mounted) {
         setState(() => _sendingTo = null);
-        final isBlocked = e is ServerException && e.message.contains('400');
         AppSnackBar.error(
           context,
-          isBlocked
-              ? AppLocalizations.of(context)!.shareSheetNotAcceptingMessages
-              : AppLocalizations.of(context)!.shareSheetCouldNotOpenChat(e.toString()),
+          chatErrorText(
+            e,
+            fallback: AppLocalizations.of(context)!
+                .shareSheetCouldNotOpenChat(e.toString()),
+          ),
         );
       }
     }

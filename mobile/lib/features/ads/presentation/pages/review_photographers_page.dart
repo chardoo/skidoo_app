@@ -6,7 +6,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
@@ -20,6 +19,7 @@ import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart
 import 'package:skidoo_app/features/ads/presentation/pages/request_photographer_page.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/change_photographer_page.dart';
+import 'package:skidoo_app/features/chat/presentation/chat_error_text.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/reviews_pages.dart';
 
@@ -180,12 +180,9 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     } catch (e) {
       debugPrint('[ReviewPhotographers] message ERROR: $e');
       if (!mounted) return;
-      final blocked = e is ServerException && e.message.contains('400');
       AppSnackBar.error(
         context,
-        blocked
-            ? 'This user is not accepting messages.'
-            : 'Could not open the conversation.',
+        chatErrorText(e, fallback: 'Could not open the conversation.'),
       );
     }
   }
@@ -434,19 +431,26 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                         person: person,
                         ext: ext,
                         onTap: () => _open(person),
+                        onMessage: () => _message(person),
                       ),
                   ] else ...[
                     if (_pending.isNotEmpty)
                       _SectionHeader(text: 'Pending Requests', ext: ext),
                     for (final person in _pending)
                       _PersonTile(
-                        person: person, ext: ext, onTap: () => _open(person),
+                        person: person,
+                        ext: ext,
+                        onTap: () => _open(person),
+                        onMessage: () => _message(person),
                       ),
                     if (_viewed.isNotEmpty)
                       _SectionHeader(text: 'Viewed Requests', ext: ext),
                     for (final person in _viewed)
                       _PersonTile(
-                        person: person, ext: ext, onTap: () => _open(person),
+                        person: person,
+                        ext: ext,
+                        onTap: () => _open(person),
+                        onMessage: () => _message(person),
                       ),
                   ],
                   if (_people.isEmpty && _errorMessage == null) ...[

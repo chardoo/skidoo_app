@@ -1,21 +1,16 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:skidoo_app/core/config/chat_config.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/utils/focus_utils.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/invitation_sheet.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/feed_item_card.dart';
-import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
-import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
-import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:skidoo_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
 import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
@@ -121,6 +116,10 @@ class _EventsFeedState extends State<EventsFeed> {
   final _feedFocusNode = FocusNode();
   final _repo = AdsRepository();
 
+  /// So the feed can tell your own request apart from everyone else's — you
+  /// cannot answer your own.
+  String _myUserId = '';
+
   // One ad per slot — fetched fresh from the server for each slot.
   final List<AdModel?> _ads = [];
   // Per-slot impression IDs, saved after trackImpression responds.
@@ -142,6 +141,7 @@ class _EventsFeedState extends State<EventsFeed> {
   void initState() {
     super.initState();
     _resolveSwipeHint();
+    _loadMyUserId();
     _fetchInitial();
     // NOTE: deliberately NOT auto-focusing the feed on web. Grabbing focus on
     // load captured the browser's keyboard/input focus, which then blocked the
@@ -397,47 +397,51 @@ class _EventsFeedState extends State<EventsFeed> {
     });
   }
 
-  // ── Chat ──────────────────────────────────────────────────────────────────
+  // ── Requests ──────────────────────────────────────────────────────────────
 
-  Future<void> _openChat(
-    BuildContext context,
-    String userId,
-    String userType,
-    String displayName,
-  ) async {
-    final role = userType == 'photographer'
-        ? ChatConfig.rolePhotographer
-        : ChatConfig.roleClient;
+  /// Answering a request that turned up in the feed. Same rule as the board:
+  /// this is an invitation, not a conversation — the requester starts those.
+  Future<void> _loadMyUserId() async {
+    final id = await sl<AuthService>().getUserId();
+    if (mounted) setState(() => _myUserId = id);
+  }
 
-    ChatRoomsBloc? roomsBloc;
+  Future<void> _answerRequest(FeedRequestModel req) async {
+    final result = await InvitationSheet.show(
+      context,
+      requestTitle: req.title,
+      requesterName:
+          req.requesterName.isNotEmpty ? req.requesterName : 'The requester',
+      existingMessage: req.viewerInterested ? (req.viewerMessage ?? '') : null,
+    );
+    if (result == null || !mounted) return;
+
+    final sending = result.action == InvitationAction.send;
     try {
-      roomsBloc = context.read<ChatRoomsBloc>();
-    } catch (_) {}
-
-    try {
-      final room = await sl<GetOrCreateDirectRoomUseCase>().call(
-        recipientId: userId,
-        recipientRole: role,
-        localDisplayName: displayName,
-      );
-      if (!context.mounted) return;
-      roomsBloc?.add(const ChatRoomsLoadRequested());
-      await Navigator.of(context).push(
-        CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
-      );
-      if (context.mounted) roomsBloc?.add(const ChatRoomsLoadRequested());
+      final count = sending
+          ? await _repo.expressInterest(req.id, message: result.message)
+          : await _repo.withdrawInterest(req.id);
+      if (!mounted) return;
+      setState(() {
+        _requests = [
+          for (final r in _requests)
+            if (r.id == req.id)
+              r.copyWith(
+                interestedCount: count,
+                viewerInterested: sending,
+                viewerMessage: sending ? result.message : '',
+              )
+            else
+              r,
+        ];
+      });
+      AppSnackBar.success(
+        context, sending ? 'Invitation sent' : 'Answer withdrawn');
     } catch (e) {
-      if (!context.mounted) return;
-      final blocked = e is ServerException &&
-          (e.message.contains('400') ||
-              e.message.contains('RECIPIENT_NOT_ACCEPTING_DMS') ||
-              e.message.contains('USER_BLOCKED'));
-      AppSnackBar.error(
-        context,
-        blocked
-            ? 'This user is not accepting messages.'
-            : 'Could not open chat.',
-      );
+      debugPrint('[EventsFeed] _answerRequest ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context,
+          sending ? 'Could not send that.' : 'Could not withdraw that.');
     }
   }
 
@@ -531,12 +535,9 @@ class _EventsFeedState extends State<EventsFeed> {
                         key: ValueKey('req_${req.id}'),
                         data: FeedItemData.fromRequest(
                           req,
-                          onMessageTap: () => _openChat(
-                            context,
-                            req.requesterId,
-                            req.requesterType,
-                            req.requesterName,
-                          ),
+                          onAnswerTap: req.requesterId == _myUserId
+                              ? null
+                              : () => _answerRequest(req),
                         ),
                         onHide: () =>
                             setState(() => _hiddenRequestIds.add(req.id)),

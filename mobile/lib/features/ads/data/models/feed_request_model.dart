@@ -29,6 +29,7 @@ class FeedRequestModel {
     this.interestedCount = 0,
     this.interested = const [],
     this.viewerInterested = false,
+    this.viewerMessage,
   });
 
   final String id;
@@ -119,6 +120,10 @@ class FeedRequestModel {
   /// reads "Interested" rather than offering it again.
   final bool viewerInterested;
 
+  /// The note the viewer sent with their own answer, so answering again opens
+  /// on what they wrote instead of a blank box.
+  final String? viewerMessage;
+
   factory FeedRequestModel.fromJson(Map<String, dynamic> json) {
     final rawMedia = (json['media'] as List<dynamic>? ?? [])
         .whereType<Map<String, dynamic>>()
@@ -172,6 +177,7 @@ class FeedRequestModel {
           .map(RequestInterest.fromJson)
           .toList(),
       viewerInterested: json['viewer_interested'] as bool? ?? false,
+      viewerMessage: json['viewer_message'] as String?,
     );
   }
 
@@ -179,6 +185,7 @@ class FeedRequestModel {
     String? status,
     int? interestedCount,
     bool? viewerInterested,
+    String? viewerMessage,
   }) {
     return FeedRequestModel(
       id: id,
@@ -208,6 +215,7 @@ class FeedRequestModel {
       interestedCount: interestedCount ?? this.interestedCount,
       interested: interested,
       viewerInterested: viewerInterested ?? this.viewerInterested,
+      viewerMessage: viewerMessage ?? this.viewerMessage,
     );
   }
 }

@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
@@ -12,8 +8,7 @@ import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/ads/presentation/widgets/feed_item_card.dart';
-import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
-import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
+import 'package:skidoo_app/features/ads/presentation/widgets/invitation_sheet.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:skidoo_app/core/theme/app_radius.dart';
@@ -147,51 +142,51 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
     }
   }
 
-  /// Answer a request, or take the answer back. The card moves optimistically;
-  /// this just records it and keeps the list in step so leaving and coming back
-  /// shows the same thing.
-  Future<void> _toggleInterest(FeedRequestModel req) async {
-    final nowInterested = !req.viewerInterested;
-    final count = nowInterested
-        ? await _repo.expressInterest(req.id)
-        : await _repo.withdrawInterest(req.id);
-    if (!mounted) return;
-    setState(() {
-      _requests = [
-        for (final r in _requests)
-          if (r.id == req.id)
-            r.copyWith(interestedCount: count, viewerInterested: nowInterested)
-          else
-            r,
-      ];
-    });
-  }
+  /// Answer a request, or take the answer back.
+  ///
+  /// Not a conversation. The photographer puts themselves in front of the
+  /// requester, who reads through everyone who answered and starts the DM with
+  /// whoever they like — so this posts an interest and stops there.
+  Future<void> _answer(FeedRequestModel req) async {
+    final result = await InvitationSheet.show(
+      context,
+      requestTitle: req.title,
+      requesterName: req.requesterName.isNotEmpty
+          ? req.requesterName
+          : 'The requester',
+      existingMessage: req.viewerInterested ? (req.viewerMessage ?? '') : null,
+    );
+    if (result == null || !mounted) return;
 
-  Future<void> _openChat(FeedRequestModel req) async {
-    debugPrint(
-        '[RequestBoardPage] _openChat requesterId=${req.requesterId} name="${req.requesterName}"');
-    final role = req.requesterType == 'photographer'
-        ? ChatConfig.rolePhotographer
-        : ChatConfig.roleClient;
+    final sending = result.action == InvitationAction.send;
     try {
-      final room = await sl<GetOrCreateDirectRoomUseCase>().call(
-        recipientId: req.requesterId,
-        recipientRole: role,
-        localDisplayName: req.requesterName,
-      );
+      final count = sending
+          ? await _repo.expressInterest(req.id, message: result.message)
+          : await _repo.withdrawInterest(req.id);
       if (!mounted) return;
-      await Navigator.of(context).push(
-        CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
+      setState(() {
+        _requests = [
+          for (final r in _requests)
+            if (r.id == req.id)
+              r.copyWith(
+                interestedCount: count,
+                viewerInterested: sending,
+                viewerMessage: sending ? result.message : '',
+              )
+            else
+              r,
+        ];
+      });
+      AppSnackBar.success(
+        context,
+        sending ? 'Invitation sent' : 'Answer withdrawn',
       );
     } catch (e) {
-      debugPrint('[RequestBoardPage] _openChat ERROR: $e');
+      debugPrint('[RequestBoardPage] _answer ERROR: $e');
       if (!mounted) return;
-      final blocked = e is ServerException && e.message.contains('400');
       AppSnackBar.error(
         context,
-        blocked
-            ? 'This user is not accepting messages.'
-            : 'Could not open chat.',
+        sending ? 'Could not send that.' : 'Could not withdraw that.',
       );
     }
   }
@@ -330,12 +325,11 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                           return FeedItemCard(
                             data: FeedItemData.fromRequest(
                               req,
-                              onMessageTap: () => _openChat(req),
                               // Your own request is one you cannot answer, so
                               // the card shows its count without the button.
-                              onInterestTap: req.requesterId == _myUserId
+                              onAnswerTap: req.requesterId == _myUserId
                                   ? null
-                                  : () => _toggleInterest(req),
+                                  : () => _answer(req),
                             ),
                             onHide: () =>
                                 setState(() => _hiddenIds.add(req.id)),

@@ -7,11 +7,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_confirm_dialog.dart';
 import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
 import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/l10n/app_localizations.dart';
 import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:skidoo_app/features/chat/presentation/chat_error_text.dart';
 import 'package:skidoo_app/services/auth_service.dart';
 import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:skidoo_app/features/chat/presentation/pages/group_info_page.dart';
@@ -411,10 +411,13 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       );
     } catch (e) {
       if (!context.mounted) return;
-      final isBlocked = e is ServerException && e.message.contains('400');
       AppSnackBar.error(
         context,
-        isBlocked ? AppLocalizations.of(context)!.chatRoomNotAcceptingMessages : AppLocalizations.of(context)!.chatRoomCouldNotOpenChat(e.toString()),
+        chatErrorText(
+          e,
+          fallback: AppLocalizations.of(context)!
+              .chatRoomCouldNotOpenChat(e.toString()),
+        ),
       );
     }
   }

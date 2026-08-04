@@ -5,6 +5,21 @@ class ServerException implements Exception {
   String toString() => message;
 }
 
+/// A [ServerException] that kept the status and error code the server sent.
+///
+/// Without these the only thing a caller could do was search the formatted
+/// message for a status code — which read "400" out of a body that merely
+/// contained it, and mistook "you cannot DM yourself" for "this user is not
+/// accepting messages". The codes are the API's own vocabulary; use them.
+class ApiException extends ServerException {
+  const ApiException(super.message, {this.statusCode, this.code});
+
+  final int? statusCode;
+
+  /// `error.code` from the response body — e.g. RECIPIENT_NOT_ACCEPTING_DMS.
+  final String? code;
+}
+
 class NetworkException implements Exception {
   final String message;
   const NetworkException([this.message = 'No internet connection.']);
