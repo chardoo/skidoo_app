@@ -48,22 +48,25 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
   ReviewPage? _reviews;
   bool _loadingReviews = false;
 
+  /// The photographer's own total. Known from the interest row before the
+  /// reviews are fetched, so the tab does not count up from nothing.
+  int get _reviewCount => _reviews?.count ?? _p.ratingCount;
+
   RequestInterest get _p => widget.photographer;
 
   String get _displayName => (_p.name?.trim().isNotEmpty ?? false)
       ? _p.name!.trim()
       : 'Photographer';
 
-  /// "4.8 · Accra | 132 events | 1.2K followers" — rating first, because it is
-  /// what the requester is weighing, and with the parts that have no answer
-  /// left out rather than shown empty.
+  /// "Accra, Ghana | 1.2K followers" — what the design puts under the name,
+  /// with the location dropped rather than shown empty. The rating is not in
+  /// here: it sits in its own pill to the right.
   String get _meta {
     final parts = <String>[
       if (_p.location?.isNotEmpty ?? false) _p.location!,
-      if (_p.eventCount > 0) '${compactCount(_p.eventCount)} events',
       '${compactCount(_p.followerCount)} followers',
     ];
-    return parts.join(' | ');
+    return parts.join('  |  ');
   }
 
   /// Only fetched when the Reviews tab is first opened — most requesters look
@@ -119,7 +122,7 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
     Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => PhotographerReviewsPage(
         photographerId: _p.id,
-        initialCount: _reviews?.count ?? _p.ratingCount,
+        initialCount: _reviewCount,
       ),
     ));
   }
@@ -158,55 +161,89 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
               children: [
                 SizedBox(height: AppSpacing.md.h),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Text(
-                        _displayName,
-                        style: TextStyle(
-                          color: ext.greetingColor,
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.3,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  _displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: ext.greetingColor,
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ),
+                              if (_p.verified) ...[
+                                SizedBox(width: 4.w),
+                                Icon(Icons.verified_rounded,
+                                    size: 16.r, color: ext.infoBlue),
+                              ],
+                            ],
+                          ),
+                          SizedBox(height: 4.h),
+                          Row(
+                            children: [
+                              if (_p.location?.isNotEmpty ?? false) ...[
+                                Icon(Icons.place_outlined,
+                                    size: 13.r, color: ext.searchHintColor),
+                                SizedBox(width: 3.w),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  _meta,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: ext.searchHintColor,
+                                    fontSize: 12.sp,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    if (_p.verified)
-                      Icon(Icons.verified_rounded,
-                          size: 18.r, color: ext.infoBlue),
-                  ],
-                ),
-                SizedBox(height: 4.h),
-                Row(
-                  children: [
-                    // No star at all until someone has rated them — an empty
-                    // one reads as a bad score.
-                    if (_p.rating != null) ...[
-                      Icon(Icons.star_rounded, size: 14.r, color: ext.accentGold),
-                      Text(
-                        '${_p.rating!.toStringAsFixed(1)} ',
-                        style: TextStyle(
-                          color: ext.accentGold,
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w700,
+                    // The rating gets its own pill rather than a place in the
+                    // line above: it is the one number on this screen someone
+                    // scans for. No pill at all until somebody has rated them —
+                    // an empty one reads as a bad score.
+                    if (_p.rating != null)
+                      Container(
+                        margin: EdgeInsets.only(left: AppSpacing.sm.w),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w, vertical: 5.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: ext.accentGold.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star_rounded,
+                                size: 14.r, color: ext.accentGold),
+                            SizedBox(width: 3.w),
+                            Text(
+                              _p.rating!.toStringAsFixed(1),
+                              style: TextStyle(
+                                color: ext.accentGold,
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        '· ',
-                        style: TextStyle(
-                          color: ext.searchHintColor, fontSize: 12.sp,
-                        ),
-                      ),
-                    ],
-                    Flexible(
-                      child: Text(
-                        _meta,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: ext.searchHintColor, fontSize: 12.sp,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
 
@@ -239,7 +276,12 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
                 _Tabs(
                   ext: ext,
                   index: _tab,
-                  labels: const ['Portfolio', 'Reviews'],
+                  labels: [
+                    'Portfolio',
+                    // The count is in the tab label, so the weight of the
+                    // reviews is visible before anyone opens them.
+                    if (_reviewCount > 0) 'Reviews ($_reviewCount)' else 'Reviews',
+                  ],
                   onChanged: (i) {
                     setState(() => _tab = i);
                     if (i == 1) _loadReviews();
@@ -281,10 +323,23 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
                 children: [
                   const AppSectionLabel('Additional message'),
                   SizedBox(height: AppSpacing.sm.h),
-                  Text(
-                    _p.message!,
-                    style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 13.sp, height: 1.45,
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(AppSpacing.md.w),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadius.md.r),
+                      border: Border.all(
+                        color: ext.searchHintColor.withValues(alpha: 0.25),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Text(
+                      _p.message!,
+                      style: TextStyle(
+                        color: ext.searchHintColor,
+                        fontSize: 13.sp,
+                        height: 1.45,
+                      ),
                     ),
                   ),
                 ],
@@ -622,7 +677,7 @@ class _PortfolioState extends State<_Portfolio> {
               // "1 of 16" — how much more there is to swipe through, which the
               // dots stop telling you past a handful.
               Positioned(
-                right: AppSpacing.sm.w,
+                left: AppSpacing.sm.w,
                 bottom: AppSpacing.sm.h,
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 4.h),

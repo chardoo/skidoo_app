@@ -34,10 +34,12 @@ enum RequestOutcome { unchanged, changed, deleted }
 /// The photographers who answered one request.
 ///
 /// Split by whether the requester has opened them yet — pending is a to-do
-/// list, and it shrinks as they work through it. Once someone is chosen they
-/// move to the top under "Your Selection" with a way to message them, and the
-/// rest stay listed underneath: the choice can be changed, so the others are
-/// not thrown away.
+/// list, and it shrinks as they work through it. Opening one leads to their
+/// profile, and choosing happens there; the rows here carry no Message button,
+/// because a conversation is something the requester starts after they have
+/// picked someone. Once they have, the screen becomes that choice: "Your
+/// Selection", a way to message them, and the way back out via "Change
+/// photographer?".
 class ReviewPhotographersPage extends StatefulWidget {
   const ReviewPhotographersPage({super.key, required this.request});
 
@@ -436,7 +438,6 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                         person: person,
                         ext: ext,
                         onTap: () => _open(person),
-                        onMessage: () => _message(person),
                       ),
                     if (_viewed.isNotEmpty)
                       _SectionHeader(text: 'Viewed Requests', ext: ext),
@@ -445,7 +446,6 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                         person: person,
                         ext: ext,
                         onTap: () => _open(person),
-                        onMessage: () => _message(person),
                       ),
                   ],
                   if (_people.isEmpty && _errorMessage == null) ...[

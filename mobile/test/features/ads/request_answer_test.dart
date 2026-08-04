@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skidoo_app/core/error/exceptions.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
@@ -27,6 +29,26 @@ FeedRequestModel _request({
     });
 
 void main() {
+  group('messaging waits for a selection', () {
+    // The requester works down Pending / Viewed, opens a profile, confirms
+    // them — and only then is there someone to talk to. A Message button on
+    // every row invites a conversation before there is anything to discuss,
+    // and the design puts it on the selection alone.
+    test('only the selected tile is given a message handler', () {
+      final source =
+          File('lib/features/ads/presentation/pages/review_photographers_page.dart')
+              .readAsStringSync();
+
+      expect(
+        'onMessage:'.allMatches(source).length,
+        1,
+        reason: 'exactly one call site — a second means a list row grew one',
+      );
+      expect(source, contains('onMessage: () => _message(selected)'));
+      expect(source, isNot(contains('onMessage: () => _message(person)')));
+    });
+  });
+
   group('a request card offers one action, and it is not a DM', () {
     test('the CTA answers the request rather than opening a conversation', () {
       var answered = 0;
