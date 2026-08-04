@@ -82,7 +82,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
       debugPrint('[ReviewPhotographers] load ERROR: $e');
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Could not load who answered this request.';
+        _errorMessage = 'Could not load the invitations.';
         _loading = false;
       });
     }
@@ -226,7 +226,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete request?'),
         content: const Text(
-          'This removes the request and everyone who answered it.',
+          'This removes the request and every invitation sent for it.',
         ),
         actions: [
           TextButton(
@@ -425,7 +425,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                       onTap: () => _leaveReview(selected),
                     ),
                     if (_pending.isNotEmpty || _viewed.isNotEmpty)
-                      _SectionHeader(text: 'All Requests', ext: ext),
+                      _SectionHeader(text: 'All Invitations', ext: ext),
                     for (final person in [..._pending, ..._viewed])
                       _PersonTile(
                         person: person,
@@ -435,7 +435,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                       ),
                   ] else ...[
                     if (_pending.isNotEmpty)
-                      _SectionHeader(text: 'Pending Requests', ext: ext),
+                      _SectionHeader(text: 'New Invitations', ext: ext),
                     for (final person in _pending)
                       _PersonTile(
                         person: person,
@@ -444,7 +444,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                         onMessage: () => _message(person),
                       ),
                     if (_viewed.isNotEmpty)
-                      _SectionHeader(text: 'Viewed Requests', ext: ext),
+                      _SectionHeader(text: 'Viewed Invitations', ext: ext),
                     for (final person in _viewed)
                       _PersonTile(
                         person: person,
@@ -457,7 +457,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                     SizedBox(height: 80.h),
                     Center(
                       child: Text(
-                        'No one has answered this request yet.',
+                        'No invitations yet.',
                         style: TextStyle(
                           color: ext.searchHintColor, fontSize: 14.sp,
                         ),

@@ -119,7 +119,7 @@ class _ChangePhotographerPageState extends State<ChangePhotographerPage> {
                     AppSpacing.xs.w, AppSpacing.md.h, 0, AppSpacing.sm.h,
                   ),
                   child: Text(
-                    'All Requests',
+                    'All Invitations',
                     style: TextStyle(
                       color: ext.searchHintColor,
                       fontSize: 13.sp,

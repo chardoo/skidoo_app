@@ -15,12 +15,12 @@ class InvitationResult {
   final String message;
 }
 
-/// Answering someone's request.
+/// Sending an invitation for someone's request.
 ///
-/// This is not a DM and deliberately cannot become one: a photographer answers,
-/// and the requester reads through everyone who did and starts the conversation
-/// with whoever they like. Sending a stranger a message because they posted a
-/// request would be the whole board messaging one person.
+/// This is not a DM and deliberately cannot become one: a photographer offers,
+/// and the requester reads through the invitations and starts the conversation
+/// with whoever they like. Messaging a stranger because they posted a request
+/// would be the whole board messaging one person.
 class InvitationSheet extends StatefulWidget {
   const InvitationSheet({
     super.key,
@@ -32,8 +32,8 @@ class InvitationSheet extends StatefulWidget {
   final String requestTitle;
   final String requesterName;
 
-  /// Set when they have already answered — the sheet becomes an edit, with a
-  /// way to take the answer back.
+  /// Set when they have already sent one — the sheet becomes an edit, with a
+  /// way to take the invitation back.
   final String? existingMessage;
 
   static Future<InvitationResult?> show(
@@ -61,7 +61,7 @@ class InvitationSheet extends StatefulWidget {
 class _InvitationSheetState extends State<InvitationSheet> {
   late final _note = TextEditingController(text: widget.existingMessage ?? '');
 
-  bool get _answered => widget.existingMessage != null;
+  bool get _sent => widget.existingMessage != null;
 
   @override
   void dispose() {
@@ -101,7 +101,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
                   ),
                 ),
                 Text(
-                  _answered ? 'Your answer' : 'Answer this request',
+                  _sent ? 'Your invitation' : 'Send an invitation',
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontSize: 18.sp,
@@ -159,7 +159,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
                       ),
                     ),
                     child: Text(
-                      _answered ? 'Update note' : 'Send invitation',
+                      _sent ? 'Update note' : 'Send invitation',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 15.sp,
@@ -168,14 +168,14 @@ class _InvitationSheetState extends State<InvitationSheet> {
                     ),
                   ),
                 ),
-                if (_answered)
+                if (_sent)
                   Center(
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(
                         const InvitationResult(InvitationAction.withdraw),
                       ),
                       child: Text(
-                        'Withdraw my answer',
+                        'Withdraw my invitation',
                         style: TextStyle(
                           color: ext.errorRed, fontSize: 13.sp,
                         ),

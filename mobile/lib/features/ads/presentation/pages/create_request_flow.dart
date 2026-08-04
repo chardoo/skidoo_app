@@ -455,7 +455,7 @@ class _PublishedStep extends StatelessWidget {
               ),
               SizedBox(height: AppSpacing.sm.h),
               Text(
-                "We'll notify you when photographers express interest.",
+                "We'll notify you when photographers send invitations.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: ext.searchHintColor, fontSize: 14.sp, height: 1.4,

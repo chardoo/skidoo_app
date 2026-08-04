@@ -436,7 +436,7 @@ class _EventsFeedState extends State<EventsFeed> {
         ];
       });
       AppSnackBar.success(
-        context, sending ? 'Invitation sent' : 'Answer withdrawn');
+        context, sending ? 'Invitation sent' : 'Invitation withdrawn');
     } catch (e) {
       debugPrint('[EventsFeed] _answerRequest ERROR: $e');
       if (!mounted) return;

@@ -179,7 +179,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
       });
       AppSnackBar.success(
         context,
-        sending ? 'Invitation sent' : 'Answer withdrawn',
+        sending ? 'Invitation sent' : 'Invitation withdrawn',
       );
     } catch (e) {
       debugPrint('[RequestBoardPage] _answer ERROR: $e');
