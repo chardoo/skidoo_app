@@ -74,6 +74,18 @@ class FeedRequestModel {
   /// Whether photographers can still answer it.
   bool get isLive => (status == 'open' || status == 'promoted') && !isExpired;
 
+  /// Whether republishing would be accepted.
+  ///
+  /// Mirrors the server's rule, because offering the action where the server
+  /// refuses it is just a button that returns 400: a request that ran out of
+  /// time or was closed can go back on the board; one already on it has
+  /// nowhere to go, one awaiting review was never published, and one that
+  /// became a campaign is not a request any more.
+  bool get canRepublish =>
+      status == 'closed' ||
+      status == 'filled' ||
+      (isExpired && status == 'open');
+
   /// Photographers who answered this request — the card's "4 interested".
   final int interestedCount;
 

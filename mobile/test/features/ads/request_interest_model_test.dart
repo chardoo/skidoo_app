@@ -101,6 +101,25 @@ void _expiryTests() {
     expect(request().isLive, isTrue);
   });
 
+  test('republish is offered exactly where the server allows it', () {
+    // The button used to appear on requests the server refused, which is a
+    // 400 with a nice label on it.
+    final past = DateTime.now().subtract(const Duration(days: 1));
+    final future = DateTime.now().add(const Duration(days: 3));
+
+    expect(request(expires: past).canRepublish, isTrue,
+        reason: 'expired is the case republishing exists for');
+    expect(request(status: 'closed', expires: future).canRepublish, isTrue);
+    expect(request(status: 'filled', expires: future).canRepublish, isTrue);
+
+    expect(request(expires: future).canRepublish, isFalse,
+        reason: 'already on the board');
+    expect(request(status: 'pending_review', expires: future).canRepublish,
+        isFalse, reason: 'never published in the first place');
+    expect(request(status: 'promoted', expires: future).canRepublish, isFalse,
+        reason: 'it became a campaign');
+  });
+
   test('a closed request is not live whatever its dates say', () {
     final r = request(
       status: 'closed', expires: DateTime.now().add(const Duration(days: 3)),

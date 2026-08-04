@@ -406,8 +406,7 @@ class _MyRequestTile extends StatelessWidget {
           ],
           // A closed request keeps its answers, so republishing is offered
           // right on the card rather than buried in the actions sheet.
-          if ((r.status == 'closed' || r.status == 'filled' || r.isExpired) &&
-              onRepublish != null) ...[
+          if (r.canRepublish && onRepublish != null) ...[
             SizedBox(height: AppSpacing.md.h),
             Semantics(
               button: true,

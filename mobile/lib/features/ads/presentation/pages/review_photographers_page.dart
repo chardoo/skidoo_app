@@ -320,8 +320,8 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                 const PopupMenuItem(
                   value: 'close', child: Text('Close request'),
                 ),
-              // Republishing is only meaningful once it has stopped running.
-              if (closed && selected == null)
+              // Only where the server would accept it — see canRepublish.
+              if (_request.canRepublish && selected == null)
                 const PopupMenuItem(
                   value: 'republish', child: Text('Republish request'),
                 ),
