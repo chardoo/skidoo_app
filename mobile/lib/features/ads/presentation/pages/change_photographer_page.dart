@@ -5,11 +5,11 @@ import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/number_format.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_meta.dart';
 
 /// Swapping the chosen photographer for another one.
 ///
@@ -265,11 +265,6 @@ class _SelectableTile extends StatelessWidget {
     final name = (person.name?.trim().isNotEmpty ?? false)
         ? person.name!.trim()
         : 'Photographer';
-    final meta = [
-      if (person.location?.isNotEmpty ?? false) person.location!,
-      '${compactCount(person.followerCount)} followers',
-    ].join(' | ');
-
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -307,29 +302,11 @@ class _SelectableTile extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 2.h),
-                  Row(
-                    children: [
-                      if (person.rating != null) ...[
-                        Icon(Icons.star_rounded,
-                            size: 12.r, color: ext.accentGold),
-                        Text(
-                          '${person.rating!.toStringAsFixed(1)} ',
-                          style: TextStyle(
-                            color: ext.accentGold, fontSize: 12.sp,
-                          ),
-                        ),
-                      ],
-                      Flexible(
-                        child: Text(
-                          meta,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 12.sp,
-                          ),
-                        ),
-                      ),
-                    ],
+                  PhotographerMeta(
+                    ext: ext,
+                    location: person.location,
+                    followerCount: person.followerCount,
+                    rating: person.rating,
                   ),
                 ],
               ),

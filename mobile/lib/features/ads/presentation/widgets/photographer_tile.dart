@@ -3,8 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/number_format.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
+import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_meta.dart';
 
 /// One photographer in the list of who answered a request.
 ///
@@ -33,19 +33,18 @@ class PhotographerTile extends StatelessWidget {
       ? person.name!.trim()
       : 'Photographer';
 
-  String get _meta {
-    final parts = <String>[
-      if (person.location?.isNotEmpty ?? false) person.location!,
-      '${compactCount(person.followerCount)} followers',
-    ];
-    return parts.join(' | ');
-  }
+  PhotographerMeta get _meta => PhotographerMeta(
+        ext: ext,
+        location: person.location,
+        followerCount: person.followerCount,
+        rating: person.rating,
+      );
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '$_name, $_meta',
+      label: '$_name, ${_meta.semanticsLabel}',
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
@@ -112,38 +111,7 @@ class PhotographerTile extends StatelessWidget {
                                   ),
                                 ),
                                 SizedBox(height: 3.h),
-                                Row(
-                                  children: [
-                                    // Rating leads the line, in the accent —
-                                    // the design sets it apart from the grey
-                                    // that follows it.
-                                    if (person.rating != null) ...[
-                                      Icon(Icons.star_rounded,
-                                          size: 13.r, color: ext.accentGold),
-                                      SizedBox(width: 2.w),
-                                      Text(
-                                        person.rating!.toStringAsFixed(1),
-                                        style: TextStyle(
-                                          color: ext.accentGold,
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      SizedBox(width: 8.w),
-                                    ],
-                                    Flexible(
-                                      child: Text(
-                                        _meta,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: ext.searchHintColor,
-                                          fontSize: 12.sp,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                _meta,
                               ],
                             ),
                           ),

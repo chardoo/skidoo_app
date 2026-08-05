@@ -8,6 +8,7 @@ import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/photographers/data/repositories/reviews_repository.dart';
+import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_meta.dart';
 
 /// Everything a client says about a photographer, and the screen where they
 /// say it.
@@ -374,7 +375,9 @@ class WriteReviewPage extends StatefulWidget {
     required this.requestTitle,
     this.requestId,
     this.photographerPhotoUrl,
-    this.photographerMeta,
+    this.photographerLocation,
+    this.photographerFollowers = 0,
+    this.photographerRating,
   });
 
   final String photographerId;
@@ -385,7 +388,13 @@ class WriteReviewPage extends StatefulWidget {
   final String requestTitle;
   final String? requestId;
   final String? photographerPhotoUrl;
-  final String? photographerMeta;
+
+  // The same three facts every other screen in the flow shows under a name.
+  // This one used to take a pre-joined string and was only ever handed the
+  // location, so the composer alone showed neither followers nor rating.
+  final String? photographerLocation;
+  final int photographerFollowers;
+  final double? photographerRating;
 
   @override
   State<WriteReviewPage> createState() => _WriteReviewPageState();
@@ -494,13 +503,12 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      if (widget.photographerMeta?.isNotEmpty ?? false)
-                        Text(
-                          widget.photographerMeta!,
-                          style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 12.sp,
-                          ),
-                        ),
+                      PhotographerMeta(
+                        ext: ext,
+                        location: widget.photographerLocation,
+                        followerCount: widget.photographerFollowers,
+                        rating: widget.photographerRating,
+                      ),
                     ],
                   ),
                 ),

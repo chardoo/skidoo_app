@@ -5,13 +5,13 @@ import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/number_format.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/models/ad_media.dart';
 import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:skidoo_app/features/photographers/data/repositories/reviews_repository.dart';
 import 'package:skidoo_app/features/photographers/presentation/pages/reviews_pages.dart';
+import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_meta.dart';
 import 'package:skidoo_app/models/photos/Photo.dart';
 
 /// One photographer who answered a request: who they are, what they have shot,
@@ -57,17 +57,6 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
   String get _displayName => (_p.name?.trim().isNotEmpty ?? false)
       ? _p.name!.trim()
       : 'Photographer';
-
-  /// "Accra, Ghana | 1.2K followers" — what the design puts under the name,
-  /// with the location dropped rather than shown empty. The rating is not in
-  /// here: it sits in its own pill to the right.
-  String get _meta {
-    final parts = <String>[
-      if (_p.location?.isNotEmpty ?? false) _p.location!,
-      '${compactCount(_p.followerCount)} followers',
-    ];
-    return parts.join('  |  ');
-  }
 
   /// Only fetched when the Reviews tab is first opened — most requesters look
   /// at the pictures and decide.
@@ -205,58 +194,19 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
                         ],
                       ),
                       SizedBox(height: 3.h),
-                      Row(
-                        children: [
-                          if (_p.location?.isNotEmpty ?? false) ...[
-                            Icon(Icons.place_outlined,
-                                size: 13.r, color: ext.searchHintColor),
-                            SizedBox(width: 3.w),
-                          ],
-                          Flexible(
-                            child: Text(
-                              _meta,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: ext.searchHintColor, fontSize: 12.sp,
-                              ),
-                            ),
-                          ),
-                        ],
+                      PhotographerMeta(
+                        ext: ext,
+                        location: _p.location,
+                        followerCount: _p.followerCount,
+                        variant: PhotographerMetaVariant.header,
                       ),
                     ],
                   ),
                 ),
-                // The one number on this screen someone scans for, so it gets
-                // its own pill. Nothing at all until somebody has rated them —
-                // an empty star reads as a bad score.
-                if (_p.rating != null)
-                  Container(
-                    margin: EdgeInsets.only(left: AppSpacing.sm.w),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 10.w, vertical: 5.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: ext.accentGold.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(AppRadius.sm.r),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.star_rounded,
-                            size: 14.r, color: ext.accentGold),
-                        SizedBox(width: 3.w),
-                        Text(
-                          _p.rating!.toStringAsFixed(1),
-                          style: TextStyle(
-                            color: ext.accentGold,
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                Padding(
+                  padding: EdgeInsets.only(left: AppSpacing.sm.w),
+                  child: RatingPill(ext: ext, rating: _p.rating),
+                ),
               ],
             ),
           ),
