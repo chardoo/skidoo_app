@@ -124,6 +124,7 @@ class PhotographerRepositoryImpl implements PhotographerRepository {
     String? studioName,
     String? bio,
     List<String>? specialties,
+    String? location,
   }) async {
     try {
       await _remoteDataSource.updatePhotographerProfile(
@@ -131,6 +132,7 @@ class PhotographerRepositoryImpl implements PhotographerRepository {
         studioName: studioName,
         bio: bio,
         specialties: specialties,
+        location: location,
       );
     } on NetworkException {
       rethrow;

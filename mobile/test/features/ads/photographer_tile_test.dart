@@ -91,11 +91,11 @@ void main() {
     expect(messaged, 1);
   });
 
-  testWidgets('an unrated photographer shows no star at all', (tester) async {
+  testWidgets('an unrated photographer shows 0.0 rather than a gap',
+      (tester) async {
     await pump(tester, person: who(rating: null));
     expect(tester.takeException(), isNull);
-    expect(find.byIcon(Icons.star_rounded), findsNothing);
-    // The follower count still stands on its own.
+    expect(find.text('0.0'), findsOneWidget);
     expect(find.textContaining('1.2K followers'), findsOneWidget);
   });
 

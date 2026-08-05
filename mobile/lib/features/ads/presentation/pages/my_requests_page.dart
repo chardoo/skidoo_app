@@ -28,11 +28,19 @@ class MyRequestsPage extends StatefulWidget {
   State<MyRequestsPage> createState() => _MyRequestsPageState();
 }
 
-class _MyRequestsPageState extends State<MyRequestsPage> {
+/// Kept alive because this page is a child of the Broadcasts [TabBarView],
+/// which disposes whichever tab is off screen. Without this, every switch to
+/// Campaigns and back re-ran initState and refetched a list identical to the
+/// one the user was just looking at.
+class _MyRequestsPageState extends State<MyRequestsPage>
+    with AutomaticKeepAliveClientMixin {
   final _repo = AdsRepository();
   List<FeedRequestModel> _requests = [];
   bool _loading = true;
   String? _errorMessage;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -256,6 +264,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // required by AutomaticKeepAliveClientMixin
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     final page = Scaffold(

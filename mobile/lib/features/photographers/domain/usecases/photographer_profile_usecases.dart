@@ -18,12 +18,14 @@ class UpdatePhotographerProfileUseCase {
     String? studioName,
     String? bio,
     List<String>? specialties,
+    String? location,
   }) =>
       _repository.updatePhotographerProfile(
         photographerId: photographerId,
         studioName: studioName,
         bio: bio,
         specialties: specialties,
+        location: location,
       );
 }
 

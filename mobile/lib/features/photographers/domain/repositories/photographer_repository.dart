@@ -27,7 +27,7 @@ abstract class PhotographerRepository {
   /// contract, `docs/FRONTEND_PROFILE_AND_SAMPLES.md`.
   Future<Map<String, dynamic>> getPhotographerProfile(String photographerId);
 
-  /// Saves `bio`/`specialties`/`studio_name` via `PATCH
+  /// Saves `bio`/`specialties`/`studio_name`/`location` via `PATCH
   /// /photographer/profile/{id}` — confirmed contract (multipart form,
   /// `specialties` as a JSON array string). Does **not** touch the profile
   /// photo or studio image — those are separate dedicated endpoints, see
@@ -37,6 +37,7 @@ abstract class PhotographerRepository {
     String? studioName,
     String? bio,
     List<String>? specialties,
+    String? location,
   });
 
   /// Uploads/replaces the personal avatar via `POST

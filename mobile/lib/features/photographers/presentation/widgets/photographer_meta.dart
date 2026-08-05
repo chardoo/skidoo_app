@@ -38,8 +38,10 @@ class PhotographerMeta extends StatelessWidget {
   final String? location;
   final int followerCount;
 
-  /// Null until somebody has rated them. No star is drawn in that case — an
-  /// empty one reads as a bad score.
+  /// Null until somebody has rated them, and still shown: the star and a 0.0
+  /// say "nobody has rated this photographer yet", where drawing nothing left
+  /// a gap that read as a missing field. A new photographer scores 0 because
+  /// that is the truth about their history, not a judgement of their work.
   final double? rating;
 
   final PhotographerMetaVariant variant;
@@ -50,7 +52,9 @@ class PhotographerMeta extends StatelessWidget {
 
   /// What a screen reader should hear: one sentence, not three fragments.
   String get semanticsLabel => [
-        if (rating != null) 'rated ${rating!.toStringAsFixed(1)}',
+        rating == null
+            ? 'not yet rated'
+            : 'rated ${rating!.toStringAsFixed(1)}',
         if (_hasLocation) location!.trim(),
         _followers,
       ].join(', ');
@@ -96,19 +100,17 @@ class PhotographerMeta extends StatelessWidget {
 
     return Row(
       children: [
-        if (rating != null) ...[
-          Icon(Icons.star_rounded, size: 13.r, color: ext.accentGold),
-          SizedBox(width: 2.w),
-          Text(
-            rating!.toStringAsFixed(1),
-            style: TextStyle(
-              color: ext.accentGold,
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w700,
-            ),
+        Icon(Icons.star_rounded, size: 13.r, color: ext.accentGold),
+        SizedBox(width: 2.w),
+        Text(
+          (rating ?? 0).toStringAsFixed(1),
+          style: TextStyle(
+            color: ext.accentGold,
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w700,
           ),
-          SizedBox(width: 8.w),
-        ],
+        ),
+        SizedBox(width: 8.w),
         Flexible(
           child: Text(
             _hasLocation ? '${location!.trim()}  |  $_followers' : _followers,
@@ -125,7 +127,8 @@ class PhotographerMeta extends StatelessWidget {
 /// `★ 4.7` in its own tinted pill — the profile's rating, set apart from the
 /// line because it is the one number people scan a profile for.
 ///
-/// Renders nothing at all when [rating] is null rather than an empty star.
+/// An unrated photographer shows `0.0` rather than nothing: the pill going
+/// missing looked like the profile had failed to load a field.
 class RatingPill extends StatelessWidget {
   const RatingPill({super.key, required this.ext, required this.rating});
 
@@ -134,7 +137,6 @@ class RatingPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (rating == null) return const SizedBox.shrink();
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
       decoration: BoxDecoration(
@@ -147,7 +149,7 @@ class RatingPill extends StatelessWidget {
           Icon(Icons.star_rounded, size: 14.r, color: ext.accentGold),
           SizedBox(width: 3.w),
           Text(
-            rating!.toStringAsFixed(1),
+            (rating ?? 0).toStringAsFixed(1),
             style: TextStyle(
               color: ext.accentGold,
               fontSize: 12.sp,

@@ -26,6 +26,7 @@ class PortfolioFormData {
     this.newStudioImage,
     required this.studioName,
     required this.bio,
+    required this.location,
     required this.specialties,
     required this.keptExistingSamples,
     required this.newSampleFiles,
@@ -41,6 +42,11 @@ class PortfolioFormData {
   final XFile? newStudioImage;
   final String studioName;
   final String bio;
+
+  /// "Accra, Ghana". Shown under the name everywhere a photographer appears in
+  /// the request flow — and unsettable until now, which is why all 24
+  /// photographers had an empty one.
+  final String location;
   final Set<String> specialties;
 
   /// Samples fetched from the server (edit mode) that haven't been removed
@@ -67,6 +73,7 @@ class PortfolioForm extends StatefulWidget {
     this.initialStudioImageUrl,
     this.initialStudioName = '',
     this.initialBio = '',
+    this.initialLocation = '',
     this.initialSpecialties = const {},
     this.initialSamples = const [],
   });
@@ -76,6 +83,7 @@ class PortfolioForm extends StatefulWidget {
   final String? initialStudioImageUrl;
   final String initialStudioName;
   final String initialBio;
+  final String initialLocation;
   final Set<String> initialSpecialties;
   final List<PhotographerSample> initialSamples;
 
@@ -88,6 +96,8 @@ class _PortfolioFormState extends State<PortfolioForm> {
       TextEditingController(text: widget.initialStudioName);
   late final TextEditingController _bioCtrl =
       TextEditingController(text: widget.initialBio);
+  late final TextEditingController _locationCtrl =
+      TextEditingController(text: widget.initialLocation);
   late final Set<String> _specialties = {...widget.initialSpecialties};
   late List<PhotographerSample> _keptExisting = [...widget.initialSamples];
   final List<XFile> _newSamples = [];
@@ -99,6 +109,7 @@ class _PortfolioFormState extends State<PortfolioForm> {
     super.initState();
     _nameCtrl.addListener(_notify);
     _bioCtrl.addListener(_notify);
+    _locationCtrl.addListener(_notify);
     // Let the caller see the initial snapshot too (e.g. to know whether the
     // min-samples gate is already met when prefilled in edit mode).
     WidgetsBinding.instance.addPostFrameCallback((_) => _notify());
@@ -108,6 +119,7 @@ class _PortfolioFormState extends State<PortfolioForm> {
   void dispose() {
     _nameCtrl.dispose();
     _bioCtrl.dispose();
+    _locationCtrl.dispose();
     super.dispose();
   }
 
@@ -117,6 +129,7 @@ class _PortfolioFormState extends State<PortfolioForm> {
       newStudioImage: _newStudioImage,
       studioName: _nameCtrl.text.trim(),
       bio: _bioCtrl.text.trim(),
+      location: _locationCtrl.text.trim(),
       specialties: _specialties,
       keptExistingSamples: _keptExisting,
       newSampleFiles: _newSamples,
@@ -214,6 +227,15 @@ class _PortfolioFormState extends State<PortfolioForm> {
         SizedBox(height: 6.h),
         _TextInput(controller: _nameCtrl, hint: 'Username', ext: ext),
         SizedBox(height: AppSpacing.lg.h),
+        _FieldLabel('Location', ext: ext),
+        SizedBox(height: AppSpacing.sm.h),
+        _TextInput(
+          controller: _locationCtrl,
+          hint: 'City, Country',
+          ext: ext,
+        ),
+        SizedBox(height: AppSpacing.lg.h),
+
         _FieldLabel('Bio summary', ext: ext),
         SizedBox(height: 6.h),
         _TextInput(controller: _bioCtrl, hint: 'Tell people about your work', ext: ext, maxLines: 4),

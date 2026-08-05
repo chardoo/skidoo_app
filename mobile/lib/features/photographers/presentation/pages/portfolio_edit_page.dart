@@ -36,6 +36,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
   String? _profilePhotoUrl;
   String? _studioImageUrl;
   String _studioName = '';
+  String _location = '';
   String _bio = '';
   Set<String> _specialties = {};
   bool _verifiedByAdmin = false;
@@ -65,6 +66,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
         _studioImageUrl = profile['studio_image_url'] as String?;
         _studioName = (profile['studio_name'] ?? profile['name'] ?? '').toString();
         _bio = (profile['bio'] ?? '').toString();
+        _location = (profile['location'] ?? '').toString();
         _specialties = ((profile['specialties'] as List?)?.map((e) => e.toString()) ?? const [])
             .toSet();
         _verifiedByAdmin = profile['verified_by_admin'] == true;
@@ -107,6 +109,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
         photographerId: _userId,
         studioName: data.studioName,
         bio: data.bio,
+        location: data.location,
         specialties: data.specialties.toList(),
       );
       if (data.newProfilePhoto != null) {
@@ -176,6 +179,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
                       initialProfilePhotoUrl: _profilePhotoUrl,
                       initialStudioImageUrl: _studioImageUrl,
                       initialStudioName: _studioName,
+                      initialLocation: _location,
                       initialBio: _bio,
                       initialSpecialties: _specialties,
                       initialSamples: _originalSamples,

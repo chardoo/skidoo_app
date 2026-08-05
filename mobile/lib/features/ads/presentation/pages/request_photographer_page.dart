@@ -255,7 +255,7 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
                     'Portfolio',
                     // The count is in the tab label, so the weight of the
                     // reviews is visible before anyone opens them.
-                    if (_reviewCount > 0) 'Reviews ($_reviewCount)' else 'Reviews',
+                    'Reviews ($_reviewCount)',
                   ],
                   onChanged: (i) {
                     setState(() => _tab = i);

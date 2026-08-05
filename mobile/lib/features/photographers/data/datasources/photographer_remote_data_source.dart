@@ -31,6 +31,7 @@ abstract class PhotographerRemoteDataSource {
     String? studioName,
     String? bio,
     List<String>? specialties,
+    String? location,
   });
   Future<String> uploadProfilePhoto({
     required String photographerId,
@@ -242,7 +243,7 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
 
   /// `PATCH /photographer/profile/{id}` — confirmed contract
   /// (`docs/FRONTEND_PROFILE_AND_SAMPLES.md`): multipart form, `bio`/
-  /// `specialties`/`studio_name` only. Photo uploads are separate dedicated
+  /// `specialties`/`studio_name`/`location`. Photo uploads are separate dedicated
   /// endpoints — see [uploadProfilePhoto] / [uploadStudioImage].
   @override
   Future<void> updatePhotographerProfile({
@@ -250,11 +251,13 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
     String? studioName,
     String? bio,
     List<String>? specialties,
+    String? location,
   }) async {
     try {
       final formData = dio.FormData.fromMap({
         if (studioName != null) 'studio_name': studioName,
         if (bio != null) 'bio': bio,
+        if (location != null) 'location': location,
         if (specialties != null) 'specialties': jsonEncode(specialties),
       });
       await _api.dio.patch(

@@ -40,11 +40,16 @@ void main() {
       expect(find.textContaining('850 followers'), findsOneWidget);
     });
 
-    testWidgets('drops the star entirely when unrated', (tester) async {
+    testWidgets('an unrated photographer still shows a rating, at 0.0',
+        (tester) async {
+      // Hiding it left a gap that read as a field that had failed to load —
+      // and every photographer is unrated until the first review lands, so
+      // that gap was the normal case, not the edge one.
       await tester.pumpWidget(host((ext) => PhotographerMeta(
             ext: ext, location: 'Paris', followerCount: 850,
           )));
-      expect(find.byIcon(Icons.star_rounded), findsNothing);
+      expect(find.byIcon(Icons.star_rounded), findsOneWidget);
+      expect(find.text('0.0'), findsOneWidget);
       expect(find.textContaining('850 followers'), findsOneWidget);
     });
 
@@ -108,10 +113,11 @@ void main() {
       expect(find.byIcon(Icons.star_rounded), findsOneWidget);
     });
 
-    testWidgets('draws nothing at all when unrated', (tester) async {
+    testWidgets('shows 0.0 when unrated rather than vanishing',
+        (tester) async {
       await tester.pumpWidget(host((ext) => RatingPill(ext: ext, rating: null)));
-      expect(find.byIcon(Icons.star_rounded), findsNothing);
-      expect(find.byType(Text), findsNothing);
+      expect(find.byIcon(Icons.star_rounded), findsOneWidget);
+      expect(find.text('0.0'), findsOneWidget);
     });
   });
 
@@ -124,5 +130,12 @@ void main() {
       rating: 4.8,
     );
     expect(meta.semanticsLabel, 'rated 4.8, Nairobi, 620 followers');
+    expect(
+      const PhotographerMeta(
+        ext: AppThemeExtension.light, location: 'Lagos', followerCount: 3,
+      ).semanticsLabel,
+      // Not "rated 0.0" — that would be read out as a bad score.
+      'not yet rated, Lagos, 3 followers',
+    );
   });
 }

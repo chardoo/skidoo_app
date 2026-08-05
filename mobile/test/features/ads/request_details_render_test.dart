@@ -109,10 +109,10 @@ void main() {
           reason: 'messaging comes after the selection, not on the profile');
     });
 
-    testWidgets('an unrated photographer shows no empty star', (tester) async {
+    testWidgets('an unrated photographer shows 0.0, not a gap', (tester) async {
       await pumpProfile(tester, who: person(rating: null));
       expect(tester.takeException(), isNull);
-      expect(find.byIcon(Icons.star_rounded), findsNothing);
+      expect(find.text('0.0'), findsOneWidget);
     });
 
     testWidgets('no specialties, no bio, no message — still renders',
