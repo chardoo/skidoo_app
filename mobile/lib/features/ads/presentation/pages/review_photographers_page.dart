@@ -68,9 +68,12 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     _load();
   }
 
-  Future<void> _load() async {
+  /// [showSpinner] blanks the screen while it fetches — right for the first
+  /// load, wrong for a refetch after an action, where wiping a list the user is
+  /// looking at reads as the screen reloading itself.
+  Future<void> _load({bool showSpinner = true}) async {
     setState(() {
-      _loading = true;
+      if (showSpinner) _loading = true;
       _errorMessage = null;
     });
     try {
@@ -119,11 +122,26 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
       ),
     );
     if (!mounted) return;
-    // Either way the list has moved: viewed at least, selected at most.
-    await _load();
-    if (!mounted) return;
+
     if (chose == true) {
+      // A selection reorders the whole screen — one person moves into the
+      // chosen slot and everyone else's actions change with it. Worth a refetch.
+      await _load(showSpinner: false);
+      if (!mounted) return;
       AppSnackBar.success(context, '${person.name ?? 'Photographer'} selected.');
+      return;
+    }
+
+    // Nothing happened but the looking. Move that one row from Pending to
+    // Viewed in place — refetching the list to learn a single boolean is what
+    // made this screen reload every time you glanced at a photographer.
+    if (!person.viewed) {
+      setState(() {
+        _people = [
+          for (final p in _people)
+            p.id == person.id ? p.copyWithFlags(viewed: true) : p,
+        ];
+      });
     }
   }
 
@@ -158,7 +176,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
         _request = _request.copyWith(status: 'open');
         _changed = true;
       });
-      await _load();
+      await _load(showSpinner: false);
       if (mounted) {
         AppSnackBar.success(context, 'Request is open to photographers again.');
       }
@@ -201,7 +219,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     );
     if (!mounted || changed != true) return;
     _changed = true;
-    await _load();
+    await _load(showSpinner: false);
     if (mounted) AppSnackBar.success(context, 'Photographer changed successfully');
   }
 
@@ -221,7 +239,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
       ),
     );
     // The rating on their row moved, so the list is stale either way.
-    if (done == true && mounted) await _load();
+    if (done == true && mounted) await _load(showSpinner: false);
   }
 
   Future<void> _delete() async {

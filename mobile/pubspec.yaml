@@ -34,7 +34,6 @@ dependencies:
   # Camera & Image
   camera: ^0.10.5+5
   image_picker: ^1.1.2
-  google_mlkit_face_detection: ^0.13.0
   saver_gallery: ^3.0.7
   crop_your_image: ^0.7.5
 
@@ -42,7 +41,6 @@ dependencies:
   flutter_screenutil: ^5.9.0
   cached_network_image: ^3.3.0
   carousel_slider_plus: ^7.1.1
-  flutter_staggered_grid_view: ^0.7.0
   flutter_svg: ^2.0.9
   shimmer: ^3.0.0
   provider: ^6.1.2
@@ -71,12 +69,9 @@ dependencies:
   easy_autocomplete: ^1.6.0
   intl: ^0.20.2
 
-  # Video — media_kit: hardware-accelerated playback, 4K support, all platforms
-  media_kit: ^1.1.11
-  media_kit_video: ^1.2.4
-  media_kit_libs_android_video: ^1.0.8   # Android native (libmpv)
-  media_kit_libs_ios_video: ^1.0.8       # iOS native (libmpv)
-  # video_player kept temporarily — remove once all callers are migrated
+  # Video — the platform's own player: AVPlayer (iOS), ExoPlayer (Android),
+  # <video> (web). Replaced media_kit, whose bundled libmpv + FFmpeg cost
+  # ~20 MB of the iOS download to decode formats the OS already handles.
   video_player: ^2.9.1
 
   # QR / Barcode
@@ -84,6 +79,7 @@ dependencies:
 
   # Web
   webview_flutter: ^4.4.2
+  app_links: ^7.2.1
 
 dependency_overrides:
   # url_launcher_ios 6.3.0 has a Swift bug (UIApplication Launcher conformance).
@@ -143,8 +139,6 @@ flutter:
   fonts:
     - family: Poppins
       fonts:
-        - asset: assets/fonts/Poppins-Light.ttf
-          weight: 300
         - asset: assets/fonts/Poppins-Regular.ttf
           weight: 400
         - asset: assets/fonts/Poppins-Italic.ttf

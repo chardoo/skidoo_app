@@ -27,10 +27,16 @@ android {
 
     defaultConfig {
         applicationId = "com.skidoo.app"
+
+        // The domain App Links are verified against. One place, because it
+        // also has to match the iOS entitlement and the gateway's
+        // /.well-known/assetlinks.json — three files that must agree or the
+        // link silently opens a browser instead of the app.
+        manifestPlaceholders["deepLinkHost"] = "jperg.com"
         // google_ml_kit requires minSdk 21; camera requires 21
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 10
+        versionCode = 12 
         versionName = flutter.versionName
     }
 
@@ -63,6 +69,16 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Unbundled ML Kit face detection: the detector and its model live in
+    // Play Services and are fetched on demand, so this adds a thin client to
+    // the APK rather than the ~16 MB the bundled variant shipped. Used only by
+    // FaceCheckPlugin — see the `com.google.mlkit.vision.DEPENDENCIES`
+    // meta-data in AndroidManifest.xml, which asks Play Services to download
+    // the model at install time instead of on first use.
+    implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
 }
 
 // KGP 2.2+ removed kotlinOptions; use compilerOptions to lock jvmTarget so it

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal Links. iOS fetches
+	     https://jperg.com/.well-known/apple-app-site-association at install
+	     and matches this app's TEAMID.bundle.id against the appIDs in it.
+
+	     Three things have to agree or the link opens Safari with no error
+	     anywhere: this domain, the appIDs in that file (set IOS_APP_ID on the
+	     gateway), and the bundle identifier in the Xcode project — which is
+	     still com.example.jperg and cannot ship as that.
+
+	     `applinks:` alone is enough for links; `webcredentials:` lets a saved
+	     password fill in both places. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:jperg.com</string>
+		<string>webcredentials:jperg.com</string>
+	</array>
+</dict>
+</plist>

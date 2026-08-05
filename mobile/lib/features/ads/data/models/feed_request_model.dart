@@ -272,6 +272,30 @@ class RequestInterest {
   /// Whether the requester has opened this profile — Pending versus Viewed.
   final bool viewed;
 
+  /// Patch a single field locally. Opening someone's profile moves them from
+  /// Pending to Viewed, and that is the whole change — refetching the list to
+  /// learn it costs a request and a spinner for one boolean.
+  RequestInterest copyWithFlags({bool? viewed, bool? selected}) =>
+      RequestInterest(
+        id: id,
+        name: name,
+        profileUrl: profileUrl,
+        message: message,
+        createdAt: createdAt,
+        bio: bio,
+        studioImageUrl: studioImageUrl,
+        specialties: specialties,
+        location: location,
+        followerCount: followerCount,
+        eventCount: eventCount,
+        rating: rating,
+        ratingCount: ratingCount,
+        verified: verified,
+        portfolio: portfolio,
+        viewed: viewed ?? this.viewed,
+        selected: selected ?? this.selected,
+      );
+
   /// Whether this is the one they chose.
   final bool selected;
 

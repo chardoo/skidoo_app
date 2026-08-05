@@ -30,6 +30,9 @@ import Metal
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    // Not a pub package — an app-local channel over Vision. See the file for
+    // why the face check isn't a plugin dependency any more.
+    FaceCheckPlugin.register(with: engineBridge.pluginRegistry)
   }
 
   // ── Wide colour / P3 rendering ────────────────────────────────────────────
