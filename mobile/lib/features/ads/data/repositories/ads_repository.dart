@@ -532,6 +532,95 @@ class AdsRepository {
 
   // ── Campaign management ───────────────────────────────────────────────────
 
+  /// The whole wizard, in one call.
+  ///
+  /// Replaces campaign → adset → ad in sequence: a failure partway through that
+  /// left a campaign behind which existed and could never run, and the form had
+  /// to understand the delivery model to fill itself in.
+  Future<AdCampaign> createCampaignDraft({
+    required String name,
+    required String objective,
+    required String format,
+    required String headline,
+    String? body,
+    required String ctaText,
+    required String ctaUrl,
+    List<String> locations = const [],
+    List<String> interests = const [],
+    String audience = 'all',
+    int? ageMin,
+    int? ageMax,
+    List<String> placements = const ['event_feed'],
+    required String budgetMode,
+    required double budgetAmount,
+    required int durationDays,
+    String currency = 'GHS',
+    String? startAt,
+    String? endAt,
+    bool commentsEnabled = true,
+  }) async {
+    debugPrint('$_tag createCampaignDraft → "$name" $objective/$format '
+        '$budgetMode=$budgetAmount x${durationDays}d');
+    final resp = await _dio.post('/ads/campaigns/draft', data: {
+      'name': name,
+      'objective': objective,
+      'format': format,
+      'headline': headline,
+      if (body != null && body.isNotEmpty) 'body': body,
+      'cta_text': ctaText,
+      'cta_url': ctaUrl,
+      'locations': locations,
+      'interests': interests,
+      'audience': audience,
+      if (ageMin != null) 'age_min': ageMin,
+      if (ageMax != null) 'age_max': ageMax,
+      'placements': placements,
+      'budget_mode': budgetMode,
+      'budget_amount': budgetAmount,
+      'duration_days': durationDays,
+      'currency': currency,
+      if (startAt != null) 'start_at': startAt,
+      if (endAt != null) 'end_at': endAt,
+      'comments_enabled': commentsEnabled,
+    });
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    debugPrint('$_tag createCampaignDraft — id=${data['id']}');
+    return AdCampaign.fromJson(data);
+  }
+
+  /// Send a draft to the review queue. The server checks the creative is
+  /// really there — the right number of images for the format — so this can
+  /// fail with a message worth showing.
+  Future<AdCampaign> submitCampaign(String campaignId) async {
+    debugPrint('$_tag submitCampaign → $campaignId');
+    final resp = await _dio.post('/ads/campaigns/$campaignId/submit');
+    return AdCampaign.fromJson(_unwrap<Map<String, dynamic>>(resp) ?? {});
+  }
+
+  /// "Cancel Campaign Submission" — back to a draft, edits intact.
+  Future<AdCampaign> cancelCampaignSubmission(String campaignId) async {
+    debugPrint('$_tag cancelCampaignSubmission → $campaignId');
+    final resp =
+        await _dio.post('/ads/campaigns/$campaignId/cancel-submission');
+    return AdCampaign.fromJson(_unwrap<Map<String, dynamic>>(resp) ?? {});
+  }
+
+  /// Roughly how many people a budget buys, for the budget step.
+  Future<ReachEstimate> estimateReach({
+    required String budgetMode,
+    required double budgetAmount,
+    required int durationDays,
+    String currency = 'GHS',
+  }) async {
+    final resp = await _dio.get('/ads/campaigns/estimate', queryParameters: {
+      'budget_mode': budgetMode,
+      'budget_amount': budgetAmount,
+      'duration_days': durationDays,
+      'currency': currency,
+    });
+    return ReachEstimate.fromJson(_unwrap<Map<String, dynamic>>(resp) ?? {});
+  }
+
   Future<AdCampaign> createCampaign({
     required String name,
     required String objective,
@@ -879,4 +968,33 @@ class AdsRepository {
     final resp = await _dio.delete('/ads/campaigns/$campaignId');
     debugPrint('$_tag deleteCampaign ← status=${resp.statusCode}');
   }
+}
+
+
+/// What a budget buys, as the budget step reports it.
+class ReachEstimate {
+  const ReachEstimate({
+    this.total = 0,
+    this.daily = 0,
+    this.durationDays = 0,
+    this.dailyReach = 0,
+    this.totalReach = 0,
+    this.currency = 'GHS',
+  });
+
+  final double total;
+  final double daily;
+  final int durationDays;
+  final int dailyReach;
+  final int totalReach;
+  final String currency;
+
+  factory ReachEstimate.fromJson(Map<String, dynamic> j) => ReachEstimate(
+        total: (j['total'] as num?)?.toDouble() ?? 0,
+        daily: (j['daily'] as num?)?.toDouble() ?? 0,
+        durationDays: (j['duration_days'] as num?)?.toInt() ?? 0,
+        dailyReach: (j['estimated_daily_reach'] as num?)?.toInt() ?? 0,
+        totalReach: (j['estimated_total_reach'] as num?)?.toInt() ?? 0,
+        currency: j['currency'] as String? ?? 'GHS',
+      );
 }

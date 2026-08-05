@@ -6,6 +6,7 @@ import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/campaign_details_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/edit_campaign_page.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -131,12 +132,12 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
       return;
     }
     if (!mounted) return;
-    final saved = await Navigator.of(context).push<bool>(
+    final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => EditCampaignPage(campaign: full),
+        builder: (_) => CampaignDetailsPage(campaign: full),
       ),
     );
-    if (saved == true) _load();
+    if (changed == true) _load();
   }
 
   void _showTopUpDialog(AdCampaign campaign) {
@@ -793,6 +794,8 @@ class _CampaignTile extends StatelessWidget {
         CampaignStatus.paused => Colors.orangeAccent,
         CampaignStatus.pendingReview => const Color(0xFF3B82F6),
         CampaignStatus.pendingPayment => const Color(0xFFF59E0B),
+        CampaignStatus.approvedUnpaid => const Color(0xFF3B82F6),
+        CampaignStatus.paymentExpired => Colors.redAccent,
         CampaignStatus.draft => const Color(0xFF6B7280),
         CampaignStatus.completed => const Color(0xFF8B5CF6),
         CampaignStatus.rejected => Colors.redAccent,

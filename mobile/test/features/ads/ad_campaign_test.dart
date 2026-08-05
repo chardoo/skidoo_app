@@ -87,15 +87,22 @@ void main() {
   group('CampaignObjective', () {
     test('fromString handles aliases and defaults to awareness', () {
       expect(CampaignObjective.fromString('traffic'), CampaignObjective.traffic);
-      expect(CampaignObjective.fromString('conversions'), CampaignObjective.conversion);
-      expect(CampaignObjective.fromString('conversion'), CampaignObjective.conversion);
+      // "conversion" was renamed to "leads" when the wizard grew its four
+      // objectives. Live rows still carry the old spelling, so both resolve
+      // rather than falling back to awareness and relabelling someone's
+      // campaign.
+      expect(CampaignObjective.fromString('conversions'), CampaignObjective.leads);
+      expect(CampaignObjective.fromString('conversion'), CampaignObjective.leads);
+      expect(CampaignObjective.fromString('leads'), CampaignObjective.leads);
+      expect(CampaignObjective.fromString('services'), CampaignObjective.services);
       expect(CampaignObjective.fromString('???'), CampaignObjective.awareness);
     });
 
     test('value matches the serialized form', () {
       expect(CampaignObjective.awareness.value, 'awareness');
       expect(CampaignObjective.traffic.value, 'traffic');
-      expect(CampaignObjective.conversion.value, 'conversion');
+      expect(CampaignObjective.leads.value, 'leads');
+      expect(CampaignObjective.services.value, 'services');
     });
   });
 }

@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/create_campaign_page.dart';
+import 'package:skidoo_app/features/ads/presentation/pages/campaign_wizard_page.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/create_request_flow.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
@@ -142,10 +142,10 @@ class CreateBottomSheet extends StatelessWidget {
                   icon: Icons.rocket_launch_rounded,
                   iconColor: ext.accentGold,
                   iconBgColor: ext.accentGold.withValues(alpha: 0.12),
-                  title: 'Create Campaign',
-                  subtitle: 'Paid  ·  More reach  ·  4 steps',
+                  title: 'Start a campaign',
+                  subtitle: 'Paid  ·  More reach  ·  5 steps',
                   description:
-                      'Run a targeted ad in the discovery feed to reach the right audience.',
+                      'Run a targeted ad to reach the right audience.',
                   badgeLabel: 'Boosted',
                   badgeColor: ext.accentGold,
                   ext: ext,
@@ -153,7 +153,7 @@ class CreateBottomSheet extends StatelessWidget {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const CreateCampaignPage(),
+                        builder: (_) => const CampaignWizardPage(),
                       ),
                     );
                   },
