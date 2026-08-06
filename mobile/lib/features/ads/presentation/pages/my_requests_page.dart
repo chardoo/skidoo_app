@@ -17,12 +17,16 @@ import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class MyRequestsPage extends StatefulWidget {
-  const MyRequestsPage({super.key, this.embedded = false});
+  const MyRequestsPage({super.key, this.embedded = false, this.onCount});
 
   /// True when this list is a tab inside Broadcasts, which already provides
   /// the header and the back button — so it renders as a bare list rather
   /// than a second page stacked inside the first.
   final bool embedded;
+
+  /// How many this list holds, reported once it knows. Broadcasts puts it in
+  /// the tab label — it used to fetch the whole list again to find out.
+  final ValueChanged<int>? onCount;
 
   @override
   State<MyRequestsPage> createState() => _MyRequestsPageState();
@@ -60,6 +64,7 @@ class _MyRequestsPageState extends State<MyRequestsPage>
       debugPrint('[MyRequestsPage] loaded ${requests.length} requests');
       setState(() {
         _requests = requests;
+        widget.onCount?.call(requests.length);
         _loading = false;
       });
     } catch (e) {

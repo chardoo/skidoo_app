@@ -14,12 +14,16 @@ import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 
 class MyCampaignsPage extends StatefulWidget {
-  const MyCampaignsPage({super.key, this.embedded = false});
+  const MyCampaignsPage({super.key, this.embedded = false, this.onCount});
 
   /// True when this list is a tab inside Broadcasts, which already provides
   /// the header and the back button — so it renders as a bare list rather
   /// than a second page stacked inside the first.
   final bool embedded;
+
+  /// How many this list holds, reported once it knows. Broadcasts puts it in
+  /// the tab label — it used to fetch the whole list again to find out.
+  final ValueChanged<int>? onCount;
 
   @override
   State<MyCampaignsPage> createState() => _MyCampaignsPageState();
@@ -56,6 +60,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
       debugPrint('[MyCampaignsPage] loaded ${campaigns.length} campaigns');
       setState(() {
         _campaigns = campaigns;
+        widget.onCount?.call(campaigns.length);
         _loading = false;
       });
     } catch (e) {
@@ -72,19 +77,13 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
 
 
   Future<void> _showEditSheet(AdCampaign campaign) async {
-    AdCampaign full;
-    try {
-      full = await _repo.getCampaign(campaign.id);
-    } catch (e) {
-      debugPrint('[MyCampaignsPage] _showEditSheet getCampaign ERROR: $e');
-      if (!mounted) return;
-      AppSnackBar.error(context, 'Could not load campaign details. Try again.');
-      return;
-    }
-    if (!mounted) return;
+    // Straight through on what the list already has. The details screen
+    // refetches on init for the ad sets and the performance figures, so
+    // fetching here as well meant two trips for one screen — and the first
+    // blocked anything at all from appearing.
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => CampaignDetailsPage(campaign: full),
+        builder: (_) => CampaignDetailsPage(campaign: campaign),
       ),
     );
     if (changed == true) _load();

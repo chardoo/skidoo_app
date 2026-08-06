@@ -42,7 +42,6 @@ class _BroadcastsPageState extends State<BroadcastsPage>
       vsync: this,
       initialIndex: widget.initialTab.clamp(0, 1),
     );
-    _loadCounts();
   }
 
   @override
@@ -51,25 +50,10 @@ class _BroadcastsPageState extends State<BroadcastsPage>
     super.dispose();
   }
 
-  /// The tab labels carry counts, and the lists inside fetch their own pages —
-  /// so the counts are read once here rather than lifted out of two child
-  /// widgets that load independently. A failure leaves the label bare rather
-  /// than showing a wrong number.
-  Future<void> _loadCounts() async {
-    try {
-      final requests = await _repo.getMyRequests();
-      if (mounted) setState(() => _requestCount = requests.length);
-    } catch (_) {
-      if (mounted) setState(() => _requestCount = null);
-    }
-    try {
-      final campaigns = await _repo.getMyCampaigns();
-      if (mounted) setState(() => _campaignCount = campaigns.length);
-    } catch (_) {
-      if (mounted) setState(() => _campaignCount = null);
-    }
-  }
-
+  /// The counts come from the two lists below, which are already fetching
+  /// exactly this data. Broadcasts used to fetch both lists again itself, one
+  /// after the other, purely to put a number in a label — four list calls to
+  /// show two lists, two of them blocking the tabs from appearing.
   String _label(String name, int? count) =>
       count == null ? name : '$name ($count)';
 
@@ -135,9 +119,19 @@ class _BroadcastsPageState extends State<BroadcastsPage>
       // here instead, see `embedded` on each.
       body: TabBarView(
         controller: _tabs,
-        children: const [
-          MyRequestsPage(embedded: true),
-          MyCampaignsPage(embedded: true),
+        children: [
+          MyRequestsPage(
+            embedded: true,
+            onCount: (n) {
+              if (mounted) setState(() => _requestCount = n);
+            },
+          ),
+          MyCampaignsPage(
+            embedded: true,
+            onCount: (n) {
+              if (mounted) setState(() => _campaignCount = n);
+            },
+          ),
         ],
       ),
     );
