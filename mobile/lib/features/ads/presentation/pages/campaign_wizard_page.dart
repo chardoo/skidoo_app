@@ -1622,14 +1622,15 @@ class _ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(bottom: AppSpacing.sm.h),
-      padding: EdgeInsets.all(AppSpacing.md.w),
+      margin: EdgeInsets.only(bottom: AppSpacing.md.h),
+      padding: EdgeInsets.all(AppSpacing.lg.w),
       decoration: BoxDecoration(
-        color: ext.cardSurface,
+        // Same outline-only card as the details screen — the review step is
+        // showing the reader what that screen will show them.
         borderRadius: BorderRadius.circular(AppRadius.md.r),
         border: Border.all(
-          color: ext.searchHintColor.withValues(alpha: 0.16),
-          width: 0.8,
+          color: ext.searchHintColor.withValues(alpha: 0.18),
+          width: 1,
         ),
       ),
       child: Column(

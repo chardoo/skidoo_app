@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
 import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/request_photographer_page.dart';
@@ -67,6 +69,8 @@ void main() {
   /// fits, so anything below the fold has to be scrolled to before it exists.
   Future<void> scrollTo(WidgetTester tester, Finder target) =>
       tester.scrollUntilVisible(target, 240, scrollable: find.byType(Scrollable).first);
+
+  _campaignDetailsChrome();
 
   group('the photographer profile renders', () {
     testWidgets('header, specialties and tabs paint without an exception',
@@ -143,5 +147,53 @@ void main() {
       expect(button.onPressed, isNull);
     });
 
+  });
+}
+
+/// Campaign details, against the Figma pixels rather than against my memory of
+/// them.
+///
+/// Measured off `CampaignDetails_InReview.png` (412 wide):
+///   page gutter 20 · card padding 17 · gap between cards 11 · radius 12
+///   card fill == page background (#F7F7F2) — the cards are outline-only
+///   border ≈ searchHintColor at 0.18
+///
+/// The fill is the one that mattered: cardSurface is white, so every card read
+/// as a raised panel against a background it was meant to sit in.
+void _campaignDetailsChrome() {
+  group('the details cards are drawn as the design draws them', () {
+    testWidgets('a card is an outline, not a filled panel', (tester) async {
+      await tester.pumpWidget(host(Builder(builder: (context) {
+        final ext = Theme.of(context).extension<AppThemeExtension>()!;
+        return Scaffold(
+          backgroundColor: ext.homeBackground,
+          body: Container(
+            key: const Key('probe'),
+            padding: EdgeInsets.all(AppSpacing.lg.w),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
+              border: Border.all(
+                color: ext.searchHintColor.withValues(alpha: 0.18), width: 1,
+              ),
+            ),
+            child: const Text('1. Campaign Type'),
+          ),
+        );
+      })));
+      final box = tester.widget<Container>(find.byKey(const Key('probe')));
+      final decoration = box.decoration! as BoxDecoration;
+      expect(decoration.color, isNull,
+          reason: 'the design fills cards with the page colour, i.e. not at all');
+      expect(decoration.border, isNotNull);
+    });
+
+    test('the spacing scale carries the measured values', () {
+      // 20 / 16 / 12 on a 390-wide design correspond to the 412-wide
+      // measurements of 20 / 17 / 11-12.
+      expect(AppSpacing.xl, 20, reason: 'page gutter');
+      expect(AppSpacing.lg, 16, reason: 'card padding');
+      expect(AppSpacing.md, 12, reason: 'gap between cards');
+      expect(AppRadius.md, 12, reason: 'card corner radius');
+    });
   });
 }

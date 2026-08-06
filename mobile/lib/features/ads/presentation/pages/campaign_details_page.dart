@@ -350,7 +350,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
         children: [
           if (cover != null)
             SizedBox(
-              height: 170.h,
+              height: 162.h,
               width: double.infinity,
               child: Image.network(
                 cover,
@@ -361,7 +361,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
             ),
           Padding(
             padding: EdgeInsets.fromLTRB(
-              AppSpacing.lg.w, AppSpacing.md.h, AppSpacing.lg.w, 0,
+              AppSpacing.xl.w, AppSpacing.md.h, AppSpacing.xl.w, 0,
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,13 +393,13 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
 
           if (_secondsLeft != null && c.status.canPay)
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
               child: _PaymentWindow(seconds: _secondsLeft!, ext: ext),
             ),
 
           if (c.status == CampaignStatus.paused)
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
               child: _Notice(
                 ext: ext,
                 tone: const Color(0xFFB45309),
@@ -416,7 +416,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
 
           if (c.status == CampaignStatus.completed)
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
               child: _Notice(
                 ext: ext,
                 tone: ext.searchHintColor,
@@ -435,13 +435,13 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
 
           if (_hasRun(c))
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
               child: _PerformanceSummary(campaign: c, ext: ext),
             ),
 
           if (c.status == CampaignStatus.paymentExpired)
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
               child: _Notice(
                 ext: ext,
                 tone: ext.errorRed,
@@ -455,7 +455,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
           if (c.status == CampaignStatus.rejected &&
               (c.rejectionReason?.isNotEmpty ?? false))
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
               child: _Notice(
                 ext: ext,
                 tone: ext.errorRed,
@@ -466,7 +466,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
             ),
 
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
             child: Column(
               children: [
                 _Card(
@@ -708,13 +708,15 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(bottom: AppSpacing.sm.h),
-      padding: EdgeInsets.all(AppSpacing.md.w),
+      margin: EdgeInsets.only(bottom: AppSpacing.md.h),
+      padding: EdgeInsets.all(AppSpacing.lg.w),
       decoration: BoxDecoration(
-        color: ext.cardSurface,
+        // Outline only. The design's card fill is the page colour itself
+        // (#F7F7F2) — filling them with cardSurface (white) made every card
+        // read as a raised panel against a background it was meant to sit in.
         borderRadius: BorderRadius.circular(AppRadius.md.r),
         border: Border.all(
-          color: ext.searchHintColor.withValues(alpha: 0.16), width: 0.8,
+          color: ext.searchHintColor.withValues(alpha: 0.18), width: 1,
         ),
       ),
       child: Column(
@@ -948,10 +950,9 @@ class _Stat extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: EdgeInsets.all(AppSpacing.md.w),
         decoration: BoxDecoration(
-          color: ext.cardSurface,
           borderRadius: BorderRadius.circular(AppRadius.md.r),
           border: Border.all(
-            color: ext.searchHintColor.withValues(alpha: 0.16), width: 0.8,
+            color: ext.searchHintColor.withValues(alpha: 0.18), width: 1,
           ),
         ),
         child: Column(
