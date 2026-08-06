@@ -84,12 +84,13 @@ class CampaignDraft {
   }
 }
 
-const _kInterests = [
+/// Shared with the edit form, so the two cannot offer different sets.
+const kCampaignInterests = [
   'Weddings', 'Portraits', 'Events', 'Fashion', 'Real Estate', 'Food',
   'Corporate', 'Nature', 'Product',
 ];
 
-const _kLocations = [
+const kCampaignLocations = [
   'Accra', 'Kumasi', 'Takoradi', 'Tamale', 'Cape Coast', 'Ho', 'Sunyani',
 ];
 
@@ -996,7 +997,7 @@ class _AudienceStep extends StatelessWidget {
           spacing: AppSpacing.sm.w,
           runSpacing: AppSpacing.xs.h,
           children: [
-            for (final location in _kLocations)
+            for (final location in kCampaignLocations)
               _Choice(
                 label: location,
                 selected: draft.locations.contains(location),
@@ -1015,7 +1016,7 @@ class _AudienceStep extends StatelessWidget {
           spacing: AppSpacing.sm.w,
           runSpacing: AppSpacing.xs.h,
           children: [
-            for (final interest in _kInterests)
+            for (final interest in kCampaignInterests)
               _Choice(
                 label: interest,
                 selected: draft.interests.contains(interest),

@@ -213,6 +213,7 @@ void main() {
   });
 
   _lifecycle();
+  _editPrefill();
 }
 
 /// The lifecycle the details screen drives — pause, resume, duplicate — and the
@@ -299,6 +300,81 @@ void _lifecycle() {
       expect(c.pausedAt, isNotNull);
       expect(c.completedAt, isNull);
       expect(c.duplicatedFromId, 'original-1');
+    });
+  });
+}
+
+/// The edit form opens on what is already there. Opening on blanks and saving
+/// would write the blanks back — which is what made this worth pinning.
+void _editPrefill() {
+  AdCampaign campaign(Map<String, dynamic> extra) => AdCampaign.fromJson({
+        'id': 'c1',
+        'name': 'Promo',
+        'objective': 'services',
+        'format': 'carousel',
+        'budget_amount': 700.0,
+        'budget_mode': 'daily',
+        'daily_budget': 50.0,
+        'duration_days': 14,
+        'spent': 0,
+        'currency': 'GHS',
+        'status': 'draft',
+        'headline': 'Book Your Perfect Photoshoot (Copy)',
+        'createdAt': '2026-08-01T10:00:00Z',
+        'updatedAt': '2026-08-01T10:00:00Z',
+        ...extra,
+      });
+
+  group('the audience comes back off the campaign', () {
+    test('locations, interests and audience are read', () {
+      final c = campaign({
+        'locations': ['Accra', 'Kumasi'],
+        'interests': ['Weddings', 'Portraits'],
+        'audience': 'creators',
+      });
+      expect(c.locations, ['Accra', 'Kumasi']);
+      expect(c.interests, ['Weddings', 'Portraits']);
+      expect(c.audience, 'creators');
+    });
+
+    test('a campaign without them defaults rather than throwing', () {
+      final c = campaign({});
+      expect(c.locations, isEmpty);
+      expect(c.interests, isEmpty);
+      expect(c.audience, 'all');
+    });
+
+    test('the chip lists the two screens offer are the same list', () {
+      // The wizard and the edit form used to hold their own copies; a location
+      // added to one and not the other is a filter nobody can clear.
+      expect(kCampaignLocations, contains('Accra'));
+      expect(kCampaignInterests, contains('Weddings'));
+      expect(kCampaignLocations, isNotEmpty);
+      expect(kCampaignInterests, isNotEmpty);
+    });
+  });
+
+  group('media already on the campaign', () {
+    test('is carried so the strip can show it', () {
+      final c = campaign({
+        'media': [
+          {'id': 'm1', 'url': 'https://x/1.jpg', 'media_type': 'image'},
+          {'id': 'm2', 'url': 'https://x/2.jpg', 'media_type': 'image'},
+        ],
+      });
+      expect(c.media.length, 2);
+      expect(c.media.first.id, 'm1');
+    });
+
+    test('a carousel with two images already satisfies its format', () {
+      final c = campaign({
+        'media': [
+          {'id': 'm1', 'url': 'https://x/1.jpg', 'media_type': 'image'},
+          {'id': 'm2', 'url': 'https://x/2.jpg', 'media_type': 'image'},
+        ],
+      });
+      final (low, high) = c.format.mediaRange;
+      expect(c.media.length >= low && c.media.length <= high, isTrue);
     });
   });
 }

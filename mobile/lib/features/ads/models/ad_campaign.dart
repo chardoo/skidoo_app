@@ -49,6 +49,13 @@ class AdCampaign {
   final int reach;
   final List<String> placements;
 
+  /// The audience, lifted onto the campaign from its ad sets — so the edit
+  /// form can open on what was chosen rather than on empty chips, which
+  /// saving would then write back as nothing.
+  final List<String> locations;
+  final List<String> interests;
+  final String audience;
+
   /// Null when nothing has been seen yet — not zero, which reads as "nobody
   /// clicked" when the truth is "nobody has seen it".
   final double? ctr;
@@ -107,6 +114,9 @@ class AdCampaign {
     this.clicks = 0,
     this.reach = 0,
     this.placements = const [],
+    this.locations = const [],
+    this.interests = const [],
+    this.audience = 'all',
     required this.spent,
     required this.currency,
     required this.status,
@@ -165,6 +175,13 @@ class AdCampaign {
         placements: (j['placements'] as List<dynamic>? ?? [])
             .whereType<String>()
             .toList(),
+        locations: (j['locations'] as List<dynamic>? ?? [])
+            .whereType<String>()
+            .toList(),
+        interests: (j['interests'] as List<dynamic>? ?? [])
+            .whereType<String>()
+            .toList(),
+        audience: j['audience'] as String? ?? 'all',
         spent:
             (j['spent'] as num? ?? j['amount_spent'] as num? ?? 0).toDouble(),
         currency: j['currency'] as String? ?? 'GHS',

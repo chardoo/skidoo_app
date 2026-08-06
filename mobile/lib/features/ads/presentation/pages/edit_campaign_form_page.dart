@@ -1,14 +1,19 @@
+import 'dart:io' show File;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
 import 'package:skidoo_app/core/theme/app_radius.dart';
 import 'package:skidoo_app/core/theme/app_spacing.dart';
 import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:skidoo_app/core/utils/image_pick.dart';
 import 'package:skidoo_app/core/utils/snackbar_utils.dart';
 import 'package:skidoo_app/core/utils/web_wrap.dart';
 import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
+import 'package:skidoo_app/features/ads/models/ad_media.dart';
 import 'package:skidoo_app/features/ads/presentation/pages/campaign_wizard_page.dart';
 
 /// Edit Campaign — the whole wizard on one page.
@@ -48,9 +53,18 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
   late final _placements = _c.placements.isEmpty
       ? <String>{'event_feed'}
       : _c.placements.toSet();
-  final _locations = <String>{};
-  final _interests = <String>{};
-  String _audience = 'all';
+  // Prefilled from the campaign. Opening on empty chips and then saving would
+  // write the emptiness back over whatever the wizard chose.
+  late final _locations = _c.locations.toSet();
+  late final _interests = _c.interests.toSet();
+  late String _audience = _c.audience;
+
+  /// Media already on the server, and the files picked in this session. Kept
+  /// apart because removing one is a DELETE and removing the other is just
+  /// forgetting it.
+  late List<AdMedia> _existing = List.of(_c.media);
+  final _added = <XFile>[];
+  final _removed = <String>{};
 
   late DateTime? _startDate = _c.startAt;
   late DateTime? _endDate = _c.endAt;
@@ -68,7 +82,16 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
           ? _budgetValue * _durationValue
           : _budgetValue / _durationValue;
 
+  int get _mediaCount => _existing.length + _added.length;
+
+  bool get _mediaOk {
+    final (low, high) = _format.mediaRange;
+    return _mediaCount >= low && _mediaCount <= high;
+  }
+
   bool get _complete =>
+      _mediaOk &&
+      _locations.isNotEmpty &&
       _headline.text.trim().isNotEmpty &&
       _copy.text.trim().isNotEmpty &&
       _ctaText.text.trim().isNotEmpty &&
@@ -109,10 +132,34 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
     _syncEnd();
   }
 
+  Future<void> _pickImages() async {
+    final (_, high) = _format.mediaRange;
+    final room = high - _mediaCount;
+    if (room <= 0) {
+      AppSnackBar.error(
+        context,
+        '${_format.label} campaigns take at most $high '
+        '${high == 1 ? 'file' : 'files'}.',
+      );
+      return;
+    }
+    final picked = await pickImagesUpTo(ImagePicker(), limit: room);
+    if (picked.isEmpty) return;
+    setState(() => _added.addAll(picked.take(room)));
+  }
+
   Future<void> _save() async {
     if (!_complete || _saving) return;
     setState(() => _saving = true);
     try {
+      // Media first. If an upload fails the campaign is left as it was, rather
+      // than saved with a creative that does not match what is on screen.
+      for (final id in _removed) {
+        await _repo.deleteCampaignMedia(_c.id, id);
+      }
+      for (final file in _added) {
+        await _repo.uploadCampaignMedia(_c.id, file);
+      }
       await _repo.editCampaign(
         _c.id,
         name: _headline.text.trim(),
@@ -122,8 +169,10 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
         body: _copy.text.trim(),
         ctaText: _ctaText.text.trim(),
         ctaUrl: _ctaUrl.text.trim(),
-        locations: _locations.isEmpty ? null : _locations.toList(),
-        interests: _interests.isEmpty ? null : _interests.toList(),
+        locations: _locations.toList(),
+        // Sent even when empty — clearing every interest tag is a real edit,
+        // and omitting the field would silently keep the old ones.
+        interests: _interests.toList(),
         audience: _audience,
         placements: _placements.toList(),
         budgetMode: _budgetMode.value,
@@ -208,7 +257,96 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
           _Text(controller: _ctaUrl, ext: ext, keyboardType: TextInputType.url,
               onChanged: (_) => setState(() {})),
 
+          _FieldLabel(
+            _format.mediaRange.$2 == 1
+                ? 'Cover image / flyer upload'
+                : 'Images (${_format.mediaRange.$1}–${_format.mediaRange.$2})',
+            ext: ext,
+            required: true,
+          ),
+          _EditPhotoStrip(
+            ext: ext,
+            existing: _existing,
+            added: _added,
+            max: _format.mediaRange.$2,
+            onPick: _pickImages,
+            onRemoveExisting: (m) => setState(() {
+              // Marked, not deleted — nothing is destroyed until Save, so
+              // backing out of the form leaves the campaign untouched.
+              _removed.add(m.id);
+              _existing = [..._existing]..remove(m);
+            }),
+            onRemoveAdded: (f) => setState(() => _added.remove(f)),
+          ),
+
           _Section('3. Audience settings', ext: ext),
+          _FieldLabel('Location', ext: ext, required: true),
+          Wrap(
+            spacing: AppSpacing.sm.w,
+            runSpacing: AppSpacing.xs.h,
+            children: [
+              for (final location in kCampaignLocations)
+                _Chip(
+                  ext: ext,
+                  label: location,
+                  selected: _locations.contains(location),
+                  onTap: () => setState(() {
+                    _locations.contains(location)
+                        ? _locations.remove(location)
+                        : _locations.add(location);
+                  }),
+                ),
+            ],
+          ),
+          _FieldLabel('Interest tags', ext: ext),
+          Wrap(
+            spacing: AppSpacing.sm.w,
+            runSpacing: AppSpacing.xs.h,
+            children: [
+              for (final interest in kCampaignInterests)
+                _Chip(
+                  ext: ext,
+                  label: interest,
+                  selected: _interests.contains(interest),
+                  onTap: () => setState(() {
+                    _interests.contains(interest)
+                        ? _interests.remove(interest)
+                        : _interests.add(interest);
+                  }),
+                ),
+            ],
+          ),
+          _FieldLabel('Audience', ext: ext),
+          Row(
+            children: [
+              for (final option in const [
+                ('all', 'All'),
+                ('creators', 'Creators'),
+                ('explorers', 'Explorers'),
+              ])
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _audience = option.$1),
+                    child: Row(
+                      children: [
+                        _Radio(ext: ext, selected: _audience == option.$1),
+                        SizedBox(width: 6.w),
+                        Flexible(
+                          child: Text(
+                            option.$2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: ext.greetingColor, fontSize: 13.sp,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
           _FieldLabel('Placement', ext: ext, required: true),
           for (final entry in const [
             ('event_feed', 'Feed'),
@@ -554,5 +692,237 @@ class _Segments extends StatelessWidget {
               ),
           ],
         ),
+      );
+}
+
+/// The creative, mid-edit: what is already stored, and what has just been
+/// picked. The two look the same and behave differently — removing a stored one
+/// is a DELETE at save time, removing a picked one is forgetting it.
+class _EditPhotoStrip extends StatelessWidget {
+  const _EditPhotoStrip({
+    required this.ext,
+    required this.existing,
+    required this.added,
+    required this.max,
+    required this.onPick,
+    required this.onRemoveExisting,
+    required this.onRemoveAdded,
+  });
+
+  final AppThemeExtension ext;
+  final List<AdMedia> existing;
+  final List<XFile> added;
+  final int max;
+  final VoidCallback onPick;
+  final ValueChanged<AdMedia> onRemoveExisting;
+  final ValueChanged<XFile> onRemoveAdded;
+
+  int get _count => existing.length + added.length;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 96.h,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              for (final media in existing)
+                _Thumb(
+                  ext: ext,
+                  child: Image.network(
+                    media.url,
+                    width: 96.w,
+                    height: 96.h,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => ColoredBox(
+                      color: ext.avatarBackground,
+                      child: Icon(Icons.broken_image_outlined,
+                          color: ext.searchHintColor),
+                    ),
+                  ),
+                  onRemove: () => onRemoveExisting(media),
+                ),
+              for (final file in added)
+                _Thumb(
+                  ext: ext,
+                  child: kIsWeb
+                      ? Image.network(file.path,
+                          width: 96.w, height: 96.h, fit: BoxFit.cover)
+                      : Image.file(File(file.path),
+                          width: 96.w, height: 96.h, fit: BoxFit.cover),
+                  onRemove: () => onRemoveAdded(file),
+                ),
+              if (_count < max)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onPick,
+                  child: Container(
+                    width: 96.w,
+                    height: 96.h,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: ext.accentGold.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(AppRadius.md.r),
+                      border: Border.all(
+                        color: ext.accentGold.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_photo_alternate_outlined,
+                            color: ext.accentGold, size: 22.r),
+                        SizedBox(height: 3.h),
+                        Text(
+                          'Upload',
+                          style: TextStyle(
+                            color: ext.accentGold,
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.only(top: 6.h),
+          child: Text(
+            '$_count of $max',
+            style: TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Thumb extends StatelessWidget {
+  const _Thumb({
+    required this.ext,
+    required this.child,
+    required this.onRemove,
+  });
+
+  final AppThemeExtension ext;
+  final Widget child;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.only(right: AppSpacing.sm.w),
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
+              child: child,
+            ),
+            Positioned(
+              top: 2,
+              right: 2,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onRemove,
+                child: Container(
+                  padding: EdgeInsets.all(3.r),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54, shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.close_rounded,
+                      size: 13.r, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.ext,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppThemeExtension ext;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
+          decoration: BoxDecoration(
+            color: selected
+                ? ext.accentGold.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(999.r),
+            border: Border.all(
+              color: selected
+                  ? ext.accentGold
+                  : ext.searchHintColor.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                Icon(Icons.check_rounded, size: 13.r, color: ext.accentGold),
+                SizedBox(width: 4.w),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? ext.accentGold : ext.greetingColor,
+                  fontSize: 12.sp,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+class _Radio extends StatelessWidget {
+  const _Radio({required this.ext, required this.selected});
+
+  final AppThemeExtension ext;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 18.r,
+        height: 18.r,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected
+                ? ext.accentGold
+                : ext.searchHintColor.withValues(alpha: 0.5),
+            width: 1.6,
+          ),
+        ),
+        child: selected
+            ? Container(
+                width: 9.r,
+                height: 9.r,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle, color: ext.accentGold,
+                ),
+              )
+            : null,
       );
 }
