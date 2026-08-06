@@ -117,10 +117,9 @@ class CreateBottomSheet extends StatelessWidget {
                   icon: Icons.edit_note_rounded,
                   iconColor: ext.infoBlue,
                   iconBgColor: ext.infoBlue.withValues(alpha: 0.12),
-                  title: 'Post a Request',
+                  title: 'Request a photographer',
                   subtitle: 'Free  ·  Live straight away',
-                  description:
-                      'Looking for a photographer? Post your event details and let them come to you.',
+                  description: 'Book coverage for an event.',
                   badgeLabel: 'Free',
                   badgeColor: const Color(0xFF10B981),
                   ext: ext,
