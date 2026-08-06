@@ -22,10 +22,16 @@ class FoundPhotoViewerPage extends StatefulWidget {
     required this.photos,
     this.initialIndex = 0,
     this.onViewAlbum,
+    this.showSocialActions = true,
   });
 
   final List<Photo> photos;
   final int initialIndex;
+
+  /// Whether to offer the like/comment/save/share rail. False where the photos
+  /// are someone's work on show rather than photos of you — see
+  /// [FoundPhotoStage.showSocialActions].
+  final bool showSocialActions;
 
   /// Shown as "View album" on the photo. Left null when the viewer was pushed
   /// from the album page itself.
@@ -138,6 +144,7 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
                       photo: widget.photos[i],
                       isActive: i == _index,
                       onViewAlbum: widget.onViewAlbum,
+                      showSocialActions: widget.showSocialActions,
                     ),
                   ),
                 ),

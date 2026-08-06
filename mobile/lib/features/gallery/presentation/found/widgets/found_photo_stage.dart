@@ -23,9 +23,16 @@ class FoundPhotoStage extends StatelessWidget {
     required this.photo,
     required this.isActive,
     this.onViewAlbum,
+    this.showSocialActions = true,
   });
 
   final Photo photo;
+
+  /// Whether the photo is something to react to. False where the viewer is
+  /// showing someone's work rather than a photo of you — a portfolio opened
+  /// while booking has nothing to like, and the rail would be acting on a
+  /// sample id the picture endpoints know nothing about.
+  final bool showSocialActions;
 
   /// False for the off-screen neighbours in the viewer's PageView — keeps
   /// their videos paused.
@@ -91,24 +98,25 @@ class FoundPhotoStage extends StatelessWidget {
                 child: FoundVisibilityBadge(isPublic: photo.isPublic),
               ),
 
-              Positioned(
-                right: AppSpacing.md.w,
-                top: AppSpacing.sm.h,
-                bottom: AppSpacing.huge.h,
-                child: Align(
-                  alignment: const Alignment(0, -0.1),
-                  // The rail is sized to the *photo*, and a wide landscape shot
-                  // leaves it very little height — scaleDown keeps every action
-                  // reachable instead of clipping the bottom one off.
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: FoundActionRail(
-                      key: ValueKey('found_actions_${photo.id}'),
-                      photo: photo,
+              if (showSocialActions)
+                Positioned(
+                  right: AppSpacing.md.w,
+                  top: AppSpacing.sm.h,
+                  bottom: AppSpacing.huge.h,
+                  child: Align(
+                    alignment: const Alignment(0, -0.1),
+                    // The rail is sized to the *photo*, and a wide landscape
+                    // shot leaves it very little height — scaleDown keeps every
+                    // action reachable instead of clipping the bottom one off.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: FoundActionRail(
+                        key: ValueKey('found_actions_${photo.id}'),
+                        photo: photo,
+                      ),
                     ),
                   ),
                 ),
-              ),
 
               // Cleared of the player's own controls on video: the scrubber and
               // timestamps are anchored to the same bottom edge, so a meta bar

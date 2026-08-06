@@ -103,6 +103,11 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
                 photographerAvatarUrl: _p.profileUrl ?? ''),
         ],
         initialIndex: index,
+        // A portfolio is the photographer's work on show while you decide
+        // whether to book them — there is nothing here to like, comment on or
+        // save, and the rail would be acting on sample ids the picture
+        // endpoints have never heard of.
+        showSocialActions: false,
       ),
     ));
   }
