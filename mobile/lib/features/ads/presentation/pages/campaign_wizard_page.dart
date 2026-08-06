@@ -1622,6 +1622,7 @@ class _ReviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       margin: EdgeInsets.only(bottom: AppSpacing.md.h),
       padding: EdgeInsets.all(AppSpacing.lg.w),
       decoration: BoxDecoration(

@@ -23,16 +23,26 @@ import 'package:skidoo_app/features/ads/presentation/widgets/campaign_status_pil
 /// The four review cards are the same four the wizard ends on, deliberately —
 /// the thing you approved is the thing you see afterwards.
 class CampaignDetailsPage extends StatefulWidget {
-  const CampaignDetailsPage({super.key, required this.campaign});
+  const CampaignDetailsPage({
+    super.key,
+    required this.campaign,
+    this.repository,
+  });
 
   final AdCampaign campaign;
+
+  /// Injectable so this screen can be pumped. It refetches on init, which in a
+  /// test leaves a live HTTP timeout outliving the widget tree — the page was
+  /// untestable, which is why its cards could come out four different widths
+  /// with nothing to notice.
+  final AdsRepository? repository;
 
   @override
   State<CampaignDetailsPage> createState() => _CampaignDetailsPageState();
 }
 
 class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
-  final _repo = AdsRepository();
+  late final _repo = widget.repository ?? AdsRepository();
 
   late AdCampaign _campaign = widget.campaign;
   bool _busy = false;
@@ -468,6 +478,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
           Padding(
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _Card(
                   title: '1. Campaign Type',
@@ -708,6 +719,9 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      // Full width, so the four cards form one column rather than four
+      // centred blocks of whatever width their longest line happened to be.
+      width: double.infinity,
       margin: EdgeInsets.only(bottom: AppSpacing.md.h),
       padding: EdgeInsets.all(AppSpacing.lg.w),
       decoration: BoxDecoration(
