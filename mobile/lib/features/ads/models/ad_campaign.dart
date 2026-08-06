@@ -29,6 +29,12 @@ class AdCampaign {
 
   final DateTime? submittedAt;
 
+  /// "Paused on August 2, 2026", "Completed 14-day campaign on…" — the details
+  /// screen states when, so it has to be carried.
+  final DateTime? pausedAt;
+  final DateTime? completedAt;
+  final String? duplicatedFromId;
+
   /// When the 48-hour payment window closes.
   final DateTime? paymentDueAt;
 
@@ -42,6 +48,13 @@ class AdCampaign {
   final int clicks;
   final int reach;
   final List<String> placements;
+
+  /// Null when nothing has been seen yet — not zero, which reads as "nobody
+  /// clicked" when the truth is "nobody has seen it".
+  final double? ctr;
+  final double? costPerConversion;
+  final double? impressionsTrendPct;
+  final int conversions;
 
   final double spent;
   final String currency;
@@ -81,6 +94,13 @@ class AdCampaign {
     this.ctaText,
     this.ctaUrl,
     this.submittedAt,
+    this.pausedAt,
+    this.completedAt,
+    this.duplicatedFromId,
+    this.ctr,
+    this.costPerConversion,
+    this.impressionsTrendPct,
+    this.conversions = 0,
     this.paymentDueAt,
     this.paymentSecondsLeft,
     this.impressions = 0,
@@ -124,6 +144,17 @@ class AdCampaign {
         submittedAt: j['submitted_at'] != null
             ? DateTime.tryParse(j['submitted_at'] as String)
             : null,
+        pausedAt: j['paused_at'] != null
+            ? DateTime.tryParse(j['paused_at'] as String)
+            : null,
+        completedAt: j['completed_at'] != null
+            ? DateTime.tryParse(j['completed_at'] as String)
+            : null,
+        duplicatedFromId: j['duplicated_from_id'] as String?,
+        ctr: (j['ctr'] as num?)?.toDouble(),
+        costPerConversion: (j['cost_per_conversion'] as num?)?.toDouble(),
+        impressionsTrendPct: (j['impressions_trend_pct'] as num?)?.toDouble(),
+        conversions: (j['conversions'] as num?)?.toInt() ?? 0,
         paymentDueAt: j['payment_due_at'] != null
             ? DateTime.tryParse(j['payment_due_at'] as String)
             : null,
@@ -242,6 +273,11 @@ enum CampaignStatus {
 
   /// "Cancel Campaign Submission" — only while it is actually queued.
   bool get canWithdraw => this == pendingReview;
+
+  /// Running a finished campaign again — the design offers it on a closed one,
+  /// and it is just as useful on anything that has stopped.
+  bool get canDuplicate =>
+      this == completed || this == paused || this == rejected;
 }
 
 /// Image is one picture, Carousel two or three, Video one clip.

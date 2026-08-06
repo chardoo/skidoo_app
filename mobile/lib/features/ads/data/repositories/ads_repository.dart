@@ -945,22 +945,70 @@ class AdsRepository {
     return AdCampaign.fromJson(data);
   }
 
-  Future<void> pauseCampaign(String campaignId) async {
+  /// Stop spending, keep the budget.
+  ///
+  /// This used to PATCH {"status": "paused"} at the update endpoint, whose
+  /// schema has no status field — so it was dropped, answered 200, and the
+  /// button never worked. There is a real endpoint now.
+  Future<AdCampaign> pauseCampaign(String campaignId) async {
     debugPrint('$_tag pauseCampaign → id=$campaignId');
-    final resp = await _dio.patch(
-      '/ads/campaigns/$campaignId',
-      data: {'status': 'paused'},
-    );
-    debugPrint('$_tag pauseCampaign ← status=${resp.statusCode}');
+    final resp = await _dio.post('/ads/campaigns/$campaignId/pause');
+    return AdCampaign.fromJson(_unwrap<Map<String, dynamic>>(resp) ?? {});
   }
 
-  Future<void> resumeCampaign(String campaignId) async {
+  Future<AdCampaign> resumeCampaign(String campaignId) async {
     debugPrint('$_tag resumeCampaign → id=$campaignId');
-    final resp = await _dio.patch(
-      '/ads/campaigns/$campaignId',
-      data: {'status': 'active'},
-    );
-    debugPrint('$_tag resumeCampaign ← status=${resp.statusCode}');
+    final resp = await _dio.post('/ads/campaigns/$campaignId/resume');
+    return AdCampaign.fromJson(_unwrap<Map<String, dynamic>>(resp) ?? {});
+  }
+
+  /// Copy a finished campaign into a fresh draft, creative and all.
+  Future<AdCampaign> duplicateCampaign(String campaignId) async {
+    debugPrint('$_tag duplicateCampaign → id=$campaignId');
+    final resp = await _dio.post('/ads/campaigns/$campaignId/duplicate');
+    return AdCampaign.fromJson(_unwrap<Map<String, dynamic>>(resp) ?? {});
+  }
+
+  /// Save the edit form — every section of it.
+  Future<AdCampaign> editCampaign(
+    String campaignId, {
+    String? name,
+    String? objective,
+    String? format,
+    String? headline,
+    String? body,
+    String? ctaText,
+    String? ctaUrl,
+    List<String>? locations,
+    List<String>? interests,
+    String? audience,
+    List<String>? placements,
+    String? budgetMode,
+    double? budgetAmount,
+    int? durationDays,
+    String? startAt,
+    String? endAt,
+  }) async {
+    debugPrint('$_tag editCampaign → id=$campaignId');
+    final resp = await _dio.patch('/ads/campaigns/$campaignId', data: {
+      if (name != null) 'name': name,
+      if (objective != null) 'objective': objective,
+      if (format != null) 'format': format,
+      if (headline != null) 'headline': headline,
+      if (body != null) 'body': body,
+      if (ctaText != null) 'cta_text': ctaText,
+      if (ctaUrl != null) 'cta_url': ctaUrl,
+      if (locations != null) 'locations': locations,
+      if (interests != null) 'interests': interests,
+      if (audience != null) 'audience': audience,
+      if (placements != null) 'placements': placements,
+      if (budgetMode != null) 'budget_mode': budgetMode,
+      if (budgetAmount != null) 'budget_amount': budgetAmount,
+      if (durationDays != null) 'duration_days': durationDays,
+      if (startAt != null) 'start_at': startAt,
+      if (endAt != null) 'end_at': endAt,
+    });
+    return AdCampaign.fromJson(_unwrap<Map<String, dynamic>>(resp) ?? {});
   }
 
   Future<void> deleteCampaign(String campaignId) async {

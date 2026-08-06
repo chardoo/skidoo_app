@@ -211,4 +211,94 @@ void main() {
       expect(c.placements, isEmpty);
     });
   });
+
+  _lifecycle();
+}
+
+/// The lifecycle the details screen drives — pause, resume, duplicate — and the
+/// numbers it shows.
+void _lifecycle() {
+  group('what a status allows', () {
+    test('only a live campaign can be paused, only a paused one resumed', () {
+      expect(CampaignStatus.active.canPause, isTrue);
+      expect(CampaignStatus.paused.canPause, isFalse);
+      expect(CampaignStatus.paused.canResume, isTrue);
+      expect(CampaignStatus.active.canResume, isFalse);
+    });
+
+    test('a finished campaign can be run again', () {
+      expect(CampaignStatus.completed.canDuplicate, isTrue);
+      expect(CampaignStatus.paused.canDuplicate, isTrue);
+      // A live one does not need duplicating; it needs leaving alone.
+      expect(CampaignStatus.active.canDuplicate, isFalse);
+      expect(CampaignStatus.draft.canDuplicate, isFalse);
+    });
+  });
+
+  group('the performance summary', () {
+    AdCampaign parse(Map<String, dynamic> extra) => AdCampaign.fromJson({
+          'id': 'c1',
+          'name': 'Promo',
+          'objective': 'services',
+          'budget_amount': 700.0,
+          'spent': 350.0,
+          'currency': 'GHS',
+          'status': 'active',
+          'createdAt': '2026-08-01T10:00:00Z',
+          'updatedAt': '2026-08-01T10:00:00Z',
+          ...extra,
+        });
+
+    test('reads the figures the four cards show', () {
+      final c = parse({
+        'impressions': 12400,
+        'clicks': 512,
+        'conversions': 94,
+        'ctr': 4.1,
+        'cost_per_conversion': 3.72,
+        'impressions_trend_pct': 14.0,
+      });
+      expect(c.impressions, 12400);
+      expect(c.clicks, 512);
+      expect(c.conversions, 94);
+      expect(c.ctr, 4.1);
+      expect(c.costPerConversion, 3.72);
+      expect(c.impressionsTrendPct, 14.0);
+    });
+
+    test('an unseen campaign has no CTR and no trend, rather than zeroes', () {
+      // Zero would read as "nobody clicked" and "flat this week"; neither is
+      // true of a campaign that has not run.
+      final c = parse({'impressions': 0, 'clicks': 0});
+      expect(c.ctr, isNull);
+      expect(c.impressionsTrendPct, isNull);
+      expect(c.costPerConversion, isNull);
+    });
+
+    test('a fall is carried as a negative, not dropped', () {
+      expect(parse({'impressions_trend_pct': -8.5}).impressionsTrendPct, -8.5);
+    });
+  });
+
+  group('lifecycle timestamps', () {
+    test('paused and completed dates are read for the notices', () {
+      final c = AdCampaign.fromJson({
+        'id': 'c1',
+        'name': 'Promo',
+        'objective': 'awareness',
+        'budget_amount': 700.0,
+        'spent': 0,
+        'currency': 'GHS',
+        'status': 'paused',
+        'paused_at': '2026-08-02T09:00:00Z',
+        'completed_at': null,
+        'duplicated_from_id': 'original-1',
+        'createdAt': '2026-08-01T10:00:00Z',
+        'updatedAt': '2026-08-01T10:00:00Z',
+      });
+      expect(c.pausedAt, isNotNull);
+      expect(c.completedAt, isNull);
+      expect(c.duplicatedFromId, 'original-1');
+    });
+  });
 }
