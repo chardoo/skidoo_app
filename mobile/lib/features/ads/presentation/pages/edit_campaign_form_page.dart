@@ -58,6 +58,12 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
   late final _locations = _c.locations.toSet();
   late final _interests = _c.interests.toSet();
   late String _audience = _c.audience;
+  // Prefilled from the campaign, falling back to the widest band rather than a
+  // narrower guess that would silently shrink the audience on save.
+  late RangeValues _ages = RangeValues(
+    (_c.ageMin ?? 18).toDouble(),
+    (_c.ageMax ?? 65).toDouble(),
+  );
 
   /// Media already on the server, and the files picked in this session. Kept
   /// apart because removing one is a DELETE and removing the other is just
@@ -174,6 +180,8 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
         // and omitting the field would silently keep the old ones.
         interests: _interests.toList(),
         audience: _audience,
+        ageMin: _ages.start.round(),
+        ageMax: _ages.end.round(),
         placements: _placements.toList(),
         budgetMode: _budgetMode.value,
         budgetAmount: _budgetValue,
@@ -346,6 +354,30 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
                   ),
                 ),
             ],
+          ),
+          _FieldLabel('Target age', ext: ext),
+          Text(
+            '${_ages.start.round()} – ${_ages.end.round()} years',
+            style: TextStyle(
+              color: ext.accentGold,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          RangeSlider(
+            values: _ages,
+            min: 13,
+            max: 65,
+            divisions: 65 - 13,
+            activeColor: ext.accentGold,
+            inactiveColor: ext.searchHintColor.withValues(alpha: 0.25),
+            labels: RangeLabels(
+              '${_ages.start.round()}', '${_ages.end.round()}',
+            ),
+            onChanged: (v) {
+              if (v.end - v.start < 1) return;
+              setState(() => _ages = v);
+            },
           ),
           _FieldLabel('Placement', ext: ext, required: true),
           for (final entry in const [

@@ -214,6 +214,7 @@ void main() {
 
   _lifecycle();
   _editPrefill();
+  _targetAge();
 }
 
 /// The lifecycle the details screen drives — pause, resume, duplicate — and the
@@ -375,6 +376,52 @@ void _editPrefill() {
       });
       final (low, high) = c.format.mediaRange;
       expect(c.media.length >= low && c.media.length <= high, isTrue);
+    });
+  });
+}
+
+/// The audience card the design draws: Locations, Target Age, Interests.
+///
+/// The card rendered Placements and nothing else, and the age band was
+/// collected by no screen at all — the repository would send it, the server
+/// would store it, and nothing ever set it.
+void _targetAge() {
+  AdCampaign campaign(Map<String, dynamic> extra) => AdCampaign.fromJson({
+        'id': 'c1',
+        'name': 'Promo',
+        'objective': 'services',
+        'budget_amount': 700.0,
+        'spent': 0,
+        'currency': 'GHS',
+        'status': 'active',
+        'createdAt': '2026-08-01T10:00:00Z',
+        'updatedAt': '2026-08-01T10:00:00Z',
+        ...extra,
+      });
+
+  group('target age', () {
+    test('reads the band and labels it the way the card shows it', () {
+      final c = campaign({'age_min': 25, 'age_max': 55});
+      expect(c.ageMin, 25);
+      expect(c.ageMax, 55);
+      expect(c.ageLabel, '25 – 55 years');
+    });
+
+    test('no band means no line, rather than "null – null years"', () {
+      expect(campaign({}).ageLabel, isNull);
+    });
+
+    test('one end set still produces a readable band', () {
+      expect(campaign({'age_min': 30}).ageLabel, '30 – 65 years');
+      expect(campaign({'age_max': 40}).ageLabel, '13 – 40 years');
+    });
+
+    test('the wizard starts at the widest band it offers', () {
+      // Narrowing an audience should be a decision, not something inherited
+      // from a default nobody chose.
+      final d = CampaignDraft();
+      expect(d.ages.start, 18);
+      expect(d.ages.end, 65);
     });
   });
 }

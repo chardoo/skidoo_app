@@ -33,6 +33,10 @@ class CampaignDraft {
   final locations = <String>{};
   final interests = <String>{};
   String audience = 'all';
+  /// Who to show it to, by age. Defaults to the widest the picker offers
+  /// rather than a guess — narrowing is a decision, and it should be one the
+  /// advertiser makes rather than one they inherit.
+  RangeValues ages = const RangeValues(18, 65);
   final placements = <String>{'event_feed', 'explore'};
 
   BudgetMode budgetMode = BudgetMode.daily;
@@ -167,6 +171,8 @@ class _CampaignWizardPageState extends State<CampaignWizardPage> {
         interests: _draft.interests.toList(),
         audience: _draft.audience,
         placements: _draft.placements.toList(),
+        ageMin: _draft.ages.start.round(),
+        ageMax: _draft.ages.end.round(),
         budgetMode: _draft.budgetMode.value,
         budgetAmount: _draft.budgetValue,
         durationDays: _draft.durationValue,
@@ -1064,6 +1070,15 @@ class _AudienceStep extends StatelessWidget {
               ),
           ],
         ),
+        _Label('Target age', ext: ext),
+        _AgeRange(
+          ext: ext,
+          values: draft.ages,
+          onChanged: (v) {
+            draft.ages = v;
+            onChanged();
+          },
+        ),
         _Label('Placement', ext: ext, required: true),
         for (final entry in _placementLabels.entries)
           GestureDetector(
@@ -1132,6 +1147,56 @@ class _Dot extends StatelessWidget {
               )
             : null,
       );
+}
+
+/// The age band, as a range with its numbers spelled out above it — a slider
+/// whose value you cannot read is a control you cannot set deliberately.
+class _AgeRange extends StatelessWidget {
+  const _AgeRange({
+    required this.ext,
+    required this.values,
+    required this.onChanged,
+  });
+
+  final AppThemeExtension ext;
+  final RangeValues values;
+  final ValueChanged<RangeValues> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${values.start.round()} – ${values.end.round()} years',
+          style: TextStyle(
+            color: ext.accentGold,
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        RangeSlider(
+          values: values,
+          min: 13,
+          max: 65,
+          // One notch per year is unusable on a phone; five is enough to say
+          // "25 to 55" and land on it every time.
+          divisions: (65 - 13) ~/ 1,
+          activeColor: ext.accentGold,
+          inactiveColor: ext.searchHintColor.withValues(alpha: 0.25),
+          labels: RangeLabels(
+            '${values.start.round()}',
+            '${values.end.round()}',
+          ),
+          onChanged: (v) {
+            // Never let the handles cross into a band that means nothing.
+            if (v.end - v.start < 1) return;
+            onChanged(v);
+          },
+        ),
+      ],
+    );
+  }
 }
 
 class _Choice extends StatelessWidget {
@@ -1481,6 +1546,8 @@ class _ReviewStep extends StatelessWidget {
           onEdit: () => onEdit(2),
           rows: [
             ('Locations', draft.locations.join(', ')),
+            ('Target Age',
+                '${draft.ages.start.round()} – ${draft.ages.end.round()} years'),
             if (draft.interests.isNotEmpty)
               ('Interests', draft.interests.join(', ')),
             ('Audience', draft.audience[0].toUpperCase() +

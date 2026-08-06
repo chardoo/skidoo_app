@@ -488,10 +488,14 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
                   title: '3. Audience',
                   ext: ext,
                   rows: [
+                    if (c.locations.isNotEmpty)
+                      ('Locations', c.locations.join(', ')),
+                    if (c.ageLabel != null) ('Target Age', c.ageLabel!),
+                    if (c.interests.isNotEmpty)
+                      ('Interests', c.interests.join(', ')),
                     if (c.placements.isNotEmpty)
-                      ('Placements', c.placements
-                          .map(_placementLabel)
-                          .join(', ')),
+                      ('Placements',
+                          c.placements.map(_placementLabel).join(', ')),
                   ],
                 ),
                 _Card(

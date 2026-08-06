@@ -56,6 +56,16 @@ class AdCampaign {
   final List<String> interests;
   final String audience;
 
+  /// "Target Age: 25 – 55 years". Null when the campaign never set one.
+  final int? ageMin;
+  final int? ageMax;
+
+  /// The card's line, or null when there is no range to show — rather than
+  /// "null – null years".
+  String? get ageLabel => (ageMin == null && ageMax == null)
+      ? null
+      : '${ageMin ?? 13} – ${ageMax ?? 65} years';
+
   /// Null when nothing has been seen yet — not zero, which reads as "nobody
   /// clicked" when the truth is "nobody has seen it".
   final double? ctr;
@@ -117,6 +127,8 @@ class AdCampaign {
     this.locations = const [],
     this.interests = const [],
     this.audience = 'all',
+    this.ageMin,
+    this.ageMax,
     required this.spent,
     required this.currency,
     required this.status,
@@ -182,6 +194,8 @@ class AdCampaign {
             .whereType<String>()
             .toList(),
         audience: j['audience'] as String? ?? 'all',
+        ageMin: (j['age_min'] as num?)?.toInt(),
+        ageMax: (j['age_max'] as num?)?.toInt(),
         spent:
             (j['spent'] as num? ?? j['amount_spent'] as num? ?? 0).toDouble(),
         currency: j['currency'] as String? ?? 'GHS',
