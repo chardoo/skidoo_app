@@ -7,9 +7,16 @@
 	     and matches this app's TEAMID.bundle.id against the appIDs in it.
 
 	     Three things have to agree or the link opens Safari with no error
-	     anywhere: this domain, the appIDs in that file (set IOS_APP_ID on the
-	     gateway), and the bundle identifier in the Xcode project — which is
-	     still com.example.jperg and cannot ship as that.
+	     anywhere: this domain, the appIDs in that file (IOS_APP_ID, which feeds
+	     scripts/gen_wellknown.py), and PRODUCT_BUNDLE_IDENTIFIER in the Xcode
+	     project. All three currently say CR97449L96.com.example.jperg.
+
+	     That id looks like a placeholder but is the real, registered one —
+	     Apple issued a Store provisioning profile for it under CR97449L96
+	     (PICCO TECHNOLOGIES LTD). Apple does not restrict com.example.*; that
+	     is Google's rule, and it applies to the Play package, not to this.
+	     Changing it here means changing IOS_APP_ID and the deployed AASA in the
+	     same breath, or Universal Links silently stop working.
 
 	     `applinks:` alone is enough for links; `webcredentials:` lets a saved
 	     password fill in both places. -->
