@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_meta.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
 
 /// Where a photographer is, how many follow them, what they are rated.
 ///

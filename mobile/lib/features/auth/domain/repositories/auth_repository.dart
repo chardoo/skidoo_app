@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:skidoo_app/models/Auth/LoginResponse.dart';
+import 'package:jperg_app/models/Auth/LoginResponse.dart';
 
 abstract class AuthRepository {
   Future<LoginResponseObject> login(String email, String password);

@@ -1,5 +1,5 @@
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/user_profile/domain/repositories/user_profile_repository.dart';
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/user_profile/domain/repositories/user_profile_repository.dart';
 
 class GetProfileUseCase implements UseCase<Map<String, dynamic>, NoParams> {
   final UserProfileRepository _repository;

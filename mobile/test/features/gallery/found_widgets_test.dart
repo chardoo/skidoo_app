@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_album.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_album_section.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_filter_button.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_header.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_album_section.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_filter_button.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_header.dart';
 
 Map<String, dynamic> groupJson({int photoCount = 21, int preview = 6}) => {
       'event': {

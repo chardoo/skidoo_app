@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/features/admin/data/models/app_config.dart';
-import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/features/admin/data/models/app_config.dart';
+import 'package:jperg_app/features/admin/data/models/exchange_rates.dart';
 
 class AppConfigRepository {
   AppConfigRepository(Api api) : _dio = api.dio;

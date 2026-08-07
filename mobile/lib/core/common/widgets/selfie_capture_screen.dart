@@ -2,11 +2,11 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/platform/face_check.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/platform/face_check.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 /// Full-screen front-camera selfie capture with on-device face validation.
 ///

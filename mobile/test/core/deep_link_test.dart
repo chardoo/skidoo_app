@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/core/deep_links/deep_link.dart';
 
 /// What a link means, decided away from any Navigator.
 ///

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/common/widgets/app_phone_field.dart';
-import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/common/widgets/app_phone_field.dart';
+import 'package:jperg_app/core/common/widgets/app_text_field.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 /// Field height is easy to inflate by accident — the border lives on an
 /// AnimatedContainer rather than on InputDecorator, so a floating `label`

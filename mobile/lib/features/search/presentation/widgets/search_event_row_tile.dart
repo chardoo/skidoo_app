@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/number_format.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
-import 'package:skidoo_app/features/search/domain/entities/search_models.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/search_result_row.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/number_format.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/features/search/presentation/widgets/search_result_row.dart';
 
 /// An Events result: cover thumbnail, event name, photo count, chevron.
 class SearchEventRowTile extends StatelessWidget {
@@ -50,12 +50,12 @@ class SearchEventRowTile extends StatelessWidget {
           height: 48.h,
           child: event.coverUrl.isEmpty
               ? _CoverFallback(ext: ext)
-              : SkidooImage(
+              : JpergImage(
                   imageUrl: event.coverUrl,
                   fit: BoxFit.cover,
                   logicalWidth: 62.w,
                   semanticLabel: 'Cover of ${event.eventName}',
-                  placeholder: (_, __) => const SkidooImagePlaceholder(),
+                  placeholder: (_, __) => const JpergImagePlaceholder(),
                   errorWidget: (_, __, ___) => _CoverFallback(ext: ext),
                 ),
         ),

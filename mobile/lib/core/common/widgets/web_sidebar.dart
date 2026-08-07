@@ -3,27 +3,27 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/features/home/domain/usecases/search_events_usecase.dart';
-import 'package:skidoo_app/core/navigation/app_navigator.dart';
-import 'package:skidoo_app/core/navigation/web_route_observer.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
-import 'package:skidoo_app/features/auth/presentation/widgets/login_bottom_sheet.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
-import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
-import 'package:skidoo_app/features/chat/presentation/widgets/web_messages_panel.dart';
-import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
-import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
-import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page.dart';
-import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/photographers_page.dart';
-import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/core/common/widgets/jperg_logo.dart';
-import 'package:skidoo_app/core/common/widgets/app_section_label.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/home/domain/usecases/search_events_usecase.dart';
+import 'package:jperg_app/core/navigation/app_navigator.dart';
+import 'package:jperg_app/core/navigation/web_route_observer.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
+import 'package:jperg_app/features/auth/presentation/widgets/login_bottom_sheet.dart';
+import 'package:jperg_app/features/auth/presentation/pages/signup_page.dart';
+import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/web_messages_panel.dart';
+import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/discovery_page.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
+import 'package:jperg_app/features/photographers/presentation/bloc/photographer_bloc.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/photographers_page.dart';
+import 'package:jperg_app/features/user_profile/presentation/pages/account_page.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
+import 'package:jperg_app/core/common/widgets/app_section_label.dart';
 
 const double _kSidebarWidth = 240.0;
 const String _kCreatorUrl = 'https://picco-v2.onrender.com/photographer/dashboard';
@@ -1641,7 +1641,7 @@ class _WebTopActionsState extends State<WebTopActions> {
                   icon: Icons.smartphone_rounded,
                   label: 'Get app',
                   onTap: () => launchUrl(
-                    Uri.parse('https://skidoo.app'),
+                    Uri.parse('https://jperg.com'),
                     mode: LaunchMode.externalApplication,
                   ),
                 ),

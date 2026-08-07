@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
-import 'package:skidoo_app/models/chat/chat_room.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_background_service.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
 
 void main() {
   group('ChatBackgroundService.shouldPlayDmSound', () {

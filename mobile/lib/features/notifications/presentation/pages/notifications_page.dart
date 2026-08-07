@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 /// Stub notifications tab — no backend endpoint exists for a real
 /// notifications feed yet, so this shows an empty state matching the app's

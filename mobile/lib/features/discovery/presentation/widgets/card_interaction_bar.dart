@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/follow/data/follow_repository.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/follow/data/follow_repository.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
 
 class CardInteractionBar extends StatelessWidget {
   const CardInteractionBar({

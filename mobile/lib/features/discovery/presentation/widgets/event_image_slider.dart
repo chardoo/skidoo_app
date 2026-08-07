@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 
 // ── Image slider ──────────────────────────────────────────────────────────────
 
@@ -42,14 +42,14 @@ class _EventImageSliderState extends State<EventImageSlider> {
               padding: EdgeInsets.symmetric(horizontal: 6.w),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14.r),
-                child: SkidooImage(
+                child: JpergImage(
                   imageUrl: widget.pics[i].url,
                   semanticLabel: 'Event photo',
                   fit: BoxFit.cover,
                   placeholder: (context, __) =>
-                      Container(color: SkidooImagePlaceholder.colorOf(context)),
+                      Container(color: JpergImagePlaceholder.colorOf(context)),
                   errorWidget: (context, __, ___) => Container(
-                    color: SkidooImagePlaceholder.colorOf(context),
+                    color: JpergImagePlaceholder.colorOf(context),
                     child: const Icon(Icons.broken_image_outlined,
                         color: Colors.white38),
                   ),

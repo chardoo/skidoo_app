@@ -3,8 +3,8 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
 
 /// GET /photographer/events/{id}/images pages the pictures at the top level
 /// and puts the event beside them:

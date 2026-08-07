@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/validators/validators.dart';
+import 'package:jperg_app/core/validators/validators.dart';
 
 /// The password rules are strict — lower, upper, digit, symbol, min length —
 /// and the validator reports them one at a time. Surfacing that only on submit

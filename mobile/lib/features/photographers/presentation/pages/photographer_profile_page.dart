@@ -1,48 +1,48 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/utils/image_pick.dart';
-import 'package:skidoo_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/core/utils/image_pick.dart';
+import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_button.dart';
-import 'package:skidoo_app/core/common/widgets/app_confirm_dialog.dart';
-import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
-import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart'
+import 'package:jperg_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/common/widgets/app_confirm_dialog.dart';
+import 'package:jperg_app/core/config/chat_config.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.dart'
     show CanMessageResult;
-import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
-import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
-import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
-import 'package:skidoo_app/features/chat/presentation/widgets/web_messages_panel.dart';
-import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
-import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_events_usecase.dart';
+import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
+import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/web_messages_panel.dart';
+import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:jperg_app/features/home/presentation/pages/search_results_page.dart';
+import 'package:jperg_app/features/photographers/domain/usecases/get_photographer_events_usecase.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/samples_fullscreen_page.dart';
-import 'package:skidoo_app/features/photographers/presentation/widgets/profile_header.dart';
-import 'package:skidoo_app/features/photographers/presentation/widgets/profile_info_row.dart';
-import 'package:skidoo_app/features/photographers/presentation/widgets/profile_rating_row.dart';
-import 'package:skidoo_app/features/photographers/presentation/widgets/profile_sample_tile.dart';
-import 'package:skidoo_app/core/utils/auth_guard.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/validators/media_validator.dart';
-import 'package:skidoo_app/l10n/app_localizations.dart';
-import 'package:skidoo_app/models/chat/chat_room.dart';
-import 'package:skidoo_app/models/photographer/photographer_event.dart';
-import 'package:skidoo_app/models/photographer/photographer_sample.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
-import 'package:skidoo_app/features/follow/data/follow_repository.dart';
-import 'package:skidoo_app/features/follow/presentation/pages/follow_list_page.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/samples_fullscreen_page.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/profile_header.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/profile_info_row.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/profile_rating_row.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/profile_sample_tile.dart';
+import 'package:jperg_app/core/utils/auth_guard.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/validators/media_validator.dart';
+import 'package:jperg_app/l10n/app_localizations.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/models/photographer/photographer_event.dart';
+import 'package:jperg_app/models/photographer/photographer_sample.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/features/follow/data/follow_repository.dart';
+import 'package:jperg_app/features/follow/presentation/pages/follow_list_page.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 class PhotographerProfilePage extends StatefulWidget {
   const PhotographerProfilePage({super.key, required this.photographer});
@@ -821,7 +821,7 @@ class _EventsTabState extends State<_EventsTab>
               children: [
                 Expanded(
                   child: event.url.isNotEmpty
-                      ? SkidooImage(
+                      ? JpergImage(
                           imageUrl: event.url,
                           semanticLabel: 'Event photo',
                           fit: BoxFit.cover,

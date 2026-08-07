@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
 
 class Api {
   final dio = createDio();

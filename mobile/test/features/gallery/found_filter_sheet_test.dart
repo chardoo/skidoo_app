@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/data/datasources/found_remote_data_source.dart';
-import 'package:skidoo_app/features/gallery/domain/repositories/found_repository.dart';
-import 'package:skidoo_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filter_options.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filters.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_filter_sheet.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/data/datasources/found_remote_data_source.dart';
+import 'package:jperg_app/features/gallery/domain/repositories/found_repository.dart';
+import 'package:jperg_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filter_options.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_filter_sheet.dart';
 
 /// Serves a count per selection, after a controllable delay, so the in-flight
 /// window can be inspected.

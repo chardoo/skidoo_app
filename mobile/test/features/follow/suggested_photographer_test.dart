@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/follow/data/follow_repository.dart';
+import 'package:jperg_app/features/follow/data/follow_repository.dart';
 
 SuggestedPhotographer parse(Map<String, dynamic> extra) =>
     SuggestedPhotographer.fromJson({

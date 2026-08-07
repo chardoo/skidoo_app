@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/admin/data/models/exchange_rates.dart';
+import 'package:jperg_app/features/admin/data/models/exchange_rates.dart';
 
 void main() {
   group('ExchangeRates.fromJson', () {

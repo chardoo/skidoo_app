@@ -3,12 +3,12 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart' as dio;
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
-import 'package:skidoo_app/models/event/Event.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/error/exceptions.dart' as app_ex;
+import 'package:jperg_app/models/event/Event.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 abstract class HomeRemoteDataSource {
   Future<List<Event>> searchEvents(String query);

@@ -1,4 +1,4 @@
-import 'package:skidoo_app/core/error/exceptions.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
 
 /// Why a conversation would not open, in words worth showing someone.
 ///

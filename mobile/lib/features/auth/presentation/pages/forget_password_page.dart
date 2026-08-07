@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_button.dart';
-import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/core/validators/validators.dart';
-import 'package:skidoo_app/features/auth/domain/usecases/request_password_reset_usecase.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/verify_reset_code_page.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/common/widgets/app_text_field.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/validators/validators.dart';
+import 'package:jperg_app/features/auth/domain/usecases/request_password_reset_usecase.dart';
+import 'package:jperg_app/features/auth/presentation/pages/verify_reset_code_page.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 /// Step 1 of password reset — "Reset your password" (see
 /// mobile/docs/FRONTEND_RESET_PASSWORD.md). Sends a 6-digit code to the

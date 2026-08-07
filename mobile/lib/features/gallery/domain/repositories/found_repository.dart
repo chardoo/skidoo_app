@@ -1,7 +1,7 @@
-import 'package:skidoo_app/features/gallery/data/datasources/found_remote_data_source.dart'
+import 'package:jperg_app/features/gallery/data/datasources/found_remote_data_source.dart'
     show FoundAlbumsPage, FoundPhotosPage;
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filter_options.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filters.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filter_options.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
 
 abstract class FoundRepository {
   /// Albums (events) the caller's face was recognized in.

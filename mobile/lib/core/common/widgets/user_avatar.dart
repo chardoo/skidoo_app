@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 
 /// Circular avatar that shows a network image when [imageUrl] is set,
 /// or a themed initial/letter when no image is available.
@@ -38,11 +38,11 @@ class UserAvatar extends StatelessWidget {
           label: 'Profile picture',
           // A profile photo is the one image in the app that changes under a
           // widget that stays put — swapped the moment an upload finishes, on
-          // every screen showing it at once. SkidooImage cross-fades that
+          // every screen showing it at once. JpergImage cross-fades that
           // instead of blinking through the initials placeholder, and sizes the
           // decode to the avatar rather than downloading a full-resolution
           // portrait for a 40 px circle.
-          child: SkidooImage(
+          child: JpergImage(
             imageUrl: imageUrl!,
             width: radius * 2,
             height: radius * 2,

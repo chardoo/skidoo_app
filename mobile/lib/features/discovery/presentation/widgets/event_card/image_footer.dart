@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 /// TikTok-style text overlay at the bottom-left of a feed card's media —
 /// event name plus a collapsible content-tags line.

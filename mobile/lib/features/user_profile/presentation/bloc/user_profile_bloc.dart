@@ -1,16 +1,16 @@
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/error/exceptions.dart'
+import 'package:jperg_app/core/error/exceptions.dart'
     show CacheException, ServerException;
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/auth/domain/usecases/update_profile_usecase.dart';
-import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart'
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/auth/domain/usecases/update_profile_usecase.dart';
+import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart'
     show GetFeaturesUseCase, SetAnonymousModeUseCase, SetHideProfileUseCase;
-import 'package:skidoo_app/features/user_profile/domain/repositories/user_profile_repository.dart';
-import 'package:skidoo_app/features/user_profile/domain/usecases/get_profile_usecase.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/services/notification_prefs_service.dart';
+import 'package:jperg_app/features/user_profile/domain/repositories/user_profile_repository.dart';
+import 'package:jperg_app/features/user_profile/domain/usecases/get_profile_usecase.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/services/notification_prefs_service.dart';
 
 part 'user_profile_event.dart';
 part 'user_profile_state.dart';

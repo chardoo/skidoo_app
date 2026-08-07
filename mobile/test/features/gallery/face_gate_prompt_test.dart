@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/face_gate_prompt.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/face_gate_prompt.dart';
 
 /// The point of this widget is that one panel serves two different states, so
 /// what's worth locking down is where they diverge: the signed-out gate offers

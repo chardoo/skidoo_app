@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleListener;
-import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart'
+import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.dart'
     show
         ChatWebSocketService,
         WsGroupInviteEvent,
@@ -13,13 +13,13 @@ import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service
         WsRoomSettingsUpdatedEvent,
         WsMessageEditedEvent,
         WsMessageDeletedEvent;
-import 'package:skidoo_app/features/chat/data/local/chat_database.dart';
-import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/models/chat/chat_room.dart';
-import 'package:skidoo_app/services/notification_prefs_service.dart';
-import 'package:skidoo_app/services/notification_sound_service.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/services/e2ee_service.dart';
+import 'package:jperg_app/features/chat/data/local/chat_database.dart';
+import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/services/notification_prefs_service.dart';
+import 'package:jperg_app/services/notification_sound_service.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/services/e2ee_service.dart';
 
 /// Maintains a single persistent WebSocket connection to the global chat
 /// endpoint and subscribes to every joined room via subscribe_room messages.

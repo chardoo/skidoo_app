@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.dart';
 
 /// Manages picture likes via REST  (POST/GET /chat/pictures/{id}/like).
 ///

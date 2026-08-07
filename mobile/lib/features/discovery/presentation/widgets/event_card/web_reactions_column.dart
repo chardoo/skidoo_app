@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/web_action_widgets.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/web_action_widgets.dart';
 
 /// Vertical reactions column for the web desktop card layout — like /
 /// dislike / comment / save / share, plus (on the external panel) the

@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
-import 'package:skidoo_app/features/follow/data/follow_repository.dart';
-import 'package:skidoo_app/features/follow/presentation/widgets/following_empty_state.dart';
-import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:jperg_app/features/follow/data/follow_repository.dart';
+import 'package:jperg_app/features/follow/presentation/widgets/following_empty_state.dart';
+import 'package:jperg_app/features/follow/presentation/widgets/following_feed.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
 EventDiscovery event(String id) => EventDiscovery(
       id: id,

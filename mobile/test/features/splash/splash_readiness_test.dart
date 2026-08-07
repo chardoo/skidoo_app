@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/features/discovery/data/services/feed_cache_service.dart';
-import 'package:skidoo_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
-import 'package:skidoo_app/features/onboarding/presentation/pages/onboarding_page.dart';
-import 'package:skidoo_app/features/splash/presentation/pages/splash_page.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/discovery/data/services/feed_cache_service.dart';
+import 'package:jperg_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
+import 'package:jperg_app/features/onboarding/presentation/pages/onboarding_page.dart';
+import 'package:jperg_app/features/splash/presentation/pages/splash_page.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 /// The splash used to leave after a fixed 1.8 s whatever was behind it. On a
 /// warm cache that was too long; on a first launch it was too short — the feed

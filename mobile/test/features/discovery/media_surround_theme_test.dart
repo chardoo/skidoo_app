@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/card_photo_preview.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
 /// The Feed / Following feeds letterbox almost every card, so the area
 /// *around* the media is most of what is on screen. These guard the regression
@@ -26,7 +26,7 @@ EventPicture photo(String id) => EventPicture(
     );
 
 /// The veil is the only [ColoredBox] the carousel paints itself — the blurred
-/// backdrop and the sharp image are both [SkidooImage]s.
+/// backdrop and the sharp image are both [JpergImage]s.
 Color veilColour(WidgetTester t) {
   final boxes = t
       .widgetList<ColoredBox>(find.byType(ColoredBox))

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/features/onboarding/presentation/models/onboarding_slide.dart';
-import 'package:skidoo_app/features/onboarding/presentation/widgets/onboarding_copy_section.dart';
-import 'package:skidoo_app/features/onboarding/presentation/widgets/onboarding_hero_section.dart';
+import 'package:jperg_app/features/onboarding/presentation/models/onboarding_slide.dart';
+import 'package:jperg_app/features/onboarding/presentation/widgets/onboarding_copy_section.dart';
+import 'package:jperg_app/features/onboarding/presentation/widgets/onboarding_hero_section.dart';
 
 /// One page of the onboarding carousel: full-bleed hero photo (with the
 /// progress dots overlaid) followed by the slide's title/subtitle copy.

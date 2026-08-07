@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/user_profile/data/repositories/profile_overview_repository.dart';
-import 'package:skidoo_app/features/user_profile/presentation/widgets/profile_photo_tile.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/user_profile/data/repositories/profile_overview_repository.dart';
+import 'package:jperg_app/features/user_profile/presentation/widgets/profile_photo_tile.dart';
 
 /// Two gestures share this tile: the photo opens, the corner icon removes.
 ///

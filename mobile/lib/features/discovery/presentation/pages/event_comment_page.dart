@@ -2,26 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/components/comments/comment_input_bar_widget.dart';
-import 'package:skidoo_app/core/widgets/emoji_panel.dart';
-import 'package:skidoo_app/components/comments/comment_row_data.dart';
-import 'package:skidoo_app/components/comments/comment_sheet_shell.dart';
-import 'package:skidoo_app/components/comments/threaded_comment_widget.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/utils/time_formatter.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart'
+import 'package:jperg_app/components/comments/comment_input_bar_widget.dart';
+import 'package:jperg_app/core/widgets/emoji_panel.dart';
+import 'package:jperg_app/components/comments/comment_row_data.dart';
+import 'package:jperg_app/components/comments/comment_sheet_shell.dart';
+import 'package:jperg_app/components/comments/threaded_comment_widget.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/utils/time_formatter.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/config/chat_config.dart';
+import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart'
     show GetEventRoomUseCase;
-import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
-import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 /// Opens a bottom sheet showing an image slider + real-time event comments.
 class EventCommentPage {

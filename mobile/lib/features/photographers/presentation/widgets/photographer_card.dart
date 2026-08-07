@@ -1,11 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 
 class PhotographerCard extends StatelessWidget {
   const PhotographerCard({
@@ -117,7 +117,7 @@ class PhotographerGridCard extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: hasImage
-                    ? SkidooImage(
+                    ? JpergImage(
                         imageUrl: photographer.imageUrl!,
                         fit: BoxFit.cover,
                         semanticLabel: 'Photo by ${photographer.name}',

@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/components/Screens/croptimage.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/components/Screens/croptimage.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
 
 class TakePictureScreen extends StatefulWidget {
   final CameraDescription camera;

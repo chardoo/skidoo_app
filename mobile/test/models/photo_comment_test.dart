@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/models/photo_comment/photo_comment.dart';
+import 'package:jperg_app/models/photo_comment/photo_comment.dart';
 
 void main() {
   group('PhotoComment.fromJson', () {

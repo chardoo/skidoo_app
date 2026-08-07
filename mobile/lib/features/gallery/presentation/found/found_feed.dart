@@ -1,29 +1,29 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/utils/responsive.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/bloc/found_bloc.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/found_access.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/face_gate_prompt.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_album.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filters.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/pages/found_album_page.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_album_section.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_filter_button.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_filter_sheet.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_header.dart';
-import 'package:skidoo_app/features/gallery/data/repositories/found_review_repository.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/pages/review_found_photos_page.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_review_banner.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_scanning_state.dart';
-import 'package:skidoo_app/features/home/presentation/pages/qr_scan_page.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/presentation/found/bloc/found_bloc.dart';
+import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/face_gate_prompt.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_album_page.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_album_section.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_filter_button.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_filter_sheet.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_header.dart';
+import 'package:jperg_app/features/gallery/data/repositories/found_review_repository.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/review_found_photos_page.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_review_banner.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_scanning_state.dart';
+import 'package:jperg_app/features/home/presentation/pages/qr_scan_page.dart';
 
 /// "Found" tab — the photos the user was face-recognized in, grouped by event
 /// into album sections with a six-tile preview each.

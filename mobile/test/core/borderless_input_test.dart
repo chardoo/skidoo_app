@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/common/widgets/search_field.dart';
-import 'package:skidoo_app/core/theme/app_input.dart';
-import 'package:skidoo_app/core/theme/customThemeData.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/search_top_bar.dart';
+import 'package:jperg_app/core/common/widgets/search_field.dart';
+import 'package:jperg_app/core/theme/app_input.dart';
+import 'package:jperg_app/core/theme/customThemeData.dart';
+import 'package:jperg_app/features/search/presentation/widgets/search_top_bar.dart';
 
 /// [Styles.themeData] sizes text with `.sp`, so it can only be built once
 /// ScreenUtil has been initialised — which is why every case here is a widget

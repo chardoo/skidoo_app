@@ -1,13 +1,13 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/core/utils/gallery_refresh_signal.dart';
-import 'package:skidoo_app/features/cart/domain/usecases/complete_payment_usecase.dart';
-import 'package:skidoo_app/features/cart/domain/usecases/download_image_usecase.dart';
-import 'package:skidoo_app/features/cart/domain/usecases/pay_for_images_usecase.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/core/utils/gallery_refresh_signal.dart';
+import 'package:jperg_app/features/cart/domain/usecases/complete_payment_usecase.dart';
+import 'package:jperg_app/features/cart/domain/usecases/download_image_usecase.dart';
+import 'package:jperg_app/features/cart/domain/usecases/pay_for_images_usecase.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 part 'cart_event.dart';
 part 'cart_state.dart';

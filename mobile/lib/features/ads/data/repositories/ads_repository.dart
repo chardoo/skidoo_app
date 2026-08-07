@@ -2,12 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
-import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
-import 'package:skidoo_app/features/ads/models/ad.dart';
-import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
-import 'package:skidoo_app/features/ads/models/ad_set.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/features/ads/data/models/ad_model.dart';
+import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/features/ads/models/ad.dart';
+import 'package:jperg_app/features/ads/models/ad_campaign.dart';
+import 'package:jperg_app/features/ads/models/ad_set.dart';
 
 const _tag = '[AdsRepository]';
 

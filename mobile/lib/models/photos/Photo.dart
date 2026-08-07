@@ -10,7 +10,7 @@
 }
 */
 
-import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/cloudinary_transform.dart';
 
 class Photo {
   final String id;

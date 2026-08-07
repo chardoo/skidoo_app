@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/deep_links/deep_link.dart';
-import 'package:skidoo_app/core/deep_links/deep_link_service.dart';
+import 'package:jperg_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 
 /// A link that arrives before the app is ready must be kept, not dropped.
 ///

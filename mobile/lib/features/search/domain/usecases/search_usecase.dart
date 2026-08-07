@@ -1,5 +1,5 @@
-import 'package:skidoo_app/features/search/domain/entities/search_models.dart';
-import 'package:skidoo_app/features/search/domain/repositories/search_repository.dart';
+import 'package:jperg_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/features/search/domain/repositories/search_repository.dart';
 
 /// The Search screen's reads, grouped in one use case rather than six
 /// near-identical classes: they are always wired up together and share the

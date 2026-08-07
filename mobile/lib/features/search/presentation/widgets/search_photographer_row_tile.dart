@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/user_avatar.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/number_format.dart';
-import 'package:skidoo_app/features/search/domain/entities/search_models.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/search_result_row.dart';
+import 'package:jperg_app/core/common/widgets/user_avatar.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/number_format.dart';
+import 'package:jperg_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/features/search/presentation/widgets/search_result_row.dart';
 
 /// A Photographers result: avatar, name, "Arts & Culture · 1K followers".
 class SearchPhotographerRowTile extends StatelessWidget {

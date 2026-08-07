@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart';
-import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/models/chat/chat_room.dart';
+import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// SQLite cache for rooms and messages.
@@ -12,7 +12,15 @@ import 'package:sqflite/sqflite.dart';
 ///   v1 – initial: chat_rooms + chat_messages tables.
 ///   v2 – added sender_name, image_url, reply_to_id, reply_preview columns.
 class ChatDatabase {
-  static const _dbName = 'skidoo_chat.db';
+  static const _dbName = 'jperg_chat.db';
+
+  /// Pre-rename filename. Still checked on open so an existing install carries
+  /// its history across the rename instead of starting empty — the server
+  /// stores ciphertext, and once the E2EE ratchet has advanced past a message
+  /// it cannot be decrypted a second time. Dropping this file would therefore
+  /// lose chat history permanently, not just force a re-fetch.
+  static const _legacyDbName = 'skidoo_chat.db';
+
   static const _dbVersion = 5;
 
   static Database? _db;
@@ -23,7 +31,17 @@ class ChatDatabase {
   }
 
   Future<Database> _open() async {
-    final dbPath = join(await getDatabasesPath(), _dbName);
+    final dir = await getDatabasesPath();
+    var dbPath = join(dir, _dbName);
+
+    // Adopt the old file rather than move it: renaming needs dart:io, which
+    // cannot be imported here without breaking the web build. New installs get
+    // the new name; upgrades keep reading the file they already have.
+    if (!kIsWeb && !await databaseExists(dbPath)) {
+      final legacyPath = join(dir, _legacyDbName);
+      if (await databaseExists(legacyPath)) dbPath = legacyPath;
+    }
+
     return openDatabase(
       dbPath,
       version: _dbVersion,

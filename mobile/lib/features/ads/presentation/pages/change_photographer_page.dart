@@ -1,15 +1,15 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
-import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
-import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_meta.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
 
 /// Swapping the chosen photographer for another one.
 ///

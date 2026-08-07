@@ -1,14 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
-import 'package:skidoo_app/app.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:jperg_app/app.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
 // Temporarily disabled for presentation screenshots — re-enable with the call below.
-// import 'package:skidoo_app/core/security/screenshot_guard.dart';
-import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+// import 'package:jperg_app/core/security/screenshot_guard.dart';
+import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -120,6 +123,26 @@ void main() async {
   // sidebar immediately renders the correct nav without an async round-trip.
   AuthService.isAuthenticated.value = !isExpired && token.isNotEmpty;
   AuthService.hasAddedFaces.value = hasFaces;
+
+  // Push. Off the critical path — none of this blocks the first frame.
+  //
+  // A session restored from the Keychain never runs the login flow, so without
+  // the re-registration below a returning user would only be reachable by push
+  // again after an explicit sign-in. OneSignal.login is idempotent, so calling
+  // it on every launch costs nothing.
+  if (!kIsWeb) {
+    unawaited(() async {
+      await PushNotificationService.instance.init();
+      if (AuthService.isAuthenticated.value) {
+        final userId = await authService.getUserId();
+        await PushNotificationService.instance.login(userId);
+        // Returning users who already granted permission are not re-prompted;
+        // the OS call is a no-op once a decision is on record.
+        await Future.delayed(PushNotificationService.permissionPromptDelay);
+        await PushNotificationService.instance.requestPermission();
+      }
+    }());
+  }
 
   runApp(MyApp(
     token: isExpired ? '' : token,

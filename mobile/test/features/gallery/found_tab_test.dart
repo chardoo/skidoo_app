@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart' show DateTimeRange;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_album.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filter_options.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filters.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filter_options.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
 
 /// The group object documented in FRONTEND_MY_PHOTOS.md, verbatim.
 Map<String, dynamic> groupJson({int photoCount = 21, int previewPhotos = 6}) => {

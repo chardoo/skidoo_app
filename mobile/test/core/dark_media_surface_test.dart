@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/theme/customThemeData.dart';
-import 'package:skidoo_app/core/theme/dark_media_surface.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/customThemeData.dart';
+import 'package:jperg_app/core/theme/dark_media_surface.dart';
 
 /// The media feeds are dark whatever theme the app is in, so the photograph is
 /// the brightest thing on screen. A light surround competes with the image and

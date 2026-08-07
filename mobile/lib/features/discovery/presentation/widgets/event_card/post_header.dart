@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 
 /// Slim header row shown above a feed card's media: creator avatar + name,
 /// an "owner" badge for the current user's own posts, a Follow pill, and a
@@ -239,7 +239,7 @@ class CreatorInitialsAvatar extends StatelessWidget {
     final inner = (url == null || url.isEmpty)
         ? fallback
         : ClipOval(
-            child: SkidooImage(
+            child: JpergImage(
               imageUrl: url,
               fit: BoxFit.cover,
               logicalWidth: size,

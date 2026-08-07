@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_error_view.dart';
-import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/features/admin/data/models/app_config.dart';
-import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_error_view.dart';
+import 'package:jperg_app/core/common/widgets/app_text_field.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/admin/data/models/app_config.dart';
+import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 class AdminSettingsPage extends StatefulWidget {
   const AdminSettingsPage({super.key});

@@ -1,20 +1,20 @@
 import 'dart:io';
 
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MaxLengthEnforcement;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/validators/media_validator.dart';
-import 'package:skidoo_app/core/widgets/emoji_panel.dart';
-import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_text_field.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/validators/media_validator.dart';
+import 'package:jperg_app/core/widgets/emoji_panel.dart';
+import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 class ChatInputBar extends StatefulWidget {
   const ChatInputBar({
@@ -539,7 +539,7 @@ class _StagedVideoPreviewState extends State<_StagedVideoPreview> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  SkidooVideoPlayer(
+                  JpergVideoPlayer(
                     // On web, filePath is a blob URL (no file:// prefix needed).
                     // On mobile, add file:// so the video player resolves it.
                     url: kIsWeb ? widget.filePath : 'file://${widget.filePath}',
@@ -627,7 +627,7 @@ class _StagedNetworkImagePreview extends StatelessWidget {
             child: Semantics(
                 image: true,
                 label: 'Selected image',
-                child: SkidooImage(
+                child: JpergImage(
                   imageUrl: imageUrl,
                   width: 64.w,
                   height: 64.w,

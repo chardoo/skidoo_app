@@ -1,8 +1,8 @@
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/user_profile/data/datasources/user_profile_local_data_source.dart';
-import 'package:skidoo_app/features/user_profile/data/datasources/user_profile_remote_data_source.dart';
-import 'package:skidoo_app/features/user_profile/domain/repositories/user_profile_repository.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/user_profile/data/datasources/user_profile_local_data_source.dart';
+import 'package:jperg_app/features/user_profile/data/datasources/user_profile_remote_data_source.dart';
+import 'package:jperg_app/features/user_profile/domain/repositories/user_profile_repository.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 class UserProfileRepositoryImpl implements UserProfileRepository {
   final UserProfileLocalDataSource _localDataSource;

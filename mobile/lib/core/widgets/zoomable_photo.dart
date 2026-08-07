@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/widgets/image_aspect.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/widgets/image_aspect.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 
 /// One page of a full-screen photo viewer: the photo at its own shape, pinch
 /// to zoom.
@@ -82,7 +82,7 @@ class _ZoomablePhotoState extends State<ZoomablePhoto> {
           child: Center(
             child: AspectRatio(
               aspectRatio: aspect,
-              child: SkidooImage(
+              child: JpergImage(
                 imageUrl: widget.imageUrl,
                 // Identical to `cover` once the box is the photo's own shape,
                 // which is the steady state. It differs only in the moment
@@ -91,9 +91,9 @@ class _ZoomablePhotoState extends State<ZoomablePhoto> {
                 fit: BoxFit.contain,
                 semanticLabel: widget.semanticLabel,
                 placeholder: (_, __) =>
-                    const SkidooImagePlaceholder(spinner: true, alwaysDark: true),
+                    const JpergImagePlaceholder(spinner: true, alwaysDark: true),
                 errorWidget: widget.errorWidget ??
-                    (_, __, ___) => const SkidooImagePlaceholder(
+                    (_, __, ___) => const JpergImagePlaceholder(
                         spinner: false, alwaysDark: true),
               ),
             ),

@@ -3,27 +3,28 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:skidoo_app/l10n/app_localizations.dart';
+import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/customThemeData.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/core/theme/theme_cubit.dart';
-import 'package:skidoo_app/core/navigation/app_navigator.dart';
-import 'package:skidoo_app/core/navigation/web_route_observer.dart';
-import 'package:skidoo_app/core/common/widgets/app_button.dart';
-import 'package:skidoo_app/core/common/widgets/web_sidebar.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/interests_page.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
-import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
-import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/discovery_page.dart';
-import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
-import 'package:skidoo_app/features/onboarding/presentation/pages/onboarding_page.dart';
-import 'package:skidoo_app/features/splash/presentation/pages/splash_page.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/customThemeData.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/theme/theme_cubit.dart';
+import 'package:jperg_app/core/deep_links/deep_link_host.dart';
+import 'package:jperg_app/core/navigation/app_navigator.dart';
+import 'package:jperg_app/core/navigation/web_route_observer.dart';
+import 'package:jperg_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/common/widgets/web_sidebar.dart';
+import 'package:jperg_app/features/auth/presentation/pages/interests_page.dart';
+import 'package:jperg_app/features/auth/presentation/pages/login_page.dart';
+import 'package:jperg_app/features/auth/presentation/pages/signup_page.dart';
+import 'package:jperg_app/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/discovery_page.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
+import 'package:jperg_app/features/onboarding/presentation/pages/onboarding_page.dart';
+import 'package:jperg_app/features/splash/presentation/pages/splash_page.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 // ── Web layout constants ──────────────────────────────────────────────────────
 
@@ -31,8 +32,8 @@ import 'package:skidoo_app/core/theme/app_spacing.dart';
 const double _kWebColumnWidth = 480;
 
 /// Below this viewport width the left sidebar won't fit — switch to top nav.
-const double _kWebMobileBreakpoint = 240 + _kWebColumnWidth; // sidebar + content
-
+const double _kWebMobileBreakpoint =
+    240 + _kWebColumnWidth; // sidebar + content
 
 // ── Root application widget ───────────────────────────────────────────────────
 
@@ -162,8 +163,7 @@ class _WebAppState extends State<_WebApp> with WidgetsBindingObserver {
   void _configureScreenUtil() {
     final view = WidgetsBinding.instance.platformDispatcher.implicitView;
     final dpr = view?.devicePixelRatio ?? 1.0;
-    final logicalH =
-        view != null ? view.physicalSize.height / dpr : 844.0;
+    final logicalH = view != null ? view.physicalSize.height / dpr : 844.0;
 
     ScreenUtil.configure(
       data: MediaQueryData(
@@ -212,75 +212,79 @@ class _AppMaterial extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      color: Colors.transparent,
-      navigatorKey: AppNavigator.navigatorKey,
-      debugShowCheckedModeBanner: false,
-      theme: Styles.light,
-      darkTheme: Styles.dark,
-      themeMode: themeMode,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('en'),
-        Locale('de'),
-      ],
-      scrollBehavior: kIsWeb ? const _WebScrollBehavior() : null,
-      // On web: sidebar + centred 480 dp column (its builder wraps content in
-      // a SelectionArea — standard click-drag copy on desktop). On mobile,
-      // no ambient SelectionArea: it fought with double-tap-to-like,
-      // long-press-for-options, and swipe gestures on feed cards/chat
-      // bubbles, popping the native "Select All" menu unpredictably, and
-      // could crash on nested Scrollables (flutter/flutter#111690).
-      builder: _appBuilder,
-      navigatorObservers: kIsWeb ? [WebRouteObserver.instance] : [],
-      // Web: always start at Discovery so a hard-refresh (⇧⌘R) gives a clean
-      // slate. _GuestGuard redirects authenticated users to /home immediately.
-      //
-      // Native iOS/Android: every cold start plays the branded splash first
-      // (including already-logged-in users, who previously had no splash
-      // moment at all), then hands off to the real destination: returning
-      // users (valid token) go to /home; first-ever launch (no token,
-      // onboarding never shown) goes to the 3-screen intro carousel; every
-      // other logged-out cold start (including after "Continue as guest")
-      // goes straight to Discovery.
-      initialRoute: kIsWeb ? DiscoveryPage.routeName : SplashPage.routeName,
-      routes: {
-        SplashPage.routeName: (_) => SplashPage(
-              nextRoute: token.isNotEmpty
-                  ? HomePage.routeName
-                  : !hasSeenOnboarding
-                      ? OnboardingPage.routeName
-                      : DiscoveryPage.routeName,
-            ),
-        OnboardingPage.routeName: (_) =>
-            const _GuestGuard(child: OnboardingPage()),
-        // On web, guest-only pages redirect authenticated users to /home so
-        // that pressing browser Back never lands on the unauthenticated UI.
-        DiscoveryPage.routeName: (_) => _GuestGuard(
-              child: isDeviceCompromised
-                  ? const _SecurityWarningPage()
-                  : const DiscoveryPage(),
-            ),
-        LoginPage.routeName: (_) => const _GuestGuard(child: LoginPage()),
-        SignUpPage.routeName: (_) => const _GuestGuard(child: SignUpPage()),
-        HomePage.routeName: (_) => _AuthGuard(
-              child: isDeviceCompromised
-                  ? const _SecurityWarningPage()
-                  : const HomePage(),
-            ),
-        InterestsPage.routeName: (_) => const _AuthGuard(
-              child: InterestsPage(),
-            ),
-      },
-      onUnknownRoute: (settings) => MaterialPageRoute(
-        builder: (_) => token.isEmpty
-            ? const LoginPage()
-            : const DiscoveryPage(),
+    // Above MaterialApp so it survives every route change: it starts the deep
+    // link listener once and resumes a link that had to wait for the Navigator
+    // or for sign-in.
+    return DeepLinkHost(
+      child: MaterialApp(
+        color: Colors.transparent,
+        navigatorKey: AppNavigator.navigatorKey,
+        debugShowCheckedModeBanner: false,
+        theme: Styles.light,
+        darkTheme: Styles.dark,
+        themeMode: themeMode,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('en'),
+          Locale('de'),
+        ],
+        scrollBehavior: kIsWeb ? const _WebScrollBehavior() : null,
+        // On web: sidebar + centred 480 dp column (its builder wraps content in
+        // a SelectionArea — standard click-drag copy on desktop). On mobile,
+        // no ambient SelectionArea: it fought with double-tap-to-like,
+        // long-press-for-options, and swipe gestures on feed cards/chat
+        // bubbles, popping the native "Select All" menu unpredictably, and
+        // could crash on nested Scrollables (flutter/flutter#111690).
+        builder: _appBuilder,
+        navigatorObservers: kIsWeb ? [WebRouteObserver.instance] : [],
+        // Web: always start at Discovery so a hard-refresh (⇧⌘R) gives a clean
+        // slate. _GuestGuard redirects authenticated users to /home immediately.
+        //
+        // Native iOS/Android: every cold start plays the branded splash first
+        // (including already-logged-in users, who previously had no splash
+        // moment at all), then hands off to the real destination: returning
+        // users (valid token) go to /home; first-ever launch (no token,
+        // onboarding never shown) goes to the 3-screen intro carousel; every
+        // other logged-out cold start (including after "Continue as guest")
+        // goes straight to Discovery.
+        initialRoute: kIsWeb ? DiscoveryPage.routeName : SplashPage.routeName,
+        routes: {
+          SplashPage.routeName: (_) => SplashPage(
+                nextRoute: token.isNotEmpty
+                    ? HomePage.routeName
+                    : !hasSeenOnboarding
+                        ? OnboardingPage.routeName
+                        : DiscoveryPage.routeName,
+              ),
+          OnboardingPage.routeName: (_) =>
+              const _GuestGuard(child: OnboardingPage()),
+          // On web, guest-only pages redirect authenticated users to /home so
+          // that pressing browser Back never lands on the unauthenticated UI.
+          DiscoveryPage.routeName: (_) => _GuestGuard(
+                child: isDeviceCompromised
+                    ? const _SecurityWarningPage()
+                    : const DiscoveryPage(),
+              ),
+          LoginPage.routeName: (_) => const _GuestGuard(child: LoginPage()),
+          SignUpPage.routeName: (_) => const _GuestGuard(child: SignUpPage()),
+          HomePage.routeName: (_) => _AuthGuard(
+                child: isDeviceCompromised
+                    ? const _SecurityWarningPage()
+                    : const HomePage(),
+              ),
+          InterestsPage.routeName: (_) => const _AuthGuard(
+                child: InterestsPage(),
+              ),
+        },
+        onUnknownRoute: (settings) => MaterialPageRoute(
+          builder: (_) =>
+              token.isEmpty ? const LoginPage() : const DiscoveryPage(),
+        ),
       ),
     );
   }
@@ -338,7 +342,9 @@ class _AppMaterial extends StatelessWidget {
     );
 
     return DefaultTextStyle(
-      style: DefaultTextStyle.of(ctx).style.copyWith(decoration: TextDecoration.none),
+      style: DefaultTextStyle.of(ctx)
+          .style
+          .copyWith(decoration: TextDecoration.none),
       child: ColoredBox(
         color: bg,
         child: Column(
@@ -592,8 +598,7 @@ class _AuthGuardState extends State<_AuthGuard> {
           // Not logged in — redirect after this frame so the navigator is ready.
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              Navigator.of(context)
-                  .pushReplacementNamed(LoginPage.routeName);
+              Navigator.of(context).pushReplacementNamed(LoginPage.routeName);
             }
           });
           return const Scaffold(backgroundColor: Color(0xFF0D0D0D));
@@ -668,7 +673,8 @@ class _SecurityWarningPage extends StatelessWidget {
       backgroundColor: const Color(0xFF0D0D0D),
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.w, vertical: 48.h),
+          padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.xxxl.w, vertical: 48.h),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -714,7 +720,6 @@ class _SecurityWarningPage extends StatelessWidget {
       ),
     );
     return webWrap(page,
-        backgroundColor: const Color(0xFF0D0D0D),
-        width: kWebColumnWidth);
+        backgroundColor: const Color(0xFF0D0D0D), width: kWebColumnWidth);
   }
 }

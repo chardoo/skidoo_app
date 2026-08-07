@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/onboarding_complete_page.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/auth/presentation/pages/onboarding_complete_page.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 /// The face step is skippable, so this screen is reached with and without a
 /// selfie on file. Only one of those has a scan running — the other used to be

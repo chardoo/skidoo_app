@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/gallery/domain/repositories/gallery_repository.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/gallery/domain/repositories/gallery_repository.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 class GetGalleryUseCase implements UseCase<List<Photo>, GetGalleryParams> {
   final GalleryRepository _repository;

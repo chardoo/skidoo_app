@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:skidoo_app/l10n/app_localizations.dart';
+import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/features/auth/presentation/bloc/interests/interests_bloc.dart';
-import 'package:skidoo_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
-import 'package:skidoo_app/features/follow/presentation/pages/follow_suggestions_page.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/auth/presentation/bloc/interests/interests_bloc.dart';
+import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
+import 'package:jperg_app/features/follow/presentation/pages/follow_suggestions_page.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 class InterestsPage extends StatelessWidget {
   static const routeName = '/interests';

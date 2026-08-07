@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 /// Whether one account's cached messages survive into the next session is
 /// decided by a single comparison in `LoginUseCase.establishSession`. It used

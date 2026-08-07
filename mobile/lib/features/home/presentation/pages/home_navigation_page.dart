@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:skidoo_app/l10n/app_localizations.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/theme/dark_media_surface.dart';
-import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
-import 'package:skidoo_app/features/search/presentation/pages/search_page.dart';
-import 'package:skidoo_app/features/home/presentation/widgets/web_search_photos_panel.dart';
-import 'package:skidoo_app/features/home/presentation/widgets/events_feed.dart';
-import 'package:skidoo_app/features/home/presentation/widgets/home_empty_state.dart';
-import 'package:skidoo_app/features/home/presentation/widgets/feed_top_bar.dart';
-import 'package:skidoo_app/features/home/presentation/widgets/unlock_photos_sheet.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/found_feed.dart';
+import 'package:jperg_app/l10n/app_localizations.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/dark_media_surface.dart';
+import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/event_comment_page.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:jperg_app/features/home/presentation/pages/search_results_page.dart';
+import 'package:jperg_app/features/search/presentation/pages/search_page.dart';
+import 'package:jperg_app/features/home/presentation/widgets/web_search_photos_panel.dart';
+import 'package:jperg_app/features/home/presentation/widgets/events_feed.dart';
+import 'package:jperg_app/features/home/presentation/widgets/home_empty_state.dart';
+import 'package:jperg_app/features/home/presentation/widgets/feed_top_bar.dart';
+import 'package:jperg_app/features/home/presentation/widgets/unlock_photos_sheet.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/features/follow/presentation/widgets/following_feed.dart';
+import 'package:jperg_app/features/gallery/presentation/found/found_feed.dart';
 import 'package:flutter/foundation.dart';
-import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/utils/video_pause_notifier.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
 
 class HomeNavigationPage extends StatefulWidget {
   const HomeNavigationPage({super.key});
@@ -488,7 +488,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   ) {
     // IndexedStack keeps both tabs mounted, so without gating the inactive
     // tab's top video would auto-play too. TickerMode(enabled: …) pauses every
-    // video in the inactive tab (SkidooVideoPlayer reads TickerMode.of) and
+    // video in the inactive tab (JpergVideoPlayer reads TickerMode.of) and
     // resumes the active one — so only the visible tab plays.
     return IndexedStack(
       index: _selectedTab,

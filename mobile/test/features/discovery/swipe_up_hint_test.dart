@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/swipe_up_hint.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/swipe_up_hint.dart';
 
 Widget host(Widget child, {bool reduceMotion = false}) => ScreenUtilInit(
       designSize: const Size(390, 844),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 
 class CartItemWidget extends StatelessWidget {
   final Photo photo;
@@ -16,7 +16,7 @@ class CartItemWidget extends StatelessWidget {
       child: Stack(
         children: [
           // ── Image ─────────────────────────────────────────────────────
-          SkidooImage(
+          JpergImage(
             imageUrl: photo.url,
             semanticLabel: 'Photo',
             fit: BoxFit.cover,
@@ -24,7 +24,7 @@ class CartItemWidget extends StatelessWidget {
             height: 220.h,
             placeholder: (context, __) => Container(
               height: 220.h,
-              color: SkidooImagePlaceholder.colorOf(context),
+              color: JpergImagePlaceholder.colorOf(context),
               child: const Center(
                 child: CircularProgressIndicator(
                     color: Colors.white30, strokeWidth: 2),
@@ -32,7 +32,7 @@ class CartItemWidget extends StatelessWidget {
             ),
             errorWidget: (context, __, ___) => Container(
               height: 220.h,
-              color: SkidooImagePlaceholder.colorOf(context),
+              color: JpergImagePlaceholder.colorOf(context),
               child: const Icon(Icons.broken_image_outlined,
                   color: Colors.white38, size: 48),
             ),

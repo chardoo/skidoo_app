@@ -1,5 +1,5 @@
-import 'package:skidoo_app/features/cart/domain/repositories/cart_repository.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/features/cart/domain/repositories/cart_repository.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 class SaveImagesForFreeUseCase {
   final CartRepository _repository;

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_button.dart';
-import 'package:skidoo_app/core/common/widgets/app_confirm_dialog.dart';
-import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
-import 'package:skidoo_app/features/chat/presentation/pages/invite_to_group_page.dart';
-import 'package:skidoo_app/models/chat/chat_room.dart';
-import 'package:skidoo_app/core/utils/web_panel_route.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/common/widgets/app_confirm_dialog.dart';
+import 'package:jperg_app/core/common/widgets/app_text_field.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
+import 'package:jperg_app/features/chat/presentation/pages/invite_to_group_page.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/core/utils/web_panel_route.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 /// WhatsApp-style group info page.
 ///

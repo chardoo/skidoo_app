@@ -1,27 +1,27 @@
 import 'dart:ui';
 
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:skidoo_app/l10n/app_localizations.dart';
+import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/ads_checkout_page.dart';
-import 'package:skidoo_app/features/cart/domain/repositories/cart_repository.dart';
-import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page.dart';
-import 'package:skidoo_app/features/home/presentation/pages/home_page.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/ads/presentation/pages/ads_checkout_page.dart';
+import 'package:jperg_app/features/cart/domain/repositories/cart_repository.dart';
+import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 class SearchResultsPage extends StatefulWidget {
   static const routeName = '/searchresults';
@@ -452,7 +452,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
               if (photo.mediaType == 'video')
                 _VideoThumbCard(url: photo.url, ext: ext)
               else
-                SkidooImage(
+                JpergImage(
                   imageUrl: photo.url,
                   fit: BoxFit.cover,
                   width: double.infinity,
@@ -840,7 +840,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
 ///
 /// This used to spin up a [VideoPlayerController] per tile — downloading and
 /// decoding whole videos so a *still* could be painted, which cost a player
-/// instance and megabytes of transfer per cell. [SkidooImage] renders the
+/// instance and megabytes of transfer per cell. [JpergImage] renders the
 /// clip's poster frame instead: one small image, from cache after the first
 /// time. Dropping that controller was also the last use of `video_player` in
 /// the app, so the plugin came out with it.
@@ -854,7 +854,7 @@ class _VideoThumbCard extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        SkidooImage(
+        JpergImage(
           imageUrl: url,
           fit: BoxFit.cover,
           semanticLabel: 'Video',

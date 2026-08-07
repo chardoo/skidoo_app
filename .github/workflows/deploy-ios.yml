@@ -51,12 +51,26 @@ jobs:
 
       # ── iOS build (no codesign — Fastlane handles signing) ────────────
 
+      # --split-debug-info moves the Dart symbol table out of the binary and
+      # --obfuscate drops the names entirely: ~4 MB off the shipped app. Dart
+      # stack traces in crash reports come back as addresses, so the symbols
+      # directory is uploaded below — `flutter symbolize` needs the file that
+      # matches the build that crashed.
       - name: Flutter build iOS
         run: |
           flutter build ios \
             --release \
             --no-codesign \
+            --obfuscate \
+            --split-debug-info=build/symbols \
             --build-number=${{ github.run_number }}
+
+      - name: Upload debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-debug-symbols-${{ github.run_number }}
+          path: mobile/build/symbols
+          retention-days: 90
 
       - name: Install CocoaPods dependencies
         run: cd ios && pod install

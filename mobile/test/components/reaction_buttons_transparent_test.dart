@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/components/media/media_action_buttons.dart';
-import 'package:skidoo_app/components/media/media_rail_action.dart';
-import 'package:skidoo_app/components/media/media_reaction_rail.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/components/media/media_action_buttons.dart';
+import 'package:jperg_app/components/media/media_rail_action.dart';
+import 'package:jperg_app/components/media/media_reaction_rail.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 /// Every reaction in the app is a bare icon over the media. [MediaActionButtons]
 /// was the odd one out — each action sat on a filled dark disc with a green

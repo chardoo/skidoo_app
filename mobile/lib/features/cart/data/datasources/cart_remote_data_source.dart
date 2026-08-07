@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/core/error/exceptions.dart' as app_ex;
 
 abstract class CartRemoteDataSource {
   Future<Map<String, dynamic>> initiatePayment(String email, String amount);
@@ -173,7 +173,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       await SaverGallery.saveImage(
         bytes,
         quality: 100,
-        fileName: 'skidoo_${DateTime.now().millisecondsSinceEpoch}',
+        fileName: 'jperg_${DateTime.now().millisecondsSinceEpoch}',
         androidRelativePath: 'Pictures',
         skipIfExists: false,
       );

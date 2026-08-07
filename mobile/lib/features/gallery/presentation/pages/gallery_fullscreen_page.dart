@@ -2,15 +2,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/components/media/media_action_buttons.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
-import 'package:skidoo_app/core/widgets/zoomable_photo.dart';
-import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/components/media/media_action_buttons.dart';
+import 'package:jperg_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
+import 'package:jperg_app/core/widgets/zoomable_photo.dart';
+import 'package:jperg_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 class GalleryFullscreenPage extends StatefulWidget {
   /// Full set of photos so the viewer can page left/right, and the index of
@@ -167,6 +168,13 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                     imageId: _photo.id,
                     imageUrl: _photo.url,
                     eventName: _photo.eventName,
+                    photographerName: _photo.photographerName,
+                    // Share sends a link now, so it needs somewhere to point.
+                    // The event, not the photo: the recipient lands on the
+                    // album rather than a single picture with no context.
+                    link: _photo.eventId.isNotEmpty
+                        ? DeepLink(DeepLinkKind.event, id: _photo.eventId)
+                        : null,
                     axis: Axis.horizontal,
                     showLike: false,
                     showComment: false,
@@ -209,7 +217,7 @@ class _ZoomablePhoto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (photo.isVideo) {
-      return SkidooVideoPlayer(
+      return JpergVideoPlayer(
         url: photo.url,
         isActive: isActive,
         autoPlay: true,

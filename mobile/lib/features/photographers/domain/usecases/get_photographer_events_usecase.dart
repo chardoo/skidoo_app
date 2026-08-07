@@ -1,5 +1,5 @@
-import 'package:skidoo_app/features/photographers/domain/repositories/photographer_repository.dart';
-import 'package:skidoo_app/models/photographer/photographer_event.dart';
+import 'package:jperg_app/features/photographers/domain/repositories/photographer_repository.dart';
+import 'package:jperg_app/models/photographer/photographer_event.dart';
 
 class GetPhotographerEventsUseCase {
   final PhotographerRepository _repo;

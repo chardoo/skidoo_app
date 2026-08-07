@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/gallery/data/datasources/found_remote_data_source.dart';
+import 'package:jperg_app/features/gallery/data/datasources/found_remote_data_source.dart';
 
 /// The `groupBy=none` photo object documented in FRONTEND_MY_PHOTOS.md.
 Map<String, dynamic> photoJson({String id = 'pic-1'}) => {

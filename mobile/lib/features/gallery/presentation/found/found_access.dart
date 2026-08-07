@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/face_capture_step_page.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/login_page.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/auth/presentation/pages/face_capture_step_page.dart';
+import 'package:jperg_app/features/auth/presentation/pages/login_page.dart';
+import 'package:jperg_app/features/auth/presentation/pages/signup_page.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 /// Whether the current user can see Found results, and if not, why.
 ///

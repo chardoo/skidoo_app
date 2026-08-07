@@ -1,21 +1,22 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/components/media/media_reaction_rail.dart';
+import 'package:jperg_app/components/media/media_reaction_rail.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/components/media/media_action_buttons.dart';
-import 'package:skidoo_app/core/common/widgets/expandable_caption.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
-import 'package:skidoo_app/features/discovery/presentation/utils/open_photographer_profile.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart'
+import 'package:jperg_app/components/media/media_action_buttons.dart';
+import 'package:jperg_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/core/common/widgets/expandable_caption.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/event_comment_page.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/card_interaction_bar.dart'
     show FollowButton;
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
-import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/card_photo_preview.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
+import 'package:jperg_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 /// One full-screen page of the TikTok-style vertical feed — the photo/video
 /// carousel fills the entire page edge-to-edge, with the caption and action
@@ -66,7 +67,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
 
   /// Vertical space the video player's own controls occupy along the bottom
   /// edge: a 20 dp scrubber, the timestamp row, and 6 dp of padding
-  /// (`_BottomBar` in skidoo_video_player.dart). The caption is anchored to
+  /// (`_BottomBar` in jperg_video_player.dart). The caption is anchored to
   /// the same edge, so without clearing this band it lands on top of the
   /// scrubber — covering the progress bar and stealing the drags that would
   /// seek the video.
@@ -158,6 +159,8 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
         imageId: event.pictures.first.id,
         photographerName: event.photographerName,
         eventName: event.eventName,
+        description: event.description,
+        link: DeepLink(DeepLinkKind.event, id: event.id),
       );
     } finally {
       if (mounted) setState(() => _sharingExternal = false);

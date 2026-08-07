@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart' as dio;
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
-import 'package:skidoo_app/models/photographer/photographer_event.dart';
-import 'package:skidoo_app/models/photographer/photographer_sample.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/core/error/exceptions.dart' as app_ex;
+import 'package:jperg_app/models/photographer/photographer_event.dart';
+import 'package:jperg_app/models/photographer/photographer_sample.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
 
 abstract class PhotographerRemoteDataSource {
   Future<List<PhotographerModel>> getPhotographers();

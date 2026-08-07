@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_scanning_state.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_scanning_state.dart';
 
 /// The "has a face, no matches yet" state. Distinct from the face gate: the
 /// user has done everything asked of them, so it reports progress rather than

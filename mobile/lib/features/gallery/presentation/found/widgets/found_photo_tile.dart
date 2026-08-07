@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// One square thumbnail in a Found grid.
 ///
@@ -46,10 +46,10 @@ class FoundPhotoTile extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                SkidooImage(
+                JpergImage(
                   imageUrl: photo.url,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => const SkidooImagePlaceholder(),
+                  placeholder: (_, __) => const JpergImagePlaceholder(),
                   errorWidget: (_, __, ___) => ColoredBox(
                     color: ext.cardSurface,
                     child: Icon(

@@ -1,4 +1,4 @@
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
 abstract class DiscoveryRepository {
   Future<List<EventDiscovery>> getRandomEvents({

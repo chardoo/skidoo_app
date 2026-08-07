@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
 /// Persists the last successful feed response so the first screen is
 /// populated instantly from disk while the network fetch is in-flight.
@@ -9,7 +9,7 @@ class FeedCacheService {
 
   final SharedPreferences _prefs;
 
-  static const _key = 'skidoo.feed_cache.v2';
+  static const _key = 'jperg.feed_cache.v2';
   static const _maxEvents = 8;
 
   /// Synchronous read — SharedPreferences is already loaded in memory.

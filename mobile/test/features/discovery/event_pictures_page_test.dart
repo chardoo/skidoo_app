@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
 /// Tapping a photo in an event now opens the same viewer the Found tab, the
 /// album page and search open, instead of one only this screen had. That

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/campaign_row.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/ads/models/ad_campaign.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/campaign_row.dart';
 
 /// A row in Broadcasts → Campaigns.
 ///

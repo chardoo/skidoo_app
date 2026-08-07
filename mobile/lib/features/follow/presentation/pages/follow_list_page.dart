@@ -1,15 +1,15 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/time_formatter.dart';
-import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
-import 'package:skidoo_app/core/utils/web_panel_route.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/follow/data/follow_repository.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
-import 'package:skidoo_app/core/common/widgets/user_avatar.dart';
-import 'package:skidoo_app/core/common/widgets/app_error_view.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/time_formatter.dart';
+import 'package:jperg_app/core/widgets/animations/app_animations.dart';
+import 'package:jperg_app/core/utils/web_panel_route.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/follow/data/follow_repository.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/core/common/widgets/user_avatar.dart';
+import 'package:jperg_app/core/common/widgets/app_error_view.dart';
 
 /// Viewport width at/above which web shows the sidebar + content layout, so the
 /// follow list opens as the right-side floating panel (matches app.dart).

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/number_format.dart';
-import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/number_format.dart';
+import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 
 /// The faces under a request card: who has answered it, and how many.
 ///

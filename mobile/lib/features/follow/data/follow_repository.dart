@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
 const _tag = '[FollowRepository]';
 

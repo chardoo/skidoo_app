@@ -1,35 +1,35 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
+import 'package:jperg_app/core/common/widgets/get_app_sheet.dart';
 
-import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/config/chat_config.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:skidoo_app/features/ads/data/models/ad_model.dart';
-import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
-import 'package:skidoo_app/features/ads/models/ad.dart';
-import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
-import 'package:skidoo_app/features/ads/models/ad_media.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/feed_comment_sheet.dart';
-import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
-import 'package:skidoo_app/features/chat/presentation/chat_error_text.dart';
-import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/report_sheet.dart';
-import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/features/ads/data/models/ad_model.dart';
+import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/features/ads/models/ad.dart';
+import 'package:jperg_app/features/ads/models/ad_campaign.dart';
+import 'package:jperg_app/features/ads/models/ad_media.dart';
+import 'package:jperg_app/features/ads/presentation/pages/feed_comment_sheet.dart';
+import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
+import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/card_photo_preview.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/report_sheet.dart';
+import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model — same shape for ads and requests, mirrors EventDiscovery fields
@@ -668,7 +668,7 @@ class _FeedItemCardState extends State<FeedItemCard>
 }
 
 // ── Media background ──────────────────────────────────────────────────────────
-/// Renders either a [SkidooVideoPlayer] for video items or a blurred image
+/// Renders either a [JpergVideoPlayer] for video items or a blurred image
 /// background for photo items.
 
 class _MediaBackground extends StatelessWidget {
@@ -685,7 +685,7 @@ class _MediaBackground extends StatelessWidget {
     if (d.mediaIsVideo || (d.mediaList.length == 1 && d.mediaList[0].isVideo)) {
       final url = d.mediaList.isNotEmpty ? d.mediaList[0].url : d.mediaUrl;
       if (url != null && url.isNotEmpty) {
-        return SkidooVideoPlayer(
+        return JpergVideoPlayer(
           url: url,
           autoPlay: true,
           loop: true,
@@ -725,16 +725,16 @@ class _MediaBackground extends StatelessWidget {
       children: [
         ImageFiltered(
           imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: SkidooImage(
+          child: JpergImage(
             imageUrl: url,
             fit: BoxFit.cover,
             isBlurBackground: true,
-            placeholder: (_, __) => const SkidooImagePlaceholder(),
-            errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
+            placeholder: (_, __) => const JpergImagePlaceholder(),
+            errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
           ),
         ),
         ColoredBox(color: ext.mediaBackdropVeil),
-        SkidooImage(
+        JpergImage(
           imageUrl: url,
           fit: BoxFit.contain,
           semanticLabel: 'Advertisement image',
@@ -744,7 +744,7 @@ class _MediaBackground extends StatelessWidget {
             child: CircularProgressIndicator(
                 color: ext.accentGold, strokeWidth: 2),
           ),
-          errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
+          errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
         ),
       ],
     );
@@ -1139,16 +1139,16 @@ class _SingleMediaFrame extends StatelessWidget {
       children: [
         ImageFiltered(
           imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: SkidooImage(
+          child: JpergImage(
             imageUrl: media.url,
             fit: BoxFit.cover,
             isBlurBackground: true,
-            placeholder: (_, __) => const SkidooImagePlaceholder(),
-            errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
+            placeholder: (_, __) => const JpergImagePlaceholder(),
+            errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
           ),
         ),
         const ColoredBox(color: Color(0x55000000)),
-        SkidooImage(
+        JpergImage(
           imageUrl: media.url,
           fit: BoxFit.contain,
           semanticLabel: 'Advertisement image',
@@ -1158,7 +1158,7 @@ class _SingleMediaFrame extends StatelessWidget {
             child: CircularProgressIndicator(
                 color: Colors.white70, strokeWidth: 2),
           ),
-          errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
+          errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
         ),
         if (media.isVideo)
           const Center(

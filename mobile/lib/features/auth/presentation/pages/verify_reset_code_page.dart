@@ -2,17 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/core/widgets/paste_aware_digit_formatter.dart';
-import 'package:skidoo_app/features/auth/domain/usecases/request_password_reset_usecase.dart';
-import 'package:skidoo_app/features/auth/domain/usecases/verify_reset_code_usecase.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/set_new_password_page.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/widgets/paste_aware_digit_formatter.dart';
+import 'package:jperg_app/features/auth/domain/usecases/request_password_reset_usecase.dart';
+import 'package:jperg_app/features/auth/domain/usecases/verify_reset_code_usecase.dart';
+import 'package:jperg_app/features/auth/presentation/pages/set_new_password_page.dart';
 
 const _kCodeLength = 6;
 const _kResendCooldown = Duration(seconds: 30);

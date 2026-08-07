@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/found_access.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 /// `has_added_faces` is written from the account page (delete face data) and
 /// read by the Found tab, which lives in a keep-alive IndexedStack far from

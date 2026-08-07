@@ -3,25 +3,25 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
-import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart'
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/config/chat_config.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/features/ads/presentation/pages/my_requests_page.dart'
     show EditRequestSheet;
-import 'package:skidoo_app/features/ads/presentation/pages/request_photographer_page.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/photographer_tile.dart';
-import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/change_photographer_page.dart';
-import 'package:skidoo_app/features/chat/presentation/chat_error_text.dart';
-import 'package:skidoo_app/features/chat/presentation/pages/chat_room_page.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/reviews_pages.dart';
+import 'package:jperg_app/features/ads/presentation/pages/request_photographer_page.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/photographer_tile.dart';
+import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:jperg_app/features/ads/presentation/pages/change_photographer_page.dart';
+import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
+import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/reviews_pages.dart';
 
 /// What happened to a request while it was open, so the list behind it knows
 /// whether it is out of date.

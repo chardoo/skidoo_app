@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/auth/domain/repositories/auth_repository.dart';
 
 /// Step 3 of password reset — re-checks email+code, hashes the new
 /// password, and clears the code server-side (one-time use). Does not sign

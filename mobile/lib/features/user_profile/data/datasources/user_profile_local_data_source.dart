@@ -1,5 +1,5 @@
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 abstract class UserProfileLocalDataSource {
   Future<String> getName();

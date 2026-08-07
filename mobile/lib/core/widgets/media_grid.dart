@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/utils/responsive.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// How big the cells are, and therefore how many fit across.
 enum MediaGridDensity {

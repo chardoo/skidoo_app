@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/found_access.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 /// Which gate a user lands on is decided entirely by two stored values, and
 /// getting the pair backwards is invisible until someone signs in and is asked

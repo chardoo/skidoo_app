@@ -1,19 +1,19 @@
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
-import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
-import 'package:skidoo_app/features/ads/models/ad_set.dart';
-import 'package:skidoo_app/core/common/widgets/xfile_image.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/common/widgets/app_text_field.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/features/ads/models/ad_campaign.dart';
+import 'package:jperg_app/features/ads/models/ad_set.dart';
+import 'package:jperg_app/core/common/widgets/xfile_image.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -751,7 +751,7 @@ class _MediaPreview extends StatelessWidget {
               child: Semantics(
                   image: true,
                   label: 'Campaign image',
-                  child: SkidooImage(
+                  child: JpergImage(
                     imageUrl: state.existingMediaUrl!,
                     fit: BoxFit.cover,
                     placeholder: (_, __) =>

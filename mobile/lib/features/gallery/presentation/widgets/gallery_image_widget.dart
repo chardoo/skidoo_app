@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/presentation/pages/gallery_fullscreen_page.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/presentation/pages/gallery_fullscreen_page.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
 
 class GalleryImageWidget extends StatelessWidget {
   final Photo photo;
@@ -49,7 +49,7 @@ class GalleryImageWidget extends StatelessWidget {
         child: Stack(
           children: [
             // ── Image ─────────────────────────────────────────────────────
-            SkidooImage(
+            JpergImage(
               imageUrl: photo.url,
               fit: BoxFit.cover,
               width: double.infinity,

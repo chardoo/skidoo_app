@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/auth/domain/repositories/auth_repository.dart';
 
 class RegisterUseCase implements UseCase<void, RegisterParams> {
   final AuthRepository _repository;

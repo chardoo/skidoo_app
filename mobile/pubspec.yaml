@@ -1,4 +1,4 @@
-name: skidoo_app
+name: jperg_app
 description: A new Flutter project.
 publish_to: 'none'
 
@@ -80,6 +80,10 @@ dependencies:
   # Web
   webview_flutter: ^4.4.2
   app_links: ^7.2.1
+
+  # Push notifications. No web implementation — every call site is guarded by
+  # kIsWeb in PushNotificationService, which is the only file that imports this.
+  onesignal_flutter: ^5.3.4
 
 dependency_overrides:
   # url_launcher_ios 6.3.0 has a Swift bug (UIApplication Launcher conformance).

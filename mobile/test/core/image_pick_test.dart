@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
-import 'package:skidoo_app/core/utils/image_pick.dart';
+import 'package:jperg_app/core/utils/image_pick.dart';
 
 class _FakePicker extends ImagePickerPlatform with MockPlatformInterfaceMixin {
   int multiCalls = 0;

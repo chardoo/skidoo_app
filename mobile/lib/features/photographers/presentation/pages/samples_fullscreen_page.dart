@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
-import 'package:skidoo_app/core/widgets/zoomable_photo.dart';
-import 'package:skidoo_app/models/photographer/photographer_sample.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
+import 'package:jperg_app/core/widgets/zoomable_photo.dart';
+import 'package:jperg_app/models/photographer/photographer_sample.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 class SamplesFullscreenPage extends StatefulWidget {
   const SamplesFullscreenPage({
@@ -54,7 +54,7 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
               // A video sample plays here rather than being handed to an image
               // loader, which could only ever show a broken frame.
               if (sample.isVideo) {
-                return SkidooVideoPlayer(
+                return JpergVideoPlayer(
                   url: sample.url,
                   isActive: i == _current,
                   autoPlay: true,

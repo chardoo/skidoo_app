@@ -3,8 +3,8 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/core/error/exceptions.dart' as app_ex;
 
 /// Payload returned by the overlay endpoint.
 /// Carries raw bytes + the server's Content-Type so callers pick the right

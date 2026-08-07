@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/models/photographer/photographer_sample.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/models/photographer/photographer_sample.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 
 class PhotographerSampleTile extends StatelessWidget {
   const PhotographerSampleTile({super.key, required this.sample, required this.onTap});
@@ -19,12 +19,12 @@ class PhotographerSampleTile extends StatelessWidget {
         child: Stack(
           fit: StackFit.passthrough,
           children: [
-            SkidooImage(
+            JpergImage(
               imageUrl: sample.url,
               fit: BoxFit.cover,
-              placeholder: (_, __) => const SkidooImagePlaceholder(),
+              placeholder: (_, __) => const JpergImagePlaceholder(),
               errorWidget: (_, __, ___) => Container(
-                color: SkidooImagePlaceholder.colorOf(context),
+                color: JpergImagePlaceholder.colorOf(context),
                 child: const Icon(Icons.broken_image_rounded,
                     color: Colors.white24, size: 24),
               ),

@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/features/discovery/data/services/feed_cache_service.dart';
-import 'package:skidoo_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
-import 'package:skidoo_app/features/onboarding/presentation/pages/onboarding_page.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/discovery/data/services/feed_cache_service.dart';
+import 'package:jperg_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
+import 'package:jperg_app/features/onboarding/presentation/pages/onboarding_page.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 /// The asset's own colour. The gif is a near-white field, so a dark scaffold
 /// behind it showed as a black flash for the frame or two before it decoded.

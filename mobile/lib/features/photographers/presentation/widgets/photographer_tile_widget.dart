@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
 
 class PhotographerTileWidget extends StatelessWidget {
   final PhotographerModel photographer;

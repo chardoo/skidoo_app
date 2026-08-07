@@ -1,9 +1,9 @@
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
 
 class PhotographerCardWidget extends StatelessWidget {
   const PhotographerCardWidget({
@@ -35,7 +35,7 @@ class PhotographerCardWidget extends StatelessWidget {
             children: [
               // ── Background: real image or gradient placeholder ─────────
               photographer.imageUrl != null
-                  ? SkidooImage(
+                  ? JpergImage(
                       imageUrl: photographer.imageUrl!,
                       fit: BoxFit.cover,
                       semanticLabel: '${photographer.name}, photographer',

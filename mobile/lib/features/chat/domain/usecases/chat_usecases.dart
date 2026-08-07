@@ -1,12 +1,12 @@
 import 'dart:io';
 
-import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/chat/data/datasources/chat_rest_data_source.dart';
-import 'package:skidoo_app/features/chat/domain/repositories/chat_repository.dart';
-import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/models/chat/chat_room.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/config/chat_config.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.dart';
+import 'package:jperg_app/features/chat/domain/repositories/chat_repository.dart';
+import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 class GetGlobalRoomUseCase {
   final ChatRepository _repo;

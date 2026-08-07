@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_button.dart';
-import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/validators/validators.dart';
-import 'package:skidoo_app/features/auth/presentation/bloc/login/login_bloc.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/email_verification_page.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/forget_password_page.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/signup_page.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/jperg_logo.dart';
-import 'package:skidoo_app/core/common/widgets/app_drag_handle.dart';
+import 'package:jperg_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/common/widgets/app_text_field.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/validators/validators.dart';
+import 'package:jperg_app/features/auth/presentation/bloc/login/login_bloc.dart';
+import 'package:jperg_app/features/auth/presentation/pages/email_verification_page.dart';
+import 'package:jperg_app/features/auth/presentation/pages/forget_password_page.dart';
+import 'package:jperg_app/features/auth/presentation/pages/signup_page.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
+import 'package:jperg_app/core/common/widgets/app_drag_handle.dart';
 
 /// Shows the login bottom sheet. [onLoginSuccess] is called after successful
 /// login so the caller can navigate appropriately.

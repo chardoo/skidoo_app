@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/image_aspect.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/image_aspect.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 Widget host(Widget child) => ScreenUtilInit(
       designSize: const Size(390, 844),

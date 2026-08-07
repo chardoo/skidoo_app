@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jperg_app/services/push_notification_service.dart';
 
 /// Platform-adaptive credential store.
 ///
@@ -237,9 +238,16 @@ class AuthService {
 
   // ── Session teardown ──────────────────────────────────────────────────────────
   /// Deletes every auth key so non-auth preferences are untouched.
-  Future<void> removeToken() {
+  ///
+  /// Detaching from OneSignal happens here rather than at the call sites
+  /// because there are five of them (web sidebar, account page, the Dio 401
+  /// interceptor, the logout use case). A path that cleared the token without
+  /// detaching would leave the device attached to the old account, and the
+  /// next person to sign in on this phone would receive their notifications.
+  Future<void> removeToken() async {
     isAuthenticated.value = false;
-    return Future.wait([
+    await PushNotificationService.instance.logout();
+    await Future.wait([
       _delete(_kToken),
       _delete(_kExpiration),
       _delete(_kUniqueName),

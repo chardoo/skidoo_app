@@ -3,25 +3,25 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/number_format.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/broadcasts_page.dart';
-import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart'
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/number_format.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/ads/presentation/pages/broadcasts_page.dart';
+import 'package:jperg_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart'
     show EventPicturesPage, photosOfEvent;
-import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
-import 'package:skidoo_app/features/user_profile/data/repositories/profile_overview_repository.dart';
-import 'package:skidoo_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
-import 'package:skidoo_app/features/user_profile/presentation/pages/account_page.dart';
-import 'package:skidoo_app/features/user_profile/presentation/widgets/profile_photo_tile.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
+import 'package:jperg_app/features/user_profile/data/repositories/profile_overview_repository.dart';
+import 'package:jperg_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
+import 'package:jperg_app/features/user_profile/presentation/pages/account_page.dart';
+import 'package:jperg_app/features/user_profile/presentation/widgets/profile_photo_tile.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 /// The profile screen.
 ///

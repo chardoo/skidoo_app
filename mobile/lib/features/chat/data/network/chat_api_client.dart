@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/config/chat_config.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 /// Dedicated Dio client for the chat micro-service.
 ///

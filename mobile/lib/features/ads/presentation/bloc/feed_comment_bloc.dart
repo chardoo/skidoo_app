@@ -1,8 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:skidoo_app/features/ads/data/datasources/feed_comment_data_source.dart';
-import 'package:skidoo_app/models/photo_comment/photo_comment.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/features/ads/data/datasources/feed_comment_data_source.dart';
+import 'package:jperg_app/models/photo_comment/photo_comment.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 // ── Events ────────────────────────────────────────────────────────────────────
 

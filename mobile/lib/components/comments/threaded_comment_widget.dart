@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/components/comments/comment_item_widget.dart';
-import 'package:skidoo_app/components/comments/comment_row_data.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/components/comments/comment_item_widget.dart';
+import 'package:jperg_app/components/comments/comment_row_data.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 /// YouTube-style threaded comment: one top-level item + expandable reply list.
 ///

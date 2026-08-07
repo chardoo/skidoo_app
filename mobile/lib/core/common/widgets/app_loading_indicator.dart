@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 /// Centred themed loading spinner.
 class AppLoadingIndicator extends StatelessWidget {

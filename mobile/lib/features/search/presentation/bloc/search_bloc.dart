@@ -1,11 +1,11 @@
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/search/data/services/recent_searches_store.dart';
-import 'package:skidoo_app/features/search/domain/entities/search_models.dart';
-import 'package:skidoo_app/features/search/domain/usecases/search_usecase.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/search/data/services/recent_searches_store.dart';
+import 'package:jperg_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/features/search/domain/usecases/search_usecase.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 part 'search_event.dart';
 part 'search_state.dart';

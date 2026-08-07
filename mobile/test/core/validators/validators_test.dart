@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/validators/validators.dart';
+import 'package:jperg_app/core/validators/validators.dart';
 
 void main() {
   group('Validators.emailValidator', () {

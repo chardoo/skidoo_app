@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/cloudinary_transform.dart';
 
 /// High-quality drop-in for [CachedNetworkImage].
 ///
@@ -17,7 +17,7 @@ import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
 /// time, which is the safest default.
 ///
 /// Shows a centred spinner over a subtle tint while loading unless the
-/// caller passes its own [placeholder] — every [SkidooImage] gets a real
+/// caller passes its own [placeholder] — every [JpergImage] gets a real
 /// loading state without having to remember to wire one up each time. Blur
 /// backdrops ([isBlurBackground]) skip the spinner: they're tiny (120px),
 /// load near-instantly, and a spinner flashing behind a blur layer is just
@@ -36,8 +36,8 @@ import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
 /// its place and the new one cross-fades in over it, rather than the slot
 /// blanking to a placeholder and cutting to the replacement — see
 /// [swapDuration].
-class SkidooImage extends StatelessWidget {
-  const SkidooImage({
+class JpergImage extends StatelessWidget {
+  const JpergImage({
     super.key,
     required this.imageUrl,
     this.fit = BoxFit.cover,
@@ -97,7 +97,7 @@ class SkidooImage extends StatelessWidget {
   final String? semanticLabel;
 
   Widget _defaultPlaceholder(BuildContext context, String url) =>
-      const SkidooImagePlaceholder(spinner: true);
+      const JpergImagePlaceholder(spinner: true);
 
   int _cacheWidth(BuildContext context, double availableWidth) {
     if (isBlurBackground) return 120;
@@ -121,7 +121,7 @@ class SkidooImage extends StatelessWidget {
           displayWidth: requestWidth, devicePixelRatio: requestDpr);
       // A video with no derivable poster has nothing to load — show the empty
       // slot rather than fetch an mp4 into an image decoder.
-      if (poster == null) return const SkidooImagePlaceholder();
+      if (poster == null) return const JpergImagePlaceholder();
       optimisedUrl = poster;
     } else {
       // Cloudinary-optimise the delivery URL: AVIF/WebP, best quality, retina
@@ -174,7 +174,7 @@ class SkidooImage extends StatelessWidget {
 }
 
 /// The fill shown in an image slot before the image arrives — and the one
-/// every [SkidooImage] should use, whether or not it wants the spinner.
+/// every [JpergImage] should use, whether or not it wants the spinner.
 ///
 /// Call sites used to hardcode a near-black each (#111111, #141414, #1A1A1A,
 /// `Colors.black`, and a literal #2C2C2A that was really the dark theme's
@@ -187,8 +187,8 @@ class SkidooImage extends StatelessWidget {
 ///
 /// [searchFieldFill] is the same neutral the search field and filter chips
 /// use: clearly a slot, in both themes, without competing with real content.
-class SkidooImagePlaceholder extends StatelessWidget {
-  const SkidooImagePlaceholder({
+class JpergImagePlaceholder extends StatelessWidget {
+  const JpergImagePlaceholder({
     super.key,
     this.spinner = false,
     this.alwaysDark = false,

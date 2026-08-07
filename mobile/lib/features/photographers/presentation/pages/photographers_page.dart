@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:skidoo_app/features/photographers/presentation/bloc/photographer_bloc.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
-import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_card.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:jperg_app/features/photographers/presentation/bloc/photographer_bloc.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/photographer_card.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/widgets/animations/app_animations.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 class PhotographersPage extends StatefulWidget {
   const PhotographersPage({super.key});

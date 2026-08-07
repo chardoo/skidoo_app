@@ -1,4 +1,4 @@
-# skidoo_app
+# jperg_app
 
 A new Flutter project.
 

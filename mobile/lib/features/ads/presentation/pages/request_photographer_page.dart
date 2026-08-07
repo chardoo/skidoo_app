@@ -1,18 +1,18 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
-import 'package:skidoo_app/features/ads/models/ad_media.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
-import 'package:skidoo_app/features/photographers/data/repositories/reviews_repository.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/reviews_pages.dart';
-import 'package:skidoo_app/features/photographers/presentation/widgets/photographer_meta.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/features/ads/models/ad_media.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
+import 'package:jperg_app/features/photographers/data/repositories/reviews_repository.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/reviews_pages.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// One photographer who answered a request: who they are, what they have shot,
 /// and what people say about them.

@@ -2,13 +2,14 @@ import 'dart:async';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
-import 'package:skidoo_app/features/chat/data/datasources/chat_key_datasource.dart';
-import 'package:skidoo_app/features/chat/data/local/chat_database.dart';
-import 'package:skidoo_app/models/Auth/LoginResponse.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/services/e2ee_service.dart';
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_key_datasource.dart';
+import 'package:jperg_app/features/chat/data/local/chat_database.dart';
+import 'package:jperg_app/models/Auth/LoginResponse.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/services/e2ee_service.dart';
+import 'package:jperg_app/services/push_notification_service.dart';
 
 class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
   final AuthRepository _repository;
@@ -63,6 +64,25 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
     await _authService.setLastAccountId(user.id);
 
     await _repository.saveUserSession(user);
+
+    // Attach this device to the account so the backend's pushes reach it. The
+    // id must be `user.id`, which is what the server targets as
+    // external_user_id for clients and photographers alike. Fire-and-forget:
+    // a push registration failure must never block signing in.
+    if (!kIsWeb) {
+      unawaited(() async {
+        await PushNotificationService.instance.login(user.id);
+        // Prompted here rather than at first launch: asking someone who has
+        // just signed in converts far better than asking a stranger on the
+        // splash screen, and iOS only ever lets you ask once.
+        //
+        // The pause lets the home screen finish rendering first — a system
+        // dialog thrown up over a half-built screen reads as a glitch, and
+        // gets dismissed reflexively.
+        await Future.delayed(PushNotificationService.permissionPromptDelay);
+        await PushNotificationService.instance.requestPermission();
+      }());
+    }
 
     // E2EE key management is mobile-only — chat/messaging is not used on web.
     if (!kIsWeb) {

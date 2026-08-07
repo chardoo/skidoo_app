@@ -5,10 +5,10 @@ import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
-import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/core/error/exceptions.dart' show ServerException;
-import 'package:skidoo_app/features/chat/data/datasources/chat_background_service.dart';
-import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service.dart'
+import 'package:jperg_app/core/config/chat_config.dart';
+import 'package:jperg_app/core/error/exceptions.dart' show ServerException;
+import 'package:jperg_app/features/chat/data/datasources/chat_background_service.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.dart'
     show ChatWebSocketService, WsAdminGrantedEvent, WsAdminRevokedEvent,
         WsChatErrorEvent,
         WsKeyBundlesEvent, WsKeyRotationEvent, WsMessageDeletedEvent,
@@ -16,13 +16,13 @@ import 'package:skidoo_app/features/chat/data/datasources/chat_websocket_service
         WsParticipantRemovedEvent, WsReadReceiptEvent, WsRoomDeletedEvent,
         WsRoomSettingsUpdatedEvent, WsSenderKeyDistributionEvent,
         WsUserJoinedEvent;
-import 'package:skidoo_app/features/chat/domain/usecases/chat_usecases.dart';
-import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/models/chat/chat_room.dart';
-import 'package:skidoo_app/models/chat/like_update.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/services/e2ee_service.dart';
-import 'package:skidoo_app/features/chat/data/datasources/chat_key_datasource.dart';
+import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/models/chat/like_update.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/services/e2ee_service.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_key_datasource.dart';
 
 part 'chat_room_event.dart';
 part 'chat_room_state.dart';
@@ -622,6 +622,22 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       isConnecting: false,
       clearError: true,
     ));
+
+    // Re-send the read ack now that there is actually a socket to send it on.
+    //
+    // _onJoined acks right after the REST history load, but a mobile DM
+    // deliberately delays connecting until _deriveKeyFromHistory has stored the
+    // E2EE session key. That ack is therefore written to a closed socket, and
+    // _sendRaw drops it silently — no error, no retry. The effect is that
+    // everything already on screen when a DM is opened is never acknowledged,
+    // so the sender's ticks stay grey no matter how long you look at them.
+    // Only messages that arrive *while* the room is open ever went blue.
+    //
+    // Safe to repeat: mark_read is an idempotent upsert and returns only
+    // genuinely new rows, so a redundant ack writes nothing and broadcasts
+    // nothing.
+    _ackLatestPeerMessage();
+
     // The first connect's history is loaded by _onJoined. Any later connect is
     // a reconnect — the socket doesn't replay, so refetch to backfill anything
     // that arrived while we were offline.
@@ -630,6 +646,20 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     } else {
       _didInitialConnect = true;
     }
+  }
+
+  /// Acknowledge the newest message from anyone other than me.
+  ///
+  /// A bulk ack covers everything up to that message, so one frame settles the
+  /// whole room. [state.messages] is sorted newest-first, so the first match is
+  /// the cursor.
+  void _ackLatestPeerMessage() {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    final latest = state.messages
+        .where((m) => !m.isLocal && m.senderId != _myUserId)
+        .firstOrNull;
+    if (latest != null) _ws.sendAck(roomId, latest.id);
   }
 
   /// Refetch room history after a reconnect and merge in anything new.

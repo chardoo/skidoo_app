@@ -1,5 +1,5 @@
-import 'package:skidoo_app/models/event/Event.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/models/event/Event.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 abstract class HomeRepository {
   Future<List<Event>> searchEvents(String query);

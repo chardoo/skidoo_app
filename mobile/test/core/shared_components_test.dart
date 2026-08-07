@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/common/widgets/app_drag_handle.dart';
-import 'package:skidoo_app/core/common/widgets/app_section_label.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/common/widgets/app_drag_handle.dart';
+import 'package:jperg_app/core/common/widgets/app_section_label.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 Widget host(AppThemeExtension ext, Widget child) => ScreenUtilInit(
       designSize: const Size(390, 844),

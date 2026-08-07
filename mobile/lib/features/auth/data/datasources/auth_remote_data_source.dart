@@ -4,9 +4,9 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart' as dio;
 import 'package:http_parser/http_parser.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/core/error/exceptions.dart' as app_exceptions;
-import 'package:skidoo_app/models/Auth/LoginResponse.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/core/error/exceptions.dart' as app_exceptions;
+import 'package:jperg_app/models/Auth/LoginResponse.dart';
 
 abstract class AuthRemoteDataSource {
   Future<LoginResponseObject> login(String email, String password);

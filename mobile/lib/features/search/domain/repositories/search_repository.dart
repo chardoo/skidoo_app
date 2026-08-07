@@ -1,4 +1,4 @@
-import 'package:skidoo_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 
 /// Mirrors [SearchRemoteDataSource]. See it for what each call returns and
 /// how the bearer token changes the payload.

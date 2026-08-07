@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/common/widgets/app_button.dart';
 
 /// App-wide yes/no confirmation dialog (logout, delete, leave, report/block).
 /// Returns true if the user confirmed, false/null otherwise.

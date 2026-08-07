@@ -1,10 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 
-/// The swap: when a mounted [SkidooImage] is handed a different url, the image
+/// The swap: when a mounted [JpergImage] is handed a different url, the image
 /// already on screen has to stay there as the new one's placeholder so the two
 /// cross-dissolve. Without it the slot falls back to `placeholder` — meaning a
 /// carousel, filmstrip or recycled tile blinks through a blank or a spinner
@@ -20,7 +20,7 @@ void main() {
 
   testWidgets('holds the outgoing image while the next one decodes',
       (t) async {
-    await t.pumpWidget(host(const SkidooImage(
+    await t.pumpWidget(host(const JpergImage(
       imageUrl: 'https://cdn.example.com/a.jpg',
     )));
 
@@ -29,7 +29,7 @@ void main() {
 
   testWidgets('cross-dissolves over swapDuration', (t) async {
     const swap = Duration(milliseconds: 420);
-    await t.pumpWidget(host(const SkidooImage(
+    await t.pumpWidget(host(const JpergImage(
       imageUrl: 'https://cdn.example.com/a.jpg',
       swapDuration: swap,
     )));
@@ -40,7 +40,7 @@ void main() {
   });
 
   testWidgets('Duration.zero opts back out to a hard cut', (t) async {
-    await t.pumpWidget(host(const SkidooImage(
+    await t.pumpWidget(host(const JpergImage(
       imageUrl: 'https://cdn.example.com/a.jpg',
       swapDuration: Duration.zero,
     )));
@@ -49,12 +49,12 @@ void main() {
   });
 
   testWidgets('a url change swaps in place rather than remounting', (t) async {
-    await t.pumpWidget(host(const SkidooImage(
+    await t.pumpWidget(host(const JpergImage(
       imageUrl: 'https://cdn.example.com/a.jpg',
     )));
     final before = t.element(find.byType(CachedNetworkImage));
 
-    await t.pumpWidget(host(const SkidooImage(
+    await t.pumpWidget(host(const JpergImage(
       imageUrl: 'https://cdn.example.com/b.jpg',
     )));
 

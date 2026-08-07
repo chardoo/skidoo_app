@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// Horizontal thumbnail rail under the Found viewer. The active thumbnail is
 /// outlined and kept centred as the user pages through the album, so the
@@ -104,13 +104,13 @@ class _FoundPhotoFilmstripState extends State<FoundPhotoFilmstrip> {
                   ),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: SkidooImage(
+                child: JpergImage(
                   imageUrl: widget.photos[index].url,
                   fit: BoxFit.cover,
                   logicalWidth: 64,
-                  placeholder: (_, __) => const SkidooImagePlaceholder(),
+                  placeholder: (_, __) => const JpergImagePlaceholder(),
                   errorWidget: (_, __, ___) =>
-                      const SkidooImagePlaceholder(),
+                      const JpergImagePlaceholder(),
                 ),
               ),
             ),

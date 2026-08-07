@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
-import 'package:skidoo_app/features/user_profile/data/repositories/profile_overview_repository.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/animations/app_animations.dart';
+import 'package:jperg_app/features/user_profile/data/repositories/profile_overview_repository.dart';
 
 /// One square in the liked or bookmarked grid.
 ///

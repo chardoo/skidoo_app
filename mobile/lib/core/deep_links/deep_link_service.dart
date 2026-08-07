@@ -2,8 +2,14 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/deep_links/deep_link.dart';
-import 'package:skidoo_app/core/navigation/app_navigator.dart';
+import 'package:jperg_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/core/navigation/app_navigator.dart';
+import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/features/ads/presentation/pages/review_photographers_page.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
 
 const _tag = '[DeepLinks]';
 
@@ -105,30 +111,135 @@ class DeepLinkService {
   }
 
   Future<void> _open(NavigatorState navigator, DeepLink link) async {
-    // Every destination that needs data fetches it behind a resolver rather
-    // than being handed an id it cannot render, so a link that turns out to be
-    // dead says so instead of opening an empty screen.
-    await navigator.push(
-      MaterialPageRoute<void>(builder: (_) => DeepLinkTarget(link: link)),
-    );
+    switch (link.kind) {
+      // The viewer's own photos are a tab, not a route: land on Home, then ask
+      // it for the Found tab. Both notifiers already exist for exactly this —
+      // the sidebar and the search results page use them the same way.
+      case DeepLinkKind.myPhotos:
+        await navigator.pushNamedAndRemoveUntil(
+          HomePage.routeName,
+          (route) => false,
+        );
+        HomePage.tabRequest.value = 0; // Home column
+        HomeNavigationPage.pillTabRequest.value = 0; // Found
+        return;
+
+      // The profile page fetches its own stats, samples and portfolio from the
+      // id, so a link only has to carry that much. Name and avatar fill in
+      // when it loads rather than being guessed from the URL.
+      case DeepLinkKind.photographer:
+        await navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => PhotographerProfilePage(
+              photographer: PhotographerModel(link.id!, '', '', ''),
+            ),
+          ),
+        );
+        return;
+
+      // Everything else is resolved first: the id in a link may be for
+      // something deleted, closed, or never visible to this viewer, and
+      // pushing a screen that then fails is worse than saying so.
+      case DeepLinkKind.picture:
+      case DeepLinkKind.event:
+      case DeepLinkKind.request:
+        await navigator.push(
+          MaterialPageRoute<void>(builder: (_) => DeepLinkTarget(link: link)),
+        );
+        return;
+    }
   }
 }
 
-/// Placeholder destination.
+/// Resolver for the links whose destination needs fetching first.
 ///
-/// Deliberately explicit rather than silently landing on the home screen: an
-/// unimplemented link should look unimplemented, to whoever is wiring the next
-/// one, not like a link that quietly went nowhere.
-class DeepLinkTarget extends StatelessWidget {
+/// Shows the fetch, then either the thing or a plain "not available" — a dead
+/// link is common (a request gets closed, a photo goes private) and it should
+/// read as an answer rather than a broken screen.
+class DeepLinkTarget extends StatefulWidget {
   const DeepLinkTarget({super.key, required this.link});
 
   final DeepLink link;
 
   @override
+  State<DeepLinkTarget> createState() => _DeepLinkTargetState();
+}
+
+class _DeepLinkTargetState extends State<DeepLinkTarget> {
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  Future<void> _resolve() async {
+    final link = widget.link;
+    try {
+      switch (link.kind) {
+        case DeepLinkKind.request:
+          final request = await AdsRepository().getRequest(link.id!);
+          if (!mounted) return;
+          if (request == null) {
+            setState(() {
+              _loading = false;
+              _error = 'This request is no longer available.';
+            });
+            return;
+          }
+          // Replaces itself so Back returns to where the link was tapped
+          // rather than to a spinner that has nothing left to do.
+          await Navigator.of(context).pushReplacement(
+            MaterialPageRoute<void>(
+              builder: (_) => ReviewPhotographersPage(request: request),
+            ),
+          );
+          return;
+
+        // No screen takes an event or a single picture by id yet — the feed
+        // builds both from a list it already holds. Rather than invent one,
+        // this says so plainly; wiring it is a screen, not a resolver.
+        case DeepLinkKind.event:
+        case DeepLinkKind.picture:
+          if (!mounted) return;
+          setState(() {
+            _loading = false;
+            _error = 'Opening a single ${link.kind.name} from a link '
+                'is not available yet.';
+          });
+          return;
+
+        case DeepLinkKind.myPhotos:
+        case DeepLinkKind.photographer:
+          return; // handled without a resolver
+      }
+    } catch (e) {
+      debugPrint('$_tag resolve ERROR: $e');
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Could not open that link.';
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
-      body: Center(child: Text('Opening ${link.kind.name}…')),
+      body: Center(
+        child: _loading
+            ? const CircularProgressIndicator()
+            : Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  _error ?? '',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+      ),
     );
   }
 }

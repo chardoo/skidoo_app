@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/media_grid.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/search_photo_grid.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/features/search/presentation/widgets/search_photo_grid.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// Media grids are uniform: every tile the same square, whatever shape the
 /// photo is.

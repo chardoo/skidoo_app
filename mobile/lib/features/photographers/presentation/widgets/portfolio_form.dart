@@ -4,14 +4,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:skidoo_app/core/constants/photography_specialties.dart';
-import 'package:skidoo_app/core/utils/image_pick.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
-import 'package:skidoo_app/models/photographer/photographer_sample.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/constants/photography_specialties.dart';
+import 'package:jperg_app/core/utils/image_pick.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
+import 'package:jperg_app/models/photographer/photographer_sample.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 /// Minimum sample-work photos required, matching the design ("min. 4
 /// photos") and used by both callers to gate their primary action.

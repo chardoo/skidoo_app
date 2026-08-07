@@ -1,7 +1,7 @@
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/search/data/datasources/search_remote_data_source.dart';
-import 'package:skidoo_app/features/search/domain/entities/search_models.dart';
-import 'package:skidoo_app/features/search/domain/repositories/search_repository.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/search/data/datasources/search_remote_data_source.dart';
+import 'package:jperg_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/features/search/domain/repositories/search_repository.dart';
 
 class SearchRepositoryImpl implements SearchRepository {
   SearchRepositoryImpl(this._remote);

@@ -2,16 +2,16 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
-import 'package:skidoo_app/features/follow/data/follow_repository.dart';
-import 'package:skidoo_app/features/follow/presentation/widgets/feed_suggestions_card.dart';
-import 'package:skidoo_app/features/follow/presentation/widgets/following_empty_state.dart';
-import 'package:skidoo_app/l10n/app_localizations.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
+import 'package:jperg_app/features/follow/data/follow_repository.dart';
+import 'package:jperg_app/features/follow/presentation/widgets/feed_suggestions_card.dart';
+import 'package:jperg_app/features/follow/presentation/widgets/following_empty_state.dart';
+import 'package:jperg_app/l10n/app_localizations.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
 /// The "Following" feed: posts from the creators the user follows, backed by
 /// `FollowRepository.getFollowFeed`, with a card of suggested creators dealt

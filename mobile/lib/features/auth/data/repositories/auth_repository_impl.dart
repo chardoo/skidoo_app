@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/auth/data/datasources/auth_remote_data_source.dart';
-import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
-import 'package:skidoo_app/models/Auth/LoginResponse.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/auth/data/datasources/auth_remote_data_source.dart';
+import 'package:jperg_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:jperg_app/models/Auth/LoginResponse.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;

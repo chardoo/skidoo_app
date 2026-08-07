@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/home/domain/repositories/home_repository.dart';
-import 'package:skidoo_app/models/event/Event.dart';
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/home/domain/repositories/home_repository.dart';
+import 'package:jperg_app/models/event/Event.dart';
 
 class SearchEventsUseCase implements UseCase<List<Event>, SearchEventsParams> {
   final HomeRepository _repository;

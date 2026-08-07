@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:skidoo_app/core/validators/media_validator.dart';
+import 'package:jperg_app/core/validators/media_validator.dart';
 
 XFile _fileOfSize(int bytes, {String name = 'media.bin'}) {
   return XFile.fromData(Uint8List(bytes), name: name, length: bytes);

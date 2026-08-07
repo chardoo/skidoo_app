@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/features/onboarding/presentation/widgets/onboarding_hero_fallback.dart';
-import 'package:skidoo_app/features/onboarding/presentation/widgets/onboarding_page_indicator.dart';
+import 'package:jperg_app/features/onboarding/presentation/widgets/onboarding_hero_fallback.dart';
+import 'package:jperg_app/features/onboarding/presentation/widgets/onboarding_page_indicator.dart';
 
 /// Full-bleed hero image for a single onboarding slide, with the page
 /// progress dots overlaid near the bottom edge of the photo.

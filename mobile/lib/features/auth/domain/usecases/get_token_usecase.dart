@@ -1,5 +1,5 @@
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/auth/domain/repositories/auth_repository.dart';
 
 class GetTokenUseCase implements UseCase<String, NoParams> {
   final AuthRepository _repository;

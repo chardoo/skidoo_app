@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:skidoo_app/components/media/media_action_buttons.dart';
-import 'package:skidoo_app/components/media/media_reaction_rail.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/found_access.dart';
-import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
-import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
-import 'package:skidoo_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/components/media/media_action_buttons.dart';
+import 'package:jperg_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/components/media/media_reaction_rail.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
+import 'package:jperg_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
+import 'package:jperg_app/features/photo_comments/data/picture_like_service.dart';
+import 'package:jperg_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// The Found viewer's right-hand action rail.
 ///
@@ -117,6 +118,12 @@ class _FoundActionRailState extends State<FoundActionRail> {
       imageId: widget.photo.id,
       photographerName: widget.photo.photographerName,
       eventName: widget.photo.eventName,
+      // These are the viewer's own found photos, so the link points at the
+      // event they came from — /my-photos would open the recipient's photos,
+      // not the ones being shared.
+      link: widget.photo.eventId.isNotEmpty
+          ? DeepLink(DeepLinkKind.event, id: widget.photo.eventId)
+          : null,
       shareOrigin: origin,
     );
     if (mounted) setState(() => _sharing = false);

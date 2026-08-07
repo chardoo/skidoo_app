@@ -81,10 +81,14 @@ DeepLink? parseDeepLink(Uri? uri) {
     'my-photos' || 'my_photos' || 'photos' => const DeepLink(
         DeepLinkKind.myPhotos,
       ),
-    'p' || 'photo' when at(1) != null =>
+    'p' ||
+    'photo' when at(1) != null =>
       DeepLink(DeepLinkKind.picture, id: at(1)),
-    'e' || 'event' when at(1) != null => DeepLink(DeepLinkKind.event, id: at(1)),
-    'r' || 'request' when at(1) != null =>
+    'e' ||
+    'event' when at(1) != null =>
+      DeepLink(DeepLinkKind.event, id: at(1)),
+    'r' ||
+    'request' when at(1) != null =>
       DeepLink(DeepLinkKind.request, id: at(1)),
     'photographer' when at(1) != null =>
       DeepLink(DeepLinkKind.photographer, id: at(1)),

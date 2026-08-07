@@ -9,32 +9,50 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:skidoo_app/components/media/media_rail_action.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
-import 'package:skidoo_app/features/photo_comments/data/picture_like_service.dart';
-import 'package:skidoo_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/components/media/media_rail_action.dart';
+import 'package:jperg_app/core/config/app_links_config.dart';
+import 'package:jperg_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
+import 'package:jperg_app/features/photo_comments/data/picture_like_service.dart';
+import 'package:jperg_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
-/// Fetches the creator-branded overlay image and hands it to the native OS
-/// share sheet. This is THE external-share routine for the whole app — every
-/// card's "share to other apps" icon (discovery page, Home "Feed"/
-/// "Following", the Found tab, the event-pictures feed) calls this exact
-/// function so the branding behaviour never diverges between screens. Also
-/// used internally by [MediaActionButtons]'s own Share/Download buttons.
+/// The two outward actions on a photo, which no longer work the same way:
+///
+///  • **Share** hands the OS share sheet *text only* — the event name, its
+///    description and a URL that opens the thing in the app. No image travels.
+///    A link previews as a card in every messaging app, keeps working when the
+///    text is truncated, and costs nothing to produce, so the share sheet opens
+///    instantly instead of after a round-trip.
+///  • **Download** still fetches the creator-branded overlay image and writes a
+///    real file, because there is nothing to save otherwise.
+///
+/// This is THE external-share routine for the whole app — every card's "share
+/// to other apps" icon (discovery page, Home "Feed"/"Following", the Found tab,
+/// the event-pictures feed) calls this exact function so the behaviour never
+/// diverges between screens. Also used internally by [MediaActionButtons]'s own
+/// Share/Download buttons.
+///
+/// To go back to sharing the rendered file, delete the early return in the
+/// share branch below: the download path underneath already does exactly that,
+/// and passing `text` to it is the whole difference.
 ///
 /// [imageId] is the picture's `id` (matches the existing `imageId:` param
 /// convention already used by every [MediaActionButtons] call site) — NOT
 /// the separate `imageId` field on [EventPicture]/`Photo`, which is a
 /// different value. Every call site must pass `pic.id` here, not
 /// `pic.imageId`.
-/// [isDownload] only changes the loading copy and the shared "text" (kept
-/// null for downloads on web, matching the prior behaviour) — the actual
-/// action is the same OS share/save sheet either way, since there is no
-/// permission-free direct gallery-write API in this app.
+/// [link] is what makes the share worth anything: without it the message is a
+/// name and a caption with no way back to the event, the photographer, or the
+/// app. Every share call site should pass one.
+///
+/// [description] is trimmed to a couple of lines: share sheets and the apps
+/// they hand off to truncate long text unpredictably, and the URL is the part
+/// that must survive.
 Future<void> shareOverlayPhotoExternally(
   BuildContext context, {
   required String imageId,
@@ -42,14 +60,33 @@ Future<void> shareOverlayPhotoExternally(
   String eventName = '',
   bool isDownload = false,
   Rect? shareOrigin,
+  DeepLink? link,
+  String description = '',
 }) async {
+  final subject = eventName.isNotEmpty ? eventName : 'Photo';
+  final origin = _resolveShareOrigin(context, shareOrigin);
+
+  // ── Share: the link and its context, nothing fetched ────────────────────
+  if (!isDownload) {
+    await Share.share(
+      _shareMessage(
+        eventName: eventName,
+        description: description,
+        photographerName: photographerName,
+        link: link,
+      ),
+      subject: subject,
+      sharePositionOrigin: origin,
+    );
+    return;
+  }
+
+  // ── Download: needs the actual bytes ────────────────────────────────────
   showDialog<void>(
     context: context,
     barrierDismissible: false,
     barrierColor: Colors.transparent,
-    builder: (_) => _ProcessingOverlay(
-      label: isDownload ? 'Preparing download…' : 'Preparing to share…',
-    ),
+    builder: (_) => const _ProcessingOverlay(label: 'Preparing download…'),
   );
 
   try {
@@ -60,9 +97,6 @@ Future<void> shareOverlayPhotoExternally(
 
     final safeId = imageId.replaceAll('/', '_').replaceAll('\\', '_');
     final filename = 'overlay_$safeId.${result.fileExtension}';
-    final subject = eventName.isNotEmpty ? eventName : 'Photo';
-    final text =
-        eventName.isNotEmpty ? 'Check out $eventName!' : 'Check out this photo!';
 
     if (kIsWeb) {
       // ── Web: use in-memory XFile — no temp file writes ──────────────────
@@ -72,11 +106,7 @@ Future<void> shareOverlayPhotoExternally(
         name: filename,
       );
       try {
-        await Share.shareXFiles(
-          [xFile],
-          subject: subject,
-          text: isDownload ? null : text,
-        );
+        await Share.shareXFiles([xFile], subject: subject);
       } catch (_) {
         // Browser doesn't support Web Share API Level 2 — fall back to
         // triggering a browser download via a data URI.
@@ -87,7 +117,9 @@ Future<void> shareOverlayPhotoExternally(
       return;
     }
 
-    // ── Mobile: write temp file → OS share sheet ─────────────────────────
+    // ── Mobile: write temp file → OS save/share sheet ────────────────────
+    // No `text:` here — this is the Save path, and a caption riding along
+    // with it would land in whatever app the user picks to save through.
     final dir = await getTemporaryDirectory();
     final filePath = '${dir.path}/$filename';
     await File(filePath).writeAsBytes(result.bytes, flush: true);
@@ -95,8 +127,7 @@ Future<void> shareOverlayPhotoExternally(
     await Share.shareXFiles(
       [XFile(filePath, mimeType: result.contentType)],
       subject: subject,
-      text: text,
-      sharePositionOrigin: shareOrigin,
+      sharePositionOrigin: origin,
     );
 
     // Clean up after the OS share sheet closes.
@@ -113,6 +144,72 @@ Future<void> shareOverlayPhotoExternally(
       );
     }
   }
+}
+
+/// The rect iOS hangs the share sheet off.
+///
+/// UIActivityViewController throws on a zero rect rather than falling back to
+/// anything sensible — `sharePositionOrigin: argument must be set, {{0, 0},
+/// {0, 0}} must be non-zero`. A null origin reaches it as exactly that, so
+/// every call site would otherwise have to remember to measure its own button.
+/// The ones that share from a whole card rather than a specific control (the
+/// discovery cards) have no button to measure, so resolve it here instead:
+/// caller's rect if it gave one, else the widget that triggered the share,
+/// else the middle of the screen.
+///
+/// Android ignores this entirely; it only matters on iPad, where the sheet is
+/// a popover that needs somewhere real to point, and on iPhone, where an empty
+/// rect is still rejected outright.
+Rect _resolveShareOrigin(BuildContext context, Rect? provided) {
+  final screen = Offset.zero & MediaQuery.sizeOf(context);
+
+  var candidate = provided;
+  if (candidate == null || candidate.isEmpty) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box != null && box.hasSize) {
+      candidate = box.localToGlobal(Offset.zero) & box.size;
+    }
+  }
+
+  // Clamped to the screen: the rect must sit inside the source view or iOS
+  // rejects it just as it rejects a zero one, and a card half-scrolled off
+  // the top reports a perfectly valid rect that starts above y = 0.
+  if (candidate != null && !candidate.isEmpty) {
+    final clamped = candidate.intersect(screen);
+    if (!clamped.isEmpty) return clamped;
+  }
+
+  return Rect.fromCenter(center: screen.center, width: 1, height: 1);
+}
+
+/// The text that travels beside the photo.
+///
+/// Ordered so the important part survives truncation: what it is, then who
+/// shot it, then the description, then the link. Messaging apps cut long text
+/// from the end, but they lift a URL out into a preview card wherever it sits,
+/// so the link keeps working even when the rest is clipped.
+String _shareMessage({
+  required String eventName,
+  required String description,
+  required String photographerName,
+  DeepLink? link,
+}) {
+  final lines = <String>[
+    if (eventName.isNotEmpty) eventName else 'Check out this photo!',
+    if (photographerName.isNotEmpty) 'Photos by $photographerName',
+    if (description.trim().isNotEmpty) _trimForShare(description),
+    if (link != null) AppLinksConfig.urlFor(link),
+  ];
+  return lines.join('\n');
+}
+
+/// Long captions get cut at a word boundary rather than mid-word, and only
+/// when they are actually long — most are a line or two and pass through.
+String _trimForShare(String value, {int max = 180}) {
+  final text = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+  if (text.length <= max) return text;
+  final cut = text.lastIndexOf(' ', max);
+  return '${text.substring(0, cut > 0 ? cut : max)}…';
 }
 
 /// Pops the [_ProcessingOverlay] dialog pushed at the top of
@@ -164,6 +261,8 @@ class MediaActionButtons extends StatefulWidget {
     this.showComment = true,
     this.onLikeToggled,
     this.onSend,
+    this.link,
+    this.description = '',
     String? pictureId,
   }) : pictureId = pictureId ?? imageId;
 
@@ -196,6 +295,14 @@ class MediaActionButtons extends StatefulWidget {
   /// When provided, shows a Send button for in-app DM sharing.
   /// Independent of [showComment] — both can appear at the same time.
   final VoidCallback? onSend;
+
+  /// Where a share should point. Share now sends a link rather than a file,
+  /// so without this the message carries no way back into the app — pass the
+  /// event the photo came from wherever it is known.
+  final DeepLink? link;
+
+  /// Event blurb that travels with the link. Optional; omitted when empty.
+  final String description;
 
   /// The picture ID used for comments and likes. Defaults to [imageId].
   final String pictureId;
@@ -263,6 +370,8 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
       eventName: widget.eventName,
       isDownload: isDownload,
       shareOrigin: shareOrigin,
+      link: widget.link,
+      description: widget.description,
     );
 
     if (mounted) {

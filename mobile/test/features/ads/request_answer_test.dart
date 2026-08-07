@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/feed_item_card.dart';
-import 'package:skidoo_app/features/chat/presentation/chat_error_text.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/feed_item_card.dart';
+import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 
 FeedRequestModel _request({
   bool viewerInterested = false,

@@ -1,5 +1,5 @@
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 /// A single saved-item record returned by GET /api/client/{id}/saved.
 class SavedItem {

@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_button.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/features/cart/presentation/bloc/cart_bloc.dart';
-import 'package:skidoo_app/features/cart/presentation/pages/checkout_page.dart';
-import 'package:skidoo_app/features/cart/presentation/widgets/cart_item_widget.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:jperg_app/features/cart/presentation/pages/checkout_page.dart';
+import 'package:jperg_app/features/cart/presentation/widgets/cart_item_widget.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
 
 class CartPage extends StatelessWidget {
   static const routeName = '/cart';

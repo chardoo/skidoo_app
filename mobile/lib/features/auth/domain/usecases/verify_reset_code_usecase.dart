@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/auth/domain/repositories/auth_repository.dart';
 
 /// Step 2 (optional) of password reset — validates the code without
 /// consuming it, so the UI can confirm it before showing the new-password

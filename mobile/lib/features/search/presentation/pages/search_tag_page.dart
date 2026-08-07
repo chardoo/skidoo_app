@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/number_format.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/search/domain/entities/search_models.dart';
-import 'package:skidoo_app/features/search/domain/usecases/search_usecase.dart';
-import 'package:skidoo_app/features/search/presentation/bloc/tag_events_bloc.dart';
-import 'package:skidoo_app/features/search/presentation/pages/search_event_photos_page.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/load_more_listener.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/search_detail_app_bar.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/search_event_row_tile.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/number_format.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/features/search/domain/usecases/search_usecase.dart';
+import 'package:jperg_app/features/search/presentation/bloc/tag_events_bloc.dart';
+import 'package:jperg_app/features/search/presentation/pages/search_event_photos_page.dart';
+import 'package:jperg_app/features/search/presentation/widgets/load_more_listener.dart';
+import 'package:jperg_app/features/search/presentation/widgets/search_detail_app_bar.dart';
+import 'package:jperg_app/features/search/presentation/widgets/search_event_row_tile.dart';
 
 /// The events behind a tag row — the drill-down from the Tags chip.
 class SearchTagPage extends StatelessWidget {

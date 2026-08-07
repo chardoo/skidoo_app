@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-/// Persists the user's mute preference across all [SkidooVideoPlayer] instances.
+/// Persists the user's mute preference across all [JpergVideoPlayer] instances.
 ///
 /// Initial value: muted on web (avoids autoplay policy blocks), unmuted on
 /// native — matching the platform default. Once the user explicitly toggles
@@ -16,7 +16,7 @@ class VideoMutePreference {
   /// Read the current mute preference.
   static bool get muted => _notifier.value;
 
-  /// Update the preference (called by [SkidooVideoPlayer] on user toggle).
+  /// Update the preference (called by [JpergVideoPlayer] on user toggle).
   static set muted(bool value) => _notifier.value = value;
 
   /// Listen for changes — e.g. to sync a mute indicator in a parent widget.

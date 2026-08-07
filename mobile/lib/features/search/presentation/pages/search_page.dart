@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
-import 'package:skidoo_app/features/search/domain/entities/search_models.dart';
-import 'package:skidoo_app/features/search/presentation/bloc/search_bloc.dart';
-import 'package:skidoo_app/features/search/presentation/pages/search_event_photos_page.dart';
-import 'package:skidoo_app/features/search/presentation/pages/search_tag_page.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/load_more_listener.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/search_idle_view.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/search_results_list.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/search_top_bar.dart';
-import 'package:skidoo_app/features/search/presentation/widgets/search_type_chips.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:jperg_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/features/search/presentation/bloc/search_bloc.dart';
+import 'package:jperg_app/features/search/presentation/pages/search_event_photos_page.dart';
+import 'package:jperg_app/features/search/presentation/pages/search_tag_page.dart';
+import 'package:jperg_app/features/search/presentation/widgets/load_more_listener.dart';
+import 'package:jperg_app/features/search/presentation/widgets/search_idle_view.dart';
+import 'package:jperg_app/features/search/presentation/widgets/search_results_list.dart';
+import 'package:jperg_app/features/search/presentation/widgets/search_top_bar.dart';
+import 'package:jperg_app/features/search/presentation/widgets/search_type_chips.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// One text box over three result types, with the photo grid that fills the
 /// idle state behind it.

@@ -5,15 +5,15 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_loading_indicator.dart';
-import 'package:skidoo_app/core/utils/video_mute_preference.dart';
-import 'package:skidoo_app/core/utils/video_pause_notifier.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_loading_indicator.dart';
+import 'package:jperg_app/core/utils/video_mute_preference.dart';
+import 'package:jperg_app/core/utils/video_pause_notifier.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:video_player/video_player.dart';
 
 // ── Public widget ─────────────────────────────────────────────────────────────
 
-/// A fully-featured, reusable video player for Skidoo.
+/// A fully-featured, reusable video player for Jperg.
 ///
 /// Handles play/pause, seek ±10 s, mute/unmute, draggable progress bar,
 /// full-screen, auto-play, looping, carousel coordination, TickerMode-based
@@ -35,22 +35,22 @@ import 'package:video_player/video_player.dart';
 /// **Usage:**
 /// ```dart
 /// // Feed card — fills a fixed-height container, cover fit
-/// SkidooVideoPlayer(url: url, autoPlay: true)
+/// JpergVideoPlayer(url: url, autoPlay: true)
 ///
 /// // Chat bubble — natural aspect ratio
-/// SkidooVideoPlayer(url: url, showControls: true)
+/// JpergVideoPlayer(url: url, showControls: true)
 ///
 /// // Fullscreen page — contain fit
-/// SkidooVideoPlayer(url: url, fit: BoxFit.contain, autoPlay: true, isActive: isThisPage)
+/// JpergVideoPlayer(url: url, fit: BoxFit.contain, autoPlay: true, isActive: isThisPage)
 ///
 /// // Carousel slide — only plays when isActive
-/// SkidooVideoPlayer(url: url, autoPlay: true, isActive: slideIndex == activeIndex)
+/// JpergVideoPlayer(url: url, autoPlay: true, isActive: slideIndex == activeIndex)
 ///
 /// // Local file thumbnail
-/// SkidooVideoPlayer(url: 'file://$filePath', autoPlay: false, showControls: false)
+/// JpergVideoPlayer(url: 'file://$filePath', autoPlay: false, showControls: false)
 /// ```
-class SkidooVideoPlayer extends StatefulWidget {
-  const SkidooVideoPlayer({
+class JpergVideoPlayer extends StatefulWidget {
+  const JpergVideoPlayer({
     super.key,
     required this.url,
     // ── Sizing ─────────────────────────────────────────────────────────────
@@ -116,12 +116,12 @@ class SkidooVideoPlayer extends StatefulWidget {
   final bool listenToPauseNotifier;
 
   /// Optional colour grade applied to the video surface (e.g.
-  /// [SkidooFilters.vibrant]) so feed video matches the photo grading.
+  /// [JpergFilters.vibrant]) so feed video matches the photo grading.
   /// Null leaves the video ungraded — used for chat where fidelity matters.
   final ColorFilter? colorFilter;
 
   @override
-  State<SkidooVideoPlayer> createState() => _SkidooVideoPlayerState();
+  State<JpergVideoPlayer> createState() => _JpergVideoPlayerState();
 }
 
 /// Builds the controller for [url], picking the network or file constructor.
@@ -135,7 +135,7 @@ VideoPlayerController _controllerFor(String url) {
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
+class _JpergVideoPlayerState extends State<JpergVideoPlayer>
     with WidgetsBindingObserver {
   // Nullable until _initPlayer() fires on the first post-frame callback, which
   // keeps the decoder/surface setup off the first render frame.
@@ -245,7 +245,7 @@ class _SkidooVideoPlayerState extends State<SkidooVideoPlayer>
   }
 
   @override
-  void didUpdateWidget(SkidooVideoPlayer old) {
+  void didUpdateWidget(JpergVideoPlayer old) {
     super.didUpdateWidget(old);
     if (old.url != widget.url) {
       // A new source means a new controller — video_player has no re-open.

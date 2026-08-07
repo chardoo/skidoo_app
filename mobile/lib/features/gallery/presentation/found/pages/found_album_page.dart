@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/bloc/found_album_bloc.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_album.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filters.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_photo_grid.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
+import 'package:jperg_app/features/gallery/presentation/found/bloc/found_album_bloc.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_grid.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// Every photo of one event, in the same grid the Found feed previews it with.
 ///

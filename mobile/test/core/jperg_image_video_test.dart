@@ -1,11 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 
 /// The bug: grids, carousels and list tiles get one `url` per item and hand it
-/// straight to [SkidooImage]. When that item was a video the image loader was
+/// straight to [JpergImage]. When that item was a video the image loader was
 /// asked to decode an mp4 and every clip rendered as a broken-image icon.
 void main() {
   Widget host(Widget child) => MaterialApp(
@@ -19,9 +19,9 @@ void main() {
 
   testWidgets('a Cloudinary video loads its poster frame, not the mp4',
       (t) async {
-    await t.pumpWidget(host(const SkidooImage(
+    await t.pumpWidget(host(const JpergImage(
       imageUrl:
-          'https://res.cloudinary.com/skidoo/video/upload/v1/events/clip.mp4',
+          'https://res.cloudinary.com/jperg/video/upload/v1/events/clip.mp4',
     )));
 
     final url = loadedUrl(t);
@@ -31,9 +31,9 @@ void main() {
   });
 
   testWidgets('an image url is untouched by the video path', (t) async {
-    await t.pumpWidget(host(const SkidooImage(
+    await t.pumpWidget(host(const JpergImage(
       imageUrl:
-          'https://res.cloudinary.com/skidoo/image/upload/v1/events/shot.jpg',
+          'https://res.cloudinary.com/jperg/image/upload/v1/events/shot.jpg',
     )));
 
     final url = loadedUrl(t);
@@ -43,13 +43,13 @@ void main() {
 
   testWidgets('a video with no derivable poster shows the empty slot, '
       'not an error icon', (t) async {
-    await t.pumpWidget(host(const SkidooImage(
+    await t.pumpWidget(host(const JpergImage(
       imageUrl: 'https://cdn.example.com/clip.mp4',
       errorWidget: _neverWidget,
     )));
 
     expect(find.byType(CachedNetworkImage), findsNothing);
-    expect(find.byType(SkidooImagePlaceholder), findsOneWidget);
+    expect(find.byType(JpergImagePlaceholder), findsOneWidget);
   });
 }
 

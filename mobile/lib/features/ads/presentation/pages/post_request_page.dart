@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:skidoo_app/core/common/widgets/app_text_field.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/validators/validators.dart';
-import 'package:skidoo_app/core/validators/media_validator.dart';
-import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
-import 'package:skidoo_app/core/common/widgets/xfile_image.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/common/widgets/app_text_field.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/validators/validators.dart';
+import 'package:jperg_app/core/validators/media_validator.dart';
+import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/core/common/widgets/xfile_image.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:skidoo_app/core/theme/app_input.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_input.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 const _eventTypes = [
   'Wedding',

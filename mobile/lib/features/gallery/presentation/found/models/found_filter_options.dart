@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart' show immutable;
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filters.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
 
 /// One selectable chip in the filter sheet, with the number of photos it would
 /// match.

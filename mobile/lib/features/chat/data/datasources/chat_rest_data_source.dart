@@ -4,11 +4,11 @@ import 'dart:io';
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart' as dio_pkg;
 import 'package:flutter/foundation.dart';
-import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/chat/data/network/chat_api_client.dart';
-import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/models/chat/chat_room.dart';
+import 'package:jperg_app/core/config/chat_config.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/chat/data/network/chat_api_client.dart';
+import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:http_parser/http_parser.dart';
 /// Reaction state for an event (from GET /chat/events/{id}/reaction).
 class EventReaction {

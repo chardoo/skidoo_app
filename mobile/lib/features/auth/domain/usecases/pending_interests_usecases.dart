@@ -1,4 +1,4 @@
-import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:jperg_app/features/auth/domain/repositories/auth_repository.dart';
 
 class SetPendingInterestsUseCase {
   final AuthRepository _repository;

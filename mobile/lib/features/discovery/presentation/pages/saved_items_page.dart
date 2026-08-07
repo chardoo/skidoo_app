@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/l10n/app_localizations.dart';
-import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
-import 'package:skidoo_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
-import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/l10n/app_localizations.dart';
+import 'package:jperg_app/features/discovery/data/datasources/client_saved_data_source.dart';
+import 'package:jperg_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
+import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
-import 'package:skidoo_app/core/common/widgets/app_error_view.dart';
+import 'package:jperg_app/core/widgets/animations/app_animations.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/common/widgets/app_error_view.dart';
 
 class SavedItemsPage extends StatefulWidget {
   static const routeName = '/saved-items';
@@ -341,7 +341,7 @@ class _SavedItemTile extends StatelessWidget {
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.sm.r),
         child: item.thumbnailUrl != null
-            ? SkidooImage(
+            ? JpergImage(
                 imageUrl: item.thumbnailUrl!,
                 semanticLabel: 'Saved item',
                 width: 56.w,

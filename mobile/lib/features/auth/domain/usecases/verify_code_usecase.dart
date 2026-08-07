@@ -1,8 +1,8 @@
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
-import 'package:skidoo_app/features/auth/domain/usecases/login_usecase.dart';
-import 'package:skidoo_app/models/Auth/LoginResponse.dart';
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:jperg_app/features/auth/domain/usecases/login_usecase.dart';
+import 'package:jperg_app/models/Auth/LoginResponse.dart';
 
 /// Verifies the 6-digit code emailed after sign-up. On success the backend
 /// returns a full session (same shape as login), so this reuses

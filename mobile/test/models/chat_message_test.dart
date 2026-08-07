@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/models/chat/chat_message.dart';
+import 'package:jperg_app/models/chat/chat_message.dart';
 
 Map<String, dynamic> _base(Map<String, dynamic> extra) => {
       'id': 'm1',

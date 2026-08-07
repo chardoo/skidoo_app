@@ -1,9 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 
 /// Full-width swipeable photo/video carousel — Instagram / TikTok style.
 /// Media is always shown uncropped at its native aspect ratio (`BoxFit
@@ -108,14 +108,14 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                   // ── Blurred background — tiny decode, blur hides all detail ─
                   ImageFiltered(
                     imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                    child: SkidooImage(
+                    child: JpergImage(
                       imageUrl: pic.url,
                       fit: BoxFit.cover,
                       isBlurBackground: true,
                       placeholder: (_, __) =>
-                          const SkidooImagePlaceholder(spinner: true),
+                          const JpergImagePlaceholder(spinner: true),
                       errorWidget: (_, __, ___) =>
-                          const SkidooImagePlaceholder(),
+                          const JpergImagePlaceholder(),
                     ),
                   ),
                   // Veil the blur layer so it doesn't compete with the main
@@ -124,7 +124,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                   // so a fixed black one made the whole feed read as dark.
                   ColoredBox(color: ext.mediaBackdropVeil),
                   // ── Sharp full image, uncropped — actual size, no forced fill ──
-                  SkidooImage(
+                  JpergImage(
                     imageUrl: pic.url,
                     fit: BoxFit.contain,
                     semanticLabel: 'Event photo',
@@ -136,7 +136,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                       child: CircularProgressIndicator(
                           color: ext.accentGold, strokeWidth: 2),
                     ),
-                    errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
+                    errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
                   ),
                   if (isLastLocked)
                     _LockedOverlay(remaining: widget.pics.length - 3),
@@ -151,7 +151,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
 
 // ── Inline video player for the feed carousel ─────────────────────────────────
 /// Thin stateful wrapper that listens to [activeIndex] and [activeCardIndex]
-/// notifiers and forwards an [isActive] flag to [SkidooVideoPlayer].
+/// notifiers and forwards an [isActive] flag to [JpergVideoPlayer].
 
 class _SliderVideoItem extends StatefulWidget {
   const _SliderVideoItem({
@@ -207,7 +207,7 @@ class _SliderVideoItemState extends State<_SliderVideoItem> {
       // only when the video is not yet considered "tapped" by the player.
       onTap: widget.onTap,
       behavior: HitTestBehavior.translucent,
-      child: SkidooVideoPlayer(
+      child: JpergVideoPlayer(
         url: widget.url,
         isActive: _isSlideActive && _isCardActive,
         autoPlay: true,
@@ -323,5 +323,5 @@ class CardEmptyTile extends StatelessWidget {
   const CardEmptyTile({super.key});
   @override
   Widget build(BuildContext context) =>
-      ColoredBox(color: SkidooImagePlaceholder.colorOf(context));
+      ColoredBox(color: JpergImagePlaceholder.colorOf(context));
 }

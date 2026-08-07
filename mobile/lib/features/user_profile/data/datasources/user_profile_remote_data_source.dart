@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart' as dio;
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/core/error/exceptions.dart' as app_exceptions;
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/core/error/exceptions.dart' as app_exceptions;
 
 abstract class UserProfileRemoteDataSource {
   /// Fetches the canonical profile for [clientId] from the backend.

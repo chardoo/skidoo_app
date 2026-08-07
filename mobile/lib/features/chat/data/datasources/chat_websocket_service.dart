@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/models/chat/chat_room.dart';
-import 'package:skidoo_app/models/chat/like_update.dart' show LikeUpdate, PictureLikeUpdate;
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/config/chat_config.dart';
+import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/models/chat/like_update.dart' show LikeUpdate, PictureLikeUpdate;
+import 'package:jperg_app/services/auth_service.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 // ── Server-push events ────────────────────────────────────────────────────────

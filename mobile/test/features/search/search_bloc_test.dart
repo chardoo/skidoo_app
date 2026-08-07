@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/search/domain/entities/search_models.dart';
-import 'package:skidoo_app/features/search/domain/repositories/search_repository.dart';
-import 'package:skidoo_app/features/search/domain/usecases/search_usecase.dart';
-import 'package:skidoo_app/features/search/presentation/bloc/search_bloc.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/features/search/domain/repositories/search_repository.dart';
+import 'package:jperg_app/features/search/domain/usecases/search_usecase.dart';
+import 'package:jperg_app/features/search/presentation/bloc/search_bloc.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 

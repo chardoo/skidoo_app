@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/chat/presentation/bloc/rooms/room_sync_reconciler.dart';
+import 'package:jperg_app/features/chat/presentation/bloc/rooms/room_sync_reconciler.dart';
 
 /// The bug these lock down: a room deleted from another device while this one
 /// was closed never received the live `roomRemovedStream` signal, and the rooms

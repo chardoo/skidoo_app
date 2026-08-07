@@ -1,5 +1,5 @@
-import 'package:skidoo_app/features/gallery/data/datasources/overlay_remote_data_source.dart';
-import 'package:skidoo_app/features/gallery/domain/repositories/overlay_repository.dart';
+import 'package:jperg_app/features/gallery/data/datasources/overlay_remote_data_source.dart';
+import 'package:jperg_app/features/gallery/domain/repositories/overlay_repository.dart';
 
 class OverlayRepositoryImpl implements OverlayRepository {
   final OverlayRemoteDataSource _ds;

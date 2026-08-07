@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart' as dio;
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/core/error/exceptions.dart' as app_ex;
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/core/error/exceptions.dart' as app_ex;
+import 'package:jperg_app/models/photos/Photo.dart';
 
 abstract class GalleryRemoteDataSource {
   Future<List<Photo>> getUserGallery(String clientId);

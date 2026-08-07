@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart' as dio;
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/core/config/chat_config.dart';
-import 'package:skidoo_app/models/chat/shareable_user.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/core/config/chat_config.dart';
+import 'package:jperg_app/models/chat/shareable_user.dart';
 
 const int _kDefaultLimit = 25;
 

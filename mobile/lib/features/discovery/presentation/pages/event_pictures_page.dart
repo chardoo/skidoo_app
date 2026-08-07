@@ -1,18 +1,18 @@
-import 'package:skidoo_app/core/widgets/media_grid.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -241,16 +241,16 @@ class _PhotoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SkidooImage(
+    return JpergImage(
       imageUrl: url,
       fit: BoxFit.cover,
       semanticLabel: 'Event photo',
       fadeInDuration: const Duration(milliseconds: 280),
-      placeholder: (_, __) => const SkidooImagePlaceholder(),
+      placeholder: (_, __) => const JpergImagePlaceholder(),
       errorWidget: (context, __, ___) {
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
         return ColoredBox(
-          color: SkidooImagePlaceholder.colorOf(context),
+          color: JpergImagePlaceholder.colorOf(context),
           child: Center(
             // Was a hardcoded white12 — invisible on the light theme's pale
             // placeholder, so a broken photo showed as an empty tile.
@@ -276,12 +276,12 @@ class _VideoThumbTile extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        SkidooVideoPlayer(
+        JpergVideoPlayer(
           url: url,
           autoPlay: false,
           showControls: false,
           fit: BoxFit.cover,
-          backgroundColor: SkidooImagePlaceholder.colorOf(context),
+          backgroundColor: JpergImagePlaceholder.colorOf(context),
         ),
         // Play badge
         Center(

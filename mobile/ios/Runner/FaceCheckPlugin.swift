@@ -2,7 +2,7 @@ import Flutter
 import UIKit
 import Vision
 
-/// Answers the Dart side's `skidoo/face_check` channel: "does this photo
+/// Answers the Dart side's `jperg/face_check` channel: "does this photo
 /// contain a face?"
 ///
 /// Vision ships with iOS, so this costs nothing in the app download. It
@@ -13,7 +13,7 @@ import Vision
 /// Returning `nil` means "couldn't tell" — the Dart side treats that as a pass
 /// rather than blocking the user (see `FaceCheck.hasFace`).
 enum FaceCheckPlugin {
-  static let channelName = "skidoo/face_check"
+  static let channelName = "jperg/face_check"
 
   static func register(with registry: FlutterPluginRegistry) {
     // Any registrar's messenger reaches the same engine; this plugin has no

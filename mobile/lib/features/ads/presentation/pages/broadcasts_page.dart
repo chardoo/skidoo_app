@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/ads/data/repositories/ads_repository.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/my_campaigns_page.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/my_requests_page.dart';
-import 'package:skidoo_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/features/ads/presentation/pages/my_campaigns_page.dart';
+import 'package:jperg_app/features/ads/presentation/pages/my_requests_page.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
 
 /// "Broadcasts" — everything the user has put out: their requests, and the
 /// campaigns they are running.

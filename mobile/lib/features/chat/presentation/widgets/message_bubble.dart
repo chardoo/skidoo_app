@@ -1,15 +1,15 @@
 
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
-import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/user_avatar.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 
 /// Returns true when [url] points to a video, using both explicit path
 /// patterns (Cloudinary /video/upload/) and file extensions as fallback.
@@ -300,7 +300,7 @@ class _ReplyPreviewStrip extends StatelessWidget {
           if (preview.imageUrl != null && !(preview.isVideo || _isVideoUrl(preview.imageUrl!)))
             ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.xs.r),
-              child: SkidooImage(
+              child: JpergImage(
                 imageUrl: preview.imageUrl!,
                 width: 36.w,
                 height: 36.w,
@@ -340,7 +340,7 @@ class _MessageImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final img = SkidooImage(
+    final img = JpergImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
       semanticLabel: 'Shared photo',
@@ -469,7 +469,7 @@ class _ZoomableImageViewState extends State<_ZoomableImageView>
                     }
                   },
                   child: Center(
-                    child: SkidooImage(
+                    child: JpergImage(
                       imageUrl: widget.imageUrl,
                       fit: BoxFit.contain,
                       semanticLabel: 'Shared photo',
@@ -511,7 +511,7 @@ class _ZoomableImageViewState extends State<_ZoomableImageView>
 
 // ── Video attachment ──────────────────────────────────────────────────────────
 
-/// Thin wrapper: shows [SkidooVideoPlayer] inside a chat bubble.
+/// Thin wrapper: shows [JpergVideoPlayer] inside a chat bubble.
 /// Keeps the current bubble-constrained size; aspect ratio hint avoids the
 /// 16:9 default while the player reads the container headers.
 class _MessageVideo extends StatelessWidget {
@@ -524,7 +524,7 @@ class _MessageVideo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SkidooVideoPlayer(
+    return JpergVideoPlayer(
       url: videoUrl,
       showControls: true,
       autoPlay: false,

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
-import 'package:skidoo_app/features/ads/presentation/pages/campaign_wizard_page.dart';
+import 'package:jperg_app/features/ads/models/ad_campaign.dart';
+import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.dart';
 
 /// The wizard's rules, away from the widgets that render them.
 ///

@@ -1,8 +1,8 @@
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/theme/app_typography.dart';
-import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
+import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 
 class Styles {
   static ThemeData get dark => themeData(true);

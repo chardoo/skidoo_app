@@ -3,17 +3,17 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_button.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filter_options.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filters.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_filter_chip.dart';
-import 'package:skidoo_app/core/common/widgets/app_drag_handle.dart';
+import 'package:jperg_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filter_options.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_filter_chip.dart';
+import 'package:jperg_app/core/common/widgets/app_drag_handle.dart';
 
 /// Bottom sheet holding the Found tab's date / visibility / photographer
 /// filters.

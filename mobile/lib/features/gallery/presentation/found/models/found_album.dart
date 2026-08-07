@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart' show immutable;
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// One event's worth of face-matched photos, as returned by
 /// `GET /client/my-photos?groupBy=event` and rendered as one section of the

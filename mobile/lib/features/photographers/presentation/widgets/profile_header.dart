@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 
 class PhotographerProfileHeader extends StatelessWidget {
   const PhotographerProfileHeader({super.key, required this.photographer, required this.ext});
@@ -23,7 +23,7 @@ class PhotographerProfileHeader extends StatelessWidget {
       children: [
         // Background
         if (hasImage)
-          SkidooImage(
+          JpergImage(
             imageUrl: photographer.imageUrl!,
             fit: BoxFit.cover,
             semanticLabel: 'Photographer photo',

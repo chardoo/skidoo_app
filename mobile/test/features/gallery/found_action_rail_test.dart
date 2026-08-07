@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_action_rail.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_action_rail.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// The viewer's rail is the app's reactions surface, and every screen that
 /// shows reactions has to offer the external share. The rail was the one that

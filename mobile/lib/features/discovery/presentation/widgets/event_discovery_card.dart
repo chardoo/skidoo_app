@@ -5,29 +5,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/components/media/media_action_buttons.dart';
-import 'package:skidoo_app/core/common/widgets/get_app_sheet.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
-import 'package:skidoo_app/features/discovery/presentation/bloc/discovery_bloc.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/event_pictures_page.dart';
-import 'package:skidoo_app/features/discovery/presentation/utils/open_photographer_profile.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart'
+import 'package:jperg_app/components/media/media_action_buttons.dart';
+import 'package:jperg_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/core/common/widgets/get_app_sheet.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/animations/app_animations.dart';
+import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/card_interaction_bar.dart'
     show CardInteractionBar;
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_description_text.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_photo_preview.dart';
-import 'package:skidoo_app/features/discovery/presentation/pages/event_comment_page.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/carousel_arrow.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/heart_burst.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/image_footer.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/page_dots.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/post_header.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/unauth_cta.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_card/web_reactions_column.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
-import 'package:skidoo_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
-import 'package:skidoo_app/features/admin/data/repositories/app_config_repository.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/card_description_text.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/card_photo_preview.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/event_comment_page.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_card/carousel_arrow.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_card/heart_burst.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_card/image_footer.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_card/page_dots.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_card/post_header.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_card/unauth_cta.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_card/web_reactions_column.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
+import 'package:jperg_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
+import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 
 /// Width of the main content column on web — must match app.dart's _kWebColumnWidth.
 const double _kWebColumnWidth = 480.0;
@@ -846,6 +847,12 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                   imageId: pic.id,
                   photographerName: widget.event.photographerName,
                   eventName: widget.event.eventName,
+                  description: widget.event.description,
+                  // The event, not the single photo: someone sharing a shot
+                  // from an album is showing off the album, and the recipient
+                  // lands somewhere with the rest of it rather than on one
+                  // picture with no context.
+                  link: DeepLink(DeepLinkKind.event, id: widget.event.id),
                 );
               }
             : null,

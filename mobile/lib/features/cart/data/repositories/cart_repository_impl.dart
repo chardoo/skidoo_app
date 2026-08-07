@@ -1,6 +1,6 @@
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/cart/data/datasources/cart_remote_data_source.dart';
-import 'package:skidoo_app/features/cart/domain/repositories/cart_repository.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/cart/data/datasources/cart_remote_data_source.dart';
+import 'package:jperg_app/features/cart/domain/repositories/cart_repository.dart';
 
 class CartRepositoryImpl implements CartRepository {
   final CartRemoteDataSource _remoteDataSource;

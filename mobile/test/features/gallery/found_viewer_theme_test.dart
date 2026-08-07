@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_photo_filmstrip.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_filmstrip.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// The viewer is dark in both app themes — the photo is the point of the
 /// screen and the surround's job is to disappear behind it, so viewing

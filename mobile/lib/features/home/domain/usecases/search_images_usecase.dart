@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/features/home/domain/repositories/home_repository.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/features/home/domain/repositories/home_repository.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 class SearchImagesUseCase {
   final HomeRepository _repository;

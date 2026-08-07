@@ -1,7 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/auth/domain/usecases/register_usecase.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/auth/domain/usecases/register_usecase.dart';
 
 part 'signup_event.dart';
 part 'signup_state.dart';

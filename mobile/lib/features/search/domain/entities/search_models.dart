@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// The three result lists a query fans out into. The wire value is the `type`
 /// query parameter of `GET /client/search/results`; `all` is not a member

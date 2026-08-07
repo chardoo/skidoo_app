@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_widgets.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/navigation/app_navigator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/web_panel_route.dart';
-import 'package:skidoo_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
-import 'package:skidoo_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
-import 'package:skidoo_app/features/chat/presentation/pages/create_group_page.dart';
-import 'package:skidoo_app/features/chat/presentation/pages/group_info_page.dart';
-import 'package:skidoo_app/features/chat/presentation/widgets/chat_input_bar.dart';
-import 'package:skidoo_app/features/chat/presentation/widgets/message_bubble.dart';
-import 'package:skidoo_app/features/chat/presentation/widgets/message_entrance.dart';
-import 'package:skidoo_app/features/chat/presentation/widgets/room_tile.dart';
-import 'package:skidoo_app/l10n/app_localizations.dart';
-import 'package:skidoo_app/models/chat/chat_message.dart';
-import 'package:skidoo_app/models/chat/chat_room.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/navigation/app_navigator.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/web_panel_route.dart';
+import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
+import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
+import 'package:jperg_app/features/chat/presentation/pages/create_group_page.dart';
+import 'package:jperg_app/features/chat/presentation/pages/group_info_page.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/chat_input_bar.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/message_bubble.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/message_entrance.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/room_tile.dart';
+import 'package:jperg_app/l10n/app_localizations.dart';
+import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
 
 // Panel width / top gap and the constrained-page push helper live in
 // web_panel_route.dart so every chat page can land in the same panel column.

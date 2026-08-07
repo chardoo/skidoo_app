@@ -1,4 +1,4 @@
-package com.skidoo.app
+package com.jperg.app
 
 import android.content.pm.ActivityInfo
 import android.os.Build

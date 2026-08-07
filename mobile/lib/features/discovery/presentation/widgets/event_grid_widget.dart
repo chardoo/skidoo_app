@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/widgets/media_grid.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/event_card_widget.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_card_widget.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// Events as a uniform card grid.
 ///

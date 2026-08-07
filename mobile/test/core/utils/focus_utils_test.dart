@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/utils/focus_utils.dart';
+import 'package:jperg_app/core/utils/focus_utils.dart';
 
 void main() {
   group('isTextInputFocused', () {

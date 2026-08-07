@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
-import 'package:skidoo_app/models/photo_comment/photo_comment.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/models/photo_comment/photo_comment.dart';
 
 /// REST comment data source for ads and requests.
 /// targetType is 'ad' or 'request'.

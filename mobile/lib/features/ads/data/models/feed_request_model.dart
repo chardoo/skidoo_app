@@ -1,4 +1,4 @@
-import 'package:skidoo_app/features/ads/models/ad_media.dart';
+import 'package:jperg_app/features/ads/models/ad_media.dart';
 
 class FeedRequestModel {
   const FeedRequestModel({

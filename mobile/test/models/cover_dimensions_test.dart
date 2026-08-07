@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/search/domain/entities/search_models.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
-import 'package:skidoo_app/models/photographer/photographer_event.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/models/photographer/photographer_event.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// The API sends an event cover's pixel dimensions alongside its url
 /// (`coverWidth` / `coverHeight`), and a clip's length as `durationSeconds`.

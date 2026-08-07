@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/utils/number_format.dart';
-import 'package:skidoo_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/core/utils/number_format.dart';
+import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 
 /// The row shapes documented in docs/FRONTEND_SEARCH.md.
 Map<String, dynamic> eventJson({String id = 'evt-1'}) => {

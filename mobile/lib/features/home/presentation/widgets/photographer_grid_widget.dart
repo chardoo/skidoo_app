@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/widgets/media_grid.dart';
-import 'package:skidoo_app/features/home/presentation/widgets/photographer_card_widget.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/features/home/presentation/widgets/photographer_card_widget.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
 
 /// Photographers as a uniform card grid.
 ///

@@ -1,10 +1,10 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/photographers/domain/usecases/get_photographers_usecase.dart';
-import 'package:skidoo_app/features/photographers/domain/usecases/search_photographers_usecase.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/photographers/domain/usecases/get_photographers_usecase.dart';
+import 'package:jperg_app/features/photographers/domain/usecases/search_photographers_usecase.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
 
 part 'photographer_event.dart';
 part 'photographer_state.dart';

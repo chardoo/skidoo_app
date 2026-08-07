@@ -1,8 +1,8 @@
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/gallery/data/datasources/found_remote_data_source.dart';
-import 'package:skidoo_app/features/gallery/domain/repositories/found_repository.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filter_options.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/models/found_filters.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/gallery/data/datasources/found_remote_data_source.dart';
+import 'package:jperg_app/features/gallery/domain/repositories/found_repository.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filter_options.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
 
 class FoundRepositoryImpl implements FoundRepository {
   FoundRepositoryImpl(this._remoteDataSource);

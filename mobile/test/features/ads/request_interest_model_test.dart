@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 
 /// The review screen sorts photographers into Pending and Viewed and pins the
 /// selected one, all off three fields on this model. If they stop being read,

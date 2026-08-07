@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/widgets/media_grid.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_photo_tile.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_tile.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// The three-column square grid shared by the Found tab's album previews and
 /// the full album page — one place that owns column count, gutter and tile

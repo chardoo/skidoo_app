@@ -1,9 +1,9 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/auth/domain/usecases/pending_interests_usecases.dart';
-import 'package:skidoo_app/features/auth/domain/usecases/update_profile_usecase.dart';
-import 'package:skidoo_app/services/auth_service.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/auth/domain/usecases/pending_interests_usecases.dart';
+import 'package:jperg_app/features/auth/domain/usecases/update_profile_usecase.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 part 'interests_event.dart';
 part 'interests_state.dart';

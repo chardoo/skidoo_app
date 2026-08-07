@@ -6,8 +6,8 @@ import 'package:flutter/widgets.dart';
 /// All matrices preserve black levels (no flat brightness lift) so shadows stay
 /// rich while colour and contrast are boosted — the opposite of the washed-out
 /// look you get from naively adding a constant to every channel.
-class SkidooFilters {
-  const SkidooFilters._();
+class JpergFilters {
+  const JpergFilters._();
 
   /// Default feed polish: saturation ≈ 1.20, light contrast, a touch of warmth
   /// (red lifted, blue eased) for that golden-hour social-feed feel.

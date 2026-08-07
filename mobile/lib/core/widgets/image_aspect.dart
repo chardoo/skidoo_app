@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/widgets.dart';
-import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/cloudinary_transform.dart';
 
 /// Aspect ratios recovered from the images themselves, for records the server
 /// never sent `width`/`height` for.

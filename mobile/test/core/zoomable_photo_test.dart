@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/image_aspect.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
-import 'package:skidoo_app/core/widgets/zoomable_photo.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/image_aspect.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/widgets/zoomable_photo.dart';
 
 /// A full-screen viewer used to hand a screen-sized slot to `BoxFit.contain`,
 /// so the loading state was a spinner marooned in the middle of a black screen
@@ -41,7 +41,7 @@ void main() {
       knownAspect: 3 / 2, // 3000 × 2000
     )));
 
-    final size = t.getSize(find.byType(SkidooImage));
+    final size = t.getSize(find.byType(JpergImage));
     expect(size.width, 400);
     expect(size.height, moreOrLessEquals(400 / (3 / 2), epsilon: 0.5));
   });
@@ -55,7 +55,7 @@ void main() {
       knownAspect: 1 / 4,
     )));
 
-    final size = t.getSize(find.byType(SkidooImage));
+    final size = t.getSize(find.byType(JpergImage));
     expect(size.height, 800);
     expect(size.width, moreOrLessEquals(800 * (1 / 4), epsilon: 0.5));
   });
@@ -69,7 +69,7 @@ void main() {
 
     // The placeholder is inside the box, so it is the photo's size — this is
     // what stops the image jumping when it lands.
-    final placeholder = t.getSize(find.byType(SkidooImagePlaceholder).first);
+    final placeholder = t.getSize(find.byType(JpergImagePlaceholder).first);
     expect(placeholder.height, moreOrLessEquals(400 / (3 / 2), epsilon: 0.5));
   });
 
@@ -80,8 +80,8 @@ void main() {
     await t.pump();
 
     // Falls back to ResolvedAspect's default shape rather than collapsing.
-    expect(find.byType(SkidooImage), findsOneWidget);
-    expect(t.getSize(find.byType(SkidooImage)).height, greaterThan(0));
+    expect(find.byType(JpergImage), findsOneWidget);
+    expect(t.getSize(find.byType(JpergImage)).height, greaterThan(0));
   });
 
   testWidgets('zoom resets when the page is recycled onto another photo',

@@ -1,19 +1,19 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/app_button.dart';
-import 'package:skidoo_app/core/di/service_locator.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
-import 'package:skidoo_app/features/photographers/domain/usecases/photographer_profile_usecases.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/verify_terms_page.dart';
-import 'package:skidoo_app/features/photographers/presentation/widgets/portfolio_form.dart';
-import 'package:skidoo_app/models/photographer/photographer_sample.dart';
-import 'package:skidoo_app/services/auth_service.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
+import 'package:jperg_app/features/photographers/domain/usecases/photographer_profile_usecases.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/verify_terms_page.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/portfolio_form.dart';
+import 'package:jperg_app/models/photographer/photographer_sample.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 /// Account-section "Portfolio" screen — a photographer's portfolio setup,
 /// done on demand from Account rather than automatically during onboarding.

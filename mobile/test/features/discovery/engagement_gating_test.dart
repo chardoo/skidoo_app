@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// `comments_enabled` is the owner's "no feedback on this" switch. It used to
 /// hide only the comment button, leaving like and dislike live — so an event,

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/discovery/data/datasources/client_saved_data_source.dart';
+import 'package:jperg_app/features/discovery/data/datasources/client_saved_data_source.dart';
 
 void main() {
   group('SavedItem.fromJson resilience', () {

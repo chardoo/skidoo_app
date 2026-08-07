@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/common/widgets/user_avatar.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/features/discovery/presentation/utils/open_photographer_profile.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/common/widgets/user_avatar.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// Footer strip over the bottom of the photo in the Found viewer:
 /// photographer identity on the left, "View album" on the right.

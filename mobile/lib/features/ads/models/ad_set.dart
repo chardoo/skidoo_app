@@ -1,4 +1,4 @@
-import 'package:skidoo_app/features/ads/models/ad.dart';
+import 'package:jperg_app/features/ads/models/ad.dart';
 
 class AdSet {
   final String id;

@@ -17,7 +17,7 @@ import 'package:flutter/services.dart';
 class FaceCheck {
   const FaceCheck._();
 
-  static const MethodChannel _channel = MethodChannel('skidoo/face_check');
+  static const MethodChannel _channel = MethodChannel('jperg/face_check');
 
   /// True when the image at [imagePath] contains at least one face.
   ///

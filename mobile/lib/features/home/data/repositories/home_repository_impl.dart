@@ -1,8 +1,8 @@
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/home/data/datasources/home_remote_data_source.dart';
-import 'package:skidoo_app/features/home/domain/repositories/home_repository.dart';
-import 'package:skidoo_app/models/event/Event.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/home/data/datasources/home_remote_data_source.dart';
+import 'package:jperg_app/features/home/domain/repositories/home_repository.dart';
+import 'package:jperg_app/models/event/Event.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 class HomeRepositoryImpl implements HomeRepository {
   final HomeRemoteDataSource _remoteDataSource;

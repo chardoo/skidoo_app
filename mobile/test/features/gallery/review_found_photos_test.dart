@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/data/repositories/found_review_repository.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/pages/review_found_photos_page.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/data/repositories/found_review_repository.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/review_found_photos_page.dart';
 
 /// The review screen decides which photos are really of you, and everything
 /// after it — what is in your photos, what a rescan may re-add — follows from

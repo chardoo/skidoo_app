@@ -1,5 +1,5 @@
 import 'package:cross_file/cross_file.dart';
-import 'package:skidoo_app/features/photographers/domain/repositories/photographer_repository.dart';
+import 'package:jperg_app/features/photographers/domain/repositories/photographer_repository.dart';
 
 class GetPhotographerProfileUseCase {
   final PhotographerRepository _repository;

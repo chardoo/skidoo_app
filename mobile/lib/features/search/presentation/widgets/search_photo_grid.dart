@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/media_grid.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// The photo grid behind both "You may like" and an event's photos, as a
 /// sliver so either can sit in a page that scrolls other things above it.
@@ -58,14 +58,14 @@ class SearchPhotoTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.passthrough,
         children: [
-          SkidooImage(
+          JpergImage(
             imageUrl: photo.url,
             fit: BoxFit.cover,
             width: double.infinity,
             semanticLabel: photo.eventName.isEmpty
                 ? 'Photo'
                 : 'Photo from ${photo.eventName}',
-            placeholder: (_, __) => const SkidooImagePlaceholder(),
+            placeholder: (_, __) => const JpergImagePlaceholder(),
             errorWidget: (_, __, ___) => ColoredBox(
               color: ext.searchFieldFill,
               child: Icon(Icons.broken_image_outlined,

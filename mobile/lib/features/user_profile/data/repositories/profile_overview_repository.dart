@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:skidoo_app/api/dio_client_service.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
 
 const _tag = '[ProfileOverviewRepository]';
 

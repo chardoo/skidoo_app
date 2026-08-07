@@ -1,10 +1,10 @@
 import 'package:cross_file/cross_file.dart';
-import 'package:skidoo_app/core/error/exceptions.dart';
-import 'package:skidoo_app/features/photographers/data/datasources/photographer_remote_data_source.dart';
-import 'package:skidoo_app/features/photographers/domain/repositories/photographer_repository.dart';
-import 'package:skidoo_app/models/photographer/photographer_event.dart';
-import 'package:skidoo_app/models/photographer/photographer_sample.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/features/photographers/data/datasources/photographer_remote_data_source.dart';
+import 'package:jperg_app/features/photographers/domain/repositories/photographer_repository.dart';
+import 'package:jperg_app/models/photographer/photographer_event.dart';
+import 'package:jperg_app/models/photographer/photographer_sample.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
 
 class PhotographerRepositoryImpl implements PhotographerRepository {
   final PhotographerRemoteDataSource _remoteDataSource;

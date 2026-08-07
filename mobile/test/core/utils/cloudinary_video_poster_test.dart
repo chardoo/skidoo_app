@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/cloudinary_transform.dart';
 
 /// The bug these lock down: a video in a thumbnail grid was handed to the
 /// image loader as an `.mp4`, which can only fail — every clip rendered as a
@@ -7,9 +7,9 @@ import 'package:skidoo_app/core/utils/cloudinary_transform.dart';
 /// own poster frame, which Cloudinary renders from the same asset.
 void main() {
   const videoUrl =
-      'https://res.cloudinary.com/skidoo/video/upload/v1712345678/events/clip.mp4';
+      'https://res.cloudinary.com/jperg/video/upload/v1712345678/events/clip.mp4';
   const imageUrl =
-      'https://res.cloudinary.com/skidoo/image/upload/v1712345678/events/shot.jpg';
+      'https://res.cloudinary.com/jperg/image/upload/v1712345678/events/shot.jpg';
 
   group('isVideoUrl', () {
     test('Cloudinary video delivery urls', () {

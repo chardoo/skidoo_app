@@ -1,4 +1,4 @@
-package com.skidoo.app
+package com.jperg.app
 
 import android.content.Context
 import android.net.Uri
@@ -11,7 +11,7 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 /**
- * Answers the Dart side's `skidoo/face_check` channel: "does this photo
+ * Answers the Dart side's `jperg/face_check` channel: "does this photo
  * contain a face?"
  *
  * Uses the *unbundled* ML Kit face detector — the model lives in Play Services
@@ -26,7 +26,7 @@ import java.io.File
 class FaceCheckPlugin(private val context: Context) : MethodChannel.MethodCallHandler {
 
     companion object {
-        const val CHANNEL = "skidoo/face_check"
+        const val CHANNEL = "jperg/face_check"
 
         fun register(context: Context, messenger: BinaryMessenger) {
             MethodChannel(messenger, CHANNEL).setMethodCallHandler(FaceCheckPlugin(context))

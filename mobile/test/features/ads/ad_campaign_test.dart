@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/ads/models/ad_campaign.dart';
+import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 
 AdCampaign _campaign({double budget = 100, double spent = 0}) => AdCampaign(
       id: 'c1',

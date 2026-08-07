@@ -1,5 +1,5 @@
-import 'package:skidoo_app/core/usecases/usecase.dart';
-import 'package:skidoo_app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:jperg_app/core/usecases/usecase.dart';
+import 'package:jperg_app/features/auth/domain/repositories/auth_repository.dart';
 
 /// Upgrades the signed-in account to a photographer — `POST
 /// /photographer/become` (authenticated, no body per backend notes).

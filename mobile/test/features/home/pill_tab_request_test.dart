@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/home/presentation/pages/home_navigation_page.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
 
 /// The guest shell hands off to /home by posting a tab request *before* that
 /// page exists, then navigating. A ValueNotifier only notifies on change, so a

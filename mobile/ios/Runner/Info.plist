@@ -22,9 +22,6 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
-	<!-- Custom scheme, for links from inside other apps. Universal Links
-	     (Runner.entitlements) are what email and browsers use; this is the
-	     fallback for contexts that will not follow an https URL. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -43,13 +40,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Skidoo needs access to your camera to take photos and scan items.</string>
+	<string>Jperg needs access to your camera to take photos and scan items.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Skidoo needs access to your microphone for video recording.</string>
+	<string>Jperg needs access to your microphone for video recording.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Skidoo needs permission to save images to your photo library.</string>
+	<string>Jperg needs permission to save images to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Skidoo needs access to your photo library to select and save images.</string>
+	<string>Jperg needs access to your photo library to select and save images.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -73,6 +70,10 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

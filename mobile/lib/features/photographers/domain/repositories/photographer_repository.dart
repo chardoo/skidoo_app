@@ -1,7 +1,7 @@
 import 'package:cross_file/cross_file.dart';
-import 'package:skidoo_app/models/photographer/photographer_event.dart';
-import 'package:skidoo_app/models/photographer/photographer_sample.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/models/photographer/photographer_event.dart';
+import 'package:jperg_app/models/photographer/photographer_sample.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
 
 abstract class PhotographerRepository {
   Future<List<PhotographerModel>> getPhotographers();

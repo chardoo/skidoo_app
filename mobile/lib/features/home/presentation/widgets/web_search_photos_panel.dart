@@ -1,19 +1,19 @@
 import 'dart:ui';
 
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/material.dart';
-import 'package:skidoo_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/utils/snackbar_utils.dart';
-import 'package:skidoo_app/core/utils/web_wrap.dart';
-import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:skidoo_app/features/home/presentation/pages/search_results_page.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
-import 'package:skidoo_app/core/theme/app_radius.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:jperg_app/features/home/presentation/pages/search_results_page.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 /// Full-page, routed version of [WebSearchPhotosPanel] used on web so that
 /// selecting an event from the sidebar search opens the photos regardless of
@@ -347,7 +347,7 @@ class _PhotoCard extends StatelessWidget {
         children: [
           // The grid cell is a fixed square, so the photo fills and crops to it
           // rather than being sized from its own dimensions.
-          SkidooImage(
+          JpergImage(
             imageUrl: photo.url,
             fit: BoxFit.cover,
             width: double.infinity,

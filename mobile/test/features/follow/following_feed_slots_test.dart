@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/follow/data/follow_repository.dart';
-import 'package:skidoo_app/features/follow/presentation/widgets/following_feed.dart';
-import 'package:skidoo_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/features/follow/data/follow_repository.dart';
+import 'package:jperg_app/features/follow/presentation/widgets/following_feed.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
 List<EventDiscovery> events(int count) => [
       for (var i = 0; i < count; i++)

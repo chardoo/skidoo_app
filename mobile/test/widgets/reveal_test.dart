@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/widgets/animations/app_animations.dart';
+import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 
 void main() {
   testWidgets('Reveal renders its child and settles to opacity 1', (tester) async {

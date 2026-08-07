@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/features/ads/models/ad_media.dart';
+import 'package:jperg_app/features/ads/models/ad_media.dart';
 
 void main() {
   group('AdMedia getters', () {

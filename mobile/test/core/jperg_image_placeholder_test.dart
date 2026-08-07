@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 
 Color fillOf(WidgetTester t) => t
     .widget<ColoredBox>(find.descendant(
-      of: find.byType(SkidooImagePlaceholder),
+      of: find.byType(JpergImagePlaceholder),
       matching: find.byType(ColoredBox),
     ))
     .color;
@@ -21,27 +21,27 @@ Widget host(AppThemeExtension ext, Widget child) => MaterialApp(
 void main() {
   testWidgets('dark theme -> dark fill', (t) async {
     await t.pumpWidget(
-        host(AppThemeExtension.dark, const SkidooImagePlaceholder()));
+        host(AppThemeExtension.dark, const JpergImagePlaceholder()));
     expect(fillOf(t), AppThemeExtension.dark.searchFieldFill);
   });
 
   testWidgets('light theme -> light fill', (t) async {
     await t.pumpWidget(
-        host(AppThemeExtension.light, const SkidooImagePlaceholder()));
+        host(AppThemeExtension.light, const JpergImagePlaceholder()));
     expect(fillOf(t), AppThemeExtension.light.searchFieldFill);
   });
 
   testWidgets('alwaysDark stays dark even under the light theme', (t) async {
     await t.pumpWidget(
-        host(AppThemeExtension.light, const SkidooImagePlaceholder(alwaysDark: true)));
+        host(AppThemeExtension.light, const JpergImagePlaceholder(alwaysDark: true)));
     expect(fillOf(t), AppThemeExtension.dark.searchFieldFill);
   });
 
   testWidgets('spinner is opt-in', (t) async {
-    await t.pumpWidget(host(AppThemeExtension.dark, const SkidooImagePlaceholder()));
+    await t.pumpWidget(host(AppThemeExtension.dark, const JpergImagePlaceholder()));
     expect(find.byType(CircularProgressIndicator), findsNothing);
     await t.pumpWidget(
-        host(AppThemeExtension.dark, const SkidooImagePlaceholder(spinner: true)));
+        host(AppThemeExtension.dark, const JpergImagePlaceholder(spinner: true)));
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 }

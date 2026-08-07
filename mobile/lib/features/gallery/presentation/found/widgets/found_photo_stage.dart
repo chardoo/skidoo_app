@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_action_rail.dart';
-import 'package:skidoo_app/core/widgets/image_aspect.dart';
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
-import 'package:skidoo_app/core/widgets/video_player/skidoo_video_player.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_photo_meta_bar.dart';
-import 'package:skidoo_app/features/gallery/presentation/found/widgets/found_visibility_badge.dart';
-import 'package:skidoo_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_action_rail.dart';
+import 'package:jperg_app/core/widgets/image_aspect.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_meta_bar.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_visibility_badge.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// One page of the Found viewer: the media itself with the three overlays
 /// that hang off its edges — visibility badge (top-left), action rail
@@ -47,7 +47,7 @@ class FoundPhotoStage extends StatelessWidget {
   static const _defaultAspect = 4 / 3;
 
   /// Height of the video player's own bottom controls — 20 dp scrubber,
-  /// timestamp row, 6 dp padding (`_BottomBar` in skidoo_video_player.dart).
+  /// timestamp row, 6 dp padding (`_BottomBar` in jperg_video_player.dart).
   static const double _videoControlsBand = 40;
 
   @override
@@ -68,7 +68,7 @@ class FoundPhotoStage extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               if (photo.isVideo)
-                SkidooVideoPlayer(
+                JpergVideoPlayer(
                   url: photo.url,
                   isActive: isActive,
                   autoPlay: true,
@@ -79,7 +79,7 @@ class FoundPhotoStage extends StatelessWidget {
                   listenToPauseNotifier: true,
                 )
               else
-                SkidooImage(
+                JpergImage(
                   imageUrl: photo.url,
                   // Identical to `cover` once the box is the photo's own
                   // shape, which is the steady state. It differs only in the
@@ -88,8 +88,8 @@ class FoundPhotoStage extends StatelessWidget {
                   // it and then jumping.
                   fit: BoxFit.contain,
                   semanticLabel: 'Found photo',
-                  placeholder: (_, __) => const SkidooImagePlaceholder(),
-                  errorWidget: (_, __, ___) => const SkidooImagePlaceholder(),
+                  placeholder: (_, __) => const JpergImagePlaceholder(),
+                  errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
                 ),
 
               Positioned(

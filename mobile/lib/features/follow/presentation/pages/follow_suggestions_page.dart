@@ -1,15 +1,15 @@
-import 'package:skidoo_app/core/widgets/skidoo_image.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:skidoo_app/core/theme/app_theme_extension.dart';
-import 'package:skidoo_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
-import 'package:skidoo_app/features/follow/data/follow_repository.dart';
-import 'package:skidoo_app/features/auth/presentation/pages/onboarding_complete_page.dart';
-import 'package:skidoo_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:skidoo_app/features/photographers/presentation/pages/photographer_profile_page.dart';
-import 'package:skidoo_app/models/photographer/photographerModel.dart';
-import 'package:skidoo_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
+import 'package:jperg_app/features/follow/data/follow_repository.dart';
+import 'package:jperg_app/features/auth/presentation/pages/onboarding_complete_page.dart';
+import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 
 /// Final onboarding step — "Creators to follow" (4/4), the same for every
 /// role. Photographer-only portfolio setup + verification no longer happen
@@ -300,7 +300,7 @@ class _SuggestionAvatar extends StatelessWidget {
     if (url == null) return fallback;
 
     return ClipOval(
-      child: SkidooImage(
+      child: JpergImage(
         imageUrl: url,
         width: size,
         height: size,
