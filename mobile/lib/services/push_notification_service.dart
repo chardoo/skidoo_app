@@ -20,7 +20,7 @@ class PushNotificationService {
 
   /// How long to wait after sign-in before asking for notification permission,
   /// so the OS dialog lands on a settled screen rather than mid-render.
-  static const Duration permissionPromptDelay = Duration(seconds: 3);
+  static const Duration permissionPromptDelay = Duration(seconds: 10);
 
   /// Wires up the SDK and its listeners. Safe to call before sign-in — the
   /// device simply has no external id attached until [login] runs.
