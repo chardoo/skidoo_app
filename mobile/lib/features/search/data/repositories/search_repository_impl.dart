@@ -2,6 +2,7 @@ import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/features/search/data/datasources/search_remote_data_source.dart';
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 import 'package:jperg_app/features/search/domain/repositories/search_repository.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 class SearchRepositoryImpl implements SearchRepository {
   SearchRepositoryImpl(this._remote);
@@ -60,6 +61,10 @@ class SearchRepositoryImpl implements SearchRepository {
     int limit = SearchRemoteDataSourceImpl.defaultPhotoLimit,
   }) =>
       _guard(() => _remote.eventPhotos(eventId, page: page, limit: limit));
+
+  @override
+  Future<Photo> pictureById(String pictureId) =>
+      _guard(() => _remote.pictureById(pictureId));
 
   /// Lets the typed exceptions through untouched and wraps anything else, so
   /// callers only ever have to handle the app's own exception vocabulary.

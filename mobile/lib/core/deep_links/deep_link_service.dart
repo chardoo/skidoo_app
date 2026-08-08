@@ -3,12 +3,16 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/navigation/app_navigator.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/presentation/pages/review_photographers_page.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:jperg_app/features/search/domain/usecases/search_usecase.dart';
+import 'package:jperg_app/features/search/presentation/pages/search_event_photos_page.dart';
 import 'package:jperg_app/models/photographer/photographerModel.dart';
 
 const _tag = '[DeepLinks]';
@@ -198,17 +202,46 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
           );
           return;
 
-        // No screen takes an event or a single picture by id yet — the feed
-        // builds both from a list it already holds. Rather than invent one,
-        // this says so plainly; wiring it is a screen, not a resolver.
+        // The album page takes an id and fetches the rest itself, so a link
+        // needs nothing but what it already carries.
         case DeepLinkKind.event:
-        case DeepLinkKind.picture:
           if (!mounted) return;
-          setState(() {
-            _loading = false;
-            _error = 'Opening a single ${link.kind.name} from a link '
-                'is not available yet.';
-          });
+          await Navigator.of(context).pushReplacement(
+            MaterialPageRoute<void>(
+              builder: (_) => SearchEventPhotosPage(eventId: link.id!),
+            ),
+          );
+          return;
+
+        // A photo is always shown inside its album — there is no screen that
+        // takes a bare picture id, and inventing one would be a second viewer
+        // to keep in step. So the id is resolved to its event first, and the
+        // link opens the album with the viewer already on that photo. Two
+        // screens are pushed so Back leaves the person in the album rather
+        // than straight out of the app.
+        case DeepLinkKind.picture:
+          final photo = await sl<SearchUseCase>().picture(link.id!);
+          if (!mounted) return;
+          final navigator = Navigator.of(context);
+          final viewer = MaterialPageRoute<void>(
+            builder: (_) => FoundPhotoViewerPage(photos: [photo]),
+          );
+
+          if (photo.eventId.isEmpty) {
+            unawaited(navigator.pushReplacement(viewer));
+            return;
+          }
+
+          // Neither is awaited: the future a push returns completes when that
+          // route is *popped*, so awaiting the album would put the viewer on
+          // top only after the person had already left it. Both are handed to
+          // the navigator in order instead, which is what stacks them.
+          unawaited(navigator.pushReplacement(
+            MaterialPageRoute<void>(
+              builder: (_) => SearchEventPhotosPage(eventId: photo.eventId),
+            ),
+          ));
+          unawaited(navigator.push(viewer));
           return;
 
         case DeepLinkKind.myPhotos:

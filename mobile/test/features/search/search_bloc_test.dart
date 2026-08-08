@@ -127,6 +127,11 @@ class FakeSearchRepository implements SearchRepository {
         photos: [],
         pagination: SearchPagination(),
       );
+
+  /// Only the deep-link resolver calls this; the bloc under test never does.
+  @override
+  Future<Photo> pictureById(String pictureId) async =>
+      throw UnimplementedError();
 }
 
 /// Past the bloc's 320 ms debounce with room for the fake's microtasks.

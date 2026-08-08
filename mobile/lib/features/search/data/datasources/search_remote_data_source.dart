@@ -42,6 +42,13 @@ abstract class SearchRemoteDataSource {
 
   /// An event's photos. Accepts the event id **or** its access code.
   Future<EventPhotosPage> eventPhotos(String eventId, {int page, int limit});
+
+  /// One photo and the event it belongs to, for a `/p/{id}` deep link.
+  ///
+  /// Throws [app_ex.NotFoundException] when the photo is gone *or* when this
+  /// viewer has no claim on it — the server does not distinguish the two, and
+  /// neither should anything downstream.
+  Future<Photo> pictureById(String pictureId);
 }
 
 class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
@@ -195,6 +202,32 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
       photos: _photos(_dataList(raw), event: eventJson),
       pagination: _pagination(raw),
     );
+  }
+
+  // ── One picture ────────────────────────────────────────────────────────────
+
+  @override
+  Future<Photo> pictureById(String pictureId) async {
+    final raw = await _get(
+      '/client/pictures/${Uri.encodeComponent(pictureId)}',
+      const {},
+    );
+    final body = _envelope(raw);
+    final photoJson = SearchJson.map(body['photo']);
+    if (photoJson == null) {
+      throw const app_ex.NotFoundException('Photo not found.');
+    }
+    // Same fold as the grid above: the event is hoisted out of the row in the
+    // envelope, and putting it back is what lets this Photo open in the same
+    // viewer every other list uses.
+    final photo = Photo.fromMap({
+      if (SearchJson.map(body['event']) != null) 'event': body['event'],
+      ...photoJson,
+    });
+    if (photo.url.isEmpty) {
+      throw const app_ex.NotFoundException('Photo not found.');
+    }
+    return photo;
   }
 
   // ── Transport ──────────────────────────────────────────────────────────────

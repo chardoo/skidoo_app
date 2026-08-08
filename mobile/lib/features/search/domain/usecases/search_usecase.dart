@@ -1,5 +1,6 @@
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 import 'package:jperg_app/features/search/domain/repositories/search_repository.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 
 /// The Search screen's reads, grouped in one use case rather than six
 /// near-identical classes: they are always wired up together and share the
@@ -46,4 +47,8 @@ class SearchUseCase {
     int limit = 30,
   }) =>
       _repository.eventPhotos(eventId, page: page, limit: limit);
+
+  /// One photo by id, for a `/p/{id}` deep link.
+  Future<Photo> picture(String pictureId) =>
+      _repository.pictureById(pictureId);
 }
