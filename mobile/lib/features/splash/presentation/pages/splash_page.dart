@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/app_readiness.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/features/discovery/data/services/feed_cache_service.dart';
 import 'package:jperg_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
@@ -62,8 +63,23 @@ class _SplashPageState extends State<SplashPage> {
       Future<void>.delayed(_kMinDisplay),
       _warmFirstScreen().timeout(_kMaxWait, onTimeout: () {}),
     ]);
-    if (!mounted) return;
+    // Gone already — something else has navigated, so the stack is real and
+    // whatever is waiting on readiness should stop waiting. Marked here too, or
+    // a link held since launch would never be followed at all.
+    if (!mounted) {
+      AppReadiness.markReady();
+      return;
+    }
+    // The single line that says whether the app considered you signed in. Read
+    // it with `[Startup] … token=` above: token=true landing on anything other
+    // than /home means the routing disagreed with the session, which is the
+    // bug this pairing exists to make obvious rather than guess at.
+    debugPrint('[Splash] → ${widget.nextRoute}');
     Navigator.of(context).pushReplacementNamed(widget.nextRoute);
+    // Only now is it safe for a deep link to push: this replaced the top of the
+    // stack, so anything opened before this point would have been thrown away.
+    // A link held since launch is followed from here.
+    AppReadiness.markReady();
   }
 
   /// Gets the destination to the point where it has something to draw.

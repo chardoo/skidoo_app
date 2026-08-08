@@ -114,6 +114,23 @@
             android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="face" />
 
+        <!-- Deep links are handled by app_links → DeepLinkService, NOT by
+             Flutter's built-in routing.
+
+             Left enabled, the engine ALSO forwards the incoming URL to the
+             framework as a `pushRoute` message. With the Navigator 1.0 API this
+             app uses (`routes` + `initialRoute`), MaterialApp turns that into
+             pushNamed("/e/<id>") — a name that is not in the routes map — so
+             onUnknownRoute fires and pushes DiscoveryPage on top of whatever the
+             link had just correctly opened. Every link therefore landed on the
+             guest feed with the real destination one route underneath, which is
+             indistinguishable from being signed out.
+
+             Both handlers were running; this turns off the one we do not use. -->
+        <meta-data
+            android:name="flutter_deeplinking_enabled"
+            android:value="false" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

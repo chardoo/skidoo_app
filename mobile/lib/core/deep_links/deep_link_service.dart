@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/app_readiness.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/navigation/app_navigator.dart';
@@ -83,6 +84,17 @@ class DeepLinkService {
 
   /// Open a link now if everything it needs is in place, or hold it.
   Future<void> follow(DeepLink link) async {
+    // Held until the app has finished choosing its own first screen. The splash
+    // navigates with pushReplacement 1.2–6s after launch, which replaces the
+    // top of the stack — so a link followed before that is opened and then
+    // silently discarded, landing the person on whatever the splash chose.
+    // Waiting also puts a real destination underneath, so Back works.
+    if (!AppReadiness.isReady.value) {
+      debugPrint('$_tag holding $link until the app has started');
+      _pending = link;
+      return;
+    }
+
     final isSignedIn = _isSignedIn;
     if (link.requiresAuth && isSignedIn != null && !await isSignedIn()) {
       debugPrint('$_tag holding $link until sign-in');
@@ -147,9 +159,16 @@ class DeepLinkService {
       case DeepLinkKind.picture:
       case DeepLinkKind.event:
       case DeepLinkKind.request:
+        debugPrint('$_tag pushing resolver for $link');
         await navigator.push(
-          MaterialPageRoute<void>(builder: (_) => DeepLinkTarget(link: link)),
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: 'deeplink/resolver'),
+            builder: (_) => DeepLinkTarget(link: link),
+          ),
         );
+        // Completes when the resolver (or whatever replaced it) is popped —
+        // so this line means the person has navigated back off the link.
+        debugPrint('$_tag resolver route for $link popped');
         return;
     }
   }
@@ -176,11 +195,69 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
   @override
   void initState() {
     super.initState();
-    _resolve();
+    // Deferred to after the frame, and this is the difference between the app
+    // working and the app being unusable.
+    //
+    // initState runs while this very route is being pushed, so the navigator is
+    // locked. `_resolve` is async but only suspends at its first `await`, and
+    // the event case has none before it navigates — so it called
+    // `pushReplacement` inside that locked span. The assertion it throws fires
+    // *between* the navigator setting `_debugLocked` and clearing it, so the
+    // flag is never reset: the Navigator stays locked for the rest of the
+    // session and every later pop asserts. That is why a deep link left the app
+    // unable to navigate anywhere at all, rather than just failing to open the
+    // link.
+    //
+    // Deferring the whole method rather than that one branch keeps the next
+    // case that forgets an `await` from doing the same thing.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _resolve();
+    });
+  }
+
+  /// Swap *this* route for [destination].
+  ///
+  /// Not `pushReplacement`: that replaces whichever route is topmost, which is
+  /// only this one if nothing has been pushed since. This screen exists because
+  /// a fetch is in flight, and anything can arrive during it — so when the guess
+  /// is wrong it replaces someone else's route and leaves this one in the stack
+  /// forever, still loading. Back then lands on a spinner that can never
+  /// finish, with a bare app bar and no way to tell what it is.
+  ///
+  /// `replace` names the route to swap, so it is exact wherever this sits.
+  /// `pushReplacement` is kept for the common case only because it animates.
+  void _swapSelfFor(Route<void> destination) {
+    final route = ModalRoute.of(context);
+    final navigator = Navigator.of(context);
+    if (route == null) {
+      navigator.push(destination);
+      return;
+    }
+    if (route.isCurrent) {
+      navigator.pushReplacement(destination);
+      return;
+    }
+
+    // Something landed on top of us while the fetch was in flight — on a cold
+    // start that is the splash arriving at its own destination, which is the
+    // guest feed when the session has not resolved yet.
+    //
+    // Replacing in place is not enough: it puts the link's destination *under*
+    // the interloper, so the person taps a link to an album and is left looking
+    // at the feed. That is the "it opened and I'm not logged in" report — the
+    // album was there the whole time, one route down.
+    //
+    // So take this route out of the stack and put the destination on top. The
+    // link the person tapped is the thing they asked for, and it should win.
+    debugPrint('$_tag resolver was overtaken — removing it and surfacing the '
+        'destination on top');
+    navigator.removeRoute(route);
+    navigator.push(destination);
   }
 
   Future<void> _resolve() async {
     final link = widget.link;
+    debugPrint('$_tag resolver running for $link');
     try {
       switch (link.kind) {
         case DeepLinkKind.request:
@@ -195,8 +272,9 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
           }
           // Replaces itself so Back returns to where the link was tapped
           // rather than to a spinner that has nothing left to do.
-          await Navigator.of(context).pushReplacement(
+          _swapSelfFor(
             MaterialPageRoute<void>(
+              settings: const RouteSettings(name: 'deeplink/request'),
               builder: (_) => ReviewPhotographersPage(request: request),
             ),
           );
@@ -205,9 +283,15 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
         // The album page takes an id and fetches the rest itself, so a link
         // needs nothing but what it already carries.
         case DeepLinkKind.event:
-          if (!mounted) return;
-          await Navigator.of(context).pushReplacement(
+          if (!mounted) {
+            debugPrint('$_tag resolver unmounted before opening the album — '
+                'something replaced it');
+            return;
+          }
+          debugPrint('$_tag opening album ${link.id}');
+          _swapSelfFor(
             MaterialPageRoute<void>(
+              settings: const RouteSettings(name: 'deeplink/album'),
               builder: (_) => SearchEventPhotosPage(eventId: link.id!),
             ),
           );
@@ -224,23 +308,26 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
           if (!mounted) return;
           final navigator = Navigator.of(context);
           final viewer = MaterialPageRoute<void>(
+            settings: const RouteSettings(name: 'deeplink/photo'),
             builder: (_) => FoundPhotoViewerPage(photos: [photo]),
           );
 
           if (photo.eventId.isEmpty) {
-            unawaited(navigator.pushReplacement(viewer));
+            _swapSelfFor(viewer);
             return;
           }
 
-          // Neither is awaited: the future a push returns completes when that
-          // route is *popped*, so awaiting the album would put the viewer on
-          // top only after the person had already left it. Both are handed to
-          // the navigator in order instead, which is what stacks them.
-          unawaited(navigator.pushReplacement(
+          // This route becomes the album, then the viewer goes on top of it, so
+          // Back leaves the person in the album rather than straight out of the
+          // app. The viewer is not awaited — the future a push returns completes
+          // when that route is *popped*, so awaiting it here would block until
+          // they had already left.
+          _swapSelfFor(
             MaterialPageRoute<void>(
+              settings: const RouteSettings(name: 'deeplink/album'),
               builder: (_) => SearchEventPhotosPage(eventId: photo.eventId),
             ),
-          ));
+          );
           unawaited(navigator.push(viewer));
           return;
 
@@ -260,18 +347,25 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
 
   @override
   Widget build(BuildContext context) {
+    // Says what it is. A bare app bar over a spinner is indistinguishable from
+    // a broken screen — there was no way to tell whether the link was still
+    // loading, had failed, or had landed somewhere unexpected.
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(title: const Text('Opening link')),
       body: Center(
-        child: _loading
-            ? const CircularProgressIndicator()
-            : Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  _error ?? '',
-                  textAlign: TextAlign.center,
-                ),
-              ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: _loading
+              ? const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Opening…', textAlign: TextAlign.center),
+                  ],
+                )
+              : Text(_error ?? '', textAlign: TextAlign.center),
+        ),
       ),
     );
   }

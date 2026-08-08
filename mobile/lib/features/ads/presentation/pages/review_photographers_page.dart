@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/config/chat_config.dart';
@@ -489,7 +490,16 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _leave();
+        if (didPop) return;
+        // Deferred: this fires from inside the navigator's own pop handling,
+        // and popping again from there trips
+        // `'!_debugLocked': is not true`. Waiting for the frame to end pops a
+        // navigator that has settled. Reachable from an /r/ deep link, so the
+        // race is not hypothetical — the link's push and a back gesture can
+        // land in the same window.
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _leave();
+        });
       },
       child: webWrap(page, backgroundColor: ext.homeBackground),
     );

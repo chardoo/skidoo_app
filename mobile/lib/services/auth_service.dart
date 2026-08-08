@@ -286,6 +286,11 @@ class AuthService {
   /// Wipes every key this service persists — the superset of [removeToken]
   /// (which deliberately keeps onboarding/faces state across a logout).
   /// Only call this when [isFreshInstall] is true.
+  /// No longer called at startup — see the note in `main()`. A fresh install
+  /// preserves the session and lets the server reject the token if it is no
+  /// longer valid, because "SharedPreferences is empty" also describes every
+  /// reinstall and every bundle-id change, and wiping on those signed people
+  /// out for no reason. Kept for an explicit "forget this device" action.
   Future<void> resetAllForFreshInstall() async {
     isAuthenticated.value = false;
     hasAddedFaces.value = false;

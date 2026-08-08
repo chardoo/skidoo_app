@@ -4,6 +4,14 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- Deep links are handled by app_links → DeepLinkService, not by Flutter's
+	     built-in routing. Left enabled, the engine also forwards the URL to the
+	     framework as a `pushRoute`, which MaterialApp (Navigator 1.0) turns into
+	     pushNamed("/e/<id>") — an unregistered name — so onUnknownRoute pushes
+	     DiscoveryPage on top of the screen the link had just opened. See the
+	     matching note in AndroidManifest.xml. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

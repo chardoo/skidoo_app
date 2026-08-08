@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/app_readiness.dart';
 import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/services/auth_service.dart';
@@ -25,6 +26,7 @@ class DeepLinkHost extends StatefulWidget {
 class _DeepLinkHostState extends State<DeepLinkHost> {
   DeepLinkService? _service;
   VoidCallback? _authListener;
+  VoidCallback? _readyListener;
 
   @override
   void initState() {
@@ -58,6 +60,14 @@ class _DeepLinkHostState extends State<DeepLinkHost> {
       await service.resumePending();
     });
 
+    // A link that arrived during startup is held rather than opened into a
+    // screen the splash is about to replace. This is what releases it, once the
+    // splash has landed on Home or Discovery.
+    _readyListener = () {
+      if (AppReadiness.isReady.value) service.resumePending();
+    };
+    AppReadiness.isReady.addListener(_readyListener!);
+
     // Someone tapping a link to their own photos while signed out is sent to
     // sign in first; this is what resumes the link afterwards instead of
     // leaving them on the home screen wondering what they were meant to see.
@@ -69,6 +79,9 @@ class _DeepLinkHostState extends State<DeepLinkHost> {
 
   @override
   void dispose() {
+    if (_readyListener != null) {
+      AppReadiness.isReady.removeListener(_readyListener!);
+    }
     if (_authListener != null) {
       AuthService.isAuthenticated.removeListener(_authListener!);
     }

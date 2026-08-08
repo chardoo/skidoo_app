@@ -11,6 +11,7 @@ import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/theme_cubit.dart';
 import 'package:jperg_app/core/deep_links/deep_link_host.dart';
 import 'package:jperg_app/core/navigation/app_navigator.dart';
+import 'package:jperg_app/core/navigation/route_trace_observer.dart';
 import 'package:jperg_app/core/navigation/web_route_observer.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/common/widgets/web_sidebar.dart';
@@ -241,7 +242,13 @@ class _AppMaterial extends StatelessWidget {
         // bubbles, popping the native "Select All" menu unpredictably, and
         // could crash on nested Scrollables (flutter/flutter#111690).
         builder: _appBuilder,
-        navigatorObservers: kIsWeb ? [WebRouteObserver.instance] : [],
+        navigatorObservers: [
+          if (kIsWeb) WebRouteObserver.instance,
+          // Debug-only route trace. Every deep-link report so far has been
+          // "it opened and then I was somewhere else", with no record of what
+          // arrived or in what order.
+          if (kDebugMode) RouteTraceObserver.instance,
+        ],
         // Web: always start at Discovery so a hard-refresh (⇧⌘R) gives a clean
         // slate. _GuestGuard redirects authenticated users to /home immediately.
         //
@@ -281,10 +288,26 @@ class _AppMaterial extends StatelessWidget {
                 child: InterestsPage(),
               ),
         },
-        onUnknownRoute: (settings) => MaterialPageRoute(
-          builder: (_) =>
-              token.isEmpty ? const LoginPage() : const DiscoveryPage(),
-        ),
+        // Names that reach here are a bug, not a destination — this silently
+        // showed DiscoveryPage instead, which reads as "logged out" and hid the
+        // cause for days. Every deep link used to arrive here as "/e/<id>",
+        // pushed by Flutter's own routing on top of the screen the link had
+        // already opened (now disabled per-platform; see AndroidManifest.xml
+        // and Info.plist). Say so loudly in debug rather than showing a feed
+        // and hoping someone notices.
+        onUnknownRoute: (settings) {
+          assert(() {
+            debugPrint('[Nav] onUnknownRoute: "${settings.name}" is not in the '
+                'routes map — falling back to a feed. This is a bug: either '
+                'register the route or stop navigating to that name.');
+            return true;
+          }());
+          return MaterialPageRoute(
+            settings: RouteSettings(name: 'unknown:${settings.name}'),
+            builder: (_) =>
+                token.isEmpty ? const LoginPage() : const DiscoveryPage(),
+          );
+        },
       ),
     );
   }
@@ -596,6 +619,8 @@ class _AuthGuardState extends State<_AuthGuard> {
         }
         if (!snap.data!) {
           // Not logged in — redirect after this frame so the navigator is ready.
+          debugPrint('[AuthGuard] no token → replacing with /login. If a deep '
+              'link was open, this is what took its place.');
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               Navigator.of(context).pushReplacementNamed(LoginPage.routeName);
@@ -641,6 +666,9 @@ class _GuestGuardState extends State<_GuestGuard> {
     // so this is a synchronous, zero-latency check — no frame flash.
     _shouldRedirect = AuthService.isAuthenticated.value;
     if (_shouldRedirect) {
+      // Clears the whole stack. If a deep-link route was on it, it is gone.
+      debugPrint('[GuestGuard] authenticated on a guest page → resetting to '
+          '/home and clearing the stack');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           Navigator.of(context).pushNamedAndRemoveUntil(
