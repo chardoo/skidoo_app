@@ -638,6 +638,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // nothing.
     _ackLatestPeerMessage();
 
+    // Tell the server this room is on screen, so it does not notify us about
+    // the conversation we are visibly reading. Sent on every connect because a
+    // reconnect is a new socket, and focus is tracked per socket.
+    if (_currentRoomId != null) _ws.sendFocus(_currentRoomId);
+
     // The first connect's history is loaded by _onJoined. Any later connect is
     // a reconnect — the socket doesn't replay, so refetch to backfill anything
     // that arrived while we were offline.
@@ -2487,6 +2492,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _reconcileDebounce?.cancel();
     _wsConnectionSub?.cancel();
     _cancelWsSubscriptions();
+    // Leaving the room: we are no longer reading it, so messages arriving from
+    // here on should notify. The socket stays open (owned by
+    // ChatBackgroundService), which is exactly why this has to be said out loud
+    // rather than inferred from the connection.
+    _ws.sendFocus(null);
     // Do NOT disconnect the shared WS — it is owned by ChatBackgroundService.
     if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
     return super.close();

@@ -661,6 +661,51 @@ class ChatWebSocketService {
     _sendRaw({'type': 'subscribe_room', 'room_id': roomId});
   }
 
+  /// The room currently on screen, or null for "looking at nothing".
+  ///
+  /// This is what decides whether a message raises a push notification. It has
+  /// to be separate from [subscribeRoom]: the app subscribes every joined room
+  /// for the whole session, so a subscription says the socket is alive, not
+  /// that anyone is reading. Without this the server treated every running app
+  /// as present in every conversation and sent no notifications at all.
+  ///
+  /// Send null when leaving a room AND when the app goes to the background —
+  /// a backgrounded app still holds the socket open.
+  ///
+  /// Sent with `room_id` explicitly present (possibly null), so _sendRaw's
+  /// "fill in the current room" convenience cannot turn a clear into a claim.
+  void sendFocus(String? roomId) {
+    _focusedRoomId = roomId;
+    _sendRaw({'type': 'focus', 'room_id': roomId});
+  }
+
+  /// The room the user is looking at, remembered across backgrounding and
+  /// reconnects. Focus is per-socket on the server, so a new socket knows
+  /// nothing until we say it again.
+  String? _focusedRoomId;
+
+  /// State this socket's focus, even when it is "nothing".
+  ///
+  /// Must be sent once on every connect. The server cannot tell a client that
+  /// supports focus and is looking at nothing from an old client that will
+  /// never mention it — and it has to assume the latter is still reading, or
+  /// old builds would be notified about the chat on their screen. Saying
+  /// `null` out loud is what distinguishes the two. Skipping it would leave
+  /// an app that is running but has no room open silent, which is the common
+  /// case and the whole bug.
+  void announceFocus() {
+    _sendRaw({'type': 'focus', 'room_id': _focusedRoomId});
+  }
+
+  /// App backgrounded — stop suppressing notifications, without forgetting
+  /// which room to reclaim on return.
+  void releaseFocus() {
+    _sendRaw({'type': 'focus', 'room_id': null});
+  }
+
+  /// App foregrounded, or the socket reconnected — re-assert the open room.
+  void restoreFocus() => announceFocus();
+
   /// Send a plain-text or image/video message.
   void send(String? content, {String? imageUrl, bool isVideo = false, String? replyToId, String? roomId}) {
     final payload = <String, dynamic>{'type': 'message'};

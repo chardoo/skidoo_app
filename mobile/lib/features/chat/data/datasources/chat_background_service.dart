@@ -126,7 +126,18 @@ class ChatBackgroundService {
     // to exhaust the retry budget (8 attempts, backing off to 60s — a few
     // minutes) stayed disconnected until the process restarted, because
     // _scheduleReconnect refuses to arm another timer once the budget is gone.
-    _lifecycle = AppLifecycleListener(onResume: _retryFromScratch);
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        _retryFromScratch();
+        // Back on screen: reclaim whatever room is open, so we stop being
+        // notified about the conversation now in front of us.
+        _sharedWs.restoreFocus();
+      },
+      // Backgrounded. The socket stays open, so without this the server still
+      // believes the open room is being read and sends no notification —
+      // a phone in a pocket with a chat open would go silent.
+      onPause: () => _sharedWs.releaseFocus(),
+    );
   }
 
   AppLifecycleListener? _lifecycle;
@@ -255,6 +266,13 @@ class ChatBackgroundService {
       for (final roomId in allRooms) {
         _sharedWs.subscribeRoom(roomId);
       }
+
+      // Declare focus on every connect, including "looking at nothing".
+      // Subscribing above tells the server the socket is alive for these rooms;
+      // this tells it which one is actually being read. Without it the server
+      // assumes an old client that never reports focus, treats every subscribed
+      // room as being watched, and sends no notifications at all.
+      _sharedWs.announceFocus();
 
       // Notify ChatRoomBloc (and any other listener) that the WS is up.
       _connectionController.add(true);
