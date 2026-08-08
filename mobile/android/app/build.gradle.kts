@@ -15,7 +15,7 @@ if (keystoreFile.exists()) {
 }
 
 android {
-    namespace = "com.jperg.app"
+    namespace = "com.skidoo.app"
     compileSdk = flutter.compileSdkVersion
     // Use the highest NDK any plugin requires (jni needs 28.2); backward compatible.
     ndkVersion = "28.2.13676358"
@@ -26,7 +26,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.jperg.app"
+        applicationId = "com.skidoo.app"
 
         // The domain App Links are verified against. One place, because it
         // also has to match the iOS entitlement and the gateway's

@@ -17,7 +17,7 @@ class GetAppSheet extends StatelessWidget {
   // ── Store URLs ──────────────────────────────────────────────────────────────
   // TODO: replace placeholder IDs with real store listings once published.
   static const _kAndroidUrl =
-      'https://play.google.com/store/apps/details?id=com.jperg.app';
+      'https://play.google.com/store/apps/details?id=com.skidoo.app';
   static const _kIosUrl =
       'https://apps.apple.com/app/jperg/id000000000';
   static const _kFallbackUrl = 'https://jperg.com';

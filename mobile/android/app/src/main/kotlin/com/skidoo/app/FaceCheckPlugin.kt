@@ -1,4 +1,4 @@
-package com.jperg.app
+package com.skidoo.app
 
 import android.content.Context
 import android.net.Uri

@@ -82,7 +82,7 @@
                  Unverified, these links open a chooser instead of the app.
 
                  Verify a build with:
-                 adb shell pm get-app-links com.jperg.app -->
+                 adb shell pm get-app-links com.skidoo.app -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
