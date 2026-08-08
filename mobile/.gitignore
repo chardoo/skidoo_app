@@ -19,9 +19,14 @@ migrate_working_dir/
 *.ipr
 *.iws
 .idea/
-/mobile/docs
-./docs
-./image
+
+# Design exports and scratch photos. Three of the rules that used to sit here
+# never matched anything: `/mobile/docs` resolves to mobile/mobile/docs from
+# this file, and a `./` prefix is not a thing git parses — the leading dot just
+# makes the pattern literal, so `./docs` looked for a directory named ".".
+# That is how the two Onboarding PNGs in docs/ got tracked.
+/docs
+/image
 
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
@@ -38,6 +43,14 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+# `/build/` is anchored to this file, so the per-platform build dirs were not
+# covered and ios/build got committed. Match them wherever they appear.
+build/
+DerivedData/
+ios/Pods/
+ios/.symlinks/
+macos/Pods/
+macos/.symlinks/
 
 # Symbolication related
 app.*.symbols

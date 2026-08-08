@@ -1,3 +1,33 @@
 .github_token
 .DS_Store
+
+# Google service-account keys. The one that prompted this rule was named after
+# its project, so it was listed by hand and the next one would not have been.
+# Match the shape instead.
 mobile/shareall-2c4e6-354b8a9822d3.json
+service-account*.json
+*-service-account*.json
+*credentials*.json
+gha-creds-*.json
+
+# Signing material and the Firebase/Play files that carry it.
+*.jks
+*.keystore
+*.p8
+*.p12
+*.pem
+# These two are the public half of Play App Signing — a certificate and the
+# public key inside it — and they are tracked on purpose: the assetlinks
+# SHA-256 is derived from them. Named so the *.pem rule above cannot swallow
+# them the next time one is regenerated.
+!mobile/android/app/jperg_signing_cert.pem
+!mobile/android/app/jperg_public_key.pem
+key.properties
+!key.properties.example
+google-services.json
+GoogleService-Info.plist
+
+# Test photos dropped in while working on face search. Written `.image/` twice
+# before, which matches a dotted directory that does not exist — the real one
+# is image/, and it was 2.6MB of strangers' faces sitting untracked.
+image/
