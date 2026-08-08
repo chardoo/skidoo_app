@@ -299,36 +299,42 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
 
         // A photo is always shown inside its album — there is no screen that
         // takes a bare picture id, and inventing one would be a second viewer
-        // to keep in step. So the id is resolved to its event first, and the
-        // link opens the album with the viewer already on that photo. Two
-        // screens are pushed so Back leaves the person in the album rather
-        // than straight out of the app.
+        // to keep in step. The id is resolved to its event, the album opens,
+        // and the album itself opens the photo once it has loaded the page
+        // holding it.
+        //
+        // The album does that rather than this pushing a viewer directly,
+        // because the viewer needs the *whole* list to be any use: a shared
+        // photo should swipe on to the next one exactly like a tapped photo
+        // does. Pushing a viewer from here could only hand it a single-item
+        // list — the one photo we fetched — which looked right and then dead-
+        // ended on the first swipe.
         case DeepLinkKind.picture:
           final photo = await sl<SearchUseCase>().picture(link.id!);
           if (!mounted) return;
-          final navigator = Navigator.of(context);
-          final viewer = MaterialPageRoute<void>(
-            settings: const RouteSettings(name: 'deeplink/photo'),
-            builder: (_) => FoundPhotoViewerPage(photos: [photo]),
-          );
 
           if (photo.eventId.isEmpty) {
-            _swapSelfFor(viewer);
+            // Nothing to open it inside; show the one photo on its own.
+            debugPrint('$_tag photo ${link.id} has no event — opening alone');
+            _swapSelfFor(
+              MaterialPageRoute<void>(
+                settings: const RouteSettings(name: 'deeplink/photo'),
+                builder: (_) => FoundPhotoViewerPage(photos: [photo]),
+              ),
+            );
             return;
           }
 
-          // This route becomes the album, then the viewer goes on top of it, so
-          // Back leaves the person in the album rather than straight out of the
-          // app. The viewer is not awaited — the future a push returns completes
-          // when that route is *popped*, so awaiting it here would block until
-          // they had already left.
+          debugPrint('$_tag opening album ${photo.eventId} at photo ${link.id}');
           _swapSelfFor(
             MaterialPageRoute<void>(
               settings: const RouteSettings(name: 'deeplink/album'),
-              builder: (_) => SearchEventPhotosPage(eventId: photo.eventId),
+              builder: (_) => SearchEventPhotosPage(
+                eventId: photo.eventId,
+                openPictureId: link.id,
+              ),
             ),
           );
-          unawaited(navigator.push(viewer));
           return;
 
         case DeepLinkKind.myPhotos:
@@ -347,25 +353,23 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
 
   @override
   Widget build(BuildContext context) {
-    // Says what it is. A bare app bar over a spinner is indistinguishable from
-    // a broken screen — there was no way to tell whether the link was still
-    // loading, had failed, or had landed somewhere unexpected.
+    // Untitled on purpose. This is on screen for a fraction of a second on its
+    // way to the album, so a heading and a label just flash past — they read as
+    // a stray screen rather than as progress. They earned their place only when
+    // this route could be stranded here permanently, which it no longer can.
+    //
+    // The app bar stays for its back chevron, so a slow fetch can be backed out
+    // of. The error text stays too: that one is a real message someone needs to
+    // read, not a transient one.
     return Scaffold(
-      appBar: AppBar(title: const Text('Opening link')),
+      appBar: AppBar(),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: _loading
-              ? const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Opening…', textAlign: TextAlign.center),
-                  ],
-                )
-              : Text(_error ?? '', textAlign: TextAlign.center),
-        ),
+        child: _loading
+            ? const CircularProgressIndicator()
+            : Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(_error ?? '', textAlign: TextAlign.center),
+              ),
       ),
     );
   }

@@ -848,11 +848,12 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                   photographerName: widget.event.photographerName,
                   eventName: widget.event.eventName,
                   description: widget.event.description,
-                  // The event, not the single photo: someone sharing a shot
-                  // from an album is showing off the album, and the recipient
-                  // lands somewhere with the rest of it rather than on one
-                  // picture with no context.
-                  link: DeepLink(DeepLinkKind.event, id: widget.event.id),
+                  // The photo on screen, not the event. This used to be the
+                  // event so the recipient landed with the rest of the album
+                  // rather than on one picture with no context — but a /p/
+                  // link now opens the album *and* the photo, so that context
+                  // is kept and the shot they actually shared is what shows.
+                  link: DeepLink(DeepLinkKind.picture, id: pic.id),
                 );
               }
             : null,

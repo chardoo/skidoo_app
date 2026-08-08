@@ -59,6 +59,17 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
     );
   }
 
+  /// The filmstrip is being dragged: follow it immediately.
+  ///
+  /// Jumps rather than animates. A scrub can cross many photos in one gesture,
+  /// and animating each step would queue transitions the finger has already
+  /// moved past — the photo would lag behind the strip and then race to catch
+  /// up. The strip's own movement is the animation.
+  void _scrubTo(int index) {
+    if (!_pageCtrl.hasClients || index == _index) return;
+    _pageCtrl.jumpToPage(index);
+  }
+
   /// Dark in a light app as well: the photo is the whole point of this screen,
   /// and the surround's job is to get out of its way. It is also most of the
   /// screen — the media is boxed to its own shape — and the overlays that sit
@@ -86,6 +97,7 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
                 photos: widget.photos,
                 activeIndex: _index,
                 onTap: _goTo,
+                onScrub: _scrubTo,
               ),
             ],
             // Clears the floating bottom nav bar.

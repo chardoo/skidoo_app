@@ -25,6 +25,7 @@ class SearchEventPhotosPage extends StatelessWidget {
     super.key,
     required this.eventId,
     this.event,
+    this.openPictureId,
   });
 
   /// The event id **or** its access code — the endpoint accepts either.
@@ -33,6 +34,16 @@ class SearchEventPhotosPage extends StatelessWidget {
   /// The row this page was opened from, when there was one.
   final SearchEventRow? event;
 
+  /// Open this photo as soon as the grid has it, as though it were tapped.
+  ///
+  /// A shared `/p/{id}` link is a link to one photo, but a photo only makes
+  /// sense inside its album — that is where the swipe, the count and Back all
+  /// come from. So the link opens the album and then this opens the photo, and
+  /// the viewer gets the whole list rather than a single-item one: a shared
+  /// photo should behave exactly like one you tapped, including swiping on to
+  /// the next.
+  final String? openPictureId;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider<EventPhotosBloc>(
@@ -40,15 +51,69 @@ class SearchEventPhotosPage extends StatelessWidget {
         searchUseCase: sl<SearchUseCase>(),
         eventId: eventId,
       )..add(const EventPhotosRequested()),
-      child: _EventPhotosView(fallbackEvent: event),
+      child: _EventPhotosView(
+        fallbackEvent: event,
+        openPictureId: openPictureId,
+      ),
     );
   }
 }
 
-class _EventPhotosView extends StatelessWidget {
-  const _EventPhotosView({this.fallbackEvent});
+class _EventPhotosView extends StatefulWidget {
+  const _EventPhotosView({this.fallbackEvent, this.openPictureId});
 
   final SearchEventRow? fallbackEvent;
+  final String? openPictureId;
+
+  @override
+  State<_EventPhotosView> createState() => _EventPhotosViewState();
+}
+
+class _EventPhotosViewState extends State<_EventPhotosView> {
+  /// Guards the one-shot open. Paging emits repeatedly and the viewer must not
+  /// be pushed again each time — nor re-pushed when the person comes back to
+  /// the grid from the photo they were sent.
+  bool _handledOpenRequest = false;
+
+  SearchEventRow? get fallbackEvent => widget.fallbackEvent;
+
+  /// Opens the requested photo once the page containing it has arrived.
+  ///
+  /// The photo may not be on the first page. Rather than give up or fetch it
+  /// separately, ask for the next page and try again — the grid is paging
+  /// anyway, and this reuses the list the viewer needs regardless.
+  void _maybeOpenRequestedPhoto(BuildContext context, EventPhotosState state) {
+    final wanted = widget.openPictureId;
+    if (wanted == null || wanted.isEmpty || _handledOpenRequest) return;
+    if (state.photos.isEmpty) return;
+
+    final index = state.photos.indexWhere((p) => p.id == wanted);
+    if (index < 0) {
+      // Not in what we have yet. Keep paging while there is more to come; if
+      // there is not, the link points at something this album no longer has,
+      // and leaving the person on the grid is the honest outcome.
+      if (state.hasNext && !state.isLoadingMore) {
+        context.read<EventPhotosBloc>().add(const EventPhotosMoreRequested());
+      }
+      return;
+    }
+
+    _handledOpenRequest = true;
+    // After the frame: this runs from a build, and pushing during build marks
+    // the Navigator's Overlay dirty mid-build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(name: 'deeplink/photo'),
+          builder: (_) => FoundPhotoViewerPage(
+            photos: state.photos,
+            initialIndex: index,
+          ),
+        ),
+      );
+    });
+  }
 
   String _title(EventPhotosState state) {
     if (state.event.eventName.isNotEmpty) return state.event.eventName;
@@ -71,7 +136,10 @@ class _EventPhotosView extends StatelessWidget {
       backgroundColor: ext.homeBackground,
       body: SafeArea(
         bottom: false,
-        child: BlocBuilder<EventPhotosBloc, EventPhotosState>(
+        child: BlocConsumer<EventPhotosBloc, EventPhotosState>(
+          // A shared photo link opens the album, then this opens the photo —
+          // once the page holding it has loaded.
+          listener: _maybeOpenRequestedPhoto,
           builder: (context, state) {
             final count = _count(state);
             return Column(

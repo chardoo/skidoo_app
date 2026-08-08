@@ -169,11 +169,12 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                     imageUrl: _photo.url,
                     eventName: _photo.eventName,
                     photographerName: _photo.photographerName,
-                    // Share sends a link now, so it needs somewhere to point.
-                    // The event, not the photo: the recipient lands on the
-                    // album rather than a single picture with no context.
-                    link: _photo.eventId.isNotEmpty
-                        ? DeepLink(DeepLinkKind.event, id: _photo.eventId)
+                    // The photo being viewed, not its event. A /p/ link opens
+                    // the album *and* the photo inside it, so the recipient
+                    // gets the context an event link used to provide plus the
+                    // picture that was actually shared.
+                    link: _photo.id.isNotEmpty
+                        ? DeepLink(DeepLinkKind.picture, id: _photo.id)
                         : null,
                     axis: Axis.horizontal,
                     showLike: false,

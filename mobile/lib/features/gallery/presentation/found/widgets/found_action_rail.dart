@@ -118,11 +118,11 @@ class _FoundActionRailState extends State<FoundActionRail> {
       imageId: widget.photo.id,
       photographerName: widget.photo.photographerName,
       eventName: widget.photo.eventName,
-      // These are the viewer's own found photos, so the link points at the
-      // event they came from — /my-photos would open the recipient's photos,
-      // not the ones being shared.
-      link: widget.photo.eventId.isNotEmpty
-          ? DeepLink(DeepLinkKind.event, id: widget.photo.eventId)
+      // The photo itself. Never /my-photos — that opens the *recipient's*
+      // photos, not the one being shared. A /p/ link opens the album with this
+      // photo already showing, so the context comes for free.
+      link: widget.photo.id.isNotEmpty
+          ? DeepLink(DeepLinkKind.picture, id: widget.photo.id)
           : null,
       shareOrigin: origin,
     );
