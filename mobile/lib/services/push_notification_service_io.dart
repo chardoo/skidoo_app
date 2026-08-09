@@ -100,6 +100,19 @@ Future<void> pushLogin(String userId) async {
     await OneSignal.login(userId);
     _externalId = userId;
     debugPrint('$_tag registered external id $userId');
+
+    // Belt and braces. login() stores the id as an `external_id` alias, which
+    // is what the backend targets — but alias targeting depends on which
+    // OneSignal user model the app sits on, and when it resolves to nobody the
+    // send still returns 200. A tag is just a key/value on the subscription,
+    // independent of the user model, so the backend can match on it instead by
+    // flipping ONESIGNAL_TARGETING=tags with no deploy and no app release.
+    try {
+      await OneSignal.User.addTagWithKey('userId', userId);
+      debugPrint('$_tag tagged userId=$userId');
+    } catch (e) {
+      debugPrint('$_tag tagging FAILED: $e');
+    }
   } catch (e) {
     debugPrint('$_tag login FAILED for $userId: $e');
     return;
@@ -120,6 +133,12 @@ Future<void> pushLogout() async {
     // AuthService.removeToken() deletes it immediately after this returns, and
     // the endpoint is authenticated.
     await _unregisterDeviceWithBackend();
+
+    // Before logout, or the tag outlives the session it belongs to and keeps
+    // matching a filter for whoever signs in on this phone next.
+    try {
+      await OneSignal.User.removeTag('userId');
+    } catch (_) {}
 
     await OneSignal.logout();
     debugPrint('$_tag unregistered external id $_externalId');
