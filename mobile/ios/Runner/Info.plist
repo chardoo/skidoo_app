@@ -49,6 +49,22 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Jperg needs access to your camera to take photos and scan items.</string>
+	<!-- Jperg itself never asks for location: nothing in lib/ requests it, and
+	     the only permissions the app uses are photos and storage. The key is
+	     here because the OneSignal SDK bundles OneSignalLocation, which links
+	     CoreLocation, and App Store validation rejects the build (90683) when
+	     a framework references those APIs with no purpose string — whether or
+	     not the app calls them. It cannot be dropped: onesignal_flutter depends
+	     on the OneSignalComplete subspec, and CocoaPods takes the union of
+	     subspecs, so asking for the notification-only one in the Podfile leaves
+	     OneSignalLocation installed anyway (tried, verified).
+
+	     No prompt will ever be shown, because showing one needs an explicit
+	     OneSignal.Location.requestPermission() call that this app does not
+	     make. The wording says exactly that, since App Review is the only
+	     audience this string will ever have. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Jperg does not use your location. This notice is required because the notification service bundled with the app includes location-based features, which Jperg keeps switched off.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Jperg needs access to your microphone for video recording.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
