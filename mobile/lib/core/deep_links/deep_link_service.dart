@@ -7,7 +7,12 @@ import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/navigation/app_navigator.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/features/ads/presentation/pages/my_campaigns_page.dart';
+import 'package:jperg_app/features/ads/presentation/pages/request_board_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/review_photographers_page.dart';
+import 'package:jperg_app/features/cart/presentation/pages/cart_page.dart';
+import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
@@ -28,7 +33,22 @@ const _tag = '[DeepLinks]';
 class DeepLinkService {
   DeepLinkService({AppLinks? links, Future<bool> Function()? isSignedIn})
       : _links = links ?? AppLinks(),
-        _isSignedIn = isSignedIn;
+        _isSignedIn = isSignedIn {
+    instance = this;
+  }
+
+  /// The live service, for callers that arrive from outside the widget tree.
+  ///
+  /// A push tap is the one that needs this: OneSignal's click listener is
+  /// registered in [initPush] long before — and quite independently of — the
+  /// widget that owns this service, and on a cold start it fires while there
+  /// is no context to look anything up from. Null until [DeepLinkHost] builds
+  /// one, and on web, where the URL bar is the router and no host exists.
+  ///
+  /// Not the service locator: this is constructed by a widget rather than
+  /// registered at startup, so it would have to be registered and unregistered
+  /// around that widget's lifetime for `sl` to ever hold a live one.
+  static DeepLinkService? instance;
 
   final AppLinks _links;
   final Future<bool> Function()? _isSignedIn;
@@ -68,6 +88,7 @@ class DeepLinkService {
   Future<void> dispose() async {
     await _sub?.cancel();
     _sub = null;
+    if (identical(instance, this)) instance = null;
   }
 
   /// Follow a link, or remember it until it can be followed.
@@ -153,12 +174,83 @@ class DeepLinkService {
         );
         return;
 
+      // ── Push-only destinations ───────────────────────────────────────────
+      //
+      // Tabs of the home screen rather than routes of their own, so each one
+      // lands the same way myPhotos does: reset to Home, then ask it for the
+      // tab. Pushing a second copy of a tab's page on top of the stack would
+      // give the person a screen their bottom bar cannot get them out of.
+      case DeepLinkKind.home:
+        await navigator.pushNamedAndRemoveUntil(
+          HomePage.routeName,
+          (route) => false,
+        );
+        return;
+
+      case DeepLinkKind.notifications:
+        await navigator.pushNamedAndRemoveUntil(
+          HomePage.routeName,
+          (route) => false,
+        );
+        HomePage.tabRequest.value = 2; // Notifications
+        return;
+
+      // No room id — the messages list. With one, it falls through to the
+      // resolver below, which fetches the room the page needs.
+      case DeepLinkKind.chat when link.id == null:
+        await navigator.pushNamedAndRemoveUntil(
+          HomePage.routeName,
+          (route) => false,
+        );
+        HomePage.tabRequest.value = 1; // Messages
+        return;
+
+      // There is no earnings screen in this app yet — the payout endpoints
+      // exist, the UI does not. Profile is where a photographer goes looking
+      // for it, so a cashout notification lands there rather than nowhere.
+      // Point this at the real screen when it is built.
+      case DeepLinkKind.earnings:
+        await navigator.pushNamedAndRemoveUntil(
+          HomePage.routeName,
+          (route) => false,
+        );
+        HomePage.tabRequest.value = 3; // Profile
+        return;
+
+      case DeepLinkKind.adsDashboard:
+        await navigator.push(
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: 'deeplink/campaigns'),
+            builder: (_) => const MyCampaignsPage(),
+          ),
+        );
+        return;
+
+      case DeepLinkKind.requestBoard:
+        await navigator.push(
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: 'deeplink/requests'),
+            builder: (_) => const RequestBoardPage(),
+          ),
+        );
+        return;
+
+      case DeepLinkKind.cart:
+        await navigator.push(
+          MaterialPageRoute<void>(
+            settings: const RouteSettings(name: 'deeplink/cart'),
+            builder: (_) => const CartPage(),
+          ),
+        );
+        return;
+
       // Everything else is resolved first: the id in a link may be for
       // something deleted, closed, or never visible to this viewer, and
       // pushing a screen that then fails is worse than saying so.
       case DeepLinkKind.picture:
       case DeepLinkKind.event:
       case DeepLinkKind.request:
+      case DeepLinkKind.chat:
         debugPrint('$_tag pushing resolver for $link');
         await navigator.push(
           MaterialPageRoute<void>(
@@ -337,8 +429,28 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
           );
           return;
 
+        // The room page takes a ChatRoom, not an id — it needs the member
+        // list and the title to render its header at all — so the room is
+        // fetched before the page is pushed.
+        case DeepLinkKind.chat:
+          final room = await sl<GetRoomUseCase>()(link.id!);
+          if (!mounted) return;
+          _swapSelfFor(
+            MaterialPageRoute<void>(
+              settings: const RouteSettings(name: 'deeplink/chat'),
+              builder: (_) => ChatRoomPage(room: room),
+            ),
+          );
+          return;
+
         case DeepLinkKind.myPhotos:
         case DeepLinkKind.photographer:
+        case DeepLinkKind.home:
+        case DeepLinkKind.notifications:
+        case DeepLinkKind.adsDashboard:
+        case DeepLinkKind.requestBoard:
+        case DeepLinkKind.earnings:
+        case DeepLinkKind.cart:
           return; // handled without a resolver
       }
     } catch (e) {

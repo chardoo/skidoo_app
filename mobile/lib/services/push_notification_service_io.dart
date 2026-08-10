@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:jperg_app/API/dio_client_service.dart';
 import 'package:jperg_app/core/constants/onesignal.dart';
+import 'package:jperg_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 
 const _tag = '[Push]';
@@ -47,12 +49,34 @@ Future<void> initPush() async {
     });
 
     OneSignal.Notifications.addClickListener((event) {
-      // The backend puts a `screen` key in every payload (see NotificationType
-      // in main/app/services/notification_service.py). Routing on it needs
-      // named routes this app does not have yet, so for now a tap just opens
-      // the app on its normal launch route.
       final data = event.notification.additionalData;
       debugPrint('$_tag tapped ← screen=${data?['screen']} type=${data?['type']}');
+
+      // Every payload carries a `screen`, and POLICY in
+      // main/app/services/notify.py is the list of what it can be.
+      final link = parsePushPayload(data);
+      if (link == null) {
+        // A screen this build has no destination for — an older app meeting a
+        // newer backend. The app still opens; it just opens where it normally
+        // would, which is better than a tap that appears to do nothing.
+        debugPrint('$_tag no destination for this payload — opening normally');
+        return;
+      }
+
+      // Straight into the deep-link machinery rather than navigating here.
+      // That is what makes a tap on a killed app work: this listener fires
+      // before the Navigator exists, and DeepLinkService already holds a link
+      // until the first frame and across a sign-in, then follows it. Doing it
+      // here instead would mean writing that twice and getting it wrong once.
+      final links = DeepLinkService.instance;
+      if (links == null) {
+        // DeepLinkHost has not built yet. Rare — this listener is registered
+        // from initPush, which runs after the first frame — but a tap that
+        // arrives in that window would otherwise be silently dropped.
+        debugPrint('$_tag no DeepLinkService yet — dropping $link');
+        return;
+      }
+      unawaited(links.follow(link));
     });
 
     // The subscription id does not exist until the device has registered with

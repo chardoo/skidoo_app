@@ -20,6 +20,7 @@ import 'package:jperg_app/features/ads/presentation/pages/my_campaigns_page.dart
 import 'package:jperg_app/features/ads/presentation/pages/my_requests_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/request_board_page.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
+import 'package:jperg_app/features/notifications/data/notification_service.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/portfolio_edit_page.dart';
 import 'package:jperg_app/features/user_profile/presentation/pages/face_recognition_page.dart';
 import 'package:jperg_app/services/auth_service.dart';
@@ -180,6 +181,11 @@ class _AccountView extends StatelessWidget {
                             delay: AppMotion.stagger * 4,
                             child: _NotificationSettingsCard(
                                 isMuted: state.isMuted, ext: ext),
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+                          Reveal(
+                            delay: AppMotion.stagger * 4,
+                            child: _NotificationCategoriesCard(ext: ext),
                           ),
                           SizedBox(height: AppSpacing.md.h),
                           Reveal(
@@ -1116,6 +1122,221 @@ class _NotificationSettingsCard extends StatelessWidget {
             },
           ),
           SizedBox(height: AppSpacing.xs.h),
+        ],
+      ),
+    );
+  }
+}
+
+// ── What you're notified about ────────────────────────────────────────────────
+
+/// Server-side notification categories.
+///
+/// Distinct from the mute switch above, which is a device-local flag that only
+/// silences chat sounds. These reach the backend: muting a category stops the
+/// push and the email for everything in it, on every device.
+///
+/// Security and account notices are deliberately absent — password changes,
+/// suspensions and content removals cannot be switched off. See Category in
+/// main/app/services/notify.py.
+///
+/// Self-contained rather than routed through UserProfileBloc: nothing else on
+/// this page needs these values, and the bloc's state is loaded from a
+/// different endpoint on a different schedule.
+class _NotificationCategoriesCard extends StatefulWidget {
+  const _NotificationCategoriesCard({required this.ext});
+
+  final AppThemeExtension ext;
+
+  @override
+  State<_NotificationCategoriesCard> createState() =>
+      _NotificationCategoriesCardState();
+}
+
+class _NotificationCategoriesCardState
+    extends State<_NotificationCategoriesCard> {
+  final _api = NotificationPreferencesApi();
+
+  NotificationPreferences? _prefs;
+  bool _failed = false;
+
+  /// Categories with a request in flight, so a switch cannot be flipped again
+  /// before the first answer lands and the two arrive out of order.
+  final _pending = <String>{};
+
+  static const _categories = <({String key, String label, String blurb})>[
+    (
+      key: 'photos',
+      label: 'Photos of you',
+      blurb:
+          'When we find you in a photo, and new albums from photographers you follow',
+    ),
+    (
+      key: 'purchases',
+      label: 'Purchases and payouts',
+      blurb: 'Receipts, failed payments, sales and cashouts',
+    ),
+    (
+      key: 'bookings',
+      label: 'Bookings and campaigns',
+      blurb: 'Invitations, selections, expiring requests and ad campaigns',
+    ),
+    (
+      key: 'social',
+      label: 'Follows, reviews and comments',
+      blurb: 'New followers, reviews, comments and your daily likes summary',
+    ),
+    (
+      key: 'chat',
+      label: 'Messages',
+      blurb: 'New direct messages',
+    ),
+    (
+      key: 'marketing',
+      label: 'News from Jperg',
+      blurb: 'Announcements and offers',
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final prefs = await _api.fetch();
+      if (!mounted) return;
+      setState(() {
+        _prefs = prefs;
+        _failed = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _failed = true);
+    }
+  }
+
+  Future<void> _toggle(String category, bool value) async {
+    final previous = _prefs;
+    if (previous == null || _pending.contains(category)) return;
+
+    // Optimistic: the switch moves under the finger, and the server's answer
+    // replaces the guess a moment later. A switch that waits for a round trip
+    // before moving reads as broken.
+    setState(() {
+      _pending.add(category);
+      _prefs = _withCategory(previous, category, value);
+    });
+
+    try {
+      final updated = await _api.update(category, value);
+      if (!mounted) return;
+      setState(() {
+        _prefs = updated;
+        _pending.remove(category);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      // Put it back, and say so — silently reverting looks like the switch
+      // simply refused to move.
+      setState(() {
+        _prefs = previous;
+        _pending.remove(category);
+      });
+      AppSnackBar.error(context, 'Could not save that. Please try again.');
+    }
+  }
+
+  NotificationPreferences _withCategory(
+    NotificationPreferences prefs,
+    String category,
+    bool value,
+  ) {
+    return NotificationPreferences(
+      photos: category == 'photos' ? value : prefs.photos,
+      purchases: category == 'purchases' ? value : prefs.purchases,
+      bookings: category == 'bookings' ? value : prefs.bookings,
+      social: category == 'social' ? value : prefs.social,
+      chat: category == 'chat' ? value : prefs.chat,
+      marketing: category == 'marketing' ? value : prefs.marketing,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = widget.ext;
+
+    return Material(
+      // Material, not a decorated Container: ListTile paints its highlight and
+      // ink splash onto the nearest Material ancestor, so a DecoratedBox
+      // between the two swallows them (and trips an assertion in debug).
+      color: ext.cardSurface,
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
+            child: Text(
+              "WHAT YOU'RE NOTIFIED ABOUT",
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          if (_failed)
+            ListTile(
+              contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+              title: Text(
+                'Could not load your settings.',
+                style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+              ),
+              trailing: TextButton(
+                onPressed: _load,
+                child: const Text('Retry'),
+              ),
+            )
+          else if (_prefs == null)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 28.h),
+              child: const Center(child: CircularProgressIndicator()),
+            )
+          else
+            for (final category in _categories)
+              SwitchListTile(
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+                activeThumbColor: ext.greetingColor,
+                activeTrackColor: ext.searchHintColor.withValues(alpha: 0.4),
+                title: Text(
+                  category.label,
+                  style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+                ),
+                subtitle: Text(
+                  category.blurb,
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                ),
+                value: _prefs!.byName(category.key),
+                onChanged: _pending.contains(category.key)
+                    ? null
+                    : (value) => _toggle(category.key, value),
+              ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 14.h),
+            child: Text(
+              'Security and account notices are always sent.',
+              style: TextStyle(
+                color: ext.searchHintColor.withValues(alpha: 0.8),
+                fontSize: 11.sp,
+              ),
+            ),
+          ),
         ],
       ),
     );

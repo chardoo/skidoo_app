@@ -19,6 +19,35 @@ enum DeepLinkKind {
 
   /// A photographer's profile.
   photographer,
+
+  // ── Destinations a push can name, but a URL cannot ─────────────────────────
+  //
+  // These are reachable from a notification tap and nothing else. They are not
+  // in the gateway's APP_PATHS and not in the AASA file, so they are not
+  // claimed as https links — see [DeepLink.isShareable]. Adding one to the web
+  // grammar means adding it in all four places DEEP_LINKS.md lists, and none
+  // of these name anything a person would share.
+
+  /// The app's own launch screen. What "just open the app" resolves to.
+  home,
+
+  /// The notifications list.
+  notifications,
+
+  /// The messages tab, or one room when the link carries an id.
+  chat,
+
+  /// The advertiser's campaigns.
+  adsDashboard,
+
+  /// The board of open photographer requests.
+  requestBoard,
+
+  /// A photographer's earnings and payouts.
+  earnings,
+
+  /// The basket — where a failed payment is retried from.
+  cart,
 }
 
 class DeepLink {
@@ -33,15 +62,55 @@ class DeepLink {
   /// Whether following this needs a signed-in user. Someone arriving from an
   /// email may well not be signed in, and the answer decides whether they are
   /// sent to sign in first or straight through.
-  bool get requiresAuth => kind == DeepLinkKind.myPhotos;
+  ///
+  /// The push-only destinations are all about the viewer rather than about a
+  /// public object — your messages, your earnings, your notifications — so
+  /// every one of them needs a session. A signed-out tap holds the link,
+  /// shows the sign-in screen, and resumes afterwards.
+  bool get requiresAuth => switch (kind) {
+        DeepLinkKind.myPhotos ||
+        DeepLinkKind.notifications ||
+        DeepLinkKind.chat ||
+        DeepLinkKind.adsDashboard ||
+        DeepLinkKind.earnings ||
+        DeepLinkKind.cart =>
+          true,
+        _ => false,
+      };
+
+  /// Whether this can be handed out as an https link.
+  ///
+  /// False for the push-only destinations: the domain is not claiming those
+  /// paths, so a link to one would open a browser and land on the gateway's
+  /// "no app" page. Sharing UI must not offer them.
+  bool get isShareable => switch (kind) {
+        DeepLinkKind.myPhotos ||
+        DeepLinkKind.picture ||
+        DeepLinkKind.event ||
+        DeepLinkKind.request ||
+        DeepLinkKind.photographer =>
+          true,
+        _ => false,
+      };
 
   /// The link a share should carry, given the domain the app links live on.
+  ///
+  /// Only meaningful when [isShareable]; the rest have a path so this switch
+  /// stays exhaustive and so they can be logged, not so they can be sent to
+  /// anyone.
   String path() => switch (kind) {
         DeepLinkKind.myPhotos => '/my-photos',
         DeepLinkKind.picture => '/p/$id',
         DeepLinkKind.event => '/e/$id',
         DeepLinkKind.request => '/r/$id',
         DeepLinkKind.photographer => '/photographer/$id',
+        DeepLinkKind.home => '/',
+        DeepLinkKind.notifications => '/notifications',
+        DeepLinkKind.chat => id == null ? '/chat' : '/chat/$id',
+        DeepLinkKind.adsDashboard => '/campaigns',
+        DeepLinkKind.requestBoard => '/requests',
+        DeepLinkKind.earnings => '/earnings',
+        DeepLinkKind.cart => '/cart',
       };
 
   @override
@@ -98,6 +167,11 @@ DeepLink? parseDeepLink(Uri? uri) {
 
 /// The same mapping the push payloads already use — `{"screen": "my_photos"}`
 /// — so a notification and a link end up in one place rather than two.
+///
+/// Every `screen` value the backend can emit is here; POLICY in
+/// main/app/services/notify.py is the other half of this table, and the two
+/// have to be changed together. An unrecognised screen returns null, which the
+/// caller turns into "open the app normally" rather than a dead tap.
 DeepLink? parsePushScreen(String? screen, {String? id}) {
   if (screen == null || screen.trim().isEmpty) return null;
   return switch (screen.trim()) {
@@ -112,6 +186,57 @@ DeepLink? parsePushScreen(String? screen, {String? id}) {
         DeepLinkKind.photographer,
         id: id,
       ),
+
+    // The push-only destinations. `chat` is the one that takes an optional id:
+    // with a room it opens the conversation, without one the messages list.
+    'home' => const DeepLink(DeepLinkKind.home),
+    'notifications' => const DeepLink(DeepLinkKind.notifications),
+    'chat' => DeepLink(DeepLinkKind.chat, id: id),
+    'ads_dashboard' => const DeepLink(DeepLinkKind.adsDashboard),
+    'request_board' => const DeepLink(DeepLinkKind.requestBoard),
+    'earnings' => const DeepLink(DeepLinkKind.earnings),
+    'cart' => const DeepLink(DeepLinkKind.cart),
+
+    // A screen this build has no destination for — an older app meeting a
+    // newer backend. Null, so the tap still opens the app.
     _ => null,
   };
+}
+
+/// Read a whole push payload, whichever convention it was written under.
+///
+/// The backend now sends `{"screen": …, "id": …}`, but three older shapes are
+/// still in flight: rows already stored in the Notification table, tasks
+/// already queued on the broker, and — for a while — payloads from an ads
+/// service that had not been redeployed. Those put the id under `event_id`,
+/// `room_id`, `requestId`, `pictureId`, `campaignId` or `followerId`.
+///
+/// Reading all of them costs one list; not reading them means every
+/// notification written before this change taps through to nothing.
+DeepLink? parsePushPayload(Map<String, dynamic>? data) {
+  if (data == null) return null;
+
+  String? asString(Object? v) {
+    if (v == null) return null;
+    final s = v.toString().trim();
+    return s.isEmpty ? null : s;
+  }
+
+  const legacyIdKeys = [
+    'id',
+    'event_id',
+    'room_id',
+    'requestId',
+    'pictureId',
+    'campaignId',
+    'followerId',
+  ];
+
+  String? id;
+  for (final key in legacyIdKeys) {
+    id = asString(data[key]);
+    if (id != null) break;
+  }
+
+  return parsePushScreen(asString(data['screen']), id: id);
 }
