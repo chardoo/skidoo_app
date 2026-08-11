@@ -147,12 +147,12 @@ Future<void> setupServiceLocator() async {
     ),
   );
   sl.registerLazySingleton<LoginUseCase>(() => LoginUseCase(
-    sl<AuthRepository>(),
-    sl<AuthService>(),
-    sl<ChatDatabase>(),
-    sl<E2eeService>(),
-    sl<ChatKeyDataSource>(),
-  ));
+        sl<AuthRepository>(),
+        sl<AuthService>(),
+        sl<ChatDatabase>(),
+        sl<E2eeService>(),
+        sl<ChatKeyDataSource>(),
+      ));
   sl.registerSingleton<RegisterUseCase>(RegisterUseCase(sl<AuthRepository>()));
   sl.registerLazySingleton<VerifyCodeUseCase>(
       () => VerifyCodeUseCase(sl<AuthRepository>(), sl<LoginUseCase>()));
@@ -282,8 +282,7 @@ Future<void> setupServiceLocator() async {
       SaveImagesForFreeUseCase(sl<CartRepository>()));
 
   sl.registerSingleton<CartBloc>(CartBloc(
-    payForImagesUseCase: sl<PayForImagesUseCase>(),
-    completePaymentUseCase: sl<CompletePaymentUseCase>(),
+    repository: sl<CartRepository>(),
     downloadImageUseCase: sl<DownloadImageUseCase>(),
   ));
 
@@ -350,17 +349,20 @@ Future<void> setupServiceLocator() async {
   // ── Chat feature ──────────────────────────────────────────────────────────
   sl.registerSingleton<ChatApiClient>(ChatApiClient(sl<AuthService>()));
   sl.registerSingleton<ChatDatabase>(ChatDatabase());
-  sl.registerSingleton<ChatWebSocketService>(ChatWebSocketService(sl<AuthService>()));
+  sl.registerSingleton<ChatWebSocketService>(
+      ChatWebSocketService(sl<AuthService>()));
   // E2eeService must be registered before ChatBackgroundService (decrypt-on-arrival).
   sl.registerLazySingleton<E2eeService>(() => E2eeService());
-  sl.registerSingleton<ChatBackgroundService>(
-      ChatBackgroundService(sl<ChatDatabase>(), sl<ChatWebSocketService>(),
-          sl<E2eeService>(), sl<AuthService>(), sl<NotificationPrefsService>()));
+  sl.registerSingleton<ChatBackgroundService>(ChatBackgroundService(
+      sl<ChatDatabase>(),
+      sl<ChatWebSocketService>(),
+      sl<E2eeService>(),
+      sl<AuthService>(),
+      sl<NotificationPrefsService>()));
 
   sl.registerSingleton<ChatRestDataSource>(
       ChatRestDataSourceImpl(sl<ChatApiClient>()));
-  sl.registerSingleton<UserSearchDataSource>(
-      UserSearchDataSource(sl<Api>()));
+  sl.registerSingleton<UserSearchDataSource>(UserSearchDataSource(sl<Api>()));
   sl.registerSingleton<ChatRepository>(
       ChatRepositoryImpl(sl<ChatRestDataSource>(), sl<ChatDatabase>()));
 
@@ -494,8 +496,8 @@ Future<void> setupServiceLocator() async {
   // ── Photo Comments feature ────────────────────────────────────────────────
   sl.registerSingleton<PhotoCommentRemoteDataSource>(
       PhotoCommentRemoteDataSourceImpl(sl<Api>()));
-  sl.registerFactory<PhotoCommentBloc>(
-      () => PhotoCommentBloc(sl<PhotoCommentRemoteDataSource>(), sl<AuthService>()));
+  sl.registerFactory<PhotoCommentBloc>(() =>
+      PhotoCommentBloc(sl<PhotoCommentRemoteDataSource>(), sl<AuthService>()));
   sl.registerSingleton<PictureLikeService>(
       PictureLikeService(sl<ChatRestDataSource>()));
 

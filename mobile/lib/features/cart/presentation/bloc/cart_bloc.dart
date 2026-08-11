@@ -3,9 +3,8 @@ import 'package:equatable/equatable.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/core/utils/gallery_refresh_signal.dart';
-import 'package:jperg_app/features/cart/domain/usecases/complete_payment_usecase.dart';
+import 'package:jperg_app/features/cart/domain/repositories/cart_repository.dart';
 import 'package:jperg_app/features/cart/domain/usecases/download_image_usecase.dart';
-import 'package:jperg_app/features/cart/domain/usecases/pay_for_images_usecase.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
@@ -13,17 +12,17 @@ part 'cart_event.dart';
 part 'cart_state.dart';
 
 class CartBloc extends Bloc<CartEvent, CartState> {
-  final PayForImagesUseCase _payForImagesUseCase;
-  final CompletePaymentUseCase _completePaymentUseCase;
+  /// Both halves of a purchase go through the repository's *-images calls:
+  /// the basket is a list of picture ids and the server prices it. See
+  /// [_onPaymentInitiated].
+  final CartRepository _repository;
   final DownloadImageUseCase _downloadImageUseCase;
   final AuthService _authService;
 
   CartBloc({
-    required PayForImagesUseCase payForImagesUseCase,
-    required CompletePaymentUseCase completePaymentUseCase,
+    required CartRepository repository,
     required DownloadImageUseCase downloadImageUseCase,
-  })  : _payForImagesUseCase = payForImagesUseCase,
-        _completePaymentUseCase = completePaymentUseCase,
+  })  : _repository = repository,
         _downloadImageUseCase = downloadImageUseCase,
         _authService = sl<AuthService>(),
         super(const CartState()) {
@@ -54,8 +53,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   }
 
   void _onItemRemoved(CartItemRemoved event, Emitter<CartState> emit) {
-    final updated =
-        state.items.where((i) => i.id != event.photo.id).toList();
+    final updated = state.items.where((i) => i.id != event.photo.id).toList();
     emit(state.copyWith(
       items: updated,
       totalAmount: _calculateTotal(updated),
@@ -81,13 +79,22 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       emit(state.copyWith(errorMessage: 'Cart is empty.'));
       return;
     }
-    emit(state.copyWith(
-        status: CartStatus.paymentLoading, clearMessages: true));
+    emit(
+        state.copyWith(status: CartStatus.paymentLoading, clearMessages: true));
     try {
       final email = await _authService.getEmail();
-      final response = await _payForImagesUseCase(
-        PayForImagesParams(
-            email: email, amount: state.totalAmount.toString()),
+      final clientId = await _authService.getUserId();
+      // The server prices the basket from the picture ids. This used to send
+      // `totalAmount.toString()` to /payments/initialize, which is a Dart
+      // double — "60.0" — and the endpoint parsed it with int(), so every
+      // checkout answered 500 before Paystack was reached. Sending the ids
+      // instead removes the amount from the client altogether: the price of a
+      // photo is the server's to know, and the total is now checked against
+      // it again at completion.
+      final response = await _repository.initializeImages(
+        email: email,
+        clientId: clientId,
+        pictureIds: state.items.map((i) => i.id).toList(),
       );
       final authUrl = response['authorization_url'] as String?;
       final referenceId = response['reference'] as String?;
@@ -120,21 +127,13 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     emit(state.copyWith(status: CartStatus.paymentLoading));
     try {
       final clientId = await _authService.getUserId();
-      final paidImages = state.items
-          .map((item) => {
-                'pictureId': item.id,
-                'clientId': clientId,
-                'userId': item.userId,
-              })
-          .toList();
-      final payload = {
-        'amount': state.totalAmount,
-        'referenceId': state.referenceId,
-        'clientId': clientId,
-        'PaidImage': paidImages,
-      };
-      final response =
-          await _completePaymentUseCase(CompletePaymentParams(payload));
+      final response = await _repository.completeImages(
+        referenceId: state.referenceId,
+        clientId: clientId,
+        pictures: state.items
+            .map((item) => {'pictureId': item.id, 'userId': item.userId})
+            .toList(),
+      );
       if (response['paidImages'] != null &&
           response['paidImages']['count'] != null &&
           (response['paidImages']['count'] as int) > 0) {
@@ -196,7 +195,6 @@ class CartBloc extends Bloc<CartEvent, CartState> {
 
   void _onMessageDismissed(
       CartMessageDismissed event, Emitter<CartState> emit) {
-    emit(state.copyWith(
-        status: CartStatus.idle, clearMessages: true));
+    emit(state.copyWith(status: CartStatus.idle, clearMessages: true));
   }
 }

@@ -330,8 +330,28 @@ void main() {
     });
   });
 
-  group('SearchPhotoTile — any grid that sells photos', () {
-    testWidgets('shows the price on a priced photo', (tester) async {
+  group('SearchPhotoTile — the amount appears where it can be acted on', () {
+    testWidgets('a priced photo in a grid that sells shows its amount',
+        (tester) async {
+      await tester.pumpWidget(_wrap(SizedBox(
+        width: 120,
+        height: 120,
+        child: SearchPhotoTile(
+          photo: _photo('a', price: 20),
+          onTap: () {},
+          selectable: true,
+        ),
+      )));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GHS 20'), findsOneWidget);
+    });
+
+    testWidgets('the same photo in a grid that does not sell shows nothing',
+        (tester) async {
+      // An event's album reached from search. The price is part of opening the
+      // photo, not of scrolling past it — an amount on a tile with no way to
+      // buy from it is a question with no answer on the screen.
       await tester.pumpWidget(_wrap(SizedBox(
         width: 120,
         height: 120,
@@ -339,14 +359,18 @@ void main() {
       )));
       await tester.pumpAndSettle();
 
-      expect(find.text('GHS 20'), findsOneWidget);
+      expect(find.textContaining('GHS'), findsNothing);
     });
 
     testWidgets('shows nothing on a free photo', (tester) async {
       await tester.pumpWidget(_wrap(SizedBox(
         width: 120,
         height: 120,
-        child: SearchPhotoTile(photo: _photo('a'), onTap: () {}),
+        child: SearchPhotoTile(
+          photo: _photo('a'),
+          onTap: () {},
+          selectable: true,
+        ),
       )));
       await tester.pumpAndSettle();
 
