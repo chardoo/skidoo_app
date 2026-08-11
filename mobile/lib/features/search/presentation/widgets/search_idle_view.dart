@@ -55,7 +55,6 @@ class SearchIdleView extends StatelessWidget {
             onAction: onRefresh,
           ),
         ),
-
         if (photos.isEmpty && state.isLoadingYouMayLike)
           SliverToBoxAdapter(
             child: Padding(
@@ -88,7 +87,6 @@ class SearchIdleView extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
             onPhotoTap: (index) => onPhotoTap(photos, index),
           ),
-
         if (state.isLoadingMoreYouMayLike)
           SliverToBoxAdapter(
             child: Padding(
@@ -103,7 +101,6 @@ class SearchIdleView extends StatelessWidget {
               ),
             ),
           ),
-
         SliverToBoxAdapter(child: SizedBox(height: AppSpacing.huge.h)),
       ],
     );

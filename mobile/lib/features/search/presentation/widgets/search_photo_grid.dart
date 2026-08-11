@@ -27,9 +27,10 @@ class SearchPhotoGridSliver extends StatelessWidget {
   final void Function(int index) onPhotoTap;
   final EdgeInsets padding;
 
-  /// Non-null lets the grid be bought from: a tick on each priced photo, and
-  /// tap to add. Null — "You may like", where there is no one album to check
-  /// out — leaves plain thumbnails.
+  /// Non-null lets the grid be bought from: an amount and a tick on each
+  /// priced photo, and tap to add. Null leaves plain thumbnails — no tick and
+  /// no price, because an amount on a photo nobody can buy from this screen is
+  /// a question with no answer on it.
   final PhotoSelection? selection;
 
   @override
@@ -115,16 +116,24 @@ class SearchPhotoTile extends StatelessWidget {
               child: Icon(Icons.play_circle_fill_rounded,
                   color: Colors.white.withValues(alpha: 0.9), size: 18.sp),
             ),
-          // Any grid where a photo costs money says so. Bottom-left, the same
-          // corner every other grid uses, so the amount is always in the same
-          // place whichever screen someone came in through.
-          if (photo.price > 0 && !photo.isPurchased)
+          // The amount appears where the photo can be bought, and only there.
+          //
+          // Tied to [selectable] rather than to the price so the two cannot
+          // drift apart: a grid with no selection draws plain thumbnails, and
+          // a priced tile in a grid that sells always says what it costs.
+          // Both halves of that were wrong at once — an event's album offered
+          // a tick with no amount to weigh, and the search screen's grid
+          // priced every photo while offering no way to buy one.
+          // `price > 0` as well, because [selectable] is the caller's word for
+          // it and a free photo handed in as selectable would otherwise be
+          // labelled "GHS 0".
+          if (selectable && photo.price > 0)
             Positioned(
               left: 6.w,
               bottom: 6.h,
               child: PhotoPriceBadge(
                 price: photo.price,
-                muted: selectable && !selected,
+                muted: !selected,
                 compact: true,
               ),
             ),

@@ -174,6 +174,59 @@ void main() {
       expect(bloc.state.status, SearchStatus.success);
     });
 
+    test('a query chosen whole is fetched without waiting', () async {
+      // A recent search tapped, the keyboard's search key, a code from the
+      // unlock sheet. The debounce is there to wait out the next keystroke and
+      // there is not going to be one — waiting anyway is a third of a second
+      // in which the tap looks like it missed.
+      repo.allResult = SearchAllResults.fromJson(const {
+        'counts': {'events': 1},
+        'total': 1,
+        'events': [
+          {'id': 'evt-1', 'eventName': 'Amalitech'}
+        ],
+      });
+
+      bloc.add(const SearchRequested.now('Amalitech'));
+      // Well inside the 320 ms a typed query would still be waiting out.
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      expect(repo.calls, ['all:Amalitech']);
+      expect(bloc.state.status, SearchStatus.success);
+    });
+
+    test('a typed query is still made to wait', () async {
+      repo.allResult = SearchAllResults.fromJson(const {
+        'counts': {'events': 0},
+        'total': 0,
+      });
+
+      bloc.add(const SearchRequested.query('Amalitech'));
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
+      expect(repo.calls, isEmpty,
+          reason: 'typing one letter must not fetch on that letter');
+      await settle();
+      expect(repo.calls, ['all:Amalitech']);
+    });
+
+    test('typing after a chosen query still cancels it', () async {
+      repo.allResult = SearchAllResults.fromJson(const {
+        'counts': {'events': 0},
+        'total': 0,
+      });
+
+      // Immediate does not mean uninterruptible: the handler is restartable,
+      // so a keystroke landing on top of a tapped recent still wins.
+      bloc
+        ..add(const SearchRequested.now('Amalitech'))
+        ..add(const SearchRequested.query('Amalitech Graduation'));
+      await settle();
+
+      expect(bloc.state.query, 'Amalitech Graduation');
+      expect(repo.calls.last, 'all:Amalitech Graduation');
+    });
+
     test('total 0 is the empty state and offers no chips', () async {
       repo.allResult = SearchAllResults.fromJson(const {
         'counts': {'events': 0, 'photographers': 0, 'tags': 0},

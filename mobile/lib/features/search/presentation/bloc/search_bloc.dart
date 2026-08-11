@@ -86,8 +86,15 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     // Because this handler is restartable, a keystroke arriving inside this
     // window cancels it here — before the network call — so only the query the
     // user paused on is ever fetched.
-    await Future<void>.delayed(_debounce);
-    if (emit.isDone) return;
+    //
+    // Skipped for a query that arrived whole: a recent search tapped, the
+    // keyboard's search key, a pasted code. There is no keystroke coming to
+    // wait for, and waiting for one is a third of a second in which the tap
+    // appears to have done nothing.
+    if (!event.immediate) {
+      await Future<void>.delayed(_debounce);
+      if (emit.isDone) return;
+    }
 
     try {
       final results = await _search.all(query);

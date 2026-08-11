@@ -12,18 +12,35 @@ sealed class SearchEvent extends Equatable {
 /// keystroke has to cancel the previous query's request, and a chip tap has to
 /// cancel a query whose results would land under the wrong chip.
 class SearchRequested extends SearchEvent {
-  /// A new query. Debounced, resets the chips.
-  const SearchRequested.query(this.query) : type = null;
+  /// A new query as it is being typed. Debounced, resets the chips.
+  const SearchRequested.query(this.query)
+      : type = null,
+        immediate = false;
+
+  /// A query the person has finished choosing — a recent search tapped, the
+  /// keyboard's search key, a code handed over from the unlock sheet.
+  ///
+  /// The debounce exists to wait out the *next keystroke*, and there isn't
+  /// going to be one: they picked a whole query in a single gesture. Waiting
+  /// anyway put a third of a second of nothing between the tap and the screen
+  /// doing something, which reads as the tap having missed.
+  const SearchRequested.now(this.query)
+      : type = null,
+        immediate = true;
 
   /// A chip tap. Immediate; fetches the first real page only if the preview
   /// the `type=all` response carried is short of the section's count.
-  const SearchRequested.type(this.query, SearchResultType this.type);
+  const SearchRequested.type(this.query, SearchResultType this.type)
+      : immediate = true;
 
   final String query;
   final SearchResultType? type;
 
+  /// Whether to skip the typing debounce. See [SearchRequested.now].
+  final bool immediate;
+
   @override
-  List<Object?> get props => [query, type];
+  List<Object?> get props => [query, type, immediate];
 }
 
 /// The active chip's next page.

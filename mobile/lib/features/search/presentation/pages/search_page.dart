@@ -68,7 +68,8 @@ class _SearchViewState extends State<_SearchView> {
       // Post-frame: the bloc is provided by the widget above this one, so it
       // isn't reachable from `context` until the first build has run.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.read<SearchBloc>().add(SearchRequested.query(seed));
+        if (mounted)
+          context.read<SearchBloc>().add(SearchRequested.now(seed));
       });
     }
   }
@@ -96,7 +97,7 @@ class _SearchViewState extends State<_SearchView> {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return;
     _bloc.add(SearchRecentSaved(trimmed));
-    _bloc.add(SearchRequested.query(trimmed));
+    _bloc.add(SearchRequested.now(trimmed));
   }
 
   void _runRecent(String query) {
@@ -106,7 +107,7 @@ class _SearchViewState extends State<_SearchView> {
     );
     _focusNode.unfocus();
     _bloc.add(SearchRecentSaved(query));
-    _bloc.add(SearchRequested.query(query));
+    _bloc.add(SearchRequested.now(query));
   }
 
   /// The idle grid and the results list page off the same gesture, so they
@@ -257,7 +258,8 @@ class _SearchViewState extends State<_SearchView> {
     if (state.status == SearchStatus.failure && !state.hasResults) {
       return AppErrorView(
         message: state.errorMessage ?? 'Search failed. Please try again.',
-        onRetry: () => _bloc.add(SearchRequested.query(state.query)),
+        // Retry is a press, not a keystroke — go now.
+        onRetry: () => _bloc.add(SearchRequested.now(state.query)),
       );
     }
 

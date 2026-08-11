@@ -10,9 +10,6 @@ import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 import 'package:jperg_app/features/search/domain/usecases/search_usecase.dart';
-import 'package:jperg_app/core/purchase/photo_checkout.dart';
-import 'package:jperg_app/core/purchase/photo_purchase_bar.dart';
-import 'package:jperg_app/core/purchase/photo_selection.dart';
 import 'package:jperg_app/features/search/presentation/bloc/event_photos_bloc.dart';
 import 'package:jperg_app/features/search/presentation/widgets/load_more_listener.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_detail_app_bar.dart';
@@ -78,27 +75,6 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
   /// the grid from the photo they were sent.
   bool _handledOpenRequest = false;
 
-  /// Opt-in: this album is being browsed, not reviewed, so nothing is chosen
-  /// until it is tapped. See [PhotoSelection].
-  final _selection = PhotoSelection();
-
-  bool _checkingOut = false;
-
-  @override
-  void dispose() {
-    _selection.dispose();
-    super.dispose();
-  }
-
-  Future<void> _checkout(BuildContext context) async {
-    setState(() => _checkingOut = true);
-    try {
-      await runPhotoCheckout(context, _selection);
-    } finally {
-      if (mounted) setState(() => _checkingOut = false);
-    }
-  }
-
   SearchEventRow? get fallbackEvent => widget.fallbackEvent;
 
   /// Opens the requested photo once the page containing it has arrived.
@@ -158,9 +134,10 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
 
     final page = Scaffold(
       backgroundColor: ext.homeBackground,
-      body: PhotoCheckoutListener(
-        onSuccess: _selection.clear,
-        child: SafeArea(
+      // Nothing is sold from this grid. It is an event's album reached from
+      // search — the tiles are plain, and a photo's price is part of opening
+      // it. The viewer it opens does the selling, wherever it is opened from.
+      body: SafeArea(
           bottom: false,
           child: BlocConsumer<EventPhotosBloc, EventPhotosState>(
             // A shared photo link opens the album, then this opens the photo —
@@ -168,11 +145,6 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
             listener: _maybeOpenRequestedPhoto,
             builder: (context, state) {
               final count = _count(state);
-              // Keeps the bar's total honest as more photos page in. After the
-              // frame, because this runs during build.
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) _selection.updatePhotos(state.photos);
-              });
               return Column(
                 children: [
                   SearchDetailAppBar(
@@ -188,17 +160,10 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
                       child: _buildBody(context, ext, state),
                     ),
                   ),
-                  PhotoPurchaseBar(
-                    selection: _selection,
-                    isBusy: _checkingOut,
-                    onCheckout: () => _checkout(context),
-                  ),
                 ],
               );
             },
-          ),
-        ),
-      ),
+          )),
     );
 
     return webWrap(page, backgroundColor: ext.homeBackground);
@@ -241,7 +206,6 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
         slivers: [
           SearchPhotoGridSliver(
             photos: state.photos,
-            selection: _selection,
             padding: EdgeInsets.fromLTRB(
                 AppSpacing.md.w, AppSpacing.sm.h, AppSpacing.md.w, 0),
             onPhotoTap: (index) => Navigator.of(context).push(
@@ -250,8 +214,6 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
                   photos: state.photos,
                   initialIndex: index,
                   title: _title(state),
-                  selection: _selection,
-                  onCheckout: () => _checkout(context),
                 ),
               ),
             ),
