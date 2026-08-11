@@ -63,6 +63,21 @@ class Photo {
   /// `GET /client/my-photos`; false for endpoints that don't report it.
   final bool isPurchased;
 
+  /// Whether this person has answered "is this you?" for this photo yet —
+  /// 'pending' or 'confirmed'. ('rejected' never arrives: the server filters
+  /// those out of every read.)
+  ///
+  /// Empty when the endpoint that produced this record does not track review
+  /// state, in which case nothing may be marked "not me" — see [isPendingReview].
+  final String reviewStatus;
+
+  /// Still awaiting an answer, so it can still be marked "not me".
+  ///
+  /// A photo already confirmed is settled: the person has said it is them, and
+  /// re-offering the question on every visit to the album invites them to
+  /// undo an answer they were never asked to revisit.
+  bool get isPendingReview => reviewStatus == 'pending';
+
   /// When the face-match that surfaced this photo was recorded. Null outside
   /// the recognition endpoints.
   final DateTime? identifiedAt;
@@ -102,6 +117,7 @@ class Photo {
       this.photographerAvatarUrl = '',
       this.location = '',
       this.isPurchased = false,
+      this.reviewStatus = '',
       this.identifiedAt});
 
   /// Narrows [value] to a string map, or null when it's absent/another type.
@@ -194,6 +210,8 @@ class Photo {
       location: _pick([event], ['location', 'city', 'venue']),
       isPurchased:
           (json['isPurchased'] ?? json['is_purchased'] ?? false) as bool,
+      reviewStatus:
+          (json['reviewStatus'] ?? json['review_status'] ?? '').toString(),
       identifiedAt: identified.isEmpty ? null : DateTime.tryParse(identified),
     );
   }

@@ -59,8 +59,10 @@ class SearchRepositoryImpl implements SearchRepository {
     String eventId, {
     int page = 1,
     int limit = SearchRemoteDataSourceImpl.defaultPhotoLimit,
+    String? around,
   }) =>
-      _guard(() => _remote.eventPhotos(eventId, page: page, limit: limit));
+      _guard(() =>
+          _remote.eventPhotos(eventId, page: page, limit: limit, around: around));
 
   @override
   Future<Photo> pictureById(String pictureId) =>

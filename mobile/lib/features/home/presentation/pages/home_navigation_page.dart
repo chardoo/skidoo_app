@@ -8,12 +8,12 @@ import 'package:jperg_app/features/discovery/presentation/pages/event_comment_pa
 import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:jperg_app/features/home/presentation/pages/search_results_page.dart';
 import 'package:jperg_app/features/search/presentation/pages/search_page.dart';
 import 'package:jperg_app/features/home/presentation/widgets/web_search_photos_panel.dart';
 import 'package:jperg_app/features/home/presentation/widgets/events_feed.dart';
 import 'package:jperg_app/features/home/presentation/widgets/home_empty_state.dart';
 import 'package:jperg_app/features/home/presentation/widgets/feed_top_bar.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/event_scan_result_page.dart';
 import 'package:jperg_app/features/home/presentation/widgets/unlock_photos_sheet.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/features/follow/presentation/widgets/following_feed.dart';
@@ -197,22 +197,21 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
   /// Resolves an event code — scanned or typed — into that event's photos.
   ///
-  /// The code *is* the event id, so it goes to [HomeImagesSearched], which
-  /// fetches the event's pictures directly. It deliberately does not go through
+  /// The code *is* the event id, which is why it can be handed straight to a
+  /// screen that filters by one. It deliberately does not go through
   /// [HomeEventSearched]: that is a text search over event *names*, and a code
   /// is an identifier, not a name — it would never match.
   ///
   /// Every entry point funnels through here so scanning and typing cannot
   /// diverge.
   void _openEventByCode(String code) {
-    final homeBloc = context.read<HomeBloc>();
-    homeBloc.add(HomeImagesSearched(eventId: code, eventName: ''));
+    // Straight to the scan result, not a search results page. A code scanned
+    // off a private event is a question — "are there photos of me in here?" —
+    // and this is the screen that answers it, then hands over to the album
+    // with the matches preselected for review.
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => BlocProvider.value(
-          value: homeBloc,
-          child: const SearchResultsPage(),
-        ),
+      MaterialPageRoute<void>(
+        builder: (_) => EventScanResultPage(code: code),
       ),
     );
   }

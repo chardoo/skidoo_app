@@ -15,6 +15,7 @@ import 'package:jperg_app/features/cart/domain/repositories/cart_repository.dart
 import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
+import 'package:jperg_app/core/purchase/photo_price_badge.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
@@ -511,7 +512,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                           SizedBox(width: 3.w),
                           Text(
                             isPaid
-                                ? 'GHS ${photo.price.toStringAsFixed(2)}'
+                                ? PhotoPriceBadge.format(photo.price)
                                 : 'Free',
                             style: TextStyle(
                               color: isPaid

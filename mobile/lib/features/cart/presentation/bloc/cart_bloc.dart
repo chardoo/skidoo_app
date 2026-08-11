@@ -29,6 +29,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         super(const CartState()) {
     on<CartItemAdded>(_onItemAdded);
     on<CartItemRemoved>(_onItemRemoved);
+    on<CartItemsReplaced>(_onItemsReplaced);
     on<CartPaymentInitiated>(_onPaymentInitiated);
     on<CartPaymentCompleted>(_onPaymentCompleted);
     on<CartImageDownloaded>(_onImageDownloaded);
@@ -59,6 +60,18 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       items: updated,
       totalAmount: _calculateTotal(updated),
       successMessage: 'Image removed.',
+    ));
+  }
+
+  void _onItemsReplaced(CartItemsReplaced event, Emitter<CartState> emit) {
+    final updated = List<Photo>.from(event.photos);
+    emit(state.copyWith(
+      items: updated,
+      totalAmount: _calculateTotal(updated),
+      // No success message: this is a screen setting up its own basket before
+      // checking out, not a person adding something. "Image added to cart."
+      // for each of nine photos would be nine snackbars nobody asked for.
+      clearMessages: true,
     ));
   }
 

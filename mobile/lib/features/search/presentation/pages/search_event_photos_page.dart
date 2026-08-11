@@ -10,6 +10,9 @@ import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 import 'package:jperg_app/features/search/domain/usecases/search_usecase.dart';
+import 'package:jperg_app/core/purchase/photo_checkout.dart';
+import 'package:jperg_app/core/purchase/photo_purchase_bar.dart';
+import 'package:jperg_app/core/purchase/photo_selection.dart';
 import 'package:jperg_app/features/search/presentation/bloc/event_photos_bloc.dart';
 import 'package:jperg_app/features/search/presentation/widgets/load_more_listener.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_detail_app_bar.dart';
@@ -50,7 +53,7 @@ class SearchEventPhotosPage extends StatelessWidget {
       create: (_) => EventPhotosBloc(
         searchUseCase: sl<SearchUseCase>(),
         eventId: eventId,
-      )..add(const EventPhotosRequested()),
+      )..add(EventPhotosRequested(around: openPictureId)),
       child: _EventPhotosView(
         fallbackEvent: event,
         openPictureId: openPictureId,
@@ -75,13 +78,33 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
   /// the grid from the photo they were sent.
   bool _handledOpenRequest = false;
 
+  /// Opt-in: this album is being browsed, not reviewed, so nothing is chosen
+  /// until it is tapped. See [PhotoSelection].
+  final _selection = PhotoSelection();
+
+  bool _checkingOut = false;
+
+  @override
+  void dispose() {
+    _selection.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkout(BuildContext context) async {
+    setState(() => _checkingOut = true);
+    try {
+      await runPhotoCheckout(context, _selection);
+    } finally {
+      if (mounted) setState(() => _checkingOut = false);
+    }
+  }
+
   SearchEventRow? get fallbackEvent => widget.fallbackEvent;
 
   /// Opens the requested photo once the page containing it has arrived.
   ///
-  /// The photo may not be on the first page. Rather than give up or fetch it
-  /// separately, ask for the next page and try again — the grid is paging
-  /// anyway, and this reuses the list the viewer needs regardless.
+  /// The first request asks for the page holding it (`around`), so normally it
+  /// is in the very first response and this opens immediately.
   void _maybeOpenRequestedPhoto(BuildContext context, EventPhotosState state) {
     final wanted = widget.openPictureId;
     if (wanted == null || wanted.isEmpty || _handledOpenRequest) return;
@@ -89,9 +112,10 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
 
     final index = state.photos.indexWhere((p) => p.id == wanted);
     if (index < 0) {
-      // Not in what we have yet. Keep paging while there is more to come; if
-      // there is not, the link points at something this album no longer has,
-      // and leaving the person on the grid is the honest outcome.
+      // Only reachable against a server that does not know `around` — an app
+      // updated ahead of the backend. Fall back to what this did before:
+      // page forward until the photo turns up. One round trip per 30 photos,
+      // which is why the parameter exists.
       if (state.hasNext && !state.isLoadingMore) {
         context.read<EventPhotosBloc>().add(const EventPhotosMoreRequested());
       }
@@ -134,32 +158,45 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
 
     final page = Scaffold(
       backgroundColor: ext.homeBackground,
-      body: SafeArea(
-        bottom: false,
-        child: BlocConsumer<EventPhotosBloc, EventPhotosState>(
-          // A shared photo link opens the album, then this opens the photo —
-          // once the page holding it has loaded.
-          listener: _maybeOpenRequestedPhoto,
-          builder: (context, state) {
-            final count = _count(state);
-            return Column(
-              children: [
-                SearchDetailAppBar(
-                  title: _title(state),
-                  subtitle: count > 0 ? countLabel(count, 'photo') : null,
-                ),
-                Expanded(
-                  child: LoadMoreListener(
-                    enabled: state.hasNext && !state.isLoadingMore,
-                    onLoadMore: () => context
-                        .read<EventPhotosBloc>()
-                        .add(const EventPhotosMoreRequested()),
-                    child: _buildBody(context, ext, state),
+      body: PhotoCheckoutListener(
+        onSuccess: _selection.clear,
+        child: SafeArea(
+          bottom: false,
+          child: BlocConsumer<EventPhotosBloc, EventPhotosState>(
+            // A shared photo link opens the album, then this opens the photo —
+            // once the page holding it has loaded.
+            listener: _maybeOpenRequestedPhoto,
+            builder: (context, state) {
+              final count = _count(state);
+              // Keeps the bar's total honest as more photos page in. After the
+              // frame, because this runs during build.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _selection.updatePhotos(state.photos);
+              });
+              return Column(
+                children: [
+                  SearchDetailAppBar(
+                    title: _title(state),
+                    subtitle: count > 0 ? countLabel(count, 'photo') : null,
                   ),
-                ),
-              ],
-            );
-          },
+                  Expanded(
+                    child: LoadMoreListener(
+                      enabled: state.hasNext && !state.isLoadingMore,
+                      onLoadMore: () => context
+                          .read<EventPhotosBloc>()
+                          .add(const EventPhotosMoreRequested()),
+                      child: _buildBody(context, ext, state),
+                    ),
+                  ),
+                  PhotoPurchaseBar(
+                    selection: _selection,
+                    isBusy: _checkingOut,
+                    onCheckout: () => _checkout(context),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -204,6 +241,7 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
         slivers: [
           SearchPhotoGridSliver(
             photos: state.photos,
+            selection: _selection,
             padding: EdgeInsets.fromLTRB(
                 AppSpacing.md.w, AppSpacing.sm.h, AppSpacing.md.w, 0),
             onPhotoTap: (index) => Navigator.of(context).push(
@@ -211,6 +249,9 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
                 builder: (_) => FoundPhotoViewerPage(
                   photos: state.photos,
                   initialIndex: index,
+                  title: _title(state),
+                  selection: _selection,
+                  onCheckout: () => _checkout(context),
                 ),
               ),
             ),

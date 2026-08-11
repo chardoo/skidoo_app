@@ -64,6 +64,29 @@ class DeepLinkService {
 
   DeepLink? get pending => _pending;
 
+  /// True while a link is waiting to be followed.
+  ///
+  /// Read by the splash, which otherwise holds the app for its brand beat and
+  /// a feed warm-up before the first navigation — and a held link waits behind
+  /// all of it. Someone who tapped a link is not waiting to see the feed load;
+  /// this is what lets the splash cut itself short and hand over.
+  ///
+  /// Static because the splash is built by the route table and has no way to
+  /// reach the instance, which is created by [DeepLinkHost] above the
+  /// MaterialApp. It survives the service being disposed and rebuilt, which is
+  /// why it is set from every path that parks a link rather than in one place.
+  static final ValueNotifier<bool> isWaiting = ValueNotifier<bool>(false);
+
+  void _park(DeepLink link) {
+    _pending = link;
+    isWaiting.value = true;
+  }
+
+  void _clearPending() {
+    _pending = null;
+    isWaiting.value = false;
+  }
+
   Future<void> start() async {
     try {
       final initial = await _links.getInitialLink();
@@ -89,6 +112,10 @@ class DeepLinkService {
     await _sub?.cancel();
     _sub = null;
     if (identical(instance, this)) instance = null;
+    // The flag is static and the link it stood for is going with this
+    // instance, so leaving it raised would tell the next splash to hurry for
+    // something no longer there.
+    if (_pending != null) _clearPending();
   }
 
   /// Follow a link, or remember it until it can be followed.
@@ -112,14 +139,14 @@ class DeepLinkService {
     // Waiting also puts a real destination underneath, so Back works.
     if (!AppReadiness.isReady.value) {
       debugPrint('$_tag holding $link until the app has started');
-      _pending = link;
+      _park(link);
       return;
     }
 
     final isSignedIn = _isSignedIn;
     if (link.requiresAuth && isSignedIn != null && !await isSignedIn()) {
       debugPrint('$_tag holding $link until sign-in');
-      _pending = link;
+      _park(link);
       AppNavigator.navigateToLogin();
       return;
     }
@@ -129,11 +156,11 @@ class DeepLinkService {
       // The app is still starting. Held rather than dropped — resumePending()
       // runs once there is somewhere to navigate to.
       debugPrint('$_tag holding $link until the navigator exists');
-      _pending = link;
+      _park(link);
       return;
     }
 
-    _pending = null;
+    _clearPending();
     debugPrint('$_tag opening $link');
     await _open(navigator, link);
   }
@@ -143,8 +170,29 @@ class DeepLinkService {
   Future<void> resumePending() async {
     final link = _pending;
     if (link == null) return;
-    _pending = null;
+    _clearPending();
     await follow(link);
+  }
+
+  /// Get to Home, without building a second one.
+  ///
+  /// On a cold start the splash has just landed on `/home`, and pushing a
+  /// fresh one discards it and refetches everything it had already started —
+  /// three blocs' worth, while the person watches. If a Home is live, come
+  /// back to it instead; only build one when there genuinely isn't one, which
+  /// is the signed-out case where the splash chose Discovery.
+  Future<void> _toHome(NavigatorState navigator) async {
+    if (HomePage.isLive) {
+      debugPrint('$_tag reusing the Home already on screen');
+      navigator.popUntil(
+        (route) => route.settings.name == HomePage.routeName || route.isFirst,
+      );
+      return;
+    }
+    await navigator.pushNamedAndRemoveUntil(
+      HomePage.routeName,
+      (route) => false,
+    );
   }
 
   Future<void> _open(NavigatorState navigator, DeepLink link) async {
@@ -153,10 +201,7 @@ class DeepLinkService {
       // it for the Found tab. Both notifiers already exist for exactly this —
       // the sidebar and the search results page use them the same way.
       case DeepLinkKind.myPhotos:
-        await navigator.pushNamedAndRemoveUntil(
-          HomePage.routeName,
-          (route) => false,
-        );
+        await _toHome(navigator);
         HomePage.tabRequest.value = 0; // Home column
         HomeNavigationPage.pillTabRequest.value = 0; // Found
         return;
@@ -181,27 +226,18 @@ class DeepLinkService {
       // tab. Pushing a second copy of a tab's page on top of the stack would
       // give the person a screen their bottom bar cannot get them out of.
       case DeepLinkKind.home:
-        await navigator.pushNamedAndRemoveUntil(
-          HomePage.routeName,
-          (route) => false,
-        );
+        await _toHome(navigator);
         return;
 
       case DeepLinkKind.notifications:
-        await navigator.pushNamedAndRemoveUntil(
-          HomePage.routeName,
-          (route) => false,
-        );
+        await _toHome(navigator);
         HomePage.tabRequest.value = 2; // Notifications
         return;
 
       // No room id — the messages list. With one, it falls through to the
       // resolver below, which fetches the room the page needs.
       case DeepLinkKind.chat when link.id == null:
-        await navigator.pushNamedAndRemoveUntil(
-          HomePage.routeName,
-          (route) => false,
-        );
+        await _toHome(navigator);
         HomePage.tabRequest.value = 1; // Messages
         return;
 
@@ -210,10 +246,7 @@ class DeepLinkService {
       // for it, so a cashout notification lands there rather than nowhere.
       // Point this at the real screen when it is built.
       case DeepLinkKind.earnings:
-        await navigator.pushNamedAndRemoveUntil(
-          HomePage.routeName,
-          (route) => false,
-        );
+        await _toHome(navigator);
         HomePage.tabRequest.value = 3; // Profile
         return;
 

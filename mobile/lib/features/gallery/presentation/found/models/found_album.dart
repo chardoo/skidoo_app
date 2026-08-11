@@ -17,6 +17,7 @@ class FoundAlbum {
     required this.photos,
     required this.photoCount,
     required this.moreCount,
+    this.mineCount = 0,
     this.eventDate = '',
     this.photographerId = '',
     this.photographerName = '',
@@ -34,6 +35,14 @@ class FoundAlbum {
 
   /// What the "+N" tile stands for: matches beyond the preview slice.
   final int moreCount;
+
+  /// How many of [photoCount] the viewer is actually in.
+  ///
+  /// Lower than [photoCount] wherever the list also carries the event's public
+  /// photos — and it is this number, never the row count, that may be spoken
+  /// aloud as "we found N photos of you". Saying 54 when 24 are theirs is a
+  /// claim about a stranger's photographs.
+  final int mineCount;
 
   final String eventDate;
   final String photographerId;
@@ -63,6 +72,8 @@ class FoundAlbum {
       title: event['eventName']?.toString() ?? 'Found photos',
       photos: photos,
       photoCount: count,
+      // Absent from an older server, where every row was the viewer's own.
+      mineCount: _int(json['mineCount']) ?? count,
       // Trust the server's moreCount; fall back to the arithmetic it implies
       // so a missing field degrades to a sane "+N" rather than none at all.
       moreCount: _int(json['moreCount']) ?? (count - photos.length).clamp(0, count),

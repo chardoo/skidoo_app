@@ -55,6 +55,16 @@ dependencies:
   flutter_jailbreak_detection: ^1.9.0
   # Blocks screenshots / screen recording on Android (FLAG_SECURE) and iOS
   # (secure overlay). No web support — web deterrents live in web/index.html.
+  #
+  # Every App Store upload warns "Upload Symbols Failed — the archive did not
+  # include a dSYM for ScreenPreventerKit.framework". Expected, and not
+  # fixable here: this pod vendors a prebuilt ScreenPreventerKit.xcframework
+  # that the author stripped of DWARF before publishing, so there is no debug
+  # info on this machine to build a dSYM from. Only upstream can ship one.
+  #
+  # The upload itself succeeds. The framework keeps its symbol table, so
+  # crashes inside it still show function names — only file and line numbers
+  # are lost, in a 170KB overlay shim. Ignore the warning.
   screen_protector: ^1.5.2
   cryptography: ^2.7.0
 

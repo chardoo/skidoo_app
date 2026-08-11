@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
+import 'package:jperg_app/core/purchase/photo_selection.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_tile.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
@@ -15,6 +16,7 @@ class FoundPhotoGrid extends StatelessWidget {
     this.onOverflowTap,
     this.scrollable = false,
     this.padding = EdgeInsets.zero,
+    this.selection,
   });
 
   static const columns = 3;
@@ -35,6 +37,11 @@ class FoundPhotoGrid extends StatelessWidget {
   final bool scrollable;
   final EdgeInsets padding;
 
+  /// Non-null turns every tile into a checkbox for the album's keep/discard
+  /// pass. Null — the Found tab — leaves them plain thumbnails that open the
+  /// album on tap.
+  final PhotoSelection? selection;
+
   @override
   Widget build(BuildContext context) {
     const gutter = 6.0;
@@ -51,13 +58,38 @@ class FoundPhotoGrid extends StatelessWidget {
       itemCount: photos.length,
       itemBuilder: (_, index) {
         final isOverflowTile = overflowCount > 0 && index == lastIndex;
-        return FoundPhotoTile(
-          key: ValueKey(photos[index].id),
-          photo: photos[index],
-          overflowCount: isOverflowTile ? overflowCount : 0,
-          onTap: isOverflowTile
-              ? (onOverflowTap ?? () => onPhotoTap(index))
-              : () => onPhotoTap(index),
+        final photo = photos[index];
+        final selection = this.selection;
+
+        void open() => isOverflowTile
+            ? (onOverflowTap ?? () => onPhotoTap(index))()
+            : onPhotoTap(index);
+
+        if (selection == null) {
+          return FoundPhotoTile(
+            key: ValueKey(photo.id),
+            photo: photo,
+            overflowCount: isOverflowTile ? overflowCount : 0,
+            onTap: open,
+          );
+        }
+
+        // Listened to per tile rather than around the whole grid: toggling one
+        // photo in a 200-photo album should repaint one tile, not all of them.
+        return ListenableBuilder(
+          listenable: selection,
+          builder: (_, __) => FoundPhotoTile(
+            key: ValueKey(photo.id),
+            photo: photo,
+            overflowCount: isOverflowTile ? overflowCount : 0,
+            onTap: open,
+            selectable: !isOverflowTile,
+            selected: selection.isSelected(photo.id),
+            onToggle: () => selection.toggle(photo.id),
+            // "Not me" is only on the table while reviewing a photo that is
+            // still unanswered.
+            reviewing: selection.reviewMode && photo.isPendingReview,
+          ),
         );
       },
     );

@@ -5,6 +5,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/purchase/photo_price_badge.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
 /// Horizontal thumbnail rail under the Found viewer.
@@ -202,12 +203,31 @@ class _FoundPhotoFilmstripState extends State<FoundPhotoFilmstrip> {
                     ),
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: JpergImage(
-                    imageUrl: widget.photos[index].url,
-                    fit: BoxFit.cover,
-                    logicalWidth: 64,
-                    placeholder: (_, __) => const JpergImagePlaceholder(),
-                    errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      JpergImage(
+                        imageUrl: widget.photos[index].url,
+                        fit: BoxFit.cover,
+                        logicalWidth: 64,
+                        placeholder: (_, __) => const JpergImagePlaceholder(),
+                        errorWidget: (_, __, ___) =>
+                            const JpergImagePlaceholder(),
+                      ),
+                      // Priced photos carry their amount here too, so scrubbing
+                      // the strip shows which of them cost money without having
+                      // to land on each one and read the pill.
+                      if (widget.photos[index].price > 0 &&
+                          !widget.photos[index].isPurchased)
+                        Positioned(
+                          left: 3.w,
+                          bottom: 3.h,
+                          child: PhotoPriceBadge(
+                            price: widget.photos[index].price,
+                            compact: true,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),

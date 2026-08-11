@@ -51,6 +51,18 @@ extension FoundVisibilityApi on FoundVisibility {
       };
 }
 
+/// Which answers count as a match.
+///
+/// [confirmed] is what "my photos" means and stays the default. [all] is for
+/// the review screens: a scan result is about to ask *which of these are not
+/// you*, and it cannot ask that about matches the server withheld because they
+/// were unanswered. Rejected matches come back under none of them.
+enum FoundMatchStatus { confirmed, pending, all }
+
+extension FoundMatchStatusApi on FoundMatchStatus {
+  String get apiValue => name;
+}
+
 /// The Found tab's filter selection.
 ///
 /// This is a *query*, not a predicate: filtering happens server-side on both
@@ -64,6 +76,7 @@ class FoundFilters {
     this.dateRange = FoundDateRange.all,
     this.customRange,
     this.visibility = FoundVisibility.all,
+    this.status = FoundMatchStatus.confirmed,
     this.photographerIds = const <String>{},
     this.eventIds = const <String>{},
   });
@@ -76,10 +89,16 @@ class FoundFilters {
 
   final FoundVisibility visibility;
 
+  /// Which answers count. Not part of [activeCount] — it is a property of the
+  /// screen asking, not a filter the user set.
+  final FoundMatchStatus status;
+
   /// Photographer ids to keep. Empty = every photographer.
   final Set<String> photographerIds;
 
-  /// Event ids to keep — used for the "+N" drill-down into one album.
+  /// Event ids to keep — used for the "+N" drill-down into one album, and for
+  /// a scanned event. Either an id or an access code: the server resolves both,
+  /// which matters because a QR carries the code.
   final Set<String> eventIds;
 
   static const none = FoundFilters();
@@ -110,6 +129,7 @@ class FoundFilters {
         'endDate': _day(customRange!.end),
       },
       if (visibility != FoundVisibility.all) 'visibility': visibility.apiValue,
+      if (status != FoundMatchStatus.confirmed) 'status': status.apiValue,
       // Repeatable params — Dio's default ListFormat emits one key per value,
       // which is the `?photographerId=a&photographerId=b` form.
       if (photographerIds.isNotEmpty)
@@ -123,6 +143,7 @@ class FoundFilters {
     DateTimeRange? customRange,
     bool clearCustomRange = false,
     FoundVisibility? visibility,
+    FoundMatchStatus? status,
     Set<String>? photographerIds,
     Set<String>? eventIds,
   }) {
@@ -130,6 +151,7 @@ class FoundFilters {
       dateRange: dateRange ?? this.dateRange,
       customRange: clearCustomRange ? null : (customRange ?? this.customRange),
       visibility: visibility ?? this.visibility,
+      status: status ?? this.status,
       photographerIds: photographerIds ?? this.photographerIds,
       eventIds: eventIds ?? this.eventIds,
     );
@@ -156,6 +178,7 @@ class FoundFilters {
           other.dateRange == dateRange &&
           other.customRange == customRange &&
           other.visibility == visibility &&
+          other.status == status &&
           _sameIds(other.photographerIds, photographerIds) &&
           _sameIds(other.eventIds, eventIds);
 
@@ -167,6 +190,7 @@ class FoundFilters {
         dateRange,
         customRange,
         visibility,
+        status,
         Object.hashAllUnordered(photographerIds),
         Object.hashAllUnordered(eventIds),
       );

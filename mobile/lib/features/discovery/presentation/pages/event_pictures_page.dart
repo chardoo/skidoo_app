@@ -63,6 +63,12 @@ List<Photo> photosOfEvent(EventDiscovery event) => [
     ];
 
 class _EventPicturesPageState extends State<EventPicturesPage> {
+  /// Mapped once, and handed to the viewer as-is. The feed's grid does not
+  /// sell — it is not the Found tab and not a scanned album, so a price on a
+  /// tile here would be an amount with nothing to press. Opening a photo is
+  /// where it can be bought, and the viewer says so itself.
+  late final List<Photo> _photos = photosOfEvent(widget.event);
+
   @override
   void initState() {
     super.initState();
@@ -81,12 +87,11 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
   /// No "View album" button: the album is the page underneath, so it would go
   /// nowhere the back arrow doesn't already.
   void _openFullscreen(BuildContext context, int idx) {
-    final photos = photosOfEvent(widget.event);
-    if (photos.isEmpty) return;
+    if (_photos.isEmpty) return;
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => FoundPhotoViewerPage(
-        photos: photos,
-        initialIndex: idx.clamp(0, photos.length - 1),
+        photos: _photos,
+        initialIndex: idx.clamp(0, _photos.length - 1),
       ),
     ));
   }
@@ -224,9 +229,14 @@ class _MediaTile extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(14.r),
-              child: picture.isVideo
-                  ? _VideoThumbTile(url: picture.url)
-                  : _PhotoTile(url: picture.url),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  picture.isVideo
+                      ? _VideoThumbTile(url: picture.url)
+                      : _PhotoTile(url: picture.url),
+                ],
+              ),
             ),
           ),
         ));

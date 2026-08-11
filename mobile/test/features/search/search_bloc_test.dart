@@ -121,7 +121,7 @@ class FakeSearchRepository implements SearchRepository {
 
   @override
   Future<EventPhotosPage> eventPhotos(String eventId,
-          {int page = 1, int limit = 30}) async =>
+          {int page = 1, int limit = 30, String? around}) async =>
       const EventPhotosPage(
         event: SearchEventRow.empty,
         photos: [],

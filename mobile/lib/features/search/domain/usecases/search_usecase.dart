@@ -41,12 +41,16 @@ class SearchUseCase {
   }) =>
       _repository.youMayLike(limit: limit, cursor: cursor, refresh: refresh);
 
+  /// [around] is a picture id — the page holding it, rather than [page]. What
+  /// a shared photo link wants: the photo is somewhere in the album and the
+  /// client should not have to page forward until it appears.
   Future<EventPhotosPage> eventPhotos(
     String eventId, {
     int page = 1,
     int limit = 30,
+    String? around,
   }) =>
-      _repository.eventPhotos(eventId, page: page, limit: limit);
+      _repository.eventPhotos(eventId, page: page, limit: limit, around: around);
 
   /// One photo by id, for a `/p/{id}` deep link.
   Future<Photo> picture(String pictureId) =>

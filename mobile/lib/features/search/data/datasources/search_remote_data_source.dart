@@ -41,7 +41,11 @@ abstract class SearchRemoteDataSource {
   Future<YouMayLikePage> youMayLike({int limit, int cursor, bool refresh});
 
   /// An event's photos. Accepts the event id **or** its access code.
-  Future<EventPhotosPage> eventPhotos(String eventId, {int page, int limit});
+  ///
+  /// [around] is a picture id: the server returns the page holding it and says
+  /// which page that was, instead of [page].
+  Future<EventPhotosPage> eventPhotos(String eventId,
+      {int page, int limit, String? around});
 
   /// One photo and the event it belongs to, for a `/p/{id}` deep link.
   ///
@@ -185,10 +189,15 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
     String eventId, {
     int page = 1,
     int limit = defaultPhotoLimit,
+    String? around,
   }) async {
     final raw = await _get(
       '/client/events/${Uri.encodeComponent(eventId)}/photos',
-      {'page': page, 'limit': limit},
+      {
+        'page': page,
+        'limit': limit,
+        if (around != null && around.isNotEmpty) 'around': around,
+      },
     );
     final body = _envelope(raw);
     final eventJson = SearchJson.map(body['event']);

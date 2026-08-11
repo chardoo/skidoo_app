@@ -33,6 +33,16 @@ class HomePage extends StatelessWidget {
   /// `_HomeViewState` listens and clears it after switching.
   static final tabRequest = ValueNotifier<int?>(null);
 
+  /// Whether a Home is currently in the tree and listening to [tabRequest].
+  ///
+  /// A deep link to one of Home's tabs used to push a fresh `/home` even when
+  /// the splash had just landed on one, which discarded that instance and
+  /// rebuilt everything under it — HomeBloc, DiscoveryBloc and UserProfileBloc
+  /// all fetch on build, so the person watched the same three requests run a
+  /// second time. With a live Home, writing [tabRequest] is the whole job.
+  static bool get isLive => _liveCount > 0;
+  static int _liveCount = 0;
+
   /// Fires (incremented) by `HomeNavigationPage` on every deliberate tap so
   /// `_HomeViewState` can show the bottom nav and start its auto-hide timer.
   static final homeTapSignal = ValueNotifier<int>(0);
@@ -93,6 +103,7 @@ class _HomeViewState extends State<_HomeView> {
   @override
   void initState() {
     super.initState();
+    HomePage._liveCount++;
     HomePage.tabRequest.addListener(_onTabRequest);
     HomePage.homeTapSignal.addListener(_onHomeTap);
     // On web: restore the tab the user was viewing before the last refresh.
@@ -313,6 +324,7 @@ class _HomeViewState extends State<_HomeView> {
 
   @override
   void dispose() {
+    HomePage._liveCount--;
     HomePage.tabRequest.removeListener(_onTabRequest);
     HomePage.homeTapSignal.removeListener(_onHomeTap);
     super.dispose();

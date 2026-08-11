@@ -8,6 +8,9 @@ import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_meta_bar.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_visibility_badge.dart';
+import 'package:jperg_app/core/purchase/photo_selection.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_buy_pill.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_counter_pill.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
 /// One page of the Found viewer: the media itself with the three overlays
@@ -24,9 +27,21 @@ class FoundPhotoStage extends StatelessWidget {
     required this.isActive,
     this.onViewAlbum,
     this.showSocialActions = true,
+    this.selection,
+    this.counter,
   });
 
   final Photo photo;
+
+  /// Non-null shows the "GHS 20 | Buy" pill for a priced, unowned photo, and
+  /// toggles this photo in the album's selection when it is tapped.
+  final PhotoSelection? selection;
+
+  /// "3 of 16", when the app bar has given its centre over to the album name.
+  /// It takes the top-left corner, which is why the visibility badge steps
+  /// aside below — two pills stacked there would collide over an arbitrary
+  /// photo.
+  final String? counter;
 
   /// Whether the photo is something to react to. False where the viewer is
   /// showing someone's work rather than a photo of you — a portfolio opened
@@ -95,8 +110,23 @@ class FoundPhotoStage extends StatelessWidget {
               Positioned(
                 left: AppSpacing.md.w,
                 top: AppSpacing.md.h,
-                child: FoundVisibilityBadge(isPublic: photo.isPublic),
+                child: counter == null
+                    ? FoundVisibilityBadge(isPublic: photo.isPublic)
+                    : FoundCounterPill(label: counter!),
               ),
+
+              // "GHS 20 | Buy". Sits above the action rail, which is centred
+              // down the right edge rather than pinned to the top, so the two
+              // do not meet.
+              if (selection != null && photo.price > 0 && !photo.isPurchased)
+                Positioned(
+                  right: AppSpacing.md.w,
+                  top: AppSpacing.md.h,
+                  child: FoundBuyPill(
+                    photo: photo,
+                    selection: selection!,
+                  ),
+                ),
 
               if (showSocialActions)
                 Positioned(

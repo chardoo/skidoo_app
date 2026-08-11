@@ -28,7 +28,8 @@ abstract class SearchRepository {
 
   Future<YouMayLikePage> youMayLike({int limit, int cursor, bool refresh});
 
-  Future<EventPhotosPage> eventPhotos(String eventId, {int page, int limit});
+  Future<EventPhotosPage> eventPhotos(String eventId,
+      {int page, int limit, String? around});
 
   Future<Photo> pictureById(String pictureId);
 }

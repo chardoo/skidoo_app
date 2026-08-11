@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:jperg_app/core/app_readiness.dart';
+import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/features/discovery/data/services/feed_cache_service.dart';
 import 'package:jperg_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
@@ -27,6 +29,10 @@ const _kSplashBg = Color(0xFFF7F7F2);
 /// flicker on a warm start, and [_kMaxWait] stops a dead network stranding
 /// anyone here — past it the app goes on and the feed shows its own loading
 /// state, which is the honest thing to do at that point.
+///
+/// A deep link waiting to open cancels the wait outright. Both bounds are
+/// about the *feed* being worth looking at, and someone who tapped a link is
+/// on their way somewhere else.
 class SplashPage extends StatefulWidget {
   static const routeName = '/splash';
 
@@ -59,10 +65,27 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _run() async {
-    await Future.wait([
-      Future<void>.delayed(_kMinDisplay),
-      _warmFirstScreen().timeout(_kMaxWait, onTimeout: () {}),
-    ]);
+    // Whichever comes first: the beat below, or a deep link turning up.
+    //
+    // A held link waits for this page to finish before it can open anything —
+    // that ordering is deliberate, because the pushReplacement below would
+    // otherwise throw the link's screen away. But "wait for the splash to
+    // navigate" had become "wait for the splash to warm a feed the person is
+    // not going to look at", and a link tapped in an email or a notification
+    // sat behind 1.2s of brand beat plus a fetch of up to six seconds before
+    // anything started happening.
+    //
+    // So the ordering is kept and the waiting is not: as soon as a link is
+    // parked, hand over. The feed warm-up carries on in the background and
+    // still populates the cache for whatever is underneath.
+    await Future.any([_beat(), _aLinkIsWaiting()]);
+    // A link parked before this page mounted resolves the race in a microtask,
+    // and microtasks drain inside the frame that is still building this
+    // splash — so the pushReplacement below would land mid-build and throw
+    // `markNeedsBuild() called during build` on the Overlay, leaving the
+    // navigator locked for the session. Waiting for the end of the frame costs
+    // nothing on the timed path, where the frame is long over.
+    await SchedulerBinding.instance.endOfFrame;
     // Gone already — something else has navigated, so the stack is real and
     // whatever is waiting on readiness should stop waiting. Marked here too, or
     // a link held since launch would never be followed at all.
@@ -80,6 +103,50 @@ class _SplashPageState extends State<SplashPage> {
     // stack, so anything opened before this point would have been thrown away.
     // A link held since launch is followed from here.
     AppReadiness.markReady();
+  }
+
+  /// The brand beat and the warm-up, as one future that never throws.
+  ///
+  /// Swallowing is the point: this is raced against [_aLinkIsWaiting], and a
+  /// future that loses a [Future.any] still delivers its error — to nobody,
+  /// which Dart reports as an unhandled async exception.
+  Future<void> _beat() async {
+    try {
+      await Future.wait([
+        Future<void>.delayed(_kMinDisplay),
+        _warmFirstScreen().timeout(_kMaxWait, onTimeout: () {}),
+      ]);
+    } catch (e) {
+      debugPrint('[Splash] warm-up failed, going on anyway: $e');
+    }
+  }
+
+  /// Completes as soon as a deep link is parked — immediately if one already
+  /// is, which is the usual case for a link that launched the app.
+  ///
+  /// The listener removes itself, so losing the race above costs nothing.
+  Future<void> _aLinkIsWaiting() {
+    if (DeepLinkService.isWaiting.value) return Future<void>.value();
+    final completer = Completer<void>();
+    late final VoidCallback listener;
+    listener = () {
+      if (!DeepLinkService.isWaiting.value) return;
+      DeepLinkService.isWaiting.removeListener(listener);
+      if (!completer.isCompleted) completer.complete();
+    };
+    DeepLinkService.isWaiting.addListener(listener);
+    _dropLinkListener = () => DeepLinkService.isWaiting.removeListener(listener);
+    return completer.future;
+  }
+
+  /// Detaches the listener above when this page goes, so a splash that was
+  /// disposed mid-wait does not leave one behind on a static notifier.
+  VoidCallback? _dropLinkListener;
+
+  @override
+  void dispose() {
+    _dropLinkListener?.call();
+    super.dispose();
   }
 
   /// Gets the destination to the point where it has something to draw.

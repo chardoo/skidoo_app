@@ -35,7 +35,7 @@ class EventPhotosBloc extends Bloc<EventPhotosEvent, EventPhotosState> {
       EventPhotosRequested event, Emitter<EventPhotosState> emit) async {
     if (state.isLoading) return;
     emit(state.copyWith(isLoading: true, clearError: true));
-    await _fetch(page: 1, more: false, emit: emit);
+    await _fetch(page: 1, more: false, emit: emit, around: event.around);
   }
 
   Future<void> _onMoreRequested(
@@ -50,11 +50,20 @@ class EventPhotosBloc extends Bloc<EventPhotosEvent, EventPhotosState> {
     required int page,
     required bool more,
     required Emitter<EventPhotosState> emit,
+    String? around,
   }) async {
     try {
-      final result =
-          await _search.eventPhotos(eventId, page: page, limit: _limit);
+      final result = await _search.eventPhotos(
+        eventId,
+        page: page,
+        limit: _limit,
+        around: around,
+      );
       if (emit.isDone) return;
+      // With `around` the server chose the page, so the cursor is whatever it
+      // says it gave us — not what we asked for. Getting this wrong would make
+      // the next scroll re-request a page already on screen.
+      page = around == null ? page : result.pagination.page;
       // A refresh that landed while this page was in flight already reset the
       // list; appending to it now would duplicate its first page.
       if (more && state.page != page - 1) {

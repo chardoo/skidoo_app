@@ -9,8 +9,18 @@ sealed class EventPhotosEvent extends Equatable {
 
 /// The first page, or a pull-to-refresh. Restartable — a refresh replaces
 /// whatever was in flight.
+///
+/// [around] is a picture id the caller needs on screen — a shared photo link.
+/// The server answers with the page holding it instead of the first one, so
+/// the viewer can open on a list that already contains the photo rather than
+/// after the grid has paged its way down to it.
 class EventPhotosRequested extends EventPhotosEvent {
-  const EventPhotosRequested();
+  const EventPhotosRequested({this.around});
+
+  final String? around;
+
+  @override
+  List<Object?> get props => [around];
 }
 
 /// The next page.

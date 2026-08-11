@@ -10,6 +10,7 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:jperg_app/features/home/presentation/pages/search_results_page.dart';
+import 'package:jperg_app/core/purchase/photo_price_badge.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -369,58 +370,49 @@ class _PhotoCard extends StatelessWidget {
                   color: ext.searchHintColor, size: 24.sp),
             ),
           ),
-          // Price badge
+          // One price treatment across every grid — see PhotoPriceBadge.
           Positioned(
             left: 8.w,
             bottom: 8.h,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30.r),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                child: Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 3.h),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.30),
+            child: isPaid
+                ? PhotoPriceBadge(price: photo.price, compact: true)
+                : ClipRRect(
                     borderRadius: BorderRadius.circular(30.r),
-                    border: Border.all(
-                      color: isPaid
-                          ? ext.accentGold.withValues(alpha: 0.60)
-                          : Colors.white.withValues(alpha: 0.22),
-                      width: 0.8,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isPaid
-                            ? Icons.sell_rounded
-                            : Icons.check_circle_outline_rounded,
-                        color: isPaid
-                            ? ext.accentGold
-                            : Colors.white.withValues(alpha: 0.90),
-                        size: 9.sp,
-                      ),
-                      SizedBox(width: 3.w),
-                      Text(
-                        isPaid
-                            ? 'GHS ${photo.price.toStringAsFixed(2)}'
-                            : 'Free',
-                        style: TextStyle(
-                          color: isPaid
-                              ? ext.accentGold
-                              : Colors.white.withValues(alpha: 0.92),
-                          fontSize: 9.sp,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.4,
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm.w, vertical: 3.h),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.30),
+                          borderRadius: BorderRadius.circular(30.r),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.22),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_outline_rounded,
+                                color: Colors.white.withValues(alpha: 0.90),
+                                size: 9.sp),
+                            SizedBox(width: 3.w),
+                            Text(
+                              'Free',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.4,
+                                height: 1.0,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ),
           ),
         ],
       ),
