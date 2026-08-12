@@ -47,7 +47,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   void _onScroll() {
     if (!_scroll.hasClients || _loadingMore || _exhausted) return;
-    final remaining = _scroll.position.maxScrollExtent - _scroll.position.pixels;
+    final remaining =
+        _scroll.position.maxScrollExtent - _scroll.position.pixels;
     if (remaining < 400) _loadMore();
   }
 
@@ -185,7 +186,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
           AppEmptyState(
             icon: Icons.cloud_off_rounded,
             message: _error!,
-            action: TextButton(onPressed: _load, child: const Text('Try again')),
+            action:
+                TextButton(onPressed: _load, child: const Text('Try again')),
           ),
         ],
       );

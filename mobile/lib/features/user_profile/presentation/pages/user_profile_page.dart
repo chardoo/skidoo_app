@@ -19,7 +19,7 @@ import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
 import 'package:jperg_app/features/user_profile/data/repositories/profile_overview_repository.dart';
 import 'package:jperg_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
-import 'package:jperg_app/features/user_profile/presentation/pages/account_page.dart';
+import 'package:jperg_app/features/settings/presentation/pages/settings_page.dart';
 import 'package:jperg_app/features/user_profile/presentation/widgets/profile_photo_tile.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
@@ -315,10 +315,16 @@ class UserProfilePageState extends State<UserProfilePage>
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => host == null
-            ? const AccountPage()
+            // No host bloc to hand down, so the settings screen builds its
+            // own and loads the account itself.
+            ? BlocProvider<UserProfileBloc>(
+                create: (_) => sl<UserProfileBloc>()
+                  ..add(const UserProfileLoadRequested()),
+                child: const SettingsPage(),
+              )
             : BlocProvider<UserProfileBloc>.value(
                 value: host,
-                child: const AccountPage(reuseHostBloc: true),
+                child: const SettingsPage(),
               ),
       ),
     );

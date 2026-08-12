@@ -9,6 +9,7 @@ import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/photographer_profile_usecases.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/verify_terms_page.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/creator_steps.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/portfolio_form.dart';
 import 'package:jperg_app/models/photographer/photographer_sample.dart';
 import 'package:jperg_app/services/auth_service.dart';
@@ -23,7 +24,18 @@ import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 /// matching `face_recognition_page.dart`'s convention — no step-progress
 /// bar, this isn't part of the onboarding wizard.
 class PortfolioEditPage extends StatefulWidget {
-  const PortfolioEditPage({super.key});
+  const PortfolioEditPage({super.key, this.isCreatorSetup = false});
+
+  /// True when this is step one of becoming a creator, rather than a
+  /// photographer editing a portfolio they already have.
+  ///
+  /// It changes the chrome — "Become a Creator" with the step indicator — and
+  /// what saving does: it chains into verification and reports back whether
+  /// the whole wizard finished, so the screen that opened it knows the role
+  /// moved. The first-time heuristic below cannot answer this on its own,
+  /// because a photographer whose portfolio is genuinely empty would look
+  /// identical to somebody starting out.
+  final bool isCreatorSetup;
 
   @override
   State<PortfolioEditPage> createState() => _PortfolioEditPageState();
@@ -64,11 +76,14 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
         _userId = userId;
         _profilePhotoUrl = profile['profile_url'] as String?;
         _studioImageUrl = profile['studio_image_url'] as String?;
-        _studioName = (profile['studio_name'] ?? profile['name'] ?? '').toString();
+        _studioName =
+            (profile['studio_name'] ?? profile['name'] ?? '').toString();
         _bio = (profile['bio'] ?? '').toString();
         _location = (profile['location'] ?? '').toString();
-        _specialties = ((profile['specialties'] as List?)?.map((e) => e.toString()) ?? const [])
-            .toSet();
+        _specialties =
+            ((profile['specialties'] as List?)?.map((e) => e.toString()) ??
+                    const [])
+                .toSet();
         _verifiedByAdmin = profile['verified_by_admin'] == true;
         _originalSamples = samples;
         // Heuristic for "never set up a portfolio before": no bio, no
@@ -125,16 +140,26 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
         );
       }
       if (!mounted) return;
-      if (_isFirstTimeSetup) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const VerifyTermsPage()),
+      if (widget.isCreatorSetup || _isFirstTimeSetup) {
+        // pushReplacement, so Back from verification does not land on a form
+        // that has already been saved. `finished` is what VerifyTermsPage
+        // reports once the whole wizard is through.
+        final finished =
+            await Navigator.of(context).pushReplacement<bool, void>(
+          MaterialPageRoute(
+            builder: (_) =>
+                VerifyTermsPage(isCreatorSetup: widget.isCreatorSetup),
+          ),
         );
+        if (mounted) Navigator.of(context).pop(finished ?? false);
       } else {
         AppSnackBar.success(context, 'Portfolio updated.');
         Navigator.of(context).pop();
       }
     } catch (e) {
-      if (mounted) AppSnackBar.error(context, 'Could not save your portfolio: $e');
+      if (mounted) {
+        AppSnackBar.error(context, 'Could not save your portfolio: $e');
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -155,9 +180,11 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Portfolio',
+              widget.isCreatorSetup ? 'Become a Creator' : 'Portfolio',
               style: TextStyle(
-                  color: ext.greetingColor, fontSize: 17.sp, fontWeight: FontWeight.w700),
+                  color: ext.greetingColor,
+                  fontSize: 17.sp,
+                  fontWeight: FontWeight.w700),
             ),
             if (_verifiedByAdmin) ...[
               SizedBox(width: 6.w),
@@ -165,7 +192,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
             ],
           ],
         ),
-        centerTitle: false,
+        centerTitle: widget.isCreatorSetup,
       ),
       body: SafeArea(
         child: _loading
@@ -175,6 +202,27 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (widget.isCreatorSetup) ...[
+                      const Center(child: CreatorSteps(current: 0)),
+                      SizedBox(height: AppSpacing.lg.h),
+                      Text(
+                        'Profile info',
+                        style: TextStyle(
+                          color: ext.greetingColor,
+                          fontSize: 17.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: AppSpacing.xs.h),
+                      Text(
+                        'This is what shows on your public profile',
+                        style: TextStyle(
+                          color: ext.searchHintColor,
+                          fontSize: 13.sp,
+                        ),
+                      ),
+                      SizedBox(height: AppSpacing.lg.h),
+                    ],
                     PortfolioForm(
                       initialProfilePhotoUrl: _profilePhotoUrl,
                       initialStudioImageUrl: _studioImageUrl,
@@ -189,7 +237,8 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
                     AppButton(
                       fullWidth: true,
                       isLoading: _saving,
-                      onPressed: (_data?.meetsMinimumSamples ?? false) ? _save : null,
+                      onPressed:
+                          (_data?.meetsMinimumSamples ?? false) ? _save : null,
                       label: _isFirstTimeSetup ? 'Continue' : 'Save',
                     ),
                     SizedBox(height: AppSpacing.md.h),

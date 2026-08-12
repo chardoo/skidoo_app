@@ -338,8 +338,6 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
     }
   }
 
-  /// **Assumed** endpoint — no backend contract exists for this yet. See the
-  /// doc comment on [PhotographerRepository.submitVerification].
   @override
   Future<void> submitVerification({
     required String photographerId,

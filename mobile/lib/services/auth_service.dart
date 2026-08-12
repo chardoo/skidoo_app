@@ -52,6 +52,10 @@ class AuthService {
   static const _kName              = 'auth.user_name';
   static const _kPendingInterests  = 'auth.pending_interests';
   static const _kContact           = 'auth.contact';
+  // The avatar the account is wearing. Kept here because the profile state
+  // does not carry one and the settings screens need something to draw
+  // between opening and the next login.
+  static const _kProfileUrl        = 'auth.profile_url';
   static const _kCountryCode       = 'auth.country_code';
   static const _kLocale            = 'auth.locale';
   static const _kPreferredLanguage = 'auth.preferred_language';
@@ -192,6 +196,9 @@ class AuthService {
   Future<void> clearPendingInterests() => _delete(_kPendingInterests);
 
   // ── Role ─────────────────────────────────────────────────────────────────────
+  Future<void> setProfileUrl(String url) => _write(_kProfileUrl, url);
+  Future<String> getProfileUrl() async => await _read(_kProfileUrl) ?? '';
+
   Future<void> setRole(String role) => _write(_kRole, role);
   Future<String> getRole() async => await _read(_kRole) ?? '';
   Future<bool> isSuperAdmin() async => (await getRole()) == 'super_admin';

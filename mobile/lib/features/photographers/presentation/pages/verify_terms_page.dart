@@ -10,6 +10,8 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/photographer_profile_usecases.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/creator_ready_page.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/creator_steps.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -23,7 +25,12 @@ import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 /// `POST /photographer/verification` endpoint — no backend contract exists
 /// for this yet (see `PhotographerRepository.submitVerification`).
 class VerifyTermsPage extends StatefulWidget {
-  const VerifyTermsPage({super.key});
+  const VerifyTermsPage({super.key, this.isCreatorSetup = false});
+
+  /// True when this is step two of becoming a creator. It adds the wizard
+  /// chrome, and sends them to [CreatorReadyPage] afterwards rather than
+  /// popping back to the account page with a snackbar.
+  final bool isCreatorSetup;
 
   @override
   State<VerifyTermsPage> createState() => _VerifyTermsPageState();
@@ -43,7 +50,8 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
       _acceptedPayoutPolicy;
 
   Future<void> _pickDocument() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
+    final picked = await ImagePicker()
+        .pickImage(source: ImageSource.gallery, imageQuality: 90);
     if (picked == null) return;
     setState(() => _idDocument = picked);
   }
@@ -61,10 +69,32 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
         acceptedPayoutPolicy: _acceptedPayoutPolicy,
       );
       if (!mounted) return;
-      AppSnackBar.success(context, 'Verification submitted.');
-      Navigator.of(context).pop(true);
+
+      if (!widget.isCreatorSetup) {
+        AppSnackBar.success(context, 'Verification submitted.');
+        Navigator.of(context).pop(true);
+        return;
+      }
+
+      // The role moved server-side when this was accepted, so the session's
+      // stored copy is now stale — every screen that keys off it would go on
+      // showing the viewer's tools until the next sign-in, which is what the
+      // old "sign in again to see your tools" message was apologising for.
+      await sl<AuthService>().setRole('photographer');
+
+      final name = await sl<AuthService>().getName();
+      if (!mounted) return;
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => CreatorReadyPage(
+            name: CreatorReadyPage.firstNameOf(name),
+          ),
+        ),
+      );
     } catch (e) {
-      if (mounted) AppSnackBar.error(context, 'Could not submit verification: $e');
+      if (mounted) {
+        AppSnackBar.error(context, 'Could not submit verification: $e');
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -82,11 +112,15 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
             ? null
             : AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
-          'Verify and accept terms',
+          widget.isCreatorSetup
+              ? 'Become a Creator'
+              : 'Verify and accept terms',
           style: TextStyle(
-              color: ext.greetingColor, fontSize: 17.sp, fontWeight: FontWeight.w700),
+              color: ext.greetingColor,
+              fontSize: 17.sp,
+              fontWeight: FontWeight.w700),
         ),
-        centerTitle: false,
+        centerTitle: widget.isCreatorSetup,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -94,6 +128,19 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (widget.isCreatorSetup) ...[
+                const Center(child: CreatorSteps(current: 1)),
+                SizedBox(height: AppSpacing.lg.h),
+                Text(
+                  'Verify and accept terms',
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 17.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs.h),
+              ],
               Text(
                 'One last step before you start uploading events',
                 style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
@@ -101,7 +148,9 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
               SizedBox(height: AppSpacing.xl.h),
               Semantics(
                 button: true,
-                label: _idDocument != null ? 'Change Ghana Card photo' : 'Upload Ghana Card photo',
+                label: _idDocument != null
+                    ? 'Change Ghana Card photo'
+                    : 'Upload Ghana Card photo',
                 child: InkWell(
                   borderRadius: BorderRadius.circular(AppRadius.md.r),
                   onTap: _pickDocument,
@@ -109,7 +158,8 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                     padding: EdgeInsets.all(14.w),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(AppRadius.md.r),
-                      border: Border.all(color: ext.searchHintColor.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: ext.searchHintColor.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -120,7 +170,8 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                             color: ext.accentGold.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(AppRadius.sm.r),
                           ),
-                          child: Icon(Icons.badge_outlined, color: ext.accentGold, size: 20.sp),
+                          child: Icon(Icons.badge_outlined,
+                              color: ext.accentGold, size: 20.sp),
                         ),
                         SizedBox(width: AppSpacing.md.w),
                         Expanded(
@@ -128,7 +179,9 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _idDocument != null ? 'Ghana Card selected' : 'Upload Ghana Card',
+                                _idDocument != null
+                                    ? 'Ghana Card selected'
+                                    : 'Upload Ghana Card',
                                 style: TextStyle(
                                     color: ext.greetingColor,
                                     fontSize: 14.sp,
@@ -137,7 +190,9 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                               SizedBox(height: 2.h),
                               Text(
                                 'Required to accept payouts',
-                                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                                style: TextStyle(
+                                    color: ext.searchHintColor,
+                                    fontSize: 12.sp),
                               ),
                             ],
                           ),
@@ -145,7 +200,9 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                         Text(
                           _idDocument != null ? 'Change' : 'Upload',
                           style: TextStyle(
-                              color: ext.accentGold, fontSize: 13.sp, fontWeight: FontWeight.w600),
+                              color: ext.accentGold,
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -157,8 +214,10 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10.r),
                   child: kIsWeb
-                      ? Image.network(_idDocument!.path, height: 120.h, fit: BoxFit.cover)
-                      : Image.file(File(_idDocument!.path), height: 120.h, fit: BoxFit.cover),
+                      ? Image.network(_idDocument!.path,
+                          height: 120.h, fit: BoxFit.cover)
+                      : Image.file(File(_idDocument!.path),
+                          height: 120.h, fit: BoxFit.cover),
                 ),
               ],
               SizedBox(height: AppSpacing.xxl.h),
@@ -168,14 +227,16 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                 ext: ext,
                 value: _acceptedTerms,
                 onChanged: (v) => setState(() => _acceptedTerms = v),
-                label: 'I agree to the Photographer Terms of Service, including '
+                label:
+                    'I agree to the Photographer Terms of Service, including '
                     'image licensing and content standards.',
               ),
               _TermsCheckbox(
                 ext: ext,
                 value: _confirmedUploadRights,
                 onChanged: (v) => setState(() => _confirmedUploadRights = v),
-                label: 'I confirm I have the right to upload and distribute all '
+                label:
+                    'I confirm I have the right to upload and distribute all '
                     'photos I post',
               ),
               _TermsCheckbox(
@@ -239,7 +300,8 @@ class _TermsCheckbox extends StatelessWidget {
                 padding: EdgeInsets.only(top: AppSpacing.xs.h),
                 child: Text(
                   label,
-                  style: TextStyle(color: ext.greetingColor, fontSize: 13.sp, height: 1.4),
+                  style: TextStyle(
+                      color: ext.greetingColor, fontSize: 13.sp, height: 1.4),
                 ),
               ),
             ),

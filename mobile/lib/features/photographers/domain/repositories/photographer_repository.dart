@@ -58,8 +58,12 @@ abstract class PhotographerRepository {
   });
 
   /// Submits Ghana Card ID verification + terms/payout-policy acceptance.
-  /// **Assumed** endpoint (`POST /photographer/verification`) — no backend
-  /// contract exists for this yet, flagged for confirmation.
+  ///
+  /// `POST /photographer/verification` — multipart: the card as `file`, the
+  /// three acceptances as form fields. Submitting queues the account for
+  /// review and moves the role to photographer. It does **not** set the
+  /// verified badge: that stays an admin decision, because a tick the person
+  /// it describes can award themselves says nothing.
   Future<void> submitVerification({
     required String photographerId,
     required XFile idDocument,

@@ -10,6 +10,7 @@ import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/settings/data/profile_options.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:jperg_app/core/theme/theme_cubit.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
@@ -265,26 +266,7 @@ class _EditProfileCardState extends State<_EditProfileCard> {
   late final TextEditingController _timezoneCtrl;
   late Set<String> _selectedTags;
 
-  static const _allTags = [
-    'Portrait',
-    'Landscape',
-    'Street',
-    'Wildlife',
-    'Architecture',
-    'Sports',
-    'Travel',
-    'Macro',
-    'Fashion',
-    'Wedding',
-    'Event',
-    'Food',
-    'Aerial',
-    'Night',
-    'Documentary',
-    'Abstract',
-    'Fine Art',
-    'Photojournalism',
-  ];
+  static const _allTags = kInterestTags;
 
   @override
   void initState() {
@@ -436,14 +418,14 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                       controller: _countryCodeCtrl,
                       label: AppLocalizations.of(context)!.accountCountryCode,
                       icon: Icons.flag_outlined,
-                      options: _kCountryOptions,
+                      options: kCountryOptions,
                       ext: ext),
                   SizedBox(height: 10.h),
                   _ProfileDropdown(
                       controller: _localeCtrl,
                       label: AppLocalizations.of(context)!.accountLocale,
                       icon: Icons.language_outlined,
-                      options: _kLocaleOptions,
+                      options: kLocaleOptions,
                       ext: ext),
                   SizedBox(height: 10.h),
                   _ProfileDropdown(
@@ -451,14 +433,14 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                       label: AppLocalizations.of(context)!
                           .accountPreferredLanguage,
                       icon: Icons.translate_rounded,
-                      options: _kLanguageOptions,
+                      options: kLanguageOptions,
                       ext: ext),
                   SizedBox(height: 10.h),
                   _ProfileDropdown(
                       controller: _timezoneCtrl,
                       label: AppLocalizations.of(context)!.accountTimezone,
                       icon: Icons.access_time_rounded,
-                      options: _kTimezoneOptions,
+                      options: kTimezoneOptions,
                       ext: ext),
                   SizedBox(height: AppSpacing.xl.h),
 
@@ -560,87 +542,6 @@ class _ProfileField extends StatelessWidget {
 // language, `xx_XX` locale, IANA timezone). Any previously-saved value that
 // isn't in a list is preserved as a selectable fallback by [_ProfileDropdown].
 
-const Map<String, String> _kCountryOptions = {
-  'GH': 'Ghana',
-  'NG': 'Nigeria',
-  'KE': 'Kenya',
-  'ZA': 'South Africa',
-  'EG': 'Egypt',
-  'MA': 'Morocco',
-  'US': 'United States',
-  'CA': 'Canada',
-  'GB': 'United Kingdom',
-  'IE': 'Ireland',
-  'DE': 'Germany',
-  'FR': 'France',
-  'ES': 'Spain',
-  'PT': 'Portugal',
-  'IT': 'Italy',
-  'NL': 'Netherlands',
-  'BE': 'Belgium',
-  'CH': 'Switzerland',
-  'SE': 'Sweden',
-  'NO': 'Norway',
-  'DK': 'Denmark',
-  'AE': 'United Arab Emirates',
-  'SA': 'Saudi Arabia',
-  'IN': 'India',
-  'CN': 'China',
-  'JP': 'Japan',
-  'SG': 'Singapore',
-  'AU': 'Australia',
-  'NZ': 'New Zealand',
-  'BR': 'Brazil',
-  'MX': 'Mexico',
-};
-
-const Map<String, String> _kLanguageOptions = {
-  'en': 'English',
-  'de': 'German',
-  'fr': 'French',
-  'es': 'Spanish',
-  'pt': 'Portuguese',
-  'ar': 'Arabic',
-};
-
-const Map<String, String> _kLocaleOptions = {
-  'en_US': 'English (US)',
-  'en_GB': 'English (UK)',
-  'de_DE': 'German (Germany)',
-  'fr_FR': 'French (France)',
-  'es_ES': 'Spanish (Spain)',
-  'pt_PT': 'Portuguese (Portugal)',
-  'it_IT': 'Italian (Italy)',
-  'nl_NL': 'Dutch (Netherlands)',
-};
-
-const Map<String, String> _kTimezoneOptions = {
-  'UTC': 'UTC',
-  'Africa/Accra': 'Accra',
-  'Africa/Lagos': 'Lagos',
-  'Africa/Nairobi': 'Nairobi',
-  'Africa/Johannesburg': 'Johannesburg',
-  'Africa/Cairo': 'Cairo',
-  'Europe/London': 'London',
-  'Europe/Berlin': 'Berlin',
-  'Europe/Paris': 'Paris',
-  'Europe/Madrid': 'Madrid',
-  'Europe/Rome': 'Rome',
-  'Europe/Amsterdam': 'Amsterdam',
-  'America/New_York': 'New York',
-  'America/Chicago': 'Chicago',
-  'America/Denver': 'Denver',
-  'America/Los_Angeles': 'Los Angeles',
-  'America/Sao_Paulo': 'São Paulo',
-  'America/Mexico_City': 'Mexico City',
-  'Asia/Dubai': 'Dubai',
-  'Asia/Kolkata': 'Kolkata',
-  'Asia/Shanghai': 'Shanghai',
-  'Asia/Tokyo': 'Tokyo',
-  'Asia/Singapore': 'Singapore',
-  'Australia/Sydney': 'Sydney',
-  'Pacific/Auckland': 'Auckland',
-};
 
 /// Dropdown styled to match [_ProfileField], writing the selected value back to
 /// [controller] so the existing save path is unchanged.

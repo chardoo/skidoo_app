@@ -1,4 +1,6 @@
+import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
+import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/API/dio_client_service.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
@@ -123,6 +125,9 @@ class NotificationPreferences {
     this.purchases = true,
     this.bookings = true,
     this.social = true,
+    this.likes = true,
+    this.comments = true,
+    this.follows = true,
     this.chat = true,
     this.marketing = true,
   });
@@ -130,7 +135,19 @@ class NotificationPreferences {
   final bool photos;
   final bool purchases;
   final bool bookings;
+
+  /// What is left of the social group once likes, comments and follows are
+  /// taken out of it — reviews, and anything social added later with no
+  /// switch of its own.
   final bool social;
+
+  /// The three the settings screen offers separately. One column could not
+  /// answer three switches: turning off likes silenced comments and new
+  /// followers with it.
+  final bool likes;
+  final bool comments;
+  final bool follows;
+
   final bool chat;
   final bool marketing;
 
@@ -141,6 +158,9 @@ class NotificationPreferences {
       purchases: read('purchases'),
       bookings: read('bookings'),
       social: read('social'),
+      likes: read('likes'),
+      comments: read('comments'),
+      follows: read('follows'),
       chat: read('chat'),
       marketing: read('marketing'),
     );
@@ -151,6 +171,9 @@ class NotificationPreferences {
         'purchases' => purchases,
         'bookings' => bookings,
         'social' => social,
+        'likes' => likes,
+        'comments' => comments,
+        'follows' => follows,
         'chat' => chat,
         'marketing' => marketing,
         _ => true,
@@ -159,23 +182,72 @@ class NotificationPreferences {
 
 class NotificationPreferencesApi {
   Future<NotificationPreferences> fetch() async {
-    final response = await sl<Api>().dio.get('/notifications/preferences');
-    final data = response.data?['data'];
-    return data is Map<String, dynamic>
-        ? NotificationPreferences.fromJson(data)
-        : const NotificationPreferences();
+    try {
+      final response = await sl<Api>().dio.get('/notifications/preferences');
+      final body = response.data;
+      // Checked rather than assumed. `body['data']` on anything that is not a
+      // map — an HTML error page from a proxy, a string, an empty 200 — throws
+      // a NoSuchMethodError, which is an Error and not an Exception, so it
+      // sailed past every `catch (e)` that tests for one and surfaced as a
+      // blank "could not load".
+      if (body is! Map) {
+        debugPrint(
+            '[NotificationPrefs] GET returned ${body.runtimeType}: $body');
+        throw ServerException(
+            'Unexpected response from the server (${body.runtimeType}).');
+      }
+      final data = body['data'];
+      return data is Map<String, dynamic>
+          ? NotificationPreferences.fromJson(data)
+          : const NotificationPreferences();
+    } on dio.DioException catch (err) {
+      // Said out loud rather than swallowed into "could not load". Which of
+      // these it is decides what to do about it, and a screen that reports
+      // every failure with one sentence cannot tell anybody which.
+      final status = err.response?.statusCode;
+      final body = err.response?.data;
+      debugPrint('[NotificationPrefs] GET failed — status=$status body=$body');
+      if (err.response == null) throw const NetworkException();
+      final error = body is Map ? body['error'] : null;
+      final message = error is Map ? error['message'] : null;
+      throw ServerException(
+        message is String
+            ? message
+            : 'Notification settings unavailable (HTTP $status).',
+      );
+    }
   }
 
   /// Sends only the toggle that changed — the endpoint patches, so the other
   /// five keep whatever they were.
   Future<NotificationPreferences> update(String category, bool value) async {
-    final response = await sl<Api>().dio.patch(
-      '/notifications/preferences',
-      data: {category: value},
-    );
-    final data = response.data?['data'];
-    return data is Map<String, dynamic>
-        ? NotificationPreferences.fromJson(data)
-        : const NotificationPreferences();
+    try {
+      final response = await sl<Api>().dio.patch(
+        '/notifications/preferences',
+        data: {category: value},
+      );
+      final body = response.data;
+      if (body is! Map) {
+        debugPrint(
+            '[NotificationPrefs] PATCH returned ${body.runtimeType}: $body');
+        throw ServerException(
+            'Unexpected response from the server (${body.runtimeType}).');
+      }
+      final data = body['data'];
+      return data is Map<String, dynamic>
+          ? NotificationPreferences.fromJson(data)
+          : const NotificationPreferences();
+    } on dio.DioException catch (err) {
+      final status = err.response?.statusCode;
+      debugPrint('[NotificationPrefs] PATCH $category failed — status=$status '
+          'body=${err.response?.data}');
+      if (err.response == null) throw const NetworkException();
+      final body = err.response?.data;
+      final error = body is Map ? body['error'] : null;
+      final message = error is Map ? error['message'] : null;
+      throw ServerException(
+        message is String ? message : 'Could not save that (HTTP $status).',
+      );
+    }
   }
 }
