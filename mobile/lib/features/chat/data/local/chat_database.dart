@@ -164,6 +164,26 @@ class ChatDatabase {
     return _rowToRoom(rows.first);
   }
 
+  /// Flips one participant from `pending` to `active` in the cached room.
+  ///
+  /// The invited room is written here the moment the invite arrives over the
+  /// socket, with the invitee's status as `pending` — and accepting used to
+  /// change only the server. The rooms list reads this cache *before* it syncs,
+  /// so `hasPendingInvite` still answered true and put the room straight back
+  /// into the pending bucket, undoing the join on screen until the round-trip
+  /// landed. Writing it here is what makes the cache agree with the tap.
+  ///
+  /// Returns false when the room is not cached or the participant is not in it
+  /// — nothing to correct, and the sync will bring the room down anyway.
+  Future<bool> markParticipantActive(String roomId, String userId) async {
+    if (kIsWeb) return false;
+    final room = await getRoom(roomId);
+    final accepted = room?.withInviteAccepted(userId);
+    if (accepted == null) return false;
+    await upsertRoom(accepted);
+    return true;
+  }
+
   /// Returns a cached direct room that includes [recipientId] as a participant,
   /// or null if none is found. Used to avoid duplicate room creation.
   Future<ChatRoom?> getDirectRoomWithUser(String recipientId) async {

@@ -196,8 +196,12 @@ class ChatRepositoryImpl implements ChatRepository {
           ));
 
   @override
-  Future<void> acceptRoomInvite(String roomId) =>
-      _rest.acceptRoomInvite(roomId);
+  Future<void> acceptRoomInvite(String roomId, {required String userId}) async {
+    await _rest.acceptRoomInvite(roomId);
+    // Only after the server has agreed — a local row saying "active" for a join
+    // that failed would survive in the cache and read as a room the user is in.
+    await _db.markParticipantActive(roomId, userId);
+  }
 
   @override
   Future<void> declineRoomInvite(String roomId) async {

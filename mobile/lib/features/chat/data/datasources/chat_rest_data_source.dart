@@ -236,6 +236,74 @@ abstract class ChatRestDataSource {
   Future<void> unblockUser(String userId);
 }
 
+/// The rooms endpoint's maximum page size. One request covers all but the
+/// heaviest accounts, so paging is the exception rather than the rule.
+const kRoomsPageSize = 100;
+
+/// A bound, not an expectation — 10 000 rooms. Stops a wrong `totalPages` or a
+/// list growing under us from looping forever.
+const kMaxRoomPages = 100;
+
+/// Reads GET /chat/rooms until it runs out, and returns every room.
+///
+/// The app used to ask for page 1 of 25 and treat the answer as the whole list.
+/// Everything past it was invisible *and* counted as missing by
+/// [RoomSyncReconciler], which deletes a room from the local database once the
+/// server has omitted it twice running — so an account with more than 25
+/// private rooms had the tail of its chat list quietly erased, and a group
+/// invite that landed outside the page could never be accepted into view.
+///
+/// [fetchPage] is given a page number and a page size and returns the decoded
+/// body: either `{data: [...], pagination: {...}}` or a bare list.
+Future<List<ChatRoom>> collectRoomPages(
+  Future<dynamic> Function(int page, int limit) fetchPage, {
+  int pageSize = kRoomsPageSize,
+  int maxPages = kMaxRoomPages,
+}) async {
+  final rooms = <ChatRoom>[];
+  final seen = <String>{};
+
+  for (var page = 1; page <= maxPages; page++) {
+    final raw = await fetchPage(page, pageSize);
+
+    final List<dynamic> list;
+    int? totalPages;
+    if (raw is Map) {
+      final data = raw['data'];
+      list = data is List ? data : const [];
+      final pagination = raw['pagination'];
+      if (pagination is Map) {
+        totalPages = (pagination['totalPages'] as num?)?.toInt();
+      }
+    } else if (raw is List) {
+      list = raw;
+    } else {
+      list = const [];
+    }
+
+    for (final row in list) {
+      if (row is! Map<String, dynamic>) continue;
+      final room = ChatRoom.fromJson(row);
+      // The server orders by last activity, so a message arriving between two
+      // page requests can shift a room across the boundary and return it
+      // twice. Duplicates would reach the rooms list as two tiles.
+      if (seen.add(room.id)) rooms.add(room);
+    }
+
+    // A short page is the last page — this also ends the loop when the server
+    // answers with a bare list and no pagination block.
+    if (list.length < pageSize) break;
+    if (totalPages != null && page >= totalPages) break;
+
+    if (page == maxPages) {
+      debugPrint('[ChatREST] getMyRooms stopped at the $maxPages-page cap with '
+          '${rooms.length} rooms — anything past it will look deleted');
+    }
+  }
+
+  return rooms;
+}
+
 class ChatRestDataSourceImpl implements ChatRestDataSource {
   final ChatApiClient _client;
 
@@ -333,25 +401,14 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   }
 
   @override
-  Future<List<ChatRoom>> getMyRooms() async {
-    return _wrap(() async {
-      final res = await _client.dio.get(
-        '/chat/rooms',
-        queryParameters: {'page': 1, 'limit': 25},
-      );
-      final raw = res.data;
-      final List<dynamic> list;
-      if (raw is Map<String, dynamic> && raw['data'] is List) {
-        list = raw['data'] as List<dynamic>;
-      } else if (raw is List) {
-        list = raw;
-      } else {
-        list = [];
-      }
-      return list
-          .map((r) => ChatRoom.fromJson(r as Map<String, dynamic>))
-          .toList();
-    });
+  Future<List<ChatRoom>> getMyRooms() {
+    return _wrap(() => collectRoomPages((page, limit) async {
+          final res = await _client.dio.get(
+            '/chat/rooms',
+            queryParameters: {'page': page, 'limit': limit},
+          );
+          return res.data;
+        }));
   }
 
   @override

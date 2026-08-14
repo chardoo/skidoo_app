@@ -184,7 +184,8 @@ class CreateGroupRoomUseCase {
 class AcceptRoomInviteUseCase {
   final ChatRepository _repo;
   AcceptRoomInviteUseCase(this._repo);
-  Future<void> call(String roomId) => _repo.acceptRoomInvite(roomId);
+  Future<void> call(String roomId, {required String userId}) =>
+      _repo.acceptRoomInvite(roomId, userId: userId);
 }
 
 class DeclineRoomInviteUseCase {

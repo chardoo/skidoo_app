@@ -385,7 +385,12 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     ));
 
     try {
-      await _acceptInvite(event.roomId);
+      // The user id goes down to the repository so the cached room row is
+      // corrected too. Without it the reload below reads this room straight
+      // back out of SQLite still marked `pending`, and _splitRooms undoes the
+      // move above before the server has even answered.
+      final myUserId = await _authService.getUserId();
+      await _acceptInvite(event.roomId, userId: myUserId);
       // Subscribe immediately so WS messages start arriving right away.
       _bgService.sharedWs.subscribeRoom(event.roomId);
       // Reload to get the fresh participant list.

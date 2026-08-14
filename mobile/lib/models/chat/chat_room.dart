@@ -222,6 +222,28 @@ class ChatRoom {
   bool hasPendingInvite(String userId) =>
       participants.any((p) => p.userId == userId && p.isPending);
 
+  /// This room with [userId]'s pending invite turned into membership, or null
+  /// when there was no pending invite to turn.
+  ///
+  /// Accepting an invite used to change only the server. The rooms list reads
+  /// the local cache before it syncs, and the cached copy still said `pending`
+  /// — so [hasPendingInvite] answered true and the room went straight back into
+  /// the pending bucket, undoing the join on screen until the round-trip
+  /// landed. Null rather than an unchanged copy so the caller can skip the
+  /// write when there is nothing to correct.
+  ChatRoom? withInviteAccepted(String userId) {
+    if (!hasPendingInvite(userId)) return null;
+    return copyWith(
+      participants: [
+        for (final p in participants)
+          if (p.userId == userId && p.isPending)
+            p.copyWith(status: 'active')
+          else
+            p,
+      ],
+    );
+  }
+
   ChatRoom copyWith({
     String? id,
     RoomType? type,

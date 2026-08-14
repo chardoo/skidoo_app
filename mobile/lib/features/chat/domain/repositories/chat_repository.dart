@@ -63,7 +63,10 @@ abstract class ChatRepository {
     Map<String, String>? inviteeNames,
   });
 
-  Future<void> acceptRoomInvite(String roomId);
+  /// Accept a pending invite. [userId] is the accepting user — the local cache
+  /// holds this room with them still marked `pending`, and the rooms list reads
+  /// that cache before it syncs, so the row has to be corrected here.
+  Future<void> acceptRoomInvite(String roomId, {required String userId});
 
   Future<void> declineRoomInvite(String roomId);
 
