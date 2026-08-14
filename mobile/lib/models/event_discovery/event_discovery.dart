@@ -14,6 +14,11 @@ class EventPicture {
   final bool isLikedByUser;
   final bool commentsEnabled;
 
+  /// Already bought by whoever is looking. The feed's grid shows no price, but
+  /// the viewer it opens into does — so this has to travel with the picture or
+  /// the viewer offers to sell something already owned.
+  final bool isPurchased;
+
   /// Server-side pixel dimensions. Null for legacy records that pre-date
   /// backend dimension extraction. The card falls back to a 4:5 default
   /// when these are absent.
@@ -28,6 +33,7 @@ class EventPicture {
     required this.url,
     required this.imageId,
     required this.price,
+    this.isPurchased = false,
     this.mediaType = MediaType.photo,
     this.owner = false,
     this.likeCount = 0,
@@ -75,6 +81,8 @@ class EventPicture {
       price: (json['price'] as num?)?.toInt() ?? 0,
       mediaType: typeRaw == 'video' ? MediaType.video : MediaType.photo,
       owner: json['owner'] == true,
+      isPurchased:
+          json['isPurchased'] == true || json['is_purchased'] == true,
       likeCount: parseInt('likeCount', 'like_count'),
       commentCount: parseInt('commentCount', 'comment_count'),
       isLikedByUser: json['isLikedByUser'] == true || json['is_liked_by_user'] == true,

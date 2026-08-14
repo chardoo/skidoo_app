@@ -1,3 +1,4 @@
+import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -59,6 +60,10 @@ List<Photo> photosOfEvent(EventDiscovery event) => [
           durationSeconds: p.durationSeconds,
           photographerName: event.photographerName,
           photographerAvatarUrl: event.photographerProfileUrl ?? '',
+          // Carried through, or the viewer this opens into would go on
+          // offering to sell a photo they already own. The grid does not show
+          // a price, but the viewer does.
+          isPurchased: p.isPurchased,
         ),
     ];
 
@@ -88,7 +93,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
   /// nowhere the back arrow doesn't already.
   void _openFullscreen(BuildContext context, int idx) {
     if (_photos.isEmpty) return;
-    Navigator.of(context).push(MaterialPageRoute(
+    Navigator.of(context).push(NoSwipeBackPageRoute<void>(
       builder: (_) => FoundPhotoViewerPage(
         photos: _photos,
         initialIndex: idx.clamp(0, _photos.length - 1),

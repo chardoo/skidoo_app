@@ -340,7 +340,9 @@ class _PhotoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPaid = photo.price > 0;
+    // Priced *and* not already owned. A photo they have bought must stop
+    // quoting them the amount — it only means anything as a thing to pay.
+    final isPaid = photo.price > 0 && !photo.isPurchased;
     return ClipRRect(
       borderRadius: BorderRadius.circular(10.r),
       child: Stack(

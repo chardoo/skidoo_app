@@ -421,7 +421,9 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
 
   Widget _buildCard(Photo photo, AppThemeExtension ext) {
     final isSelected = _selectedIds.contains(photo.id);
-    final isPaid = photo.price > 0;
+    // Priced *and* not already owned. A photo they have bought must stop
+    // quoting them the amount — it only means anything as a thing to pay.
+    final isPaid = photo.price > 0 && !photo.isPurchased;
 
     return Semantics(button: true, label: 'Photo', child: GestureDetector(
       onTap: _selectionMode ? () => _toggleSelection(photo) : null,

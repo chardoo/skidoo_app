@@ -246,6 +246,11 @@ class Photo {
           _pick([user, event], ['name', 'userName', 'photographerName']),
       photographerAvatarUrl: _avatarOf(user),
       location: _pick([event], ['location', 'city', 'venue']),
+      // Was omitted, so every photo from the search-images stream claimed to
+      // be unowned and went on quoting a price to whoever had already bought
+      // it. See Photo.fromMap, which has always read this.
+      isPurchased:
+          (json['isPurchased'] ?? json['is_purchased'] ?? false) as bool,
     );
   }
   Map<String, dynamic> toJson() => {
