@@ -71,17 +71,17 @@ void main() {
     setUp(inbox.clear);
 
     test('an untouched inbox is not fresh, so the first visit fetches', () {
-      expect(inbox.isFresh, isFalse);
-      expect(inbox.page, 0);
+      expect(inbox.isFresh(), isFalse);
+      expect(inbox.page(), 0);
     });
 
     test('rows survive between visits once loaded', () {
       inbox.reset([row('1'), row('2')],
           exhausted: false, at: AppCacheSignals.notifications.value);
 
-      expect(inbox.isFresh, isTrue);
-      expect(inbox.items, hasLength(2));
-      expect(inbox.page, 1);
+      expect(inbox.isFresh(), isTrue);
+      expect(inbox.items(), hasLength(2));
+      expect(inbox.page(), 1);
     });
 
     test('paging appends rather than replacing', () {
@@ -89,9 +89,9 @@ void main() {
           exhausted: false, at: AppCacheSignals.notifications.value);
       inbox.append([row('2')], exhausted: true);
 
-      expect(inbox.items.map((n) => n.id), ['1', '2']);
-      expect(inbox.page, 2);
-      expect(inbox.exhausted, isTrue);
+      expect(inbox.items().map((n) => n.id), ['1', '2']);
+      expect(inbox.page(), 2);
+      expect(inbox.exhausted(), isTrue);
     });
 
     test('read marks persist — the whole point of not refetching', () {
@@ -99,14 +99,14 @@ void main() {
           exhausted: true, at: AppCacheSignals.notifications.value);
 
       expect(inbox.markRead('2'), isTrue);
-      expect(inbox.items[1].isRead, isTrue);
-      expect(inbox.items[0].isRead, isFalse);
-      expect(inbox.isFresh, isTrue,
+      expect(inbox.items()[1].isRead, isTrue);
+      expect(inbox.items()[0].isRead, isFalse);
+      expect(inbox.isFresh(), isTrue,
           reason: 'the app made this change, so there is nothing to go and ask '
               'the server about');
 
       inbox.markAllRead();
-      expect(inbox.items.every((n) => n.isRead), isTrue);
+      expect(inbox.items().every((n) => n.isRead), isTrue);
     });
 
     test('marking a row it does not hold reports so', () {
@@ -118,12 +118,12 @@ void main() {
     test('a push makes it stale — this is what triggers the next fetch', () {
       inbox.reset([row('1')],
           exhausted: true, at: AppCacheSignals.notifications.value);
-      expect(inbox.isFresh, isTrue);
+      expect(inbox.isFresh(), isTrue);
 
       inbox.invalidate();
 
-      expect(inbox.isFresh, isFalse);
-      expect(inbox.items, hasLength(1),
+      expect(inbox.isFresh(), isFalse);
+      expect(inbox.items(), hasLength(1),
           reason: 'the rows stay up while the refetch runs');
     });
 
@@ -135,7 +135,33 @@ void main() {
       AppCacheSignals.notifications.bump();
       inbox.reset([row('1')], exhausted: true, at: at);
 
-      expect(inbox.isFresh, isFalse);
+      expect(inbox.isFresh(), isFalse);
+    });
+
+    test('each filter tab is its own paged list', () {
+      final at = AppCacheSignals.notifications.value;
+      inbox.reset([row('1'), row('2')], exhausted: true, at: at);
+      inbox.reset([row('2')], exhausted: true, at: at, filter: 'photos');
+
+      expect(inbox.items(), hasLength(2));
+      expect(inbox.items(filter: 'photos'), hasLength(1));
+      expect(inbox.isFresh(filter: 'bookings'), isFalse,
+          reason: 'a tab nobody has opened has nothing to show');
+    });
+
+    test('a row read in one tab is read in all of them', () {
+      // The same notification, listed twice. Marking it read on All and finding
+      // it still bold under Photos is the bug this prevents.
+      final at = AppCacheSignals.notifications.value;
+      inbox.reset([row('1'), row('2')], exhausted: true, at: at);
+      inbox.reset([row('2')], exhausted: true, at: at, filter: 'photos');
+
+      expect(inbox.markRead('2'), isTrue);
+      expect(inbox.items(filter: 'photos').single.isRead, isTrue);
+
+      inbox.remove('2');
+      expect(inbox.items().map((n) => n.id), ['1']);
+      expect(inbox.items(filter: 'photos'), isEmpty);
     });
 
     test('logout empties it', () {
@@ -144,9 +170,9 @@ void main() {
 
       SessionCache.clearAll();
 
-      expect(inbox.items, isEmpty);
-      expect(inbox.page, 0);
-      expect(inbox.isFresh, isFalse);
+      expect(inbox.items(), isEmpty);
+      expect(inbox.page(), 0);
+      expect(inbox.isFresh(), isFalse);
     });
   });
 }

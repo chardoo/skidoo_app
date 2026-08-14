@@ -13,6 +13,11 @@ import 'package:jperg_app/features/notifications/data/notification_service.dart'
 /// Stale means a push arrived or the rows were written to from elsewhere; only
 /// then is a refetch worth it. Pull-to-refresh still asks regardless — that is
 /// what the gesture is for.
+///
+/// One bucket per filter tab, because each tab is its own paged list on the
+/// server. They are separate lists of the *same* rows though, so a row marked
+/// read or deleted is changed in every bucket holding it — otherwise switching
+/// tabs shows the row you just read still bold.
 class NotificationInbox {
   NotificationInbox._() {
     SessionCache.register(clear);
@@ -20,19 +25,27 @@ class NotificationInbox {
 
   static final NotificationInbox instance = NotificationInbox._();
 
-  final List<AppNotification> items = [];
+  final Map<String, _Bucket> _buckets = {};
 
-  /// The last page fetched. Zero means the inbox has never been loaded.
-  int page = 0;
+  /// The empty string is the "All" tab. A map key has to be non-null, and
+  /// "no filter" is a real bucket rather than the absence of one.
+  _Bucket _bucket(String? filter) =>
+      _buckets.putIfAbsent(filter ?? '', _Bucket.new);
+
+  List<AppNotification> items({String? filter}) => _bucket(filter).items;
+
+  /// The last page fetched. Zero means this tab has never been loaded.
+  int page({String? filter}) => _bucket(filter).page;
 
   /// The server has no more rows past what is held here.
-  bool exhausted = false;
-
-  int _loadedAt = -1;
+  bool exhausted({String? filter}) => _bucket(filter).exhausted;
 
   /// True when there is a list to show and nothing has invalidated it since.
-  bool get isFresh =>
-      page > 0 && _loadedAt == AppCacheSignals.notifications.value;
+  bool isFresh({String? filter}) {
+    final bucket = _bucket(filter);
+    return bucket.page > 0 &&
+        bucket.loadedAt == AppCacheSignals.notifications.value;
+  }
 
   /// Replaces the whole list — the first page of a fresh load.
   ///
@@ -40,47 +53,75 @@ class NotificationInbox {
   /// back: a push that arrives mid-flight describes a row this response cannot
   /// contain, so stamping "now" would mark the list current when it is already
   /// one short.
-  void reset(List<AppNotification> rows,
-      {required bool exhausted, required int at}) {
-    items
+  void reset(
+    List<AppNotification> rows, {
+    required bool exhausted,
+    required int at,
+    String? filter,
+  }) {
+    final bucket = _bucket(filter);
+    bucket.items
       ..clear()
       ..addAll(rows);
-    page = 1;
-    this.exhausted = exhausted;
-    _loadedAt = at;
+    bucket.page = 1;
+    bucket.exhausted = exhausted;
+    bucket.loadedAt = at;
   }
 
   /// Appends a page fetched by scrolling.
-  void append(List<AppNotification> rows, {required bool exhausted}) {
-    items.addAll(rows);
-    page += 1;
-    this.exhausted = exhausted;
+  void append(
+    List<AppNotification> rows, {
+    required bool exhausted,
+    String? filter,
+  }) {
+    final bucket = _bucket(filter);
+    bucket.items.addAll(rows);
+    bucket.page += 1;
+    bucket.exhausted = exhausted;
   }
 
-  /// Marks one row read in place. Returns false when the row is not held here,
-  /// which is what tells a caller its list came from somewhere else.
+  /// Marks one row read in place, in every tab holding it. Returns false when
+  /// the row is nowhere here, which is what tells a caller its list came from
+  /// somewhere else.
   bool markRead(String id) {
-    final index = items.indexWhere((n) => n.id == id);
-    if (index == -1) return false;
-    items[index] = items[index].copyWith(isRead: true);
-    return true;
+    var found = false;
+    for (final bucket in _buckets.values) {
+      final index = bucket.items.indexWhere((n) => n.id == id);
+      if (index == -1) continue;
+      bucket.items[index] = bucket.items[index].copyWith(isRead: true);
+      found = true;
+    }
+    return found;
   }
 
   void markAllRead() {
-    for (var i = 0; i < items.length; i++) {
-      items[i] = items[i].copyWith(isRead: true);
+    for (final bucket in _buckets.values) {
+      for (var i = 0; i < bucket.items.length; i++) {
+        bucket.items[i] = bucket.items[i].copyWith(isRead: true);
+      }
+    }
+  }
+
+  /// Takes a row out of every tab. The delete request is sent alongside; this
+  /// is what makes the row leave the screen without waiting for it.
+  void remove(String id) {
+    for (final bucket in _buckets.values) {
+      bucket.items.removeWhere((n) => n.id == id);
     }
   }
 
   /// A push landed — what is held here is now missing a row. Bumping the shared
   /// signal is what makes an open inbox reload and a closed one reload on its
-  /// next visit.
+  /// next visit. Every tab is stale at once: freshness is measured against this
+  /// one signal.
   void invalidate() => AppCacheSignals.notifications.bump();
 
-  void clear() {
-    items.clear();
-    page = 0;
-    exhausted = false;
-    _loadedAt = -1;
-  }
+  void clear() => _buckets.clear();
+}
+
+class _Bucket {
+  final List<AppNotification> items = [];
+  int page = 0;
+  bool exhausted = false;
+  int loadedAt = -1;
 }

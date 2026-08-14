@@ -40,6 +40,11 @@ enum DeepLinkKind {
   /// The advertiser's campaigns.
   adsDashboard,
 
+  /// One campaign of theirs. Every campaign notification names the campaign it
+  /// is about — approved, paused, rejected, running out of budget — and landing
+  /// on the list left someone to find which of nine it meant.
+  campaign,
+
   /// The board of open photographer requests.
   requestBoard,
 
@@ -72,6 +77,7 @@ class DeepLink {
         DeepLinkKind.notifications ||
         DeepLinkKind.chat ||
         DeepLinkKind.adsDashboard ||
+        DeepLinkKind.campaign ||
         DeepLinkKind.earnings ||
         DeepLinkKind.cart =>
           true,
@@ -108,6 +114,7 @@ class DeepLink {
         DeepLinkKind.notifications => '/notifications',
         DeepLinkKind.chat => id == null ? '/chat' : '/chat/$id',
         DeepLinkKind.adsDashboard => '/campaigns',
+        DeepLinkKind.campaign => '/campaigns/$id',
         DeepLinkKind.requestBoard => '/requests',
         DeepLinkKind.earnings => '/earnings',
         DeepLinkKind.cart => '/cart',
@@ -192,6 +199,17 @@ DeepLink? parsePushScreen(String? screen, {String? id}) {
     'home' => const DeepLink(DeepLinkKind.home),
     'notifications' => const DeepLink(DeepLinkKind.notifications),
     'chat' => DeepLink(DeepLinkKind.chat, id: id),
+
+    // `ads_dashboard` is the other one that takes an optional id, and for the
+    // same reason: with a campaign id it opens that campaign, without one the
+    // list. The backend sends the id on every campaign notification — the key
+    // stayed `ads_dashboard` so builds from before this understood it still
+    // land on the list rather than on nothing. `campaign` is accepted too, for
+    // when the backend has no old builds left to carry.
+    'ads_dashboard' || 'campaign' when id != null => DeepLink(
+        DeepLinkKind.campaign,
+        id: id,
+      ),
     'ads_dashboard' => const DeepLink(DeepLinkKind.adsDashboard),
     'request_board' => const DeepLink(DeepLinkKind.requestBoard),
     'earnings' => const DeepLink(DeepLinkKind.earnings),

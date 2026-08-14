@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/core/app_readiness.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/navigation/app_navigator.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/features/ads/presentation/pages/campaign_details_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/my_campaigns_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/request_board_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/review_photographers_page.dart';
@@ -283,6 +285,7 @@ class DeepLinkService {
       case DeepLinkKind.picture:
       case DeepLinkKind.event:
       case DeepLinkKind.request:
+      case DeepLinkKind.campaign:
       case DeepLinkKind.chat:
         debugPrint('$_tag pushing resolver for $link');
         await navigator.push(
@@ -405,6 +408,22 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
           );
           return;
 
+        // The details screen takes the campaign, not an id — it draws its
+        // header, status pill and countdown from it before its own refetch
+        // lands — so the campaign is fetched here. A campaign that was deleted,
+        // or belongs to someone else, says so rather than opening an empty
+        // screen.
+        case DeepLinkKind.campaign:
+          final campaign = await AdsRepository().getCampaign(link.id!);
+          if (!mounted) return;
+          _swapSelfFor(
+            MaterialPageRoute<void>(
+              settings: const RouteSettings(name: 'deeplink/campaign'),
+              builder: (_) => CampaignDetailsPage(campaign: campaign),
+            ),
+          );
+          return;
+
         // The album page takes an id and fetches the rest itself, so a link
         // needs nothing but what it already carries.
         case DeepLinkKind.event:
@@ -442,7 +461,7 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
             // Nothing to open it inside; show the one photo on its own.
             debugPrint('$_tag photo ${link.id} has no event — opening alone');
             _swapSelfFor(
-              MaterialPageRoute<void>(
+              NoSwipeBackPageRoute<void>(
                 settings: const RouteSettings(name: 'deeplink/photo'),
                 builder: (_) => FoundPhotoViewerPage(photos: [photo]),
               ),

@@ -40,6 +40,32 @@ void main() {
         parsePushPayload(cases['requestId']),
         const DeepLink(DeepLinkKind.request, id: 'req-1'),
       );
+      expect(
+        parsePushPayload(cases['campaignId']),
+        const DeepLink(DeepLinkKind.campaign, id: 'camp-1'),
+      );
+    });
+
+    test('a campaign notification opens that campaign, not the list', () {
+      // "Your campaign was rejected" landing on a list of nine campaigns is
+      // the report this fixes. Every campaign notification carries its id.
+      expect(
+        parsePushPayload({'screen': 'ads_dashboard', 'id': 'camp-9'}),
+        const DeepLink(DeepLinkKind.campaign, id: 'camp-9'),
+      );
+      expect(
+        parsePushPayload({'screen': 'campaign', 'id': 'camp-9'}),
+        const DeepLink(DeepLinkKind.campaign, id: 'camp-9'),
+      );
+    });
+
+    test('ads_dashboard with no id is still the list', () {
+      // Nothing names a campaign, so there is none to open — and a row written
+      // before the ids were sent must not stop routing.
+      expect(
+        parsePushPayload({'screen': 'ads_dashboard'}),
+        const DeepLink(DeepLinkKind.adsDashboard),
+      );
     });
 
     test('prefers "id" when both it and a legacy key are present', () {

@@ -39,6 +39,21 @@ class AppNotification {
   /// the list and the notification land in the same place instead of two.
   DeepLink? get destination => parsePushPayload(data);
 
+  /// The picture this notification is about — a face that followed you, the
+  /// cover of an album, one of the photos you were found in.
+  ///
+  /// The same image the push shows, which is why it is read from `data` rather
+  /// than from a field of its own: notify() puts it there so the row and the
+  /// buzz look like the one event they are. Null for the many kinds that have
+  /// no picture; the tile draws an icon for those instead of a blank circle.
+  String? get imageUrl {
+    for (final key in const ['image', 'image_url', 'imageUrl']) {
+      final value = data[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
+  }
+
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
       id: json['id']?.toString() ?? '',
@@ -75,10 +90,22 @@ class AppNotification {
 /// These endpoints have existed on the backend since the Notification table
 /// was added; nothing in the app had ever called them.
 class NotificationApi {
-  Future<List<AppNotification>> list({int page = 1, int limit = 20}) async {
+  /// [category] is one of the tabs the list offers — photos, bookings, money,
+  /// social — or null for all of them. Filtered by the server because the list
+  /// is paged: a tab that filtered the page it was given would show three rows
+  /// and no way to reach the rest.
+  Future<List<AppNotification>> list({
+    int page = 1,
+    int limit = 20,
+    String? category,
+  }) async {
     final response = await sl<Api>().dio.get(
       '/notifications',
-      queryParameters: {'page': page, 'limit': limit},
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (category != null) 'category': category,
+      },
     );
     final rows = (response.data?['data'] as List?) ?? const [];
     return rows
