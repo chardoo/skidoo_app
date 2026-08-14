@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
@@ -27,6 +28,24 @@ class SavedItemsPage extends StatefulWidget {
   State<SavedItemsPage> createState() => _SavedItemsPageState();
 }
 
+/// The list as it was last fetched, plus the event names resolving it cost.
+///
+/// This screen is pushed fresh from Account every time, and opening it ran the
+/// list request and then one request per event whose name was not already in
+/// DiscoveryBloc — so every visit rebuilt the same rows from scratch behind a
+/// spinner. Bookmarking anywhere bumps [AppCacheSignals.saves], which is what
+/// makes the next open fetch again.
+class _SavedSnapshot {
+  const _SavedSnapshot(this.items, this.names);
+  final List<SavedItem> items;
+  final Map<String, String> names;
+}
+
+final _savedCache = SessionCache<_SavedSnapshot>(
+  'savedItems',
+  signal: AppCacheSignals.saves,
+);
+
 class _SavedItemsPageState extends State<SavedItemsPage> {
   final _ds = sl<ClientSavedDataSource>();
   final _remoteDs = sl<DiscoveryRemoteDataSource>();
@@ -40,7 +59,14 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
   @override
   void initState() {
     super.initState();
-    _load();
+    final cached = _savedCache.isFresh ? _savedCache.value : null;
+    if (cached != null) {
+      _items = cached.items;
+      _resolvedNames.addAll(cached.names);
+      _loading = false;
+    } else {
+      _load();
+    }
   }
 
   Future<void> _load() async {
@@ -56,6 +82,9 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
         _items = items;
         _loading = false;
       });
+      // Cached before the names resolve so a quick second visit still skips the
+      // list request; _resolveEventNames writes the names in as they land.
+      _savedCache.save(_SavedSnapshot(items, _resolvedNames));
       // Resolve event names in background — no spinner needed.
       _resolveEventNames(items);
     } catch (_) {
@@ -195,6 +224,14 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
       if (mounted) {
         setState(() =>
             _items?.removeWhere((i) => i.savedItemId == item.savedItemId));
+      }
+      // Tells the profile's Bookmarked tab, which no longer refetches on its
+      // own. Re-saving straight after is what keeps this screen's own copy
+      // current rather than stale on the strength of its own edit.
+      AppCacheSignals.saves.bump();
+      final items = _items;
+      if (items != null) {
+        _savedCache.save(_SavedSnapshot(items, _resolvedNames));
       }
     } catch (_) {
       if (!mounted) return;

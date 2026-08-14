@@ -46,12 +46,17 @@ class _FaceDataPageState extends State<FaceDataPage> {
   @override
   void initState() {
     super.initState();
+    final cached = AccountSettingsApi.cached;
+    if (cached != null) {
+      _settings = cached;
+      _loading = false;
+    }
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false}) async {
     try {
-      final settings = await _api.fetch();
+      final settings = await _api.fetch(forceRefresh: forceRefresh);
       if (!mounted) return;
       setState(() {
         _settings = settings;
@@ -67,7 +72,9 @@ class _FaceDataPageState extends State<FaceDataPage> {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const FaceRecognitionPage()),
     );
-    if (mounted) _load();
+    // A face was very likely just added, so `hasAddedFaces` has moved on the
+    // server and the cached row is the one from before it did.
+    if (mounted) _load(forceRefresh: true);
   }
 
   Future<void> _deleteAll() async {
@@ -100,7 +107,7 @@ class _FaceDataPageState extends State<FaceDataPage> {
       await sl<AuthService>().setHasAddedFaces(false);
       if (!mounted) return;
       AppSnackBar.success(context, 'Your face data has been deleted.');
-      _load();
+      _load(forceRefresh: true);
     } on dio.DioException catch (_) {
       if (!mounted) return;
       AppSnackBar.error(

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart' as dio;
 import 'package:jperg_app/api/dio_client_service.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart' as app_ex;
 
@@ -61,13 +62,38 @@ class AccountSettings {
 }
 
 class AccountSettingsApi {
-  Future<AccountSettings> fetch() async {
+  /// One row, three screens, one copy of it.
+  ///
+  /// Account & Security, Privacy and Face Data all read the same settings and
+  /// are all pushed fresh from Settings every time they are opened, so each
+  /// visit used to be a spinner over switches that had not moved since the last
+  /// one. [update] writes the server's answer straight back in, which is what
+  /// keeps the other two screens right without asking again.
+  static final _cache = SessionCache<AccountSettings>(
+    'accountSettings',
+    signal: AppCacheSignals.accountSettings,
+  );
+
+  /// Says the row changed underneath us — a face deleted, a role moved. The
+  /// next [fetch] goes to the server.
+  static void invalidate() => AppCacheSignals.accountSettings.bump();
+
+  /// What is already in hand, or null. [fetch] resolves a cache hit on the next
+  /// microtask, which is still one frame of spinner over switches the screen
+  /// could have drawn straight away — reading this in `initState` is what
+  /// removes the flicker.
+  static AccountSettings? get cached => _cache.isFresh ? _cache.value : null;
+
+  Future<AccountSettings> fetch({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cache.isFresh) return _cache.value!;
     try {
       final res = await sl<Api>().dio.get('/client/account/settings');
       final data = res.data?['data'];
-      return data is Map<String, dynamic>
+      final settings = data is Map<String, dynamic>
           ? AccountSettings.fromJson(data)
           : const AccountSettings();
+      _cache.save(settings);
+      return settings;
     } on dio.DioException catch (err) {
       if (err.response == null) throw const app_ex.NetworkException();
       throw app_ex.ServerException(
@@ -88,9 +114,14 @@ class AccountSettingsApi {
         data: {key: value},
       );
       final data = res.data?['data'];
-      return data is Map<String, dynamic>
+      final settings = data is Map<String, dynamic>
           ? AccountSettings.fromJson(data)
           : const AccountSettings();
+      // Written through rather than invalidated: this *is* the current row, and
+      // dropping it would send the next screen back to the server for an answer
+      // already in hand.
+      _cache.save(settings);
+      return settings;
     } on dio.DioException catch (err) {
       if (err.response == null) throw const app_ex.NetworkException();
       // The server refuses rather than lying when it cannot make a switch

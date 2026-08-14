@@ -1,7 +1,8 @@
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
-import 'package:jperg_app/API/dio_client_service.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 
@@ -181,7 +182,21 @@ class NotificationPreferences {
 }
 
 class NotificationPreferencesApi {
-  Future<NotificationPreferences> fetch() async {
+  /// Nine switches on one row, read by the Notifications settings screen and by
+  /// the notifications section of Account — both pushed fresh every time they
+  /// are opened. [update] writes the server's answer back in, so the two never
+  /// disagree without either of them asking again.
+  static final _cache = SessionCache<NotificationPreferences>(
+    'notificationPreferences',
+  );
+
+  /// Already in hand, or null. Read in `initState` so the switches draw on the
+  /// first frame instead of behind a spinner.
+  static NotificationPreferences? get cached =>
+      _cache.isFresh ? _cache.value : null;
+
+  Future<NotificationPreferences> fetch({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cache.isFresh) return _cache.value!;
     try {
       final response = await sl<Api>().dio.get('/notifications/preferences');
       final body = response.data;
@@ -197,9 +212,11 @@ class NotificationPreferencesApi {
             'Unexpected response from the server (${body.runtimeType}).');
       }
       final data = body['data'];
-      return data is Map<String, dynamic>
+      final prefs = data is Map<String, dynamic>
           ? NotificationPreferences.fromJson(data)
           : const NotificationPreferences();
+      _cache.save(prefs);
+      return prefs;
     } on dio.DioException catch (err) {
       // Said out loud rather than swallowed into "could not load". Which of
       // these it is decides what to do about it, and a screen that reports
@@ -234,9 +251,14 @@ class NotificationPreferencesApi {
             'Unexpected response from the server (${body.runtimeType}).');
       }
       final data = body['data'];
-      return data is Map<String, dynamic>
+      final prefs = data is Map<String, dynamic>
           ? NotificationPreferences.fromJson(data)
           : const NotificationPreferences();
+      // The whole row comes back, so this is the current one — written through
+      // rather than dropped, which would send the other screen to the server
+      // for an answer already in hand.
+      _cache.save(prefs);
+      return prefs;
     } on dio.DioException catch (err) {
       final status = err.response?.statusCode;
       debugPrint('[NotificationPrefs] PATCH $category failed — status=$status '

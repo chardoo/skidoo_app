@@ -3,11 +3,12 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
-import 'package:jperg_app/API/dio_client_service.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/core/constants/onesignal.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/notifications/data/notification_inbox.dart';
 
 const _tag = '[Push]';
 
@@ -46,11 +47,19 @@ Future<void> initPush() async {
     OneSignal.Notifications.addForegroundWillDisplayListener((event) {
       debugPrint('$_tag foreground ← ${event.notification.title}');
       event.notification.display();
+      // The backend wrote a row for this before it pushed, so the inbox the app
+      // is holding is now one short. This is the only thing that can tell it —
+      // the tab no longer refetches on every visit.
+      NotificationInbox.instance.invalidate();
     });
 
     OneSignal.Notifications.addClickListener((event) {
       final data = event.notification.additionalData;
       debugPrint('$_tag tapped ← screen=${data?['screen']} type=${data?['type']}');
+
+      // Tapped from the background: the same row is missing, and the tap may
+      // well be heading for the inbox.
+      NotificationInbox.instance.invalidate();
 
       // Every payload carries a `screen`, and POLICY in
       // main/app/services/notify.py is the list of what it can be.

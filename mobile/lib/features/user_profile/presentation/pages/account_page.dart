@@ -1102,6 +1102,10 @@ class _NotificationCategoriesCardState
   @override
   void initState() {
     super.initState();
+    // Already fetched by the Notifications settings screen, or by an earlier
+    // visit to this one — same row, same session, and the switches can draw on
+    // the first frame instead of waiting for a request to say the same thing.
+    _prefs = NotificationPreferencesApi.cached;
     _load();
   }
 

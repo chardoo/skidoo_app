@@ -41,12 +41,17 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
   @override
   void initState() {
     super.initState();
+    final cached = AccountSettingsApi.cached;
+    if (cached != null) {
+      _settings = cached;
+      _loading = false;
+    }
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false}) async {
     try {
-      final settings = await _api.fetch();
+      final settings = await _api.fetch(forceRefresh: forceRefresh);
       final role = await sl<AuthService>().getRole();
       if (!mounted) return;
       setState(() {
@@ -103,8 +108,9 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
           builder: (_) => const PortfolioEditPage(isCreatorSetup: true)),
     );
     // Their tools appear where their role decides, so the page behind this
-    // has to be told the role moved.
-    if (done == true && mounted) _load();
+    // has to be told the role moved — and told by the server, not by the copy
+    // that was cached before any of this happened.
+    if (done == true && mounted) _load(forceRefresh: true);
   }
 
   Future<void> _deleteAccount() async {

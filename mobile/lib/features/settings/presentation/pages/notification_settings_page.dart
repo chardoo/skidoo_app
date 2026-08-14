@@ -46,6 +46,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   @override
   void initState() {
     super.initState();
+    final cached = NotificationPreferencesApi.cached;
+    if (cached != null) {
+      _prefs = cached;
+      _loading = false;
+    }
     _load();
   }
 

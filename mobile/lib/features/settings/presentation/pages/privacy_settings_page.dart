@@ -34,6 +34,14 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
   @override
   void initState() {
     super.initState();
+    // Already fetched by Account & Security or Face Data — same row, same
+    // session. Drawing it now is what keeps a spinner off a screen that has
+    // nothing left to wait for.
+    final cached = AccountSettingsApi.cached;
+    if (cached != null) {
+      _settings = cached;
+      _loading = false;
+    }
     _load();
   }
 

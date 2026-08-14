@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
+import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -59,6 +61,12 @@ class UserProfilePageState extends State<UserProfilePage>
   bool _loadingLiked = true;
   bool _loadingBookmarks = true;
 
+  /// The revision each grid was fetched at, against the shared signals that
+  /// something else in the app moved a like or a bookmark. Both start below
+  /// zero so the first visit fetches.
+  int _likesLoadedAt = -1;
+  int _savesLoadedAt = -1;
+
   @override
   void initState() {
     super.initState();
@@ -76,11 +84,22 @@ class UserProfilePageState extends State<UserProfilePage>
     super.dispose();
   }
 
-  /// Called by the nav each time the Profile tab is opened, so likes and
-  /// bookmarks made elsewhere in the app are there on arrival.
+  /// Called by the nav each time the Profile tab is opened.
+  ///
+  /// It used to refetch all three every time, which meant opening Profile,
+  /// glancing at it and opening it again ran six requests for two grids that
+  /// had not changed — and rebuilt them, so every tile reloaded and the scroll
+  /// position went back to the top. The grids now only refetch when something
+  /// in the app actually liked or saved something; the header is one cheap
+  /// call and its figures move for reasons this screen cannot see (a new
+  /// follower, a photo found), so it is still asked on every visit.
   Future<void> refresh() {
     _warmAccount();
-    return _load();
+    return Future.wait([
+      _loadHeader(),
+      if (_likesLoadedAt != AppCacheSignals.likes.value) _loadLiked(),
+      if (_savesLoadedAt != AppCacheSignals.saves.value) _loadBookmarks(),
+    ]);
   }
 
   /// Fetch the account while the user is looking at this screen, not after
@@ -128,8 +147,13 @@ class UserProfilePageState extends State<UserProfilePage>
 
   Future<void> _loadLiked() async {
     if (_liked.isEmpty && mounted) setState(() => _loadingLiked = true);
+    // Stamped before the request, not after: a like made while this is in
+    // flight has to leave the grid stale, or it would be marked current on the
+    // strength of a response written before it happened.
+    final at = AppCacheSignals.likes.value;
     try {
       final liked = await _repo.getLikedPhotos();
+      _likesLoadedAt = at;
       if (mounted) setState(() => _liked = liked);
     } catch (e) {
       debugPrint('[UserProfilePage] liked ERROR: $e');
@@ -140,6 +164,7 @@ class UserProfilePageState extends State<UserProfilePage>
 
   Future<void> _loadBookmarks() async {
     if (_bookmarked.isEmpty && mounted) setState(() => _loadingBookmarks = true);
+    final at = AppCacheSignals.saves.value;
     try {
       // The bookmarks endpoint is addressed by client id and only ever serves
       // the caller's own, so it takes the signed-in id rather than a param.
@@ -147,6 +172,7 @@ class UserProfilePageState extends State<UserProfilePage>
       final saved = userId.isEmpty
           ? <ProfilePhoto>[]
           : await _repo.getBookmarkedPhotos(userId);
+      _savesLoadedAt = at;
       if (mounted) setState(() => _bookmarked = saved);
     } catch (e) {
       debugPrint('[UserProfilePage] bookmarks ERROR: $e');
@@ -171,6 +197,11 @@ class UserProfilePageState extends State<UserProfilePage>
       } else {
         await _repo.unlikePhoto(photo.id);
       }
+      // Everything else that shows this like is now wrong; this grid is not,
+      // because the tile came out of it above. Re-stamping is what keeps the
+      // next visit from refetching to be told what it already did.
+      AppCacheSignals.likes.bump();
+      _likesLoadedAt = AppCacheSignals.likes.value;
       unawaited(_loadHeader());
     } catch (e) {
       debugPrint('[UserProfilePage] unlike ERROR: $e');
@@ -189,6 +220,8 @@ class UserProfilePageState extends State<UserProfilePage>
     try {
       final userId = await AuthService().getUserId();
       await _repo.removeBookmark(userId, savedItemId);
+      AppCacheSignals.saves.bump();
+      _savesLoadedAt = AppCacheSignals.saves.value;
       // The figures above the tabs move with what is in them.
       unawaited(_loadHeader());
     } catch (e) {
@@ -235,7 +268,7 @@ class UserProfilePageState extends State<UserProfilePage>
           ? 0
           : photos.indexWhere((p) => p.id == photo.id).clamp(0, photos.length - 1);
 
-      await Navigator.of(context).push(MaterialPageRoute<void>(
+      await Navigator.of(context).push(NoSwipeBackPageRoute<void>(
         builder: (viewerContext) => FoundPhotoViewerPage(
           photos: photos,
           initialIndex: index,
@@ -275,7 +308,7 @@ class UserProfilePageState extends State<UserProfilePage>
       debugPrint('[UserProfilePage] nothing to open for ${photo.id}');
       return;
     }
-    Navigator.of(context).push(MaterialPageRoute<void>(
+    Navigator.of(context).push(NoSwipeBackPageRoute<void>(
       builder: (_) => FoundPhotoViewerPage(
         photos: [for (final p in photos) _asPhoto(p)],
         initialIndex: index,
@@ -459,7 +492,15 @@ class UserProfilePageState extends State<UserProfilePage>
   }
 }
 
-class _Refreshable extends StatelessWidget {
+/// One tab's content: pull-to-refresh, and kept alive across tab switches.
+///
+/// [TabBarView] is a PageView underneath, and a PageView disposes the pages
+/// either side of the one on screen unless they ask not to be. Without the
+/// mixin, moving from Liked to Bookmarked and back rebuilt the grid from
+/// scratch — every tile decoded its image again and the list jumped to the top,
+/// which is what made switching tabs look like a reload even though the photos
+/// had been in memory the whole time.
+class _Refreshable extends StatefulWidget {
   const _Refreshable({
     required this.child,
     required this.onRefresh,
@@ -471,11 +512,21 @@ class _Refreshable extends StatelessWidget {
   final AppThemeExtension ext;
 
   @override
+  State<_Refreshable> createState() => _RefreshableState();
+}
+
+class _RefreshableState extends State<_Refreshable>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return RefreshIndicator(
-      onRefresh: onRefresh,
-      color: ext.accentGold,
-      child: child,
+      onRefresh: widget.onRefresh,
+      color: widget.ext.accentGold,
+      child: widget.child,
     );
   }
 }

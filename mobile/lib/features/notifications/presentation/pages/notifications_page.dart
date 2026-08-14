@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/common/widgets/app_empty_state.dart';
 import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/notifications/data/notification_inbox.dart';
 import 'package:jperg_app/features/notifications/data/notification_service.dart';
 
 /// The notification inbox.
@@ -11,6 +15,11 @@ import 'package:jperg_app/features/notifications/data/notification_service.dart'
 /// also pushed — so this is where someone finds what they swiped away, and the
 /// only place a muted category still shows up. Tapping one goes to the same
 /// destination the push would have.
+///
+/// The rows live in [NotificationInbox] rather than in this state, so leaving
+/// the tab and coming back shows what was there — read marks, paged-in rows and
+/// all — instead of refetching the same list. A push arriving is what makes it
+/// fetch again; pull-to-refresh asks regardless.
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
 
@@ -21,28 +30,44 @@ class NotificationsPage extends StatefulWidget {
 class _NotificationsPageState extends State<NotificationsPage> {
   final _api = NotificationApi();
   final _scroll = ScrollController();
+  final _inbox = NotificationInbox.instance;
 
-  final List<AppNotification> _items = [];
-  bool _loading = true;
+  /// Whether the spinner is up. Only true when there is nothing behind it — a
+  /// refetch over rows already on screen is silent.
+  bool _loading = false;
+
+  /// Whether a first-page request is in the air, spinner or not. Two pushes
+  /// landing together would otherwise start two of them.
+  bool _fetching = false;
+
   bool _loadingMore = false;
-  bool _exhausted = false;
   String? _error;
-  int _page = 1;
 
   static const _pageSize = 20;
+
+  List<AppNotification> get _items => _inbox.items;
+  bool get _exhausted => _inbox.exhausted;
 
   @override
   void initState() {
     super.initState();
     _scroll.addListener(_onScroll);
-    _load();
+    // While this page is up, a push should land in the list rather than wait
+    // for the next visit.
+    AppCacheSignals.notifications.addListener(_onInboxStale);
+    if (!_inbox.isFresh) _load();
   }
 
   @override
   void dispose() {
+    AppCacheSignals.notifications.removeListener(_onInboxStale);
     _scroll.removeListener(_onScroll);
     _scroll.dispose();
     super.dispose();
+  }
+
+  void _onInboxStale() {
+    if (mounted) _load();
   }
 
   void _onScroll() {
@@ -53,39 +78,52 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> _load() async {
+    if (_fetching) return;
+    _fetching = true;
+    final at = AppCacheSignals.notifications.value;
     setState(() {
-      _loading = true;
+      // A spinner only when there is nothing to show. A refetch behind rows
+      // that are already up replaces them when it lands; blanking the list
+      // first is what made the tab look like it reloaded on every visit.
+      _loading = _items.isEmpty;
       _error = null;
     });
+    var loaded = false;
     try {
       final rows = await _api.list(page: 1, limit: _pageSize);
       if (!mounted) return;
+      loaded = true;
       setState(() {
-        _items
-          ..clear()
-          ..addAll(rows);
-        _page = 1;
-        _exhausted = rows.length < _pageSize;
+        _inbox.reset(rows, exhausted: rows.length < _pageSize, at: at);
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Could not load your notifications.';
+        // Rows already held are still worth showing — the error screen is for
+        // when there is nothing behind it.
+        if (_items.isEmpty) _error = 'Could not load your notifications.';
       });
+    } finally {
+      _fetching = false;
+    }
+
+    // A push that landed while the request was in the air had its listener
+    // turned away by the guard above, and nothing else will come back for it.
+    // Only after a success: going again on a failure would spin.
+    if (loaded && mounted && AppCacheSignals.notifications.value != at) {
+      unawaited(_load());
     }
   }
 
   Future<void> _loadMore() async {
     setState(() => _loadingMore = true);
     try {
-      final rows = await _api.list(page: _page + 1, limit: _pageSize);
+      final rows = await _api.list(page: _inbox.page + 1, limit: _pageSize);
       if (!mounted) return;
       setState(() {
-        _items.addAll(rows);
-        _page += 1;
-        _exhausted = rows.length < _pageSize;
+        _inbox.append(rows, exhausted: rows.length < _pageSize);
         _loadingMore = false;
       });
     } catch (_) {
@@ -101,10 +139,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     // before navigating puts a network round trip between the tap and the
     // screen, and the badge correcting itself later is invisible.
     if (!item.isRead) {
-      final index = _items.indexWhere((n) => n.id == item.id);
-      if (index != -1) {
-        setState(() => _items[index] = item.copyWith(isRead: true));
-      }
+      if (_inbox.markRead(item.id)) setState(() {});
       _api.markRead(item.id);
     }
 
@@ -118,11 +153,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Future<void> _markAllRead() async {
-    setState(() {
-      for (var i = 0; i < _items.length; i++) {
-        _items[i] = _items[i].copyWith(isRead: true);
-      }
-    });
+    setState(_inbox.markAllRead);
     await _api.markAllRead();
   }
 

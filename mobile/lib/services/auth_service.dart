@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 
 /// Platform-adaptive credential store.
@@ -253,6 +254,11 @@ class AuthService {
   /// next person to sign in on this phone would receive their notifications.
   Future<void> removeToken() async {
     isAuthenticated.value = false;
+    // Screens hold their last fetch for the session rather than refetching on
+    // every visit. All of it is this account's, so it goes with the token —
+    // otherwise the next person to sign in on this phone opens their inbox and
+    // finds the last one's notifications sitting in it.
+    SessionCache.clearAll();
     await PushNotificationService.instance.logout();
     await Future.wait([
       _delete(_kToken),

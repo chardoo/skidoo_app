@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -11,6 +12,7 @@ import 'package:jperg_app/features/photographers/domain/usecases/photographer_pr
 import 'package:jperg_app/features/photographers/presentation/pages/verify_terms_page.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/creator_steps.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/portfolio_form.dart';
+import 'package:jperg_app/features/settings/data/account_settings_api.dart';
 import 'package:jperg_app/models/photographer/photographer_sample.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -41,6 +43,25 @@ class PortfolioEditPage extends StatefulWidget {
   State<PortfolioEditPage> createState() => _PortfolioEditPageState();
 }
 
+/// The profile and samples the last load fetched.
+///
+/// Portfolio is pushed fresh from Settings and from Account every time, and it
+/// opens on two requests — profile and samples — behind a full-screen spinner.
+/// Neither moves unless this screen itself saves, so the second and every later
+/// visit was a wait for an answer the app already had. Saving replaces it;
+/// anything else that can change a portfolio bumps
+/// [AppCacheSignals.portfolio].
+class _PortfolioSnapshot {
+  const _PortfolioSnapshot(this.profile, this.samples);
+  final Map<String, dynamic> profile;
+  final List<PhotographerSample> samples;
+}
+
+final _portfolioCache = SessionCache<_PortfolioSnapshot>(
+  'portfolio',
+  signal: AppCacheSignals.portfolio,
+);
+
 class _PortfolioEditPageState extends State<PortfolioEditPage> {
   bool _loading = true;
   bool _saving = false;
@@ -65,12 +86,21 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
   Future<void> _load() async {
     try {
       final userId = await sl<AuthService>().getUserId();
-      final results = await Future.wait([
-        sl<GetPhotographerProfileUseCase>().call(userId),
-        sl<GetPhotographerSamplesUseCase>().call(userId),
-      ]);
-      final profile = results[0] as Map<String, dynamic>;
-      final samples = results[1] as List<PhotographerSample>;
+      final Map<String, dynamic> profile;
+      final List<PhotographerSample> samples;
+      final cached = _portfolioCache.isFresh ? _portfolioCache.value : null;
+      if (cached != null) {
+        profile = cached.profile;
+        samples = cached.samples;
+      } else {
+        final results = await Future.wait([
+          sl<GetPhotographerProfileUseCase>().call(userId),
+          sl<GetPhotographerSamplesUseCase>().call(userId),
+        ]);
+        profile = results[0] as Map<String, dynamic>;
+        samples = results[1] as List<PhotographerSample>;
+        _portfolioCache.save(_PortfolioSnapshot(profile, samples));
+      }
       if (!mounted) return;
       setState(() {
         _userId = userId;
@@ -139,6 +169,12 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
           image: data.newStudioImage!,
         );
       }
+      // Every one of the calls above moved something the cached snapshot
+      // describes, and the uploads answer with URLs this screen never sees —
+      // so it is dropped rather than patched, and the next open refetches.
+      // Becoming a creator also flips the role, which Account & Security reads.
+      AppCacheSignals.portfolio.bump();
+      AccountSettingsApi.invalidate();
       if (!mounted) return;
       if (widget.isCreatorSetup || _isFirstTimeSetup) {
         // pushReplacement, so Back from verification does not land on a form

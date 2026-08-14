@@ -4,6 +4,7 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_background_service.dart';
@@ -509,6 +510,10 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     );
     emit(state.copyWith(events: optimistic));
 
+    // The profile's Liked tab holds its grid rather than refetching on every
+    // visit, so this is what tells it an event joined or left the list.
+    AppCacheSignals.likes.bump();
+
     // On web, WS reactions are not supported — keep the optimistic update only.
     if (kIsWeb) return;
 
@@ -650,6 +655,10 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     }
     emit(state.copyWith(
         savedEventIds: newSavedIds, savedItemRecordIds: newRecordIds));
+
+    // Same for the Bookmarked tab and the Saved screen — neither refetches on
+    // its own any more.
+    AppCacheSignals.saves.bump();
 
     try {
       if (isSaved) {
