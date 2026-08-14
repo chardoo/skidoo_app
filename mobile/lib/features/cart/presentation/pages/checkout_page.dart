@@ -24,6 +24,19 @@ class CheckoutPage extends StatefulWidget {
 class _CheckoutPageState extends State<CheckoutPage> {
   WebViewController? _controller;
 
+  /// Paystack is done with this person and is sending them back.
+  ///
+  /// `trxref` is on every post-payment redirect whatever the callback URL is,
+  /// which is the part worth matching: the URL itself is account-wide config
+  /// shared with the ads service, and when it pointed at a POST-only webhook
+  /// this WebView loaded the 405 and showed `{"detail":"Method Not Allowed"}`
+  /// as the last thing anyone saw of their purchase. The older two patterns
+  /// stay — a callback URL still set to one of them keeps working.
+  static bool _isReturn(String url) =>
+      url.contains('trxref=') ||
+      url.contains('https://example.com/richCode/') ||
+      url.contains('/payment/success');
+
   @override
   void initState() {
     super.initState();
@@ -41,12 +54,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
           }
         },
         onNavigationRequest: (request) {
-          if (request.url.contains('https://example.com/richCode/') ||
-              request.url.contains('/payment/success')) {
+          if (_isReturn(request.url)) {
             if (mounted) {
               context.read<CartBloc>().add(const CartPaymentCompleted());
               Navigator.of(context).pop();
             }
+            // Prevented rather than followed: whatever is at the callback URL,
+            // the purchase is finished and the app has somewhere better to be.
             return NavigationDecision.prevent;
           }
           return NavigationDecision.navigate;
