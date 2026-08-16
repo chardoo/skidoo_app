@@ -80,45 +80,64 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
         // dialog thrown up over a half-built screen reads as a glitch, and
         // gets dismissed reflexively.
         await Future.delayed(PushNotificationService.permissionPromptDelay);
-        await PushNotificationService.instance.requestPermission();
+        // Undecided only — signing in again after declining should not reopen
+        // the system settings page, which is what requestPermission does once
+        // the OS will no longer show its own dialog.
+        await PushNotificationService.instance.promptIfUndecided();
       }());
     }
 
     // E2EE key management is mobile-only — chat/messaging is not used on web.
+    //
+    // Started here and deliberately not awaited. Signing in is not waiting on
+    // chat crypto: on a device with no keys this generates an identity key, a
+    // signed prekey and 100 one-time prekeys — each written to the keystore on
+    // its own — and uploads them, all before the home screen could appear. The
+    // work still begins the moment the session exists, which is what "publish
+    // immediately" was asking for, and a DM opened before it lands republishes
+    // on open, which is the path that already covers a failure here.
     if (!kIsWeb) {
-      // Server says this user has no bundle yet (new install, key wipe, or
-      // account on a different device). Publish immediately so every DM is
-      // encrypted from the very first message — not just after opening a DM.
-      if (user.keyBundlePublished && await _e2ee.hasKeys()) {
-        // Bundle already exists on both server and device — nothing to publish.
-        _e2ee.markBundlePublished();
-      } else {
-        try {
-          final PublishableKeyBundle bundle;
-          if (!await _e2ee.hasKeys()) {
-            bundle = await _e2ee.generateKeys();
-            // generates + stores 100 OTPKs
-          } else {
-            bundle =
-                (await _e2ee.currentBundle())!; // 0 OTPKs (top-up separately)
-          }
-          await _keyDs.publishBundle(bundle);
-          if (bundle.oneTimePreKeys.isEmpty) {
-            final otpks = await _e2ee.generateOtpks(100);
-            await _keyDs.topUpPrekeys(otpks);
-          }
-          _e2ee.markBundlePublished();
-          debugPrint(
-              '[E2EE] Published bundle on login (${bundle.oneTimePreKeys.length} OTPKs in bundle)');
-        } catch (e) {
-          debugPrint(
-              '[E2EE] Failed to publish bundle on login (will retry on DM open): $e');
-        }
-      }
-
-      // Phase 2 + SPK rotation — fire-and-forget so login is never blocked.
-      unawaited(_maintainKeysAfterLogin());
+      unawaited(_bringUpKeys(user));
     }
+  }
+
+  /// Publishes this account's key bundle if the server hasn't got one, then
+  /// runs the periodic key upkeep. Off the sign-in path — see [establishSession].
+  Future<void> _bringUpKeys(LoginResponseObject user) async {
+    // Server says this user has no bundle yet (new install, key wipe, or
+    // account on a different device). Publish immediately so every DM is
+    // encrypted from the very first message — not just after opening a DM.
+    if (user.keyBundlePublished && await _e2ee.hasKeys()) {
+      // Bundle already exists on both server and device — nothing to publish.
+      _e2ee.markBundlePublished();
+    } else {
+      try {
+        final PublishableKeyBundle bundle;
+        if (!await _e2ee.hasKeys()) {
+          bundle = await _e2ee.generateKeys();
+          // generates + stores 100 OTPKs
+        } else {
+          bundle =
+              (await _e2ee.currentBundle())!; // 0 OTPKs (top-up separately)
+        }
+        await _keyDs.publishBundle(bundle);
+        if (bundle.oneTimePreKeys.isEmpty) {
+          final otpks = await _e2ee.generateOtpks(100);
+          await _keyDs.topUpPrekeys(otpks);
+        }
+        _e2ee.markBundlePublished();
+        debugPrint(
+            '[E2EE] Published bundle on login (${bundle.oneTimePreKeys.length} OTPKs in bundle)');
+      } catch (e) {
+        debugPrint(
+            '[E2EE] Failed to publish bundle on login (will retry on DM open): $e');
+      }
+    }
+
+    // Phase 2 + SPK rotation, after the publish above rather than alongside it:
+    // both of them generate and upload prekeys, and racing them would have the
+    // two topping up against each other.
+    await _maintainKeysAfterLogin();
   }
 
   /// Phase 2 (OTPK replenishment) and SPK rotation, run on every login/app

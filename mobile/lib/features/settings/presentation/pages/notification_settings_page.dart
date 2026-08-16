@@ -11,6 +11,7 @@ import 'package:jperg_app/features/notifications/data/notification_service.dart'
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/services/notification_prefs_service.dart';
+import 'package:jperg_app/services/push_notification_service.dart';
 
 /// What may interrupt you, and what may not.
 ///
@@ -63,6 +64,13 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     if (!mounted) return;
     setState(() => _pushOn = !muted);
 
+    // ...but the preference is only half of it. The OS has the final say, and
+    // a switch reading "on" for an app the system will not let post anything
+    // is the one state where nothing arrives and nothing explains why. Asked
+    // after the first paint so the switch does not flicker on a cold open.
+    final allowed = await PushNotificationService.instance.hasPermission();
+    if (mounted && !allowed && _pushOn) setState(() => _pushOn = false);
+
     try {
       final prefs = await _api.fetch();
       if (!mounted) return;
@@ -101,6 +109,27 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   }
 
   Future<void> _setPush(bool on) async {
+    if (on) {
+      // Ask the OS before storing anything. Turning this on used to write a
+      // preference and stop there, so someone who had never been shown the
+      // permission dialog — or had declined it once — flipped the switch, saw
+      // it stay on, and never received a notification again.
+      final allowed = await PushNotificationService.instance.ensurePermission();
+      if (!mounted) return;
+      if (!allowed) {
+        // The switch stays off because the system says so. requestPermission
+        // opens system settings when the OS will no longer show its dialog, so
+        // there is somewhere to go — the message says where.
+        setState(() => _pushOn = false);
+        AppSnackBar.error(
+          context,
+          'Notifications are turned off for Jperg in your device settings. '
+          'Allow them there to switch this on.',
+        );
+        return;
+      }
+    }
+
     // Local, and applied immediately: there is no request to fail and nothing
     // to reconcile with another device.
     await sl<NotificationPrefsService>().setMuted(!on);

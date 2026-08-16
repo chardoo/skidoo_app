@@ -1,5 +1,9 @@
+import 'package:jperg_app/services/push_permission.dart';
+
 import 'push_notification_service_stub.dart'
     if (dart.library.io) 'push_notification_service_io.dart' as impl;
+
+export 'package:jperg_app/services/push_permission.dart';
 
 /// OneSignal push notifications.
 ///
@@ -33,6 +37,40 @@ class PushNotificationService {
   ///
   /// Returns false on web/desktop, on failure, or when the user declines.
   Future<bool> requestPermission() => impl.requestPushPermission();
+
+  /// Whether the OS is currently letting this app post notifications.
+  ///
+  /// The app's own on/off switches are a stored preference and nothing more —
+  /// they were happy to read "on" for someone the OS had never asked, which is
+  /// the one state where no notification can arrive and nothing says so.
+  Future<bool> hasPermission() => impl.hasPushPermission();
+
+  /// The full answer, including whether the question has been put at all.
+  /// See [PushPermission] for why the third state matters.
+  Future<PushPermission> permissionState() => impl.pushPermissionState();
+
+  /// Asks once, if there is anything to ask.
+  ///
+  /// For the unprompted moments — app launch, just after signing in — where the
+  /// dialog is offered rather than requested. Granted needs nothing; denied is
+  /// a decision already made, and re-requesting it is not a no-op:
+  /// [requestPermission] sends the person to the system settings page once the
+  /// OS is done showing its own dialog, which every launch is far too often.
+  Future<void> promptIfUndecided() async {
+    if (await permissionState() != PushPermission.undecided) return;
+    await requestPermission();
+  }
+
+  /// Turns notifications on for real: grants first, preference second.
+  ///
+  /// Returns whether the OS ended up allowing them, so a switch can refuse to
+  /// move rather than claim something the system will not honour. Already
+  /// granted is a true with no dialog — iOS only ever shows it once, and
+  /// [requestPermission] falls back to opening system settings after that.
+  Future<bool> ensurePermission() async {
+    if (await hasPermission()) return true;
+    return requestPermission();
+  }
 
   /// Attaches this device to [userId] so backend sends addressed to that
   /// external id reach it. [userId] must be the `id` from the login response.

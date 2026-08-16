@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -179,7 +180,7 @@ class _SearchViewState extends State<_SearchView> {
   void _openPhoto(List<Photo> photos, int index) {
     _focusNode.unfocus();
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
+      NoSwipeBackPageRoute<void>(
         builder: (_) =>
             FoundPhotoViewerPage(photos: photos, initialIndex: index),
       ),

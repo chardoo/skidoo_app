@@ -15,7 +15,7 @@ import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.
         WsMessageEditedEvent, WsParticipantKeyAvailable,
         WsParticipantRemovedEvent, WsReadReceiptEvent, WsRoomDeletedEvent,
         WsRoomSettingsUpdatedEvent, WsSenderKeyDistributionEvent,
-        WsUserJoinedEvent;
+        WsTypingEvent, WsUserJoinedEvent;
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
@@ -41,6 +41,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   final GrantAdminUseCase _grantAdmin;
   final RevokeAdminUseCase _revokeAdmin;
   final UpdateRoomSettingsUseCase _updateRoomSettings;
+  final SetRoomMutedUseCase _setRoomMuted;
   final KickParticipantUseCase _kickParticipant;
   final LeaveRoomUseCase _leaveRoom;
   final DeleteRoomUseCase _deleteRoom;
@@ -93,6 +94,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   StreamSubscription<WsSenderKeyDistributionEvent>? _wsSenderKeyDistSub;
   StreamSubscription? _wsParticipantLeftSub;
   StreamSubscription<WsReadReceiptEvent>? _wsReadReceiptSub;
+  StreamSubscription<WsTypingEvent>? _wsTypingSub;
   StreamSubscription<WsChatErrorEvent>? _wsErrorSub;
   // Waits for ChatBackgroundService to signal the WS is (re)connected.
   StreamSubscription<bool>? _wsConnectionSub;
@@ -116,6 +118,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     required GrantAdminUseCase grantAdmin,
     required RevokeAdminUseCase revokeAdmin,
     required UpdateRoomSettingsUseCase updateRoomSettings,
+    required SetRoomMutedUseCase setRoomMuted,
     required KickParticipantUseCase kickParticipant,
     required LeaveRoomUseCase leaveRoom,
     required DeleteRoomUseCase deleteRoom,
@@ -137,6 +140,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         _grantAdmin = grantAdmin,
         _revokeAdmin = revokeAdmin,
         _updateRoomSettings = updateRoomSettings,
+        _setRoomMuted = setRoomMuted,
         _kickParticipant = kickParticipant,
         _leaveRoom = leaveRoom,
         _deleteRoom = deleteRoom,
@@ -189,6 +193,10 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_GroupSenderKeyReceived>(_onGroupSenderKeyReceived);
     on<_ParticipantLeft>(_onParticipantLeft);
     on<_ReadReceiptReceived>(_onReadReceiptReceived);
+    on<ChatRoomTypingChanged>(_onTypingChanged);
+    on<_TypingReceived>(_onTypingReceived);
+    on<_TypingExpired>(_onTypingExpired);
+    on<ChatRoomMuteToggled>(_onMuteToggled);
   }
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -282,6 +290,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
       // E2EE (key exchange + encryption) is not supported on web — messages are
       // sent and received as plaintext in the browser.
+      //
+      // None of this is gated on ChatConfig.e2eeEnabled. Publishing our bundle
+      // and keeping one-time prekeys stocked is what lets *other* people encrypt
+      // to *us* — so it has to keep working while clients on older builds, which
+      // still encrypt, are out there. Turning it off would mean their messages
+      // arrived undecryptable. Only our own outgoing encryption is switched off.
       if (!kIsWeb) {
         // Publish bundle in the background only if login hasn't already done so.
         // _e2ee.bundlePublished is a singleton flag set by LoginUseCase, so it
@@ -328,6 +342,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       final updatedAmIAdmin = updatedRoom?.participants
               .any((p) => p.userId == _myUserId && p.isAdmin) ??
           state.amIAdmin;
+      // Mute lives on our own participant row, so it arrives with the room.
+      final updatedIsMuted =
+          updatedRoom?.isMutedFor(_myUserId) ?? state.isMuted;
 
       emit(state.copyWith(
         messages: merged,
@@ -336,6 +353,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         clearError: true,
         room: updatedRoom,
         amIAdmin: updatedAmIAdmin,
+        isMuted: updatedIsMuted,
         // pendingShareUrl is preserved via copyWith (not cleared here)
       ));
 
@@ -430,6 +448,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsSenderKeyDistSub?.cancel();
     _wsParticipantLeftSub?.cancel();
     _wsReadReceiptSub?.cancel();
+    _wsTypingSub?.cancel();
     _wsErrorSub?.cancel();
     _wsMsgSub = null;
     _wsLikeSub = null;
@@ -448,6 +467,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsSenderKeyDistSub = null;
     _wsParticipantLeftSub = null;
     _wsReadReceiptSub = null;
+    _wsTypingSub = null;
     _wsErrorSub = null;
   }
 
@@ -598,6 +618,18 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             readerId: event.readerId,
             upToMessageId: event.upToMessageId,
             messageId: event.messageId,
+          ));
+        }
+      },
+    );
+
+    _wsTypingSub = _ws.typingEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId && event.userId != _myUserId) {
+          add(_TypingReceived(
+            userId: event.userId,
+            userName: event.userName,
+            isTyping: event.isTyping,
           ));
         }
       },
@@ -899,14 +931,20 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     final hasText = content != null && content.isNotEmpty;
 
     // Send plaintext when:
+    //   • Encryption is switched off (ChatConfig.e2eeEnabled), OR
     //   • Running on web (encryption never supported in the browser), OR
     //   • A web participant is present in this room (mobile must downgrade so
     //     the web client can read the messages).
+    //
+    // The flag joins the two conditions that were already here rather than
+    // getting its own branch: "send it in the clear" is one behaviour with
+    // several reasons, and everything below is the encrypted path.
     final roomId = _currentRoomId;
     final hasWebParticipant =
         !kIsWeb && roomId != null && !_bgService.canEncryptRoom(roomId);
-    if (kIsWeb || hasWebParticipant) {
-      debugPrint('[E2EE] send plaintext — kIsWeb=$kIsWeb hasWebParticipant=$hasWebParticipant');
+    if (!ChatConfig.e2eeEnabled || kIsWeb || hasWebParticipant) {
+      debugPrint('[E2EE] send plaintext — e2eeEnabled=${ChatConfig.e2eeEnabled} '
+          'kIsWeb=$kIsWeb hasWebParticipant=$hasWebParticipant');
       _ws.send(content, imageUrl: imageUrl, isVideo: isVideo,
           replyToId: replyToId, roomId: roomId);
       return;
@@ -2162,6 +2200,92 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     emit(state.copyWith(messages: updated));
   }
 
+  // ── Typing ────────────────────────────────────────────────────────────────
+
+  /// How long an indicator survives without a refresh. Longer than
+  /// [_typingSendInterval] so a steady typist never flickers.
+  static const _typingTimeout = Duration(seconds: 6);
+
+  /// Minimum gap between outgoing "still typing" frames. The composer raises
+  /// [ChatRoomTypingChanged] on every keystroke; this is what stops that
+  /// becoming a frame per keystroke.
+  static const _typingSendInterval = Duration(seconds: 3);
+
+  DateTime? _lastTypingSentAt;
+  final Map<String, Timer> _typingExpiryTimers = {};
+
+  void _onTypingChanged(ChatRoomTypingChanged event, Emitter<ChatRoomState> emit) {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+
+    if (!event.isTyping) {
+      // Always sent, never throttled: this is the frame that clears the
+      // indicator on the other end, so dropping it strands it until timeout.
+      _lastTypingSentAt = null;
+      _ws.sendTyping(roomId, isTyping: false);
+      return;
+    }
+
+    final now = DateTime.now();
+    final last = _lastTypingSentAt;
+    if (last != null && now.difference(last) < _typingSendInterval) return;
+    _lastTypingSentAt = now;
+    _ws.sendTyping(roomId, isTyping: true);
+  }
+
+  void _onTypingReceived(_TypingReceived event, Emitter<ChatRoomState> emit) {
+    final updated = Map<String, String>.from(state.typingUsers);
+    _typingExpiryTimers.remove(event.userId)?.cancel();
+
+    if (event.isTyping) {
+      updated[event.userId] = event.userName;
+      // Refreshed on each frame from this user, so a continuous typist stays
+      // shown while someone who vanishes mid-word disappears on their own.
+      _typingExpiryTimers[event.userId] = Timer(_typingTimeout, () {
+        if (!isClosed) add(_TypingExpired(event.userId));
+      });
+    } else {
+      updated.remove(event.userId);
+    }
+
+    emit(state.copyWith(typingUsers: updated));
+  }
+
+  void _onTypingExpired(_TypingExpired event, Emitter<ChatRoomState> emit) {
+    _typingExpiryTimers.remove(event.userId)?.cancel();
+    if (!state.typingUsers.containsKey(event.userId)) return;
+    emit(state.copyWith(
+      typingUsers: Map<String, String>.from(state.typingUsers)
+        ..remove(event.userId),
+    ));
+  }
+
+  // ── Mute ──────────────────────────────────────────────────────────────────
+
+  Future<void> _onMuteToggled(
+    ChatRoomMuteToggled event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+
+    // Optimistic: the switch should move under the thumb, not after a
+    // round-trip. Reverted below if the server disagrees.
+    emit(state.copyWith(isMuted: event.muted));
+    try {
+      final applied = await _setRoomMuted(roomId, event.muted);
+      if (!isClosed && applied != event.muted) {
+        emit(state.copyWith(isMuted: applied));
+      }
+    } catch (_) {
+      if (isClosed) return;
+      emit(state.copyWith(
+        isMuted: !event.muted,
+        errorMessage: 'Could not change notifications for this chat.',
+      ));
+    }
+  }
+
   // ── Group E2EE helpers ────────────────────────────────────────────────────
 
   /// On group room join: fetch all members' sender keys, then distribute ours.
@@ -2186,6 +2310,15 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           await _redecryptGroupMessages(emit, entry.userId, key);
         }
       }
+
+      // Distributing our own sender key is what lets other people decrypt what
+      // *we* send. With encryption off we send plaintext, so there is nothing
+      // for them to decrypt and this is pure round-trips on every group open.
+      //
+      // Fetching and storing peers' keys above is a different matter and always
+      // runs: it decrypts history, and messages from clients still on a build
+      // with encryption enabled.
+      if (!ChatConfig.e2eeEnabled) return;
 
       // Distribute our own sender key. Generate a new one if we don't have one.
       var myKey = await _e2ee.loadGroupSenderKey(roomId);
@@ -2491,6 +2624,16 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _otpkPollTimer?.cancel();
     _reconcileDebounce?.cancel();
     _wsConnectionSub?.cancel();
+    for (final timer in _typingExpiryTimers.values) {
+      timer.cancel();
+    }
+    _typingExpiryTimers.clear();
+    // Tell the room we stopped: closing the page is leaving the composer, and
+    // without this our indicator sits on everyone else's screen until it times
+    // out. The socket outlives this bloc, so it will actually be delivered.
+    if (_currentRoomId != null && _lastTypingSentAt != null) {
+      _ws.sendTyping(_currentRoomId!, isTyping: false);
+    }
     _cancelWsSubscriptions();
     // Leaving the room: we are no longer reading it, so messages arriving from
     // here on should notify. The socket stays open (owned by

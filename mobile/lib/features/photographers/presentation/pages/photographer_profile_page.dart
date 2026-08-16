@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/utils/image_pick.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
-import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
@@ -166,7 +165,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
     }
 
     await Navigator.of(context).push(
-      CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
+      MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
     );
 
     if (context.mounted) roomsBloc?.add(const ChatRoomsLoadRequested());

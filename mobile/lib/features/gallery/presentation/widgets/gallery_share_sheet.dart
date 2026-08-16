@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/search_field.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
@@ -269,7 +268,7 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
     if (!mounted) return;
     Navigator.of(context).pop();
     Navigator.of(context).push(
-      CupertinoPageRoute(
+      MaterialPageRoute(
         builder: (_) => ChatRoomPage(room: room, shareUrl: widget.imageUrl),
       ),
     );

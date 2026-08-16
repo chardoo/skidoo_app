@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
@@ -258,13 +257,13 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
 
   void _openRoom(BuildContext context, ChatRoom room) {
     Navigator.of(context).push(
-      CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
+      MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
     );
   }
 
   void _openGlobalChat(BuildContext context) {
     Navigator.of(context).push(
-      CupertinoPageRoute(builder: (_) => const ChatRoomPage.global()),
+      MaterialPageRoute(builder: (_) => const ChatRoomPage.global()),
     );
   }
 
@@ -275,7 +274,7 @@ class _ChatRoomsViewState extends State<_ChatRoomsView> {
     if (result != null && context.mounted) {
       context.read<ChatRoomsBloc>().add(const ChatRoomsLoadRequested());
       Navigator.of(context).push(
-        CupertinoPageRoute(builder: (_) => ChatRoomPage(room: result)),
+        MaterialPageRoute(builder: (_) => ChatRoomPage(room: result)),
       );
     }
   }

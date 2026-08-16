@@ -1,5 +1,6 @@
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/animations/app_animations.dart';
@@ -13,21 +14,35 @@ class Styles {
   /// never depends on a CDN fetch to render its own typeface.
   static const String fontFamily = 'Poppins';
 
-  // Smooth fade + slide page transitions on every platform (mobile + web).
+  // Touch platforms get the slide-in transition that carries the edge
+  // swipe-back gesture; desktop, which has no such gesture, keeps the fade.
   static const PageTransitionsTheme _pageTransitions = PageTransitionsTheme(
     builders: {
       TargetPlatform.android: AppPageTransitionsBuilder(),
       TargetPlatform.iOS: AppPageTransitionsBuilder(),
-      TargetPlatform.macOS: AppPageTransitionsBuilder(),
-      TargetPlatform.windows: AppPageTransitionsBuilder(),
-      TargetPlatform.linux: AppPageTransitionsBuilder(),
       TargetPlatform.fuchsia: AppPageTransitionsBuilder(),
+      TargetPlatform.macOS: AppFadePageTransitionsBuilder(),
+      TargetPlatform.windows: AppFadePageTransitionsBuilder(),
+      TargetPlatform.linux: AppFadePageTransitionsBuilder(),
     },
   );
 
   static ThemeData themeData(bool isDarkTheme) {
     return ThemeData(
       pageTransitionsTheme: _pageTransitions,
+      // The back arrow an AppBar draws for itself when a screen doesn't pass
+      // `leading` resolves through here. Without it that implicit arrow is
+      // Material's `arrow_back` on Android and a Cupertino chevron on iOS —
+      // neither of which is the [AppBackButton] glyph the ~50 screens that do
+      // pass `leading` are drawing. Roughly a third of the app's screens (all
+      // of settings, notifications, cart, the search detail pages) rely on the
+      // implicit button, so the app shipped two back arrows side by side.
+      actionIconTheme: ActionIconThemeData(
+        backButtonIconBuilder: (context) => Icon(
+          AppBackButton.icon,
+          size: AppBackButton.defaultSize.sp,
+        ),
+      ),
       dataTableTheme: DataTableThemeData(
         decoration: BoxDecoration(
             color: isDarkTheme ? Colors.black : Colors.white),

@@ -11,6 +11,7 @@ import 'package:jperg_app/features/user_profile/domain/repositories/user_profile
 import 'package:jperg_app/features/user_profile/domain/usecases/get_profile_usecase.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/services/notification_prefs_service.dart';
+import 'package:jperg_app/services/push_notification_service.dart';
 
 part 'user_profile_event.dart';
 part 'user_profile_state.dart';
@@ -104,6 +105,23 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
 
   Future<void> _onMuteToggled(
       NotificationsMuteToggled event, Emitter<UserProfileState> emit) async {
+    // Un-muting is someone asking for notifications, so the OS has to be asked
+    // too — storing the preference alone left the switch reading "on" for an
+    // app the system would not let post anything. Muting needs no permission.
+    if (!event.isMuted) {
+      final allowed = await PushNotificationService.instance.ensurePermission();
+      if (!allowed) {
+        // Left muted, because the system says so. The dialog has either just
+        // been declined or was already spent, in which case requestPermission
+        // opened system settings instead.
+        emit(state.copyWith(
+          isMuted: true,
+          errorMessage: 'Notifications are turned off for Jperg in your device '
+              'settings. Allow them there to switch this on.',
+        ));
+        return;
+      }
+    }
     await _notifPrefs.setMuted(event.isMuted);
     emit(state.copyWith(isMuted: event.isMuted));
   }

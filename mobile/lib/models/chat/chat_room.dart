@@ -72,8 +72,21 @@ class ChatParticipant {
   /// Display name, if provided by the server.
   final String? userName;
 
+  /// Avatar URL, resolved server-side from the user record. Null when the
+  /// account has no photo — callers fall back to the name's initial.
+  final String? userImage;
+
   /// True when this participant has admin privileges in a group room.
   final bool isAdmin;
+
+  /// True when *this* participant has muted the room. Only ever meaningful for
+  /// the signed-in user's own row; everyone else's is nobody's business.
+  final bool muted;
+
+  /// Who sent the invite, for pending rows. Null for anyone who joined without
+  /// one — creators, and members of public rooms.
+  final String? invitedBy;
+  final String? invitedByName;
 
   const ChatParticipant({
     required this.userId,
@@ -81,7 +94,11 @@ class ChatParticipant {
     required this.joinedAt,
     this.status = 'active',
     this.userName,
+    this.userImage,
     this.isAdmin = false,
+    this.muted = false,
+    this.invitedBy,
+    this.invitedByName,
   });
 
   bool get isPending => status == 'pending';
@@ -102,7 +119,11 @@ class ChatParticipant {
       joinedAt: DateTime.parse(json['joined_at'] as String),
       status: (json['status'] as String?) ?? 'active',
       userName: json['user_name'] as String?,
+      userImage: json['user_image'] as String?,
       isAdmin: (json['is_admin'] as bool?) ?? false,
+      muted: (json['muted'] as bool?) ?? false,
+      invitedBy: json['invited_by'] as String?,
+      invitedByName: json['invited_by_name'] as String?,
     );
   }
 
@@ -112,7 +133,11 @@ class ChatParticipant {
         'joined_at': joinedAt.toIso8601String(),
         'status': status,
         if (userName != null) 'user_name': userName,
+        if (userImage != null) 'user_image': userImage,
         'is_admin': isAdmin,
+        'muted': muted,
+        if (invitedBy != null) 'invited_by': invitedBy,
+        if (invitedByName != null) 'invited_by_name': invitedByName,
       };
 
   ChatParticipant copyWith({
@@ -121,7 +146,11 @@ class ChatParticipant {
     DateTime? joinedAt,
     String? status,
     String? userName,
+    String? userImage,
     bool? isAdmin,
+    bool? muted,
+    String? invitedBy,
+    String? invitedByName,
   }) =>
       ChatParticipant(
         userId: userId ?? this.userId,
@@ -129,8 +158,66 @@ class ChatParticipant {
         joinedAt: joinedAt ?? this.joinedAt,
         status: status ?? this.status,
         userName: userName ?? this.userName,
+        userImage: userImage ?? this.userImage,
         isAdmin: isAdmin ?? this.isAdmin,
+        muted: muted ?? this.muted,
+        invitedBy: invitedBy ?? this.invitedBy,
+        invitedByName: invitedByName ?? this.invitedByName,
       );
+}
+
+/// The preview line under a room name in the inbox.
+///
+/// Comes from the server with the room list, so the tile can be drawn before
+/// any of the room's messages have been fetched or cached locally.
+class LastMessage {
+  final String id;
+  final String senderId;
+  final String senderName;
+
+  /// Null for image-only messages, system notices, and ciphertext — see
+  /// [hasImage], [systemType] and [isEncrypted] for what to show instead.
+  final String? content;
+  final bool hasImage;
+  final bool isEncrypted;
+
+  /// Non-null when this is a system notice rather than something someone typed.
+  /// See [ChatMessage.systemType].
+  final String? systemType;
+  final DateTime createdAt;
+
+  const LastMessage({
+    required this.id,
+    required this.senderId,
+    required this.senderName,
+    this.content,
+    this.hasImage = false,
+    this.isEncrypted = false,
+    this.systemType,
+    required this.createdAt,
+  });
+
+  factory LastMessage.fromJson(Map<String, dynamic> json) => LastMessage(
+        id: json['id'] as String,
+        senderId: (json['sender_id'] as String?) ?? '',
+        senderName: (json['sender_name'] as String?) ?? '',
+        content: json['content'] as String?,
+        hasImage: (json['has_image'] as bool?) ?? false,
+        isEncrypted: (json['is_encrypted'] as bool?) ?? false,
+        systemType: json['system_type'] as String?,
+        createdAt: DateTime.parse(json['created_at'] as String),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'sender_id': senderId,
+        'sender_name': senderName,
+        'content': content,
+        'has_image': hasImage,
+        'is_encrypted': isEncrypted,
+        'system_type': systemType,
+        'created_at': createdAt.toIso8601String(),
+      };
 }
 
 class ChatRoom {
@@ -138,6 +225,9 @@ class ChatRoom {
   final RoomType type;
   final String? eventId;
   final String? name;
+
+  /// Group photo. Null for DMs, which show the other person's avatar instead.
+  final String? imageUrl;
   final DateTime createdAt;
   final List<ChatParticipant> participants;
   /// Per-user E2EE bundle availability, keyed by userId.
@@ -153,16 +243,23 @@ class ChatRoom {
   /// survives a page refresh. Defaults to 0 when the server omits it.
   final int unreadCount;
 
+  /// The preview line for the inbox tile. Null for a room nobody has written
+  /// in, and on responses other than the room list — the per-room endpoints
+  /// don't pay for it, since no screen that uses them draws a preview.
+  final LastMessage? lastMessage;
+
   const ChatRoom({
     required this.id,
     required this.type,
     this.eventId,
     this.name,
+    this.imageUrl,
     required this.createdAt,
     this.participants = const [],
     this.e2eStatus = const {},
     this.adminOnly = false,
     this.unreadCount = 0,
+    this.lastMessage,
   });
 
   /// Human-readable display name.
@@ -209,6 +306,47 @@ class ChatRoom {
         (p) => p.userRole == 'admin' || p.userRole == 'superAdmin',
       );
 
+  /// The avatar for this room: the group photo, or in a DM the other person's.
+  /// Null when there is none to show and the caller should fall back to an
+  /// initial or a type icon.
+  String? avatarFor(String myId) {
+    if (type == RoomType.group) return imageUrl;
+    if (type != RoomType.direct || myId.isEmpty) return imageUrl;
+    return participants
+        .where((p) => p.userId != myId)
+        .map((p) => p.userImage)
+        .firstWhere((image) => image != null && image.isNotEmpty,
+            orElse: () => null);
+  }
+
+  /// The signed-in user's own participant row, or null if they aren't in the
+  /// room (a public room they're only reading).
+  ChatParticipant? participantFor(String myId) =>
+      participants.where((p) => p.userId == myId).firstOrNull;
+
+  /// Whether the signed-in user has muted this room.
+  bool isMutedFor(String myId) => participantFor(myId)?.muted ?? false;
+
+  /// Who invited [myId], for the pending-invite card. Null when they weren't
+  /// invited, or when the invite predates the server recording it.
+  String? inviterNameFor(String myId) {
+    final me = participantFor(myId);
+    if (me == null || !me.isPending) return null;
+    final name = me.invitedByName;
+    return (name != null && name.trim().isNotEmpty) ? name.trim() : null;
+  }
+
+  /// Members other than [myId], active ones first — the order the group header
+  /// and the member list both want.
+  List<ChatParticipant> othersFor(String myId) => [
+        for (final p in participants)
+          if (p.userId != myId) p,
+      ]..sort((a, b) {
+          if (a.isPending != b.isPending) return a.isPending ? 1 : -1;
+          if (a.isAdmin != b.isAdmin) return a.isAdmin ? -1 : 1;
+          return a.displayName.compareTo(b.displayName);
+        });
+
   /// For direct rooms: returns the other participant's display name as subtitle.
   /// Returns null for non-direct rooms so the caller can use its own label.
   String? peerName(String myId) {
@@ -249,22 +387,26 @@ class ChatRoom {
     RoomType? type,
     String? eventId,
     String? name,
+    String? imageUrl,
     DateTime? createdAt,
     List<ChatParticipant>? participants,
     Map<String, bool>? e2eStatus,
     bool? adminOnly,
     int? unreadCount,
+    LastMessage? lastMessage,
   }) =>
       ChatRoom(
         id: id ?? this.id,
         type: type ?? this.type,
         eventId: eventId ?? this.eventId,
         name: name ?? this.name,
+        imageUrl: imageUrl ?? this.imageUrl,
         createdAt: createdAt ?? this.createdAt,
         participants: participants ?? this.participants,
         e2eStatus: e2eStatus ?? this.e2eStatus,
         adminOnly: adminOnly ?? this.adminOnly,
         unreadCount: unreadCount ?? this.unreadCount,
+        lastMessage: lastMessage ?? this.lastMessage,
       );
 
   factory ChatRoom.fromJson(Map<String, dynamic> json) {
@@ -277,16 +419,20 @@ class ChatRoom {
         ? rawStatus.map((k, v) => MapEntry(k, (v as bool?) ?? false))
         : const <String, bool>{};
 
+    final rawLast = json['last_message'] as Map<String, dynamic>?;
+
     return ChatRoom(
       id: json['id'] as String,
       type: RoomType.fromString(json['type'] as String?),
       eventId: json['event_id'] as String?,
       name: json['name'] as String?,
+      imageUrl: json['image_url'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       participants: participantsList,
       e2eStatus: e2eStatus,
       adminOnly: (json['admin_only'] as bool?) ?? false,
       unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
+      lastMessage: rawLast != null ? LastMessage.fromJson(rawLast) : null,
     );
   }
 
@@ -295,6 +441,7 @@ class ChatRoom {
         'type': type.toApiString(),
         'event_id': eventId,
         'name': name,
+        'image_url': imageUrl,
         'created_at': createdAt.toIso8601String(),
         'admin_only': adminOnly,
         'participants': jsonEncode(participants.map((p) => p.toJson()).toList()),

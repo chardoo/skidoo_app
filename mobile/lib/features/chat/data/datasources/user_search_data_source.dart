@@ -75,10 +75,18 @@ class UserSearchDataSource {
         ? ChatConfig.rolePhotographer
         : ChatConfig.roleClient;
 
+    // profile_url first: that is the key /client/search actually returns.
+    // Only imageUrl/avatarUrl were read here before, so every avatar in the
+    // people-search screens arrived null and fell back to an initial.
+    final image = (m['profile_url'] ??
+            m['imageUrl'] ??
+            m['avatarUrl'] ??
+            m['studio_image_url']) as String?;
+
     return ShareableUser(
       id: (m['id'] ?? m['_id'] ?? '').toString(),
       name: (m['name'] ?? m['fullName'] ?? '').toString(),
-      imageUrl: m['imageUrl'] as String? ?? m['avatarUrl'] as String?,
+      imageUrl: (image != null && image.isNotEmpty) ? image : null,
       role: role,
     );
   }

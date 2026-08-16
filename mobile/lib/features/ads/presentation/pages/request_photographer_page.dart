@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -91,7 +92,7 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
 
   void _openPortfolio(int index) {
     if (_p.portfolio.isEmpty) return;
-    Navigator.of(context).push(MaterialPageRoute<void>(
+    Navigator.of(context).push(NoSwipeBackPageRoute<void>(
       builder: (_) => FoundPhotoViewerPage(
         photos: [
           for (final media in _p.portfolio)

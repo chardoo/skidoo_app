@@ -8,6 +8,7 @@ import 'package:jperg_app/core/constants/onesignal.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/services/push_permission.dart';
 import 'package:jperg_app/features/notifications/data/notification_inbox.dart';
 
 const _tag = '[Push]';
@@ -107,6 +108,36 @@ Future<void> initPush() async {
     debugPrint('$_tag init FAILED: $e');
   }
 }
+
+Future<PushPermission> pushPermissionState() async {
+  if (!_supported) return PushPermission.denied;
+  if (!_initialised) await initPush();
+
+  try {
+    // permissionNative rather than the cached `permission` bool: the latter is
+    // whatever the SDK last observed in this process, which is false before the
+    // first observer fires — so a granted app that has just started would read
+    // as denied and be asked again.
+    final state = await OneSignal.Notifications.permissionNative();
+    final result = switch (state) {
+      // Notifications do arrive under provisional and ephemeral, quietly.
+      OSNotificationPermission.authorized ||
+      OSNotificationPermission.provisional ||
+      OSNotificationPermission.ephemeral =>
+        PushPermission.granted,
+      OSNotificationPermission.notDetermined => PushPermission.undecided,
+      OSNotificationPermission.denied => PushPermission.denied,
+    };
+    debugPrint('$_tag permission state=$state → $result');
+    return result;
+  } catch (e) {
+    debugPrint('$_tag permission read FAILED: $e');
+    return PushPermission.denied;
+  }
+}
+
+Future<bool> hasPushPermission() async =>
+    (await pushPermissionState()).isGranted;
 
 Future<bool> requestPushPermission() async {
   if (!_supported) return false;

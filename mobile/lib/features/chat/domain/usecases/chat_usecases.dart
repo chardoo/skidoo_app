@@ -6,6 +6,7 @@ import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.d
 import 'package:jperg_app/features/chat/domain/repositories/chat_repository.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/models/chat/shared_media.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
 class GetGlobalRoomUseCase {
@@ -171,13 +172,17 @@ class CreateGroupRoomUseCase {
 
   Future<ChatRoom> call({
     required String name,
+    String? imageUrl,
     List<String>? inviteeIds,
     Map<String, String>? inviteeNames,
+    Map<String, String>? inviteeImages,
   }) =>
       _repo.createGroupRoom(
         name: name,
+        imageUrl: imageUrl,
         inviteeIds: inviteeIds,
         inviteeNames: inviteeNames,
+        inviteeImages: inviteeImages,
       );
 }
 
@@ -211,8 +216,24 @@ class RevokeAdminUseCase {
 class UpdateRoomSettingsUseCase {
   final ChatRepository _repo;
   UpdateRoomSettingsUseCase(this._repo);
-  Future<void> call(String roomId, {bool? adminOnly, String? name}) =>
-      _repo.updateRoomSettings(roomId, adminOnly: adminOnly, name: name);
+  Future<void> call(String roomId,
+          {bool? adminOnly, String? name, String? imageUrl}) =>
+      _repo.updateRoomSettings(roomId,
+          adminOnly: adminOnly, name: name, imageUrl: imageUrl);
+}
+
+class SetRoomMutedUseCase {
+  final ChatRepository _repo;
+  SetRoomMutedUseCase(this._repo);
+  Future<bool> call(String roomId, bool muted) =>
+      _repo.setRoomMuted(roomId, muted);
+}
+
+class GetRoomMediaUseCase {
+  final ChatRepository _repo;
+  GetRoomMediaUseCase(this._repo);
+  Future<SharedMediaPage> call(String roomId, {int page = 1, int limit = 60}) =>
+      _repo.getRoomMedia(roomId, page: page, limit: limit);
 }
 
 class KickParticipantUseCase {

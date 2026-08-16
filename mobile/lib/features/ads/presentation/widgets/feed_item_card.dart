@@ -4,7 +4,6 @@ import 'dart:ui';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:share_plus/share_plus.dart';
@@ -407,7 +406,7 @@ class _FeedItemCardState extends State<FeedItemCard>
       );
       if (!mounted) return;
       await Navigator.of(context).push(
-        CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
+        MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
       );
     } catch (e) {
       if (!mounted) return;

@@ -179,10 +179,13 @@ void main() async {
       if (AuthService.isAuthenticated.value) {
         final userId = await authService.getUserId();
         await PushNotificationService.instance.login(userId);
-        // Returning users who already granted permission are not re-prompted;
-        // the OS call is a no-op once a decision is on record.
+        // Only where there is still a question to ask. It used to call
+        // requestPermission outright on the belief that a recorded decision
+        // makes it a no-op — it does not: with fallbackToSettings it opens the
+        // system settings page, so anyone who had declined was sent there ten
+        // seconds after opening the app, every single time.
         await Future.delayed(PushNotificationService.permissionPromptDelay);
-        await PushNotificationService.instance.requestPermission();
+        await PushNotificationService.instance.promptIfUndecided();
       }
     }());
   }

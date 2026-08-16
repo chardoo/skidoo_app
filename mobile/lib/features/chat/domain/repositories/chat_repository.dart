@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/models/chat/shared_media.dart';
 
 abstract class ChatRepository {
   // ── Rooms ──────────────────────────────────────────────────────────────────
@@ -59,8 +60,10 @@ abstract class ChatRepository {
 
   Future<ChatRoom> createGroupRoom({
     required String name,
+    String? imageUrl,
     List<String>? inviteeIds,
     Map<String, String>? inviteeNames,
+    Map<String, String>? inviteeImages,
   });
 
   /// Accept a pending invite. [userId] is the accepting user — the local cache
@@ -74,7 +77,14 @@ abstract class ChatRepository {
 
   Future<void> revokeAdmin(String roomId, String userId);
 
-  Future<void> updateRoomSettings(String roomId, {bool? adminOnly, String? name});
+  Future<void> updateRoomSettings(String roomId,
+      {bool? adminOnly, String? name, String? imageUrl});
+
+  /// Mute or unmute notifications for [roomId]. Returns the resulting state.
+  Future<bool> setRoomMuted(String roomId, bool muted);
+
+  /// Photos and videos shared in [roomId], newest first.
+  Future<SharedMediaPage> getRoomMedia(String roomId, {int page, int limit});
 
   Future<void> kickParticipant(String roomId, String userId);
 

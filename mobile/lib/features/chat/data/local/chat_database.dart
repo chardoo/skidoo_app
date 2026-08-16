@@ -21,7 +21,7 @@ class ChatDatabase {
   /// lose chat history permanently, not just force a re-fetch.
   static const _legacyDbName = 'skidoo_chat.db';
 
-  static const _dbVersion = 5;
+  static const _dbVersion = 6;
 
   static Database? _db;
 
@@ -57,6 +57,7 @@ class ChatDatabase {
         type        TEXT NOT NULL,
         event_id    TEXT,
         name        TEXT,
+        image_url   TEXT,
         created_at  TEXT NOT NULL,
         participants TEXT NOT NULL DEFAULT '[]'
       )
@@ -83,7 +84,8 @@ class ChatDatabase {
         sender_identity_key TEXT,
         otpk_id             INTEGER,
         spk_id              INTEGER,
-        updated_at          TEXT
+        updated_at          TEXT,
+        system_type         TEXT
       )
     ''');
 
@@ -119,6 +121,14 @@ class ChatDatabase {
     }
     if (oldVersion < 5) {
       await db.execute('ALTER TABLE chat_messages ADD COLUMN updated_at TEXT');
+    }
+    if (oldVersion < 6) {
+      // System notices ("X accepted group invite") are message rows, so they
+      // cache alongside everything else rather than needing their own store.
+      await db.execute('ALTER TABLE chat_messages ADD COLUMN system_type TEXT');
+      // Group photo, so the inbox draws the right avatar from cache on a cold
+      // start rather than falling back to an initial until the sync lands.
+      await db.execute('ALTER TABLE chat_rooms ADD COLUMN image_url TEXT');
     }
   }
 
@@ -447,6 +457,7 @@ class ChatDatabase {
         'type': room.type.toApiString(),
         'event_id': room.eventId,
         'name': room.name,
+        'image_url': room.imageUrl,
         'created_at': room.createdAt.toIso8601String(),
         'participants':
             jsonEncode(room.participants.map((p) => p.toJson()).toList()),
@@ -460,6 +471,7 @@ class ChatDatabase {
       type: RoomType.fromString(row['type'] as String?),
       eventId: row['event_id'] as String?,
       name: row['name'] as String?,
+      imageUrl: row['image_url'] as String?,
       createdAt: DateTime.parse(row['created_at'] as String),
       participants: participantsJson
           .map((p) => ChatParticipant.fromJson(p as Map<String, dynamic>))
@@ -490,6 +502,7 @@ class ChatDatabase {
         'otpk_id': msg.otpkId,
         'spk_id': msg.senderSpkId,
         'updated_at': msg.updatedAt?.toIso8601String(),
+        'system_type': msg.systemType,
       };
 
   /// Removes entries with null values before passing to sqflite insert/update.
@@ -543,6 +556,7 @@ class ChatDatabase {
       senderIdentityKey: row['sender_identity_key'] as String?,
       otpkId: row['otpk_id'] as int?,
       senderSpkId: row['spk_id'] as int?,
+      systemType: row['system_type'] as String?,
       updatedAt: row['updated_at'] != null
           ? DateTime.tryParse(row['updated_at'] as String)
           : null,

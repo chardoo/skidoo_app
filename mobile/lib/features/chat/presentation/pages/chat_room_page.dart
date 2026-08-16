@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show CupertinoPageRoute;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -407,7 +406,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       );
       if (!context.mounted) return;
       await Navigator.of(context).push(
-        CupertinoPageRoute(builder: (_) => ChatRoomPage(room: room)),
+        MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
       );
     } catch (e) {
       if (!context.mounted) return;

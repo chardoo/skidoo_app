@@ -7,9 +7,15 @@
 /// a conditional import rather than a runtime check.
 library;
 
+import 'package:jperg_app/services/push_permission.dart';
+
 Future<void> initPush() async {}
 
 Future<bool> requestPushPermission() async => false;
+
+Future<bool> hasPushPermission() async => false;
+
+Future<PushPermission> pushPermissionState() async => PushPermission.denied;
 
 Future<void> pushLogin(String userId) async {}
 

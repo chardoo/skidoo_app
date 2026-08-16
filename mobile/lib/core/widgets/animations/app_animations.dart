@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 /// App-wide motion language.
@@ -106,11 +107,56 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
   }
 }
 
-/// Smooth fade + short upward slide page transition, applied app-wide via
-/// [ThemeData.pageTransitionsTheme] so every route push feels consistent on
-/// all platforms.
-class AppPageTransitionsBuilder extends PageTransitionsBuilder {
+/// The page transition on touch platforms: the incoming page slides in from
+/// the trailing edge, and can be dragged back off from the leading edge.
+///
+/// This is Flutter's Cupertino transition, installed for Android as well as
+/// iOS, and that is the whole point of the class. The interactive back gesture
+/// lives *inside* [CupertinoPageTransitionsBuilder] — not inside the route —
+/// so the app's previous setup, which gave every platform the fade-and-lift
+/// [AppFadePageTransitionsBuilder], silently removed swipe-back from every
+/// `MaterialPageRoute` in the app. The only screens that could be swiped back
+/// were the handful pushed with an explicit `CupertinoPageRoute` — chat rooms,
+/// mostly — which build their own transition and bypass the theme. Going back
+/// was a button on one screen and a button-or-a-swipe on the next.
+///
+/// Screens that shouldn't be swipeable opt out rather than being carved out
+/// here: `NoSwipeBackPageRoute` for horizontal pagers, `fullscreenDialog: true`
+/// for modals, `PopScope(canPop: false)` for flows that must confirm first.
+/// All three already read as "not swipeable" to [PageRoute.popGestureEnabled].
+class AppPageTransitionsBuilder extends CupertinoPageTransitionsBuilder {
   const AppPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    // Reduce Motion: no slide — and, because the gesture detector is built by
+    // the transition we're skipping, no drag either. Unchanged from before;
+    // these users navigate back by the button, which every screen has.
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      return child;
+    }
+    return super.buildTransitions<T>(
+      route,
+      context,
+      animation,
+      secondaryAnimation,
+      child,
+    );
+  }
+}
+
+/// Smooth fade + short upward slide page transition.
+///
+/// Used on desktop and desktop web, where there is no touch back gesture to
+/// preserve and a horizontal slide would read as a mobile affordance.
+class AppFadePageTransitionsBuilder extends PageTransitionsBuilder {
+  const AppFadePageTransitionsBuilder();
 
   @override
   Widget buildTransitions<T>(

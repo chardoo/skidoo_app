@@ -75,6 +75,14 @@ class ChatRoomState extends Equatable {
   /// was received). The UI should navigate away when this becomes true.
   final bool isDeleted;
 
+  /// Who is currently typing, as {userId: displayName}, never including the
+  /// signed-in user. Entries expire on a timer in the bloc rather than waiting
+  /// for a stop frame, which a client that dies mid-word never sends.
+  final Map<String, String> typingUsers;
+
+  /// True when the signed-in user has muted this room.
+  final bool isMuted;
+
   const ChatRoomState({
     this.messages = const [],
     this.isConnected = false,
@@ -104,6 +112,8 @@ class ChatRoomState extends Equatable {
     this.isLeaving = false,
     this.isDeleting = false,
     this.isDeleted = false,
+    this.typingUsers = const {},
+    this.isMuted = false,
   });
 
   ChatRoomState copyWith({
@@ -140,6 +150,8 @@ class ChatRoomState extends Equatable {
     bool? isLeaving,
     bool? isDeleting,
     bool? isDeleted,
+    Map<String, String>? typingUsers,
+    bool? isMuted,
   }) =>
       ChatRoomState(
         messages: messages ?? this.messages,
@@ -170,6 +182,8 @@ class ChatRoomState extends Equatable {
         isLeaving: isLeaving ?? this.isLeaving,
         isDeleting: isDeleting ?? this.isDeleting,
         isDeleted: isDeleted ?? this.isDeleted,
+        typingUsers: typingUsers ?? this.typingUsers,
+        isMuted: isMuted ?? this.isMuted,
       );
 
   @override
@@ -202,5 +216,7 @@ class ChatRoomState extends Equatable {
         isLeaving,
         isDeleting,
         isDeleted,
+        typingUsers,
+        isMuted,
       ];
 }

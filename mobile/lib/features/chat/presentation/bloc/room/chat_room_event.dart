@@ -289,3 +289,40 @@ class _ReadReceiptReceived extends ChatRoomEvent {
     this.messageId,
   });
 }
+
+/// The user typed (or stopped typing) in the composer.
+///
+/// The bloc rate-limits the outgoing frames, so the UI is free to raise this on
+/// every keystroke without flooding the socket.
+class ChatRoomTypingChanged extends ChatRoomEvent {
+  final bool isTyping;
+  const ChatRoomTypingChanged(this.isTyping);
+}
+
+/// WS broadcast: another participant started or stopped typing.
+class _TypingReceived extends ChatRoomEvent {
+  final String userId;
+  final String userName;
+  final bool isTyping;
+  const _TypingReceived({
+    required this.userId,
+    required this.userName,
+    required this.isTyping,
+  });
+}
+
+/// A typing indicator has gone stale and should be dropped.
+///
+/// Needed because a stop frame is an optimisation, not a guarantee: an app that
+/// is killed mid-word never sends one, and without this its indicator would sit
+/// there forever.
+class _TypingExpired extends ChatRoomEvent {
+  final String userId;
+  const _TypingExpired(this.userId);
+}
+
+/// Mute or unmute notifications for this room.
+class ChatRoomMuteToggled extends ChatRoomEvent {
+  final bool muted;
+  const ChatRoomMuteToggled(this.muted);
+}

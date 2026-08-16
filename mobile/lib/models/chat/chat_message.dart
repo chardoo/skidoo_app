@@ -99,6 +99,27 @@ class ChatMessage {
   /// Set when the message has been edited. Null on original send.
   final DateTime? updatedAt;
 
+  /// Non-null when this row is a system notice rather than something a person
+  /// typed — "group_created", "invite_accepted", "invite_declined". Drawn as a
+  /// centred italic line instead of a bubble.
+  ///
+  /// The wording is built in the app from this plus [senderName], not sent by
+  /// the server, so it stays translatable. An unrecognised value renders as
+  /// nothing — see [isSystem].
+  final String? systemType;
+
+  static const _knownSystemTypes = {
+    'group_created',
+    'invite_accepted',
+    'invite_declined',
+  };
+
+  /// True when this should be drawn as a system notice. False for a
+  /// system_type this build doesn't know, so a newer server adding one cannot
+  /// put a blank line in an older app's conversation.
+  bool get isSystem =>
+      systemType != null && _knownSystemTypes.contains(systemType);
+
   bool get isEdited => updatedAt != null;
 
   bool get isAdminMessage =>
@@ -132,6 +153,7 @@ class ChatMessage {
     this.senderSpkId,
     this.stale,
     this.updatedAt,
+    this.systemType,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -178,6 +200,7 @@ class ChatMessage {
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'] as String)
           : null,
+      systemType: json['system_type'] as String?,
     );
   }
 
@@ -207,6 +230,7 @@ class ChatMessage {
         'spk_id': senderSpkId,
         'stale': stale,
         'updated_at': updatedAt?.toIso8601String(),
+        'system_type': systemType,
       };
 
   ChatMessage copyWith({
@@ -247,6 +271,7 @@ class ChatMessage {
       senderSpkId: senderSpkId,
       stale: stale,
       updatedAt: clearUpdatedAt ? null : (updatedAt ?? this.updatedAt),
+      systemType: systemType,
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/core/utils/responsive.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -171,7 +172,7 @@ class _FoundFeedState extends State<FoundFeed> {
 
   void _openPhoto(FoundAlbum album, int index, FoundFilters filters) {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
+      NoSwipeBackPageRoute<void>(
         builder: (_) => FoundPhotoViewerPage(
           // Only the preview slice is loaded here; "View album" is the way
           // through to the rest.

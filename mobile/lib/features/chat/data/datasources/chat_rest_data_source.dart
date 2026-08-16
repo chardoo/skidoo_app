@@ -9,6 +9,7 @@ import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/features/chat/data/network/chat_api_client.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/models/chat/shared_media.dart';
 import 'package:http_parser/http_parser.dart';
 /// Reaction state for an event (from GET /chat/events/{id}/reaction).
 class EventReaction {
@@ -153,8 +154,10 @@ abstract class ChatRestDataSource {
   /// POST /chat/rooms/group — create a group room with optional initial invitees.
   Future<ChatRoom> createGroupRoom({
     required String name,
+    String? imageUrl,
     List<String>? inviteeIds,
     Map<String, String>? inviteeNames,
+    Map<String, String>? inviteeImages,
   });
 
   /// POST /chat/rooms/{room_id}/join — accept a pending invite.
@@ -170,7 +173,15 @@ abstract class ChatRestDataSource {
   Future<void> revokeAdmin(String roomId, String userId);
 
   /// PATCH /chat/rooms/{room_id}/settings — update room-level settings.
-  Future<void> updateRoomSettings(String roomId, {bool? adminOnly, String? name});
+  Future<void> updateRoomSettings(String roomId,
+      {bool? adminOnly, String? name, String? imageUrl});
+
+  /// Mute or unmute notifications for [roomId], for the signed-in user only.
+  /// Returns the resulting state as the server recorded it.
+  Future<bool> setRoomMuted(String roomId, bool muted);
+
+  /// Every photo and video shared in [roomId], newest first.
+  Future<SharedMediaPage> getRoomMedia(String roomId, {int page, int limit});
 
   /// DELETE /chat/rooms/{room_id}/participants/{user_id} — kick a non-admin participant.
   Future<void> kickParticipant(String roomId, String userId);
@@ -459,8 +470,10 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   @override
   Future<ChatRoom> createGroupRoom({
     required String name,
+    String? imageUrl,
     List<String>? inviteeIds,
     Map<String, String>? inviteeNames,
+    Map<String, String>? inviteeImages,
   }) async {
     debugPrint('[ChatREST] POST /chat/rooms/group name="$name" invitees=$inviteeIds');
     return _wrap(() async {
@@ -468,11 +481,15 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         '/chat/rooms/group',
         data: jsonEncode({
           'name': name,
+          if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
           if (inviteeIds != null && inviteeIds.isNotEmpty)
             'invitee_ids': inviteeIds,
           // {user_id: name} so each invitee's name shows before they connect.
+          // Fallbacks only — the server prefers what it can resolve itself.
           if (inviteeNames != null && inviteeNames.isNotEmpty)
             'invitee_names': inviteeNames,
+          if (inviteeImages != null && inviteeImages.isNotEmpty)
+            'invitee_images': inviteeImages,
         }),
       );
       final room = ChatRoom.fromJson(res.data as Map<String, dynamic>);
@@ -508,16 +525,48 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   }
 
   @override
-  Future<void> updateRoomSettings(String roomId, {bool? adminOnly, String? name}) async {
+  Future<void> updateRoomSettings(String roomId,
+      {bool? adminOnly, String? name, String? imageUrl}) async {
     final payload = <String, dynamic>{
       if (adminOnly != null) 'admin_only': adminOnly,
       if (name != null) 'name': name,
+      // Passed through as-is, empty string included: "" clears the photo,
+      // omitting the key leaves it alone.
+      if (imageUrl != null) 'image_url': imageUrl,
     };
     debugPrint('[ChatREST] PATCH /chat/rooms/$roomId/settings $payload');
     await _wrap(() => _client.dio.patch(
           '/chat/rooms/$roomId/settings',
           data: jsonEncode(payload),
         ));
+  }
+
+  @override
+  Future<bool> setRoomMuted(String roomId, bool muted) async {
+    debugPrint('[ChatREST] PATCH /chat/rooms/$roomId/mute muted=$muted');
+    final res = await _wrap(() => _client.dio.patch(
+          '/chat/rooms/$roomId/mute',
+          data: jsonEncode({'muted': muted}),
+        ));
+    return (res.data?['muted'] as bool?) ?? muted;
+  }
+
+  @override
+  Future<SharedMediaPage> getRoomMedia(String roomId,
+      {int page = 1, int limit = 60}) async {
+    debugPrint('[ChatREST] GET /chat/rooms/$roomId/media page=$page');
+    final res = await _wrap(() => _client.dio.get(
+          '/chat/rooms/$roomId/media',
+          queryParameters: {'page': page, 'limit': limit},
+        ));
+    final body = res.data as Map<String, dynamic>? ?? const {};
+    final items = (body['data'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(SharedMediaItem.fromJson)
+        .toList();
+    final pagination = body['pagination'] as Map<String, dynamic>? ?? const {};
+    final totalPages = (pagination['totalPages'] as num?)?.toInt() ?? 1;
+    return SharedMediaPage(items: items, hasMore: page < totalPages);
   }
 
   @override

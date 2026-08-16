@@ -166,6 +166,25 @@ class WsReadReceiptEvent {
   });
 }
 
+/// Another participant started or stopped typing.
+///
+/// Nothing about this is persisted — it is broadcast and forgotten, so a frame
+/// only ever describes someone who was typing a moment ago. The receiving side
+/// expires the indicator on a timer rather than trusting a stop frame to
+/// arrive: a client that dies mid-word never sends one.
+class WsTypingEvent {
+  final String roomId;
+  final String userId;
+  final String userName;
+  final bool isTyping;
+  const WsTypingEvent({
+    required this.roomId,
+    required this.userId,
+    required this.userName,
+    required this.isTyping,
+  });
+}
+
 /// Pushed directly to a member when another member distributes their group
 /// sender key (on join or after a re-key triggered by a member departure).
 class WsSenderKeyDistributionEvent {
@@ -248,6 +267,7 @@ class ChatWebSocketService {
   StreamController<WsRoomDeletedEvent>? _roomDeletedController;
   StreamController<WsSenderKeyDistributionEvent>? _senderKeyDistController;
   StreamController<WsReadReceiptEvent>? _readReceiptController;
+  StreamController<WsTypingEvent>? _typingController;
   StreamSubscription? _sub;
 
   /// Emits the initial server handshake (userId + room list).
@@ -327,6 +347,10 @@ class ChatWebSocketService {
       _senderKeyDistController?.stream ?? const Stream.empty();
 
   /// Emits when another participant acknowledges reading messages in this room.
+  Stream<WsTypingEvent> get typingEvents =>
+      (_typingController ??= StreamController<WsTypingEvent>.broadcast())
+          .stream;
+
   Stream<WsReadReceiptEvent> get readReceiptEvents =>
       _readReceiptController?.stream ?? const Stream.empty();
 
@@ -611,6 +635,15 @@ class ChatWebSocketService {
                 encryptedKey: json['message'] as String,
               ));
             }
+          } else if (type == 'typing') {
+            if (json['room_id'] is String && json['user_id'] is String) {
+              _typingController?.add(WsTypingEvent(
+                roomId: json['room_id'] as String,
+                userId: json['user_id'] as String,
+                userName: json['user_name'] as String? ?? '',
+                isTyping: json['is_typing'] as bool? ?? true,
+              ));
+            }
           } else if (type == 'read_receipt') {
             if (json['room_id'] is String && json['reader_id'] is String) {
               _readReceiptController?.add(WsReadReceiptEvent(
@@ -780,6 +813,19 @@ class ChatWebSocketService {
 
   /// Acknowledge reading all messages up to [upToMessageId] in [roomId].
   /// The server broadcasts a `read_receipt` event to all other room members.
+  /// Tell the room the user has started or stopped typing.
+  ///
+  /// Fire-and-forget: [_sendRaw] drops the frame when the socket is down, which
+  /// is the right outcome — a typing indicator is worthless by the time a
+  /// reconnect would deliver it.
+  void sendTyping(String roomId, {required bool isTyping}) {
+    _sendRaw({
+      'type': 'typing',
+      'room_id': roomId,
+      'is_typing': isTyping,
+    });
+  }
+
   void sendAck(String roomId, String upToMessageId) {
     _sendRaw({
       'type': 'ack',
@@ -822,6 +868,7 @@ class ChatWebSocketService {
     _roomDeletedController?.close();
     _senderKeyDistController?.close();
     _readReceiptController?.close();
+    _typingController?.close();
     _connectedController = null;
     _errorController = null;
     _msgController = null;
@@ -842,6 +889,7 @@ class ChatWebSocketService {
     _roomDeletedController = null;
     _senderKeyDistController = null;
     _readReceiptController = null;
+    _typingController = null;
   }
 
   /// Gracefully close the connection.

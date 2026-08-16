@@ -7,6 +7,7 @@ import 'package:jperg_app/features/chat/data/local/chat_database.dart';
 import 'package:jperg_app/features/chat/domain/repositories/chat_repository.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/models/chat/shared_media.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
   final ChatRestDataSource _rest;
@@ -186,13 +187,17 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<ChatRoom> createGroupRoom({
     required String name,
+    String? imageUrl,
     List<String>? inviteeIds,
     Map<String, String>? inviteeNames,
+    Map<String, String>? inviteeImages,
   }) =>
       _fetchAndCacheRoom(() => _rest.createGroupRoom(
             name: name,
+            imageUrl: imageUrl,
             inviteeIds: inviteeIds,
             inviteeNames: inviteeNames,
+            inviteeImages: inviteeImages,
           ));
 
   @override
@@ -218,8 +223,19 @@ class ChatRepositoryImpl implements ChatRepository {
       _rest.revokeAdmin(roomId, userId);
 
   @override
-  Future<void> updateRoomSettings(String roomId, {bool? adminOnly, String? name}) =>
-      _rest.updateRoomSettings(roomId, adminOnly: adminOnly, name: name);
+  Future<void> updateRoomSettings(String roomId,
+          {bool? adminOnly, String? name, String? imageUrl}) =>
+      _rest.updateRoomSettings(roomId,
+          adminOnly: adminOnly, name: name, imageUrl: imageUrl);
+
+  @override
+  Future<bool> setRoomMuted(String roomId, bool muted) =>
+      _rest.setRoomMuted(roomId, muted);
+
+  @override
+  Future<SharedMediaPage> getRoomMedia(String roomId,
+          {int page = 1, int limit = 60}) =>
+      _rest.getRoomMedia(roomId, page: page, limit: limit);
 
   @override
   Future<void> kickParticipant(String roomId, String userId) =>
