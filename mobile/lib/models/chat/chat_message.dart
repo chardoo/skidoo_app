@@ -165,6 +165,10 @@ class ChatMessage {
 
     final imageUrl = json['image_url'] as String?;
     // is_video may be a bool (JSON) or int 0/1 (SQLite cache) — handle both.
+    // The sender's own flag wins; the URL is only a fallback for rows written
+    // before the server stored one. A video mistaken for an image goes to the
+    // image loader, which can only fail — the reader gets "Photo unavailable"
+    // on a video.
     final rawIsVideo = json['is_video'];
     final isVideoFlag = rawIsVideo == true || rawIsVideo == 1;
     final isVideoByExt = imageUrl != null && _isVideoUrl(imageUrl);

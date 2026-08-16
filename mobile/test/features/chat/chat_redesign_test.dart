@@ -350,6 +350,8 @@ void main() {
     });
   });
 
+  group('video attachments', _videoTests);
+
   // ── Wire format ─────────────────────────────────────────────────────────
 
   group('parsing', () {
@@ -425,5 +427,46 @@ void main() {
       // rows either — otherwise they render as an empty gap.
       expect(parse('from_the_future').isSystem, isFalse);
     });
+  });
+}
+
+// ── Video attachments ───────────────────────────────────────────────────────
+//
+// A video mistaken for an image is handed to the image loader, which can only
+// fail — the reader is shown "Photo unavailable" on a video they were sent.
+
+void _videoTests() {
+  test('the sender\'s flag decides, not the file extension', () {
+    ChatMessage parse({Object? isVideo, required String url}) =>
+        ChatMessage.fromJson({
+          'id': 'm1',
+          'room_id': 'r1',
+          'sender_id': peer,
+          'sender_role': 'user',
+          'created_at': now.toIso8601String(),
+          'image_url': url,
+          if (isVideo != null) 'is_video': isVideo,
+        });
+
+    // The case that broke: a video whose URL says nothing about it.
+    expect(parse(isVideo: true, url: 'https://cdn.example/clip').isVideo, isTrue);
+    // Older rows carry no flag, so the URL is still consulted.
+    expect(parse(url: 'https://cdn.example/clip.mp4').isVideo, isTrue);
+    expect(parse(url: 'https://cdn.example/photo.jpg').isVideo, isFalse);
+    // A stored false must not be overridden by a misleading URL.
+    expect(parse(isVideo: false, url: 'https://cdn.example/photo.jpg').isVideo,
+        isFalse);
+  });
+
+  test('a Cloudinary video delivery URL is still recognised', () {
+    final m = ChatMessage.fromJson({
+      'id': 'm1',
+      'room_id': 'r1',
+      'sender_id': peer,
+      'sender_role': 'user',
+      'created_at': now.toIso8601String(),
+      'image_url': 'https://res.cloudinary.com/c/video/upload/v1/chat_videos/a',
+    });
+    expect(m.isVideo, isTrue);
   });
 }

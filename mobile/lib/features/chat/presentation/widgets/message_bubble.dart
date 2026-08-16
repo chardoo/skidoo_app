@@ -158,7 +158,14 @@ class MessageBubble extends StatelessWidget {
                       if (message.imageUrl != null)
                         ColoredBox(
                           color: Colors.black.withValues(alpha: 0.06),
-                          child: _isVideoUrl(message.imageUrl!)
+                          // message.isVideo first: it carries what the sender
+                          // actually picked, and already falls back to the URL
+                          // when the server had nothing stored. Asking the URL
+                          // directly here threw that away, so a video whose URL
+                          // does not look like one was handed to the image
+                          // loader and rendered "Photo unavailable".
+                          child: (message.isVideo ||
+                                  _isVideoUrl(message.imageUrl!))
                               ? _MessageVideo(
                                   videoUrl: message.imageUrl!,
                                   aspectRatio: message.mediaAspectRatio,
