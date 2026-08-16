@@ -12,12 +12,19 @@ class ServerException implements Exception {
 /// contained it, and mistook "you cannot DM yourself" for "this user is not
 /// accepting messages". The codes are the API's own vocabulary; use them.
 class ApiException extends ServerException {
-  const ApiException(super.message, {this.statusCode, this.code});
+  const ApiException(super.message, {this.statusCode, this.code, this.serverMessage});
 
   final int? statusCode;
 
   /// `error.code` from the response body — e.g. RECIPIENT_NOT_ACCEPTING_DMS.
   final String? code;
+
+  /// `error.message` from the response body — the server's own words, written
+  /// to be read by a person ("File exceeds the 10 MB limit for videos").
+  ///
+  /// Worth carrying separately from [message], which is a debug string with the
+  /// status code and raw body baked in and is not fit to show anyone.
+  final String? serverMessage;
 }
 
 class NetworkException implements Exception {

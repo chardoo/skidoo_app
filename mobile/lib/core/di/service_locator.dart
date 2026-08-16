@@ -43,6 +43,7 @@ import 'package:jperg_app/features/cart/presentation/bloc/cart_bloc.dart';
 
 // ── Chat feature imports ───────────────────────────────────────────────────────
 import 'package:jperg_app/features/chat/data/datasources/chat_background_service.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_media_limits.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.dart';
 import 'package:jperg_app/features/chat/data/datasources/user_search_data_source.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.dart';
@@ -408,6 +409,9 @@ Future<void> setupServiceLocator() async {
       GrantAdminUseCase(sl<ChatRepository>()));
   sl.registerSingleton<RevokeAdminUseCase>(
       RevokeAdminUseCase(sl<ChatRepository>()));
+  // One instance so the limits are fetched once per session, not per picker.
+  sl.registerSingleton<ChatMediaLimitsService>(
+      ChatMediaLimitsService(sl<ChatApiClient>()));
   sl.registerSingleton<UpdateRoomSettingsUseCase>(
       UpdateRoomSettingsUseCase(sl<ChatRepository>()));
   sl.registerSingleton<SetRoomMutedUseCase>(

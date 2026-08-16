@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MaxLengthEnforcement;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_media_limits.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
@@ -83,7 +85,9 @@ class _ChatInputBarState extends State<ChatInputBar> {
       imageQuality: 85,
     );
     if (picked == null) return;
-    final error = await MediaValidator.validate(picked, isVideo: false);
+    final limits = await sl<ChatMediaLimitsService>().get();
+    final error = await MediaValidator.validate(picked,
+        isVideo: false, maxBytes: limits.maxImageBytes);
     if (!mounted) return;
     if (error != null) {
       AppSnackBar.error(context, error);
@@ -97,7 +101,9 @@ class _ChatInputBarState extends State<ChatInputBar> {
     final picker = ImagePicker();
     final picked = await picker.pickVideo(source: ImageSource.gallery);
     if (picked == null) return;
-    final error = await MediaValidator.validate(picked, isVideo: true);
+    final limits = await sl<ChatMediaLimitsService>().get();
+    final error = await MediaValidator.validate(picked,
+        isVideo: true, maxBytes: limits.maxVideoBytes);
     if (!mounted) return;
     if (error != null) {
       AppSnackBar.error(context, error);

@@ -17,6 +17,7 @@ import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.
         WsRoomSettingsUpdatedEvent, WsSenderKeyDistributionEvent,
         WsTypingEvent, WsUserJoinedEvent;
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/like_update.dart';
@@ -878,14 +879,18 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           emit: emit,
         );
         _cacheMessage(optimistic).catchError((_) {});
-      } catch (_) {
-        // Restore the pending media so the user can retry.
+      } catch (e) {
+        // Restore the pending media so the user can retry, and say what
+        // actually went wrong — the server distinguishes "too large" from
+        // "unsupported type" from "storage not configured", and all three used
+        // to arrive here as the same sentence.
+        debugPrint('[ChatBloc] media upload failed: $e');
         emit(state.copyWith(
           isUploadingImage: false,
           pendingImagePath: pendingPath,
           pendingMimeType: pendingMimeType,
           pendingIsVideo: pendingIsVideo,
-          errorMessage: pendingIsVideo ? 'Failed to upload video.' : 'Failed to upload image.',
+          errorMessage: uploadErrorText(e, isVideo: pendingIsVideo),
         ));
       }
     } else {
@@ -2027,12 +2032,32 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       if (event.name != null) {
         optimisticRoom = optimisticRoom.copyWith(name: event.name);
       }
+      if (event.imageUrl != null) {
+        // copyWith cannot express "clear", so an empty string is applied by
+        // rebuilding the room rather than through it.
+        optimisticRoom = event.imageUrl!.isEmpty
+            ? ChatRoom(
+                id: optimisticRoom.id,
+                type: optimisticRoom.type,
+                eventId: optimisticRoom.eventId,
+                name: optimisticRoom.name,
+                createdAt: optimisticRoom.createdAt,
+                participants: optimisticRoom.participants,
+                e2eStatus: optimisticRoom.e2eStatus,
+                adminOnly: optimisticRoom.adminOnly,
+                unreadCount: optimisticRoom.unreadCount,
+                lastMessage: optimisticRoom.lastMessage,
+              )
+            : optimisticRoom.copyWith(imageUrl: event.imageUrl);
+      }
     }
     emit(state.copyWith(room: optimisticRoom));
 
     try {
       await _updateRoomSettings(roomId,
-          adminOnly: event.adminOnly, name: event.name);
+          adminOnly: event.adminOnly,
+          name: event.name,
+          imageUrl: event.imageUrl);
     } catch (_) {
       emit(state.copyWith(
         room: prevRoom,

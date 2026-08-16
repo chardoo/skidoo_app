@@ -7,10 +7,15 @@ import 'package:image_picker/image_picker.dart';
 class MediaValidator {
   MediaValidator._();
 
-  /// Maximum upload size for a single image, in bytes.
+  /// Default cap for a single image, in bytes.
+  ///
+  /// Only a default. Where the receiving service publishes its own cap, pass it
+  /// via [maxBytes] instead — chat does, because its caps are admin-controlled
+  /// and were far below this: a 20 MB video passed here, uploaded in full over
+  /// a mobile connection, and was only then refused on arrival.
   static const int maxImageBytes = 50 * 1024 * 1024; // 50 MB
 
-  /// Maximum upload size for a single video, in bytes.
+  /// Default cap for a single video, in bytes. See [maxImageBytes].
   static const int maxVideoBytes = 50 * 1024 * 1024; // 50 MB
 
   static String _fmt(int bytes) {
@@ -20,7 +25,11 @@ class MediaValidator {
 
   /// Returns a user-facing error message if [file] is unacceptable, or `null`
   /// when it passes. Checks for empty/unreadable files and per-type size caps.
-  static Future<String?> validate(XFile file, {required bool isVideo}) async {
+  static Future<String?> validate(
+    XFile file, {
+    required bool isVideo,
+    int? maxBytes,
+  }) async {
     final int size;
     try {
       size = await file.length();
@@ -32,7 +41,7 @@ class MediaValidator {
       return 'The selected file appears to be empty or unreadable.';
     }
 
-    final limit = isVideo ? maxVideoBytes : maxImageBytes;
+    final limit = maxBytes ?? (isVideo ? maxVideoBytes : maxImageBytes);
     if (size > limit) {
       final kind = isVideo ? 'Video' : 'Image';
       final name = file.name.isEmpty ? 'file' : '"${file.name}"';

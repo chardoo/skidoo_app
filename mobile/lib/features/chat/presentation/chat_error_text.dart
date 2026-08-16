@@ -19,3 +19,26 @@ String chatErrorText(Object error, {required String fallback}) {
       return fallback;
   }
 }
+
+/// Why an attachment would not upload, in words worth showing someone.
+///
+/// Prefers the server's own sentence. It is the only party that knows which of
+/// the several possible reasons applied — over the size cap, an unsupported
+/// type, storage not configured — and it already writes them for a reader.
+/// Everything used to collapse into "Failed to upload image", which told the
+/// user nothing and left no way to tell the causes apart from a bug report.
+String uploadErrorText(Object error, {required bool isVideo}) {
+  final kind = isVideo ? 'video' : 'image';
+  final aKind = isVideo ? 'a video' : 'an image';
+  if (error is NetworkException) {
+    return 'No connection — the $kind was not sent.';
+  }
+  if (error is ApiException) {
+    final serverSaid = error.serverMessage?.trim();
+    if (serverSaid != null && serverSaid.isNotEmpty) return serverSaid;
+    if (error.statusCode == 401 || error.statusCode == 403) {
+      return 'You are not signed in to send $aKind.';
+    }
+  }
+  return 'Could not upload the $kind. Please try again.';
+}

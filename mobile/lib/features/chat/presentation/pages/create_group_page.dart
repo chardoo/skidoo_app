@@ -17,8 +17,10 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/web_panel_route.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_media_limits.dart';
 import 'package:jperg_app/features/chat/data/datasources/user_search_data_source.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/shareable_user.dart';
 
@@ -395,7 +397,9 @@ class _GroupNamePageState extends State<_GroupNamePage> {
     final picked = await ImagePicker()
         .pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
-    final error = await MediaValidator.validate(picked, isVideo: false);
+    final limits = await sl<ChatMediaLimitsService>().get();
+    final error = await MediaValidator.validate(picked,
+        isVideo: false, maxBytes: limits.maxImageBytes);
     if (!mounted) return;
     if (error != null) {
       AppSnackBar.error(context, error);
@@ -417,13 +421,13 @@ class _GroupNamePageState extends State<_GroupNamePage> {
         _uploadedPhotoUrl = url;
         _isUploadingPhoto = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         _localPhotoPath = null;
         _isUploadingPhoto = false;
       });
-      AppSnackBar.error(context, 'Could not upload that photo. Try another.');
+      AppSnackBar.error(context, uploadErrorText(e, isVideo: false));
     }
   }
 

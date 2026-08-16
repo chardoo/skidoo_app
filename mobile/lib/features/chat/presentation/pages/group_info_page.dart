@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
@@ -6,13 +9,18 @@ import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/common/widgets/app_confirm_dialog.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/core/utils/web_panel_route.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_media_limits.dart';
+import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
+import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/features/chat/presentation/pages/invite_to_group_page.dart';
 import 'package:jperg_app/features/chat/presentation/pages/shared_media_page.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/chat_settings_tile.dart';
@@ -82,7 +90,14 @@ class GroupInfoPage extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: AppSpacing.xxxl.h),
                 children: [
                   SizedBox(height: AppSpacing.lg.h),
-                  _GroupHeader(room: room, memberCount: members.length + 1),
+                  _GroupHeader(
+                    room: room,
+                    memberCount: members.length + 1,
+                    // Changing the photo is a room setting, and the server
+                    // only lets admins change those — so only they get the
+                    // affordance rather than a tap that 403s.
+                    canEditPhoto: state.amIAdmin,
+                  ),
                   SizedBox(height: AppSpacing.xxl.h),
 
                   // ── Chat settings ─────────────────────────────────────────
@@ -249,22 +264,126 @@ class GroupInfoPage extends StatelessWidget {
 
 // ── Header ────────────────────────────────────────────────────────────────────
 
-class _GroupHeader extends StatelessWidget {
-  const _GroupHeader({required this.room, required this.memberCount});
+class _GroupHeader extends StatefulWidget {
+  const _GroupHeader({
+    required this.room,
+    required this.memberCount,
+    required this.canEditPhoto,
+  });
 
   final ChatRoom room;
   final int memberCount;
+  final bool canEditPhoto;
+
+  @override
+  State<_GroupHeader> createState() => _GroupHeaderState();
+}
+
+class _GroupHeaderState extends State<_GroupHeader> {
+  final _uploadImage = sl<UploadChatImageUseCase>();
+  bool _isUploading = false;
+
+  Future<void> _edit() async {
+    final hasPhoto = (widget.room.imageUrl ?? '').isNotEmpty;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _PhotoActionSheet(hasPhoto: hasPhoto),
+    );
+    if (!mounted || action == null) return;
+
+    if (action == 'remove') {
+      // "" clears it server-side; null would mean "leave it alone".
+      context
+          .read<ChatRoomBloc>()
+          .add(const ChatRoomUpdateSettingsRequested(imageUrl: ''));
+      return;
+    }
+
+    final picked = await ImagePicker()
+        .pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked == null || !mounted) return;
+
+    final limits = await sl<ChatMediaLimitsService>().get();
+    final error = await MediaValidator.validate(picked,
+        isVideo: false, maxBytes: limits.maxImageBytes);
+    if (!mounted) return;
+    if (error != null) {
+      AppSnackBar.error(context, error);
+      return;
+    }
+
+    setState(() => _isUploading = true);
+    try {
+      final url =
+          await _uploadImage(File(picked.path), mimeType: picked.mimeType);
+      if (!mounted) return;
+      context
+          .read<ChatRoomBloc>()
+          .add(ChatRoomUpdateSettingsRequested(imageUrl: url));
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackBar.error(context, uploadErrorText(e, isVideo: false));
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final room = widget.room;
 
     return Column(
       children: [
-        UserAvatar(
-          imageUrl: room.imageUrl,
-          initial: room.displayName,
-          radius: 48,
+        Semantics(
+          button: widget.canEditPhoto,
+          label: widget.canEditPhoto ? 'Change group photo' : null,
+          child: GestureDetector(
+            onTap: widget.canEditPhoto && !_isUploading ? _edit : null,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                UserAvatar(
+                  imageUrl: room.imageUrl,
+                  initial: room.displayName,
+                  radius: 48,
+                ),
+                if (_isUploading)
+                  Container(
+                    width: 96.w,
+                    height: 96.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.4),
+                    ),
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      width: 22.w,
+                      height: 22.w,
+                      child: const CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    ),
+                  )
+                else if (widget.canEditPhoto)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: EdgeInsets.all(6.w),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: ext.accentGold,
+                        border:
+                            Border.all(color: ext.homeBackground, width: 2),
+                      ),
+                      child: Icon(Icons.camera_alt_rounded,
+                          color: Colors.white, size: 14.sp),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
         SizedBox(height: AppSpacing.md.h),
         Text(
@@ -278,10 +397,59 @@ class _GroupHeader extends StatelessWidget {
         ),
         SizedBox(height: 2.h),
         Text(
-          '$memberCount ${memberCount == 1 ? 'member' : 'members'}',
+          '${widget.memberCount} '
+          '${widget.memberCount == 1 ? 'member' : 'members'}',
           style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
         ),
       ],
+    );
+  }
+}
+
+class _PhotoActionSheet extends StatelessWidget {
+  const _PhotoActionSheet({required this.hasPhoto});
+
+  final bool hasPhoto;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 36.h),
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(
+            child: Container(
+              width: 36.w,
+              height: 4.h,
+              margin: EdgeInsets.only(bottom: 18.h),
+              decoration: BoxDecoration(
+                color: ext.searchHintColor.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+          ),
+          _SheetOption(
+            icon: Icons.photo_library_outlined,
+            label: hasPhoto ? 'Change photo' : 'Add photo',
+            color: ext.accentGold,
+            onTap: () => Navigator.of(context).pop('pick'),
+          ),
+          if (hasPhoto)
+            _SheetOption(
+              icon: Icons.delete_outline_rounded,
+              label: 'Remove photo',
+              color: ext.errorRed,
+              onTap: () => Navigator.of(context).pop('remove'),
+            ),
+        ],
+      ),
     );
   }
 }

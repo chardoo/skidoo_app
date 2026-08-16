@@ -206,7 +206,16 @@ class ChatRoomRevokeAdminRequested extends ChatRoomEvent {
 class ChatRoomUpdateSettingsRequested extends ChatRoomEvent {
   final bool? adminOnly;
   final String? name;
-  const ChatRoomUpdateSettingsRequested({this.adminOnly, this.name});
+
+  /// Group photo. An empty string clears it; null leaves it alone — the same
+  /// distinction the server draws, so there is a way to remove one once set.
+  final String? imageUrl;
+
+  const ChatRoomUpdateSettingsRequested({
+    this.adminOnly,
+    this.name,
+    this.imageUrl,
+  });
 }
 
 /// Kick a participant from the group.

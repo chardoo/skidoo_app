@@ -840,10 +840,15 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
       if (e.response == null) throw const NetworkException();
       final data = e.response?.data;
       final error = data is Map<String, dynamic> ? data['error'] : null;
+      final errorMap = error is Map<String, dynamic> ? error : null;
       throw ApiException(
         'Chat API error ${e.response?.statusCode}: $data',
         statusCode: e.response?.statusCode,
-        code: error is Map<String, dynamic> ? error['code'] as String? : null,
+        code: errorMap?['code'] as String?,
+        // The server explains itself — "File exceeds the 10 MB limit for
+        // videos", "Media upload is not configured on this server". Dropping it
+        // is why every upload failure looked identical from the outside.
+        serverMessage: errorMap?['message'] as String?,
       );
     } catch (e) {
       if (e is NetworkException || e is ServerException) rethrow;
