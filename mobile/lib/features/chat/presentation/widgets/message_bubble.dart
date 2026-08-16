@@ -135,7 +135,11 @@ class MessageBubble extends StatelessWidget {
                   ),
                   clipBehavior: Clip.hardEdge,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    // Stretch, not start: media has to fill the bubble edge to
+                    // edge. Under `start` a placeholder or error box — neither
+                    // of which has an intrinsic width — collapsed to its own
+                    // size and sat in a slab of bubble colour instead.
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Reply preview strip
@@ -145,17 +149,25 @@ class MessageBubble extends StatelessWidget {
                           isMe: isMe,
                           ext: ext,
                         ),
-                      // Media (image or video)
+                      // Media (image or video).
+                      //
+                      // On its own dark ground rather than the bubble's: a sent
+                      // bubble is filled with the accent colour, and a photo
+                      // still loading or failed to load would otherwise show
+                      // that green through its placeholder.
                       if (message.imageUrl != null)
-                        _isVideoUrl(message.imageUrl!)
-                            ? _MessageVideo(
-                                videoUrl: message.imageUrl!,
-                                aspectRatio: message.mediaAspectRatio,
-                              )
-                            : _MessageImage(
-                                imageUrl: message.imageUrl!,
-                                aspectRatio: message.mediaAspectRatio,
-                              ),
+                        ColoredBox(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          child: _isVideoUrl(message.imageUrl!)
+                              ? _MessageVideo(
+                                  videoUrl: message.imageUrl!,
+                                  aspectRatio: message.mediaAspectRatio,
+                                )
+                              : _MessageImage(
+                                  imageUrl: message.imageUrl!,
+                                  aspectRatio: message.mediaAspectRatio,
+                                ),
+                        ),
                       // Text content
                       if (message.isEncrypted || message.content.isNotEmpty)
                         Padding(
@@ -358,10 +370,31 @@ class _MessageImage extends StatelessWidget {
         color: Colors.black12,
         child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
-      errorWidget: (_, __, ___) => Container(
-        height: 80.h,
+      // A photo that will not load is a dead end for the reader: they can see
+      // something was sent and have no way to know why it is not there. Say so,
+      // and offer the tap that opens it full-screen — which retries the fetch.
+      errorWidget: (context, __, ___) => Container(
+        height: aspectRatio != null ? null : 140.h,
         color: Colors.black12,
-        child: const Icon(Icons.broken_image_rounded, color: Colors.white54),
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.lg.h),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.broken_image_rounded,
+                color: Colors.white70, size: 26.sp),
+            SizedBox(height: AppSpacing.xs.h),
+            Text(
+              'Photo unavailable',
+              style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              'Tap to retry',
+              style: TextStyle(color: Colors.white54, fontSize: 11.sp),
+            ),
+          ],
+        ),
       ),
     );
     final tappable = Semantics(

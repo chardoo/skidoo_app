@@ -94,7 +94,14 @@ class AppButton extends StatelessWidget {
           foregroundColor: foreground,
           disabledBackgroundColor: background.withValues(alpha: 0.5),
           elevation: 0,
-          padding: EdgeInsets.symmetric(vertical: 14.h),
+          // A caller-supplied height is a budget, not a suggestion. 14.h above
+          // and below the label needs ~48 before the text is even drawn, so a
+          // compact button (the 40 the group-name Save and the confirm dialog
+          // ask for) clipped its own label in half. With an explicit height the
+          // SizedBox sets the size and the button centres the label inside it.
+          padding: height != null
+              ? EdgeInsets.zero
+              : EdgeInsets.symmetric(vertical: 14.h),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular((borderRadius ?? 14).r),
             side: side,

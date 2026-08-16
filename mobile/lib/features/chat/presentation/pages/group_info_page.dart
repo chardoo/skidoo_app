@@ -514,8 +514,10 @@ class _RenameSectionState extends State<_RenameSection> {
           SizedBox(width: 10.w),
           AppButton(
             label: 'Save',
-            width: 80,
-            height: 40,
+            // Scaled, and tall enough to sit level with the dense field beside
+            // it, which Flutter clamps to the 48 dp minimum touch target.
+            width: 84.w,
+            height: 48.h,
             onPressed: () => _save(context),
           ),
         ],
