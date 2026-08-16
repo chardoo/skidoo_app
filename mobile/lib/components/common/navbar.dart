@@ -26,10 +26,27 @@ class AppNavbar extends StatelessWidget {
   final ValueChanged<int> onchange;
   final int messageUnreadCount;
 
+  /// Index of the feed tab.
+  ///
+  /// The feed wraps itself in [DarkMediaSurface], which forces the dark palette
+  /// whatever theme the app is in — so the ground under this bar is dark there
+  /// regardless. See [_onDarkGround].
+  static const _feedTabIndex = 0;
+
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final isLight = Theme.of(context).brightness == Brightness.light;
+
+    // Which treatment to wear, decided by what is actually behind the bar
+    // rather than by the app's theme.
+    //
+    // The bar lives in the Scaffold's bottomNavigationBar, outside the body —
+    // so it never entered the feed's DarkMediaSurface and read the app theme
+    // instead. With extendBody:true the feed runs right under it, which in
+    // light mode put a white pill with grey icons on top of full-bleed dark
+    // media. The feed is a dark island by design; the bar has to join it.
+    final onDark = selectedIndex == _feedTabIndex ||
+        Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
       top: false,
@@ -46,17 +63,17 @@ class AppNavbar extends StatelessWidget {
             // mode can't, so it takes the palette's white and earns its edge
             // from a shadow instead — white on the light background is only a
             // few percent apart.
-            color: isLight ? ext.cardSurface : Colors.black,
+            color: onDark ? Colors.black : ext.cardSurface,
             borderRadius: BorderRadius.circular(29.r),
-            boxShadow: isLight
-                ? [
+            boxShadow: onDark
+                ? null
+                : [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.12),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
-                  ]
-                : null,
+                  ],
           ),
           // Tabs size to their own content (not 4 equal Expanded slots) so
           // the active tab's icon+label pill gets exactly the room it
@@ -68,24 +85,32 @@ class AppNavbar extends StatelessWidget {
               _NavTab(
                 label: 'Home',
                 iconPath: IconsPath.home,
-                selected: selectedIndex == 0,
+                selected: selectedIndex == _feedTabIndex,
                 ext: ext,
+                onDark: onDark,
                 onTap: () => onchange(0),
               ),
               _NavTab(
-                label: 'Notifications',
+                // 'Alerts', not 'Notifications' — the word is what the design
+                // calls that screen, and the long one overflowed the pill by
+                // ~97px when its tab was active, since only the active tab
+                // shows a label and the row is sized to its content.
+                label: 'Alerts',
                 icon: Icons.notifications_none_rounded,
                 selectedIcon: Icons.notifications_rounded,
                 selected: selectedIndex == 2,
                 ext: ext,
+                onDark: onDark,
                 onTap: () => onchange(2),
               ),
               _NavTab(
-                label: 'Messages',
+                // 'Chats', matching the screen's own title.
+                label: 'Chats',
                 icon: Icons.chat_bubble_outline_rounded,
                 selectedIcon: Icons.chat_bubble_rounded,
                 selected: selectedIndex == 1,
                 ext: ext,
+                onDark: onDark,
                 unreadCount: messageUnreadCount,
                 onTap: () => onchange(1),
               ),
@@ -95,6 +120,7 @@ class AppNavbar extends StatelessWidget {
                 selectedIcon: Icons.person_rounded,
                 selected: selectedIndex == 3,
                 ext: ext,
+                onDark: onDark,
                 onTap: () => onchange(3),
               ),
             ],
@@ -112,6 +138,7 @@ class _NavTab extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.ext,
+    required this.onDark,
     required this.onTap,
     this.iconPath,
     this.icon,
@@ -122,6 +149,9 @@ class _NavTab extends StatelessWidget {
   final String label;
   final bool selected;
   final AppThemeExtension ext;
+
+  /// Whether the bar is sitting on a dark ground — see [AppNavbar].
+  final bool onDark;
   final VoidCallback onTap;
   final String? iconPath;
   final IconData? icon;
@@ -130,18 +160,20 @@ class _NavTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLight = Theme.of(context).brightness == Brightness.light;
-
     // On the black pill the active tab is a solid accent chip with the label
     // knocked out of it. That inverts on white: a solid green chip would be
     // the loudest thing on a light screen, so the chip becomes a tint of the
     // accent and the label is drawn *in* the accent instead of out of it.
+    //
+    // Keyed to the ground the bar is on, not the app theme, so the two halves
+    // of the treatment can never disagree — a white chip on the black pill, or
+    // grey icons over the feed's dark media.
     final activeColor =
-        isLight ? ext.accentGold.withValues(alpha: 0.14) : ext.accentGold;
-    final activeForeground = isLight ? ext.accentGold : Colors.black;
+        onDark ? ext.accentGold : ext.accentGold.withValues(alpha: 0.14);
+    final activeForeground = onDark ? Colors.black : ext.accentGold;
     final iconColor = selected
         ? activeForeground
-        : (isLight ? ext.searchHintColor : Colors.white70);
+        : (onDark ? Colors.white70 : ext.searchHintColor);
 
     Widget iconWidget = icon != null
         ? Icon(

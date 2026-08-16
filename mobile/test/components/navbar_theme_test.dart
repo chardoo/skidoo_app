@@ -106,4 +106,71 @@ void main() {
       expect(icon.color, AppThemeExtension.light.searchHintColor);
     }
   });
+
+  // ── Over the feed ────────────────────────────────────────────────────────
+  //
+  // The feed wraps itself in DarkMediaSurface, which forces the dark palette
+  // whatever the app theme is. The bar lives in the Scaffold's
+  // bottomNavigationBar — outside that wrapper — so it read the app theme and,
+  // with extendBody:true, put a white pill and grey icons on top of full-bleed
+  // dark media. It has to join the island it floats over.
+
+  testWidgets('the feed tab takes the dark pill even in light mode', (t) async {
+    await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
+
+    final decoration = pill(t);
+    expect(decoration.color, Colors.black);
+    expect(decoration.boxShadow, isNull,
+        reason: 'a shadow is how the white pill earns an edge; the dark one '
+            'does not need it');
+  });
+
+  testWidgets('over the feed the inactive icons go light, not grey',
+      (t) async {
+    await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
+
+    final inactive = t
+        .widgetList<Icon>(find.byType(Icon))
+        .where((i) => i.color != null)
+        .toList();
+    expect(inactive, isNotEmpty);
+    for (final icon in inactive) {
+      expect(icon.color, Colors.white70,
+          reason: 'grey-on-dark-media is the case this fixes');
+    }
+  });
+
+  testWidgets('over the feed the active label is knocked out of a solid chip',
+      (t) async {
+    await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
+    expect(labelColour(t, 'Home'), Colors.black);
+  });
+
+  testWidgets('leaving the feed returns the bar to the theme', (t) async {
+    // The rule is about the ground under the bar, so it has to switch back —
+    // a black pill on the cream Profile page is the same mistake inverted.
+    await t.pumpWidget(host(AppThemeExtension.light, selected: 3));
+    expect(pill(t).color, AppThemeExtension.light.cardSurface);
+  });
+
+  testWidgets('in dark mode every tab keeps the dark pill', (t) async {
+    for (final tab in [0, 1, 2, 3]) {
+      await t.pumpWidget(host(AppThemeExtension.dark, selected: tab));
+      expect(pill(t).color, Colors.black, reason: 'tab \$tab');
+    }
+  });
+
+  testWidgets('every tab fits the pill when it is the active one', (t) async {
+    // Only the active tab shows a label and the row is sized to its content,
+    // so a long one overflows: 'Notifications' ran 97px past the edge. The
+    // labels are the design's own words, which are also the short ones.
+    for (final tab in [0, 1, 2, 3]) {
+      final errors = <String>[];
+      final previous = FlutterError.onError;
+      FlutterError.onError = (d) => errors.add(d.exceptionAsString());
+      await t.pumpWidget(host(AppThemeExtension.light, selected: tab));
+      FlutterError.onError = previous;
+      expect(errors, isEmpty, reason: 'tab \$tab overflowed: \${errors.join()}');
+    }
+  });
 }
