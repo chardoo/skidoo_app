@@ -96,10 +96,9 @@ class GroupInfoPage extends StatelessWidget {
                         label: 'Shared Media',
                         trailing: Icon(Icons.chevron_right_rounded,
                             color: ext.searchHintColor, size: 22.sp),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => SharedMediaPage(roomId: room.id),
-                          ),
+                        onTap: () => showWebPanelPage<void>(
+                          context,
+                          SharedMediaPage(roomId: room.id),
                         ),
                       ),
                       ChatSettingsTile(

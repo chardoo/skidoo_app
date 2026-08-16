@@ -6,6 +6,7 @@ import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/web_panel_route.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:jperg_app/features/chat/presentation/pages/shared_media_page.dart';
@@ -122,9 +123,7 @@ class ContactInfoPage extends StatelessWidget {
   }
 
   void _openSharedMedia(BuildContext context, ChatRoom room) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => SharedMediaPage(roomId: room.id)),
-    );
+    showWebPanelPage<void>(context, SharedMediaPage(roomId: room.id));
   }
 
   /// The designs show a location here. The chat service has no profile data, so

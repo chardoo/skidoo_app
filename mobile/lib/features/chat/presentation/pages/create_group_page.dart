@@ -14,6 +14,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/utils/web_panel_route.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/features/chat/data/datasources/user_search_data_source.dart';
@@ -83,10 +84,11 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   }
 
   Future<void> _next() async {
-    final room = await Navigator.of(context).push<ChatRoom>(
-      MaterialPageRoute(
-        builder: (_) => _GroupNamePage(members: List.of(_selected)),
-      ),
+    // Panel-shaped on web so step two stays inside the messages column instead
+    // of covering the app; a plain full-screen push on every other platform.
+    final room = await showWebPanelPage<ChatRoom>(
+      context,
+      _GroupNamePage(members: List.of(_selected)),
     );
     if (room != null && mounted) Navigator.of(context).pop(room);
   }
