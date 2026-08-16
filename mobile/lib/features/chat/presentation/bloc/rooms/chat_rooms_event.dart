@@ -39,14 +39,15 @@ class _ChatRoomsMessageArrived extends ChatRoomsEvent {
       this.senderName,
       this.preview,
       this.countsAsUnread = true});
+
   final String roomId;
   final DateTime arrivedAt;
   final String? senderId;
   final String? senderName;
 
-  /// Ready-to-draw preview line, or null when there is nothing to show for it
-  /// (ciphertext this device cannot read).
-  final String? preview;
+  /// The arriving message as an inbox preview, or null when there is nothing
+  /// showable for it (ciphertext this device cannot read).
+  final LastMessage? preview;
 
   /// False for system notices, which change the room's order and preview but
   /// are not unread messages.

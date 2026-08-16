@@ -206,6 +206,10 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
         pendingInvites: _mergeRooms(split.$2, state.pendingInvites, stale),
         unreadCounts: effectiveCounts,
         lastMessageAt: lastTimes,
+        // The fresh list carries the server's own previews, which now include
+        // anything that had arrived live. Clearing keeps the rule simple:
+        // whatever is left in liveMessages is newer than the last fetch.
+        liveMessages: const {},
         isLoading: false,
         isSyncing: false,
         clearError: true,
@@ -314,14 +318,14 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     final times = Map<String, DateTime>.from(state.lastMessageAt);
     times[event.roomId] = event.arrivedAt;
 
-    final previews = Map<String, String>.from(state.livePreviews);
+    final live = Map<String, LastMessage>.from(state.liveMessages);
     final preview = event.preview;
-    if (preview != null && preview.isNotEmpty) {
-      previews[event.roomId] = preview;
+    if (preview != null) {
+      live[event.roomId] = preview;
     } else {
       // Nothing showable for this one. Drop any older preview rather than
       // leaving a stale line that no longer describes the latest message.
-      previews.remove(event.roomId);
+      live.remove(event.roomId);
     }
 
     // Backfill a nameless direct room with the sender's name so the list shows
@@ -346,17 +350,25 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
         rooms: rooms,
         unreadCounts: counts,
         lastMessageAt: times,
-        livePreviews: previews));
+        liveMessages: live));
   }
 
-  /// The inbox line for a message that just arrived, or null when there is
-  /// nothing to draw — ciphertext, or an empty body with no attachment.
-  static String? _previewOf(ChatMessage msg) {
+  /// The arriving message as an inbox preview, or null when there is nothing to
+  /// draw for it — ciphertext this device cannot read, or an empty body with no
+  /// attachment.
+  static LastMessage? _previewOf(ChatMessage msg) {
     if (msg.isEncrypted) return null;
     final text = msg.content.trim();
-    if (text.isNotEmpty) return text;
-    if (msg.imageUrl != null) return 'Sent a photo';
-    return null;
+    if (text.isEmpty && msg.imageUrl == null && !msg.isSystem) return null;
+    return LastMessage(
+      id: msg.id,
+      senderId: msg.senderId,
+      senderName: msg.senderName,
+      content: text.isEmpty ? null : text,
+      hasImage: msg.imageUrl != null,
+      systemType: msg.systemType,
+      createdAt: msg.createdAt,
+    );
   }
 
   /// Clears the unread badge for [roomId] when the user opens the room.

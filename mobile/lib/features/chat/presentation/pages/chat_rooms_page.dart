@@ -151,7 +151,7 @@ class _ChatRoomsView extends StatelessWidget {
                                   unreadCount: state.unreadCounts[room.id] ?? 0,
                                   lastMessageAt: state.lastMessageAt[room.id],
                                   currentUserId: state.currentUserId,
-                                  previewOverride: state.livePreviews[room.id],
+                                  liveMessage: state.liveMessages[room.id],
                                   onTap: () => _openRoom(context, room),
                                 ),
                                 if (index < conversations.length - 1)

@@ -78,11 +78,11 @@ LastMessage last({
       createdAt: now,
     );
 
-Future<void> pumpTile(WidgetTester t, ChatRoom r, {String? previewOverride}) =>
+Future<void> pumpTile(WidgetTester t, ChatRoom r, {LastMessage? live}) =>
     t.pumpWidget(host(RoomTile(
       room: r,
       currentUserId: me,
-      previewOverride: previewOverride,
+      liveMessage: live,
       onTap: () {},
     )));
 
@@ -147,22 +147,36 @@ void main() {
       expect(find.text('Sarah Johnson accepted group invite'), findsOneWidget);
     });
 
-    testWidgets('falls back to the local cache when the server sent none',
+    testWidgets('a message arriving after the fetch supersedes the server one',
         (t) async {
-      // Offline cold start: the room list has no preview, but the message cache
-      // does.
-      await pumpTile(t, room(), previewOverride: 'from the cache');
-      expect(find.text('from the cache'), findsOneWidget);
-    });
-
-    testWidgets('the server preview wins over the cached one', (t) async {
+      // The bug this locks down: the room list is fetched with a preview, then
+      // a message lands while the inbox is open. Reading room.lastMessage first
+      // meant the tile kept showing the older line until the next sync — which
+      // is the whole thing the live copy exists to prevent.
       await pumpTile(
         t,
-        room(lastMessage: last(content: 'newer')),
-        previewOverride: 'older',
+        room(lastMessage: last(content: 'fetched')),
+        live: last(content: 'just arrived'),
       );
-      expect(find.text('newer'), findsOneWidget);
-      expect(find.text('older'), findsNothing);
+      expect(find.text('just arrived'), findsOneWidget);
+      expect(find.text('fetched'), findsNothing);
+    });
+
+    testWidgets('a live message is formatted like a fetched one', (t) async {
+      // It carries a LastMessage rather than a ready-made string precisely so
+      // it goes through this same path — a formatted string would have lost the
+      // group's speaker prefix.
+      await pumpTile(
+        t,
+        room(type: RoomType.group, name: 'Team'),
+        live: last(content: 'On my way'),
+      );
+      expect(find.text('Sarah: On my way'), findsOneWidget);
+    });
+
+    testWidgets('a room with neither preview describes itself', (t) async {
+      await pumpTile(t, room());
+      expect(find.text('No messages yet'), findsOneWidget);
     });
 
     testWidgets('an empty room describes itself instead', (t) async {

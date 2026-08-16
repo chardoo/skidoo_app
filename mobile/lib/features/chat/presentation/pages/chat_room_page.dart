@@ -99,7 +99,16 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     return space == -1 ? trimmed : trimmed.substring(0, space);
   }
 
-  bool _isBlocked = false;
+  /// Whether the peer is blocked.
+  ///
+  /// A notifier rather than plain state because Contact Info is a separate
+  /// route: it is built once when pushed, so a setState here would never reach
+  /// it and its Block/Unblock label would stay on whatever it said at push
+  /// time, however many times it was tapped.
+  final _isBlockedNotifier = ValueNotifier<bool>(false);
+  bool get _isBlocked => _isBlockedNotifier.value;
+  set _isBlocked(bool value) => _isBlockedNotifier.value = value;
+
   bool _blockLoading = false;
   String _otherUserId = '';
   // The super admin's account is never blockable — matches the 'admin' /
@@ -180,6 +189,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     _bloc.add(const ChatRoomLeft());
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
+    _isBlockedNotifier.dispose();
     super.dispose();
   }
 
@@ -345,7 +355,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
           child: _isGroup
               ? const GroupInfoPage()
               : ContactInfoPage(
-                  isBlocked: _isBlocked,
+                  isBlocked: _isBlockedNotifier,
                   canBlock: !_isPeerSuperAdmin,
                   onToggleBlock: _toggleBlock,
                 ),
@@ -505,10 +515,13 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
             final room = state.room ?? widget.room;
             final subtitle = _headerSubtitle(room, state.myUserId);
             return Semantics(
-              button: true,
-              label: 'Open chat details',
+              // Event and photo rooms have no details screen, so the header is
+              // not a button there — announcing one that does nothing is worse
+              // than announcing nothing.
+              button: _hasDetailsScreen,
+              label: _hasDetailsScreen ? 'Open chat details' : null,
               child: GestureDetector(
-                onTap: () => _openDetails(context),
+                onTap: _hasDetailsScreen ? () => _openDetails(context) : null,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

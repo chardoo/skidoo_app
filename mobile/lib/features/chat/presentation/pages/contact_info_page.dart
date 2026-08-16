@@ -1,9 +1,9 @@
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
-import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/web_panel_route.dart';
@@ -26,7 +26,10 @@ class ContactInfoPage extends StatelessWidget {
     required this.onToggleBlock,
   });
 
-  final bool isBlocked;
+  /// Listened to rather than read once: this page is a separate route from the
+  /// conversation that owns the block state, so a plain bool would freeze at
+  /// whatever it was when the page was pushed.
+  final ValueListenable<bool> isBlocked;
 
   /// False for the super admin's account, which is never blockable.
   final bool canBlock;
@@ -105,10 +108,13 @@ class ContactInfoPage extends StatelessWidget {
                         ),
                       ),
                       if (canBlock)
-                        ChatSettingsTile(
-                          label: isBlocked ? 'Unblock User' : 'Block User',
-                          labelColor: ext.errorRed,
-                          onTap: onToggleBlock,
+                        ValueListenableBuilder<bool>(
+                          valueListenable: isBlocked,
+                          builder: (_, blocked, __) => ChatSettingsTile(
+                            label: blocked ? 'Unblock User' : 'Block User',
+                            labelColor: ext.errorRed,
+                            onTap: onToggleBlock,
+                          ),
                         ),
                     ],
                   ),
@@ -173,43 +179,6 @@ class _ContactHeader extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-/// Rounded container the settings rows sit in, matching the designs' grouped
-/// card. Kept here rather than in the tile so the divider logic has one owner.
-class ChatSettingsCard extends StatelessWidget {
-  const ChatSettingsCard({super.key, required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-        border: Border.all(color: ext.searchHintColor.withValues(alpha: 0.25)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (int i = 0; i < children.length; i++) ...[
-            if (i > 0)
-              Divider(
-                height: 1,
-                thickness: 1,
-                indent: AppSpacing.md.w,
-                endIndent: AppSpacing.md.w,
-                color: ext.searchHintColor.withValues(alpha: 0.2),
-              ),
-            children[i],
-          ],
-        ],
-      ),
     );
   }
 }

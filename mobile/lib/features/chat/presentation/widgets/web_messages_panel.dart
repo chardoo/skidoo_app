@@ -470,7 +470,7 @@ class _PanelRoomsListState extends State<_PanelRoomsList> {
                               // Web has no local message cache, so this is the
                               // only source for a preview of anything that
                               // arrived since the list was fetched.
-                              previewOverride: state.livePreviews[room.id],
+                              liveMessage: state.liveMessages[room.id],
                               onTap: () => widget.onRoomTap(room),
                             )),
                       ],

@@ -13,8 +13,6 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/web_panel_route.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
-import 'package:jperg_app/features/chat/presentation/pages/contact_info_page.dart'
-    show ChatSettingsCard;
 import 'package:jperg_app/features/chat/presentation/pages/invite_to_group_page.dart';
 import 'package:jperg_app/features/chat/presentation/pages/shared_media_page.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/chat_settings_tile.dart';

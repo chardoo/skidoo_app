@@ -16,7 +16,7 @@ class RoomTile extends StatelessWidget {
     this.unreadCount = 0,
     this.lastMessageAt,
     this.currentUserId = '',
-    this.previewOverride,
+    this.liveMessage,
   });
 
   final ChatRoom room;
@@ -25,16 +25,17 @@ class RoomTile extends StatelessWidget {
   final DateTime? lastMessageAt;
   final String currentUserId;
 
-  /// Preview text from the local cache, used when the server hasn't sent one.
-  /// Lets an offline cold start still show the last thing said in a room.
-  final String? previewOverride;
+  /// A message that arrived after the room list was fetched, so newer than
+  /// [ChatRoom.lastMessage] and shown in its place.
+  final LastMessage? liveMessage;
 
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final hasUnread = unreadCount > 0;
     final name = room.displayNameFor(currentUserId);
-    final timestamp = lastMessageAt ?? room.lastMessage?.createdAt;
+    final timestamp =
+        lastMessageAt ?? liveMessage?.createdAt ?? room.lastMessage?.createdAt;
 
     return Semantics(
       button: true,
@@ -161,7 +162,9 @@ class RoomTile extends StatelessWidget {
   /// The line under the name: what was actually last said, falling back to a
   /// description of the room when nothing has been.
   String _preview(BuildContext context) {
-    final last = room.lastMessage;
+    // The live one wins when present: the bloc clears these on every fetch, so
+    // anything still here arrived after the server built its copy.
+    final last = liveMessage ?? room.lastMessage;
 
     if (last != null) {
       final systemType = last.systemType;
@@ -194,9 +197,6 @@ class RoomTile extends StatelessWidget {
       // cannot preview and this device may not hold the keys for.
       if (last.isEncrypted) return 'Message';
     }
-
-    final cached = previewOverride?.trim();
-    if (cached != null && cached.isNotEmpty) return cached;
 
     return _emptyRoomSubtitle();
   }

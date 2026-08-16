@@ -18,11 +18,17 @@ class ChatRoomsState extends Equatable {
   /// Timestamp of the most recent message per room id (for sorting).
   final Map<String, DateTime> lastMessageAt;
 
-  /// Preview line per room id for messages that arrived while the list was on
-  /// screen. The server sends a preview with the room list, but a message
-  /// landing after that would leave the tile showing the previous one until the
-  /// next sync — this is what keeps it current.
-  final Map<String, String> livePreviews;
+  /// Messages that arrived while the list was on screen, per room id.
+  ///
+  /// The server sends a preview with the room list, but one landing after that
+  /// would leave the tile showing the previous message until the next sync.
+  /// Cleared whenever a fresh list arrives, so anything in here is by
+  /// definition newer than the server's copy and supersedes it.
+  ///
+  /// A [LastMessage] rather than a ready-made string so the tile formats it
+  /// through the same path as the server's — otherwise a live message in a
+  /// group would lose the "Sarah:" prefix the fetched one has.
+  final Map<String, LastMessage> liveMessages;
 
   final String? errorMessage;
 
@@ -37,7 +43,7 @@ class ChatRoomsState extends Equatable {
     this.isSyncing = false,
     this.unreadCounts = const {},
     this.lastMessageAt = const {},
-    this.livePreviews = const {},
+    this.liveMessages = const {},
     this.errorMessage,
     this.currentUserId = '',
   });
@@ -49,7 +55,7 @@ class ChatRoomsState extends Equatable {
     bool? isSyncing,
     Map<String, int>? unreadCounts,
     Map<String, DateTime>? lastMessageAt,
-    Map<String, String>? livePreviews,
+    Map<String, LastMessage>? liveMessages,
     String? errorMessage,
     bool clearError = false,
     String? currentUserId,
@@ -61,7 +67,7 @@ class ChatRoomsState extends Equatable {
         isSyncing: isSyncing ?? this.isSyncing,
         unreadCounts: unreadCounts ?? this.unreadCounts,
         lastMessageAt: lastMessageAt ?? this.lastMessageAt,
-        livePreviews: livePreviews ?? this.livePreviews,
+        liveMessages: liveMessages ?? this.liveMessages,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
         currentUserId: currentUserId ?? this.currentUserId,
       );
@@ -74,7 +80,7 @@ class ChatRoomsState extends Equatable {
         isSyncing,
         unreadCounts,
         lastMessageAt,
-        livePreviews,
+        liveMessages,
         errorMessage,
         currentUserId,
       ];
