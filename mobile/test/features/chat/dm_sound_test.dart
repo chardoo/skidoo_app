@@ -88,5 +88,20 @@ void main() {
         isFalse,
       );
     });
+
+    test('a system notice never chimes', () {
+      // "X accepted group invite" is a notice about the room, not somebody
+      // getting in touch — it arrives on the same stream as a real message.
+      expect(
+        ChatBackgroundService.shouldPlayDmSound(
+          muted: false,
+          senderId: them,
+          myId: me,
+          roomType: null,
+          isSystem: true,
+        ),
+        isFalse,
+      );
+    });
   });
 }

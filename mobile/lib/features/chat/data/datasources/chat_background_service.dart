@@ -471,6 +471,7 @@ class ChatBackgroundService {
         senderId: msg.senderId,
         myId: myId,
         roomType: room?.type,
+        isSystem: msg.isSystem,
       )) {
         _sound.playMessageTone();
       }
@@ -487,14 +488,19 @@ class ChatBackgroundService {
   /// brand-new DM (group/event/global rooms are registered up-front via
   /// [connectAll]), so an unknown room is treated as a DM rather than missing a
   /// new conversation's first message.
+  ///
+  /// [isSystem] messages never chime: "X accepted group invite" is a notice
+  /// about the room, not somebody getting in touch.
   @visibleForTesting
   static bool shouldPlayDmSound({
     required bool muted,
     required String senderId,
     required String myId,
     required RoomType? roomType,
+    bool isSystem = false,
   }) {
     if (muted) return false;
+    if (isSystem) return false;
     if (senderId == myId) return false;
     return roomType == null || roomType == RoomType.direct;
   }

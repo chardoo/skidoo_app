@@ -87,7 +87,8 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
         add(_ChatRoomsMessageArrived(msg.roomId, msg.createdAt,
             senderId: msg.senderId,
             senderName: msg.senderName,
-            preview: _previewOf(msg)));
+            preview: _previewOf(msg),
+            countsAsUnread: !msg.isSystem));
       }
     });
 
@@ -302,8 +303,14 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     _ChatRoomsMessageArrived event,
     Emitter<ChatRoomsState> emit,
   ) {
+    // System notices reorder the room and update its preview, but they are not
+    // unread messages — nobody sent them to you. The server's unread query
+    // excludes them too, so counting them here would put a badge on the tile
+    // that the next sync silently takes away.
     final counts = Map<String, int>.from(state.unreadCounts);
-    counts[event.roomId] = (counts[event.roomId] ?? 0) + 1;
+    if (event.countsAsUnread) {
+      counts[event.roomId] = (counts[event.roomId] ?? 0) + 1;
+    }
     final times = Map<String, DateTime>.from(state.lastMessageAt);
     times[event.roomId] = event.arrivedAt;
 

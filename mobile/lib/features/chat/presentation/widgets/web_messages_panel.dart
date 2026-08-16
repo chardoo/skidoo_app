@@ -14,6 +14,7 @@ import 'package:jperg_app/features/chat/presentation/pages/group_info_page.dart'
 import 'package:jperg_app/features/chat/presentation/widgets/chat_input_bar.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/message_entrance.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/system_message_row.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/room_tile.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
@@ -466,6 +467,10 @@ class _PanelRoomsListState extends State<_PanelRoomsList> {
                               unreadCount: state.unreadCounts[room.id] ?? 0,
                               lastMessageAt: state.lastMessageAt[room.id],
                               currentUserId: state.currentUserId,
+                              // Web has no local message cache, so this is the
+                              // only source for a preview of anything that
+                              // arrived since the list was fetched.
+                              previewOverride: state.livePreviews[room.id],
                               onTap: () => widget.onRoomTap(room),
                             )),
                       ],
@@ -1085,13 +1090,30 @@ class _MessageList extends StatelessWidget {
         }
         final msg = state.messages[index];
         final isMe = msg.senderId == state.myUserId;
+
+        // System notices are message rows, so they arrive here like anything
+        // else and need drawing as a centred line rather than a bubble.
+        if (msg.isSystem) {
+          return SystemMessageRow(
+            message: msg,
+            currentUserId: state.myUserId,
+          );
+        }
+
         final shouldAnimate = animateIds.remove(msg.id);
+        final participant = state.room?.participants
+            .where((p) => p.userId == msg.senderId)
+            .firstOrNull;
         final totalOthers = (state.room?.participants ?? [])
             .where((p) => p.userId != msg.senderId)
             .length;
         final bubble = MessageBubble(
           message: msg,
           isMe: isMe,
+          // Groups attribute each message; a DM's header already says who it
+          // is with. Same rule the mobile conversation uses.
+          isGroup: state.room?.type == RoomType.group,
+          senderImageUrl: participant?.userImage,
           readCount: msg.readBy.length,
           totalOthers: totalOthers,
           onLongPress: () =>
