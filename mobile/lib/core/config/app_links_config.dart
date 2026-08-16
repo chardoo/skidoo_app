@@ -12,6 +12,14 @@ class AppLinksConfig {
 
   static const String shareBaseUrl = 'https://jperg.com';
 
+  /// The creator dashboard, which lives on the web rather than in the app.
+  ///
+  /// Built on [shareBaseUrl] rather than written out, so it cannot drift from
+  /// the public domain the way the hardcoded Render preview URL it replaced
+  /// had — that one still pointed at picco-v2.onrender.com.
+  static const String creatorDashboardUrl =
+      '$shareBaseUrl/photographer/dashboard';
+
   /// The URL a share should carry for [link].
   ///
   /// Built from [DeepLink.path] rather than assembled by hand, so anything the

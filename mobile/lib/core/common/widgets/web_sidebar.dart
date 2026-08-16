@@ -7,6 +7,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/features/home/domain/usecases/search_events_usecase.dart';
 import 'package:jperg_app/core/navigation/app_navigator.dart';
 import 'package:jperg_app/core/navigation/web_route_observer.dart';
+import 'package:jperg_app/core/config/app_links_config.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
@@ -26,7 +27,9 @@ import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
 import 'package:jperg_app/core/common/widgets/app_section_label.dart';
 
 const double _kSidebarWidth = 240.0;
-const String _kCreatorUrl = 'https://picco-v2.onrender.com/photographer/dashboard';
+// Was a hardcoded Render preview URL; the public domain is the one to send
+// people to. See AppLinksConfig.creatorDashboardUrl.
+const String _kCreatorUrl = AppLinksConfig.creatorDashboardUrl;
 
 // Viewport width below which the desktop sidebar won't fit. Matches app.dart.
 // (Kept private — app.dart inlines its own copy of the same value.)

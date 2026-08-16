@@ -135,11 +135,17 @@ class MessageBubble extends StatelessWidget {
                   ),
                   clipBehavior: Clip.hardEdge,
                   child: Column(
-                    // Stretch, not start: media has to fill the bubble edge to
-                    // edge. Under `start` a placeholder or error box — neither
-                    // of which has an intrinsic width — collapsed to its own
-                    // size and sat in a slab of bubble colour instead.
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    // Stretch only when there is media to stretch. Media has to
+                    // fill the bubble edge to edge — under `start` a placeholder
+                    // or error box, neither of which has an intrinsic width,
+                    // collapsed to its own size and sat in a slab of bubble
+                    // colour. But stretch also hands the Column the full 72% it
+                    // is allowed, so a text-only bubble grew to that width
+                    // whatever it said: "Bro" drew the same slab as a paragraph.
+                    // Text sizes itself, so let it, and the bubble hugs the words.
+                    crossAxisAlignment: message.imageUrl != null
+                        ? CrossAxisAlignment.stretch
+                        : CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Reply preview strip
@@ -274,8 +280,13 @@ class _ReplyPreviewStrip extends StatelessWidget {
         borderRadius: BorderRadius.circular(6.r),
       ),
       child: Row(
+        // Min + Flexible, not a bare Expanded: an Expanded fills every pixel the
+        // bubble is allowed, which would drag a short reply back out to full
+        // width now that the bubble sizes itself to its content. Flexible still
+        // lets the two lines ellipsize when the quoted message is long.
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
+          Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,

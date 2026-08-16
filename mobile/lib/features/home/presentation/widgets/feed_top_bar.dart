@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/features/home/presentation/widgets/creator_mode_menu.dart';
 
 /// Feed top bar — plain-text Found/Feed/Following tabs (active tab bold +
 /// underlined) centred as a group, with the QR glyph on the far left and a
@@ -155,22 +156,33 @@ class FeedTopBar extends StatelessWidget {
               right: 0,
               top: 0,
               bottom: 0,
-              child: Semantics(
-                button: true,
-                label: 'Open search',
-                child: GestureDetector(
-                  onTap: onSearchOpen,
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: EdgeInsets.only(left: AppSpacing.md.w),
-                    child: Center(
-                      child: Icon(Icons.search_rounded,
-                          color: _chromeColor(ext),
-                          size: 24.sp,
-                          shadows: _chromeShadows),
+              // Search and the mode switcher share the trailing edge, so they
+              // sit in one row rather than stacking Positioned children that
+              // would need their widths hardcoded to avoid overlapping.
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Semantics(
+                    button: true,
+                    label: 'Open search',
+                    child: GestureDetector(
+                      onTap: onSearchOpen,
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: AppSpacing.md.w),
+                        child: Center(
+                          child: Icon(Icons.search_rounded,
+                              color: _chromeColor(ext),
+                              size: 24.sp,
+                              shadows: _chromeShadows),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  // Draws nothing unless the signed-in account is a
+                  // photographer, so the bar is unchanged for everyone else.
+                  CreatorModeMenu(overSolidBackground: overSolidBackground),
+                ],
               ),
             ),
           ],
