@@ -20,6 +20,8 @@ class MessageBubble extends StatelessWidget {
     super.key,
     required this.message,
     required this.isMe,
+    this.isGroup = false,
+    this.senderImageUrl,
     this.onUserTap,
     this.onLongPress,
     this.readCount = 0,
@@ -28,6 +30,16 @@ class MessageBubble extends StatelessWidget {
 
   final ChatMessage message;
   final bool isMe;
+
+  /// Whether to attribute the message to a person.
+  ///
+  /// A DM has exactly one other participant, whose name and face are already in
+  /// the header — repeating them on every bubble is noise. A group needs both.
+  final bool isGroup;
+
+  /// Avatar for the sender, shown only in groups.
+  final String? senderImageUrl;
+
   final VoidCallback? onUserTap;
 
   /// Called when user long-presses to initiate a reply.
@@ -39,9 +51,19 @@ class MessageBubble extends StatelessWidget {
   /// Total non-sender participants in the room (1 for DM, N-1 for group).
   final int totalOthers;
 
+  bool get _showsAttribution => isGroup && !isMe;
+
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    // Sent messages are a filled accent block with white text; received ones sit
+    // on the neutral surface. The contrast is what separates the two sides at a
+    // glance, so text colour has to follow the fill rather than the theme.
+    final bubbleColor = isMe ? ext.accentGold : ext.cardSurface;
+    final textColor = isMe ? Colors.white : ext.greetingColor;
+    final mutedTextColor =
+        isMe ? Colors.white.withValues(alpha: 0.75) : ext.searchHintColor;
 
     return GestureDetector(
       onLongPress: onLongPress,
@@ -49,16 +71,16 @@ class MessageBubble extends StatelessWidget {
         onLongPress?.call();
       },
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 3.h, horizontal: AppSpacing.md.w),
+        padding:
+            EdgeInsets.symmetric(vertical: 4.h, horizontal: AppSpacing.md.w),
         child: Column(
           crossAxisAlignment:
               isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Sender label
-            if (!isMe)
+            if (_showsAttribution)
               Padding(
-                padding: EdgeInsets.only(left: AppSpacing.xs.w, bottom: 2.h),
+                padding: EdgeInsets.only(left: 40.w, bottom: 3.h),
                 child: Text(
                   message.displayName.isNotEmpty
                       ? message.displayName
@@ -67,9 +89,9 @@ class MessageBubble extends StatelessWidget {
                               message.senderRole.substring(1)
                           : '',
                   style: TextStyle(
-                    color: ext.searchHintColor,
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w500,
+                    color: ext.accentGold,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -80,9 +102,12 @@ class MessageBubble extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!isMe) ...[
+                if (_showsAttribution) ...[
                   UserAvatar(
-                    initial: message.senderId,
+                    imageUrl: senderImageUrl,
+                    initial: message.displayName.isNotEmpty
+                        ? message.displayName
+                        : message.senderId,
                     radius: 14,
                     onTap: onUserTap,
                   ),
@@ -100,20 +125,13 @@ class MessageBubble extends StatelessWidget {
                         .clamp(0.0, kIsWeb ? 300.0 : 420.0),
                   ),
                   decoration: BoxDecoration(
-                    color: isMe ? ext.searchFieldFill : ext.cardSurface,
+                    color: bubbleColor,
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(18.r),
                       topRight: Radius.circular(18.r),
                       bottomLeft: Radius.circular(isMe ? 18.r : 4.r),
                       bottomRight: Radius.circular(isMe ? 4.r : 18.r),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
                   clipBehavior: Clip.hardEdge,
                   child: Column(
@@ -138,78 +156,68 @@ class MessageBubble extends StatelessWidget {
                                 imageUrl: message.imageUrl!,
                                 aspectRatio: message.mediaAspectRatio,
                               ),
-                      // Text content + timestamp
-                      if (message.isEncrypted ||
-                          message.content.isNotEmpty ||
-                          message.imageUrl == null)
+                      // Text content
+                      if (message.isEncrypted || message.content.isNotEmpty)
                         Padding(
                           padding: EdgeInsets.fromLTRB(
                             14.w,
                             message.replyPreview != null ||
                                     message.imageUrl != null
-                                ? 6.h
+                                ? 8.h
                                 : 10.h,
                             14.w,
                             10.h,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (message.isEncrypted)
-                                Row(
+                          child: message.isEncrypted
+                              ? Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       Icons.lock_outline,
                                       size: 13.sp,
-                                      color: ext.searchHintColor,
+                                      color: mutedTextColor,
                                     ),
                                     SizedBox(width: AppSpacing.xs.w),
                                     Text(
                                       'Encrypted message',
                                       style: TextStyle(
-                                        color: ext.searchHintColor,
+                                        color: mutedTextColor,
                                         fontSize: 13.sp,
                                         fontStyle: FontStyle.italic,
                                       ),
                                     ),
                                   ],
                                 )
-                              else if (message.content.isNotEmpty)
-                                Text(
+                              : Text(
                                   message.content,
                                   style: TextStyle(
-                                    color: ext.greetingColor,
+                                    color: textColor,
                                     fontSize: 14.sp,
                                     height: 1.4,
                                   ),
                                 ),
-                              SizedBox(height: 3.h),
-                              _Timestamp(
-                                message: message,
-                                isMe: isMe,
-                                ext: ext,
-                                readCount: readCount,
-                                totalOthers: totalOthers,
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        Padding(
-                          padding:
-                              EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 6.h),
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: _Timestamp(
-                                message: message, isMe: isMe, ext: ext),
-                          ),
                         ),
                     ],
                   ),
                 ),
               ],
+            ),
+
+            // The time sits under the bubble, outside it — so it never competes
+            // with the message for space and reads the same on both sides.
+            Padding(
+              padding: EdgeInsets.only(
+                top: 4.h,
+                left: isMe ? 0 : (_showsAttribution ? 40.w : 4.w),
+                right: isMe ? 4.w : 0,
+              ),
+              child: _Timestamp(
+                message: message,
+                isMe: isMe,
+                ext: ext,
+                readCount: readCount,
+                totalOthers: totalOthers,
+              ),
             ),
           ],
         ),

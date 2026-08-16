@@ -1,24 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/common/widgets/app_confirm_dialog.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
-import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
-import 'package:jperg_app/features/chat/presentation/pages/invite_to_group_page.dart';
-import 'package:jperg_app/models/chat/chat_room.dart';
-import 'package:jperg_app/core/utils/web_panel_route.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
-import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/utils/web_panel_route.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
+import 'package:jperg_app/features/chat/presentation/pages/contact_info_page.dart'
+    show ChatSettingsCard;
+import 'package:jperg_app/features/chat/presentation/pages/invite_to_group_page.dart';
+import 'package:jperg_app/features/chat/presentation/pages/shared_media_page.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/chat_settings_tile.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
 
-/// WhatsApp-style group info page.
+/// Details for a group: its photo and name, shared media, mute, who is in it,
+/// and the admin controls.
 ///
-/// Requires [ChatRoomBloc] to be in scope (passed via BlocProvider.value
-/// from the parent [ChatRoomPage]).
+/// Requires [ChatRoomBloc] in scope (passed via BlocProvider.value from the
+/// parent [ChatRoomPage]).
 class GroupInfoPage extends StatelessWidget {
   const GroupInfoPage({super.key});
 
@@ -30,10 +36,12 @@ class GroupInfoPage extends StatelessWidget {
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         leading: AppBackButton(onPressed: () => Navigator.of(context).pop()),
         title: Text(
-          'Group info',
+          'Group Info',
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
@@ -51,6 +59,7 @@ class GroupInfoPage extends StatelessWidget {
         buildWhen: (p, c) =>
             p.room != c.room ||
             p.amIAdmin != c.amIAdmin ||
+            p.isMuted != c.isMuted ||
             p.isLeaving != c.isLeaving ||
             p.isDeleting != c.isDeleting,
         builder: (context, state) {
@@ -63,140 +72,137 @@ class GroupInfoPage extends StatelessWidget {
             );
           }
 
-          final allParticipants = room.participants.toList()
-            ..sort((a, b) {
-              // Active before pending, then admins before members, then alpha.
-              if (a.isPending != b.isPending) return a.isPending ? 1 : -1;
-              if (a.isAdmin && !b.isAdmin) return -1;
-              if (!a.isAdmin && b.isAdmin) return 1;
-              return a.displayName.compareTo(b.displayName);
-            });
-          final activeCount =
-              room.participants.where((p) => !p.isPending).length;
-          final pendingCount =
-              room.participants.where((p) => p.isPending).length;
+          final members = [
+            ...room.othersFor(state.myUserId),
+          ];
 
-          return ListView(
-            padding: EdgeInsets.only(bottom: AppSpacing.xxxl.h),
-            children: [
-              // ── Header ─────────────────────────────────────────────────────
-              _GroupHeader(room: room, ext: ext),
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680),
+              child: ListView(
+                padding: EdgeInsets.only(bottom: AppSpacing.xxxl.h),
+                children: [
+                  SizedBox(height: AppSpacing.lg.h),
+                  _GroupHeader(room: room, memberCount: members.length + 1),
+                  SizedBox(height: AppSpacing.xxl.h),
 
-              SizedBox(height: AppSpacing.sm.h),
-
-              // ── Admin-only mode toggle ──────────────────────────────────────
-              if (state.amIAdmin) ...[
-                _RenameSection(room: room, ext: ext),
-                SizedBox(height: AppSpacing.sm.h),
-                _SettingsSection(
-                  adminOnly: room.adminOnly,
-                  ext: ext,
-                  onToggle: (value) => context
-                      .read<ChatRoomBloc>()
-                      .add(ChatRoomUpdateSettingsRequested(adminOnly: value)),
-                ),
-                SizedBox(height: AppSpacing.sm.h),
-              ],
-
-              // ── Participants list ───────────────────────────────────────────
-              Padding(
-                padding: EdgeInsets.fromLTRB(16.w, 10.h, 8.w, 4.h),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        pendingCount > 0
-                            ? '$activeCount participant${activeCount == 1 ? '' : 's'} · $pendingCount pending'
-                            : '$activeCount participant${activeCount == 1 ? '' : 's'}',
-                        style: TextStyle(
-                          color: ext.searchHintColor,
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.4,
+                  // ── Chat settings ─────────────────────────────────────────
+                  const ChatSettingsLabel(label: 'CHAT SETTINGS'),
+                  SizedBox(height: AppSpacing.sm.h),
+                  ChatSettingsCard(
+                    children: [
+                      ChatSettingsTile(
+                        label: 'Shared Media',
+                        trailing: Icon(Icons.chevron_right_rounded,
+                            color: ext.searchHintColor, size: 22.sp),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => SharedMediaPage(roomId: room.id),
+                          ),
                         ),
                       ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () async {
-                        // Open "add people" inside the same web panel; full
-                        // page on mobile.
-                        final count = await showWebPanelPage<int>(
-                          context,
-                          InviteToGroupPage(room: room),
-                        );
-                        if (!context.mounted || count == null) return;
-                        AppSnackBar.success(
-                          context,
-                          '$count ${count == 1 ? 'person' : 'people'} invited',
-                        );
-                      },
-                      icon: Icon(Icons.person_add_outlined,
-                          size: 15.sp, color: ext.accentGold),
-                      label: Text(
-                        'Add',
-                        style:
-                            TextStyle(color: ext.accentGold, fontSize: 13.sp),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm.w,
-                            vertical: AppSpacing.xs.h),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Container(
-                decoration: BoxDecoration(
-                  color: ext.cardSurface,
-                ),
-                child: Column(
-                  children: [
-                    for (int i = 0; i < allParticipants.length; i++) ...[
-                      _ParticipantTile(
-                        participant: allParticipants[i],
-                        isSelf: allParticipants[i].userId == state.myUserId,
-                        amIAdmin: state.amIAdmin,
-                        ext: ext,
-                        onGrantAdmin: () => context.read<ChatRoomBloc>().add(
-                            ChatRoomGrantAdminRequested(
-                                allParticipants[i].userId)),
-                        onRevokeAdmin: () => context.read<ChatRoomBloc>().add(
-                            ChatRoomRevokeAdminRequested(
-                                allParticipants[i].userId)),
-                        onKick: () => context.read<ChatRoomBloc>().add(
-                            ChatRoomKickRequested(allParticipants[i].userId)),
-                      ),
-                      if (i < allParticipants.length - 1)
-                        Divider(
-                          height: 1,
-                          indent: 68.w,
-                          color: ext.searchHintColor.withValues(alpha: 0.1),
+                      ChatSettingsTile(
+                        label: 'Mute Notifications',
+                        trailing: Switch(
+                          value: state.isMuted,
+                          activeThumbColor: Colors.white,
+                          activeTrackColor: ext.accentGold,
+                          onChanged: (value) => context
+                              .read<ChatRoomBloc>()
+                              .add(ChatRoomMuteToggled(value)),
                         ),
+                      ),
                     ],
-                  ],
-                ),
-              ),
+                  ),
 
-              // ── Leave / Delete group ───────────────────────────────────────
-              SizedBox(height: AppSpacing.xxl.h),
-              _LeaveGroupButton(
-                isLeaving: state.isLeaving,
-                ext: ext,
-                onLeave: () => _confirmLeave(context, ext),
+                  // ── Admin-only controls ───────────────────────────────────
+                  if (state.amIAdmin) ...[
+                    SizedBox(height: AppSpacing.xl.h),
+                    const ChatSettingsLabel(label: 'GROUP NAME'),
+                    SizedBox(height: AppSpacing.sm.h),
+                    _RenameSection(room: room),
+                    SizedBox(height: AppSpacing.lg.h),
+                    ChatSettingsCard(
+                      children: [
+                        ChatSettingsTile(
+                          label: 'Only admins can send messages',
+                          trailing: Switch(
+                            value: room.adminOnly,
+                            activeThumbColor: Colors.white,
+                            activeTrackColor: ext.accentGold,
+                            onChanged: (value) => context
+                                .read<ChatRoomBloc>()
+                                .add(ChatRoomUpdateSettingsRequested(
+                                    adminOnly: value)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
+                  // ── Members ───────────────────────────────────────────────
+                  SizedBox(height: AppSpacing.xl.h),
+                  ChatSettingsLabel(
+                    label: 'GROUP MEMBERS',
+                    action: Semantics(
+                      button: true,
+                      label: 'Add member',
+                      child: GestureDetector(
+                        onTap: () => _addMembers(context, room),
+                        child: Text(
+                          'Add Member',
+                          style: TextStyle(
+                            color: ext.accentGold,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: AppSpacing.sm.h),
+                  for (int i = 0; i < members.length; i++) ...[
+                    _MemberRow(
+                      participant: members[i],
+                      amIAdmin: state.amIAdmin,
+                      onGrantAdmin: () => context.read<ChatRoomBloc>().add(
+                          ChatRoomGrantAdminRequested(members[i].userId)),
+                      onRevokeAdmin: () => context.read<ChatRoomBloc>().add(
+                          ChatRoomRevokeAdminRequested(members[i].userId)),
+                      onKick: () => context
+                          .read<ChatRoomBloc>()
+                          .add(ChatRoomKickRequested(members[i].userId)),
+                    ),
+                    if (i < members.length - 1)
+                      Padding(
+                        padding: EdgeInsets.only(
+                            left: 68.w, right: AppSpacing.lg.w),
+                        child: Divider(
+                          height: 1,
+                          thickness: 1,
+                          color:
+                              ext.searchHintColor.withValues(alpha: 0.14),
+                        ),
+                      ),
+                  ],
+
+                  // ── Destructive actions ───────────────────────────────────
+                  SizedBox(height: AppSpacing.xxl.h),
+                  _DestructiveRow(
+                    label: state.isLeaving ? 'Leaving…' : 'Leave Group',
+                    busy: state.isLeaving,
+                    onTap: () => _confirmLeave(context),
+                  ),
+                  if (state.amIAdmin)
+                    _DestructiveRow(
+                      label: state.isDeleting ? 'Deleting…' : 'Delete Group',
+                      busy: state.isDeleting,
+                      onTap: () => _confirmDelete(context),
+                    ),
+                ],
               ),
-              if (state.amIAdmin) ...[
-                SizedBox(height: AppSpacing.md.h),
-                _DeleteGroupButton(
-                  isDeleting: state.isDeleting,
-                  ext: ext,
-                  onDelete: () => _confirmDelete(context, ext),
-                ),
-              ],
-              SizedBox(height: AppSpacing.sm.h),
-            ],
+            ),
           );
         },
       ),
@@ -204,8 +210,19 @@ class GroupInfoPage extends StatelessWidget {
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
 
-  Future<void> _confirmLeave(
-      BuildContext context, AppThemeExtension ext) async {
+  Future<void> _addMembers(BuildContext context, ChatRoom room) async {
+    final count = await showWebPanelPage<int>(
+      context,
+      InviteToGroupPage(room: room),
+    );
+    if (!context.mounted || count == null) return;
+    AppSnackBar.success(
+      context,
+      '$count ${count == 1 ? 'person' : 'people'} invited',
+    );
+  }
+
+  Future<void> _confirmLeave(BuildContext context) async {
     final confirmed = await showAppConfirmDialog(
       context,
       title: 'Leave group?',
@@ -218,8 +235,7 @@ class GroupInfoPage extends StatelessWidget {
     }
   }
 
-  Future<void> _confirmDelete(
-      BuildContext context, AppThemeExtension ext) async {
+  Future<void> _confirmDelete(BuildContext context) async {
     final confirmed = await showAppConfirmDialog(
       context,
       title: 'Delete group?',
@@ -237,57 +253,48 @@ class GroupInfoPage extends StatelessWidget {
 // ── Header ────────────────────────────────────────────────────────────────────
 
 class _GroupHeader extends StatelessWidget {
-  const _GroupHeader({required this.room, required this.ext});
+  const _GroupHeader({required this.room, required this.memberCount});
 
   final ChatRoom room;
-  final AppThemeExtension ext;
+  final int memberCount;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: ext.cardSurface,
-      padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl.h),
-      child: Column(
-        children: [
-          Container(
-            width: 80.w,
-            height: 80.w,
-            decoration: BoxDecoration(
-              color: ext.searchFieldFill,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Icon(Icons.group_rounded,
-                color: ext.greetingColor, size: 40.sp),
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    return Column(
+      children: [
+        UserAvatar(
+          imageUrl: room.imageUrl,
+          initial: room.displayName,
+          radius: 48,
+        ),
+        SizedBox(height: AppSpacing.md.h),
+        Text(
+          room.displayName,
+          style: TextStyle(
+            color: ext.greetingColor,
+            fontSize: 19.sp,
+            fontWeight: FontWeight.bold,
           ),
-          SizedBox(height: 14.h),
-          Text(
-            room.displayName,
-            style: TextStyle(
-              color: ext.greetingColor,
-              fontSize: 20.sp,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: AppSpacing.xs.h),
-          Text(
-            'Group',
-            style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-          ),
-        ],
-      ),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: 2.h),
+        Text(
+          '$memberCount ${memberCount == 1 ? 'member' : 'members'}',
+          style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+        ),
+      ],
     );
   }
 }
 
-// ── Rename section ────────────────────────────────────────────────────────────
+// ── Rename ────────────────────────────────────────────────────────────────────
 
 class _RenameSection extends StatefulWidget {
-  const _RenameSection({required this.room, required this.ext});
+  const _RenameSection({required this.room});
 
   final ChatRoom room;
-  final AppThemeExtension ext;
 
   @override
   State<_RenameSection> createState() => _RenameSectionState();
@@ -327,41 +334,24 @@ class _RenameSectionState extends State<_RenameSection> {
 
   @override
   Widget build(BuildContext context) {
-    final ext = widget.ext;
-    return Container(
-      color: ext.cardSurface,
-      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
+      child: Row(
         children: [
-          Text(
-            'GROUP NAME',
-            style: TextStyle(
-              color: ext.searchHintColor,
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
+          Expanded(
+            child: AppTextField(
+              controller: _ctrl,
+              dense: true,
+              hint: 'Enter group name',
+              onFieldSubmitted: (_) => _save(context),
             ),
           ),
-          SizedBox(height: 10.h),
-          Row(
-            children: [
-              Expanded(
-                child: AppTextField(
-                  controller: _ctrl,
-                  dense: true,
-                  hint: 'Enter group name',
-                  onFieldSubmitted: (_) => _save(context),
-                ),
-              ),
-              SizedBox(width: 10.w),
-              AppButton(
-                label: 'Save',
-                width: 80,
-                height: 40,
-                onPressed: () => _save(context),
-              ),
-            ],
+          SizedBox(width: 10.w),
+          AppButton(
+            label: 'Save',
+            width: 80,
+            height: 40,
+            onPressed: () => _save(context),
           ),
         ],
       ),
@@ -369,81 +359,29 @@ class _RenameSectionState extends State<_RenameSection> {
   }
 }
 
-// ── Settings section ──────────────────────────────────────────────────────────
+// ── Member row ────────────────────────────────────────────────────────────────
 
-class _SettingsSection extends StatelessWidget {
-  const _SettingsSection({
-    required this.adminOnly,
-    required this.ext,
-    required this.onToggle,
-  });
-
-  final bool adminOnly;
-  final AppThemeExtension ext;
-  final ValueChanged<bool> onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    // Material rather than a coloured Container — SwitchListTile paints its
-    // background and ink onto the nearest Material ancestor, which a plain
-    // ColoredBox in between would hide (and assert about in debug).
-    return Material(
-      color: ext.cardSurface,
-      child: SwitchListTile(
-        contentPadding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg.w, vertical: AppSpacing.xs.h),
-        title: Text(
-          'Only admins can send messages',
-          style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-        ),
-        subtitle: Text(
-          adminOnly
-              ? 'Only admins can send messages in this group.'
-              : 'All members can send messages.',
-          style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-        ),
-        value: adminOnly,
-        activeThumbColor: ext.greetingColor,
-        activeTrackColor: ext.searchHintColor.withValues(alpha: 0.4),
-        onChanged: onToggle,
-      ),
-    );
-  }
-}
-
-// ── Participant tile ──────────────────────────────────────────────────────────
-
-class _ParticipantTile extends StatelessWidget {
-  const _ParticipantTile({
+class _MemberRow extends StatelessWidget {
+  const _MemberRow({
     required this.participant,
-    required this.isSelf,
     required this.amIAdmin,
-    required this.ext,
     required this.onGrantAdmin,
     required this.onRevokeAdmin,
     required this.onKick,
   });
 
   final ChatParticipant participant;
-  final bool isSelf;
   final bool amIAdmin;
-  final AppThemeExtension ext;
   final VoidCallback onGrantAdmin;
   final VoidCallback onRevokeAdmin;
   final VoidCallback onKick;
 
-  String get _initial {
-    final name = participant.displayName;
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
-  }
-
   void _showOptions(BuildContext context) {
-    if (!amIAdmin || isSelf) return;
-
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ParticipantOptionsSheet(
+      builder: (_) => _MemberOptionsSheet(
         participant: participant,
         ext: ext,
         onGrantAdmin: () {
@@ -464,113 +402,69 @@ class _ParticipantTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
     return Semantics(
-        button: true,
-        label: 'Show options',
-        child: InkWell(
-          onTap: amIAdmin && !isSelf ? () => _showOptions(context) : null,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg.w, vertical: 10.h),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 22.r,
-                  backgroundColor: ext.searchFieldFill,
+      button: amIAdmin,
+      label: participant.displayName,
+      child: InkWell(
+        onTap: amIAdmin ? () => _showOptions(context) : null,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg.w, vertical: 10.h),
+          child: Row(
+            children: [
+              UserAvatar(
+                imageUrl: participant.userImage,
+                initial: participant.displayName,
+                radius: 18,
+              ),
+              SizedBox(width: AppSpacing.md.w),
+              Expanded(
+                child: Text(
+                  participant.displayName,
+                  style:
+                      TextStyle(color: ext.greetingColor, fontSize: 15.sp),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (participant.isPending)
+                Text(
+                  'Pending',
+                  style: TextStyle(
+                    color: ext.searchHintColor,
+                    fontSize: 12.sp,
+                    fontStyle: FontStyle.italic,
+                  ),
+                )
+              else if (participant.isAdmin)
+                Container(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 10.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: ext.accentGold.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadius.xl.r),
+                  ),
                   child: Text(
-                    _initial,
+                    'Admin',
                     style: TextStyle(
-                      color: ext.greetingColor,
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
+                      color: ext.accentGold,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              participant.displayName,
-                              style: TextStyle(
-                                color: ext.greetingColor,
-                                fontSize: 15.sp,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isSelf) ...[
-                            SizedBox(width: 6.w),
-                            Text(
-                              '(you)',
-                              style: TextStyle(
-                                  color: ext.searchHintColor, fontSize: 12.sp),
-                            ),
-                          ],
-                        ],
-                      ),
-                      // Only show role as subtitle when a real name is present —
-                      // otherwise displayName already shows the capitalised role.
-                      if (participant.userName != null &&
-                          participant.userName!.isNotEmpty)
-                        Text(
-                          _capitalise(participant.userRole),
-                          style: TextStyle(
-                              color: ext.searchHintColor, fontSize: 12.sp),
-                        ),
-                    ],
-                  ),
-                ),
-                if (participant.isPending)
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm.w, vertical: 3.h),
-                    decoration: BoxDecoration(
-                      color: ext.searchHintColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6.r),
-                    ),
-                    child: Text(
-                      'Pending',
-                      style: TextStyle(
-                        color: ext.searchHintColor,
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  )
-                else if (participant.isAdmin)
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm.w, vertical: 3.h),
-                    decoration: BoxDecoration(
-                      color: ext.infoBlue.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6.r),
-                    ),
-                    child: Text(
-                      'Admin',
-                      style: TextStyle(
-                        color: ext.infoBlue,
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
-        ));
+        ),
+      ),
+    );
   }
 }
 
-// ── Participant options sheet ──────────────────────────────────────────────────
-
-class _ParticipantOptionsSheet extends StatelessWidget {
-  const _ParticipantOptionsSheet({
+class _MemberOptionsSheet extends StatelessWidget {
+  const _MemberOptionsSheet({
     required this.participant,
     required this.ext,
     required this.onGrantAdmin,
@@ -583,11 +477,6 @@ class _ParticipantOptionsSheet extends StatelessWidget {
   final VoidCallback onGrantAdmin;
   final VoidCallback onRevokeAdmin;
   final VoidCallback onKick;
-
-  String get _initial {
-    final name = participant.displayName;
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -611,52 +500,34 @@ class _ParticipantOptionsSheet extends StatelessWidget {
               ),
             ),
           ),
-
-          // ── Participant header ─────────────────────────────────────────────
           Row(
             children: [
-              CircleAvatar(
-                radius: 24.r,
-                backgroundColor: ext.searchFieldFill,
-                child: Text(
-                  _initial,
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              UserAvatar(
+                imageUrl: participant.userImage,
+                initial: participant.displayName,
+                radius: 24,
               ),
               SizedBox(width: 14.w),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    participant.displayName,
-                    style: TextStyle(
-                      color: ext.greetingColor,
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
+              Expanded(
+                child: Text(
+                  participant.displayName,
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
                   ),
-                  if (participant.userName != null &&
-                      participant.userName!.isNotEmpty)
-                    Text(
-                      _capitalise(participant.userRole),
-                      style: TextStyle(
-                          color: ext.searchHintColor, fontSize: 12.sp),
-                    ),
-                ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
-
           SizedBox(height: AppSpacing.lg.h),
           Divider(color: ext.searchHintColor.withValues(alpha: 0.12)),
           SizedBox(height: AppSpacing.xs.h),
 
-          // ── Admin toggle — doesn't apply to a pending invite, since
-          // they're not a member yet. ─────────────────────────────────────
+          // Admin rights don't apply to a pending invite — they aren't a
+          // member yet.
           if (!participant.isPending) ...[
             if (!participant.isAdmin)
               _SheetOption(
@@ -669,118 +540,20 @@ class _ParticipantOptionsSheet extends StatelessWidget {
               _SheetOption(
                 icon: Icons.shield_outlined,
                 label: 'Remove as admin',
-                color: Colors.orangeAccent,
+                color: ext.publicAmber,
                 onTap: onRevokeAdmin,
               ),
           ],
 
-          // ── Kick — for a pending invite this revokes it, so they can no
-          // longer join at all. ────────────────────────────────────────────
+          // For a pending invite this revokes it, so they can no longer join.
           _SheetOption(
             icon: Icons.person_remove_outlined,
             label:
                 participant.isPending ? 'Cancel invite' : 'Remove from group',
-            color: Colors.redAccent,
+            color: ext.errorRed,
             onTap: onKick,
           ),
         ],
-      ),
-    );
-  }
-}
-
-String _capitalise(String s) =>
-    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
-
-class _LeaveGroupButton extends StatelessWidget {
-  const _LeaveGroupButton({
-    required this.isLeaving,
-    required this.ext,
-    required this.onLeave,
-  });
-
-  final bool isLeaving;
-  final AppThemeExtension ext;
-  final VoidCallback onLeave;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-      child: SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.redAccent,
-            side: const BorderSide(color: Colors.redAccent),
-            padding: EdgeInsets.symmetric(vertical: 14.h),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md.r),
-            ),
-          ),
-          onPressed: isLeaving ? null : onLeave,
-          icon: isLeaving
-              ? SizedBox(
-                  width: 18.w,
-                  height: 18.w,
-                  child: const CircularProgressIndicator(
-                    color: Colors.redAccent,
-                    strokeWidth: 2,
-                  ),
-                )
-              : Icon(Icons.exit_to_app_rounded, size: 20.sp),
-          label: Text(
-            isLeaving ? 'Leaving…' : 'Leave group',
-            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DeleteGroupButton extends StatelessWidget {
-  const _DeleteGroupButton({
-    required this.isDeleting,
-    required this.ext,
-    required this.onDelete,
-  });
-
-  final bool isDeleting;
-  final AppThemeExtension ext;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-      child: SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.redAccent,
-            side: const BorderSide(color: Colors.redAccent),
-            padding: EdgeInsets.symmetric(vertical: 14.h),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md.r),
-            ),
-          ),
-          onPressed: isDeleting ? null : onDelete,
-          icon: isDeleting
-              ? SizedBox(
-                  width: 18.w,
-                  height: 18.w,
-                  child: const CircularProgressIndicator(
-                    color: Colors.redAccent,
-                    strokeWidth: 2,
-                  ),
-                )
-              : Icon(Icons.delete_forever_rounded, size: 20.sp),
-          label: Text(
-            isDeleting ? 'Deleting…' : 'Delete group',
-            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
-          ),
-        ),
       ),
     );
   }
@@ -803,38 +576,87 @@ class _SheetOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     return Semantics(
-        button: true,
-        label: label,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.md.r),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-                vertical: AppSpacing.md.h, horizontal: AppSpacing.xs.w),
-            child: Row(
-              children: [
-                Container(
-                  width: 40.w,
-                  height: 40.w,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(icon, color: color, size: 20.sp),
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+              vertical: AppSpacing.md.h, horizontal: AppSpacing.xs.w),
+          child: Row(
+            children: [
+              Container(
+                width: 40.w,
+                height: 40.w,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
-                SizedBox(width: 14.w),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
+                alignment: Alignment.center,
+                child: Icon(icon, color: color, size: 20.sp),
+              ),
+              SizedBox(width: 14.w),
+              Text(
+                label,
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w500,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ));
+        ),
+      ),
+    );
+  }
+}
+
+/// Leave / delete, styled as a plain destructive row rather than a button —
+/// they sit at the end of a list, not in a form.
+class _DestructiveRow extends StatelessWidget {
+  const _DestructiveRow({
+    required this.label,
+    required this.busy,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    return InkWell(
+      onTap: busy ? null : onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg.w, vertical: 14.h),
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: ext.errorRed,
+                fontSize: 15.sp,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (busy) ...[
+              SizedBox(width: AppSpacing.sm.w),
+              SizedBox(
+                width: 14.w,
+                height: 14.w,
+                child: CircularProgressIndicator(
+                    color: ext.errorRed, strokeWidth: 2),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }

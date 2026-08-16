@@ -53,8 +53,11 @@ enum RoomType {
   }
 
   /// True for rooms shown in the Messages inbox.
+  ///
+  /// Global is excluded: the inbox no longer offers it, and a room everyone is
+  /// in is not a conversation the user chose to have. The type itself stays —
+  /// old cached rows still carry it, and the server still serves the room.
   bool get isConversation =>
-      this == RoomType.global ||
       this == RoomType.direct ||
       this == RoomType.eventPrivate ||
       this == RoomType.group;

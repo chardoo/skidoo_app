@@ -85,7 +85,9 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     _bgMsgSub = _bgService.backgroundMessages.listen((msg) {
       if (!isClosed) {
         add(_ChatRoomsMessageArrived(msg.roomId, msg.createdAt,
-            senderId: msg.senderId, senderName: msg.senderName));
+            senderId: msg.senderId,
+            senderName: msg.senderName,
+            preview: _previewOf(msg)));
       }
     });
 
@@ -305,6 +307,16 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     final times = Map<String, DateTime>.from(state.lastMessageAt);
     times[event.roomId] = event.arrivedAt;
 
+    final previews = Map<String, String>.from(state.livePreviews);
+    final preview = event.preview;
+    if (preview != null && preview.isNotEmpty) {
+      previews[event.roomId] = preview;
+    } else {
+      // Nothing showable for this one. Drop any older preview rather than
+      // leaving a stale line that no longer describes the latest message.
+      previews.remove(event.roomId);
+    }
+
     // Backfill a nameless direct room with the sender's name so the list shows
     // the person's name instead of "Direct Message"/their role.
     var rooms = state.rooms;
@@ -324,7 +336,20 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     }
 
     emit(state.copyWith(
-        rooms: rooms, unreadCounts: counts, lastMessageAt: times));
+        rooms: rooms,
+        unreadCounts: counts,
+        lastMessageAt: times,
+        livePreviews: previews));
+  }
+
+  /// The inbox line for a message that just arrived, or null when there is
+  /// nothing to draw — ciphertext, or an empty body with no attachment.
+  static String? _previewOf(ChatMessage msg) {
+    if (msg.isEncrypted) return null;
+    final text = msg.content.trim();
+    if (text.isNotEmpty) return text;
+    if (msg.imageUrl != null) return 'Sent a photo';
+    return null;
   }
 
   /// Clears the unread badge for [roomId] when the user opens the room.

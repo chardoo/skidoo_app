@@ -30,6 +30,7 @@ class ChatInputBar extends StatefulWidget {
     this.pendingShareUrl,
     this.onClearImage,
     this.isUploadingImage = false,
+    this.onTypingChanged,
   });
 
   final TextEditingController controller;
@@ -57,6 +58,11 @@ class ChatInputBar extends StatefulWidget {
 
   /// True only while the media is being uploaded (after send is tapped).
   final bool isUploadingImage;
+
+  /// Raised as the user types and again when they stop. Called on every
+  /// keystroke — the bloc rate-limits what actually reaches the socket, so
+  /// there is nothing to debounce here.
+  final ValueChanged<bool>? onTypingChanged;
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -218,6 +224,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
               Expanded(
                 child: AppTextField(
                   controller: widget.controller,
+                  onChanged: (value) =>
+                      widget.onTypingChanged?.call(value.trim().isNotEmpty),
                   onTap: () {
                     if (_emojiOpen) setState(() => _emojiOpen = false);
                   },

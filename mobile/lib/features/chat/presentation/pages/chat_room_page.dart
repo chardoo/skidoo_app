@@ -13,11 +13,16 @@ import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
+import 'package:jperg_app/features/chat/presentation/pages/contact_info_page.dart';
 import 'package:jperg_app/features/chat/presentation/pages/group_info_page.dart';
 import 'package:jperg_app/features/chat/presentation/pages/invite_to_group_page.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/chat_input_bar.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/message_bubble.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/day_separator.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/message_entrance.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/room_avatar.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/system_message_row.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/typing_indicator.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/services/notification_prefs_service.dart';
@@ -27,105 +32,21 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 /// Displays the messages for [room].
-/// Use the [ChatRoomPage.global] constructor to join the global chat room.
 class ChatRoomPage extends StatelessWidget {
-  const ChatRoomPage({super.key, required this.room, this.shareUrl})
-      : _globalMode = false;
+  const ChatRoomPage({super.key, required this.room, this.shareUrl});
 
-  const ChatRoomPage.global({super.key})
-      : room = null,
-        shareUrl = null,
-        _globalMode = true;
-
-  final ChatRoom? room;
+  final ChatRoom room;
 
   /// When non-null, this image URL is sent as a message as soon as the
   /// WebSocket connects — used by the in-app gallery share flow.
   final String? shareUrl;
 
-  final bool _globalMode;
-
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<ChatRoomBloc>(),
-      child: _globalMode
-          ? const _GlobalRoomInitializer()
-          : _ChatRoomView(room: room!, shareUrl: shareUrl),
+      child: _ChatRoomView(room: room, shareUrl: shareUrl),
     );
-  }
-}
-
-// ── Global room initializer ───────────────────────────────────────────────────
-
-class _GlobalRoomInitializer extends StatefulWidget {
-  const _GlobalRoomInitializer();
-
-  @override
-  State<_GlobalRoomInitializer> createState() => _GlobalRoomInitializerState();
-}
-
-class _GlobalRoomInitializerState extends State<_GlobalRoomInitializer> {
-  bool _loading = true;
-  ChatRoom? _room;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final room = await sl<GetGlobalRoomUseCase>().call();
-      if (mounted) setState(() { _room = room; _loading = false; });
-    } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    if (_loading) {
-      return webWrap(
-        Scaffold(
-          backgroundColor: ext.homeBackground,
-          body: Center(child: CircularProgressIndicator(color: ext.searchHintColor)),
-        ),
-        backgroundColor: ext.homeBackground,
-      );
-    }
-    if (_error != null) {
-      return webWrap(
-        Scaffold(
-          backgroundColor: ext.homeBackground,
-          body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.error_outline_rounded,
-                    color: Colors.redAccent, size: 48.sp),
-                SizedBox(height: AppSpacing.sm.h),
-                Text(_error!,
-                    style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
-                    textAlign: TextAlign.center),
-                TextButton(
-                  onPressed: () {
-                    setState(() { _loading = true; _error = null; });
-                    _load();
-                  },
-                  child: Text(AppLocalizations.of(context)!.photographerProfileRetry, style: TextStyle(color: ext.accentGold)),
-                ),
-              ],
-            ),
-          ),
-        ),
-        backgroundColor: ext.homeBackground,
-      );
-    }
-    return _ChatRoomView(room: _room!);
   }
 }
 
@@ -153,6 +74,30 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       widget.room.type == RoomType.eventPrivate;
 
   bool get _isDirect => widget.room.type == RoomType.direct;
+
+  bool get _isGroup => widget.room.type == RoomType.group;
+
+  /// Only DMs and groups have a details screen. An event or photo room has no
+  /// contact behind it and no membership to manage.
+  bool get _hasDetailsScreen => _isDirect || _isGroup;
+
+  /// The line under the room name in the header: who else is in the group.
+  /// Null in a DM, where the name is already the whole answer.
+  String? _headerSubtitle(ChatRoom room, String myId) {
+    if (room.type != RoomType.group) return null;
+    final others = room.othersFor(myId).where((p) => !p.isPending).toList();
+    if (others.isEmpty) return 'Just you';
+    final names = [for (final p in others) _firstName(p.displayName)];
+    // "You" last, matching the designs — the list is about who else is here.
+    return '${names.join(', ')}, You';
+  }
+
+  static String _firstName(String full) {
+    final trimmed = full.trim();
+    if (trimmed.isEmpty) return 'Someone';
+    final space = trimmed.indexOf(' ');
+    return space == -1 ? trimmed : trimmed.substring(0, space);
+  }
 
   bool _isBlocked = false;
   bool _blockLoading = false;
@@ -253,6 +198,10 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       replyToId: replyToId,
     ));
     _inputCtrl.clear();
+    // The composer is empty again, so we are no longer typing. Without this the
+    // indicator sits on the recipient's screen next to the message that just
+    // arrived, until it times out.
+    _bloc.add(const ChatRoomTypingChanged(false));
   }
 
   void _onImagePicked(String filePath, {String? mimeType, bool isVideo = false}) {
@@ -385,12 +334,21 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     AppSnackBar.success(context, AppLocalizations.of(context)!.chatRoomInvitedCount(count));
   }
 
-  void _openGroupInfo(BuildContext context) {
+  /// Group info for a group, contact info for a DM. Both are reached the same
+  /// way — tapping the header, or the overflow — so they resolve in one place.
+  void _openDetails(BuildContext context) {
+    if (!_hasDetailsScreen) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => BlocProvider.value(
           value: _bloc,
-          child: const GroupInfoPage(),
+          child: _isGroup
+              ? const GroupInfoPage()
+              : ContactInfoPage(
+                  isBlocked: _isBlocked,
+                  canBlock: !_isPeerSuperAdmin,
+                  onToggleBlock: _toggleBlock,
+                ),
         ),
       ),
     );
@@ -421,6 +379,99 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     }
   }
 
+  // ── Conversation rows ─────────────────────────────────────────────────────
+  //
+  // The list is reversed, so these run newest-first: the typing bubble is at
+  // index 0 (visually the bottom), and a day separator follows the last message
+  // of that day (visually above it).
+
+  List<_Row> _buildRows(ChatRoomState state) {
+    final rows = <_Row>[];
+
+    final typingNames = state.typingUsers.values
+        .map((n) => n.trim())
+        .where((n) => n.isNotEmpty)
+        .toList();
+    if (state.typingUsers.isNotEmpty) {
+      rows.add(_Row.typing(
+        // A DM has one possible sender, so naming them is redundant. In a group
+        // it is the whole point.
+        _isGroup && typingNames.isNotEmpty ? typingNames.join(', ') : null,
+      ));
+    }
+
+    for (int i = 0; i < state.messages.length; i++) {
+      final msg = state.messages[i];
+      rows.add(_Row.message(msg));
+
+      // The next entry is older, so a change of day means this message opens
+      // its day and the separator belongs after it in reversed order.
+      final older = i + 1 < state.messages.length ? state.messages[i + 1] : null;
+      if (older == null ||
+          DaySeparator.needsSeparator(older.createdAt, msg.createdAt)) {
+        rows.add(_Row.day(msg.createdAt));
+      }
+    }
+
+    return rows;
+  }
+
+  Widget _buildRow(BuildContext context, ChatRoomState state, _Row row) {
+    switch (row.kind) {
+      case _RowKind.typing:
+        return TypingIndicator(label: row.label);
+
+      case _RowKind.day:
+        return DaySeparator(date: row.date!);
+
+      case _RowKind.message:
+        var msg = row.message!;
+        final isMe = msg.senderId == state.myUserId;
+
+        if (msg.isSystem) {
+          return SystemMessageRow(
+            key: ValueKey(msg.id),
+            message: msg,
+            currentUserId: state.myUserId,
+          );
+        }
+
+        // Fill senderName and the avatar from the participants list when the
+        // server or cache left them blank.
+        final participant = state.room?.participants
+            .where((p) => p.userId == msg.senderId)
+            .firstOrNull;
+        if (!isMe && msg.senderName.isEmpty && participant != null) {
+          msg = msg.copyWith(senderName: participant.displayName);
+        }
+
+        final totalOthers = (state.room?.participants ?? [])
+            .where((p) => p.userId != msg.senderId)
+            .length;
+
+        final bubble = MessageBubble(
+          key: ValueKey(msg.id),
+          message: msg,
+          isMe: isMe,
+          isGroup: _isGroup,
+          senderImageUrl: participant?.userImage,
+          readCount: msg.readBy.length,
+          totalOthers: totalOthers,
+          onUserTap: isMe ? null : () => _onUserTap(context, msg),
+          onLongPress: () => _onMessageOptions(context, msg, isMe),
+        );
+
+        if (_animateIds.contains(msg.id)) {
+          return MessageEntrance(
+            key: ValueKey('anim_${msg.id}'),
+            fromRight: isMe,
+            child: bubble,
+          );
+        }
+        return bubble;
+    }
+  }
+
   void _syncAnimationState(List<ChatMessage> messages, bool isLoadingHistory) {
     if (isLoadingHistory) return;
     final currentIds = messages.map((m) => m.id).toSet();
@@ -447,108 +498,61 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
         backgroundColor: ext.homeBackground,
         elevation: 0,
         leading: kIsWeb ? null : AppBackButton(onPressed: () => Navigator.of(context).pop()),
-        title: Semantics(button: true, label: 'Open group info', child: GestureDetector(
-          onTap: widget.room.type == RoomType.group
-              ? () => _openGroupInfo(context)
-              : null,
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                BlocBuilder<ChatRoomBloc, ChatRoomState>(
-                  buildWhen: (p, c) => p.room?.name != c.room?.name,
-                  builder: (_, state) => Text(
-                    state.room?.displayName ?? widget.room.displayName,
-                    style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.sp,
+        titleSpacing: 0,
+        title: BlocBuilder<ChatRoomBloc, ChatRoomState>(
+          buildWhen: (p, c) => p.room != c.room || p.myUserId != c.myUserId,
+          builder: (_, state) {
+            final room = state.room ?? widget.room;
+            final subtitle = _headerSubtitle(room, state.myUserId);
+            return Semantics(
+              button: true,
+              label: 'Open chat details',
+              child: GestureDetector(
+                onTap: () => _openDetails(context),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RoomAvatar(
+                      room: room,
+                      currentUserId: state.myUserId,
+                      radius: 18,
                     ),
-                  ),
-                ),
-                if (widget.room.type == RoomType.group) ...[
-                  SizedBox(width: AppSpacing.xs.w),
-                  Icon(Icons.keyboard_arrow_right_rounded,
-                      color: ext.searchHintColor, size: 16.sp),
-                ],
-              ],
-            ),
-            BlocBuilder<ChatRoomBloc, ChatRoomState>(
-              buildWhen: (p, c) =>
-                  p.isConnected != c.isConnected ||
-                  p.isConnecting != c.isConnecting,
-              builder: (_, state) {
-                if (state.isConnected) return const SizedBox.shrink();
-                final label =
-                    state.isConnecting ? AppLocalizations.of(context)!.chatRoomConnecting : AppLocalizations.of(context)!.chatRoomDisconnected;
-                final color =
-                    state.isConnecting ? Colors.orangeAccent : Colors.redAccent;
-                return Text(
-                  label,
-                  style: TextStyle(color: color, fontSize: 10.sp),
-                );
-              },
-            ),
-          ],
-          ),
-        )),
-        actions: [
-          // Block/Unblock menu — only shown for DM rooms, and never for the
-          // super admin's account.
-          if (_isDirect && !_isPeerSuperAdmin)
-            PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert_rounded,
-                  color: ext.greetingColor, size: 20.sp),
-              color: ext.cardSurface,
-              onSelected: (v) {
-                if (v == 'block') _toggleBlock();
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  value: 'block',
-                  child: _blockLoading
-                      ? SizedBox(
-                          width: 20.w,
-                          height: 20.w,
-                          child: CircularProgressIndicator(
-                              color: ext.accentGold, strokeWidth: 2),
-                        )
-                      : Row(
-                          children: [
-                            Icon(
-                              _isBlocked
-                                  ? Icons.person_add_alt_1_rounded
-                                  : Icons.block_rounded,
-                              color: _isBlocked
-                                  ? const Color(0xFF10B981)
-                                  : Colors.redAccent,
-                              size: 18.sp,
+                    SizedBox(width: AppSpacing.sm.w),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            room.displayNameFor(state.myUserId),
+                            style: TextStyle(
+                              color: ext.greetingColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16.sp,
                             ),
-                            SizedBox(width: 10.w),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (subtitle != null)
                             Text(
-                              _isBlocked ? 'Unblock user' : 'Block user',
+                              subtitle,
                               style: TextStyle(
-                                color: _isBlocked
-                                    ? const Color(0xFF10B981)
-                                    : Colors.redAccent,
-                                fontSize: 14.sp,
+                                color: ext.searchHintColor,
+                                fontSize: 11.sp,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          // Invite button — only shown for group rooms
-          if (widget.room.type == RoomType.group)
-            IconButton(
-              icon: Icon(Icons.person_add_outlined,
-                  color: ext.greetingColor, size: 20.sp),
-              tooltip: AppLocalizations.of(context)!.chatRoomAddPeople,
-              onPressed: () => _openInvitePage(context),
-            ),
+              ),
+            );
+          },
+        ),
+        actions: [
           // Like button — only shown for event rooms that have an event_id
           if (_isEventRoom && widget.room.eventId != null)
             BlocBuilder<ChatRoomBloc, ChatRoomState>(
@@ -564,6 +568,42 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                       _bloc.add(ChatRoomLikeToggled(widget.room.eventId!)),
                 );
               },
+            ),
+          // One overflow for everything that used to be its own icon. Contact
+          // info now owns block, mute and shared media, so the header keeps a
+          // single control instead of three competing ones.
+          if (_hasDetailsScreen)
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert_rounded,
+                  color: ext.greetingColor, size: 20.sp),
+              color: ext.cardSurface,
+              onSelected: (value) {
+                switch (value) {
+                  case 'details':
+                    _openDetails(context);
+                  case 'invite':
+                    _openInvitePage(context);
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'details',
+                  child: Text(
+                    _isGroup ? 'Group info' : 'Contact info',
+                    style: TextStyle(
+                        color: ext.greetingColor, fontSize: 14.sp),
+                  ),
+                ),
+                if (_isGroup)
+                  PopupMenuItem(
+                    value: 'invite',
+                    child: Text(
+                      AppLocalizations.of(context)!.chatRoomAddPeople,
+                      style: TextStyle(
+                          color: ext.greetingColor, fontSize: 14.sp),
+                    ),
+                  ),
+              ],
             ),
         ],
       ),
@@ -590,27 +630,6 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                           )
                         : const SizedBox.shrink(),
                   ),
-                  if (widget.room.type == RoomType.direct ||
-                      widget.room.type == RoomType.group)
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: 6.h),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.lock_rounded,
-                              size: 11.sp,
-                              color: ext.searchHintColor.withValues(alpha: 0.6)),
-                          SizedBox(width: AppSpacing.xs.w),
-                          Text(
-                            AppLocalizations.of(context)!.chatRoomEndToEndEncrypted,
-                            style: TextStyle(
-                              fontSize: 11.sp,
-                              color: ext.searchHintColor.withValues(alpha: 0.6),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   Expanded(
                     child: BlocConsumer<ChatRoomBloc, ChatRoomState>(
                       listenWhen: (p, c) =>
@@ -673,61 +692,32 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                           );
                         }
 
+                        // Flattened up front rather than derived inside the
+                        // builder: day separators depend on the *next* item, and
+                        // working that out per-index in a reversed list is where
+                        // off-by-one separators come from.
+                        final rows = _buildRows(state);
+
                         return ListView.builder(
                           controller: _scrollCtrl,
                           reverse: true,
-                          padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
-                          itemCount: state.messages.length +
-                              (state.isLoadingMore ? 1 : 0),
+                          padding:
+                              EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
+                          itemCount:
+                              rows.length + (state.isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
-                            if (index == state.messages.length) {
+                            if (index == rows.length) {
                               return Padding(
-                                padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                                padding: EdgeInsets.symmetric(
+                                    vertical: AppSpacing.md.h),
                                 child: Center(
                                   child: CircularProgressIndicator(
-                                      color: ext.searchHintColor, strokeWidth: 2),
+                                      color: ext.searchHintColor,
+                                      strokeWidth: 2),
                                 ),
                               );
                             }
-                            var msg = state.messages[index];
-                            final isMe = msg.senderId == state.myUserId;
-
-                            // Fill senderName from the participants list when
-                            // the server/cache left it blank.
-                            if (!isMe && msg.senderName.isEmpty) {
-                              final participant = state.room?.participants
-                                  .where((p) => p.userId == msg.senderId)
-                                  .firstOrNull;
-                              if (participant != null) {
-                                msg = msg.copyWith(
-                                    senderName: participant.displayName);
-                              }
-                            }
-
-                            final totalOthers = (state.room?.participants ?? [])
-                                .where((p) => p.userId != msg.senderId)
-                                .length;
-                            final bubble = MessageBubble(
-                              key: ValueKey(msg.id),
-                              message: msg,
-                              isMe: isMe,
-                              readCount: msg.readBy.length,
-                              totalOthers: totalOthers,
-                              onUserTap: isMe
-                                  ? null
-                                  : () => _onUserTap(context, msg),
-                              onLongPress: () =>
-                                  _onMessageOptions(context, msg, isMe),
-                            );
-
-                            if (_animateIds.contains(msg.id)) {
-                              return MessageEntrance(
-                                key: ValueKey('anim_${msg.id}'),
-                                fromRight: isMe,
-                                child: bubble,
-                              );
-                            }
-                            return bubble;
+                            return _buildRow(context, state, rows[index]);
                           },
                         );
                       },
@@ -802,6 +792,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                         onClearImage: () =>
                             _bloc.add(const ChatRoomImageCleared()),
                         isUploadingImage: inputState.isUploadingImage,
+                        onTypingChanged: (isTyping) =>
+                            _bloc.add(ChatRoomTypingChanged(isTyping)),
                       );
                     },
                   ),
@@ -814,6 +806,24 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     );
     return webWrap(page, backgroundColor: ext.homeBackground);
   }
+}
+
+enum _RowKind { message, day, typing }
+
+/// One entry in the conversation list — a message, a day marker, or the typing
+/// bubble. Flattened ahead of the builder so separators can look at neighbours.
+class _Row {
+  const _Row._(this.kind, {this.message, this.date, this.label});
+
+  factory _Row.message(ChatMessage message) =>
+      _Row._(_RowKind.message, message: message);
+  factory _Row.day(DateTime date) => _Row._(_RowKind.day, date: date);
+  factory _Row.typing(String? label) => _Row._(_RowKind.typing, label: label);
+
+  final _RowKind kind;
+  final ChatMessage? message;
+  final DateTime? date;
+  final String? label;
 }
 
 // ── Like button ───────────────────────────────────────────────────────────────

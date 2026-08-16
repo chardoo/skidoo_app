@@ -35,11 +35,15 @@ class ChatRoomsGroupInviteReceived extends ChatRoomsEvent {
 /// in-memory without a DB round-trip (essential on web where SQLite is absent).
 class _ChatRoomsMessageArrived extends ChatRoomsEvent {
   const _ChatRoomsMessageArrived(this.roomId, this.arrivedAt,
-      {this.senderId, this.senderName});
+      {this.senderId, this.senderName, this.preview});
   final String roomId;
   final DateTime arrivedAt;
   final String? senderId;
   final String? senderName;
+
+  /// Ready-to-draw preview line, or null when there is nothing to show for it
+  /// (ciphertext this device cannot read).
+  final String? preview;
 }
 
 /// ChatRoomBloc opened a room and marked all messages as read — zero the badge.
