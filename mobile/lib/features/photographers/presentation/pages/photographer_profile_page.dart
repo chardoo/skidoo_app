@@ -57,7 +57,15 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final _followRepo = FollowRepository();
-  bool _isOwner = false;
+  // null while the ownership check is in flight — the same shape as _canMsg
+  // below, and for the same reason.
+  //
+  // This was a plain `false`, and it is resolved asynchronously from storage.
+  // So on first paint the page believed it belonged to somebody else and drew
+  // a Follow button on the viewer's *own* profile; tapping it before the check
+  // landed sent POST /follow/photographer/{own id}, which the API correctly
+  // refuses with 400 "You cannot follow yourself".
+  bool? _isOwner;
   FollowStats _stats = const FollowStats(followers: 0, following: 0);
   bool _statsLoaded = false;
   // null while the upfront can-message check is in flight.
@@ -76,7 +84,12 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
     try {
       final myId = await sl<AuthService>().getUserId();
       if (mounted) setState(() => _isOwner = myId == widget.photographer.id);
-    } catch (_) {}
+    } catch (e) {
+      // Left unknown rather than assumed: the follow button stays hidden, which
+      // is the safe way to be wrong here. Assuming "not mine" is what produced
+      // a Follow button on the viewer's own profile in the first place.
+      debugPrint('[profile] Could not resolve profile ownership: $e');
+    }
   }
 
   /// Upfront DM-permission check so the Message button reflects the recipient's
@@ -219,10 +232,10 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                       // The followers/following list endpoints return the
                       // caller's own relationships, so tapping to open the list
                       // is only offered on the user's own profile.
-                      onTapFollowers: _isOwner
+                      onTapFollowers: _isOwner == true
                           ? () => _openFollowList(FollowListTab.followers)
                           : null,
-                      onTapFollowing: _isOwner
+                      onTapFollowing: _isOwner == true
                           ? () => _openFollowList(FollowListTab.following)
                           : null,
                     ),
@@ -266,7 +279,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                   // ── Action row: Follow + Chat ───────────────────────────
                   // When the recipient isn't accepting DMs, drop the Message
                   // button and surface why beneath a full-width Follow button.
-                  if (!_isOwner && (_canMsg?.notAcceptingDms ?? false))
+                  if (_isOwner == false && (_canMsg?.notAcceptingDms ?? false))
                     Column(
                       children: [
                         SizedBox(
@@ -290,7 +303,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                         ),
                       ],
                     )
-                  else if (!_isOwner)
+                  else if (_isOwner == false)
                     Row(
                       children: [
                         Expanded(
@@ -327,7 +340,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
                         ),
                       ],
                     ),
-                  if (_isOwner)
+                  if (_isOwner == true)
                     SizedBox(
                       width: double.infinity,
                       height: 50.h,
@@ -386,7 +399,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
             // ── Sample Work tab ──────────────────────────────────────────
             _SamplesTab(
               photographerId: p.id,
-              isOwner: _isOwner,
+              isOwner: _isOwner ?? false,
               ext: ext,
             ),
 
