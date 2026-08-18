@@ -78,6 +78,19 @@ void main() {
     );
   });
 
+  testWidgets('draws both glyphs outlined, and In app matches the rail button',
+      (t) async {
+    // The rail's share button uses near_me_outlined too. That is deliberate:
+    // the button opens this sheet, so the glyph you pressed is the one you
+    // land on. Pinned here so the two cannot drift apart silently.
+    await openSheet(t);
+
+    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
+    // Outlined, not the filled variants.
+    expect(find.byIcon(Icons.near_me), findsNothing);
+  });
+
   testWidgets('names the destinations rather than relying on the glyph',
       (t) async {
     // The whole point of the sheet. A screen reader gets the full sentence,

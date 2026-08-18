@@ -128,7 +128,14 @@ class ShareTargetSheet extends StatelessWidget {
   }
 }
 
-/// One destination: the glyph over its name, in a tappable card.
+/// One destination: the glyph in a soft circle, its name underneath.
+///
+/// No card. The first version boxed each option in a filled, bordered
+/// container, which put two heavy rectangles in a sheet that holds two words —
+/// the frame was doing more work than the thing inside it. The circle is the
+/// same treatment the Hide/Report sheet gives its icons, so the two sheets
+/// look like they were drawn by the same hand, and the tap target is the whole
+/// column rather than the visible circle.
 class _ShareTarget extends StatelessWidget {
   const _ShareTarget({
     required this.ext,
@@ -160,23 +167,26 @@ class _ShareTarget extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg.r),
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: AppSpacing.lg.h),
-          decoration: BoxDecoration(
-            color: ext.searchFieldFill,
-            borderRadius: BorderRadius.circular(AppRadius.lg.r),
-            border: Border.all(color: ext.glassBorder),
-          ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: ext.accentGold, size: 24.sp),
+              Container(
+                width: 52.w,
+                height: 52.w,
+                decoration: BoxDecoration(
+                  color: ext.searchFieldFill,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: ext.accentGold, size: 22.sp),
+              ),
               SizedBox(height: AppSpacing.sm.h),
               Text(
                 label,
                 style: TextStyle(
                   color: ext.greetingColor,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   fontSize: 13.sp,
                 ),
               ),

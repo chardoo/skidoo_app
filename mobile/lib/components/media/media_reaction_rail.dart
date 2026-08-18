@@ -170,12 +170,17 @@ class MediaReaction {
   /// did what was a guess, and the answer only arrived after the tap.
   ///
   /// The destination is now chosen in [ShareTargetSheet], in words.
+  ///
+  /// The outlined paper plane rather than the OS share box: the button no
+  /// longer means "hand this to the operating system", which is only one of
+  /// the two things behind it now. A plane reads as passing something on
+  /// wherever it ends up.
   MediaReaction.share({
     required VoidCallback onTap,
     bool busy = false,
     Key? anchorKey,
   }) : this(
-          icon: Icons.ios_share_rounded,
+          icon: Icons.near_me_outlined,
           busy: busy,
           semanticLabel: 'Share photo',
           anchorKey: anchorKey,

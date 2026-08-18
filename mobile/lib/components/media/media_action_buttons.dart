@@ -502,7 +502,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
       // there is no in-app route to choose, so it goes straight out.
       btn(
         key: _shareKey,
-        icon: Icons.ios_share_rounded,
+        icon: Icons.near_me_outlined,
         busy: _sharing,
         semanticLabel: 'Share photo',
         onTap: widget.onSend == null

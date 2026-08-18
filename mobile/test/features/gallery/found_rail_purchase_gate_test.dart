@@ -49,7 +49,7 @@ const comment = Icons.mode_comment_outlined;
 const commentOff = Icons.comments_disabled_rounded;
 const bookmark = Icons.bookmark_border_rounded;
 const download = Icons.download_outlined;
-const share = Icons.ios_share_rounded;
+const share = Icons.near_me_outlined;
 
 /// The glyphs on the rail, in the order the rail lists them.
 Set<IconData> railOf(WidgetTester t) => {

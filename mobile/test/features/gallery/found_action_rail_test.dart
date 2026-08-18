@@ -53,10 +53,10 @@ void main() {
     GetIt.I.reset();
   });
 
-  testWidgets('offers the external share action', (t) async {
+  testWidgets('offers the share action', (t) async {
     await t.pumpWidget(host(FoundActionRail(photo: photo())));
 
-    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
     expect(find.bySemanticsLabel('Share photo'), findsOneWidget);
   });
 
@@ -67,7 +67,7 @@ void main() {
     await t.pumpWidget(host(FoundActionRail(photo: photo())));
 
     expect(find.byIcon(Icons.bookmark_border_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
     expect(find.byIcon(Icons.download_outlined), findsOneWidget);
   });
 
@@ -75,11 +75,12 @@ void main() {
     // The opposite call from the one above: these two named the same
     // intention, and the whole difference between them rested on a paper
     // plane sitting next to a share arrow. The destination is chosen in
-    // ShareTargetSheet instead, in words.
+    // ShareTargetSheet instead, in words — so the rail carries the plane
+    // alone and the OS share box appears nowhere on it.
     await t.pumpWidget(host(FoundActionRail(photo: photo())));
 
-    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.near_me_outlined), findsNothing);
+    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.ios_share_rounded), findsNothing);
   });
 
   testWidgets('share survives the owner switching engagement off', (t) async {
@@ -90,7 +91,7 @@ void main() {
 
     expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
     expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
-    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
   });
 }
 
