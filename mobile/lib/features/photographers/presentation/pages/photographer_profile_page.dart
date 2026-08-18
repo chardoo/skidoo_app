@@ -199,7 +199,7 @@ class _PhotographerProfilePageState extends State<PhotographerProfilePage>
             pinned: true,
             forceElevated: innerBoxIsScrolled,
             backgroundColor: ext.homeBackground,
-            leading: kIsWeb ? null : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            leading: kIsWeb ? null : const AppBackButton(),
             flexibleSpace: FlexibleSpaceBar(
               background: PhotographerProfileHeader(photographer: p, ext: ext),
             ),

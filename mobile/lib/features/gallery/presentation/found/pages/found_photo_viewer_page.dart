@@ -9,6 +9,7 @@ import 'package:jperg_app/core/theme/dark_media_surface.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/purchase/photo_checkout.dart';
 import 'package:jperg_app/core/purchase/photo_selection.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_photo_actions.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_filmstrip.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_selection_panel.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_review_prompt.dart';
@@ -27,6 +28,7 @@ class FoundPhotoViewerPage extends StatefulWidget {
     this.initialIndex = 0,
     this.onViewAlbum,
     this.showSocialActions = true,
+    this.purchaseGated = false,
     this.selection,
     this.onCheckout,
     this.title,
@@ -61,6 +63,15 @@ class FoundPhotoViewerPage extends StatefulWidget {
   /// are someone's work on show rather than photos of you — see
   /// [FoundPhotoStage.showSocialActions].
   final bool showSocialActions;
+
+  /// Whether the rail's contents follow the photo's price and visibility.
+  ///
+  /// True only for the two Found-you entry points — the Found feed and a Found
+  /// album — where a photo is of the viewer and may be one they have not paid
+  /// for. The other six callers show someone's work rather than photos of the
+  /// viewer, there is nothing for them to have bought, and their rail is
+  /// unchanged. See [FoundPhotoActions].
+  final bool purchaseGated;
 
   /// Shown as "View album" on the photo. Left null when the viewer was pushed
   /// from the album page itself.
@@ -275,6 +286,7 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
                       isActive: i == _index,
                       onViewAlbum: widget.onViewAlbum,
                       showSocialActions: widget.showSocialActions,
+                      purchaseGated: widget.purchaseGated,
                       // The one in play, not only an album's: this is what puts
                       // the Buy pill on a priced photo whichever screen opened
                       // the viewer.
@@ -319,7 +331,7 @@ class _ViewerTopBar extends StatelessWidget {
         height: 48.h,
         child: Row(
           children: [
-            AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            const AppBackButton(),
             Expanded(
               child: Text(
                 title,
@@ -354,9 +366,9 @@ class _ViewerTopBar extends StatelessWidget {
       height: 48.h,
       child: Stack(
         children: [
-          Align(
+          const Align(
             alignment: Alignment.centerLeft,
-            child: AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            child: AppBackButton(),
           ),
           Center(
             // One label for the whole counter. Split across spans it reads out as

@@ -515,7 +515,7 @@ PreferredSizeWidget _stepBar(
       backgroundColor: Colors.transparent,
       leading: kIsWeb
           ? null
-          : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+          : const AppBackButton(),
       title: Text(
         title,
         style: TextStyle(

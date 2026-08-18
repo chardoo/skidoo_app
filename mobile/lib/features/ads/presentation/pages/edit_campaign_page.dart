@@ -220,7 +220,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           'Edit Campaign',
           style: TextStyle(

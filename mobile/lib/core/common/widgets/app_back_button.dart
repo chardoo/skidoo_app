@@ -17,6 +17,7 @@ class AppBackButton extends StatelessWidget {
   const AppBackButton({
     super.key,
     this.onPressed,
+    this.result,
     this.color,
     this.size,
     this.tooltip = 'Back',
@@ -28,8 +29,31 @@ class AppBackButton extends StatelessWidget {
   /// The size every back arrow is drawn at unless a call site overrides it.
   static const double defaultSize = 22;
 
-  /// Defaults to popping the current route.
+  /// Defaults to popping the current route — and only if there is something to
+  /// go back to.
+  ///
+  /// Pass this only for a back arrow that does something other than leave the
+  /// screen: a wizard stepping back through its own pages, a page that has to
+  /// ask before it closes. **Do not** pass `() => Navigator.of(context).pop()`
+  /// — that is the default, minus its safeguard. See [result] for handing a
+  /// value back.
   final VoidCallback? onPressed;
+
+  /// What to return to whoever pushed this screen.
+  ///
+  /// Around 25 screens used to write `onPressed: () => Navigator.pop(result)`,
+  /// because returning a value looks like it needs the raw call. It doesn't,
+  /// and the raw call is how the app got a black screen: `pop` on the only
+  /// route on the stack removes it and leaves the navigator with nothing to
+  /// draw. `maybePop` — what this widget has always done by default — declines
+  /// instead, and takes a result just the same.
+  ///
+  /// Whether a screen is the only route is not a property of the screen: the
+  /// same page is pushed onto Home most of the time and landed on directly by a
+  /// deep link, a notification, or a post-login redirect the rest of it. So the
+  /// arrow worked every time until the once it didn't, which is exactly how it
+  /// was reported.
+  final Object? result;
 
   /// Defaults to the theme's foreground. Set it for arrows over media, which
   /// stay white in either theme.
@@ -49,7 +73,7 @@ class AppBackButton extends StatelessWidget {
         color: color ?? ext?.greetingColor,
         size: (size ?? defaultSize).sp,
       ),
-      onPressed: onPressed ?? () => Navigator.of(context).maybePop(),
+      onPressed: onPressed ?? () => Navigator.of(context).maybePop(result),
     );
   }
 }

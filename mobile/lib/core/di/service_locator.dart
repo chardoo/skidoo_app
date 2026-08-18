@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_key_datasource.dart';
 import 'package:jperg_app/features/discovery/data/datasources/client_saved_data_source.dart';
+import 'package:jperg_app/features/gallery/data/saved_photos.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/ads/data/datasources/feed_comment_data_source.dart';
 import 'package:jperg_app/features/ads/presentation/bloc/feed_comment_bloc.dart';
@@ -462,6 +463,10 @@ Future<void> setupServiceLocator() async {
   // Saved items
   sl.registerSingleton<ClientSavedDataSource>(
       ClientSavedDataSource(sl<Api>(), sl<AuthService>()));
+  // Singleton on purpose: the bookmark state has to be the same object for
+  // every rail, or saving in one viewer leaves the other showing unsaved.
+  sl.registerSingleton<SavedPhotos>(
+      SavedPhotos(ApiSavedPhotoStore(sl<ClientSavedDataSource>())));
 
   // BLoCs (factories so each page gets a fresh instance)
   sl.registerFactory<ChatRoomsBloc>(() => ChatRoomsBloc(

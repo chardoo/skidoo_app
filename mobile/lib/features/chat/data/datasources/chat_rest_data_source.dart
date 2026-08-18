@@ -57,6 +57,40 @@ class PictureReaction {
   }
 }
 
+/// The user ids in a `GET /chat/blocks` body.
+///
+/// A free function so it can be tested against a real response body without
+/// standing up a Dio client — which is exactly what was missing. This used to
+/// be an inline `resp.data as List` of `{blocked_id: ...}` objects, a shape the
+/// endpoint has never returned: it answers with an envelope. The `is List`
+/// check was simply false every time, so the method returned an empty list on
+/// every call and nobody was ever seen as blocked — Contact Info offered
+/// "Block" for a user already blocked, the blocked-conversation banner never
+/// appeared, and the Unblock branch was unreachable. It failed silently in the
+/// one direction that looks like the feature working.
+///
+/// Accepts the envelope under either key, and a bare list of ids or of objects,
+/// so a change of response shape degrades to a wrong-looking list rather than
+/// back to an empty one.
+List<String> parseBlockedUsers(dynamic data) {
+  final List<dynamic> raw;
+  if (data is Map) {
+    final field = data['data'] ?? data['blocked_users'];
+    raw = field is List ? field : const [];
+  } else if (data is List) {
+    raw = data;
+  } else {
+    return const [];
+  }
+
+  return raw
+      .map((e) => e is Map
+          ? (e['blocked_id'] ?? e['id'])?.toString() ?? ''
+          : e?.toString() ?? '')
+      .where((s) => s.isNotEmpty)
+      .toList();
+}
+
 /// Result of GET /chat/users/{id}/can-message — whether a DM may be started.
 class CanMessageResult {
   /// Whether the "Message" button should be enabled.
@@ -69,10 +103,21 @@ class CanMessageResult {
   /// True means an existing DM bypasses the recipient's hide_profile setting.
   final bool hasExistingConversation;
 
+  /// The caller blocked the target. Undoable by the caller, so this is the one
+  /// that earns an "Unblock" control.
+  final bool blockedByMe;
+
+  /// The target blocked the caller. Closes the conversation just as firmly, but
+  /// there is nothing for the caller to undo — offering them "Unblock" here
+  /// sends a DELETE for a block they never made.
+  final bool blockedByThem;
+
   const CanMessageResult({
     required this.canMessage,
     this.reason,
     this.hasExistingConversation = false,
+    this.blockedByMe = false,
+    this.blockedByThem = false,
   });
 
   /// Permissive default used when the check itself fails (network etc.) — the
@@ -86,6 +131,8 @@ class CanMessageResult {
         reason: json['reason'] as String?,
         hasExistingConversation:
             json['has_existing_conversation'] as bool? ?? false,
+        blockedByMe: json['blocked_by_me'] as bool? ?? false,
+        blockedByThem: json['blocked_by_them'] as bool? ?? false,
       );
 
   /// Recipient has DMs turned off (and there's no existing conversation).
@@ -809,11 +856,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   @override
   Future<List<String>> getBlockedUsers() => _wrap(() async {
         final resp = await _client.dio.get('/chat/blocks');
-        final data = resp.data;
-        if (data is List) {
-          return data.map((e) => e['blocked_id']?.toString() ?? '').where((s) => s.isNotEmpty).toList();
-        }
-        return <String>[];
+        return parseBlockedUsers(resp.data);
       });
 
   @override

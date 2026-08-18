@@ -18,6 +18,7 @@ import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.
         WsTypingEvent, WsUserJoinedEvent;
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
+import 'package:jperg_app/features/chat/presentation/typing_announcer.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/like_update.dart';
@@ -739,11 +740,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       senderRole: ChatConfig.roleClient,
       content: '',
       imageUrl: event.imageUrl,
-      createdAt: DateTime.now(),
+      createdAt: DateTime.now().toUtc(),
       isLocal: true,
     );
     emit(state.copyWith(messages: _sorted([optimistic, ...state.messages])));
-    _cacheMessage(optimistic).catchError((_) {});
+    _cacheAndAnnounce(optimistic);
 
     if (_ws.isConnected) {
       // WS already up — send immediately.
@@ -796,6 +797,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       return;
     }
 
+    // Sending is the end of typing. The composer is cleared programmatically
+    // after this, and a programmatic clear fires no `onChanged`, so nothing
+    // else in the app was ever going to say so — the peer saw the message
+    // arrive with "typing…" still sitting under it.
+    _stopTyping();
+
     final content = event.content?.trim();
     final pendingPath = state.pendingImagePath;
     final pendingMimeType = state.pendingMimeType;
@@ -822,7 +829,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         imageUrl: pendingUrl,
         replyToId: event.replyToId,
         replyPreview: replyPreview,
-        createdAt: DateTime.now(),
+        createdAt: DateTime.now().toUtc(),
         isLocal: true,
       );
       emit(state.copyWith(
@@ -830,13 +837,15 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         clearPendingShareUrl: true,
         clearReply: true,
       ));
+      // Before the send, not after: the inbox tile should change in the same
+      // frame as the bubble, not once the network has had its turn.
+      _cacheAndAnnounce(optimistic);
       await _encryptAndSend(
         content: hasText ? content : null,
         imageUrl: pendingUrl,
         replyToId: event.replyToId,
         emit: emit,
       );
-      _cacheMessage(optimistic).catchError((_) {});
       return;
     }
 
@@ -862,7 +871,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           isVideo: pendingIsVideo,
           replyToId: event.replyToId,
           replyPreview: replyPreview,
-          createdAt: DateTime.now(),
+          createdAt: DateTime.now().toUtc(),
           isLocal: true,
         );
 
@@ -870,6 +879,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           isUploadingImage: false,
           messages: _sorted([optimistic, ...state.messages]),
         ));
+        _cacheAndAnnounce(optimistic);
 
         await _encryptAndSend(
           content: hasText ? content : null,
@@ -878,7 +888,6 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           replyToId: event.replyToId,
           emit: emit,
         );
-        _cacheMessage(optimistic).catchError((_) {});
       } catch (e) {
         // Restore the pending media so the user can retry, and say what
         // actually went wrong — the server distinguishes "too large" from
@@ -905,7 +914,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         content: content!,
         replyToId: event.replyToId,
         replyPreview: replyPreview,
-        createdAt: DateTime.now(),
+        createdAt: DateTime.now().toUtc(),
         isLocal: true,
       );
 
@@ -913,14 +922,25 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         messages: _sorted([optimistic, ...state.messages]),
         clearReply: true,
       ));
+      _cacheAndAnnounce(optimistic);
 
       await _encryptAndSend(
         content: content,
         replyToId: event.replyToId,
         emit: emit,
       );
-      _cacheMessage(optimistic).catchError((_) {});
     }
+  }
+
+  /// Caches an outgoing message and tells the inbox about it in the same
+  /// breath, so the room's tile shows what was just sent the moment it is sent
+  /// — not after the server echo, and not after the next rooms sync.
+  ///
+  /// The confirmed copy is announced again from [_onReceived] when the echo
+  /// lands; it carries the same text, so the tile does not visibly change.
+  void _cacheAndAnnounce(ChatMessage msg) {
+    _cacheMessage(msg).catchError((_) {});
+    _bgService.reportOpenRoomMessage(msg);
   }
 
   /// Encrypts [content] (when non-empty) for DM rooms and sends over the WS.
@@ -1143,6 +1163,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     Emitter<ChatRoomState> emit,
   ) async {
     var msg = event.message;
+
+    // Their message is here, so they have stopped typing it. Emitted before any
+    // of the decryption work below, because the indicator has to go the moment
+    // the bubble appears — not whenever that finishes.
+    final cleared = _typingCleared(msg.senderId);
+    if (cleared != null) emit(state.copyWith(typingUsers: cleared));
 
     debugPrint('[ChatRoomBloc] _onReceived: msgId=${msg.id}'
         ' roomId=${msg.roomId}'
@@ -1367,6 +1393,10 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // permanently zero the unread badge.
     final roomId = _currentRoomId;
     await _cacheMessage(msg).catchError((_) {});
+    // Tell the inbox what the last message in this room now is. The room is
+    // paused while it's open, so ChatBackgroundService never sees this one —
+    // without this the tile keeps the previous preview until the next sync.
+    _bgService.reportOpenRoomMessage(msg);
     // Skip mark-read if the BLoC was closed while we were writing to the DB
     // (i.e. the user navigated away). close() already called _bgService.resume;
     // any message BgService saves between now and here must stay unread.
@@ -1934,7 +1964,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       final newParticipant = ChatParticipant(
         userId: event.userId,
         userRole: event.userRole.isNotEmpty ? event.userRole : ChatConfig.roleClient,
-        joinedAt: DateTime.now(),
+        joinedAt: DateTime.now().toUtc(),
         userName: event.userName.isNotEmpty ? event.userName : null,
       );
       updatedRoom = updatedRoom.copyWith(
@@ -2227,36 +2257,37 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
   // ── Typing ────────────────────────────────────────────────────────────────
 
-  /// How long an indicator survives without a refresh. Longer than
-  /// [_typingSendInterval] so a steady typist never flickers.
-  static const _typingTimeout = Duration(seconds: 6);
+  /// How long an indicator survives without a refresh. The backstop for a
+  /// sender who goes away without saying so — a killed app, a dropped socket,
+  /// a build too old to send the idle stop. Comfortably longer than the
+  /// announcer's send interval so a steady typist never flickers, and longer
+  /// than its idle timeout so the sender's own stop is what normally clears it.
+  static const _typingTimeout = Duration(seconds: 8);
 
-  /// Minimum gap between outgoing "still typing" frames. The composer raises
-  /// [ChatRoomTypingChanged] on every keystroke; this is what stops that
-  /// becoming a frame per keystroke.
-  static const _typingSendInterval = Duration(seconds: 3);
+  /// Owns the outgoing side: when to say we started, and — the part that was
+  /// missing — when to say we stopped. See [TypingAnnouncer].
+  late final TypingAnnouncer _typing = TypingAnnouncer(
+    send: (isTyping) {
+      final roomId = _currentRoomId;
+      if (roomId == null || isClosed) return;
+      _ws.sendTyping(roomId, isTyping: isTyping);
+    },
+  );
 
-  DateTime? _lastTypingSentAt;
   final Map<String, Timer> _typingExpiryTimers = {};
 
   void _onTypingChanged(ChatRoomTypingChanged event, Emitter<ChatRoomState> emit) {
-    final roomId = _currentRoomId;
-    if (roomId == null) return;
-
-    if (!event.isTyping) {
-      // Always sent, never throttled: this is the frame that clears the
-      // indicator on the other end, so dropping it strands it until timeout.
-      _lastTypingSentAt = null;
-      _ws.sendTyping(roomId, isTyping: false);
-      return;
+    if (event.isTyping) {
+      _typing.markTyping();
+    } else {
+      _typing.markStopped();
     }
-
-    final now = DateTime.now();
-    final last = _lastTypingSentAt;
-    if (last != null && now.difference(last) < _typingSendInterval) return;
-    _lastTypingSentAt = now;
-    _ws.sendTyping(roomId, isTyping: true);
   }
+
+  /// Announce that we are no longer typing — idempotent, so the several places
+  /// that legitimately want to say it (going idle, sending, clearing the box,
+  /// leaving the room) can all just call it.
+  void _stopTyping() => _typing.markStopped();
 
   void _onTypingReceived(_TypingReceived event, Emitter<ChatRoomState> emit) {
     final updated = Map<String, String>.from(state.typingUsers);
@@ -2274,6 +2305,18 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
 
     emit(state.copyWith(typingUsers: updated));
+  }
+
+  /// Their message arrived, so they are no longer typing it.
+  ///
+  /// Without this the indicator outlived the thing it was predicting: the
+  /// message landed and "typing…" stayed underneath it until the expiry ran
+  /// out, because a client that clears its composer programmatically after a
+  /// send fires no `onChanged` and so never sent a stop frame.
+  Map<String, String>? _typingCleared(String userId) {
+    if (!state.typingUsers.containsKey(userId)) return null;
+    _typingExpiryTimers.remove(userId)?.cancel();
+    return Map<String, String>.from(state.typingUsers)..remove(userId);
   }
 
   void _onTypingExpired(_TypingExpired event, Emitter<ChatRoomState> emit) {
@@ -2634,12 +2677,30 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   }
 
   void _onLeft(ChatRoomLeft event, Emitter<ChatRoomState> emit) {
+    // Leaving the page is leaving the composer. This — not close() — is the
+    // hook that reliably runs when the room is popped: the page dispatches
+    // ChatRoomLeft from its dispose, while the bloc itself may outlive the
+    // route. Without it, walking out of a DM mid-sentence left our indicator
+    // lit on the other screen until the backstop expiry.
+    _stopTyping();
+
     _otpkPollTimer?.cancel();
     _reconcileDebounce?.cancel();
     _wsConnectionSub?.cancel();
     _wsConnectionSub = null;
+    for (final timer in _typingExpiryTimers.values) {
+      timer.cancel();
+    }
+    _typingExpiryTimers.clear();
     _cancelWsSubscriptions();
-    emit(state.copyWith(isConnected: false, isConnecting: false));
+    // Drop who we thought was typing too — otherwise re-entering the room
+    // renders a stale indicator from before we left, with no frame coming to
+    // clear it because the sender stopped long ago.
+    emit(state.copyWith(
+      isConnected: false,
+      isConnecting: false,
+      typingUsers: const {},
+    ));
     // Do NOT disconnect the shared WS — it is owned by ChatBackgroundService.
     if (_currentRoomId != null) _bgService.resume(_currentRoomId!);
   }
@@ -2656,9 +2717,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // Tell the room we stopped: closing the page is leaving the composer, and
     // without this our indicator sits on everyone else's screen until it times
     // out. The socket outlives this bloc, so it will actually be delivered.
-    if (_currentRoomId != null && _lastTypingSentAt != null) {
-      _ws.sendTyping(_currentRoomId!, isTyping: false);
-    }
+    //
+    // Guarded on _typingAnnounced, not on the throttle clock: that one is
+    // nulled every time a stop is sent *and* every time the composer empties,
+    // so it read as "nothing to retract" in cases where the indicator was very
+    // much still lit on the other screen.
+    _stopTyping();
     _cancelWsSubscriptions();
     // Leaving the room: we are no longer reading it, so messages arriving from
     // here on should notify. The socket stays open (owned by

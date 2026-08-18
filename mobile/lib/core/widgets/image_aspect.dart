@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
+import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:jperg_app/core/utils/cloudinary_transform.dart';
 
 /// Aspect ratios recovered from the images themselves, for records the server
@@ -51,8 +53,12 @@ class ImageAspectCache {
     if (measurable == null) return null;
 
     final completer = Completer<double?>();
-    final stream = CachedNetworkImageProvider(measurable)
-        .resolve(ImageConfiguration.empty);
+    // Same cache the widgets render through, so measuring a photo does not
+    // fetch it a second time into a different store.
+    final stream = CachedNetworkImageProvider(
+      measurable,
+      cacheManager: kIsWeb ? null : JpergImageCache.instance,
+    ).resolve(ImageConfiguration.empty);
 
     late final ImageStreamListener listener;
     void finish(double? ratio) {

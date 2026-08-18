@@ -134,7 +134,7 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
         backgroundColor: Colors.transparent,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           _displayName,
           style: TextStyle(

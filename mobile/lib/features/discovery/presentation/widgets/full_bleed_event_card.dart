@@ -1,4 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -320,7 +322,10 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                           backgroundColor: Colors.white24,
                           backgroundImage: event.photographerProfileUrl != null
                               ? CachedNetworkImageProvider(
-                                  event.photographerProfileUrl!)
+                                  event.photographerProfileUrl!,
+                                  cacheManager:
+                                      kIsWeb ? null : JpergImageCache.instance,
+                                )
                               : null,
                           child: event.photographerProfileUrl == null
                               ? Text(
@@ -356,17 +361,28 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                       prev.savedEventIds != next.savedEventIds,
                   builder: (context, state) => MediaReactionRail(
                     actions: [
-                      if (_engagementAllowed) ...[
+                      // Like disappears when engagement is off; comment stays
+                      // and is drawn unavailable. They are not the same case:
+                      // a missing heart says nothing, but a rail with no
+                      // comment button at all reads as one that never had one,
+                      // and the owner having closed the thread is worth
+                      // stating. Same split the card bar and the web column
+                      // already make.
+                      if (_engagementAllowed)
                         MediaReaction.like(
                           liked: liked,
                           count: event.likes,
                           onTap: _toggleLike,
                         ),
+                      if (_engagementAllowed)
                         MediaReaction.comment(
                           count: event.commentCount,
                           onTap: _openComments,
+                        )
+                      else
+                        MediaReaction.commentsDisabled(
+                          count: event.commentCount,
                         ),
-                      ],
                       MediaReaction.bookmark(
                         saved: state.savedEventIds.contains(event.id),
                         onTap: _toggleSave,

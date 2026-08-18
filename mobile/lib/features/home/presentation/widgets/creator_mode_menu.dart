@@ -83,15 +83,25 @@ class _CreatorModeMenuState extends State<CreatorModeMenu> {
             onTap: _openMenu,
             behavior: HitTestBehavior.opaque,
             child: Padding(
-              padding: EdgeInsets.only(left: AppSpacing.sm.w),
+              // The gap to the search icon on its left. 8 dp had the avatar
+              // crowding it — the two read as one clumsy blob rather than as
+              // two controls, which the design spaces about as far apart as
+              // anything else in that row.
+              padding: EdgeInsets.only(left: AppSpacing.lg.w),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  UserAvatar(
-                    imageUrl:
-                        identity.imageUrl.isEmpty ? null : identity.imageUrl,
-                    initial: '',
-                    radius: widget.size / 2,
+                  // Boxed to the size it is already drawn at, so it can answer
+                  // when the top bar measures the row's intrinsic width — the
+                  // network image inside reports zero on its own.
+                  SizedBox.square(
+                    dimension: widget.size,
+                    child: UserAvatar(
+                      imageUrl:
+                          identity.imageUrl.isEmpty ? null : identity.imageUrl,
+                      initial: '',
+                      radius: widget.size / 2,
+                    ),
                   ),
                   Icon(
                     Icons.keyboard_arrow_down_rounded,

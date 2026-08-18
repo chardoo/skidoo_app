@@ -73,7 +73,13 @@ class _ChatRoomsView extends StatelessWidget {
       ),
       body: BlocBuilder<ChatRoomsBloc, ChatRoomsState>(
         builder: (context, state) {
-          if (state.isLoading) return const AppLoadingIndicator();
+          // Only the very first load, when there is genuinely nothing to draw.
+          // Never swap a list the user is already looking at for a spinner.
+          if (state.isLoading &&
+              state.rooms.isEmpty &&
+              state.pendingInvites.isEmpty) {
+            return const AppLoadingIndicator();
+          }
 
           if (state.errorMessage != null &&
               state.rooms.isEmpty &&
@@ -109,20 +115,19 @@ class _ChatRoomsView extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 680),
               child: RefreshIndicator(
                 color: ext.accentGold,
-                onRefresh: () async => context
-                    .read<ChatRoomsBloc>()
-                    .add(const ChatRoomsLoadRequested()),
+                // Pull-to-refresh is the one refresh the user asked for, so it
+                // is the one that gets to look like it is happening: hold the
+                // spinner until the sync actually finishes rather than firing
+                // and returning on the same frame.
+                onRefresh: () => _refresh(context),
                 child: CustomScrollView(
                   slivers: [
-                    if (state.isSyncing)
-                      SliverToBoxAdapter(
-                        child: LinearProgressIndicator(
-                          minHeight: 2,
-                          backgroundColor: Colors.transparent,
-                          color: ext.accentGold.withValues(alpha: 0.6),
-                        ),
-                      ),
-
+                    // Deliberately nothing here for state.isSyncing. Coming
+                    // back to this tab re-syncs every time, and a progress bar
+                    // in the scroll view pushed every row down two pixels and
+                    // then let them drop back — a twitch on a screen the user
+                    // did not ask to have refreshed. The sync is silent; the
+                    // rows change only when there is actually new content.
                     if (state.pendingInvites.isNotEmpty)
                       SliverToBoxAdapter(
                         child: _PendingInvitesCard(
@@ -174,6 +179,18 @@ class _ChatRoomsView extends StatelessWidget {
       ),
     );
     return webWrap(page, backgroundColor: Colors.transparent);
+  }
+
+  /// Runs a sync and completes when it settles, so the pull-to-refresh spinner
+  /// reflects the real thing. Capped so a stalled request can't leave the
+  /// indicator spinning forever.
+  Future<void> _refresh(BuildContext context) async {
+    final bloc = context.read<ChatRoomsBloc>();
+    bloc.add(const ChatRoomsLoadRequested());
+    await bloc.stream.firstWhere((s) => !s.isSyncing).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => bloc.state,
+        );
   }
 
   void _openRoom(BuildContext context, ChatRoom room) {

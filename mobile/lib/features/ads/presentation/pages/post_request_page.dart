@@ -135,7 +135,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           'Post a Request',
           style: TextStyle(

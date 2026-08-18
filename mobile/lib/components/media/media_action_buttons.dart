@@ -14,6 +14,7 @@ import 'package:jperg_app/core/config/app_links_config.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/gallery/data/saved_photos.dart';
 import 'package:jperg_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
 import 'package:jperg_app/features/photo_comments/data/picture_like_service.dart';
 import 'package:jperg_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
@@ -257,6 +258,7 @@ class MediaActionButtons extends StatefulWidget {
     this.initialCommentCount = 0,
     this.initiallyLiked = false,
     this.showLike = true,
+    this.showSave = true,
     this.showDownload = true,
     this.showComment = true,
     this.onLikeToggled,
@@ -280,6 +282,12 @@ class MediaActionButtons extends StatefulWidget {
   /// Whether to show the like button. Set to false in contexts where
   /// liking is not applicable (e.g. the personal gallery fullscreen view).
   final bool showLike;
+
+  /// Whether to show the bookmark button — adds the photo to the user's saved
+  /// items. A different action from [showDownload], which writes the file to
+  /// the device; this row had only the latter, so a single photo could be
+  /// downloaded but never bookmarked.
+  final bool showSave;
 
   /// Whether to show the download button. Only shown in the gallery.
   final bool showDownload;
@@ -318,8 +326,26 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
   bool _downloading = false;
   bool _sharing = false;
 
+  final SavedPhotos? _saved = savedPhotosOrNull();
+
+  /// Whether to draw the bookmark: asked for, and a store to back it.
+  bool get _canSave => widget.showSave && _saved != null;
+
   final _downloadKey = GlobalKey();
   final _shareKey = GlobalKey();
+
+  Future<void> _toggleSave() async {
+    final saved = _saved;
+    if (saved == null || widget.pictureId.isEmpty) return;
+    HapticFeedback.lightImpact();
+    try {
+      await saved.toggle(widget.pictureId);
+    } catch (_) {
+      if (!mounted) return;
+      // The glyph has already been rolled back by SavedPhotos.
+      AppSnackBar.error(context, 'Could not update your saved photos.');
+    }
+  }
 
   @override
   void initState() {
@@ -327,6 +353,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
     _liked = widget.initiallyLiked;
     _likeCount = widget.initialLikeCount;
     _commentCount = widget.initialCommentCount;
+    if (_canSave) _saved!.ensureLoaded();
   }
 
   /// Null for a count of zero — the shared button then draws the glyph alone
@@ -405,6 +432,16 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
 
   @override
   Widget build(BuildContext context) {
+    // Rebuilt whenever the saved set changes — including from a rail elsewhere
+    // showing the same photo, so the bookmark cannot go stale behind a
+    // navigation.
+    return ValueListenableBuilder<int>(
+      valueListenable: _saved?.revision ?? kNoSavedPhotos,
+      builder: (context, _, __) => _buttons(context),
+    );
+  }
+
+  Widget _buttons(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     Widget btn({
@@ -437,13 +474,25 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
           semanticLabel: _liked ? 'Unlike' : 'Like',
           onTap: _toggleLike,
         ),
+      if (_canSave)
+        btn(
+          icon: _saved!.isSaved(widget.pictureId)
+              ? Icons.bookmark_rounded
+              : Icons.bookmark_border_rounded,
+          color: ext.accentGold,
+          busy: _saved!.isBusy(widget.pictureId),
+          semanticLabel: _saved!.isSaved(widget.pictureId)
+              ? 'Remove from saved'
+              : 'Save',
+          onTap: _toggleSave,
+        ),
       if (widget.showDownload)
         btn(
           key: _downloadKey,
           icon: Icons.download_outlined,
           color: ext.accentGold,
           busy: _downloading,
-          semanticLabel: 'Download',
+          semanticLabel: 'Download to device',
           onTap: () => _handleAction(isDownload: true),
         ),
       btn(

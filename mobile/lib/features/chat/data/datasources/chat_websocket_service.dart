@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:jperg_app/core/config/chat_config.dart';
+import 'package:jperg_app/core/utils/server_time.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/like_update.dart' show LikeUpdate, PictureLikeUpdate;
@@ -543,7 +544,7 @@ class ChatWebSocketService {
                 id: json['id'] as String,
                 roomId: json['room_id'] as String,
                 content: json['content'] as String,
-                updatedAt: DateTime.parse(updatedStr),
+                updatedAt: parseServerTime(updatedStr),
                 senderId: json['sender_id'] as String? ?? '',
               ));
             }

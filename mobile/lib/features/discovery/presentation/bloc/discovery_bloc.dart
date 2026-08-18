@@ -247,15 +247,30 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       DiscoveryLoadRequested event, Emitter<DiscoveryState> emit) async {
     _skip = 0;
 
+    // A reload starts a fresh DiscoveryState rather than a copyWith, so every
+    // emit below has to carry the hidden set forward by hand. Leaving it out
+    // reset it to empty and un-hid everything the user had hidden — the reason
+    // hidden posts kept coming back after a refresh or a restart.
+    //
+    // Read at each emit rather than captured once: the set is restored from
+    // SharedPreferences asynchronously at construction, so on a cold start it
+    // can land in the middle of the fetch below. A value captured up here
+    // would still be the empty one and would overwrite it.
+    //
     // ── Fast path: show cached events before the network returns ─────────────
     // restore() is synchronous (SharedPreferences is already in memory).
     final cached = _feedCache.restore();
     if (cached.isNotEmpty) {
       debugPrint(
           '[DiscoveryBloc] cache hit — ${cached.length} events shown instantly');
-      emit(DiscoveryState(events: cached, hasMore: true));
+      emit(DiscoveryState(
+        events: withoutHidden(cached, state.hiddenEventIds),
+        hasMore: true,
+        hiddenEventIds: state.hiddenEventIds,
+      ));
     } else {
-      emit(const DiscoveryState(isLoading: true));
+      emit(DiscoveryState(
+          isLoading: true, hiddenEventIds: state.hiddenEventIds));
     }
 
     // ── Slow path: fetch fresh data and replace ───────────────────────────────
@@ -275,9 +290,12 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       // Persist fresh events so the next launch is fast too.
       unawaited(_feedCache.save(events));
       emit(DiscoveryState(
-        events: events,
+        events: withoutHidden(events, state.hiddenEventIds),
         currentUserId: userId,
+        // Measured on what the server actually returned: a page that happens
+        // to be entirely hidden still means there is more behind it.
         hasMore: events.isNotEmpty,
+        hiddenEventIds: state.hiddenEventIds,
       ));
       if (userId != null && events.isNotEmpty) {
         _enrichInBackground(events, userId);
@@ -286,17 +304,23 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     } on NetworkException {
       // Keep cached events on screen when offline — only hard-fail if empty.
       if (cached.isEmpty) {
-        emit(const DiscoveryState(errorMessage: 'No internet connection.'));
+        emit(DiscoveryState(
+            errorMessage: 'No internet connection.',
+            hiddenEventIds: state.hiddenEventIds));
       }
     } on ServerException catch (e) {
       debugPrint('[DiscoveryBloc] ServerException on load: $e');
       if (cached.isEmpty) {
-        emit(const DiscoveryState(errorMessage: 'Server error. Please retry.'));
+        emit(DiscoveryState(
+            errorMessage: 'Server error. Please retry.',
+            hiddenEventIds: state.hiddenEventIds));
       }
     } catch (e, st) {
       debugPrint('[DiscoveryBloc] Unexpected error on load: $e\n$st');
       if (cached.isEmpty) {
-        emit(const DiscoveryState(errorMessage: 'Something went wrong.'));
+        emit(DiscoveryState(
+            errorMessage: 'Something went wrong.',
+            hiddenEventIds: state.hiddenEventIds));
       }
     }
   }
@@ -334,7 +358,12 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       );
       emit(state.copyWith(
         isLoadingMore: false,
-        events: [...state.events, ...more],
+        // Filtered on the way in: a hidden event the server happens to return
+        // on a later page would otherwise walk straight back into the feed.
+        events: [
+          ...state.events,
+          ...withoutHidden(more, state.hiddenEventIds),
+        ],
         hasMore: more.isNotEmpty,
       ));
       // Patch reactions in background.
@@ -555,64 +584,107 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
   // ── Hide event ────────────────────────────────────────────────────────────
 
-  /// Step 1 — user taps hide. Collapses the card; undo is still available.
+  /// The event a still-undoable hide took off the list, with the position it
+  /// held, so Undo can put it back exactly where it was rather than at the top.
+  (int, EventDiscovery)? _undoHide;
+
+  /// Step 1 — user taps hide. The card goes **now**.
+  ///
+  /// It used to only set [DiscoveryState.pendingHideEventId] and leave the list
+  /// alone, on the assumption that something downstream would collapse the
+  /// card. Nothing does — the Explore page's `buildWhen` doesn't even rebuild
+  /// on that field — so the post sat there untouched until the undo window
+  /// closed several seconds later, and hiding looked like a button that did
+  /// nothing. The field is still the marker that says a hide is undoable.
   void _onHideRequested(
     DiscoveryEventHideRequested event,
     Emitter<DiscoveryState> emit,
   ) {
-    // If a different event was already pending, commit it before starting a new one.
-    if (state.pendingHideEventId != null &&
-        state.pendingHideEventId != event.eventId) {
-      final prevId = state.pendingHideEventId!;
-      final committed = {...state.hiddenEventIds, prevId};
-      final filtered =
-          state.events.where((e) => !committed.contains(e.id)).toList();
-      emit(state.copyWith(
-        hiddenEventIds: committed,
-        events: filtered,
-        clearPendingHide: true,
-      ));
-      SharedPreferences.getInstance().then(
-        (p) => p.setStringList(_hiddenIdsKey, committed.toList()),
-      );
+    // Starting a new hide settles whichever one was still undoable.
+    var hidden = state.hiddenEventIds;
+    final previous = state.pendingHideEventId;
+    if (previous != null && previous != event.eventId) {
+      hidden = {...hidden, previous};
+      _persistHidden(hidden);
     }
-    emit(state.copyWith(pendingHideEventId: event.eventId));
+
+    final events = [...state.events];
+    final index = events.indexWhere((e) => e.id == event.eventId);
+    _undoHide = index < 0 ? null : (index, events.removeAt(index));
+
+    emit(state.copyWith(
+      events: events,
+      hiddenEventIds: hidden,
+      pendingHideEventId: event.eventId,
+    ));
   }
 
-  /// Step 2a — undo window expired or user scrolled away. Remove + persist.
+  /// Step 2a — the undo window closed. The card is already gone from the list;
+  /// this is what makes it stay gone, here and on every later fetch.
   Future<void> _onHideCommitted(
     DiscoveryEventHideCommitted event,
     Emitter<DiscoveryState> emit,
   ) async {
     // Guard: only commit if this event is still the pending one.
     if (state.pendingHideEventId != event.eventId) return;
+    _undoHide = null;
     final updated = {...state.hiddenEventIds, event.eventId};
-    final filtered =
-        state.events.where((e) => !updated.contains(e.id)).toList();
     emit(state.copyWith(
       hiddenEventIds: updated,
-      events: filtered,
+      events: withoutHidden(state.events, updated),
       clearPendingHide: true,
     ));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_hiddenIdsKey, updated.toList());
   }
 
-  /// Step 2b — user tapped Undo. Restore the card.
+  /// Step 2b — user tapped Undo. Put the card back where it was.
   void _onHideUndone(
     DiscoveryEventHideUndone event,
     Emitter<DiscoveryState> emit,
   ) {
-    emit(state.copyWith(clearPendingHide: true));
+    final restore = _undoHide;
+    _undoHide = null;
+    if (restore == null) {
+      emit(state.copyWith(clearPendingHide: true));
+      return;
+    }
+    final (index, hiddenEvent) = restore;
+    // A load-more may have landed during the undo window, so the old index is
+    // a hint, not a guarantee.
+    final events = [...state.events]
+      ..insert(index.clamp(0, state.events.length), hiddenEvent);
+    emit(state.copyWith(events: events, clearPendingHide: true));
   }
 
   void _onHiddenIdsLoaded(
     _DiscoveryHiddenIdsLoaded event,
     Emitter<DiscoveryState> emit,
   ) {
-    final filtered =
-        state.events.where((e) => !event.ids.contains(e.id)).toList();
-    emit(state.copyWith(hiddenEventIds: event.ids, events: filtered));
+    emit(state.copyWith(
+      hiddenEventIds: event.ids,
+      events: withoutHidden(state.events, event.ids),
+    ));
+  }
+
+  /// [events] minus everything the user has hidden.
+  ///
+  /// Applied wherever events enter the state, not just where one was tapped.
+  /// A hide that filtered only the list in front of you came straight back on
+  /// the next fetch, which is the other half of "hiding doesn't work".
+  @visibleForTesting
+  static List<EventDiscovery> withoutHidden(
+    List<EventDiscovery> events,
+    Set<String> hidden,
+  ) =>
+      hidden.isEmpty
+          ? events
+          : events.where((e) => !hidden.contains(e.id)).toList();
+
+  void _persistHidden(Set<String> ids) {
+    SharedPreferences.getInstance()
+        .then((p) => p.setStringList(_hiddenIdsKey, ids.toList()))
+        .ignore();
   }
 
   // ── Save / unsave ─────────────────────────────────────────────────────────

@@ -110,7 +110,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           widget.isCreatorSetup
               ? 'Become a Creator'

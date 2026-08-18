@@ -109,6 +109,13 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   bool get _isBlocked => _isBlockedNotifier.value;
   set _isBlocked(bool value) => _isBlockedNotifier.value = value;
 
+  /// The *peer* blocked us. Kept apart from [_isBlocked] because the two need
+  /// opposite treatment: one gets an Unblock control, the other must not, since
+  /// there is no block of ours to remove and the request would be rejected.
+  /// Both close the composer — the server now refuses a DM send in either
+  /// direction, so leaving it open only produces messages that fail to send.
+  bool _blockedByPeer = false;
+
   bool _blockLoading = false;
   String _otherUserId = '';
   // The super admin's account is never blockable — matches the 'admin' /
@@ -127,57 +134,123 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     if (_isDirect) _loadBlockStatus();
   }
 
+  /// The other participant's id, resolved against whatever is known *now*.
+  ///
+  /// Resolved on demand rather than captured once at mount. It used to be set
+  /// only by [_loadBlockStatus], a one-shot routine that gives up silently on
+  /// every one of its failure paths — an 8-second timeout waiting for the room
+  /// to hydrate, a participant list that never fills, a swallowed exception.
+  /// When any of those happened `_otherUserId` stayed empty, and because
+  /// [_toggleBlock] bailed on its first line, tapping "Block User" did
+  /// *nothing*: no request, no error, no feedback of any kind. That is the
+  /// state the block feature was found in.
+  ///
+  /// Returns null only if the peer genuinely cannot be determined, which
+  /// callers are expected to report rather than swallow.
+  Future<String?> _resolvePeerId({Duration? waitFor}) async {
+    if (_otherUserId.isNotEmpty) return _otherUserId;
+
+    final myId = _bloc.state.myUserId.isNotEmpty
+        ? _bloc.state.myUserId
+        : await sl<AuthService>().getUserId();
+
+    // widget.room.participants may be empty when the room was opened from the
+    // cached rooms list (that API doesn't hydrate per-room participants), so
+    // fall back to the BLoC state, which ChatRoomJoined fills in.
+    var participants = widget.room.participants.isNotEmpty
+        ? widget.room.participants
+        : _bloc.state.room?.participants ?? const [];
+
+    if (participants.isEmpty && waitFor != null) {
+      final loaded = await _bloc.stream
+          .firstWhere((s) => s.room?.participants.isNotEmpty == true)
+          .timeout(waitFor, onTimeout: () => _bloc.state);
+      participants = loaded.room?.participants ?? const [];
+    }
+
+    final peer = participants.where((p) => p.userId != myId).firstOrNull;
+    if (peer == null) return null;
+
+    _otherUserId = peer.userId;
+    final isSuperAdmin = peer.userRole == 'superAdmin';
+    if (mounted) {
+      setState(() => _isPeerSuperAdmin = isSuperAdmin);
+    } else {
+      _isPeerSuperAdmin = isSuperAdmin;
+    }
+    return _otherUserId;
+  }
+
   Future<void> _loadBlockStatus() async {
     try {
-      // Prefer myUserId already in bloc state (avoids a SharedPrefs round-trip)
-      final myId = _bloc.state.myUserId.isNotEmpty
-          ? _bloc.state.myUserId
-          : await sl<AuthService>().getUserId();
+      final peerId = await _resolvePeerId(waitFor: const Duration(seconds: 8));
+      if (peerId == null || _isPeerSuperAdmin) return;
 
-      // widget.room.participants may be empty when the room was opened from the
-      // cached rooms list (that API doesn't hydrate per-room participants).
-      // Fall back to the BLoC state, waiting for it to load if necessary.
-      var participants = widget.room.participants.isNotEmpty
-          ? widget.room.participants
-          : _bloc.state.room?.participants ?? [];
+      // can-message reports both directions in one call. The blocked-users list
+      // only ever says what *we* blocked, so a room the peer had closed looked
+      // completely normal from this side: an open composer, and sends that the
+      // server drops.
+      final permission = await sl<CanMessageUseCase>().call(peerId);
+      var blockedByMe = permission.blockedByMe;
+      var blockedByThem = permission.blockedByThem;
 
-      if (participants.isEmpty) {
-        // Wait until ChatRoomJoined finishes and the state has participants.
-        final loaded = await _bloc.stream
-            .firstWhere((s) => s.room?.participants.isNotEmpty == true)
-            .timeout(const Duration(seconds: 8), onTimeout: () => _bloc.state);
-        participants = loaded.room?.participants ?? [];
+      // A server that predates the two flags says only that *a* block exists,
+      // not whose, and both flags read false — which would render an
+      // unblocked-looking room over a blocked conversation, and put the app
+      // right back in the state this was meant to fix. The block list is
+      // served by every version, so it settles whose block it is.
+      if (permission.reason == 'USER_BLOCKED' && !blockedByMe && !blockedByThem) {
+        blockedByMe = (await sl<GetBlockedUsersUseCase>().call()).contains(peerId);
+        blockedByThem = !blockedByMe;
       }
 
-      final peer = participants.where((p) => p.userId != myId).firstOrNull;
-      if (peer == null) return;
-      _otherUserId = peer.userId;
-      if (mounted) {
-        setState(() => _isPeerSuperAdmin = peer.userRole == 'superAdmin');
-      } else {
-        _isPeerSuperAdmin = peer.userRole == 'superAdmin';
-      }
-      if (_isPeerSuperAdmin) return;
-
-      final blocked = await sl<GetBlockedUsersUseCase>().call();
-      if (mounted) setState(() => _isBlocked = blocked.contains(_otherUserId));
-    } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _isBlocked = blockedByMe;
+        _blockedByPeer = blockedByThem;
+      });
+    } catch (_) {
+      // Priming the banner is best-effort — the toggle below no longer depends
+      // on it having succeeded.
+    }
   }
 
   Future<void> _toggleBlock() async {
-    if (_otherUserId.isEmpty || _blockLoading || _isPeerSuperAdmin) return;
+    if (_blockLoading) return;
     setState(() => _blockLoading = true);
+    // Read once: the catch below reported the state *after* the optimistic
+    // flip, so a failed block said "Could not unblock user".
+    final wasBlocked = _isBlocked;
     try {
-      if (_isBlocked) {
-        await sl<UnblockUserUseCase>().call(_otherUserId);
+      // Resolved here, not read from a field primed at mount — see
+      // [_resolvePeerId]. By now the room has had time to load, so the short
+      // wait is enough on the paths where mount-time resolution lost the race.
+      final peerId =
+          await _resolvePeerId(waitFor: const Duration(seconds: 3));
+      if (peerId == null) {
+        if (mounted) {
+          AppSnackBar.error(
+              context, 'Could not identify this contact — try reopening the chat.');
+        }
+        return;
+      }
+      if (_isPeerSuperAdmin) return;
+
+      if (wasBlocked) {
+        await sl<UnblockUserUseCase>().call(peerId);
+        // Only our own block is lifted. _blockedByPeer is left alone on
+        // purpose: in a mutual block, clearing it here would reopen the
+        // composer while the other side still has us blocked, and every send
+        // would be refused.
         if (mounted) setState(() => _isBlocked = false);
       } else {
-        await sl<BlockUserUseCase>().call(_otherUserId);
+        await sl<BlockUserUseCase>().call(peerId);
         if (mounted) setState(() => _isBlocked = true);
       }
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context, 'Could not ${_isBlocked ? 'unblock' : 'block'} user: $e');
+        AppSnackBar.error(
+            context, 'Could not ${wasBlocked ? 'unblock' : 'block'} user: $e');
       }
     } finally {
       if (mounted) setState(() => _blockLoading = false);
@@ -507,7 +580,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+        leading: kIsWeb ? null : const AppBackButton(),
         titleSpacing: 0,
         title: BlocBuilder<ChatRoomBloc, ChatRoomState>(
           buildWhen: (p, c) => p.room != c.room || p.myUserId != c.myUserId,
@@ -779,11 +852,15 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                         );
                       }
 
-                      if (_isBlocked) {
+                      if (_isBlocked || _blockedByPeer) {
                         return _BlockedBanner(
                           ext: ext,
                           loading: _blockLoading,
-                          onUnblock: _toggleBlock,
+                          // Only our own block is ours to lift.
+                          onUnblock: _isBlocked ? _toggleBlock : null,
+                          message: _isBlocked
+                              ? 'You have blocked this user'
+                              : 'You can no longer message this user',
                         );
                       }
 
@@ -1122,11 +1199,17 @@ class _BlockedBanner extends StatelessWidget {
     required this.ext,
     required this.loading,
     required this.onUnblock,
+    required this.message,
   });
 
   final AppThemeExtension ext;
   final bool loading;
-  final VoidCallback onUnblock;
+
+  /// Null when the block is not the reader's to lift — the peer blocked them.
+  /// The banner then explains the closed composer and offers no control.
+  final VoidCallback? onUnblock;
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -1144,28 +1227,29 @@ class _BlockedBanner extends StatelessWidget {
           SizedBox(width: 10.w),
           Expanded(
             child: Text(
-              'You have blocked this user',
+              message,
               style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
             ),
           ),
-          TextButton(
-            onPressed: loading ? null : onUnblock,
-            child: loading
-                ? SizedBox(
-                    width: 16.w,
-                    height: 16.w,
-                    child: CircularProgressIndicator(
-                        color: ext.accentGold, strokeWidth: 2),
-                  )
-                : Text(
-                    'Unblock',
-                    style: TextStyle(
-                      color: ext.accentGold,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
+          if (onUnblock != null)
+            TextButton(
+              onPressed: loading ? null : onUnblock,
+              child: loading
+                  ? SizedBox(
+                      width: 16.w,
+                      height: 16.w,
+                      child: CircularProgressIndicator(
+                          color: ext.accentGold, strokeWidth: 2),
+                    )
+                  : Text(
+                      'Unblock',
+                      style: TextStyle(
+                        color: ext.accentGold,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-          ),
+            ),
         ],
       ),
     );

@@ -279,7 +279,7 @@ class _MyRequestsPageState extends State<MyRequestsPage>
         elevation: 0,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           'My Requests',
           style: TextStyle(

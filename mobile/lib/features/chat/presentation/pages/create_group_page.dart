@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:jperg_app/core/common/widgets/app_section_label.dart';
-import 'package:jperg_app/core/common/widgets/search_field.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -18,9 +17,9 @@ import 'package:jperg_app/core/utils/web_panel_route.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_media_limits.dart';
-import 'package:jperg_app/features/chat/data/datasources/user_search_data_source.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/member_picker.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/shareable_user.dart';
 
@@ -37,326 +36,19 @@ class CreateGroupPage extends StatefulWidget {
 }
 
 class _CreateGroupPageState extends State<CreateGroupPage> {
-  final _searchController = TextEditingController();
-  final _userSearch = sl<UserSearchDataSource>();
-
-  List<ShareableUser> _results = [];
-  final List<ShareableUser> _selected = [];
-  bool _isSearching = false;
-  Timer? _debounce;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  void _onSearchChanged(String query) {
-    _debounce?.cancel();
-    if (query.trim().isEmpty) {
-      setState(() {
-        _results = [];
-        _isSearching = false;
-      });
-      return;
-    }
-    setState(() => _isSearching = true);
-    _debounce = Timer(const Duration(milliseconds: 350), () => _search(query));
-  }
-
-  Future<void> _search(String query) async {
-    final page = await _userSearch.search(query.trim());
-    if (!mounted || query != _searchController.text) return;
-    setState(() {
-      _results = page.users;
-      _isSearching = false;
-    });
-  }
-
-  void _toggle(ShareableUser user) {
-    setState(() {
-      final index = _selected.indexWhere((u) => u.id == user.id);
-      if (index >= 0) {
-        _selected.removeAt(index);
-      } else {
-        _selected.add(user);
-      }
-    });
-  }
-
-  Future<void> _next() async {
+  Future<void> _next(List<ShareableUser> members) async {
     // Panel-shaped on web so step two stays inside the messages column instead
     // of covering the app; a plain full-screen push on every other platform.
     final room = await showWebPanelPage<ChatRoom>(
       context,
-      _GroupNamePage(members: List.of(_selected)),
+      _GroupNamePage(members: members),
     );
     if (room != null && mounted) Navigator.of(context).pop(room);
   }
 
   @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-
-    final page = Scaffold(
-      backgroundColor: ext.homeBackground,
-      appBar: AppBar(
-        backgroundColor: ext.homeBackground,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        leadingWidth: 84.w,
-        leading: TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            'Cancel',
-            style: TextStyle(color: ext.searchHintColor, fontSize: 15.sp),
-          ),
-        ),
-        title: Text(
-          'Add Members',
-          style: TextStyle(
-            color: ext.greetingColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 17.sp,
-          ),
-        ),
-        actions: [
-          TextButton(
-            // A group of one is a DM; the New Chat screen already does those.
-            onPressed: _selected.isEmpty ? null : _next,
-            child: Text(
-              'Next',
-              style: TextStyle(
-                color: _selected.isEmpty
-                    ? ext.searchHintColor.withValues(alpha: 0.5)
-                    : ext.accentGold,
-                fontSize: 15.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(AppSpacing.md.w, AppSpacing.sm.h,
-                    AppSpacing.md.w, AppSpacing.sm.h),
-                child: SearchField(
-                  controller: _searchController,
-                  hint: 'Search for people',
-                  onChanged: _onSearchChanged,
-                  onClear: () {
-                    _searchController.clear();
-                    _onSearchChanged('');
-                  },
-                ),
-              ),
-
-              if (_selected.isNotEmpty)
-                _SelectedStrip(users: _selected, onRemove: _toggle),
-
-              Expanded(child: _buildResults(ext)),
-            ],
-          ),
-        ),
-      ),
-    );
-    return webWrap(page, backgroundColor: ext.homeBackground);
-  }
-
-  Widget _buildResults(AppThemeExtension ext) {
-    if (_isSearching) {
-      return Center(
-        child: SizedBox(
-          width: 22.w,
-          height: 22.w,
-          child:
-              CircularProgressIndicator(color: ext.accentGold, strokeWidth: 2),
-        ),
-      );
-    }
-
-    if (_results.isEmpty) {
-      return Center(
-        child: Text(
-          _searchController.text.trim().isEmpty
-              ? 'Search for people to add'
-              : 'No users found.',
-          style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: EdgeInsets.only(bottom: AppSpacing.xxl.h),
-      itemCount: _results.length + 1,
-      itemBuilder: (_, index) {
-        if (index == 0) {
-          return AppSectionLabel(
-            'Users',
-            padding: EdgeInsets.fromLTRB(AppSpacing.lg.w, AppSpacing.sm.h,
-                AppSpacing.lg.w, AppSpacing.xs.h),
-          );
-        }
-        final user = _results[index - 1];
-        return _SelectableUserRow(
-          user: user,
-          selected: _selected.any((u) => u.id == user.id),
-          onTap: () => _toggle(user),
-        );
-      },
-    );
-  }
-}
-
-/// Horizontal strip of who's been picked so far, each removable.
-class _SelectedStrip extends StatelessWidget {
-  const _SelectedStrip({required this.users, required this.onRemove});
-
-  final List<ShareableUser> users;
-  final ValueChanged<ShareableUser> onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
-      padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
-      decoration: BoxDecoration(
-        color: ext.accentGold.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(AppRadius.lg.r),
-      ),
-      child: SizedBox(
-        height: 76.h,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
-          itemCount: users.length,
-          separatorBuilder: (_, __) => SizedBox(width: AppSpacing.md.w),
-          itemBuilder: (_, i) {
-            final user = users[i];
-            return SizedBox(
-              width: 56.w,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      UserAvatar(
-                        imageUrl: user.imageUrl,
-                        initial: user.name,
-                        radius: 22,
-                      ),
-                      Positioned(
-                        top: -2,
-                        right: -2,
-                        child: Semantics(
-                          button: true,
-                          label: 'Remove ${user.name}',
-                          child: GestureDetector(
-                            onTap: () => onRemove(user),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: ext.cardSurface,
-                              ),
-                              padding: EdgeInsets.all(1.w),
-                              child: Icon(Icons.cancel,
-                                  size: 16.sp, color: ext.searchHintColor),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    _firstName(user.name),
-                    style:
-                        TextStyle(color: ext.greetingColor, fontSize: 11.sp),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  static String _firstName(String full) {
-    final trimmed = full.trim();
-    if (trimmed.isEmpty) return '';
-    final space = trimmed.indexOf(' ');
-    return space == -1 ? trimmed : trimmed.substring(0, space);
-  }
-}
-
-class _SelectableUserRow extends StatelessWidget {
-  const _SelectableUserRow({
-    required this.user,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final ShareableUser user;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-
-    return Semantics(
-      selected: selected,
-      button: true,
-      label: user.name,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg.w, vertical: 10.h),
-          child: Row(
-            children: [
-              UserAvatar(
-                imageUrl: user.imageUrl,
-                initial: user.name,
-                radius: 18,
-              ),
-              SizedBox(width: AppSpacing.md.w),
-              Expanded(
-                child: Text(
-                  user.name,
-                  style: TextStyle(color: ext.greetingColor, fontSize: 15.sp),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (selected)
-                Icon(Icons.check_circle, color: ext.accentGold, size: 22.sp)
-              else
-                Icon(Icons.circle_outlined,
-                    color: ext.searchHintColor.withValues(alpha: 0.5),
-                    size: 22.sp),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      MemberPicker(actionLabel: 'Next', onSubmit: _next);
 }
 
 // ── Step two: name the group ──────────────────────────────────────────────────

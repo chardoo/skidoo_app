@@ -261,7 +261,7 @@ class ChatDatabase {
             'reply_preview': msg.replyPreview != null
                 ? jsonEncode(msg.replyPreview!.toJson())
                 : null,
-            'created_at': msg.createdAt.toIso8601String(),
+            'created_at': msg.createdAt.toUtc().toIso8601String(),
             'is_local': msg.isLocal ? 1 : 0,
             // Preserve is_read=1 if the user already read this message.
             'is_read': wasRead || msg.isRead ? 1 : 0,
@@ -390,7 +390,7 @@ class ChatDatabase {
     );
     return {
       for (final r in rows)
-        r['room_id'] as String: DateTime.parse(r['last_at'] as String),
+        r['room_id'] as String: DateTime.parse(r['last_at'] as String).toUtc(),
     };
   }
 
@@ -458,7 +458,7 @@ class ChatDatabase {
         'event_id': room.eventId,
         'name': room.name,
         'image_url': room.imageUrl,
-        'created_at': room.createdAt.toIso8601String(),
+        'created_at': room.createdAt.toUtc().toIso8601String(),
         'participants':
             jsonEncode(room.participants.map((p) => p.toJson()).toList()),
       };
@@ -472,7 +472,7 @@ class ChatDatabase {
       eventId: row['event_id'] as String?,
       name: row['name'] as String?,
       imageUrl: row['image_url'] as String?,
-      createdAt: DateTime.parse(row['created_at'] as String),
+      createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
       participants: participantsJson
           .map((p) => ChatParticipant.fromJson(p as Map<String, dynamic>))
           .toList(),
@@ -492,7 +492,7 @@ class ChatDatabase {
         'reply_preview': msg.replyPreview != null
             ? jsonEncode(msg.replyPreview!.toJson())
             : null,
-        'created_at': msg.createdAt.toIso8601String(),
+        'created_at': msg.createdAt.toUtc().toIso8601String(),
         'is_read': msg.isRead ? 1 : 0,
         'is_local': msg.isLocal ? 1 : 0,
         'is_encrypted': msg.isEncrypted ? 1 : 0,
@@ -547,7 +547,7 @@ class ChatDatabase {
       isVideo: (row['is_video'] as int?) == 1,
       replyToId: row['reply_to_id'] as String?,
       replyPreview: preview,
-      createdAt: DateTime.parse(row['created_at'] as String),
+      createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
       isRead: (row['is_read'] as int) == 1,
       isLocal: (row['is_local'] as int) == 1,
       isEncrypted: (row['is_encrypted'] as int?) == 1,

@@ -222,7 +222,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           'Request Board',
           style: TextStyle(

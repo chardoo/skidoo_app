@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/chat/presentation/chat_time.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/room_avatar.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/system_notice_text.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
@@ -228,31 +229,16 @@ class RoomTile extends StatelessWidget {
     return space == -1 ? trimmed : trimmed.substring(0, space);
   }
 
+  /// Timestamps are UTC until [ChatTime] converts them — see that class. This
+  /// method used to read the hour and the day off them directly, which showed
+  /// every user outside UTC a time and a day that were not theirs.
   String _formatTime(DateTime dt) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final msgDay = DateTime(dt.year, dt.month, dt.day);
-    final diff = today.difference(msgDay).inDays;
-
-    if (diff == 0) {
-      final h = dt.hour;
-      final m = dt.minute.toString().padLeft(2, '0');
-      final period = h >= 12 ? 'pm' : 'am';
-      final hour = h == 0 ? 12 : (h > 12 ? h - 12 : h);
-      return '$hour:$m $period';
-    } else if (diff == 1) {
-      return 'Yesterday';
-    } else if (diff < 7) {
-      const days = [
-        'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-        'Friday', 'Saturday', 'Sunday',
-      ];
-      return days[dt.weekday - 1];
-    }
+    final diff = ChatTime.daysAgo(dt);
+    if (diff == 0) return ChatTime.clock12(dt);
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return ChatTime.weekday(dt);
     // Older than a week gets a date — "Tuesday" three months ago tells you
     // nothing.
-    final d = dt.day.toString().padLeft(2, '0');
-    final mo = dt.month.toString().padLeft(2, '0');
-    return '$d/$mo/${dt.year}';
+    return ChatTime.shortDate(dt);
   }
 }

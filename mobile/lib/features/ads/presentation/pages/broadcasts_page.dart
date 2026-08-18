@@ -69,7 +69,7 @@ class _BroadcastsPageState extends State<BroadcastsPage>
         backgroundColor: Colors.transparent,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           'Broadcasts',
           style: TextStyle(

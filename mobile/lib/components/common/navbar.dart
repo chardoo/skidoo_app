@@ -106,8 +106,12 @@ class AppNavbar extends StatelessWidget {
               _NavTab(
                 // 'Chats', matching the screen's own title.
                 label: 'Chats',
-                icon: Icons.chat_bubble_outline_rounded,
-                selectedIcon: Icons.chat_bubble_rounded,
+                // Two overlapping bubbles, per the design — a conversation
+                // rather than a single message. The lone bubble this used to
+                // carry is the app's "comment" glyph, and the two surfaces were
+                // indistinguishable at 20 dp.
+                icon: Icons.forum_outlined,
+                selectedIcon: Icons.forum_rounded,
                 selected: selectedIndex == 1,
                 ext: ext,
                 onDark: onDark,
@@ -160,17 +164,23 @@ class _NavTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // On the black pill the active tab is a solid accent chip with the label
-    // knocked out of it. That inverts on white: a solid green chip would be
-    // the loudest thing on a light screen, so the chip becomes a tint of the
-    // accent and the label is drawn *in* the accent instead of out of it.
+    // The active tab is a quiet chip with the accent *inside* it — green icon,
+    // green label — on both grounds. Only the chip's own fill differs, because
+    // "one step up from the bar" is a different colour on each: a lift of white
+    // over the black pill, a tint of the accent on the light one.
+    //
+    // It used to be a solid accent chip with the label knocked out in black on
+    // dark, which made the whole bar's weight land on one tab and read as a
+    // button sitting on the nav rather than as the tab you are on. The design
+    // has the fill recede and the accent do the talking.
     //
     // Keyed to the ground the bar is on, not the app theme, so the two halves
     // of the treatment can never disagree — a white chip on the black pill, or
     // grey icons over the feed's dark media.
-    final activeColor =
-        onDark ? ext.accentGold : ext.accentGold.withValues(alpha: 0.14);
-    final activeForeground = onDark ? Colors.black : ext.accentGold;
+    final activeColor = onDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : ext.accentGold.withValues(alpha: 0.14);
+    final activeForeground = ext.accentGold;
     final iconColor = selected
         ? activeForeground
         : (onDark ? Colors.white70 : ext.searchHintColor);
@@ -263,7 +273,10 @@ class _NavTab extends StatelessWidget {
                       style: TextStyle(
                         color: activeForeground,
                         fontSize: 12.5.sp,
-                        fontWeight: FontWeight.w700,
+                        // Semibold, not bold: the chip and the accent already
+                        // mark the tab, and the design's label sits alongside
+                        // its icon rather than shouting over it.
+                        fontWeight: FontWeight.w600,
                         letterSpacing: 0.1,
                       ),
                     ),

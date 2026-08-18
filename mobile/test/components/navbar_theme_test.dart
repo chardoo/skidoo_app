@@ -79,15 +79,40 @@ void main() {
 
   testWidgets('light mode draws the active label in the accent, not out of it',
       (t) async {
-    // A solid accent chip with a knocked-out label is right on black and the
-    // loudest thing on screen in light mode.
     await t.pumpWidget(host(AppThemeExtension.light));
     expect(labelColour(t, 'Profile'), AppThemeExtension.light.accentGold);
   });
 
-  testWidgets('dark mode keeps the knocked-out label', (t) async {
+  testWidgets('dark mode draws it in the accent too', (t) async {
+    // It used to be knocked out in black on a solid accent chip. Per the
+    // design the chip recedes on both grounds and the accent is what marks
+    // the tab — a filled green slab put the bar's whole weight on one tab and
+    // read as a button sitting on the nav rather than as where you are.
     await t.pumpWidget(host(AppThemeExtension.dark));
-    expect(labelColour(t, 'Profile'), Colors.black);
+    expect(labelColour(t, 'Profile'), AppThemeExtension.dark.accentGold);
+  });
+
+  testWidgets('the active chip is a lift off the ground, not a slab of accent',
+      (t) async {
+    // Dark: a little white over the black pill. Light: a tint of the accent.
+    // Either way the fill stays quieter than the glyph on top of it.
+    for (final (ext, selected) in [
+      (AppThemeExtension.dark, 3),
+      (AppThemeExtension.light, 3),
+    ]) {
+      await t.pumpWidget(host(ext, selected: selected));
+
+      final chip = t
+          .widgetList<AnimatedContainer>(find.byType(AnimatedContainer))
+          .map((c) => c.decoration)
+          .whereType<BoxDecoration>()
+          .firstWhere((d) => d.color != null && d.color!.a > 0);
+
+      expect(chip.color, isNot(ext.accentGold),
+          reason: 'the chip is not the accent itself');
+      expect(chip.color!.a, lessThan(0.2),
+          reason: 'and it is barely there — the label carries the state');
+    }
   });
 
   testWidgets('inactive icons follow the theme, not a fixed white', (t) async {
@@ -140,10 +165,19 @@ void main() {
     }
   });
 
-  testWidgets('over the feed the active label is knocked out of a solid chip',
-      (t) async {
+  testWidgets('over the feed the active label is the accent', (t) async {
     await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
-    expect(labelColour(t, 'Home'), Colors.black);
+    expect(labelColour(t, 'Home'), AppThemeExtension.light.accentGold);
+  });
+
+  testWidgets('chats is two bubbles, not the comment glyph', (t) async {
+    // A conversation, per the design. The single bubble it used to carry is
+    // what the app draws for a comment, and at 20 dp the two were the same
+    // picture on two different surfaces.
+    await t.pumpWidget(host(AppThemeExtension.dark, selected: 3));
+
+    expect(find.byIcon(Icons.forum_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.chat_bubble_outline_rounded), findsNothing);
   });
 
   testWidgets('leaving the feed returns the bar to the theme', (t) async {

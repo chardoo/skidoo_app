@@ -46,7 +46,7 @@ class ContactInfoPage extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: AppBackButton(onPressed: () => Navigator.of(context).pop()),
+        leading: const AppBackButton(),
         title: Text(
           'Contact Info',
           style: TextStyle(

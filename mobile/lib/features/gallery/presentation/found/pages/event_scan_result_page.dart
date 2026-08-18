@@ -118,7 +118,7 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: AppBackButton(onPressed: () => Navigator.of(context).pop()),
+        leading: const AppBackButton(),
       ),
       body: Center(
         child: Padding(

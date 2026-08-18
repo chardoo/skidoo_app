@@ -4,7 +4,10 @@ import 'package:jperg_app/components/media/media_action_buttons.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/gallery/data/saved_photos.dart';
 import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_photo_actions.dart';
 import 'package:jperg_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:jperg_app/features/photo_comments/data/picture_like_service.dart';
 import 'package:jperg_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
@@ -17,13 +20,37 @@ import 'package:jperg_app/models/photos/Photo.dart';
 /// from there. This widget only decides *which* reactions the Found viewer
 /// offers and what each one does.
 ///
-/// The three outbound actions are distinct and all three earn their place:
-/// bookmark saves to the device, share hands off to the OS sheet, send opens
-/// the in-app DM picker.
+/// Four actions past like and comment, and they are four different things:
+/// bookmark adds the photo to the user's saved items, download writes the file
+/// to the device, share hands off to the OS sheet, send opens the in-app DM
+/// picker.
+///
+/// Bookmark and download used to be the same button — the bookmark glyph ran
+/// the download — so tapping what read as Save wrote a file instead, nothing
+/// was ever saved, and there was no state for the filled bookmark to show.
+///
+/// *Which* of them a given photo gets is [FoundPhotoActions]' business.
 class FoundActionRail extends StatefulWidget {
-  const FoundActionRail({super.key, required this.photo});
+  const FoundActionRail({
+    super.key,
+    required this.photo,
+    this.purchaseGated = false,
+  });
 
   final Photo photo;
+
+  /// Whether this photo's price and visibility decide what the rail offers —
+  /// true only in Found you, where the photo is of the viewer and might not be
+  /// theirs yet. See [FoundPhotoActions].
+  final bool purchaseGated;
+
+  /// What [photo] would be offered here. The stage asks before building a rail
+  /// so a photo with nothing on offer gets no rail rather than an empty one.
+  static FoundPhotoActions actionsFor(Photo photo, {required bool gated}) =>
+      gated
+          ? FoundPhotoActions.forFoundPhoto(photo)
+          : FoundPhotoActions.unrestricted(
+              commentsEnabled: photo.commentsEnabled);
 
   @override
   State<FoundActionRail> createState() => _FoundActionRailState();
@@ -32,14 +59,24 @@ class FoundActionRail extends StatefulWidget {
 class _FoundActionRailState extends State<FoundActionRail> {
   late bool _liked = widget.photo.isLikedByUser;
   late int _likeCount = widget.photo.likeCount;
-  bool _saving = false;
+  bool _downloading = false;
   bool _sharing = false;
 
-  final _bookmarkKey = GlobalKey();
+  final SavedPhotos? _saved = savedPhotosOrNull();
+
+  final _downloadKey = GlobalKey();
 
   /// The share sheet is anchored to this button on iPad/macOS, where a popover
   /// has to originate from something.
   final _shareKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    // Cheap and shared: the id set is fetched once per session, so every rail
+    // can ask without any of them costing a request.
+    _saved?.ensureLoaded();
+  }
 
   @override
   void didUpdateWidget(FoundActionRail old) {
@@ -76,13 +113,31 @@ class _FoundActionRailState extends State<FoundActionRail> {
         imageUrl: widget.photo.url,
       );
 
-  /// Saves the photo to the device via the branded-overlay pipeline every
-  /// other "download" in the app uses.
-  Future<void> _save() async {
-    if (_saving) return;
-    setState(() => _saving = true);
+  /// Bookmarks the photo into the user's saved items, or takes it out again.
+  ///
+  /// This is what the glyph has always claimed to do and never did — it ran
+  /// [_download] instead.
+  Future<void> _toggleSave() async {
+    final saved = _saved;
+    if (saved == null || widget.photo.id.isEmpty) return;
+    HapticFeedback.lightImpact();
+    try {
+      await saved.toggle(widget.photo.id);
+    } catch (_) {
+      if (!mounted) return;
+      // SavedPhotos has already rolled the glyph back, so the message is the
+      // only thing left to say.
+      AppSnackBar.error(context, 'Could not update your saved photos.');
+    }
+  }
 
-    final box = _bookmarkKey.currentContext?.findRenderObject() as RenderBox?;
+  /// Writes the file to the device via the branded-overlay pipeline every
+  /// other download in the app uses.
+  Future<void> _download() async {
+    if (_downloading) return;
+    setState(() => _downloading = true);
+
+    final box = _downloadKey.currentContext?.findRenderObject() as RenderBox?;
     final origin = (box != null && box.hasSize)
         ? box.localToGlobal(Offset.zero) & box.size
         : null;
@@ -95,15 +150,16 @@ class _FoundActionRailState extends State<FoundActionRail> {
       isDownload: true,
       shareOrigin: origin,
     );
-    if (mounted) setState(() => _saving = false);
+    if (mounted) setState(() => _downloading = false);
   }
 
   /// Hands the photo to the OS share sheet — other apps, Messages, AirDrop.
   ///
-  /// Not the same action as either neighbour: [_save] writes the file to the
-  /// device and [_send] opens the in-app DM picker. All three go through the
-  /// branded-overlay pipeline, so a photo leaving the app is watermarked
-  /// however it leaves.
+  /// Not the same action as either neighbour: [_download] writes the file to
+  /// the device and [_send] opens the in-app DM picker. All three go through
+  /// the branded-overlay pipeline, so a photo leaving the app is watermarked
+  /// however it leaves. [_toggleSave] is not in that family at all — a
+  /// bookmark moves no pixels anywhere.
   Future<void> _shareExternally() async {
     if (_sharing) return;
     setState(() => _sharing = true);
@@ -137,35 +193,63 @@ class _FoundActionRailState extends State<FoundActionRail> {
 
   @override
   Widget build(BuildContext context) {
+    final offered = FoundActionRail.actionsFor(
+      widget.photo,
+      gated: widget.purchaseGated,
+    );
+
+    // Rebuilt whenever the saved set changes, including from another rail
+    // showing the same photo.
+    return ValueListenableBuilder<int>(
+      valueListenable: _saved?.revision ?? kNoSavedPhotos,
+      builder: (context, _, __) => _rail(offered),
+    );
+  }
+
+  Widget _rail(FoundPhotoActions offered) {
+    final photoId = widget.photo.id;
+
     return MediaReactionRail(
       actions: [
         // Like and comment follow the owner's engagement switch for this
-        // picture; send and save stay available either way.
-        if (widget.photo.commentsEnabled) ...[
+        // picture, and in Found you the photo's visibility as well. Where the
+        // owner has closed the thread the comment glyph stays, drawn
+        // unavailable — see [MediaReaction.commentsDisabled].
+        if (offered.engagement) ...[
           MediaReaction.like(
             liked: _liked,
             count: _likeCount,
-            onTap: () => _gated(_toggleLike),
+            onTap: () => _requireAccount(_toggleLike),
           ),
           MediaReaction.comment(
             count: widget.photo.commentCount,
-            onTap: () => _gated(_openComments),
+            onTap: () => _requireAccount(_openComments),
           ),
         ],
-        // Saving writes the file to the device, so there is no count behind
-        // this one — the rail renders the glyph alone rather than a fake "0".
-        MediaReaction.bookmark(
-          anchorKey: _bookmarkKey,
-          busy: _saving,
-          semanticLabel: 'Save photo',
-          onTap: () => _gated(_save),
-        ),
-        MediaReaction.shareExternally(
-          anchorKey: _shareKey,
-          busy: _sharing,
-          onTap: () => _gated(_shareExternally),
-        ),
-        MediaReaction.send(onTap: () => _gated(_send)),
+        if (offered.commentsDisabled)
+          MediaReaction.commentsDisabled(count: widget.photo.commentCount),
+        // Neither of the next two has a count behind it, so the rail renders
+        // the glyph alone rather than a fake "0".
+        if (offered.save && _saved != null)
+          MediaReaction.bookmark(
+            saved: _saved!.isSaved(photoId),
+            busy: _saved!.isBusy(photoId),
+            onTap: () => _requireAccount(_toggleSave),
+          ),
+        if (offered.download)
+          MediaReaction.download(
+            anchorKey: _downloadKey,
+            busy: _downloading,
+            onTap: () => _requireAccount(_download),
+          ),
+        if (offered.share) ...[
+          MediaReaction.shareExternally(
+            anchorKey: _shareKey,
+            busy: _sharing,
+            onTap: () => _requireAccount(_shareExternally),
+          ),
+          MediaReaction.send(onTap: () => _requireAccount(_send)),
+        ],
       ],
     );
   }
@@ -173,5 +257,9 @@ class _FoundActionRailState extends State<FoundActionRail> {
   /// Every engagement action is account-gated: a guest is routed to sign-up
   /// under "Join to get the full experience" and the tap is replayed once the
   /// account exists, so the like/save they intended still lands.
-  void _gated(VoidCallback action) => requireAccount(context, action: action);
+  ///
+  /// Named apart from the *purchase* gate above — that one decides whether an
+  /// action is on the rail at all, this one decides who may press it.
+  void _requireAccount(VoidCallback action) =>
+      requireAccount(context, action: action);
 }

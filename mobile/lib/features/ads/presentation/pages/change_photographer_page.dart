@@ -94,7 +94,7 @@ class _ChangePhotographerPageState extends State<ChangePhotographerPage> {
         backgroundColor: Colors.transparent,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop(false)),
+            : const AppBackButton(result: false),
         title: Text(
           'Select New Photographer',
           style: TextStyle(

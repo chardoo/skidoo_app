@@ -216,7 +216,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
         backgroundColor: Colors.transparent,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop(false)),
+            : const AppBackButton(result: false),
         title: Text(
           'Edit Campaign',
           style: TextStyle(

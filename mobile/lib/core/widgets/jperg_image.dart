@@ -1,5 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/cloudinary_transform.dart';
 
@@ -134,6 +136,12 @@ class JpergImage extends StatelessWidget {
 
     final img = CachedNetworkImage(
       imageUrl: optimisedUrl,
+      // One shared cache, sized for a photo app — see [JpergImageCache]. The
+      // package default holds 200 files, which a single album scroll overruns,
+      // so leaving it unset meant photos were re-downloaded on the way back to
+      // a screen the user had just been on. Not on web: there is no filesystem
+      // to cache into, and the browser's own HTTP cache does this job.
+      cacheManager: kIsWeb ? null : JpergImageCache.instance,
       fit: fit,
       width: width,
       height: height,

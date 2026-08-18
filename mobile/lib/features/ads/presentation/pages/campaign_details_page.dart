@@ -295,9 +295,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
         backgroundColor: Colors.transparent,
         leading: kIsWeb
             ? null
-            : AppBackButton(
-                onPressed: () => Navigator.of(context).pop(_changed),
-              ),
+            : AppBackButton(result: _changed),
         title: Text(
           'Campaign Details',
           style: TextStyle(

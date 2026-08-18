@@ -94,7 +94,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           'Face Recognition',
           style: TextStyle(

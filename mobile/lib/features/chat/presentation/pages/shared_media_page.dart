@@ -6,6 +6,8 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
+import 'package:jperg_app/core/widgets/zoomable_photo.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/models/chat/shared_media.dart';
 
@@ -113,7 +115,7 @@ class _SharedMediaPageState extends State<SharedMediaPage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: AppBackButton(onPressed: () => Navigator.of(context).pop()),
+        leading: const AppBackButton(),
         title: Text(
           'Shared Media',
           style: TextStyle(
@@ -179,29 +181,125 @@ class _MediaCell extends StatelessWidget {
 
   final SharedMediaItem item;
 
+  void _open(BuildContext context) {
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => item.isVideo
+            ? _MediaVideoView(url: item.url)
+            : _MediaPhotoView(url: item.url),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4.r),
-      child: Stack(
-        fit: StackFit.expand,
+    return Semantics(
+      button: true,
+      label: item.isVideo ? 'Open video' : 'Open photo',
+      child: GestureDetector(
+        onTap: () => _open(context),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(4.r),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ColoredBox(color: ext.searchFieldFill),
+              // Videos get a poster too. JpergImage recognises a video URL and
+              // renders its still frame; only a video it cannot derive one for
+              // falls back to the empty slot. This cell used to skip the image
+              // entirely for anything video, so every clip in the grid was a
+              // grey square with a play icon and no way to tell them apart.
+              JpergImage(imageUrl: item.url, fit: BoxFit.cover),
+              if (item.isVideo)
+                Center(
+                  child: Icon(
+                    Icons.play_circle_fill_rounded,
+                    color: Colors.white.withValues(alpha: 0.9),
+                    size: 28.sp,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Full-screen photo opened from the grid.
+class _MediaPhotoView extends StatelessWidget {
+  const _MediaPhotoView({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
         children: [
-          ColoredBox(color: ext.searchFieldFill),
-          // A video's URL points at the file, not a still, so the thumbnail
-          // slot shows the play badge over the placeholder rather than a frame.
-          if (!item.isVideo)
-            JpergImage(
-              imageUrl: item.url,
-              fit: BoxFit.cover,
-            ),
-          if (item.isVideo)
-            Center(
-              child: Icon(Icons.play_circle_outline_rounded,
-                  color: ext.greetingColor, size: 28.sp),
-            ),
+          Positioned.fill(
+            child: ZoomablePhoto(imageUrl: url, semanticLabel: 'Shared photo'),
+          ),
+          const _CloseButton(),
         ],
+      ),
+    );
+  }
+}
+
+/// Full-screen video opened from the grid.
+class _MediaVideoView extends StatelessWidget {
+  const _MediaVideoView({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Center(
+            child: JpergVideoPlayer(
+              url: url,
+              fit: BoxFit.contain,
+              autoPlay: true,
+              loop: false,
+            ),
+          ),
+          const _CloseButton(),
+        ],
+      ),
+    );
+  }
+}
+
+class _CloseButton extends StatelessWidget {
+  const _CloseButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 8,
+      right: 12,
+      child: Semantics(
+        button: true,
+        label: 'Close',
+        child: GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Colors.black54,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.close_rounded, color: Colors.white),
+          ),
+        ),
       ),
     );
   }

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:jperg_app/core/utils/server_time.dart';
+
 enum RoomType {
   global,
   direct,
@@ -119,7 +121,7 @@ class ChatParticipant {
     return ChatParticipant(
       userId: json['user_id'] as String,
       userRole: json['user_role'] as String,
-      joinedAt: DateTime.parse(json['joined_at'] as String),
+      joinedAt: parseServerTime(json['joined_at'] as String),
       status: (json['status'] as String?) ?? 'active',
       userName: json['user_name'] as String?,
       userImage: json['user_image'] as String?,
@@ -133,7 +135,7 @@ class ChatParticipant {
   Map<String, dynamic> toJson() => {
         'user_id': userId,
         'user_role': userRole,
-        'joined_at': joinedAt.toIso8601String(),
+        'joined_at': joinedAt.toUtc().toIso8601String(),
         'status': status,
         if (userName != null) 'user_name': userName,
         if (userImage != null) 'user_image': userImage,
@@ -208,7 +210,7 @@ class LastMessage {
         hasImage: (json['has_image'] as bool?) ?? false,
         isEncrypted: (json['is_encrypted'] as bool?) ?? false,
         systemType: json['system_type'] as String?,
-        createdAt: DateTime.parse(json['created_at'] as String),
+        createdAt: parseServerTime(json['created_at'] as String),
       );
 
   Map<String, dynamic> toJson() => {
@@ -219,7 +221,7 @@ class LastMessage {
         'has_image': hasImage,
         'is_encrypted': isEncrypted,
         'system_type': systemType,
-        'created_at': createdAt.toIso8601String(),
+        'created_at': createdAt.toUtc().toIso8601String(),
       };
 }
 
@@ -430,7 +432,7 @@ class ChatRoom {
       eventId: json['event_id'] as String?,
       name: json['name'] as String?,
       imageUrl: json['image_url'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: parseServerTime(json['created_at'] as String),
       participants: participantsList,
       e2eStatus: e2eStatus,
       adminOnly: (json['admin_only'] as bool?) ?? false,
@@ -445,7 +447,7 @@ class ChatRoom {
         'event_id': eventId,
         'name': name,
         'image_url': imageUrl,
-        'created_at': createdAt.toIso8601String(),
+        'created_at': createdAt.toUtc().toIso8601String(),
         'admin_only': adminOnly,
         'participants': jsonEncode(participants.map((p) => p.toJson()).toList()),
       };

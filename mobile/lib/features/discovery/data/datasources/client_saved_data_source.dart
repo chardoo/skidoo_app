@@ -122,6 +122,25 @@ class ClientSavedDataSource {
         .toList();
   }
 
+  /// Just the asset ids the client has saved — no hydration, no paging.
+  ///
+  /// What a bookmark button needs, and what [listSaved] cannot give it:
+  /// that one pages at 100 and hydrates every record into a card, so asking
+  /// "is this photo saved" through it means paying for a page that gets thrown
+  /// away and still getting the wrong answer for anything past the first page.
+  Future<List<String>> listSavedIds({String? assetType}) async {
+    final userId = await _authService.getUserId();
+    final res = await _api.dio.get(
+      '/client/$userId/saved/ids',
+      queryParameters: {if (assetType != null) 'assetType': assetType},
+    );
+    final raw = res.data;
+    final List<dynamic> list = raw is Map<String, dynamic> && raw['data'] is List
+        ? raw['data'] as List<dynamic>
+        : (raw is List ? raw : const []);
+    return list.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+  }
+
   /// Removes a saved item by its record ID.
   Future<void> unsaveById(String savedItemId) async {
     final userId = await _authService.getUserId();

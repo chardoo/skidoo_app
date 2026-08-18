@@ -178,6 +178,9 @@ class _FoundFeedState extends State<FoundFeed> {
           // through to the rest.
           photos: album.photos,
           initialIndex: index,
+          // Found you: what the rail offers depends on whether this photo is
+          // the viewer's yet, and on whether it is public.
+          purchaseGated: true,
           onViewAlbum: () => _openAlbum(album, filters),
         ),
       ),

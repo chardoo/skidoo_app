@@ -32,6 +32,7 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
 
   StreamSubscription<ChatRoom>? _groupInviteSub;
   StreamSubscription<ChatMessage>? _bgMsgSub;
+  StreamSubscription<ChatMessage>? _openRoomMsgSub;
   StreamSubscription<String>? _roomRemovedSub;
   StreamSubscription<void>? _roomsChangedSub;
 
@@ -92,6 +93,20 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
       }
     });
 
+    // The open room's own messages — sent and received. That room is paused, so
+    // none of them reach `backgroundMessages`; without this the tile still
+    // shows the previous message when the user backs out of the conversation.
+    // Nothing here is unread: the user is reading it as it arrives.
+    _openRoomMsgSub = _bgService.openRoomMessages.listen((msg) {
+      if (!isClosed) {
+        add(_ChatRoomsMessageArrived(msg.roomId, msg.createdAt,
+            senderId: msg.senderId,
+            senderName: msg.senderName,
+            preview: _previewOf(msg),
+            countsAsUnread: false));
+      }
+    });
+
     // Badge-clear signal: ChatRoomBloc fires this when a room is opened.
     _bgService.onRoomRead = (roomId) {
       if (!isClosed) add(_ChatRoomsRoomRead(roomId));
@@ -121,6 +136,7 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
   Future<void> close() {
     _groupInviteSub?.cancel();
     _bgMsgSub?.cancel();
+    _openRoomMsgSub?.cancel();
     _roomRemovedSub?.cancel();
     _roomsChangedSub?.cancel();
     return super.close();
@@ -132,33 +148,50 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
   ) async {
     final myUserId = await _authService.getUserId();
 
-    // 1. Load cache + unread counts + last message times instantly.
-    try {
-      final results = await Future.wait([
-        _getCachedRooms(),
-        _getUnreadCounts(),
-        _getLastMessageTimes(),
-      ]);
-      final all = results[0] as List<ChatRoom>;
-      final counts = results[1] as Map<String, int>;
-      final lastTimes = results[2] as Map<String, DateTime>;
-      final split = _splitRooms(all, myUserId);
-      if (all.isNotEmpty) {
-        emit(state.copyWith(
-          rooms: split.$1,
-          pendingInvites: split.$2,
-          unreadCounts: counts,
-          lastMessageAt: lastTimes,
-          isSyncing: true,
-          clearError: true,
-          currentUserId: myUserId,
-        ));
-        _bgService.connectAll(split.$1);
-      } else {
+    // Whether there is already an inbox on screen. Every re-entry to the Chats
+    // tab lands here, so this is the common case, and the rule for it is: show
+    // the user nothing. No spinner, no progress bar, no intermediate list —
+    // the rows they are looking at stay exactly as they are until the server
+    // has something better to put in their place.
+    final hasRooms = state.rooms.isNotEmpty || state.pendingInvites.isNotEmpty;
+
+    // 1. Cold start only: paint the cache so there is something to look at.
+    //    Re-reading it when the list is already up would swap the rows for a
+    //    staler copy of themselves and then swap them back a moment later —
+    //    two visible content changes that tell the user nothing.
+    if (!hasRooms) {
+      try {
+        final results = await Future.wait([
+          _getCachedRooms(),
+          _getUnreadCounts(),
+          _getLastMessageTimes(),
+        ]);
+        final all = results[0] as List<ChatRoom>;
+        final counts = results[1] as Map<String, int>;
+        final lastTimes = results[2] as Map<String, DateTime>;
+        final split = _splitRooms(all, myUserId);
+        if (all.isNotEmpty) {
+          emit(state.copyWith(
+            rooms: split.$1,
+            pendingInvites: split.$2,
+            unreadCounts: counts,
+            lastMessageAt: lastTimes,
+            isSyncing: true,
+            clearError: true,
+            currentUserId: myUserId,
+          ));
+          _bgService.connectAll(split.$1);
+        } else {
+          emit(state.copyWith(
+              isLoading: true, isSyncing: true, clearError: true));
+        }
+      } catch (_) {
         emit(state.copyWith(isLoading: true, isSyncing: true, clearError: true));
       }
-    } catch (_) {
-      emit(state.copyWith(isLoading: true, isSyncing: true, clearError: true));
+    } else {
+      // isLoading stays false — it means "nothing to show yet", and there is
+      // plenty to show. Only isSyncing moves, and nothing renders it.
+      emit(state.copyWith(isSyncing: true, clearError: true));
     }
 
     // 2. Sync from server then refresh counts.
@@ -205,11 +238,18 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
         rooms: _mergeRooms(split.$1, state.rooms, stale),
         pendingInvites: _mergeRooms(split.$2, state.pendingInvites, stale),
         unreadCounts: effectiveCounts,
-        lastMessageAt: lastTimes,
-        // The fresh list carries the server's own previews, which now include
-        // anything that had arrived live. Clearing keeps the rule simple:
-        // whatever is left in liveMessages is newer than the last fetch.
-        liveMessages: const {},
+        // Same reasoning as liveMessages below, for ordering rather than text.
+        // On web `lastTimes` is always empty (no SQLite), so replacing outright
+        // threw away every time learned from a live message and let the list
+        // re-order itself on each tab switch.
+        lastMessageAt: mergeTimes(lastTimes, state.lastMessageAt),
+        // The fresh list carries the server's own previews, so most live ones
+        // are now redundant. Dropping them wholesale used to be the rule, but
+        // it blanks a tile back to an older message whenever the server's copy
+        // of a room is a beat behind what this device has already seen — the
+        // message you just sent, most obviously. Keep the ones that are still
+        // ahead of the server; they are the only ones that matter.
+        liveMessages: pruneLive(state.liveMessages, split.$1),
         isLoading: false,
         isSyncing: false,
         clearError: true,
@@ -230,6 +270,48 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
             : null,
       ));
     }
+  }
+
+  /// Takes the later of the two times known for each room. [fetched] is the
+  /// authority where it has an entry; [known] fills the gaps and wins where it
+  /// is ahead, which is how a message seen live survives a sync that hasn't
+  /// caught up with it yet.
+  @visibleForTesting
+  static Map<String, DateTime> mergeTimes(
+    Map<String, DateTime> fetched,
+    Map<String, DateTime> known,
+  ) {
+    if (known.isEmpty) return fetched;
+    final merged = Map<String, DateTime>.from(fetched);
+    known.forEach((roomId, at) {
+      final existing = merged[roomId];
+      if (existing == null || at.isAfter(existing)) merged[roomId] = at;
+    });
+    return merged;
+  }
+
+  /// Keeps only the live previews that are still newer than what [fresh]
+  /// carries for the same room — the rest have been superseded by the server's
+  /// own copy and would just be two records of the same message.
+  ///
+  /// A room missing from [fresh] keeps its live preview: the sync has no
+  /// opinion about a room it didn't return.
+  @visibleForTesting
+  static Map<String, LastMessage> pruneLive(
+    Map<String, LastMessage> live,
+    List<ChatRoom> fresh,
+  ) {
+    if (live.isEmpty) return const {};
+    final serverAt = <String, DateTime>{
+      for (final r in fresh)
+        if (r.lastMessage != null) r.id: r.lastMessage!.createdAt,
+    };
+    return {
+      for (final entry in live.entries)
+        if (!serverAt.containsKey(entry.key) ||
+            entry.value.createdAt.isAfter(serverAt[entry.key]!))
+          entry.key: entry.value,
+    };
   }
 
   /// Unions [fresh] (just fetched from the server) with any [known] rooms
@@ -296,7 +378,12 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
       ]);
       emit(state.copyWith(
         unreadCounts: results[0] as Map<String, int>,
-        lastMessageAt: results[1] as Map<String, DateTime>,
+        // Merged, not replaced: getLastMessageTimes() deliberately skips
+        // messages still marked local, so a message the user has sent but the
+        // server has not yet echoed is invisible to it. Replacing outright
+        // dropped that room back down the list for the moment in between.
+        lastMessageAt: mergeTimes(
+            results[1] as Map<String, DateTime>, state.lastMessageAt),
       ));
     } catch (_) {}
   }

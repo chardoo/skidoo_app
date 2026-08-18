@@ -129,7 +129,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
             elevation: 0,
             leading: kIsWeb
                 ? null
-                : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+                : const AppBackButton(),
             // Just the event's name. The photographer is credited on each
             // photo in the viewer, and a count pill only restates what the
             // grid underneath already shows.

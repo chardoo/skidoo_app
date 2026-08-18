@@ -325,9 +325,31 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     }
   }
 
-  void _leave() => Navigator.of(context).pop(
-        _changed ? RequestOutcome.changed : RequestOutcome.unchanged,
-      );
+  /// Leave, once.
+  ///
+  /// Two things call this and both can fire more than once for one intent: the
+  /// arrow, and the deferred callback below, which is scheduled fresh for every
+  /// back gesture. Two gestures inside one frame schedule two callbacks that
+  /// then run back-to-back in the same post-frame batch — `mounted` is still
+  /// true for the whole of the route's exit animation, so the second pop lands
+  /// on the page underneath.
+  ///
+  /// The stack check is the same one `maybePop` makes, spelled out because
+  /// `maybePop` cannot be used here: this route's [PopScope] refuses it by
+  /// design, and the refusal routes straight back into this method. Popping
+  /// with nothing underneath is how the app got a black screen, and this page
+  /// is reachable from an `/r/` deep link, so the stack can be that shallow.
+  bool _leaving = false;
+
+  void _leave() {
+    if (_leaving) return;
+    final navigator = Navigator.of(context);
+    if (!navigator.canPop()) return;
+    _leaving = true;
+    navigator.pop(
+      _changed ? RequestOutcome.changed : RequestOutcome.unchanged,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

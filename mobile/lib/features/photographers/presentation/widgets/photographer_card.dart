@@ -1,4 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -217,7 +219,10 @@ class _PhotographerAvatar extends StatelessWidget {
     if (hasImage) {
       return CircleAvatar(
         radius: 24.r,
-        backgroundImage: CachedNetworkImageProvider(photographer.imageUrl!),
+        backgroundImage: CachedNetworkImageProvider(
+          photographer.imageUrl!,
+          cacheManager: kIsWeb ? null : JpergImageCache.instance,
+        ),
         backgroundColor: ext.searchFieldFill,
       );
     }

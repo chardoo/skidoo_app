@@ -176,8 +176,14 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       // purchased/found photos now live), then pop back to home.
       HomePage.tabRequest.value = 0;
       HomeNavigationPage.pillTabRequest.value = 0;
-      Navigator.of(context)
-          .popUntil(ModalRoute.withName(HomePage.routeName));
+      // `|| route.isFirst` is what keeps this from emptying the navigator.
+      // `ModalRoute.withName` alone matches nothing when Home is not on the
+      // stack — a session that started at the guest feed, or anything that
+      // cleared the stack on the way here — and popUntil with a predicate that
+      // never matches pops every route there is, leaving a black screen.
+      Navigator.of(context).popUntil(
+        (route) => route.settings.name == HomePage.routeName || route.isFirst,
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _paymentLoading = false);
@@ -386,7 +392,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       leading:
-          kIsWeb ? null : AppBackButton(onPressed: () => Navigator.of(ctx).pop()),
+          kIsWeb ? null : const AppBackButton(),
       title: Text(
         AppLocalizations.of(ctx)!.searchResultsTitle,
         style: TextStyle(

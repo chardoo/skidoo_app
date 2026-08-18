@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_photo_actions.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_action_rail.dart';
 import 'package:jperg_app/core/widgets/image_aspect.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
@@ -27,11 +28,16 @@ class FoundPhotoStage extends StatelessWidget {
     required this.isActive,
     this.onViewAlbum,
     this.showSocialActions = true,
+    this.purchaseGated = false,
     this.selection,
     this.counter,
   });
 
   final Photo photo;
+
+  /// Whether the rail's contents follow the photo's price and visibility —
+  /// true only in Found you. See [FoundPhotoActions].
+  final bool purchaseGated;
 
   /// Non-null shows the "GHS 20 | Buy" pill for a priced, unowned photo, and
   /// toggles this photo in the album's selection when it is tapped.
@@ -128,7 +134,11 @@ class FoundPhotoStage extends StatelessWidget {
                   ),
                 ),
 
-              if (showSocialActions)
+              // Nothing on offer means no rail, not an empty column: an
+              // unbought photo in Found you has no reactions of any kind, and
+              // the space belongs to the photo.
+              if (showSocialActions &&
+                  FoundActionRail.actionsFor(photo, gated: purchaseGated).any)
                 Positioned(
                   right: AppSpacing.md.w,
                   top: AppSpacing.sm.h,
@@ -143,6 +153,7 @@ class FoundPhotoStage extends StatelessWidget {
                       child: FoundActionRail(
                         key: ValueKey('found_actions_${photo.id}'),
                         photo: photo,
+                        purchaseGated: purchaseGated,
                       ),
                     ),
                   ),

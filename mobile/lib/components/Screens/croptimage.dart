@@ -43,8 +43,12 @@ class _CropImagesState extends State<CropImages> {
               final savedFile = await File(filePath).writeAsBytes(image);
               widget.onImageCropped?.call(savedFile.path);
               if (mounted) {
+                // This screen and the picker beneath it, but only as far as
+                // there is a stack to unwind: two unconditional pops assume
+                // both are there, and take whatever else is underneath when
+                // they are not.
                 navigator.pop();
-                navigator.pop();
+                if (navigator.canPop()) navigator.pop();
               }
             },
           ),

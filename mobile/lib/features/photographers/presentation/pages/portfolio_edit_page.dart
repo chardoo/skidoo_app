@@ -211,7 +211,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

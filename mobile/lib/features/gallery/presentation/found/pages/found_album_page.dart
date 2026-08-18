@@ -86,6 +86,8 @@ class _FoundAlbumViewState extends State<_FoundAlbumView> {
           photos: photos,
           initialIndex: index,
           selection: _selection,
+          // Found you: see FoundPhotoViewerPage.purchaseGated.
+          purchaseGated: true,
           // Puts the album name in the bar and the counter on the photo.
           title: album.title,
           // Popped back to this page first, so checkout runs against the
@@ -127,7 +129,7 @@ class _FoundAlbumViewState extends State<_FoundAlbumView> {
         backgroundColor: ext.homeBackground,
         elevation: 0,
         centerTitle: true,
-        leading: AppBackButton(onPressed: () => Navigator.of(context).pop()),
+        leading: const AppBackButton(),
         title: Text(
           album.title,
           maxLines: 1,

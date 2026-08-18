@@ -71,10 +71,9 @@ class OnboardingStepScaffold extends StatelessWidget {
                   SizedBox(
                     height: 40.h,
                     child: canPop
-                        ? Align(
+                        ? const Align(
                             alignment: Alignment.centerLeft,
-                            child: AppBackButton(
-                                onPressed: () => Navigator.of(context).pop()),
+                            child: AppBackButton(),
                           )
                         : null,
                   ),

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/features/chat/presentation/chat_time.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -613,9 +614,8 @@ class _Timestamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final h = message.createdAt.hour.toString().padLeft(2, '0');
-    final m = message.createdAt.minute.toString().padLeft(2, '0');
-    final timeStr = '$h:$m';
+    // createdAt is UTC; ChatTime puts it on the phone's clock.
+    final timeStr = ChatTime.clock(message.createdAt);
 
     // Read-status logic (only for my sent messages with known participant count).
     Widget? readIndicator;

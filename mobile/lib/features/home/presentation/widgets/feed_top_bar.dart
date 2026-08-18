@@ -1,12 +1,26 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/home/presentation/widgets/creator_mode_menu.dart';
 
-/// Feed top bar — plain-text Found/Feed/Following tabs (active tab bold +
-/// underlined) centred as a group, with the QR glyph on the far left and a
-/// search icon on the far right.
+/// Feed top bar — the QR glyph, the plain-text Found/Feed/Following tabs
+/// (active tab bold + underlined), the search icon and the photographer's mode
+/// menu, spread evenly across one row.
+///
+/// Evenly, and that is the whole layout: every control shares out the leftover
+/// width between them. The tabs used to be a group centred in the *bar*, which
+/// is only the same thing when both ends weigh the same — and they never do. A
+/// photographer's trailing end is search plus a 32 dp avatar plus a chevron
+/// against a 24 dp glyph at the leading end, so centring on the bar pushed the
+/// group about 30 dp right of the space it actually had: a gaping hole after
+/// the QR mark and "Following" jammed into the search icon, which is exactly
+/// how it shipped. Distributing the slack instead is self-balancing — it holds
+/// for a client with no avatar and for a guest with two tabs without either
+/// case being special-cased.
 ///
 /// The search icon opens the Search screen as its own route rather than
 /// swapping this row for a field: search is a screen with recents, chips and a
@@ -80,116 +94,144 @@ class FeedTopBar extends StatelessWidget {
   /// worked. Owning the whole 48 dp is what lets the controls fill it.
   static const double _barHeight = 48;
 
-  /// Half the 18 dp gap between labels, applied to each tab instead of being a
-  /// bare spacer between them, so neighbouring tap boxes meet rather than
-  /// leaving the gap dead. The gap the eye sees is unchanged.
-  static const double _tabGap = 9;
+  /// Half the gap between labels, carried by each tab rather than sitting
+  /// between them as a bare spacer, so a tap just off a label still lands on it.
+  ///
+  /// 6, not the 9 it was: the three labels, both glyphs, the avatar and the
+  /// chevron already come to within a few points of a 390 dp bar, and the row
+  /// has to have some slack left to share out or there is no spreading to do —
+  /// at 9 the content overflowed the bar outright. The tabs give it up because
+  /// they are the only part of the row with a gap to spare; every other control
+  /// is paying for a tap target.
+  static const double _tabGap = 6;
+
+  /// Widest the row is allowed to get before it stops spreading and centres.
+  ///
+  /// Sharing the slack out is right on a phone, where there is barely any. On a
+  /// desktop-width page it would fling the tabs to opposite ends of the window,
+  /// so past the width the rest of the app lays its content out in, the bar
+  /// stops growing and centres what it has.
+  static const double _maxWidth = kWebColumnWidth;
 
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: SizedBox(
-        height: _barHeight.h,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // The labels are the one part of this bar whose width isn't ours to
-            // choose — a long tab set, a translation, or a large system text
-            // scale can all outgrow the strip between the two icons. Scaling the
-            // group down as a unit keeps it centred and legible; letting it
-            // overflow would just clip the last label.
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < tabs.length; i++)
-                    _FeedTextTab(
-                      label: tabs[i],
-                      active: selectedTab == i,
-                      ext: ext,
-                      onSolid: overSolidBackground,
-                      height: _barHeight.h,
-                      horizontalPadding: _tabGap.w,
-                      onTap: () => onTabChanged(i),
-                    ),
-                ],
+      child: LayoutBuilder(
+        builder: (context, constraints) => Center(
+          // The bar lays itself out at whichever is wider: the room it has, or
+          // the room its contents need. The first is the normal case and the
+          // row spreads into it; the second only happens when the labels have
+          // outgrown the bar — a translation, or a large accessibility text
+          // scale — and there [FittedBox] shrinks the whole row to fit rather
+          // than letting "Following" slide under the search icon.
+          //
+          // [IntrinsicWidth] is what asks the row how much it actually wants.
+          // Everything in it must be able to answer: a bare CustomPaint or a
+          // network image reports zero, which is why the QR mark and the avatar
+          // are each boxed to their known size.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: math.min(constraints.maxWidth, _maxWidth),
               ),
-            ),
-            if (onUnlockPressed != null)
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                child: Semantics(
-                  button: true,
-                  label: 'Unlock private photos',
-                  child: GestureDetector(
-                    onTap: onUnlockPressed,
-                    behavior: HitTestBehavior.opaque,
-                    // Full bar height, and reaching inwards from the edge, so
-                    // the target is 36 × 48 rather than the glyph's own 24 × 24.
-                    // The glyph itself does not move.
-                    child: Padding(
-                      padding: EdgeInsets.only(right: AppSpacing.md.w),
-                      child: Center(
-                        // Tweened rather than switched: the sheet takes a beat
-                        // to arrive, and a glyph that snaps to the accent ahead
-                        // of it reads as a glitch rather than as a response.
-                        child: TweenAnimationBuilder<Color?>(
-                          tween: ColorTween(end: _qrColor(ext)),
-                          duration: const Duration(milliseconds: 150),
-                          builder: (_, color, __) => _QrGlyph(
-                            color: color ?? _qrColor(ext),
-                            size: 24.sp,
-                            shadow: !overSolidBackground,
-                          ),
+              child: SizedBox(
+                height: _barHeight.h,
+                child: IntrinsicWidth(
+                  child: Row(
+                    // The leftover width, split equally between every
+                    // neighbouring pair. See the class doc for why this rather
+                    // than a centred group.
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (onUnlockPressed != null) _unlockButton(ext),
+                      for (var i = 0; i < tabs.length; i++)
+                        _FeedTextTab(
+                          label: tabs[i],
+                          active: selectedTab == i,
+                          ext: ext,
+                          onSolid: overSolidBackground,
+                          height: _barHeight.h,
+                          horizontalPadding: _tabGap.w,
+                          onTap: () => onTabChanged(i),
                         ),
+                      // Search and the mode menu are one trailing child, not
+                      // two, so the pair stays pinned to the right edge. As
+                      // separate children they would each take a share of the
+                      // slack — and for a client, whose menu draws nothing,
+                      // that share would open up between the search icon and
+                      // the edge, leaving it floating short of the corner.
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _searchButton(ext),
+                          // Draws nothing unless the signed-in account is a
+                          // photographer, so the bar is unchanged for everyone
+                          // else.
+                          CreatorModeMenu(
+                              overSolidBackground: overSolidBackground),
+                        ],
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              // Search and the mode switcher share the trailing edge, so they
-              // sit in one row rather than stacking Positioned children that
-              // would need their widths hardcoded to avoid overlapping.
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Semantics(
-                    button: true,
-                    label: 'Open search',
-                    child: GestureDetector(
-                      onTap: onSearchOpen,
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: EdgeInsets.only(left: AppSpacing.md.w),
-                        child: Center(
-                          child: Icon(Icons.search_rounded,
-                              color: _chromeColor(ext),
-                              size: 24.sp,
-                              shadows: _chromeShadows),
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Draws nothing unless the signed-in account is a
-                  // photographer, so the bar is unchanged for everyone else.
-                  CreatorModeMenu(overSolidBackground: overSolidBackground),
-                ],
-              ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _unlockButton(AppThemeExtension ext) => Semantics(
+        button: true,
+        label: 'Unlock private photos',
+        child: GestureDetector(
+          onTap: onUnlockPressed,
+          behavior: HitTestBehavior.opaque,
+          // Reaching inwards from the edge, so the target is 36 × 48 rather
+          // than the glyph's own 24 × 24. The glyph itself does not move: the
+          // padding is on the inner side, and the row seats this child's left
+          // edge against the bar's.
+          child: Padding(
+            padding: EdgeInsets.only(right: AppSpacing.md.w),
+            child: Center(
+              // Tweened rather than switched: the sheet takes a beat to
+              // arrive, and a glyph that snaps to the accent ahead of it reads
+              // as a glitch rather than as a response.
+              child: TweenAnimationBuilder<Color?>(
+                tween: ColorTween(end: _qrColor(ext)),
+                duration: const Duration(milliseconds: 150),
+                builder: (_, color, __) => _QrGlyph(
+                  color: color ?? _qrColor(ext),
+                  size: 24.sp,
+                  shadow: !overSolidBackground,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+  Widget _searchButton(AppThemeExtension ext) => Semantics(
+        button: true,
+        label: 'Open search',
+        child: GestureDetector(
+          onTap: onSearchOpen,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: EdgeInsets.only(left: AppSpacing.md.w),
+            child: Center(
+              child: Icon(Icons.search_rounded,
+                  color: _chromeColor(ext),
+                  size: 24.sp,
+                  shadows: _chromeShadows),
+            ),
+          ),
+        ),
+      );
 }
 
 /// The design's leading QR mark: three rounded finder squares plus a block
@@ -215,9 +257,14 @@ class _QrGlyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size.square(size),
-      painter: _QrGlyphPainter(color: color, shadow: shadow),
+    // Boxed, not left to the CustomPaint's own `size`: a childless CustomPaint
+    // reports an intrinsic width of zero, and the bar measures itself through
+    // the row's intrinsics before deciding whether it has to shrink.
+    return SizedBox.square(
+      dimension: size,
+      child: CustomPaint(
+        painter: _QrGlyphPainter(color: color, shadow: shadow),
+      ),
     );
   }
 }
@@ -332,6 +379,19 @@ class _FeedTextTab extends StatelessWidget {
   /// the other side of the label. See [build].
   static const double _underlineHeight = 2;
 
+  /// Ceiling on the system text scale for these labels.
+  ///
+  /// The row spreads to fill the bar and has little slack to give back, so
+  /// three labels growing without limit would run the icons off the ends. The
+  /// bar is fixed-height chrome a few words long, not content — capping it here
+  /// keeps the whole row legible at a large accessibility scale instead of
+  /// letting one label push another off the screen. Everything the labels lead
+  /// to scales without a ceiling.
+  static const double _maxTextScale = 1.2;
+
+  TextScaler _scaler(BuildContext context) =>
+      MediaQuery.textScalerOf(context).clamp(maxScaleFactor: _maxTextScale);
+
   Color get _foreground => onSolid
       ? (active ? ext.greetingColor : ext.searchHintColor)
       : (active ? Colors.white : Colors.white60);
@@ -372,7 +432,7 @@ class _FeedTextTab extends StatelessWidget {
         style: DefaultTextStyle.of(context).style.merge(_style(bold: true)),
       ),
       textDirection: Directionality.of(context),
-      textScaler: MediaQuery.textScalerOf(context),
+      textScaler: _scaler(context),
     )..layout();
     final width = painter.width;
     painter.dispose();
@@ -409,6 +469,9 @@ class _FeedTextTab extends StatelessWidget {
                     label,
                     style: _style(bold: active),
                     textAlign: TextAlign.center,
+                    // Same ceiling the slot above was measured at, or the text
+                    // would outgrow the box reserved for it.
+                    textScaler: _scaler(context),
                   ),
                 ),
                 SizedBox(height: AppSpacing.xs.h),

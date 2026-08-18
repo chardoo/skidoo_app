@@ -1,303 +1,63 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:jperg_app/core/common/widgets/search_field.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
-import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/features/chat/data/datasources/user_search_data_source.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/member_picker.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/shareable_user.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:jperg_app/core/theme/app_spacing.dart';
-import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 /// Lets an existing group member search for and invite new users to [room].
-class InviteToGroupPage extends StatefulWidget {
+///
+/// The same screen as the first step of creating a group — see [MemberPicker] —
+/// but the group already exists, so the confirm action is "Add" rather than
+/// "Next" and sending the invites is the last thing it does. Pops the number of
+/// people invited so Group Info can say so.
+class InviteToGroupPage extends StatelessWidget {
   const InviteToGroupPage({super.key, required this.room});
 
   final ChatRoom room;
 
-  @override
-  State<InviteToGroupPage> createState() => _InviteToGroupPageState();
-}
+  /// Nobody already in the room can be picked, invited-but-not-yet-joined
+  /// included: the server rejects a second invite, and the member list is
+  /// already showing them as Pending.
+  Set<String> get _alreadyInRoom =>
+      room.participants.map((p) => p.userId).toSet();
 
-class _InviteToGroupPageState extends State<InviteToGroupPage> {
-  final _searchController = TextEditingController();
-  final _userSearch = sl<UserSearchDataSource>();
-  final _inviteUseCase = sl<InviteToRoomUseCase>();
+  Future<void> _invite(BuildContext context, List<ShareableUser> users) async {
+    final inviteUseCase = sl<InviteToRoomUseCase>();
+    final navigator = Navigator.of(context);
 
-  List<ShareableUser> _searchResults = [];
-  final List<ShareableUser> _selected = [];
-  bool _isSearching = false;
-  bool _isInviting = false;
-  Timer? _debounce;
-
-  /// User IDs of people already in the room (active members, not pending).
-  late final Set<String> _existingMemberIds = widget.room.participants
-      .where((p) => !p.isPending)
-      .map((p) => p.userId)
-      .toSet();
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  void _onSearchChanged(String query) {
-    _debounce?.cancel();
-    if (query.trim().isEmpty) {
-      setState(() => _searchResults = []);
-      return;
-    }
-    _debounce = Timer(const Duration(milliseconds: 350), () => _search(query));
-  }
-
-  Future<void> _search(String query) async {
-    setState(() => _isSearching = true);
-    try {
-      final page = await _userSearch.search(query.trim());
-      if (!mounted) return;
-      setState(() {
-        _searchResults = page.users
-            .where((u) =>
-                !_existingMemberIds.contains(u.id) &&
-                !_selected.any((s) => s.id == u.id))
-            .toList();
-        _isSearching = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isSearching = false);
-    }
-  }
-
-  void _toggleUser(ShareableUser user) {
-    setState(() {
-      if (_selected.any((u) => u.id == user.id)) {
-        _selected.removeWhere((u) => u.id == user.id);
-      } else {
-        _selected.add(user);
-      }
-      _searchResults.removeWhere((u) => u.id == user.id);
-    });
-  }
-
-  void _removeSelected(ShareableUser user) {
-    setState(() => _selected.removeWhere((u) => u.id == user.id));
-  }
-
-  Future<void> _invite() async {
-    if (_selected.isEmpty) return;
-    setState(() => _isInviting = true);
-
-    final errors = <String>[];
-    await Future.wait(_selected.map((user) async {
+    final failed = <String>[];
+    await Future.wait(users.map((user) async {
       try {
-        await _inviteUseCase(
-          roomId: widget.room.id,
+        await inviteUseCase(
+          roomId: room.id,
           inviteeId: user.id,
           inviteeRole: user.role,
           inviteeName: user.name,
         );
-        debugPrint('[InviteToGroup] invited ${user.id} to ${widget.room.id}');
+        debugPrint('[InviteToGroup] invited ${user.id} to ${room.id}');
       } catch (e) {
         debugPrint('[InviteToGroup] failed to invite ${user.id}: $e');
-        errors.add(user.name);
+        failed.add(user.name);
       }
     }));
 
-    if (!mounted) return;
+    if (!context.mounted) return;
 
-    if (errors.isEmpty) {
-      final count = _selected.length;
-      Navigator.of(context).pop(count);
+    if (failed.isEmpty) {
+      navigator.pop(users.length);
     } else {
-      setState(() => _isInviting = false);
-      final failed = errors.join(', ');
-      AppSnackBar.error(context, 'Could not invite: $failed');
+      // Left on screen with the picks intact, so a retry doesn't mean finding
+      // everyone again.
+      AppSnackBar.error(context, 'Could not invite: ${failed.join(', ')}');
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final canInvite = _selected.isNotEmpty && !_isInviting;
-
-    final page = Scaffold(
-      backgroundColor: ext.homeBackground,
-      appBar: AppBar(
-        backgroundColor: ext.homeBackground,
-        elevation: 0,
-        leading: AppBackButton(onPressed: () => Navigator.of(context).pop()),
-        title: Text(
-          'Add People',
-          style: TextStyle(
-            color: ext.greetingColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 18.sp,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: canInvite ? _invite : null,
-            child: _isInviting
-                ? SizedBox(
-                    width: 18.w,
-                    height: 18.h,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: ext.accentGold),
-                  )
-                : Text(
-                    'Invite',
-                    style: TextStyle(
-                      color: canInvite
-                          ? ext.accentGold
-                          : ext.searchHintColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15.sp,
-                    ),
-                  ),
-          ),
-          SizedBox(width: AppSpacing.sm.w),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_selected.isNotEmpty)
-            _SelectedChips(
-                users: _selected, ext: ext, onRemove: _removeSelected),
-          _SearchField(
-            controller: _searchController,
-            onChanged: _onSearchChanged,
-          ),
-          Expanded(
-            child: _isSearching
-                ? Center(
-                    child:
-                        CircularProgressIndicator(color: ext.searchHintColor))
-                : _searchResults.isEmpty &&
-                        _searchController.text.trim().isNotEmpty
-                    ? Center(
-                        child: Text(
-                          'No users found.',
-                          style: TextStyle(
-                              color: ext.searchHintColor, fontSize: 14.sp),
-                        ),
-                      )
-                    : _searchResults.isEmpty
-                        ? Center(
-                            child: Text(
-                              'Search for people to add.',
-                              style: TextStyle(
-                                  color: ext.searchHintColor,
-                                  fontSize: 14.sp),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: EdgeInsets.only(top: AppSpacing.xs.h, bottom: AppSpacing.xxl.h),
-                            itemCount: _searchResults.length,
-                            itemBuilder: (_, i) => _UserTile(
-                              user: _searchResults[i],
-                              ext: ext,
-                              onTap: () => _toggleUser(_searchResults[i]),
-                            ),
-                          ),
-          ),
-        ],
-      ),
-    );
-    return webWrap(page, backgroundColor: ext.homeBackground);
-  }
-}
-
-class _SearchField extends StatelessWidget {
-  const _SearchField({required this.controller, required this.onChanged});
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 8.h),
-      child: SearchField(
-        controller: controller,
-        hint: 'Search people...',
-        autofocus: true,
-        onChanged: onChanged,
-      ),
-    );
-  }
-}
-
-class _SelectedChips extends StatelessWidget {
-  const _SelectedChips(
-      {required this.users, required this.ext, required this.onRemove});
-  final List<ShareableUser> users;
-  final AppThemeExtension ext;
-  final ValueChanged<ShareableUser> onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 4.h),
-      child: Wrap(
-        spacing: 6.w,
-        runSpacing: 4.h,
-        children: users
-            .map((u) => Chip(
-                  label: Text(u.name,
-                      style: TextStyle(
-                          color: ext.greetingColor, fontSize: 12.sp)),
-                  backgroundColor: ext.searchFieldFill,
-                  deleteIcon: Icon(Icons.close_rounded,
-                      size: 14.sp, color: ext.greetingColor),
-                  onDeleted: () => onRemove(u),
-                  side: BorderSide.none,
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w),
-                ))
-            .toList(),
-      ),
-    );
-  }
-}
-
-class _UserTile extends StatelessWidget {
-  const _UserTile(
-      {required this.user, required this.ext, required this.onTap});
-  final ShareableUser user;
-  final AppThemeExtension ext;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      leading: CircleAvatar(
-        radius: 20.r,
-        backgroundColor: ext.searchFieldFill,
-        backgroundImage:
-            user.imageUrl != null ? NetworkImage(user.imageUrl!) : null,
-        child: user.imageUrl == null
-            ? Text(
-                user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-              )
-            : null,
-      ),
-      title: Text(user.name,
-          style: TextStyle(color: ext.greetingColor, fontSize: 14.sp)),
-      // subtitle: Text(user.email,
-      //     style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-      //     maxLines: 1,
-      //     overflow: TextOverflow.ellipsis),
-      trailing: Icon(Icons.person_add_outlined,
-          color: ext.accentGold, size: 22.sp),
-    );
-  }
+  Widget build(BuildContext context) => MemberPicker(
+        actionLabel: 'Add',
+        excludedUserIds: _alreadyInRoom,
+        onSubmit: (users) => _invite(context, users),
+      );
 }

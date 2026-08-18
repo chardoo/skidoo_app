@@ -523,7 +523,12 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         TickerMode(
           enabled: _selectedTab == 2,
           child: DarkMediaSurface(
-            child: FollowingFeed(chromeTopPadding: _headerClearance),
+            child: FollowingFeed(
+              chromeTopPadding: _headerClearance,
+              // The same destination the Feed tab's cards have: an event's
+              // grid of pictures.
+              onEventTap: (event) => _openEventImages(context, event),
+            ),
           ),
         ),
       ],

@@ -191,7 +191,7 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        leading: kIsWeb ? null : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+        leading: kIsWeb ? null : const AppBackButton(),
         title: Text(
           'Following',
           style: TextStyle(

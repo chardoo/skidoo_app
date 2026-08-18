@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/chat/presentation/chat_time.dart';
 
 /// Centred date marker between days in a conversation.
 class DaySeparator extends StatelessWidget {
@@ -34,33 +35,20 @@ class DaySeparator extends StatelessWidget {
   }
 
   /// "Today" / "Yesterday" / a weekday within the last week / a date beyond it.
+  ///
+  /// The day is the phone's day. Reading the calendar fields off the raw
+  /// (UTC) timestamp put the boundary at UTC midnight, so for anyone west of
+  /// it a message sent late last night was filed under "Today", and east of it
+  /// this evening's messages started a new day early.
   static String label(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final day = DateTime(date.year, date.month, date.day);
-    final diff = today.difference(day).inDays;
-
+    final diff = ChatTime.daysAgo(date);
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
-    if (diff < 7) {
-      const days = [
-        'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-        'Friday', 'Saturday', 'Sunday',
-      ];
-      return days[date.weekday - 1];
-    }
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    // The year is only worth the space once it stops being the current one.
-    final year = date.year == now.year ? '' : ' ${date.year}';
-    return '${date.day} ${months[date.month - 1]}$year';
+    if (diff < 7) return ChatTime.weekday(date);
+    return ChatTime.longDate(date);
   }
 
   /// Whether a separator belongs between two adjacent messages.
   static bool needsSeparator(DateTime older, DateTime newer) =>
-      older.year != newer.year ||
-      older.month != newer.month ||
-      older.day != newer.day;
+      !ChatTime.sameDay(older, newer);
 }

@@ -61,7 +61,7 @@ class _QrScanPageState extends State<QrScanPage> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
-        leading: kIsWeb ? null : AppBackButton(color: Colors.white, onPressed: () => Navigator.of(context).pop()),
+        leading: kIsWeb ? null : const AppBackButton(color: Colors.white),
         title: Text(
           'Scan Event QR',
           style: TextStyle(

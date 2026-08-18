@@ -4,9 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jperg_app/core/common/widgets/user_avatar.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/customThemeData.dart';
+import 'package:jperg_app/features/home/presentation/widgets/creator_mode_menu.dart';
 import 'package:jperg_app/features/home/presentation/widgets/feed_top_bar.dart';
+import 'package:jperg_app/services/auth_service.dart';
+
+/// Enough of an [AuthService] for the mode menu to decide it should draw: the
+/// role, and an empty avatar url so the avatar falls back to its initials
+/// rather than reaching for the network.
+class _PhotographerAuth extends AuthService {
+  @override
+  Future<String> getRole() async => 'photographer';
+
+  @override
+  Future<String> getProfileUrl() async => '';
+}
 
 Widget host(AppThemeExtension ext, Widget child) => ScreenUtilInit(
       designSize: const Size(390, 844),
@@ -200,11 +215,16 @@ void main() {
 
   // ── Layout and hit testing ──────────────────────────────────────────────────
 
-  /// Every tab's tap box, in order.
-  Finder tabBoxes() => find.descendant(
-        of: find.byType(Row).first,
-        matching: find.byType(GestureDetector),
-      );
+  /// One tab's tap box.
+  ///
+  /// Found from its label rather than by position in a row: the bar is a single
+  /// row now — QR, tabs, search, mode menu, all sharing out the slack — so
+  /// "the GestureDetectors in the first Row" is every control on the bar.
+  Rect tabBox(WidgetTester t, String label) => t.getRect(find
+      .ancestor(of: find.text(label), matching: find.byType(GestureDetector))
+      .first);
+
+  const signedInTabs = ['Found', 'Feed', 'Following'];
 
   testWidgets('labels sit on the same optical line as the icons', (t) async {
     // They used to sit 3 dp higher: the label and its underline were centred as
@@ -230,10 +250,11 @@ void main() {
     // pixels high missed it entirely and nothing happened.
     await t.pumpWidget(topHost(bar(onUnlock: () {})));
 
-    for (var i = 0; i < tabBoxes().evaluate().length; i++) {
-      final r = t.getRect(tabBoxes().at(i));
-      expect(r.height, greaterThanOrEqualTo(48), reason: 'tab $i is too short');
-      expect(r.width, greaterThanOrEqualTo(48), reason: 'tab $i is too narrow');
+    for (final label in signedInTabs) {
+      final r = tabBox(t, label);
+      expect(r.height, greaterThanOrEqualTo(48),
+          reason: '$label is too short');
+      expect(r.width, greaterThanOrEqualTo(48), reason: '$label is too narrow');
     }
     for (final label in ['Unlock private photos', 'Open search']) {
       expect(t.getRect(find.bySemanticsLabel(label)).height,
@@ -262,16 +283,135 @@ void main() {
     }
   });
 
-  testWidgets('the gap between labels belongs to a tab, not to nothing',
-      (t) async {
-    await t.pumpWidget(topHost(bar()));
+  testWidgets('each label keeps a tappable margin around it', (t) async {
+    // The tap boxes used to abut exactly, because the tabs were one packed row.
+    // They no longer can — the slack is shared out between every neighbouring
+    // pair, and some of it falls between two tabs — so what has to hold now is
+    // that each box still reaches past its own word on both sides. That margin
+    // is the fix for the original bug: a tap aimed at a label used to have to
+    // land on the glyphs themselves.
+    await t.pumpWidget(topHost(bar(onUnlock: () {})));
 
-    for (var i = 1; i < tabBoxes().evaluate().length; i++) {
-      final gap = t.getRect(tabBoxes().at(i)).left -
-          t.getRect(tabBoxes().at(i - 1)).right;
-      expect(gap, moreOrLessEquals(0, epsilon: 0.01),
-          reason: 'dead strip between tabs ${i - 1} and $i');
+    for (final label in signedInTabs) {
+      final box = tabBox(t, label);
+      final word = t.getRect(find.text(label));
+      expect(word.left - box.left, greaterThanOrEqualTo(6),
+          reason: '$label has no room to its left');
+      expect(box.right - word.right, greaterThanOrEqualTo(6),
+          reason: '$label has no room to its right');
     }
+  });
+
+  testWidgets('the slack is shared out equally, not pooled at one end',
+      (t) async {
+    await t.pumpWidget(topHost(bar(onUnlock: () {})));
+
+    final strips = [
+      for (var i = 1; i < signedInTabs.length; i++)
+        tabBox(t, signedInTabs[i]).left - tabBox(t, signedInTabs[i - 1]).right,
+    ];
+
+    for (final strip in strips) {
+      expect(strip, moreOrLessEquals(strips.first, epsilon: 1),
+          reason: 'uneven strips between the tabs: $strips');
+    }
+  });
+
+  testWidgets('the row is spread, not centred against a heavier end',
+      (t) async {
+    // The bug: the tabs were centred in the *bar*, and a photographer's
+    // trailing end (search + avatar + chevron) is far wider than the leading QR
+    // mark. The group ended up pushed right — a hole after the QR and
+    // "Following" touching the search icon. Sharing the slack out is what fixes
+    // it, so the two outer gaps have to be within a few points of each other.
+    await t.pumpWidget(topHost(bar(onUnlock: () {})));
+
+    final leading = t.getRect(find.bySemanticsLabel('Unlock private photos'));
+    final search = t.getRect(find.bySemanticsLabel('Open search'));
+
+    final beforeFirst = tabBox(t, 'Found').left - leading.right;
+    final afterLast = search.left - tabBox(t, 'Following').right;
+
+    expect(beforeFirst, greaterThanOrEqualTo(0));
+    expect(afterLast, greaterThanOrEqualTo(0));
+    expect((beforeFirst - afterLast).abs(), lessThan(4),
+        reason: 'the ends are lopsided: $beforeFirst before, $afterLast after');
+  });
+
+  testWidgets('the trailing controls stay in the corner', (t) async {
+    // Search and the mode menu are one child of the row, so a client — whose
+    // menu draws nothing — does not get search floating a gap short of the
+    // edge, which is what a share of the slack would have opened up there.
+    await t.pumpWidget(topHost(bar(onUnlock: () {})));
+
+    final bar_ = t.getRect(find.byType(FeedTopBar));
+    final search = t.getRect(find.bySemanticsLabel('Open search'));
+
+    // 16 dp of bar padding, and nothing else between the icon and the edge.
+    expect(bar_.right - search.right, moreOrLessEquals(16, epsilon: 1));
+  });
+
+  // ── The photographer's bar ──────────────────────────────────────────────────
+  //
+  // The heavy case, and the one the layout was getting wrong: search *plus* a
+  // 32 dp avatar *plus* a chevron on the trailing end, against a 24 dp glyph on
+  // the leading one. Centring the tabs in the bar put them nowhere near the
+  // middle of the space they actually had.
+
+  group('with a photographer signed in', () {
+    setUp(() {
+      sl.registerSingleton<AuthService>(_PhotographerAuth());
+    });
+    tearDown(sl.reset);
+
+    Future<void> pumpBar(WidgetTester t) async {
+      await t.pumpWidget(topHost(bar(onUnlock: () {})));
+      // The mode menu resolves the role before it draws anything.
+      await t.pumpAndSettle();
+    }
+
+    testWidgets('the avatar is there and the row still fits', (t) async {
+      final errors = <String>[];
+      final previous = FlutterError.onError;
+      FlutterError.onError = (d) => errors.add(d.exceptionAsString());
+      await pumpBar(t);
+      FlutterError.onError = previous;
+
+      // By type, not by semantics label: the avatar inside carries its own
+      // 'Profile picture' label, which merges with the button's and defeats an
+      // exact-string finder. The menu is a SizedBox.shrink for everyone else,
+      // so a non-zero width is what says it drew.
+      expect(t.getSize(find.byType(CreatorModeMenu)).width, greaterThan(0));
+      expect(errors, isEmpty, reason: 'the bar overflowed: ${errors.join()}');
+    });
+
+    testWidgets('the tabs are not pushed off-centre by it', (t) async {
+      // The reported symptom: a hole between the QR mark and "Found", and
+      // "Following" running into the search icon.
+      await pumpBar(t);
+
+      final leading = t.getRect(find.bySemanticsLabel('Unlock private photos'));
+      final search = t.getRect(find.bySemanticsLabel('Open search'));
+
+      final beforeFirst = tabBox(t, 'Found').left - leading.right;
+      final afterLast = search.left - tabBox(t, 'Following').right;
+
+      expect(beforeFirst, greaterThanOrEqualTo(0));
+      expect(afterLast, greaterThanOrEqualTo(0));
+      expect((beforeFirst - afterLast).abs(), lessThan(4),
+          reason: 'lopsided: $beforeFirst before the tabs, $afterLast after');
+    });
+
+    testWidgets('the avatar is not crowding the search icon', (t) async {
+      // They read as one clumsy blob at 8 dp apart. The design spaces them
+      // about as far apart as anything else in the row.
+      await pumpBar(t);
+
+      final search = t.getRect(find.bySemanticsLabel('Open search'));
+      final avatar = t.getRect(find.byType(UserAvatar));
+
+      expect(avatar.left - search.right, greaterThanOrEqualTo(12));
+    });
   });
 
   testWidgets('changing the selection does not slide the labels sideways',

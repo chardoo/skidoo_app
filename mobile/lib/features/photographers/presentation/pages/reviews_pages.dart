@@ -89,7 +89,7 @@ class _PhotographerReviewsPageState extends State<PhotographerReviewsPage> {
         backgroundColor: Colors.transparent,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           'Reviews ($count)',
           style: TextStyle(
@@ -446,7 +446,7 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
         backgroundColor: Colors.transparent,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           'Write a Review',
           style: TextStyle(

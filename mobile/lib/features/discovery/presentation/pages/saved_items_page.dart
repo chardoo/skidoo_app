@@ -260,7 +260,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
         ),
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Divider(

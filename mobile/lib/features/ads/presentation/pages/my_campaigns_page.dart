@@ -101,7 +101,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
         elevation: 0,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           'My Campaigns',
           style: TextStyle(

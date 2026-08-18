@@ -86,7 +86,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               style: TextStyle(color: ext.greetingColor, fontSize: 17.sp, fontWeight: FontWeight.w700)),
           leading: kIsWeb
               ? null
-              : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+              : const AppBackButton(),
         ),
         body: SafeArea(
           child: Padding(
@@ -136,7 +136,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         title: Text(AppLocalizations.of(context)!.checkoutTitle),
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
       ),
       body: WebViewWidget(controller: _controller!),
     );

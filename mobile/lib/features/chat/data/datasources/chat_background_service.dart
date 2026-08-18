@@ -51,6 +51,26 @@ class ChatBackgroundService {
   /// where SQLite is unavailable (e.g. web).
   Stream<ChatMessage> get backgroundMessages => _bgMsgController.stream;
 
+  // Messages seen inside the room the user currently has open. That room is
+  // [pause]d, so nothing about it reaches [backgroundMessages] — which is why
+  // the inbox tile used to keep showing the previous message until something
+  // else forced a re-fetch. Never closed; the service is a singleton.
+  final _openRoomMsgController = StreamController<ChatMessage>.broadcast();
+
+  /// Messages sent or received in the currently-open room, republished so the
+  /// inbox can update that room's preview and ordering straight away.
+  ///
+  /// These never count as unread: the user is looking at the conversation.
+  Stream<ChatMessage> get openRoomMessages => _openRoomMsgController.stream;
+
+  /// Publishes [msg] to [openRoomMessages]. Called by ChatRoomBloc for both the
+  /// optimistic copy of an outgoing message (so the inbox is right immediately,
+  /// before the server echo) and the confirmed one that replaces it.
+  void reportOpenRoomMessage(ChatMessage msg) {
+    if (msg.roomId.isEmpty) return;
+    if (!_openRoomMsgController.isClosed) _openRoomMsgController.add(msg);
+  }
+
   // Persistent relay for group invites — never closed, survives WS reconnects.
   // All WS instances (shared + DiscoveryBloc per-event) funnel invites here so
   // ChatRoomsBloc can subscribe once without any reconnect management.

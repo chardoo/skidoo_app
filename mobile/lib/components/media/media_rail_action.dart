@@ -19,6 +19,8 @@ class MediaRailAction extends StatefulWidget {
     this.label,
     required this.onTap,
     this.busy = false,
+    this.enabled = true,
+    this.labelColor,
     this.semanticLabel,
     this.iconSize,
     this.tapTargetSize,
@@ -30,6 +32,17 @@ class MediaRailAction extends StatefulWidget {
   /// Count shown under the icon. Null renders the icon alone — used where
   /// there is genuinely no count rather than showing a hardcoded zero.
   final String? label;
+
+  /// Colour of that count. Defaults to white, which is what every live action
+  /// wants over media. An action drawn as unavailable passes its own so the
+  /// count dims along with the glyph rather than staying bright above it.
+  final Color? labelColor;
+
+  /// False draws the action but takes the interaction away: no press-scale,
+  /// and the tap does nothing at all. It still occupies its place in the rail
+  /// and still absorbs the tap, so a press near it doesn't fall through to
+  /// whatever is behind — an unavailable action is stated, not hidden.
+  final bool enabled;
 
   final VoidCallback onTap;
 
@@ -81,13 +94,16 @@ class _MediaRailActionState extends State<MediaRailAction>
             Shadow(color: Colors.black45, blurRadius: 4),
           ]);
 
+    final inert = widget.busy || !widget.enabled;
+
     return Semantics(
       button: true,
+      enabled: widget.enabled,
       label: widget.semanticLabel ?? widget.label,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: widget.busy ? null : (_) => _ctrl.reverse(),
-        onTapUp: widget.busy
+        onTapDown: inert ? null : (_) => _ctrl.reverse(),
+        onTapUp: inert
             ? null
             : (_) {
                 _ctrl.forward();
@@ -112,7 +128,7 @@ class _MediaRailActionState extends State<MediaRailAction>
                 Text(
                   widget.label!,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: widget.labelColor ?? Colors.white,
                     fontSize: 11.sp,
                     fontWeight: FontWeight.w600,
                     shadows: const [

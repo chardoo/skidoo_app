@@ -1,4 +1,5 @@
 import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/server_time.dart';
 
 class ReplyPreview {
   final String id;
@@ -189,7 +190,7 @@ class ChatMessage {
       mediaHeight: (json['media_height'] as num?)?.toInt(),
       replyToId: json['reply_to_id'] as String?,
       replyPreview: preview,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: parseServerTime(json['created_at'] as String),
       isRead: (json['is_read'] as bool?) ?? false,
       readBy: (json['read_by'] as List<dynamic>? ?? [])
           .whereType<String>()
@@ -223,7 +224,7 @@ class ChatMessage {
         if (mediaHeight != null) 'media_height': mediaHeight,
         'reply_to_id': replyToId,
         'reply_preview': replyPreview?.toJson(),
-        'created_at': createdAt.toIso8601String(),
+        'created_at': createdAt.toUtc().toIso8601String(),
         'is_read': isRead ? 1 : 0,
         'is_local': isLocal ? 1 : 0,
         'is_encrypted': isEncrypted ? 1 : 0,

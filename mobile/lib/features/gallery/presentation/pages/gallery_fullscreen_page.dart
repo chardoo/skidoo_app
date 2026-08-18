@@ -101,10 +101,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                   child: Row(
                     children: [
                       if (!kIsWeb)
-                        AppBackButton(
-                          color: Colors.white,
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
+                        const AppBackButton(color: Colors.white),
                       const Spacer(),
                       Flexible(
                         child: Column(

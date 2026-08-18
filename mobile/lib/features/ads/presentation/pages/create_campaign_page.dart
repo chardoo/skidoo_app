@@ -358,7 +358,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
         elevation: 0,
         leading: kIsWeb
             ? null
-            : AppBackButton(onPressed: () => Navigator.of(context).pop()),
+            : const AppBackButton(),
         title: Text(
           'Create Campaign',
           style: TextStyle(
