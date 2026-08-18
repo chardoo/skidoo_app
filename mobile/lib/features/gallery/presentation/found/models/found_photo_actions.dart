@@ -8,34 +8,36 @@ import 'package:jperg_app/models/photos/Photo.dart';
 /// you**, where the photo is of the viewer and may be something they have not
 /// paid for, what it offers depends on the photo:
 ///
-/// | | save | share | send | like + comment | download |
-/// |---|---|---|---|---|---|
-/// | free · private     | yes | yes | yes | —   | never |
-/// | free · public      | yes | yes | yes | yes | never |
-/// | paid · unbought    | yes | —   | —   | —   | —     |
-/// | paid · bought · private | yes | yes | yes | —   | yes |
-/// | paid · bought · public  | yes | yes | yes | yes | yes |
+/// | | share | send | like + comment | download |
+/// |---|---|---|---|---|
+/// | free · private     | yes | yes | —   | never |
+/// | free · public      | yes | yes | yes | never |
+/// | paid · unbought    | —   | —   | —   | —     |
+/// | paid · bought · private | yes | yes | —   | yes |
+/// | paid · bought · public  | yes | yes | yes | yes |
 ///
-/// The four things that decide it:
+/// The three things that decide it:
 ///
-/// * **Save is always on offer.** A bookmark is a reference to a photo the
-///   viewer can already see — it hands them nothing they did not have, so it
-///   is not something to be bought. It is the one action an unbought photo
-///   still gets: "keep this where I can find it" is exactly what you want from
-///   a photo you have not decided about yet. The server refuses to bookmark a
-///   photo the caller cannot see, so the rule is enforced, not just honoured.
-/// * **Unbought and priced** offers nothing else. Passing a photo on, or
-///   writing it to the phone, is something you do with a photo that is yours.
+/// * **Unbought and priced** offers nothing at all — no rail, not one glyph.
+///   Passing a photo on, writing it to the phone, or reacting to it are things
+///   you do with a photo that is yours. There is nothing to do with this one
+///   but buy it.
 /// * **Like and comment are public-only.** A private photo has no audience to
 ///   react in front of — the thread would be the viewer talking to themselves.
-/// * **Download is the paid extra.** A free photo is free to look at and free
-///   to pass on, but it is not free to keep, so the paid photo gets one button
-///   the free one doesn't.
+/// * **Download is the paid extra**, and only ever appears once the photo has
+///   actually been bought. A free photo is free to look at and free to pass
+///   on, but it is not free to keep.
 ///
-/// Save and download are separate rows above because they are separate
-/// actions. They were one for a while — the bookmark glyph wrote the file to
-/// the device — which made bookmarking a paid feature by accident and left the
-/// viewer with no way to bookmark anything at all.
+/// The bookmark is deliberately absent from every row. Saving a photo is
+/// offered on the screens that show someone's *work* — discovery, search, a
+/// profile grid, a shared link, the fullscreen viewer — where the rail is
+/// [FoundPhotoActions.unrestricted]. Found you is a different surface: these
+/// are photos of the viewer, gated on what they have paid for, and the
+/// question there is whether to buy rather than whether to keep a reference.
+///
+/// None of this reaches any other page. Every entry point that is not Found
+/// you builds [FoundPhotoActions.unrestricted] and is untouched by the rules
+/// above.
 class FoundPhotoActions {
   const FoundPhotoActions._({
     required this.engagement,
@@ -60,7 +62,7 @@ class FoundPhotoActions {
     // also covers a free photo already saved, but the price test alone is
     // enough to unlock and says why without needing the save to have landed.
     final unlocked = photo.price <= 0 || photo.isPurchased;
-    if (!unlocked) return const FoundPhotoActions.saveOnly();
+    if (!unlocked) return const FoundPhotoActions.none();
 
     return FoundPhotoActions._(
       engagement: photo.commentsEnabled && photo.isPublic,
@@ -70,21 +72,15 @@ class FoundPhotoActions {
       // photo "comments disabled" would be noise about a thread that was
       // never on offer.
       commentsDisabled: !photo.commentsEnabled && photo.isPublic,
-      save: true,
+      // Bookmarking belongs to the screens that show someone's work, not to
+      // Found you — see the class doc.
+      save: false,
       share: true,
       // Unlocked and priced means bought — the free case was unlocked by the
       // other half of the test above, and free photos are never downloadable.
       download: photo.price > 0,
     );
   }
-
-  /// An unbought paid photo: nothing but the bookmark.
-  const FoundPhotoActions.saveOnly()
-      : engagement = false,
-        commentsDisabled = false,
-        save = true,
-        share = false,
-        download = false;
 
   /// A rail with nothing on it. The stage renders no rail at all rather than
   /// an empty column — see [any].

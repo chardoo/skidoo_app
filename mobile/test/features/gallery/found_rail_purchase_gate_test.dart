@@ -8,9 +8,10 @@ import 'package:jperg_app/features/gallery/presentation/found/widgets/found_acti
 import 'package:jperg_app/models/photos/Photo.dart';
 
 /// What the Found viewer's rail offers depends on the photo once it is reached
-/// from **Found you**: an unbought priced photo offers only the bookmark, like
-/// and comment are for public photos, and the download button is what a paid
-/// photo gets that a free one doesn't. Everywhere else the rail is unchanged.
+/// from **Found you**: an unbought priced photo offers nothing at all, like and
+/// comment are for public photos, and the download button appears only once the
+/// photo has actually been bought. Everywhere else the rail is unchanged, and
+/// that includes the bookmark, which Found you does not carry.
 ///
 /// [bookmark] and [download] are deliberately checked as separate glyphs. They
 /// were one button — the bookmark ran the download — so tapping Save wrote a
@@ -115,62 +116,56 @@ void main() {
   });
 
   group('a priced photo the viewer has not bought', () {
-    testWidgets('offers the bookmark and nothing else, private', (t) async {
-      // A bookmark is a reference to a photo already on screen — it hands the
-      // viewer nothing they did not have, so it is not something to be bought.
-      // It is also the one thing worth having on a photo you have not decided
-      // about yet: keep it where you can find it again.
-      expect(await pumpRail(t, photo(price: 20)), {bookmark});
+    testWidgets('offers nothing at all, private', (t) async {
+      expect(await pumpRail(t, photo(price: 20)), isEmpty);
     });
 
-    testWidgets('offers the bookmark and nothing else, public either',
-        (t) async {
+    testWidgets('offers nothing at all, public either', (t) async {
       // Public is not the same question as bought. A photo of you that the
       // photographer has published is still one you have not paid for, and
-      // there is nothing here to like, pass on or keep.
-      expect(
-          await pumpRail(t, photo(price: 20, isPublic: true)), {bookmark});
-    });
-
-    testWidgets('and never the download', (t) async {
-      final rail = await pumpRail(t, photo(price: 20, isPublic: true));
-
-      expect(rail, isNot(contains(download)));
+      // there is nothing here to like, pass on or keep. Not even a bookmark:
+      // the only thing to do with this photo is buy it.
+      expect(await pumpRail(t, photo(price: 20, isPublic: true)), isEmpty);
     });
   });
 
   group('a paid photo the viewer has bought', () {
-    testWidgets('private: bookmark, download, share, send; no engagement',
+    testWidgets('private: download, share and send, but no comment',
         (t) async {
+      // Private has no audience, so there is no thread to open — buying the
+      // photo does not create one.
       final rail = await pumpRail(t, photo(price: 20, isPurchased: true));
 
-      expect(rail, {bookmark, download, share, send});
+      expect(rail, {download, share, send});
     });
 
-    testWidgets('public: engagement as well', (t) async {
+    testWidgets('public: comment and like as well', (t) async {
       final rail = await pumpRail(
         t,
         photo(price: 20, isPurchased: true, isPublic: true),
       );
 
-      expect(rail, {like, comment, bookmark, download, share, send});
+      expect(rail, {like, comment, download, share, send});
+    });
+
+    testWidgets('the download is what buying it unlocked', (t) async {
+      // The same photo before and after: download is the one glyph that
+      // payment adds, and it is never on offer before.
+      expect(await pumpRail(t, photo(price: 20, isPublic: true)),
+          isNot(contains(download)));
+      expect(
+          await pumpRail(t, photo(price: 20, isPublic: true, isPurchased: true)),
+          contains(download));
     });
   });
 
   group('a free photo', () {
     testWidgets('is never downloadable, public or not', (t) async {
       // Free to look at and free to pass on, but not free to keep — the
-      // download button is the paid photo's extra. The bookmark is not: it
-      // costs nothing to offer and rides along on every photo.
-      expect(await pumpRail(t, photo()), {bookmark, share, send});
+      // download button is the paid photo's extra.
+      expect(await pumpRail(t, photo()), {share, send});
       expect(await pumpRail(t, photo(isPublic: true)),
-          {like, comment, bookmark, share, send});
-    });
-
-    testWidgets('can still be bookmarked', (t) async {
-      // The bookmark used to be the download button wearing its glyph, so it
-      // inherited the paid gate and a free photo could not be saved at all.
-      expect(await pumpRail(t, photo()), contains(bookmark));
+          {like, comment, share, send});
     });
 
     testWidgets('needs no purchase to be reactable', (t) async {
@@ -196,7 +191,7 @@ void main() {
         ),
       );
 
-      expect(rail, {commentOff, bookmark, download, share, send});
+      expect(rail, {commentOff, download, share, send});
     });
 
     testWidgets('says so on the ungated screens too', (t) async {
@@ -214,39 +209,55 @@ void main() {
       final rail = await pumpRail(t, photo(price: 20, isPurchased: true));
 
       expect(rail, isNot(contains(commentOff)));
-      expect(rail, {bookmark, download, share, send});
+      expect(rail, {download, share, send});
     });
 
-    testWidgets('an unbought photo shows only the bookmark, switch or no switch',
+    testWidgets('an unbought photo shows nothing, switch or no switch',
         (t) async {
       expect(
         await pumpRail(
             t, photo(price: 20, isPublic: true, commentsEnabled: false)),
-        {bookmark},
+        isEmpty,
       );
     });
   });
 
-  testWidgets('ungated callers are untouched by any of it', (t) async {
-    // Discovery, search, a profile grid, a shared link: the photo is someone's
-    // work rather than a photo of you, there is nothing to have bought, and
-    // the rail is what it always was.
-    final rail = await pumpRail(t, photo(price: 20), gated: false);
+  group('the bookmark is an ungated-screen action', () {
+    testWidgets('ungated callers are untouched by any of it', (t) async {
+      // Discovery, search, a profile grid, a shared link: the photo is
+      // someone's work rather than a photo of you, there is nothing to have
+      // bought, and the rail is what it always was — bookmark included.
+      final rail = await pumpRail(t, photo(price: 20), gated: false);
 
-    expect(rail, {like, comment, bookmark, download, share, send});
-  });
+      expect(rail, {like, comment, bookmark, download, share, send});
+    });
 
-  testWidgets('the bookmark fills once the photo is saved', (t) async {
-    // The state the glyph never had while it was really a download button:
-    // nothing was stored, so nothing could come back filled, and there was no
-    // way to un-save.
-    GetIt.I.unregister<SavedPhotos>();
-    GetIt.I.registerSingleton<SavedPhotos>(SavedPhotos(_SavedStore()));
+    testWidgets('and never appears in Found you, paid or free', (t) async {
+      // Found you asks whether to buy the photo, not whether to keep a
+      // reference to it.
+      for (final p in [
+        photo(),
+        photo(isPublic: true),
+        photo(price: 20),
+        photo(price: 20, isPurchased: true),
+        photo(price: 20, isPurchased: true, isPublic: true),
+      ]) {
+        expect(await pumpRail(t, p), isNot(contains(bookmark)));
+      }
+    });
 
-    await pumpRail(t, photo(isPublic: true));
-    await t.pumpAndSettle();
+    testWidgets('fills once the photo is saved', (t) async {
+      // The state the glyph never had while it was really a download button:
+      // nothing was stored, so nothing could come back filled, and there was
+      // no way to un-save.
+      GetIt.I.unregister<SavedPhotos>();
+      GetIt.I.registerSingleton<SavedPhotos>(SavedPhotos(_SavedStore()));
 
-    expect(find.byIcon(Icons.bookmark_rounded), findsOneWidget);
-    expect(find.byIcon(bookmark), findsNothing);
+      await pumpRail(t, photo(isPublic: true), gated: false);
+      await t.pumpAndSettle();
+
+      expect(find.byIcon(Icons.bookmark_rounded), findsOneWidget);
+      expect(find.byIcon(bookmark), findsNothing);
+    });
   });
 }
