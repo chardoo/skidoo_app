@@ -50,7 +50,6 @@ const commentOff = Icons.comments_disabled_rounded;
 const bookmark = Icons.bookmark_border_rounded;
 const download = Icons.download_outlined;
 const share = Icons.ios_share_rounded;
-const send = Icons.near_me_outlined;
 
 /// The glyphs on the rail, in the order the rail lists them.
 Set<IconData> railOf(WidgetTester t) => {
@@ -61,7 +60,6 @@ Set<IconData> railOf(WidgetTester t) => {
         bookmark,
         download,
         share,
-        send
       ])
         if (t.any(find.byIcon(icon))) icon,
     };
@@ -147,13 +145,13 @@ void main() {
   });
 
   group('a paid photo the viewer has bought', () {
-    testWidgets('private: download, share and send, but no comment',
-        (t) async {
+    testWidgets('private: download and share, but no comment', (t) async {
       // Private has no audience, so there is no thread to open — buying the
-      // photo does not create one.
+      // photo does not create one. Share is one glyph now: where the photo
+      // goes is asked in ShareTargetSheet, not by a second button.
       final rail = await pumpRail(t, photo(price: 20, isPurchased: true));
 
-      expect(rail, {download, share, send});
+      expect(rail, {download, share});
     });
 
     testWidgets('public: comment and like as well', (t) async {
@@ -162,7 +160,7 @@ void main() {
         photo(price: 20, isPurchased: true, isPublic: true),
       );
 
-      expect(rail, {like, comment, download, share, send});
+      expect(rail, {like, comment, download, share});
     });
 
     testWidgets('the download sits at the foot of the rail', (t) async {
@@ -192,9 +190,9 @@ void main() {
     testWidgets('is never downloadable, public or not', (t) async {
       // Free to look at and free to pass on, but not free to keep — the
       // download button is the paid photo's extra.
-      expect(await pumpRail(t, photo()), {share, send});
+      expect(await pumpRail(t, photo()), {share});
       expect(await pumpRail(t, photo(isPublic: true)),
-          {like, comment, share, send});
+          {like, comment, share});
     });
 
     testWidgets('needs no purchase to be reactable', (t) async {
@@ -220,14 +218,14 @@ void main() {
         ),
       );
 
-      expect(rail, {commentOff, download, share, send});
+      expect(rail, {commentOff, download, share});
     });
 
     testWidgets('says so on the ungated screens too', (t) async {
       final rail =
           await pumpRail(t, photo(commentsEnabled: false), gated: false);
 
-      expect(rail, {commentOff, bookmark, download, share, send});
+      expect(rail, {commentOff, bookmark, download, share});
     });
 
     testWidgets('a private photo shows no comment glyph, crossed or not',
@@ -238,7 +236,7 @@ void main() {
       final rail = await pumpRail(t, photo(price: 20, isPurchased: true));
 
       expect(rail, isNot(contains(commentOff)));
-      expect(rail, {download, share, send});
+      expect(rail, {download, share});
     });
 
     testWidgets('an unbought photo shows nothing, switch or no switch',
@@ -258,7 +256,7 @@ void main() {
       // bought, and the rail is what it always was — bookmark included.
       final rail = await pumpRail(t, photo(price: 20), gated: false);
 
-      expect(rail, {like, comment, bookmark, download, share, send});
+      expect(rail, {like, comment, bookmark, download, share});
     });
 
     testWidgets('and never appears in Found you, paid or free', (t) async {

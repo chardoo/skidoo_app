@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jperg_app/components/media/media_rail_action.dart';
+import 'package:jperg_app/components/media/share_target_sheet.dart';
 import 'package:jperg_app/core/config/app_links_config.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
@@ -495,19 +496,23 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
           semanticLabel: 'Download to device',
           onTap: () => _handleAction(isDownload: true),
         ),
+      // One share button. Where the photo is going — to someone in the app or
+      // out of it — is asked in [ShareTargetSheet] rather than by two
+      // near-identical glyphs sitting next to each other. With no [onSend]
+      // there is no in-app route to choose, so it goes straight out.
       btn(
         key: _shareKey,
         icon: Icons.ios_share_rounded,
         busy: _sharing,
         semanticLabel: 'Share photo',
-        onTap: () => _handleAction(isDownload: false),
+        onTap: widget.onSend == null
+            ? () => _handleAction(isDownload: false)
+            : () => ShareTargetSheet.show(
+                  context,
+                  onInApp: widget.onSend!,
+                  onExternal: () => _handleAction(isDownload: false),
+                ),
       ),
-      if (widget.onSend != null)
-        btn(
-          icon: Icons.near_me_outlined,
-          semanticLabel: 'Send',
-          onTap: widget.onSend!,
-        ),
       if (widget.showComment)
         btn(
           icon: Icons.mode_comment_outlined,

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
+import 'package:jperg_app/components/media/share_target_sheet.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/gallery/data/saved_photos.dart';
@@ -20,14 +21,14 @@ import 'package:jperg_app/models/photos/Photo.dart';
 /// from there. This widget only decides *which* reactions the Found viewer
 /// offers and what each one does.
 ///
-/// Four actions past like and comment, and they are four different things:
-/// bookmark adds the photo to the user's saved items, download writes the file
-/// to the device, share hands off to the OS sheet, send opens the in-app DM
-/// picker.
+/// Three actions past like and comment: bookmark adds the photo to the user's
+/// saved items, share passes it on — to someone in the app or out of it, chosen
+/// in [ShareTargetSheet] — and download writes the file to the device.
 ///
-/// Bookmark and download used to be the same button — the bookmark glyph ran
-/// the download — so tapping what read as Save wrote a file instead, nothing
-/// was ever saved, and there was no state for the filled bookmark to show.
+/// Two of those used to be four. Bookmark and download were the same button,
+/// so tapping what read as Save wrote a file instead and nothing was ever
+/// saved; send and share were two buttons for one intention, told apart only
+/// by two similar glyphs.
 ///
 /// *Which* of them a given photo gets is [FoundPhotoActions]' business.
 class FoundActionRail extends StatefulWidget {
@@ -153,6 +154,16 @@ class _FoundActionRailState extends State<FoundActionRail> {
     if (mounted) setState(() => _downloading = false);
   }
 
+  /// Asks where the photo is going, then goes there.
+  ///
+  /// The rail carries one share button; [ShareTargetSheet] is where in-app and
+  /// external part company, named rather than left to two similar glyphs.
+  void _openShareTargets() => ShareTargetSheet.show(
+        context,
+        onInApp: _send,
+        onExternal: _shareExternally,
+      );
+
   /// Hands the photo to the OS share sheet — other apps, Messages, AirDrop.
   ///
   /// Not the same action as either neighbour: [_download] writes the file to
@@ -236,14 +247,12 @@ class _FoundActionRailState extends State<FoundActionRail> {
             busy: _saved!.isBusy(photoId),
             onTap: () => _requireAccount(_toggleSave),
           ),
-        if (offered.share) ...[
-          MediaReaction.shareExternally(
+        if (offered.share)
+          MediaReaction.share(
             anchorKey: _shareKey,
             busy: _sharing,
-            onTap: () => _requireAccount(_shareExternally),
+            onTap: () => _requireAccount(_openShareTargets),
           ),
-          MediaReaction.send(onTap: () => _requireAccount(_send)),
-        ],
         // Last, at the foot of the rail. Everything above it is something you
         // do *in* the app — react, bookmark, pass the photo to someone. The
         // download is the one that takes the photo out of it, and it is the

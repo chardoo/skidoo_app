@@ -161,16 +161,16 @@ class MediaReaction {
           onTap: onTap,
         );
 
-  /// In-app: hands the photo to the DM picker.
-  MediaReaction.send({required VoidCallback onTap})
-      : this(
-          icon: Icons.near_me_outlined,
-          semanticLabel: 'Send',
-          onTap: onTap,
-        );
-
-  /// Out of the app: the OS share sheet.
-  MediaReaction.shareExternally({
+  /// Pass the photo on — to someone in the app, or out of it.
+  ///
+  /// One button for one intention. The rail used to carry two: a paper plane
+  /// for the DM picker and the OS share arrow beside it, with the whole
+  /// difference between them resting on two similar glyphs. "Send" and "share"
+  /// name the same act to anyone who has not read the code, so which button
+  /// did what was a guess, and the answer only arrived after the tap.
+  ///
+  /// The destination is now chosen in [ShareTargetSheet], in words.
+  MediaReaction.share({
     required VoidCallback onTap,
     bool busy = false,
     Key? anchorKey,

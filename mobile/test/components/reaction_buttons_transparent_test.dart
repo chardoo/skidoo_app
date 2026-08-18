@@ -204,7 +204,7 @@ void main() {
   testWidgets('a reaction with no count renders the glyph alone', (t) async {
     // Not a hardcoded "0" under an action that has no count behind it.
     await t.pumpWidget(host(MediaReactionRail(actions: [
-      MediaReaction.send(onTap: () {}),
+      MediaReaction.share(onTap: () {}),
     ])));
 
     expect(find.byType(Text), findsNothing);

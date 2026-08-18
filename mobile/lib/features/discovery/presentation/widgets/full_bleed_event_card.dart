@@ -6,6 +6,7 @@ import 'package:jperg_app/components/media/media_reaction_rail.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
+import 'package:jperg_app/components/media/share_target_sheet.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/common/widgets/expandable_caption.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -167,6 +168,21 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     } finally {
       if (mounted) setState(() => _sharingExternal = false);
     }
+  }
+
+  /// Asks where the post is going, then goes there. See [ShareTargetSheet].
+  void _openShareTargets() {
+    if (!widget.isAuthenticated) {
+      widget.onTap();
+      return;
+    }
+    if (widget.event.pictures.isEmpty) return;
+    ShareTargetSheet.show(
+      context,
+      title: 'Share this event',
+      onInApp: _share,
+      onExternal: _shareExternal,
+    );
   }
 
   void _openPhotographerProfile() {
@@ -387,10 +403,12 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                         saved: state.savedEventIds.contains(event.id),
                         onTap: _toggleSave,
                       ),
-                      MediaReaction.send(onTap: _share),
-                      MediaReaction.shareExternally(
+                      // One button, two destinations, named in the sheet it
+                      // opens — the paper plane and the share arrow beside it
+                      // were two buttons for one intention.
+                      MediaReaction.share(
                         busy: _sharingExternal,
-                        onTap: _shareExternal,
+                        onTap: _openShareTargets,
                       ),
                       MediaReaction.more(onTap: _showMoreOptions),
                     ],

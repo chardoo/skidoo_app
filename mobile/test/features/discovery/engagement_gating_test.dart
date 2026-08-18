@@ -118,7 +118,7 @@ void main() {
                 MediaReaction.comment(count: 7, onTap: () {})
               else
                 MediaReaction.commentsDisabled(count: 7),
-              MediaReaction.send(onTap: () {}),
+              MediaReaction.share(onTap: () {}),
             ],
           ),
         );

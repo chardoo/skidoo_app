@@ -60,18 +60,26 @@ void main() {
     expect(find.bySemanticsLabel('Share photo'), findsOneWidget);
   });
 
-  testWidgets('save, download, share and send are four separate actions',
-      (t) async {
-    // They are easy to mistake for one another, and collapsing any two of them
-    // quietly removes a capability. That is not hypothetical: bookmark and
-    // download *were* one button, so Save wrote a file to the phone and no
-    // photo could actually be bookmarked.
+  testWidgets('save, share and download are three separate actions', (t) async {
+    // Bookmark and download were once one button, so Save wrote a file to the
+    // phone and no photo could actually be bookmarked. They stay apart because
+    // they do genuinely different things.
     await t.pumpWidget(host(FoundActionRail(photo: photo())));
 
     expect(find.byIcon(Icons.bookmark_border_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.download_outlined), findsOneWidget);
     expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+  });
+
+  testWidgets('send and share are one button, not two', (t) async {
+    // The opposite call from the one above: these two named the same
+    // intention, and the whole difference between them rested on a paper
+    // plane sitting next to a share arrow. The destination is chosen in
+    // ShareTargetSheet instead, in words.
+    await t.pumpWidget(host(FoundActionRail(photo: photo())));
+
+    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.near_me_outlined), findsNothing);
   });
 
   testWidgets('share survives the owner switching engagement off', (t) async {
@@ -83,7 +91,6 @@ void main() {
     expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
     expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
     expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
   });
 }
 
