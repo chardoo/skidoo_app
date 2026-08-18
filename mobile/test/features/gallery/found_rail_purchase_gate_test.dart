@@ -72,6 +72,23 @@ Future<Set<IconData>> pumpRail(WidgetTester t, Photo p,
   return railOf(t);
 }
 
+/// The rail's glyphs top to bottom. [railOf] answers *which* actions are on
+/// offer; this answers where they sit, which is a separate question and the
+/// only one an ordering assertion can be written against.
+List<IconData> railOrder(WidgetTester t) {
+  final icons = t
+      .widgetList<Icon>(find.byType(Icon))
+      .where((i) => i.icon != null)
+      .toList();
+  final positions = {
+    for (final i in icons)
+      i.icon!: t.getCenter(find.byIcon(i.icon!).first).dy,
+  };
+  final ordered = positions.keys.toList()
+    ..sort((a, b) => positions[a]!.compareTo(positions[b]!));
+  return ordered;
+}
+
 /// Answers "nothing is saved" without a network, a token or a signed-in user.
 class _EmptyStore implements SavedPhotoStore {
   @override
@@ -146,6 +163,18 @@ void main() {
       );
 
       expect(rail, {like, comment, download, share, send});
+    });
+
+    testWidgets('the download sits at the foot of the rail', (t) async {
+      // Everything above it is something done inside the app. The download
+      // takes the photo out, so it gets the end of the rail to itself rather
+      // than a slot in the middle of the reactions.
+      await t.pumpWidget(host(FoundActionRail(
+        photo: photo(price: 20, isPurchased: true, isPublic: true),
+        purchaseGated: true,
+      )));
+
+      expect(railOrder(t).last, download);
     });
 
     testWidgets('the download is what buying it unlocked', (t) async {

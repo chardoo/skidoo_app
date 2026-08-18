@@ -228,19 +228,13 @@ class _FoundActionRailState extends State<FoundActionRail> {
         ],
         if (offered.commentsDisabled)
           MediaReaction.commentsDisabled(count: widget.photo.commentCount),
-        // Neither of the next two has a count behind it, so the rail renders
-        // the glyph alone rather than a fake "0".
+        // Neither the bookmark nor the download has a count behind it, so the
+        // rail renders the glyph alone rather than a fake "0".
         if (offered.save && _saved != null)
           MediaReaction.bookmark(
             saved: _saved!.isSaved(photoId),
             busy: _saved!.isBusy(photoId),
             onTap: () => _requireAccount(_toggleSave),
-          ),
-        if (offered.download)
-          MediaReaction.download(
-            anchorKey: _downloadKey,
-            busy: _downloading,
-            onTap: () => _requireAccount(_download),
           ),
         if (offered.share) ...[
           MediaReaction.shareExternally(
@@ -250,6 +244,17 @@ class _FoundActionRailState extends State<FoundActionRail> {
           ),
           MediaReaction.send(onTap: () => _requireAccount(_send)),
         ],
+        // Last, at the foot of the rail. Everything above it is something you
+        // do *in* the app — react, bookmark, pass the photo to someone. The
+        // download is the one that takes the photo out of it, and it is the
+        // action a bought photo exists for, so it sits on its own at the end
+        // rather than in the middle of the reactions.
+        if (offered.download)
+          MediaReaction.download(
+            anchorKey: _downloadKey,
+            busy: _downloading,
+            onTap: () => _requireAccount(_download),
+          ),
       ],
     );
   }
