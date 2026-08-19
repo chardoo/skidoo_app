@@ -9,6 +9,7 @@ import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/rooms/room_sync_reconciler.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/core/session/session_reset.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
 part 'chat_rooms_event.dart';
@@ -75,11 +76,16 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     on<_ChatRoomsMessageArrived>(_onMessageArrived, transformer: concurrent());
     on<_ChatRoomsRoomRead>(_onRoomRead, transformer: concurrent());
     on<_ChatRoomsRoomRemoved>(_onRoomRemoved, transformer: concurrent());
+    on<ChatRoomsSessionCleared>(_onSessionCleared, transformer: concurrent());
 
-    // Wire background service → bloc so new background messages update the badge.
-    _bgService.onUnreadUpdate = () {
-      if (!isClosed) add(const ChatRoomsRefreshUnread());
-    };
+    // Torn down on sign-out. This bloc lives above the Navigator so that the
+    // unread badge works everywhere, which also means replacing the navigation
+    // stack does not touch it — registering is the only thing that empties it.
+    SessionReset.register(this, 'ChatRoomsBloc', () {
+      if (!isClosed) add(const ChatRoomsSessionCleared());
+    });
+
+    _wireBackgroundCallbacks();
 
     // Direct message stream: updates unreadCounts and lastMessageAt in-memory,
     // bypassing the DB.  Essential on web where SQLite is unavailable.
@@ -107,11 +113,6 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
       }
     });
 
-    // Badge-clear signal: ChatRoomBloc fires this when a room is opened.
-    _bgService.onRoomRead = (roomId) {
-      if (!isClosed) add(_ChatRoomsRoomRead(roomId));
-    };
-
     // Subscribe to the persistent relay — one subscription, no reconnect
     // management needed. All WS instances (shared + DiscoveryBloc per-event
     // sessions) funnel invites through this relay.
@@ -134,6 +135,7 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
 
   @override
   Future<void> close() {
+    SessionReset.unregister(this);
     _groupInviteSub?.cancel();
     _bgMsgSub?.cancel();
     _openRoomMsgSub?.cancel();
@@ -142,10 +144,46 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     return super.close();
   }
 
+  /// Points the background service's callbacks back at this bloc.
+  ///
+  /// Called from the constructor and again on every load, because it has to
+  /// survive a sign-out. `ChatBackgroundService.disconnectAll` detaches these
+  /// on its way out — correctly, since the bloc that set them may well be
+  /// going too — but this one is built above the Navigator and is not: it is
+  /// the same instance before and after, and left detached it would go on
+  /// showing an inbox that never updated its badge again.
+  ///
+  /// Re-arming on load rather than in the teardown keeps it independent of the
+  /// order handlers happen to run in. Assigning twice costs nothing.
+  void _wireBackgroundCallbacks() {
+    // New background message → refresh the navbar badge.
+    _bgService.onUnreadUpdate = () {
+      if (!isClosed) add(const ChatRoomsRefreshUnread());
+    };
+    // Badge-clear signal: ChatRoomBloc fires this when a room is opened.
+    _bgService.onRoomRead = (roomId) {
+      if (!isClosed) add(_ChatRoomsRoomRead(roomId));
+    };
+  }
+
+  /// Back to the state a freshly built bloc has.
+  ///
+  /// A whole new [ChatRoomsState] rather than a `copyWith`: copyWith keeps
+  /// every field not named, and the point here is that nothing is kept. A
+  /// field added later would otherwise quietly survive sign-out, which is the
+  /// exact class of bug this handler exists for.
+  void _onSessionCleared(
+    ChatRoomsSessionCleared event,
+    Emitter<ChatRoomsState> emit,
+  ) {
+    emit(const ChatRoomsState());
+  }
+
   Future<void> _onLoad(
     ChatRoomsLoadRequested event,
     Emitter<ChatRoomsState> emit,
   ) async {
+    _wireBackgroundCallbacks();
     final myUserId = await _authService.getUserId();
 
     // Whether there is already an inbox on screen. Every re-entry to the Chats

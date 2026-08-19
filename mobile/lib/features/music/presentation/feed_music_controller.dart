@@ -151,6 +151,27 @@ class FeedMusicController with WidgetsBindingObserver {
     unawaited(_silence());
   }
 
+  /// Stops everything and forgets whose card was playing.
+  ///
+  /// For sign-out. The controller is a singleton holding one player for the
+  /// whole app, so nothing about replacing the navigation stack reaches it —
+  /// the previous account's soundtrack would go on playing over the login
+  /// screen, which is as odd as it sounds.
+  ///
+  /// [muted] is deliberately untouched: it is a statement about this phone and
+  /// the room it is in, not about the account. See [AuthService.removeToken],
+  /// which keeps the stored preference for the same reason.
+  void endSession() {
+    if (_disposed) return;
+    _owner = null;
+    _eventId = null;
+    _tracks = const [];
+    _generation++;
+    _settle?.cancel();
+    nowPlaying.value = null;
+    unawaited(_silence());
+  }
+
   /// Mute without stopping. The track keeps running underneath, so unmuting
   /// lands where the sound would have been rather than restarting it — which
   /// is what every feed with a speaker icon does, and what people expect.

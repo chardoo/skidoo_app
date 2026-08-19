@@ -46,6 +46,9 @@ class _FakeCache implements FeedCacheService {
     saves++;
     stored = events;
   }
+
+  @override
+  Future<void> clear() async => stored = [];
 }
 
 /// Stands in for the first-page fetch. [completer] left unresolved simulates a

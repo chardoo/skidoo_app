@@ -1,6 +1,12 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jperg_app/features/music/presentation/feed_music_controller.dart';
+import 'package:jperg_app/core/session/session_reset.dart';
+import 'package:jperg_app/features/notifications/data/notification_inbox.dart';
+import 'package:jperg_app/features/follow/data/follow_repository.dart';
+import 'package:jperg_app/features/gallery/presentation/found/found_feed.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_key_datasource.dart';
 import 'package:jperg_app/features/discovery/data/datasources/client_saved_data_source.dart';
@@ -349,6 +355,79 @@ Future<void> setupServiceLocator() async {
         setHideProfile: sl<SetHideProfileUseCase>(),
       ));
 
+  // ── Session teardown ──────────────────────────────────────────────────────
+  //
+  // What a signed-in session leaves lying about outside the widget tree.
+  // Registered here, in the one place that already knows the whole app, rather
+  // than reached into from `AuthService.removeToken` — core must not import
+  // features. Holders with their own lifecycle (ChatRoomsBloc, and anything
+  // else built and closed by the tree) register themselves instead.
+  //
+  // Blocs created per screen need nothing: signing out replaces the navigation
+  // stack, which disposes them. It is the ones that outlive it that leak.
+  SessionReset.register(
+    FeedCacheService,
+    'FeedCacheService',
+    () => sl<FeedCacheService>().clear(),
+  );
+  SessionReset.register(
+    FollowRepository,
+    'FollowRepository.followedIds',
+    FollowRepository.clearSession,
+  );
+  SessionReset.register(
+    CartBloc,
+    'CartBloc',
+    () => sl<CartBloc>().add(const CartCleared()),
+  );
+  SessionReset.register(
+    ChatBackgroundService,
+    'ChatBackgroundService',
+    // `disconnectAll` was written for exactly this — "Disconnects the global
+    // connection (e.g. on logout)" — and nothing ever called it. It drops the
+    // socket authenticated as the departing account, which left open goes on
+    // delivering their messages into a signed-out app and has the next sign-in
+    // open a second one beside it, and it empties the rooms this service holds
+    // in memory. Those are what refilled the inbox and the unread badge even
+    // once the database beneath them had been cleared.
+    () => sl<ChatBackgroundService>().disconnectAll(),
+  );
+  SessionReset.register(
+    ChatDatabase,
+    'ChatDatabase',
+    // Conversations and messages on disk. Also wiped at *login* when the
+    // account differs from the last one on this device — that path stays,
+    // because it is the only thing covering a session that ended without a
+    // sign-out at all: a crash, an expired token, a reinstall over the top.
+    () => sl<ChatDatabase>().clearAll(),
+  );
+  SessionReset.register(
+    NotificationInbox,
+    'NotificationInbox',
+    // Registered here as well as from its own constructor, because that
+    // constructor is a lazy static: an account that never opened the
+    // notifications tab never built the inbox, never registered it, and — the
+    // part that matters — the *next* account opening that tab builds it for
+    // the first time and inherits nothing. Harmless either way, and it stops
+    // the guarantee depending on which screens someone happened to visit.
+    () => NotificationInbox.instance.clear(),
+  );
+  SessionReset.register(
+    #feedNavigationState,
+    'feed navigation notifiers',
+    () {
+      // Static, so they outlive every screen that reads them: a pending tab
+      // request from the old session would be honoured after the new one
+      // signed in, and the Found tab's badge kept a count of photos belonging
+      // to somebody else.
+      FoundFeed.pendingCount.value = 0;
+      HomePage.tabRequest.value = null;
+      HomePage.webSelectedTab.value = 0;
+      HomeNavigationPage.pillTabRequest.value = null;
+      HomeNavigationPage.webEventResults.value = const [];
+    },
+  );
+
   // ── Feed music ────────────────────────────────────────────────────────────
   // One controller, and therefore one audio player, for every feed in the app.
   // Lazy so no decoder is created for a session that never reaches a scored
@@ -362,6 +441,11 @@ Future<void> setupServiceLocator() async {
     // is soon enough: nothing is playing yet, and restoring it applies to the
     // first card that claims.
     auth.getFeedMusicMuted().then(controller.restoreMuted);
+    SessionReset.register(
+      FeedMusicController,
+      'FeedMusicController',
+      controller.endSession,
+    );
     return controller;
   });
 

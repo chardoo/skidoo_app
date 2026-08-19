@@ -46,9 +46,17 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
       // so that chat history and E2EE keys from the previous account can never
       // bleed into the new session.
       //
-      // Same account returning (including after a logout) falls through and
-      // keeps its cached rooms and messages, which is the whole point of
-      // caching them.
+      // A clean sign-out now clears the chat database on its way out (see
+      // SessionReset), so on that path this finds nothing left to do. It stays
+      // for the sessions that never got a sign-out at all — a crash, a token
+      // the server stopped accepting, an install over the top of another
+      // account's — where the only moment anybody notices the account changed
+      // is this one.
+      //
+      // E2EE keys are still only cleared here, and deliberately: they are the
+      // account's identity, and dropping them on a sign-out would cost the
+      // same user any message sent to them while they were away. Changing
+      // account is the point at which they are certainly no longer wanted.
       if (previousUserId.isNotEmpty && previousUserId != user.id) {
         await Future.wait([
           _chatDb.clearAll().catchError((_) {}),

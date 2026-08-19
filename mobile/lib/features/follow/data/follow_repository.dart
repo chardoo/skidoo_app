@@ -213,13 +213,24 @@ class FollowRepository {
     if (_followedIds.length != before) _followedChanged();
   }
 
-  /// Empties the session cache. The cache is static, so a test that seeds it
-  /// would otherwise leak follows into every test that runs after it.
-  @visibleForTesting
-  static void debugClearFollowed() {
+  /// Empties the session cache.
+  ///
+  /// Who you follow is the signed-in account's, and this set is static, so
+  /// without clearing it on sign-out the next person to use the phone saw
+  /// their predecessor's creators already marked as followed — Follow buttons
+  /// reading "Following" for people they had never heard of, and the Following
+  /// tab believing it had somebody to show.
+  ///
+  /// Registered with [SessionReset] in the service locator.
+  static void clearSession() {
     _followedIds.clear();
     _followedChanged();
   }
+
+  /// The same thing, named for tests: the cache is static, so a test that
+  /// seeds it would otherwise leak follows into every test after it.
+  @visibleForTesting
+  static void debugClearFollowed() => clearSession();
 
   /// Replaces the session cache in one go, notifying once.
   ///

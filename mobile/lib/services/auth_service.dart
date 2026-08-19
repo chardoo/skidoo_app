@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:jperg_app/core/cache/session_cache.dart';
+import 'package:jperg_app/core/session/session_reset.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 
 /// Platform-adaptive credential store.
@@ -265,11 +265,15 @@ class AuthService {
   /// next person to sign in on this phone would receive their notifications.
   Future<void> removeToken() async {
     isAuthenticated.value = false;
-    // Screens hold their last fetch for the session rather than refetching on
-    // every visit. All of it is this account's, so it goes with the token —
-    // otherwise the next person to sign in on this phone opens their inbox and
-    // finds the last one's notifications sitting in it.
-    SessionCache.clearAll();
+    // Whether this account had uploaded reference photos is this account's
+    // answer, not the device's. Left standing it told the next person to sign
+    // in that their faces were already on file, so the app never asked them
+    // for any — and their Found tab stayed empty with nothing explaining why.
+    hasAddedFaces.value = false;
+    // Everything the session put in memory, on the socket, or in a feed cache.
+    // Registered by its owners rather than listed here — see [SessionReset],
+    // and add to it rather than to this method.
+    await SessionReset.run();
     await PushNotificationService.instance.logout();
     await Future.wait([
       _delete(_kToken),
@@ -285,6 +289,21 @@ class AuthService {
       _delete(_kTimezone),
       _delete(_kInterestTags),
       _delete(_kRole),
+      // The avatar the *previous* account was wearing. It outlived the session
+      // it belonged to and was drawn on the settings screens of whoever signed
+      // in next, until their own profile finished loading over it.
+      _delete(_kProfileUrl),
+      // Per-account, all four, and none of them previously cleared:
+      //   • whether faces are on file, and when we last asked
+      //   • the interests chosen at sign-up but not yet submitted
+      //   • "here to discover" vs "share my work"
+      // The device-level keys deliberately stay: onboarding seen, the swipe
+      // hint, the install marker, feed music muted. Signing out is not a
+      // factory reset.
+      _delete(_kHasAddedFaces),
+      _delete(_kLastFacePrompt),
+      _delete(_kPendingInterests),
+      _delete(_kAudiencePreference),
     ]);
   }
 

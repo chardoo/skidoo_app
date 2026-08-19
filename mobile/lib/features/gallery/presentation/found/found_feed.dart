@@ -13,6 +13,7 @@ import 'package:jperg_app/features/gallery/presentation/found/found_access.dart'
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_results_viewer_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/face_gate_prompt.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_empty_state.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_album_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
@@ -272,9 +273,15 @@ class _FoundFeedState extends State<FoundFeed> {
             onRetry: _reload,
           );
         }
-        // No filters and nothing back means the face scan hasn't matched
-        // anything yet; with filters on it means this selection is empty.
-        if (state.albums.isEmpty && !state.filters.isActive) {
+        // Which empty state applies, and why — see [foundEmptyState]. The
+        // pending case is the one that used to be missed, and missing it
+        // deadlocked the feature.
+        final empty = foundEmptyState(
+          hasAlbums: state.albums.isNotEmpty,
+          pendingCount: _pending.total,
+          filtersActive: state.filters.isActive,
+        );
+        if (empty == FoundEmptyState.scanning) {
           return FoundScanningState(
             onEnterCode: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const QrScanPage()),
@@ -309,7 +316,14 @@ class _FoundFeedState extends State<FoundFeed> {
                         // server counts it over the predicate it selects rows
                         // with, so it covers every page rather than what's
                         // scrolled in, and it narrows with the chips.
-                        FoundHeader(count: state.totalPhotos),
+                        //
+                        // Null at zero rather than "0 found": the empty state
+                        // below already says why the grid is empty, and beside
+                        // a review banner announcing new photos a "0 found"
+                        // reads as a contradiction.
+                        FoundHeader(
+                          count: (state.totalPhotos ?? 0) > 0 ? state.totalPhotos : null,
+                        ),
                         if (!_pending.isEmpty) ...[
                           SizedBox(height: AppSpacing.md.h),
                           FoundReviewBanner(
@@ -335,6 +349,11 @@ class _FoundFeedState extends State<FoundFeed> {
                   SliverFillRemaining(
                     hasScrollBody: false,
                     child: _NoMatches(
+                      // Only offer to clear filters when filters are what
+                      // emptied it. In the pending case nothing was filtered
+                      // out, and pointing at a setting that is already off
+                      // sends the reader nowhere.
+                      filtered: empty == FoundEmptyState.filteredOut,
                       onClear: () => context
                           .read<FoundBloc>()
                           .add(const FoundPhotosRequested(
@@ -391,7 +410,15 @@ class _FoundFeedState extends State<FoundFeed> {
 /// Shown when the filters exclude everything — distinct from the "no photos
 /// found yet" empty state, and offers the one action that fixes it.
 class _NoMatches extends StatelessWidget {
-  const _NoMatches({required this.onClear});
+  const _NoMatches({required this.onClear, this.filtered = true});
+
+  /// Whether the grid is empty *because of* the filters.
+  ///
+  /// False when the only matches are still awaiting the person's answer: the
+  /// review banner is above asking about them, and the photos appear here once
+  /// they are confirmed. Saying "no photos match these filters" there sends
+  /// the reader to clear filters that were never on.
+  final bool filtered;
 
   final VoidCallback onClear;
 
@@ -405,11 +432,18 @@ class _NoMatches extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.filter_alt_off_outlined,
-              size: 40.sp, color: ext.searchHintColor),
+          Icon(
+            filtered
+                ? Icons.filter_alt_off_outlined
+                : Icons.how_to_reg_outlined,
+            size: 40.sp,
+            color: ext.searchHintColor,
+          ),
           SizedBox(height: AppSpacing.md.h),
           Text(
-            'No photos match these filters.',
+            filtered
+                ? 'No photos match these filters.'
+                : 'Confirm the matches above and your photos appear here.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: ext.searchHintColor,
@@ -417,12 +451,14 @@ class _NoMatches extends StatelessWidget {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: AppSpacing.sm.h),
-          AppButton(
-            label: 'Clear filters',
-            variant: AppButtonVariant.text,
-            onPressed: onClear,
-          ),
+          if (filtered) ...[
+            SizedBox(height: AppSpacing.sm.h),
+            AppButton(
+              label: 'Clear filters',
+              variant: AppButtonVariant.text,
+              onPressed: onClear,
+            ),
+          ],
         ],
       ),
     );

@@ -13,6 +13,18 @@ class ChatRoomsRefreshUnread extends ChatRoomsEvent {
   const ChatRoomsRefreshUnread();
 }
 
+/// The session ended — drop every room, invite, unread count and preview.
+///
+/// This bloc is the one created at the root of the app, above the Navigator,
+/// so that the unread badge stays live even on pages that have never opened a
+/// chat. Nothing tears it down: signing out replaces the whole navigation
+/// stack, and this survives it. Whoever signed in next inherited the previous
+/// account's inbox — their conversations listed, their unread count on the tab
+/// bar — until a reload happened to replace it.
+class ChatRoomsSessionCleared extends ChatRoomsEvent {
+  const ChatRoomsSessionCleared();
+}
+
 class ChatRoomsAcceptInvite extends ChatRoomsEvent {
   const ChatRoomsAcceptInvite(this.roomId);
   final String roomId;
