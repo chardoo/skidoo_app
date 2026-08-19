@@ -1,12 +1,21 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/theme/app_spacing.dart';
 
-/// Shared bottom-sheet container: floating frosted-glass card with a thin
-/// neutral border and a single lift shadow.
+/// Shared bottom-sheet container for every comment surface — the photo sheet,
+/// the event sheet, the ads feed sheet.
+///
+/// Presented like [ShareTargetSheet] and the Hide/Report sheet: flush to the
+/// screen edges, rounded across the top two corners only, on the app's own
+/// surface colour. It used to be a floating frosted card — inset from both
+/// edges, rounded on all four corners, a 52-pixel backdrop blur behind a
+/// half-transparent fill, a hairline border and a 28-pixel drop shadow. That
+/// is a lot of chrome for a list of comments, and it made this the only sheet
+/// in the app that looked like a different app.
+///
+/// The height is deliberate and shared: see [kCommentSheetFraction], which
+/// [CommentPushArea] reads to work out how far to scale the page above it.
 class CommentSheetShell extends StatelessWidget {
   const CommentSheetShell({
     super.key,
@@ -29,15 +38,13 @@ class CommentSheetShell extends StatelessWidget {
     return AnimatedPadding(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
-      padding: EdgeInsets.only(
-        bottom: keyboardH + 10.h,
-        left: AppSpacing.md.w,
-        right: AppSpacing.md.w,
-      ),
+      // Bottom only. The left/right inset was what made this a floating card
+      // rather than a sheet.
+      padding: EdgeInsets.only(bottom: keyboardH),
       child: SizedBox(
-        height: screenH * 0.72,
-        child: _FrostedCard(
-          isDark: isDark,
+        height: screenH * kCommentSheetFraction,
+        child: _SheetSurface(
+          ext: ext,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -125,46 +132,26 @@ class CommentSheetShell extends StatelessWidget {
   }
 }
 
-// ── Frosted-glass card ────────────────────────────────────────────────────────
+// ── Sheet surface ─────────────────────────────────────────────────────────────
 
-class _FrostedCard extends StatelessWidget {
-  const _FrostedCard({required this.child, required this.isDark});
+/// The same surface [ShareTargetSheet] and the Hide/Report sheet sit on: the
+/// app background, rounded across the top, flush everywhere else.
+///
+/// Opaque on purpose. The page behind is no longer dimmed — it scales up into
+/// the strip above (see [CommentPushArea]) — so anything translucent here
+/// would show the photo through the comments.
+class _SheetSurface extends StatelessWidget {
+  const _SheetSurface({required this.child, required this.ext});
   final Widget child;
-  final bool isDark;
+  final AppThemeExtension ext;
 
   @override
   Widget build(BuildContext context) {
-    const radius = 26.0;
-    final borderColor = (isDark ? Colors.white : Colors.black)
-        .withValues(alpha: isDark ? 0.14 : 0.08);
+    final radius = BorderRadius.vertical(top: Radius.circular(20.r));
 
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius.r),
-        border: Border.all(color: borderColor, width: 1.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
-            blurRadius: 28,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius.r),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 52, sigmaY: 52),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.black.withValues(alpha: 0.52)
-                  : Colors.white.withValues(alpha: 0.64),
-              borderRadius: BorderRadius.circular(radius.r),
-            ),
-            child: child,
-          ),
-        ),
-      ),
+      decoration: BoxDecoration(color: ext.homeBackground, borderRadius: radius),
+      child: ClipRRect(borderRadius: radius, child: child),
     );
   }
 }

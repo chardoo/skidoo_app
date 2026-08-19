@@ -32,10 +32,20 @@ class FeedTopBar extends StatelessWidget {
     required this.onTabChanged,
     required this.onSearchOpen,
     this.tabs = const ['Found', 'Feed', 'Following'],
+    this.badgedTabs = const {},
     this.overSolidBackground = false,
     this.onUnlockPressed,
     this.unlockActive = false,
   });
+
+  /// Indices of tabs carrying an unanswered dot.
+  ///
+  /// Only Found uses one, and only while there are photos of the person they
+  /// have not confirmed yet — the same set the "You were found" banner asks
+  /// about, so the two appear and clear together. A dot for "you have found
+  /// photos at all" would be permanent for anyone who has ever been in one,
+  /// which is a decoration rather than a notification.
+  final Set<int> badgedTabs;
 
   /// Tab labels, in index order. Guests get `['Found', 'Explore']` per the
   /// guest designs — two tabs, and "Explore" standing in for the signed-in
@@ -151,6 +161,7 @@ class FeedTopBar extends StatelessWidget {
                         _FeedTextTab(
                           label: tabs[i],
                           active: selectedTab == i,
+                          badged: badgedTabs.contains(i),
                           ext: ext,
                           onSolid: overSolidBackground,
                           height: _barHeight.h,
@@ -354,11 +365,16 @@ class _FeedTextTab extends StatelessWidget {
     required this.onTap,
     required this.height,
     required this.horizontalPadding,
+    this.badged = false,
     this.onSolid = false,
   });
 
   final String label;
   final bool active;
+
+  /// Draws the dot above the label's trailing edge. See
+  /// [FeedTopBar.badgedTabs].
+  final bool badged;
   final AppThemeExtension ext;
   final VoidCallback onTap;
 
@@ -374,6 +390,9 @@ class _FeedTextTab extends StatelessWidget {
   static const _shadows = [
     Shadow(blurRadius: 10, color: Colors.black87),
   ];
+
+  /// Diameter of the unanswered dot.
+  static const double _dotSize = 6;
 
   /// Height of the underline and of the gap above it — mirrored as a spacer on
   /// the other side of the label. See [build].
@@ -446,7 +465,9 @@ class _FeedTextTab extends StatelessWidget {
     return Semantics(
       button: true,
       selected: active,
-      label: label,
+      // The dot is the whole message for a sighted user; spelling it out is the
+      // only way it reaches anyone else.
+      label: badged ? '$label, new photos found' : label,
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
@@ -465,13 +486,44 @@ class _FeedTextTab extends StatelessWidget {
                 SizedBox(height: belowLabel),
                 SizedBox(
                   width: _activeWidth(context),
-                  child: Text(
-                    label,
-                    style: _style(bold: active),
-                    textAlign: TextAlign.center,
-                    // Same ceiling the slot above was measured at, or the text
-                    // would outgrow the box reserved for it.
-                    textScaler: _scaler(context),
+                  child: Stack(
+                    // The dot hangs off the label's corner, and the row it sits
+                    // in has almost no slack to give — so it is painted outside
+                    // the label's box rather than widening it, and the tabs do
+                    // not shift when it appears.
+                    clipBehavior: Clip.none,
+                    children: [
+                      Text(
+                        label,
+                        style: _style(bold: active),
+                        textAlign: TextAlign.center,
+                        // Same ceiling the slot above was measured at, or the
+                        // text would outgrow the box reserved for it.
+                        textScaler: _scaler(context),
+                      ),
+                      if (badged)
+                        Positioned(
+                          right: -_dotSize.w,
+                          top: -1.h,
+                          child: Container(
+                            width: _dotSize.w,
+                            height: _dotSize.w,
+                            decoration: BoxDecoration(
+                              color: ext.publicAmber,
+                              shape: BoxShape.circle,
+                              // The bar sits over arbitrary media as often as
+                              // not, and a 6 dp dot has no other way to hold
+                              // its edge against a light photo.
+                              boxShadow: onSolid
+                                  ? null
+                                  : const [
+                                      BoxShadow(
+                                          color: Colors.black45, blurRadius: 4),
+                                    ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 SizedBox(height: AppSpacing.xs.h),

@@ -31,6 +31,7 @@ class FoundPhotoViewerPage extends StatefulWidget {
     this.purchaseGated = false,
     this.selection,
     this.onCheckout,
+    this.onIndexChanged,
     this.title,
   });
 
@@ -75,7 +76,15 @@ class FoundPhotoViewerPage extends StatefulWidget {
 
   /// Shown as "View album" on the photo. Left null when the viewer was pushed
   /// from the album page itself.
-  final VoidCallback? onViewAlbum;
+  ///
+  /// Takes the photo it was pressed on, because one viewer can span several
+  /// events — see FoundResultsViewerPage. A fixed callback would send the
+  /// person to the album of whichever photo they happened to open at.
+  final ValueChanged<Photo>? onViewAlbum;
+
+  /// Fires as the pager settles on each photo. Used by the results viewer to
+  /// fetch the next page before the swiping reaches the end of what it has.
+  final ValueChanged<int>? onIndexChanged;
 
   @override
   State<FoundPhotoViewerPage> createState() => _FoundPhotoViewerPageState();
@@ -104,9 +113,26 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
   @override
   void didUpdateWidget(FoundPhotoViewerPage old) {
     super.didUpdateWidget(old);
-    if (_ownSelection != null && !identical(old.photos, widget.photos)) {
-      _ownSelection!.updatePhotos(widget.photos);
-    }
+    if (identical(old.photos, widget.photos)) return;
+
+    _ownSelection?.updatePhotos(widget.photos);
+
+    // The list can be replaced under the viewer: the results viewer opens on
+    // the photos the grid had and swaps in the server's full result set when
+    // it arrives. Follow the photo being looked at rather than the slot it
+    // happened to occupy — the two lists are ordered differently, so holding
+    // the index would silently change which picture is on screen.
+    if (old.photos.isEmpty || widget.photos.isEmpty) return;
+    final current = old.photos[_index.clamp(0, old.photos.length - 1)].id;
+    final moved = widget.photos.indexWhere((p) => p.id == current);
+    if (moved < 0 || moved == _index) return;
+
+    _index = moved;
+    // The controller cannot be jumped mid-build; the pager has not been laid
+    // out against the new list yet either.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _pageCtrl.hasClients) _pageCtrl.jumpToPage(moved);
+    });
   }
 
   @override
@@ -279,12 +305,17 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
                   child: PageView.builder(
                     controller: _pageCtrl,
                     itemCount: total,
-                    onPageChanged: (i) => setState(() => _index = i),
+                    onPageChanged: (i) {
+                      setState(() => _index = i);
+                      widget.onIndexChanged?.call(i);
+                    },
                     itemBuilder: (_, i) => FoundPhotoStage(
                       key: ValueKey('stage_${widget.photos[i].id}'),
                       photo: widget.photos[i],
                       isActive: i == _index,
-                      onViewAlbum: widget.onViewAlbum,
+                      onViewAlbum: widget.onViewAlbum == null
+                          ? null
+                          : () => widget.onViewAlbum!(widget.photos[i]),
                       showSocialActions: widget.showSocialActions,
                       purchaseGated: widget.purchaseGated,
                       // The one in play, not only an album's: this is what puts

@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:share_plus/share_plus.dart';
@@ -457,212 +458,219 @@ class _FeedItemCardState extends State<FeedItemCard>
     final isVideo =
         d.mediaList.length == 1 ? d.mediaList[0].isVideo : d.mediaIsVideo;
 
-    return LayoutBuilder(builder: (context, constraints) {
-      final availableW =
-          constraints.maxWidth.isFinite ? constraints.maxWidth : size.width;
-      final firstMedia = d.mediaList.isNotEmpty ? d.mediaList[0] : null;
-      final ar = firstMedia?.aspectRatio;
-      final mediaH = ar != null
-          ? (availableW / ar).clamp(380.0, size.height * 0.92)
-          : isVideo
-              ? (size.height * 0.80).clamp(540.0, 780.0)
-              : (size.height * 0.75).clamp(480.0, 740.0);
+    // Scales up out of the way when a comment sheet opens — see
+    // [CommentPushArea].
+    return CommentPushArea(
+      child: LayoutBuilder(builder: (context, constraints) {
+        final availableW =
+            constraints.maxWidth.isFinite ? constraints.maxWidth : size.width;
+        final firstMedia = d.mediaList.isNotEmpty ? d.mediaList[0] : null;
+        final ar = firstMedia?.aspectRatio;
+        final mediaH = ar != null
+            ? (availableW / ar).clamp(380.0, size.height * 0.92)
+            : isVideo
+                ? (size.height * 0.80).clamp(540.0, 780.0)
+                : (size.height * 0.75).clamp(480.0, 740.0);
 
-      return Container(
-        color: Colors.transparent,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── 1. Header — above the image ───────────────────────────────────
-            Padding(
-              padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 10.h),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _CreatorAvatar(data: d),
-                  SizedBox(width: 10.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          d.creatorName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: ext.greetingColor,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
+        return Container(
+          color: Colors.transparent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── 1. Header — above the image ───────────────────────────────────
+              Padding(
+                padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 10.h),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _CreatorAvatar(data: d),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            d.creatorName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: ext.greetingColor,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 2.h),
-                        _TypeLabel(type: d.type, ext: ext),
-                      ],
+                          SizedBox(height: 2.h),
+                          _TypeLabel(type: d.type, ext: ext),
+                        ],
+                      ),
                     ),
-                  ),
-                  SizedBox(width: AppSpacing.sm.w),
-                  FollowButton(
-                    photographerId: d.creatorId,
-                    onLoginRequired:
-                        widget.isAuthenticated ? null : widget.onLoginRequired,
-                  ),
-                  SizedBox(width: 6.w),
-                  Semantics(
-                      button: true,
-                      label: 'Hide',
-                      child: GestureDetector(
-                        onTap: () => _FeedItemMoreOptionsSheet.show(
-                          context,
-                          ext: ext,
-                          type: d.type,
-                          assetId: d.id,
-                          onHide: widget.onHide,
-                        ),
-                        child: Icon(Icons.more_horiz_rounded,
-                            color: ext.searchHintColor, size: 22.sp),
-                      )),
-                ],
+                    SizedBox(width: AppSpacing.sm.w),
+                    FollowButton(
+                      photographerId: d.creatorId,
+                      onLoginRequired: widget.isAuthenticated
+                          ? null
+                          : widget.onLoginRequired,
+                    ),
+                    SizedBox(width: 6.w),
+                    Semantics(
+                        button: true,
+                        label: 'Hide',
+                        child: GestureDetector(
+                          onTap: () => _FeedItemMoreOptionsSheet.show(
+                            context,
+                            ext: ext,
+                            type: d.type,
+                            assetId: d.id,
+                            onHide: widget.onHide,
+                          ),
+                          child: Icon(Icons.more_horiz_rounded,
+                              color: ext.searchHintColor, size: 22.sp),
+                        )),
+                  ],
+                ),
               ),
-            ),
 
-            // ── 2. Media ───────────────────────────────────────────────────────
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeInOut,
-              width: double.infinity,
-              height: mediaH,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (d.mediaList.length > 1)
-                    PageView.builder(
-                      controller: _pageCtrl,
-                      itemCount: d.mediaList.length,
-                      itemBuilder: (_, i) => _SingleMediaFrame(
-                        media: d.mediaList[i],
+              // ── 2. Media ───────────────────────────────────────────────────────
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeInOut,
+                width: double.infinity,
+                height: mediaH,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (d.mediaList.length > 1)
+                      PageView.builder(
+                        controller: _pageCtrl,
+                        itemCount: d.mediaList.length,
+                        itemBuilder: (_, i) => _SingleMediaFrame(
+                          media: d.mediaList[i],
+                          ext: ext,
+                          title: d.title,
+                          creatorName: d.creatorName,
+                        ),
+                      )
+                    else if (d.mediaList.length == 1 && !d.mediaList[0].isVideo)
+                      // Single image from mediaList — use _SingleMediaFrame so it
+                      // reads media.url directly instead of the legacy data.mediaUrl.
+                      _SingleMediaFrame(
+                        media: d.mediaList[0],
                         ext: ext,
                         title: d.title,
                         creatorName: d.creatorName,
-                      ),
-                    )
-                  else if (d.mediaList.length == 1 && !d.mediaList[0].isVideo)
-                    // Single image from mediaList — use _SingleMediaFrame so it
-                    // reads media.url directly instead of the legacy data.mediaUrl.
-                    _SingleMediaFrame(
-                      media: d.mediaList[0],
-                      ext: ext,
-                      title: d.title,
-                      creatorName: d.creatorName,
-                    )
-                  else
-                    // Single video or legacy mediaUrl
-                    _MediaBackground(data: d, ext: ext),
+                      )
+                    else
+                      // Single video or legacy mediaUrl
+                      _MediaBackground(data: d, ext: ext),
 
-                  // Bottom gradient
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: 130.h,
-                    child: const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [Color(0xDD000000), Color(0x00000000)],
+                    // Bottom gradient
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 130.h,
+                      child: const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [Color(0xDD000000), Color(0x00000000)],
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  // Footer: title + secondary label
-                  Positioned(
-                    bottom: 14.h,
-                    left: 14.w,
-                    right: 14.w,
-                    child: _FooterOverlay(data: d),
-                  ),
-
-                  // Page dots for multi-image (Instagram-style)
-                  if (d.mediaList.length > 1)
+                    // Footer: title + secondary label
                     Positioned(
-                      bottom: 58.h,
-                      left: 0,
-                      right: 0,
-                      child: _AdPageDots(
-                        count: d.mediaList.length,
-                        current: _currentPage,
-                        ext: ext,
-                      ),
+                      bottom: 14.h,
+                      left: 14.w,
+                      right: 14.w,
+                      child: _FooterOverlay(data: d),
                     ),
-                ],
+
+                    // Page dots for multi-image (Instagram-style)
+                    if (d.mediaList.length > 1)
+                      Positioned(
+                        bottom: 58.h,
+                        left: 0,
+                        right: 0,
+                        child: _AdPageDots(
+                          count: d.mediaList.length,
+                          current: _currentPage,
+                          ext: ext,
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
 
-            // ── 3. CTA strip — between image and reactions ────────────────────
-            // Show when: ad/campaign has a URL, or request has an answer handler.
-            if (d.type == FeedItemType.request && d.interestedCount > 0)
-              _InterestStrip(count: d.interestedCount, ext: ext),
+              // ── 3. CTA strip — between image and reactions ────────────────────
+              // Show when: ad/campaign has a URL, or request has an answer handler.
+              if (d.type == FeedItemType.request && d.interestedCount > 0)
+                _InterestStrip(count: d.interestedCount, ext: ext),
 
-            if (d.ctaLabel != null &&
-                (d.ctaUrl?.isNotEmpty == true ||
-                    (d.type == FeedItemType.request && d.onCtaTap != null)))
-              _CtaStrip(
-                label: d.ctaLabel!,
-                onTap: _handleCtaTap,
+              if (d.ctaLabel != null &&
+                  (d.ctaUrl?.isNotEmpty == true ||
+                      (d.type == FeedItemType.request && d.onCtaTap != null)))
+                _CtaStrip(
+                  label: d.ctaLabel!,
+                  onTap: _handleCtaTap,
+                  ext: ext,
+                  type: d.type,
+                ),
+
+              // ── 4. Interaction bar ─────────────────────────────────────────────
+              CardInteractionBar(
+                liked: _liked,
+                disliked: _disliked,
+                saved: _saved,
+                likeCount: 0,
+                dislikeCount: 0,
+                commentCount: d.commentCount,
+                commentsEnabled: d.commentsEnabled,
+                // An ad or campaign with engagement switched off collects no
+                // reactions either, same rule as events.
+                reactionsEnabled: d.commentsEnabled,
                 ext: ext,
-                type: d.type,
+                onLike: _handleLike,
+                onDislike: _handleDislike,
+                onComment: _handleComment,
+                onShare: _handleShare,
+                onSave: _handleSave,
+                // No DM on a request. Answering it is how a photographer reaches
+                // the requester, and the requester decides who they talk to.
+                onMessage:
+                    (d.type == FeedItemType.request || d.creatorId.isEmpty)
+                        ? null
+                        : (_chatLoading ? null : _openChat),
               ),
 
-            // ── 4. Interaction bar ─────────────────────────────────────────────
-            CardInteractionBar(
-              liked: _liked,
-              disliked: _disliked,
-              saved: _saved,
-              likeCount: 0,
-              dislikeCount: 0,
-              commentCount: d.commentCount,
-              commentsEnabled: d.commentsEnabled,
-              // An ad or campaign with engagement switched off collects no
-              // reactions either, same rule as events.
-              reactionsEnabled: d.commentsEnabled,
-              ext: ext,
-              onLike: _handleLike,
-              onDislike: _handleDislike,
-              onComment: _handleComment,
-              onShare: _handleShare,
-              onSave: _handleSave,
-              // No DM on a request. Answering it is how a photographer reaches
-              // the requester, and the requester decides who they talk to.
-              onMessage: (d.type == FeedItemType.request || d.creatorId.isEmpty)
-                  ? null
-                  : (_chatLoading ? null : _openChat),
-            ),
+              // ── 5. Caption ─────────────────────────────────────────────────────
+              if (d.body != null)
+                _BodyText(
+                  creatorName: d.creatorName,
+                  body: d.body!,
+                  ext: ext,
+                  expanded: _bodyExpanded,
+                  onToggle: () =>
+                      setState(() => _bodyExpanded = !_bodyExpanded),
+                ),
 
-            // ── 5. Caption ─────────────────────────────────────────────────────
-            if (d.body != null)
-              _BodyText(
-                creatorName: d.creatorName,
-                body: d.body!,
-                ext: ext,
-                expanded: _bodyExpanded,
-                onToggle: () => setState(() => _bodyExpanded = !_bodyExpanded),
+              SizedBox(height: 6.h),
+
+              // ── 6. Divider ─────────────────────────────────────────────────────
+              Divider(
+                height: 1,
+                thickness: 0.5,
+                color: ext.searchHintColor.withValues(alpha: 0.1),
               ),
-
-            SizedBox(height: 6.h),
-
-            // ── 6. Divider ─────────────────────────────────────────────────────
-            Divider(
-              height: 1,
-              thickness: 0.5,
-              color: ext.searchHintColor.withValues(alpha: 0.1),
-            ),
-          ],
-        ),
-      );
-    }); // LayoutBuilder
+            ],
+          ),
+        );
+      }), // LayoutBuilder
+    );
   }
 }
 

@@ -37,15 +37,29 @@ class _ChatRoomsView extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-                icon: Icon(Icons.arrow_back_rounded,
-                    color: ext.greetingColor, size: 22.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              )
+        // Chats is a bottom-nav destination: it lives inside Home's
+        // IndexedStack and shares Home's route, so an arrow belongs here only
+        // if Home itself was pushed onto something.
+        //
+        // `Navigator.canPop()` cannot answer that. It reports on the whole
+        // stack, so anything sitting *above* Home says yes just as loudly as
+        // anything below it — and it is read once, when this page is first
+        // built, then never again, because it registers no dependency and this
+        // page is a `const` child of the stack. A deep-link launch builds Home
+        // in exactly that state: the splash replaces itself with `/home`,
+        // `_AuthGuard` holds the build while it reads the token, and the link
+        // pushes its resolver on top in the gap. Home's tabs then build with a
+        // route above them, the arrow is drawn, and it stays drawn long after
+        // the resolver is gone — at which point pressing it popped Home off an
+        // otherwise empty navigator and left a black screen.
+        //
+        // The route this page sits in is what actually knows, and it rebuilds
+        // this when the answer changes. [AppBackButton] carries the other half:
+        // `maybePop`, which declines on the last route rather than emptying the
+        // navigator.
+        leading: (ModalRoute.of(context)?.canPop ?? false)
+            ? const AppBackButton()
             : null,
-        // Chats is a bottom-nav destination, so there is usually nothing to pop
-        // back to. The arrow is drawn only when there actually is.
         automaticallyImplyLeading: false,
         title: Text(
           'Chats',

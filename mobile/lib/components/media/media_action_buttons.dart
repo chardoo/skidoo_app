@@ -260,7 +260,7 @@ class MediaActionButtons extends StatefulWidget {
     this.initiallyLiked = false,
     this.showLike = true,
     this.showSave = true,
-    this.showDownload = true,
+    this.showDownload = false,
     this.showComment = true,
     this.onLikeToggled,
     this.onSend,
@@ -290,7 +290,14 @@ class MediaActionButtons extends StatefulWidget {
   /// downloaded but never bookmarked.
   final bool showSave;
 
-  /// Whether to show the download button. Only shown in the gallery.
+  /// Whether to show the download button.
+  ///
+  /// Off unless a caller asks for it, and no caller does. Writing a photo to
+  /// the phone is offered in exactly one place in the app — the Found you
+  /// viewer, on a photo the person has paid for — because that is the only
+  /// place a purchase stands behind it. Anywhere else the photo belongs to the
+  /// photographer who took it, so the button would be handing out their work.
+  /// See FoundPhotoActions.
   final bool showDownload;
 
   /// Whether to show the Comment button. Set to false when comment

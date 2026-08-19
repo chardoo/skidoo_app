@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -75,101 +76,105 @@ class FoundPhotoStage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Center(
-      child: ResolvedAspect(
-        imageUrl: photo.url,
-        // Videos measure too — [ResolvedAspect] reads their poster frame, so a
-        // clip the server sent no dimensions for still gets its real shape
-        // instead of the stand-in.
-        knownAspect: photo.aspectRatio,
-        fallback: _defaultAspect,
-        builder: (context, aspect) => AspectRatio(
-          aspectRatio: aspect,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (photo.isVideo)
-                JpergVideoPlayer(
-                  url: photo.url,
-                  isActive: isActive,
-                  autoPlay: true,
-                  loop: true,
-                  fit: BoxFit.cover,
-                  showControls: true,
-                  backgroundColor: ext.mediaLetterbox,
-                  listenToPauseNotifier: true,
-                )
-              else
-                JpergImage(
-                  imageUrl: photo.url,
-                  // Identical to `cover` once the box is the photo's own
-                  // shape, which is the steady state. It differs only in the
-                  // moment before an unmeasured photo resolves, and there
-                  // `contain` shows the whole frame rather than cropping into
-                  // it and then jumping.
-                  fit: BoxFit.contain,
-                  semanticLabel: 'Found photo',
-                  placeholder: (_, __) => const JpergImagePlaceholder(),
-                  errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
-                ),
-
-              Positioned(
-                left: AppSpacing.md.w,
-                top: AppSpacing.md.h,
-                child: counter == null
-                    ? FoundVisibilityBadge(isPublic: photo.isPublic)
-                    : FoundCounterPill(label: counter!),
-              ),
-
-              // "GHS 20 | Buy". Sits above the action rail, which is centred
-              // down the right edge rather than pinned to the top, so the two
-              // do not meet.
-              if (selection != null && photo.price > 0 && !photo.isPurchased)
-                Positioned(
-                  right: AppSpacing.md.w,
-                  top: AppSpacing.md.h,
-                  child: FoundBuyPill(
-                    photo: photo,
-                    selection: selection!,
+    // Scales up out of the way when a comment sheet opens, so the photo being
+    // discussed stays whole and lit above it.
+    return CommentPushArea(
+      child: Center(
+        child: ResolvedAspect(
+          imageUrl: photo.url,
+          // Videos measure too — [ResolvedAspect] reads their poster frame, so a
+          // clip the server sent no dimensions for still gets its real shape
+          // instead of the stand-in.
+          knownAspect: photo.aspectRatio,
+          fallback: _defaultAspect,
+          builder: (context, aspect) => AspectRatio(
+            aspectRatio: aspect,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (photo.isVideo)
+                  JpergVideoPlayer(
+                    url: photo.url,
+                    isActive: isActive,
+                    autoPlay: true,
+                    loop: true,
+                    fit: BoxFit.cover,
+                    showControls: true,
+                    backgroundColor: ext.mediaLetterbox,
+                    listenToPauseNotifier: true,
+                  )
+                else
+                  JpergImage(
+                    imageUrl: photo.url,
+                    // Identical to `cover` once the box is the photo's own
+                    // shape, which is the steady state. It differs only in the
+                    // moment before an unmeasured photo resolves, and there
+                    // `contain` shows the whole frame rather than cropping into
+                    // it and then jumping.
+                    fit: BoxFit.contain,
+                    semanticLabel: 'Found photo',
+                    placeholder: (_, __) => const JpergImagePlaceholder(),
+                    errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
                   ),
+
+                Positioned(
+                  left: AppSpacing.md.w,
+                  top: AppSpacing.md.h,
+                  child: counter == null
+                      ? FoundVisibilityBadge(isPublic: photo.isPublic)
+                      : FoundCounterPill(label: counter!),
                 ),
 
-              // Nothing on offer means no rail, not an empty column: an
-              // unbought photo in Found you has no reactions of any kind, and
-              // the space belongs to the photo.
-              if (showSocialActions &&
-                  FoundActionRail.actionsFor(photo, gated: purchaseGated).any)
-                Positioned(
-                  right: AppSpacing.md.w,
-                  top: AppSpacing.sm.h,
-                  bottom: AppSpacing.huge.h,
-                  child: Align(
-                    alignment: const Alignment(0, -0.1),
-                    // The rail is sized to the *photo*, and a wide landscape
-                    // shot leaves it very little height — scaleDown keeps every
-                    // action reachable instead of clipping the bottom one off.
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: FoundActionRail(
-                        key: ValueKey('found_actions_${photo.id}'),
-                        photo: photo,
-                        purchaseGated: purchaseGated,
+                // "GHS 20 | Buy". Sits above the action rail, which is centred
+                // down the right edge rather than pinned to the top, so the two
+                // do not meet.
+                if (selection != null && photo.price > 0 && !photo.isPurchased)
+                  Positioned(
+                    right: AppSpacing.md.w,
+                    top: AppSpacing.md.h,
+                    child: FoundBuyPill(
+                      photo: photo,
+                      selection: selection!,
+                    ),
+                  ),
+
+                // Nothing on offer means no rail, not an empty column: an
+                // unbought photo in Found you has no reactions of any kind, and
+                // the space belongs to the photo.
+                if (showSocialActions &&
+                    FoundActionRail.actionsFor(photo, gated: purchaseGated).any)
+                  Positioned(
+                    right: AppSpacing.md.w,
+                    top: AppSpacing.sm.h,
+                    bottom: AppSpacing.huge.h,
+                    child: Align(
+                      alignment: const Alignment(0, -0.1),
+                      // The rail is sized to the *photo*, and a wide landscape
+                      // shot leaves it very little height — scaleDown keeps every
+                      // action reachable instead of clipping the bottom one off.
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: FoundActionRail(
+                          key: ValueKey('found_actions_${photo.id}'),
+                          photo: photo,
+                          purchaseGated: purchaseGated,
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-              // Cleared of the player's own controls on video: the scrubber and
-              // timestamps are anchored to the same bottom edge, so a meta bar
-              // at 0 covers the progress bar and swallows the drags that seek.
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: photo.isVideo ? _videoControlsBand.h : 0,
-                child:
-                    FoundPhotoMetaBar(photo: photo, onViewAlbum: onViewAlbum),
-              ),
-            ],
+                // Cleared of the player's own controls on video: the scrubber and
+                // timestamps are anchored to the same bottom edge, so a meta bar
+                // at 0 covers the progress bar and swallows the drags that seek.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: photo.isVideo ? _videoControlsBand.h : 0,
+                  child:
+                      FoundPhotoMetaBar(photo: photo, onViewAlbum: onViewAlbum),
+                ),
+              ],
+            ),
           ),
         ),
       ),

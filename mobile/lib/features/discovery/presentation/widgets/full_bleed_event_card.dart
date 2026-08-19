@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -94,6 +95,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     if (_mediaIndex < 0 || _mediaIndex >= pics.length) return false;
     return pics[_mediaIndex].isVideo;
   }
+
   bool _sharingExternal = false;
 
   @override
@@ -217,208 +219,213 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     final event = widget.event;
     final liked = event.userReaction == 'like';
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // ── Full-bleed media background ─────────────────────────────────
-        PostPhotoCarousel(
-          pics: event.pictures,
-          pageController: _mediaPageCtrl,
-          showBlur: false,
-          onDoubleTap: _engagementAllowed ? _toggleLike : () {},
-          onTap: widget.onTap,
-          cardIndex: widget.cardIndex,
-          activeCardIndex: widget.activeCardIndex,
-          onMediaChanged: (i) {
-            if (i != _mediaIndex) setState(() => _mediaIndex = i);
-          },
-        ),
+    // Scales up out of the way when a comment sheet opens — see
+    // [CommentPushArea].
+    return CommentPushArea(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // ── Full-bleed media background ─────────────────────────────────
+          PostPhotoCarousel(
+            pics: event.pictures,
+            pageController: _mediaPageCtrl,
+            showBlur: false,
+            onDoubleTap: _engagementAllowed ? _toggleLike : () {},
+            onTap: widget.onTap,
+            cardIndex: widget.cardIndex,
+            activeCardIndex: widget.activeCardIndex,
+            onMediaChanged: (i) {
+              if (i != _mediaIndex) setState(() => _mediaIndex = i);
+            },
+          ),
 
-        // ── Bottom gradient scrim for text legibility ───────────────────
-        const Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: 220,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0xAA000000)],
+          // ── Bottom gradient scrim for text legibility ───────────────────
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 220,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Color(0xAA000000)],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
 
-        // ── Bottom-left caption ──────────────────────────────────────────
-        // Sits above the video's scrubber rather than over it — see
-        // [_videoControlsBand].
-        Positioned(
-          left: 16.w,
-          right: 88.w,
-          bottom: _activeMediaIsVideo
-              ? (24 + _videoControlsBand).h
-              : 24.h,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                event.eventName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (event.description.isNotEmpty) ...[
-                SizedBox(height: AppSpacing.xs.h),
-                ExpandableCaption(
-                  text: event.description,
-                  collapsedMaxLines: 2,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 13.sp,
-                    height: 1.3,
-                  ),
-                  linkStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-              if (event.contentTags.isNotEmpty) ...[
-                SizedBox(height: AppSpacing.xs.h),
-                ExpandableCaption(
-                  text: event.contentTags.map((t) => '#$t').join(' '),
-                  collapsedMaxLines: 2,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 13.sp,
-                    height: 1.3,
-                  ),
-                  linkStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-
-        // ── Right action rail ─────────────────────────────────────────────
-        Positioned(
-          right: 12.w,
-          top: 0,
-          bottom: 0,
-          child: Align(
-            alignment: const Alignment(0, 0.4),
+          // ── Bottom-left caption ──────────────────────────────────────────
+          // Sits above the video's scrubber rather than over it — see
+          // [_videoControlsBand].
+          Positioned(
+            left: 16.w,
+            right: 88.w,
+            bottom: _activeMediaIsVideo ? (24 + _videoControlsBand).h : 24.h,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    Semantics(
-                      button: true,
-                      label: "View ${event.photographerName}'s profile",
-                      child: GestureDetector(
-                        onTap: _openPhotographerProfile,
-                        child: CircleAvatar(
-                          radius: 20.r,
-                          backgroundColor: Colors.white24,
-                          backgroundImage: event.photographerProfileUrl != null
-                              ? CachedNetworkImageProvider(
-                                  event.photographerProfileUrl!,
-                                  cacheManager:
-                                      kIsWeb ? null : JpergImageCache.instance,
-                                )
-                              : null,
-                          child: event.photographerProfileUrl == null
-                              ? Text(
-                                  event.photographerName.isNotEmpty
-                                      ? event.photographerName[0].toUpperCase()
-                                      : '?',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700),
-                                )
-                              : null,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: -8.h,
-                      child: FollowButton(
-                        photographerId: event.photographerId,
-                        onImage: true,
-                        compact: true,
-                        initialFollowing: event.isFollowed,
-                        onLoginRequired:
-                            widget.isAuthenticated ? null : widget.onTap,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 26.h),
-                // Only the bookmark reads bloc state, but the rail is one
-                // widget now, so the builder wraps the lot.
-                BlocBuilder<DiscoveryBloc, DiscoveryState>(
-                  buildWhen: (prev, next) =>
-                      prev.savedEventIds != next.savedEventIds,
-                  builder: (context, state) => MediaReactionRail(
-                    actions: [
-                      // Like disappears when engagement is off; comment stays
-                      // and is drawn unavailable. They are not the same case:
-                      // a missing heart says nothing, but a rail with no
-                      // comment button at all reads as one that never had one,
-                      // and the owner having closed the thread is worth
-                      // stating. Same split the card bar and the web column
-                      // already make.
-                      if (_engagementAllowed)
-                        MediaReaction.like(
-                          liked: liked,
-                          count: event.likes,
-                          onTap: _toggleLike,
-                        ),
-                      if (_engagementAllowed)
-                        MediaReaction.comment(
-                          count: event.commentCount,
-                          onTap: _openComments,
-                        )
-                      else
-                        MediaReaction.commentsDisabled(
-                          count: event.commentCount,
-                        ),
-                      MediaReaction.bookmark(
-                        saved: state.savedEventIds.contains(event.id),
-                        onTap: _toggleSave,
-                      ),
-                      // One button, two destinations, named in the sheet it
-                      // opens — the paper plane and the share arrow beside it
-                      // were two buttons for one intention.
-                      MediaReaction.share(
-                        busy: _sharingExternal,
-                        onTap: _openShareTargets,
-                      ),
-                      MediaReaction.more(onTap: _showMoreOptions),
-                    ],
+                Text(
+                  event.eventName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (event.description.isNotEmpty) ...[
+                  SizedBox(height: AppSpacing.xs.h),
+                  ExpandableCaption(
+                    text: event.description,
+                    collapsedMaxLines: 2,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 13.sp,
+                      height: 1.3,
+                    ),
+                    linkStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+                if (event.contentTags.isNotEmpty) ...[
+                  SizedBox(height: AppSpacing.xs.h),
+                  ExpandableCaption(
+                    text: event.contentTags.map((t) => '#$t').join(' '),
+                    collapsedMaxLines: 2,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 13.sp,
+                      height: 1.3,
+                    ),
+                    linkStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-        ),
-      ],
+
+          // ── Right action rail ─────────────────────────────────────────────
+          Positioned(
+            right: 12.w,
+            top: 0,
+            bottom: 0,
+            child: Align(
+              alignment: const Alignment(0, 0.4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      Semantics(
+                        button: true,
+                        label: "View ${event.photographerName}'s profile",
+                        child: GestureDetector(
+                          onTap: _openPhotographerProfile,
+                          child: CircleAvatar(
+                            radius: 20.r,
+                            backgroundColor: Colors.white24,
+                            backgroundImage:
+                                event.photographerProfileUrl != null
+                                    ? CachedNetworkImageProvider(
+                                        event.photographerProfileUrl!,
+                                        cacheManager: kIsWeb
+                                            ? null
+                                            : JpergImageCache.instance,
+                                      )
+                                    : null,
+                            child: event.photographerProfileUrl == null
+                                ? Text(
+                                    event.photographerName.isNotEmpty
+                                        ? event.photographerName[0]
+                                            .toUpperCase()
+                                        : '?',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: -8.h,
+                        child: FollowButton(
+                          photographerId: event.photographerId,
+                          onImage: true,
+                          compact: true,
+                          initialFollowing: event.isFollowed,
+                          onLoginRequired:
+                              widget.isAuthenticated ? null : widget.onTap,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 26.h),
+                  // Only the bookmark reads bloc state, but the rail is one
+                  // widget now, so the builder wraps the lot.
+                  BlocBuilder<DiscoveryBloc, DiscoveryState>(
+                    buildWhen: (prev, next) =>
+                        prev.savedEventIds != next.savedEventIds,
+                    builder: (context, state) => MediaReactionRail(
+                      actions: [
+                        // Like disappears when engagement is off; comment stays
+                        // and is drawn unavailable. They are not the same case:
+                        // a missing heart says nothing, but a rail with no
+                        // comment button at all reads as one that never had one,
+                        // and the owner having closed the thread is worth
+                        // stating. Same split the card bar and the web column
+                        // already make.
+                        if (_engagementAllowed)
+                          MediaReaction.like(
+                            liked: liked,
+                            count: event.likes,
+                            onTap: _toggleLike,
+                          ),
+                        if (_engagementAllowed)
+                          MediaReaction.comment(
+                            count: event.commentCount,
+                            onTap: _openComments,
+                          )
+                        else
+                          MediaReaction.commentsDisabled(
+                            count: event.commentCount,
+                          ),
+                        MediaReaction.bookmark(
+                          saved: state.savedEventIds.contains(event.id),
+                          onTap: _toggleSave,
+                        ),
+                        // One button, two destinations, named in the sheet it
+                        // opens — the paper plane and the share arrow beside it
+                        // were two buttons for one intention.
+                        MediaReaction.share(
+                          busy: _sharingExternal,
+                          onTap: _openShareTargets,
+                        ),
+                        MediaReaction.more(onTap: _showMoreOptions),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

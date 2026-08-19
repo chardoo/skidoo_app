@@ -26,7 +26,8 @@ import 'package:jperg_app/models/photos/Photo.dart';
 ///   react in front of — the thread would be the viewer talking to themselves.
 /// * **Download is the paid extra**, and only ever appears once the photo has
 ///   actually been bought. A free photo is free to look at and free to pass
-///   on, but it is not free to keep.
+///   on, but it is not free to keep. This is the *only* rail in the app that
+///   draws it: see [FoundPhotoActions.unrestricted].
 ///
 /// The bookmark is deliberately absent from every row. Saving a photo is
 /// offered on the screens that show someone's *work* — discovery, search, a
@@ -47,14 +48,21 @@ class FoundPhotoActions {
     required this.download,
   });
 
-  /// Everything the rail has ever offered, subject only to the owner's
-  /// engagement switch. Used by every entry point that isn't Found you.
+  /// Every entry point that isn't Found you: like, comment, bookmark, share
+  /// and send, subject only to the owner's engagement switch.
+  ///
+  /// **No download.** Writing the file to the phone is offered in exactly one
+  /// place — Found you, on a photo the viewer has paid for — because that is
+  /// the only place the app knows the photo is theirs to keep. Discovery,
+  /// search, a profile grid, a shared `/p/` link and the fullscreen viewer all
+  /// show someone else's work: there is no purchase behind any of it, so a
+  /// download button there hands out a photographer's photo for free.
   const FoundPhotoActions.unrestricted({required bool commentsEnabled})
       : engagement = commentsEnabled,
         commentsDisabled = !commentsEnabled,
         save = true,
         share = true,
-        download = true;
+        download = false;
 
   /// The Found-you rules, applied to [photo].
   factory FoundPhotoActions.forFoundPhoto(Photo photo) {

@@ -116,7 +116,7 @@ void main() {
     await t.pumpWidget(host(FoundPhotoViewerPage(
       photos: album.photos,
       initialIndex: 2,
-      onViewAlbum: () {},
+      onViewAlbum: (value) {},
     )));
     await t.pump();
     // The counter is a Text.rich split across spans (tabular figures on the

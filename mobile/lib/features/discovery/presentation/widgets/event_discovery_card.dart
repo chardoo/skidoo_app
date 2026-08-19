@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -937,10 +938,15 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     final pics = widget.event.pictures;
     final screenH = MediaQuery.sizeOf(context).height;
 
-    if (kIsWeb) return _buildWebCard(context, ext, pics, screenH);
-
-    // Native iOS / Android — reactions beneath the image.
-    return _buildMobileLayout(context, ext, pics, screenH);
+    // Scales up out of the way when a comment sheet opens — see
+    // [CommentPushArea]. Wraps the card rather than the feed around it, so
+    // the post being discussed moves and the list under it does not.
+    return CommentPushArea(
+      child: kIsWeb
+          ? _buildWebCard(context, ext, pics, screenH)
+          // Native iOS / Android — reactions beneath the image.
+          : _buildMobileLayout(context, ext, pics, screenH),
+    );
   }
 
   void _showCommentSheet(BuildContext context, AppThemeExtension ext) {

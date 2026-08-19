@@ -10,6 +10,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/gallery/presentation/found/bloc/found_bloc.dart';
 import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_results_viewer_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/face_gate_prompt.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
@@ -36,6 +37,18 @@ import 'package:jperg_app/features/home/presentation/pages/qr_scan_page.dart';
 /// This widget only decides how to lay that out.
 class FoundFeed extends StatefulWidget {
   const FoundFeed({super.key, this.topPadding = 0});
+
+  /// How many photos are waiting to be confirmed as this person — what the
+  /// dot on the Found tab is drawn from.
+  ///
+  /// Published here because this is where it is already known: the tab checks
+  /// for pending matches on mount, and the home IndexedStack mounts it whether
+  /// or not it is the tab on screen. So the dot is there before Found is ever
+  /// opened, which is the only time it is any use.
+  ///
+  /// Same signal as the "You were found" banner inside the tab, so the two
+  /// appear together and clear together.
+  static final pendingCount = ValueNotifier<int>(0);
 
   /// Space reserved for the floating Found/Feed/Following header that
   /// overlays this tab.
@@ -77,6 +90,7 @@ class _FoundFeedState extends State<FoundFeed> {
   Future<void> _loadPending() async {
     try {
       final pending = await FoundReviewRepository().getPending();
+      FoundFeed.pendingCount.value = pending.total;
       if (mounted) setState(() => _pending = pending);
     } catch (e) {
       debugPrint('[FoundFeed] pending review check failed: $e');
@@ -93,6 +107,7 @@ class _FoundFeedState extends State<FoundFeed> {
     if (answered == true) {
       // Rejections leave the grid and confirmations stay, so the list below
       // has changed either way.
+      FoundFeed.pendingCount.value = 0;
       setState(() => _pending = PendingFound.none);
       _reload();
       unawaited(_loadPending());
@@ -134,6 +149,11 @@ class _FoundFeedState extends State<FoundFeed> {
     setState(() => _access = access);
     if (access == FoundAccess.ready) {
       context.read<FoundBloc>().add(const FoundPhotosRequested());
+    } else {
+      // Signed out, or the face data was just deleted from the account page.
+      // Nothing can be pending against a face the server no longer has, and a
+      // dot pointing at a tab that now shows a sign-up gate is a lie.
+      FoundFeed.pendingCount.value = 0;
     }
   }
 
@@ -170,18 +190,26 @@ class _FoundFeedState extends State<FoundFeed> {
     );
   }
 
-  void _openPhoto(FoundAlbum album, int index, FoundFilters filters) {
+  /// Open a photo into the whole result set, not the section it came from.
+  ///
+  /// The grid groups by event, but what the person filtered for is everything
+  /// on the screen — so the viewer takes the flat read of the same query and
+  /// swipes across events. [FoundResultsViewerPage] fetches that; the photos
+  /// already loaded go with it so the picture is there immediately.
+  void _openPhoto(
+    List<FoundAlbum> albums,
+    FoundAlbum album,
+    int index,
+    FoundFilters filters,
+  ) {
+    if (index < 0 || index >= album.photos.length) return;
+
     Navigator.of(context).push(
       NoSwipeBackPageRoute<void>(
-        builder: (_) => FoundPhotoViewerPage(
-          // Only the preview slice is loaded here; "View album" is the way
-          // through to the rest.
-          photos: album.photos,
-          initialIndex: index,
-          // Found you: what the rail offers depends on whether this photo is
-          // the viewer's yet, and on whether it is public.
-          purchaseGated: true,
-          onViewAlbum: () => _openAlbum(album, filters),
+        builder: (_) => FoundResultsViewerPage(
+          seed: [for (final a in albums) ...a.photos],
+          initialPhotoId: album.photos[index].id,
+          filters: filters,
         ),
       ),
     );
@@ -330,7 +358,7 @@ class _FoundFeedState extends State<FoundFeed> {
                           expanded: state.filters.isActive,
                           onOpenAlbum: () => _openAlbum(album, state.filters),
                           onPhotoTap: (index) =>
-                              _openPhoto(album, index, state.filters),
+                              _openPhoto(state.albums, album, index, state.filters),
                         );
                       },
                     ),

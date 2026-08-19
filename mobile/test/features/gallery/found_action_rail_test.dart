@@ -21,10 +21,17 @@ Widget host(Widget child) => ScreenUtilInit(
       ),
     );
 
-Photo photo({bool commentsEnabled = true}) => Photo.fromMap({
+Photo photo({
+  bool commentsEnabled = true,
+  double price = 0,
+  bool isPurchased = false,
+}) =>
+    Photo.fromMap({
       'id': 'pic-1',
       'url': 'https://cdn.example.com/pic-1.jpg',
       'comments_enabled': commentsEnabled,
+      'price': price,
+      'isPurchased': isPurchased,
       'likeCount': 206,
       'commentCount': 10,
       'event': const {'id': 'evt-1', 'eventName': 'Praise Reloaded 2026'},
@@ -60,15 +67,29 @@ void main() {
     expect(find.bySemanticsLabel('Share photo'), findsOneWidget);
   });
 
-  testWidgets('save, share and download are three separate actions', (t) async {
+  testWidgets('save and share are separate actions', (t) async {
     // Bookmark and download were once one button, so Save wrote a file to the
     // phone and no photo could actually be bookmarked. They stay apart because
-    // they do genuinely different things.
+    // they do genuinely different things — and they no longer even appear on
+    // the same rail, since download is Found you's alone.
     await t.pumpWidget(host(FoundActionRail(photo: photo())));
 
     expect(find.byIcon(Icons.bookmark_border_rounded), findsOneWidget);
     expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
+  });
+
+  testWidgets('download is its own glyph, on the one rail that has it',
+      (t) async {
+    // Found you, priced, paid for. The bookmark is absent here for the
+    // opposite reason — see FoundPhotoActions.
+    await t.pumpWidget(host(FoundActionRail(
+      photo: photo(price: 20, isPurchased: true),
+      purchaseGated: true,
+    )));
+
     expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
   });
 
   testWidgets('send and share are one button, not two', (t) async {

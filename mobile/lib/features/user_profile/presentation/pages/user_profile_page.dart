@@ -272,8 +272,9 @@ class UserProfilePageState extends State<UserProfilePage>
         builder: (viewerContext) => FoundPhotoViewerPage(
           photos: photos,
           initialIndex: index,
-          onViewAlbum: () => Navigator.of(viewerContext).push(
-            MaterialPageRoute<void>(
+          // onViewAlbum: (value) => ,
+          onViewAlbum: (value) => Navigator.of(viewerContext).push(
+            MaterialPageRoute<Photo>(
               builder: (_) => EventPicturesPage(event: event),
             ),
           ),

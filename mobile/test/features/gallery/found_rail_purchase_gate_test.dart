@@ -225,7 +225,7 @@ void main() {
       final rail =
           await pumpRail(t, photo(commentsEnabled: false), gated: false);
 
-      expect(rail, {commentOff, bookmark, download, share});
+      expect(rail, {commentOff, bookmark, share});
     });
 
     testWidgets('a private photo shows no comment glyph, crossed or not',
@@ -250,13 +250,14 @@ void main() {
   });
 
   group('the bookmark is an ungated-screen action', () {
-    testWidgets('ungated callers are untouched by any of it', (t) async {
+    testWidgets('ungated callers keep everything but the download', (t) async {
       // Discovery, search, a profile grid, a shared link: the photo is
-      // someone's work rather than a photo of you, there is nothing to have
-      // bought, and the rail is what it always was — bookmark included.
+      // someone's work rather than a photo of you. Like, comment, bookmark and
+      // share all apply; downloading it does not, because nobody has bought
+      // anything here.
       final rail = await pumpRail(t, photo(price: 20), gated: false);
 
-      expect(rail, {like, comment, bookmark, download, share});
+      expect(rail, {like, comment, bookmark, share});
     });
 
     testWidgets('and never appears in Found you, paid or free', (t) async {
@@ -285,6 +286,40 @@ void main() {
 
       expect(find.byIcon(Icons.bookmark_rounded), findsOneWidget);
       expect(find.byIcon(bookmark), findsNothing);
+    });
+  });
+
+  group('the download', () {
+    testWidgets('appears nowhere but a bought photo in Found you', (t) async {
+      // The whole rule in one place. Every combination that is not "Found you,
+      // priced, paid for" must not offer to write the file to the phone —
+      // everywhere else the photo belongs to the photographer who took it.
+      for (final gated in [true, false]) {
+        for (final p in [
+          photo(),
+          photo(isPublic: true),
+          photo(isPurchased: true),
+          photo(isPublic: true, isPurchased: true),
+          photo(price: 20),
+          photo(price: 20, isPublic: true),
+        ]) {
+          expect(
+            await pumpRail(t, p, gated: gated),
+            isNot(contains(download)),
+            reason: 'gated=$gated price=${p.price} '
+                'purchased=${p.isPurchased} public=${p.isPublic}',
+          );
+        }
+      }
+    });
+
+    testWidgets('appears on a bought photo in Found you, and only there',
+        (t) async {
+      final bought = photo(price: 20, isPurchased: true);
+
+      expect(await pumpRail(t, bought, gated: true), contains(download));
+      // Same photo, opened from a screen that shows someone's work.
+      expect(await pumpRail(t, bought, gated: false), isNot(contains(download)));
     });
   });
 }

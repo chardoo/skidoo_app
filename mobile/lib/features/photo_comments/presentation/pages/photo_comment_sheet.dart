@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/comments/comment_input_bar_widget.dart';
@@ -22,11 +23,8 @@ class PhotoCommentSheet {
     required String pictureId,
     required String imageUrl,
   }) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      useSafeArea: true,
+    showCommentSheet(
+      context,
       builder: (ctx) => BlocProvider(
         create: (_) => sl<ChatRoomBloc>(),
         child: _PhotoCommentSheetContent(pictureId: pictureId),

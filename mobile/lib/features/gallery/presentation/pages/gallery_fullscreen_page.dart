@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
@@ -189,7 +190,11 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: Colors.black);
+    // Scales up out of the way when a comment sheet opens — see
+    // [CommentPushArea].
+    return CommentPushArea(
+      child: webWrap(page, backgroundColor: Colors.black),
+    );
   }
 }
 

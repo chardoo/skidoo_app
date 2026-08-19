@@ -9,19 +9,22 @@ import 'package:jperg_app/models/photos/Photo.dart';
 part 'found_album_event.dart';
 part 'found_album_state.dart';
 
-/// Backs the album drill-down: every photo of one event, via
-/// `GET /client/my-photos?eventId=<id>&groupBy=none`, paged.
+/// The flat, paged read of `GET /client/my-photos?groupBy=none`.
 ///
-/// This exists because the feed's albums only carry a `previewLimit`-sized
-/// slice — opening an album has to fetch the rest rather than display the six
-/// tiles it already had.
+/// Two callers, one query. Give it an [eventId] and it backs the album
+/// drill-down — every photo of that event, which the feed's albums cannot show
+/// because they only carry a `previewLimit`-sized slice. Leave [eventId] null
+/// and it is the whole result set for [filters], which is what the viewer
+/// opened from the feed swipes through.
 class FoundAlbumBloc extends Bloc<FoundAlbumEvent, FoundAlbumState> {
   FoundAlbumBloc({
     required GetFoundPhotosUseCase getFoundPhotosUseCase,
-    required String eventId,
+    String? eventId,
     FoundFilters filters = FoundFilters.none,
+    this.pageSize = defaultPageSize,
   })  : _getFound = getFoundPhotosUseCase,
-        _filters = filters.copyWith(eventIds: {eventId}),
+        _filters =
+            eventId == null ? filters : filters.copyWith(eventIds: {eventId}),
         super(const FoundAlbumState()) {
     // One event type on a sequential transformer — same reasoning as FoundBloc.
     on<FoundAlbumPhotosRequested>(_onRequested, transformer: sequential());
@@ -34,7 +37,13 @@ class FoundAlbumBloc extends Bloc<FoundAlbumEvent, FoundAlbumState> {
   /// the user was just looking at.
   final FoundFilters _filters;
 
-  static const pageSize = 30;
+  static const defaultPageSize = 30;
+
+  /// Photos per request. The viewer asks for a bigger first page than the
+  /// album grid does: it opens on a photo the person picked out of the feed
+  /// and has to find that photo in this list to swipe from it, so the page has
+  /// to be big enough to contain it. See FoundResultsViewerPage.
+  final int pageSize;
 
   Future<void> _onRequested(
       FoundAlbumPhotosRequested event, Emitter<FoundAlbumState> emit) async {

@@ -456,21 +456,31 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
               child: Padding(
                 key: _headerKey,
                 padding: EdgeInsets.only(top: topPadding),
-                child: FeedTopBar(
-                  tabs: _tabs,
-                  // Found is the one tab on the page's own background — see
-                  // the scrim above, which skips it for the same reason.
-                  overSolidBackground: _selectedTab == 0,
-                  selectedTab: _selectedTab,
-                  onTabChanged: (i) {
-                    VideoPauseNotifier.pauseAll();
-                    _selectTab(i);
-                  },
-                  onSearchOpen: _openSearch,
-                  // Shown to guests too: an event code is exactly how
-                  // someone without an account gets at photos of themselves.
-                  onUnlockPressed: _openUnlock,
-                  unlockActive: _unlockSheetOpen,
+                // Only the dot depends on this, so the listener wraps the bar
+                // rather than the page — the Found tab publishes a pending
+                // count on mount and after a review, and neither should
+                // rebuild the feeds underneath.
+                child: ValueListenableBuilder<int>(
+                  valueListenable: FoundFeed.pendingCount,
+                  builder: (context, pending, __) => FeedTopBar(
+                    tabs: _tabs,
+                    // Found carries a dot while photos of this person are
+                    // waiting to be confirmed — see FoundFeed.pendingCount.
+                    badgedTabs: pending > 0 ? const {0} : const {},
+                    // Found is the one tab on the page's own background — see
+                    // the scrim above, which skips it for the same reason.
+                    overSolidBackground: _selectedTab == 0,
+                    selectedTab: _selectedTab,
+                    onTabChanged: (i) {
+                      VideoPauseNotifier.pauseAll();
+                      _selectTab(i);
+                    },
+                    onSearchOpen: _openSearch,
+                    // Shown to guests too: an event code is exactly how
+                    // someone without an account gets at photos of themselves.
+                    onUnlockPressed: _openUnlock,
+                    unlockActive: _unlockSheetOpen,
+                  ),
                 ),
               ),
             ),
