@@ -88,6 +88,12 @@ dependencies:
   # ~20 MB of the iOS download to decode formats the OS already handles.
   video_player: ^2.9.1
 
+  # Audio — the feed's music layer, one player for the whole app (see
+  # FeedMusicController). Streams a remote URL, seeks, loops and takes a
+  # volume, which is the entire surface this uses. Not just_audio_background:
+  # feed music is not something to keep playing on the lock screen.
+  just_audio: ^0.9.42
+
   # QR / Barcode
   mobile_scanner: ^7.0.0
 

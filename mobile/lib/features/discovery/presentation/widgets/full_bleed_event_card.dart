@@ -21,6 +21,9 @@ import 'package:jperg_app/features/discovery/presentation/widgets/event_more_opt
 import 'package:jperg_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/music/presentation/feed_music_controller.dart';
+import 'package:jperg_app/features/music/presentation/widgets/feed_music_pill.dart';
 
 /// One full-screen page of the TikTok-style vertical feed — the photo/video
 /// carousel fills the entire page edge-to-edge, with the caption and action
@@ -65,6 +68,104 @@ class FullBleedEventCard extends StatefulWidget {
 class _FullBleedEventCardState extends State<FullBleedEventCard> {
   final _mediaPageCtrl = PageController();
 
+  FeedMusicController? _music;
+
+  /// Whether this card should have the feed's sound right now.
+  ///
+  /// Every one of these has to hold, and any of them going false silences the
+  /// card. They are deliberately all *derived* rather than tracked with flags:
+  /// a card that computes the answer fresh on every rebuild cannot drift out
+  /// of step with the screen, which is the failure mode that makes feed audio
+  /// play over the wrong thing.
+  bool get _wantsMusic {
+    // Nothing to play. The overwhelmingly common case — most events are
+    // unscored — and the cheapest check, so it goes first.
+    if (widget.event.music.isEmpty) return false;
+
+    // Not the card in focus. The same notifier that gates video playback, so
+    // sound and picture can never disagree about which card is current.
+    if (widget.activeCardIndex.value != widget.cardIndex) return false;
+
+    // A video slide brings its own audio. Two soundtracks at once is the one
+    // outcome nobody wants, so the music yields — and comes back the moment
+    // the carousel returns to a photo.
+    if (_activeMediaIsVideo) return false;
+
+    // Off-screen but still mounted: an inactive tab of Home's IndexedStack, or
+    // an inactive pill tab inside it. TickerMode is how this app already
+    // answers that question — JpergVideoPlayer reads the same signal — and it
+    // composes down the tree, so one disabled ancestor covers every feed
+    // beneath it. Reading it here also registers the dependency that rebuilds
+    // this card when the answer changes.
+    if (!TickerMode.valuesOf(context).enabled) return false;
+
+    // Anything was pushed over the feed — the event's pictures, a profile, a
+    // deep link, or a modal sheet, since a sheet is a route too and
+    // `isCurrent` does not distinguish. So opening comments or the share sheet
+    // pauses the music and closing them resumes it, which is a defensible
+    // place to land: someone reading a comment thread is no longer watching.
+    // Telling the two apart would mean a RouteObserver<PageRoute> and a
+    // subscription per card, which is a lot of machinery for a debatable
+    // difference — worth revisiting only if the pause turns out to grate.
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return false;
+
+    return true;
+  }
+
+  /// Pushes [_wantsMusic] to the controller. Safe to call on every build —
+  /// claiming what this card already owns is a no-op.
+  void _syncMusic() {
+    final music = _music;
+    if (music == null) return;
+    if (_wantsMusic) {
+      music.claim(this, widget.event.id, widget.event.music);
+    } else {
+      music.release(this);
+    }
+  }
+
+  void _onActiveCardChanged() {
+    if (mounted) _syncMusic();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.activeCardIndex.addListener(_onActiveCardChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Resolved here rather than in initState: the locator is fine either way,
+    // but TickerMode and ModalRoute are inherited, and this is the first point
+    // both can be read — and the callback for whenever either changes.
+    //
+    // Absent from the locator is a supported state, not a bug to assert on: a
+    // card is a card without music, and a widget test that mounts one to check
+    // its share sheet should not have to stand up an audio stack to do it.
+    // This is the same stance the rest of the feature takes — music never
+    // stops a feed from working.
+    _music ??= sl.isRegistered<FeedMusicController>()
+        ? sl<FeedMusicController>()
+        : null;
+    _syncMusic();
+  }
+
+  @override
+  void didUpdateWidget(FullBleedEventCard old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.activeCardIndex, widget.activeCardIndex)) {
+      old.activeCardIndex.removeListener(_onActiveCardChanged);
+      widget.activeCardIndex.addListener(_onActiveCardChanged);
+    }
+    // A recycled card is a different post with the same State — the feed's
+    // ValueKey usually prevents it, but a soundtrack that outlived its event
+    // would be the worst kind of wrong, so this re-decides rather than assumes.
+    if (old.event.id != widget.event.id) _syncMusic();
+  }
+
   /// Which slide of this card's carousel is showing, so the caption knows
   /// whether it is sitting over a video.
   int _mediaIndex = 0;
@@ -100,6 +201,11 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
 
   @override
   void dispose() {
+    widget.activeCardIndex.removeListener(_onActiveCardChanged);
+    // Hands the sound back before going: a card scrolled out of the PageView's
+    // cache would otherwise keep the feed's one player held for a post that no
+    // longer exists, and nothing else would ever release it.
+    _music?.release(this);
     _mediaPageCtrl.dispose();
     super.dispose();
   }
@@ -235,7 +341,11 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
             cardIndex: widget.cardIndex,
             activeCardIndex: widget.activeCardIndex,
             onMediaChanged: (i) {
-              if (i != _mediaIndex) setState(() => _mediaIndex = i);
+              if (i == _mediaIndex) return;
+              setState(() => _mediaIndex = i);
+              // Swiping onto a video silences the music and swiping back off
+              // one restores it — see [_wantsMusic].
+              _syncMusic();
             },
           ),
 
@@ -296,6 +406,32 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                     ),
                   ),
                 ],
+                // ── Now playing ─────────────────────────────────────────────
+                // Lit only while this card actually holds the feed's one
+                // player, so exactly one pill can be visible at a time. A
+                // scored event whose turn has not come shows nothing, which is
+                // the honest answer — the pill is a statement about sound, not
+                // a badge saying music exists.
+                if (_music != null)
+                  ValueListenableBuilder<FeedMusicNowPlaying?>(
+                    valueListenable: _music!.nowPlaying,
+                    builder: (context, playing, _) {
+                      if (playing == null || playing.eventId != event.id) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: EdgeInsets.only(top: AppSpacing.xs.h),
+                        child: ValueListenableBuilder<bool>(
+                          valueListenable: _music!.muted,
+                          builder: (context, muted, __) => FeedMusicPill(
+                            track: playing.track,
+                            muted: muted,
+                            onToggleMute: _music!.toggleMute,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 if (event.contentTags.isNotEmpty) ...[
                   SizedBox(height: AppSpacing.xs.h),
                   ExpandableCaption(

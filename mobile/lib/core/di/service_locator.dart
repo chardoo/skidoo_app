@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jperg_app/features/music/presentation/feed_music_controller.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_key_datasource.dart';
 import 'package:jperg_app/features/discovery/data/datasources/client_saved_data_source.dart';
@@ -347,6 +348,22 @@ Future<void> setupServiceLocator() async {
         setAnonymousMode: sl<SetAnonymousModeUseCase>(),
         setHideProfile: sl<SetHideProfileUseCase>(),
       ));
+
+  // ── Feed music ────────────────────────────────────────────────────────────
+  // One controller, and therefore one audio player, for every feed in the app.
+  // Lazy so no decoder is created for a session that never reaches a scored
+  // event — which is most of them.
+  sl.registerLazySingleton<FeedMusicController>(() {
+    final auth = sl<AuthService>();
+    final controller = FeedMusicController(
+      persistMuted: auth.setFeedMusicMuted,
+    );
+    // The stored preference arrives a moment after the controller does. That
+    // is soon enough: nothing is playing yet, and restoring it applies to the
+    // first card that claims.
+    auth.getFeedMusicMuted().then(controller.restoreMuted);
+    return controller;
+  });
 
   // ── Chat feature ──────────────────────────────────────────────────────────
   sl.registerSingleton<ChatApiClient>(ChatApiClient(sl<AuthService>()));

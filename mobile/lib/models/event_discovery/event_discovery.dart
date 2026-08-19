@@ -1,4 +1,5 @@
 import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/features/music/domain/entities/music_track.dart';
 
 enum MediaType { photo, video }
 
@@ -131,6 +132,18 @@ class EventDiscovery {
   /// the caption body beneath the event name, above the content tags.
   final String description;
 
+  /// The soundtrack the photographer scored this event with, in the order
+  /// they chose — the feed plays it in that order.
+  ///
+  /// Whole track objects rather than ids, which is the backend's deliberate
+  /// design (see the note on `Event.music`): the feed can start playing
+  /// without resolving anything, and an event scored under one music provider
+  /// keeps playing after a move to another.
+  ///
+  /// Empty for every event nobody scored, which is most of them — an empty
+  /// soundtrack is the normal case, not a missing one.
+  final List<MusicTrack> music;
+
   const EventDiscovery({
     required this.id,
     required this.eventName,
@@ -146,6 +159,7 @@ class EventDiscovery {
     this.isFollowed = false,
     this.contentTags = const [],
     this.description = '',
+    this.music = const [],
   });
 
   Map<String, dynamic> toMap() => {
@@ -164,6 +178,7 @@ class EventDiscovery {
         'comments_enabled': commentsEnabled,
         'content_tags': contentTags,
         'description': description,
+        'music': music.map((t) => t.toMap()).toList(),
       };
 
   EventDiscovery copyWith({
@@ -176,6 +191,7 @@ class EventDiscovery {
     bool? isFollowed,
     List<String>? contentTags,
     String? description,
+    List<MusicTrack>? music,
   }) {
     return EventDiscovery(
       id: id,
@@ -193,6 +209,7 @@ class EventDiscovery {
       isFollowed: isFollowed ?? this.isFollowed,
       contentTags: contentTags ?? this.contentTags,
       description: description ?? this.description,
+      music: music ?? this.music,
     );
   }
 
@@ -237,6 +254,10 @@ class EventDiscovery {
       isFollowed: isFollowed,
       contentTags: contentTags,
       description: event['description']?.toString() ?? '',
+      // Absent on any endpoint that has not been taught to send it, and on
+      // every cached feed written before it existed — both parse to empty,
+      // which is the same as an unscored event and needs no special case.
+      music: MusicTrack.listFrom(event['music']),
     );
   }
 }

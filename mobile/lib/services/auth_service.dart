@@ -67,6 +67,7 @@ class AuthService {
   static const _kLastFacePrompt    = 'auth.last_face_prompt';
   static const _kHasSeenOnboarding = 'auth.has_seen_onboarding';
   static const _kHasSeenSwipeHint  = 'auth.has_seen_swipe_hint';
+  static const _kFeedMusicMuted    = 'auth.feed_music_muted';
   static const _kAudiencePreference = 'auth.audience_preference';
   static const _kInstallMarker     = 'auth.install_marker';
   static const _kLastAccountId     = 'auth.last_account_id';
@@ -236,6 +237,16 @@ class AuthService {
   Future<void> setHasSeenSwipeHint() => _write(_kHasSeenSwipeHint, 'true');
   Future<bool> getHasSeenSwipeHint() async =>
       (await _read(_kHasSeenSwipeHint)) == 'true';
+
+  /// Whether the feed's music plays silently. Device-level, like the swipe
+  /// hint above — it is a statement about this phone (and usually about where
+  /// the person is) rather than about the account, so it is deliberately
+  /// *not* cleared on sign-out: logging out should never turn the sound back
+  /// on for whoever picks the phone up next.
+  Future<void> setFeedMusicMuted(bool muted) =>
+      _write(_kFeedMusicMuted, muted ? 'true' : 'false');
+  Future<bool> getFeedMusicMuted() async =>
+      (await _read(_kFeedMusicMuted)) == 'true';
 
   /// "I'm here to discover" vs "Share my work" — a local content-personalisation
   /// signal only, does not change the account's role.

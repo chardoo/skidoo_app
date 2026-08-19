@@ -426,13 +426,34 @@ class _HomeViewState extends State<_HomeView> {
       child: Scaffold(
         resizeToAvoidBottomInset: false,
         extendBody: true,
+        // IndexedStack keeps every tab mounted, so a feed on the Home tab is
+        // still fully alive while someone reads their messages. TickerMode is
+        // how the pill tabs *inside* Home already answer "am I on screen?"
+        // (see _buildTabs there, and JpergVideoPlayer which reads it) — and it
+        // composes with those, so one signal now covers both levels: a card is
+        // audible only when its pill tab and its bottom-nav tab are both
+        // showing. Unlike the one-shot VideoPauseNotifier.pauseAll() in
+        // _changeTab, this reverses itself, so coming back to the feed resumes
+        // rather than leaving it silent until the next swipe.
         body: IndexedStack(
           index: _selectedTab,
           children: [
-            const HomeNavigationPage(),
-            const ChatRoomsPage(),
-            const NotificationsPage(),
-            UserProfilePage(key: _profileKey),
+            TickerMode(
+              enabled: _selectedTab == 0,
+              child: const HomeNavigationPage(),
+            ),
+            TickerMode(
+              enabled: _selectedTab == 1,
+              child: const ChatRoomsPage(),
+            ),
+            TickerMode(
+              enabled: _selectedTab == 2,
+              child: const NotificationsPage(),
+            ),
+            TickerMode(
+              enabled: _selectedTab == 3,
+              child: UserProfilePage(key: _profileKey),
+            ),
           ],
         ),
         bottomNavigationBar: kIsWeb ? null : AnimatedSlide(
@@ -509,13 +530,26 @@ class _HomeViewState extends State<_HomeView> {
           ),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(
+            // Same gating as the phone layout above, for the same reason.
             child: IndexedStack(
               index: _selectedTab,
               children: [
-                const HomeNavigationPage(),
-                const ChatRoomsPage(),
-                const NotificationsPage(),
-                UserProfilePage(key: _profileKey),
+                TickerMode(
+                  enabled: _selectedTab == 0,
+                  child: const HomeNavigationPage(),
+                ),
+                TickerMode(
+                  enabled: _selectedTab == 1,
+                  child: const ChatRoomsPage(),
+                ),
+                TickerMode(
+                  enabled: _selectedTab == 2,
+                  child: const NotificationsPage(),
+                ),
+                TickerMode(
+                  enabled: _selectedTab == 3,
+                  child: UserProfilePage(key: _profileKey),
+                ),
               ],
             ),
           ),
