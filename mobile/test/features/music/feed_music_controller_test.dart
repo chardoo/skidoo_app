@@ -23,6 +23,12 @@ class FakePlayer implements FeedMusicPlayer {
   /// Set to have [load] throw, standing in for a dead URL or an outage.
   Object? loadError;
 
+  /// Have [play] return a Future that never resolves — which is precisely what
+  /// the real just_audio player did. Its `play()` completes only when playback
+  /// completes, is paused or is stopped, and the feed loops forever, so it
+  /// resolved never. See the test that uses this.
+  bool playNeverCompletes = false;
+
   final _index = StreamController<int?>.broadcast();
 
   bool get isPlaying => _playing;
@@ -45,6 +51,7 @@ class FakePlayer implements FeedMusicPlayer {
   Future<void> play() async {
     plays++;
     _playing = true;
+    if (playNeverCompletes) await Completer<void>().future;
   }
 
   @override
@@ -105,6 +112,31 @@ void main() {
       ]);
       expect(player.isPlaying, isTrue);
       expect(music.nowPlaying.value?.eventId, 'event-1');
+    });
+
+    testWidgets('the sound comes up even if play() never resolves', (t) async {
+      // The bug that shipped, and the reason the feed was silent on device
+      // while every test here passed.
+      //
+      // just_audio's play() completes "when the playback completes or is
+      // paused or stopped". The feed loops with LoopMode.all, so it resolved
+      // never — and the controller awaited it. Everything after that await was
+      // unreachable: the pill never lit, and the fade that takes the volume off
+      // zero never ran. The audio was playing perfectly, at volume zero, with
+      // no error anywhere to say so.
+      //
+      // The fake used to resolve immediately, which is why nothing caught it.
+      final player = FakePlayer()..playNeverCompletes = true;
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+
+      expect(player.isPlaying, isTrue);
+      expect(player.volume, 1.0, reason: 'the fade must still have run');
+      expect(music.nowPlaying.value?.eventId, 'event-1',
+          reason: 'the pill must still have lit');
     });
 
     testWidgets('nothing starts before the card has settled', (t) async {

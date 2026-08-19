@@ -178,9 +178,17 @@ class FeedMusicController with WidgetsBindingObserver {
       // Come up from silence rather than punching in at full volume: the load
       // above may have taken a moment, and starting loud is jarring.
       await _player.setVolume(0);
-      await _player.play();
+
+      // Started, not awaited to completion. [FeedMusicPlayer.play] promises to
+      // return once playback has begun, and this deliberately does not depend
+      // on that promise being kept: the volume is at zero right now, so a
+      // `play()` that never resolves would leave the feed silent with nothing
+      // to show for it — which is exactly what the just_audio adapter used to
+      // do, and it cost a release. Nothing below may sit behind a player call.
+      unawaited(_player.play());
+
       if (generation != _generation) {
-        await _player.pause();
+        unawaited(_player.pause());
         return;
       }
 

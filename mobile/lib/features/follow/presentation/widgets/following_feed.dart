@@ -1,8 +1,4 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
@@ -19,13 +15,19 @@ import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 /// Someone who already follows a couple of people never sees the empty tab, so
 /// without those cards the app would never offer them anyone new.
 ///
-/// This scrolls continuously rather than paging, which is the one way it
-/// differs from `events_feed.dart`'s Feed tab. The suggestions card is the
-/// reason: as a page in a [PageView] it was stretched to the whole viewport
-/// for the sake of five rows, and no arrangement of those rows could fill the
-/// rest — top, centre and bottom each just moved the empty half elsewhere.
-/// Scrolling lets it be as tall as its contents, with the next post directly
-/// beneath it. Posts still take a screen each; they are simply not snapped to.
+/// Pages one post at a time, exactly as `events_feed.dart`'s Feed tab does —
+/// a vertical [PageView] that snaps, so the two tabs feel the same under the
+/// thumb rather than one gliding and the other catching.
+///
+/// This did scroll continuously for a while, because as a page the suggestions
+/// card was stretched to the whole viewport for the sake of five rows and no
+/// arrangement of them could fill the rest — top, centre and bottom each just
+/// moved the empty half elsewhere. Stretching was the actual problem, though,
+/// not paging: the Feed tab already deals non-post cards (ads, requests) into
+/// its pager and keeps them their own size by wrapping them in a [FittedBox],
+/// which centres the card in the page instead of pulling it apart. The same
+/// wrapper is used here, so the card stays card-shaped and the feed still
+/// snaps.
 class FollowingFeed extends StatefulWidget {
   const FollowingFeed({
     super.key,
@@ -75,12 +77,11 @@ class FollowingFeed extends StatefulWidget {
 class _FollowingFeedState extends State<FollowingFeed> {
   final _repo = FollowRepository();
   final _activeCardIndex = ValueNotifier<int>(0);
-  final _scrollCtrl = ScrollController();
+  final _pageCtrl = PageController();
 
-  /// The slots the last build laid out, so the scroll callback can reason
-  /// about what it is looking at without rebuilding them.
+  /// The slots the last build laid out, so the page callback can reason about
+  /// what it landed on without rebuilding them.
   List<FeedSlot> _slots = const [];
-  final _slotKeys = <int, GlobalKey>{};
 
   List<EventDiscovery> _events = [];
   bool _loading = true;
@@ -109,7 +110,6 @@ class _FollowingFeedState extends State<FollowingFeed> {
   void initState() {
     super.initState();
     FollowRepository.followedRevision.addListener(_onFollowedChanged);
-    _scrollCtrl.addListener(_onScroll);
     _load();
     _loadSuggestions();
   }
@@ -117,8 +117,7 @@ class _FollowingFeedState extends State<FollowingFeed> {
   @override
   void dispose() {
     FollowRepository.followedRevision.removeListener(_onFollowedChanged);
-    _scrollCtrl.removeListener(_onScroll);
-    _scrollCtrl.dispose();
+    _pageCtrl.dispose();
     _activeCardIndex.dispose();
     super.dispose();
   }
@@ -234,36 +233,20 @@ class _FollowingFeedState extends State<FollowingFeed> {
     });
   }
 
-  /// Which slot currently owns the screen, by how much of it each one covers.
+  /// Which slot owns the screen: with a pager, simply the page landed on.
   ///
-  /// The feed used to page, so this was simply the page index. Scrolling
-  /// continuously there is no such thing — two slots are on screen for most of
-  /// a swipe — so "active" is the one showing the most. A suggestions card
-  /// winning is meaningful, not a miss: its index matches no post, which is
-  /// what stops a video playing under a card the reader is looking at.
-  void _onScroll() {
-    final self = context.findRenderObject() as RenderBox?;
-    if (self == null || !self.hasSize) return;
-    final viewport = self.size.height;
-
-    int? best;
-    var bestVisible = 0.0;
-    for (final entry in _slotKeys.entries) {
-      final ctx = entry.value.currentContext;
-      if (ctx == null) continue;
-      final box = ctx.findRenderObject() as RenderBox?;
-      if (box == null || !box.hasSize) continue;
-      final top = box.localToGlobal(Offset.zero, ancestor: self).dy;
-      final visible = math.min(top + box.size.height, viewport) - math.max(top, 0);
-      if (visible > bestVisible) {
-        bestVisible = visible;
-        best = entry.key;
-      }
-    }
-
-    if (best == null || best == _activeCardIndex.value) return;
-    _activeCardIndex.value = best;
-    _onActiveSlotChanged(best);
+  /// While this feed scrolled freely there was no such thing — two slots were
+  /// on screen for most of a swipe — so it measured which covered the most,
+  /// keyed off a [GlobalKey] per slot. Snapping removes the question and the
+  /// bookkeeping with it.
+  ///
+  /// A suggestions page winning is meaningful, not a miss: its index matches
+  /// no post card, which is what stops a video or a soundtrack playing under a
+  /// card the reader is looking at.
+  void _onPageChanged(int pageIndex) {
+    if (pageIndex == _activeCardIndex.value) return;
+    _activeCardIndex.value = pageIndex;
+    _onActiveSlotChanged(pageIndex);
   }
 
   void _onActiveSlotChanged(int slotIndex) {
@@ -277,11 +260,6 @@ class _FollowingFeedState extends State<FollowingFeed> {
         (_suggestions.length / FollowingFeed.suggestionsPerCard).ceil();
     if (slicesUsed >= slicesAvailable - 1) _loadSuggestions(grow: true);
   }
-
-  /// One key per slot so [_onScroll] can measure what is on screen. Only the
-  /// handful the list has built resolve to a context; the rest are inert.
-  GlobalKey _keyFor(int slotIndex) =>
-      _slotKeys.putIfAbsent(slotIndex, GlobalKey.new);
 
   @override
   Widget build(BuildContext context) {
@@ -315,56 +293,49 @@ class _FollowingFeedState extends State<FollowingFeed> {
     return RefreshIndicator(
       onRefresh: _load,
       color: ext.accentGold,
-      // Scrolls rather than pages, so a suggestions card can be an item the
-      // reader passes on the way to the next post instead of a screen of its
-      // own. Posts keep a full screen each; only the card is as tall as it is.
-      child: LayoutBuilder(
-        builder: (context, constraints) => ListView.builder(
-          controller: _scrollCtrl,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          itemCount: _slots.length + (_loadingMore ? 1 : 0),
-          itemBuilder: (_, i) {
-            if (i == _slots.length) {
-              return Padding(
-                padding: EdgeInsets.symmetric(vertical: AppSpacing.xl.h),
-                child: const Center(child: CircularProgressIndicator()),
-              );
-            }
+      // The Feed tab's pager, to the letter: vertical, one slot per page,
+      // snapping. See the note on [FollowingFeed] for why the suggestions card
+      // no longer needs this to be a free-scrolling list.
+      child: PageView.builder(
+        controller: _pageCtrl,
+        scrollDirection: Axis.vertical,
+        onPageChanged: _onPageChanged,
+        itemCount: _slots.length + (_loadingMore ? 1 : 0),
+        itemBuilder: (context, i) {
+          if (i == _slots.length) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            final slot = _slots[i];
-            final suggestions = slot.suggestions;
-            if (suggestions != null) {
-              return Padding(
-                key: _keyFor(i),
-                // A card at the very end has nothing after it to push it clear
-                // of the floating nav bar.
-                padding: EdgeInsets.only(
-                    bottom: i == _slots.length - 1 ? 88.h : 0),
+          final slot = _slots[i];
+          final suggestions = slot.suggestions;
+          if (suggestions != null) {
+            // Scaled to fit rather than stretched to fill — the same wrapper
+            // the Feed tab puts round its ads and requests. Without it the
+            // card is pulled to the height of the viewport and five rows of
+            // creators float in a screen of empty space.
+            return FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox(
+                width: MediaQuery.sizeOf(context).width,
                 child: FeedSuggestionsCard(suggestions: suggestions),
-              );
-            }
-
-            final event = slot.event!;
-            return SizedBox(
-              key: _keyFor(i),
-              // A post still owns the screen; it just isn't snapped to.
-              height: constraints.maxHeight,
-              child: FullBleedEventCard(
-                key: ValueKey('following_event_${event.id}'),
-                event: event,
-                // The slot index, not the event index: it is matched against
-                // [_activeCardIndex] to decide which card's video may play,
-                // and a suggestions card matching nothing is the point — no
-                // video plays while one is on screen.
-                cardIndex: i,
-                activeCardIndex: _activeCardIndex,
-                onTap: () => widget.onEventTap?.call(event),
-                onHide: () => _onHide(event.id),
               ),
             );
-          },
-        ),
+          }
+
+          final event = slot.event!;
+          return FullBleedEventCard(
+            key: ValueKey('following_event_${event.id}'),
+            event: event,
+            // The slot index, not the event index: it is matched against
+            // [_activeCardIndex] to decide which card's video and music may
+            // play, and a suggestions card matching nothing is the point —
+            // nothing plays while one is on screen.
+            cardIndex: i,
+            activeCardIndex: _activeCardIndex,
+            onTap: () => widget.onEventTap?.call(event),
+            onHide: () => _onHide(event.id),
+          );
+        },
       ),
     );
   }

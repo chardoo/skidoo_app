@@ -9,12 +9,14 @@ import 'package:jperg_app/features/follow/presentation/widgets/feed_suggestions_
 import 'package:jperg_app/features/follow/presentation/widgets/following_feed.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
-/// The Following tab scrolls rather than pages.
+/// The Following tab pages, exactly as the Feed tab does.
 ///
-/// It used to be a vertical [PageView], which forced the suggested-creators
-/// card to be a whole screen for the sake of five rows. Scrolling is what lets
-/// that card be an item the reader passes on the way to the next post — the
-/// posts still take a screen each, they are just no longer snapped to.
+/// It scrolled freely for a while, because as a page the suggested-creators
+/// card was stretched to a whole screen for the sake of five rows. Stretching
+/// was the real problem rather than paging: a [FittedBox] — the same wrapper
+/// the Feed tab puts round its ads and requests — keeps the card its own size
+/// inside a full-screen page, so the feed can snap and the card can still look
+/// like a card.
 EventDiscovery event(String id) => EventDiscovery(
       id: id,
       eventName: 'Event $id',
@@ -78,32 +80,46 @@ void main() {
   setUp(FollowRepository.debugClearFollowed);
   tearDown(FollowRepository.debugClearFollowed);
 
-  testWidgets('the feed scrolls instead of paging', (t) async {
+  /// The feed's own pager, as opposed to the horizontal one inside each post
+  /// that swipes through its photos.
+  PageView verticalPager(WidgetTester t) => t
+      .widgetList<PageView>(find.byType(PageView))
+      .firstWhere((p) => p.scrollDirection == Axis.vertical);
+
+  testWidgets('the feed pages, like the Feed tab', (t) async {
     await t.pumpWidget(host(feed: feedOf(3)));
     await t.pumpAndSettle();
 
-    // A post still pages *horizontally* through its own photos — that one
-    // stays. What's gone is the vertical pager the feed itself was, because
-    // paging is what forced the suggestions card to be a full screen.
-    final vertical = t
-        .widgetList<PageView>(find.byType(PageView))
-        .where((p) => p.scrollDirection == Axis.vertical);
-    expect(vertical, isEmpty);
-    expect(find.byType(ListView), findsWidgets);
+    // Snapping is the whole ask: the two tabs should feel the same under the
+    // thumb rather than one gliding and the other catching.
+    expect(verticalPager(t).physics, isNot(isA<NeverScrollableScrollPhysics>()));
   });
 
-  testWidgets('a post still takes a screen of its own', (t) async {
+  testWidgets('a post takes a screen of its own', (t) async {
     await t.pumpWidget(host(feed: feedOf(3)));
     await t.pumpAndSettle();
 
     final screen = t.getSize(find.byType(Scaffold));
-    final post = t.getSize(find.byType(ListView).first).height;
+    final pager = t.getSize(find.byType(PageView).first);
 
-    // The list fills the viewport, and the first item in it is a whole post.
-    expect(post, moreOrLessEquals(screen.height, epsilon: 1));
+    // A page *is* the viewport now, rather than a sized box inside a list.
+    expect(pager.height, moreOrLessEquals(screen.height, epsilon: 1));
   });
 
-  testWidgets('the suggestions card is dealt in, and is not a full screen',
+  testWidgets('one swipe moves exactly one post', (t) async {
+    // What snapping buys, and what free scrolling could not promise: a swipe
+    // lands on a post rather than between two.
+    await t.pumpWidget(host(feed: feedOf(3)));
+    await t.pumpAndSettle();
+
+    final screen = t.getSize(find.byType(Scaffold));
+    await t.drag(find.byType(PageView).first, Offset(0, -screen.height / 2));
+    await t.pumpAndSettle();
+
+    expect(verticalPager(t).controller!.page, 1.0);
+  });
+
+  testWidgets('the suggestions card is dealt in, and is still card-shaped',
       (t) async {
     // Five posts is exactly one card's worth.
     await t.pumpWidget(host(feed: feedOf(5)));
@@ -111,14 +127,17 @@ void main() {
 
     final screen = t.getSize(find.byType(Scaffold));
 
-    // Scroll down through the posts until the card comes into view.
-    for (var i = 0; i < 6 && find.byType(FeedSuggestionsCard).evaluate().isEmpty;
+    // Page down through the posts until the card comes into view.
+    for (var i = 0; i < 8 && find.byType(FeedSuggestionsCard).evaluate().isEmpty;
         i++) {
-      await t.drag(find.byType(ListView).first, Offset(0, -screen.height));
-      await t.pump();
+      await t.drag(find.byType(PageView).first, Offset(0, -screen.height / 2));
+      await t.pumpAndSettle();
     }
 
     expect(find.byType(FeedSuggestionsCard), findsOneWidget);
+    // The page is a full screen; the card inside it must not be. This is the
+    // regression that sent the feed to a ListView in the first place — five
+    // rows of creators pulled to the height of the viewport.
     expect(t.getSize(find.byType(FeedSuggestionsCard)).height,
         lessThan(screen.height * 0.75));
   });
