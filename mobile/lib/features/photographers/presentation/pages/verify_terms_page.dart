@@ -77,9 +77,11 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
       }
 
       // The role moved server-side when this was accepted, so the session's
-      // stored copy is now stale — every screen that keys off it would go on
-      // showing the viewer's tools until the next sign-in, which is what the
-      // old "sign in again to see your tools" message was apologising for.
+      // copy is now stale. Setting it here is what tells the app: every screen
+      // that shows or hides on role watches [AuthService.role], so the creator
+      // tools appear on the screens already built underneath this wizard
+      // rather than at the next sign-in — which is what the old "sign in again
+      // to see your tools" message was apologising for.
       await sl<AuthService>().setRole('photographer');
 
       final name = await sl<AuthService>().getName();

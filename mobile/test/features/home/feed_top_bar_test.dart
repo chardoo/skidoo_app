@@ -361,8 +361,13 @@ void main() {
   group('with a photographer signed in', () {
     setUp(() {
       sl.registerSingleton<AuthService>(_PhotographerAuth());
+      // The mode menu watches the published role rather than reading storage.
+      AuthService.role.value = 'photographer';
     });
-    tearDown(sl.reset);
+    tearDown(() {
+      AuthService.role.value = '';
+      sl.reset();
+    });
 
     Future<void> pumpBar(WidgetTester t) async {
       await t.pumpWidget(topHost(bar(onUnlock: () {})));

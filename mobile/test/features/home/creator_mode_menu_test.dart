@@ -30,11 +30,19 @@ Future<void> signInAs(String role, {String profileUrl = ''}) async {
   if (GetIt.I.isRegistered<AuthService>()) {
     await GetIt.I.reset();
   }
-  GetIt.I.registerSingleton<AuthService>(AuthService());
+  final auth = AuthService();
+  GetIt.I.registerSingleton<AuthService>(auth);
+  // Signing in is what publishes the role, and the menu watches the published
+  // value rather than reading storage — that is the whole point of it, so a
+  // helper that only seeded storage would be testing a path nothing uses.
+  await auth.primeRole();
 }
 
 void main() {
-  tearDown(() async => GetIt.I.reset());
+  tearDown(() async {
+    AuthService.role.value = '';
+    await GetIt.I.reset();
+  });
 
   testWidgets('a photographer gets the switcher', (t) async {
     await signInAs('photographer');
@@ -52,13 +60,31 @@ void main() {
     expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsNothing);
   });
 
-  testWidgets('nothing is drawn before the role is known', (t) async {
-    // Not a placeholder that pops into a different shape a frame later — the
-    // bar's trailing edge would visibly reflow on every feed open.
+  testWidgets('a known role draws on the very first frame', (t) async {
+    // This used to assert the opposite — nothing until an async read came
+    // back — because the role was only reachable through a Future. The bar's
+    // trailing edge visibly reflowed on every feed open as a result. The role
+    // is a value now, primed before the first frame, so there is nothing to
+    // wait for and nothing to reflow.
     await signInAs('photographer');
     await t.pumpWidget(host(const CreatorModeMenu(overSolidBackground: false)));
     // Deliberately no settle: this is the first frame.
+    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsOneWidget);
+  });
+
+  testWidgets('upgrading mid-session brings the switcher in', (t) async {
+    // The reported bug: a client became a creator and the top bar went on
+    // showing them nothing, because this widget was built before the upgrade
+    // and had already read the role.
+    await signInAs('user');
+    await t.pumpWidget(host(const CreatorModeMenu(overSolidBackground: false)));
+    await t.pumpAndSettle();
     expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsNothing);
+
+    await GetIt.I<AuthService>().setRole('photographer');
+    await t.pumpAndSettle();
+
+    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsOneWidget);
   });
 
   testWidgets('tapping opens the two modes from the design', (t) async {

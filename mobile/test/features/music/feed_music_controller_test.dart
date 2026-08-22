@@ -98,6 +98,7 @@ Future<void> settle(WidgetTester t) async {
 }
 
 void main() {
+  _buildPhaseTests();
   group('claiming', () {
     testWidgets('a claimed card plays its soundtrack', (t) async {
       final player = FakePlayer();
@@ -454,4 +455,128 @@ void main() {
       expect(player.isPlaying, isFalse);
     });
   });
+}
+
+// ── Publishing during build ───────────────────────────────────────────────────
+
+void _buildPhaseTests() {
+  testWidgets('claiming during build does not crash the frame', (t) async {
+    // The crash that shipped. Cards call claim/release from
+    // didChangeDependencies, which runs *during* build, and the controller
+    // assigned nowPlaying.value there — notifying every ValueListenableBuilder
+    // on the pill synchronously, each of which called setState mid-build:
+    //
+    //   setState() or markNeedsBuild() called during build.
+    //   The widget on which setState() was called was:
+    //     ValueListenableBuilder<FeedMusicNowPlaying?>
+    //
+    // The card being built when it fired then failed to lay out.
+    final player = FakePlayer();
+    final music = build(player);
+    addTearDown(music.dispose);
+
+    // Something is already playing, so the claim below genuinely *changes*
+    // nowPlaying. Without this the test is vacuous: ValueNotifier skips
+    // notifying when the value is unchanged, so claiming into an already-null
+    // pill never reaches the listener that used to blow up.
+    music.claim(#cardA, 'event-1', [track('a')]);
+    await settle(t);
+    expect(music.nowPlaying.value, isNotNull);
+
+    await t.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: ValueListenableBuilder<FeedMusicNowPlaying?>(
+          valueListenable: music.nowPlaying,
+          builder: (_, now, __) => _ClaimOnDependencies(
+            onDependencies: () =>
+                music.claim(#cardB, 'event-2', [track('b')]),
+            label: now?.track.title ?? 'nothing',
+          ),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('releasing during build does not crash the frame', (t) async {
+    // The exact stack from the report: release() → nowPlaying.value = null.
+    final player = FakePlayer();
+    final music = build(player);
+    addTearDown(music.dispose);
+
+    music.claim(#cardA, 'event-1', [track('a')]);
+    await settle(t);
+
+    await t.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: ValueListenableBuilder<FeedMusicNowPlaying?>(
+          valueListenable: music.nowPlaying,
+          builder: (_, now, __) => _ClaimOnDependencies(
+            onDependencies: () => music.release(#cardA),
+            label: now?.track.title ?? 'nothing',
+          ),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('the pill still updates, just after the frame', (t) async {
+    // Deferring must not mean dropping: whoever draws the pill has to end up
+    // with the right value.
+    final player = FakePlayer();
+    final music = build(player);
+    addTearDown(music.dispose);
+
+    await t.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: ValueListenableBuilder<FeedMusicNowPlaying?>(
+          valueListenable: music.nowPlaying,
+          builder: (_, now, __) => _ClaimOnDependencies(
+            onDependencies: () =>
+                music.claim(#cardA, 'event-1', [track('a')]),
+            label: now?.track.title ?? 'nothing',
+          ),
+        ),
+      ),
+    );
+    await settle(t);
+    await t.pumpAndSettle();
+
+    expect(music.nowPlaying.value?.eventId, 'event-1');
+    expect(find.text('Track a'), findsOneWidget);
+  });
+}
+
+/// Calls back from didChangeDependencies — where the real cards claim and
+/// release, and the phase in which the notifier used to explode.
+class _ClaimOnDependencies extends StatefulWidget {
+  const _ClaimOnDependencies({
+    required this.onDependencies,
+    required this.label,
+  });
+
+  final VoidCallback onDependencies;
+  final String label;
+
+  @override
+  State<_ClaimOnDependencies> createState() => _ClaimOnDependenciesState();
+}
+
+class _ClaimOnDependenciesState extends State<_ClaimOnDependencies> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    widget.onDependencies();
+  }
+
+  @override
+  Widget build(BuildContext context) => Text(widget.label);
 }

@@ -637,10 +637,13 @@ class _PhotographerPortfolioCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<String>(
-      future: sl<AuthService>().getRole(),
-      builder: (context, snap) {
-        if (snap.data != 'photographer') return const SizedBox.shrink();
+    // Watched, not awaited: the upgrade to a creator happens in a wizard
+    // pushed from this very page, so this card has to appear when it returns
+    // rather than on the next launch.
+    return ValueListenableBuilder<String>(
+      valueListenable: AuthService.role,
+      builder: (context, role, _) {
+        if (role != 'photographer') return const SizedBox.shrink();
         return Material(
           // See the sibling cards: the ink has to land on a Material, and a
           // decorated Container between tile and Material eats it.

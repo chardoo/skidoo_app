@@ -166,6 +166,11 @@ void main() async {
   // Presence of a token, matching _AuthGuard and the interceptor.
   AuthService.isAuthenticated.value = token.isNotEmpty;
   AuthService.hasAddedFaces.value = hasFaces;
+  // Role decides which tools the app offers, so a returning creator must not
+  // spend the first frames looking like a viewer. Awaited rather than left to
+  // settle: it is one keychain read, and the alternative is the creator
+  // affordances flickering in a moment after the feed has drawn.
+  await authService.primeRole();
 
   // Push. Off the critical path — none of this blocks the first frame.
   //

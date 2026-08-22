@@ -39,14 +39,43 @@ class CreatorModeMenu extends StatefulWidget {
 }
 
 class _CreatorModeMenuState extends State<CreatorModeMenu> {
-  /// Held rather than re-read on every build: this sits in the feed's top bar,
-  /// which rebuilds on scroll and on every tab change.
-  late final Future<_CreatorIdentity> _identity = _load();
+  /// The avatar, which storage is the only source of. Held rather than re-read
+  /// on every build: this sits in the feed's top bar, which rebuilds on scroll
+  /// and on every tab change.
+  ///
+  /// The *role* is deliberately not in here. It used to be, loaded once beside
+  /// the avatar and never looked at again — so somebody who became a creator
+  /// while the app was running went on being offered nothing, because this
+  /// widget was built long before the upgrade and had already made up its
+  /// mind. It watches [AuthService.role] instead, and re-reads the avatar when
+  /// the answer changes.
+  late Future<String> _avatar = sl<AuthService>().getProfileUrl();
 
-  Future<_CreatorIdentity> _load() async {
-    final auth = sl<AuthService>();
-    final results = await Future.wait([auth.getRole(), auth.getProfileUrl()]);
-    return _CreatorIdentity(role: results[0], imageUrl: results[1]);
+  @override
+  void initState() {
+    super.initState();
+    AuthService.role.addListener(_onRoleChanged);
+  }
+
+  @override
+  void dispose() {
+    AuthService.role.removeListener(_onRoleChanged);
+    super.dispose();
+  }
+
+  void _onRoleChanged() {
+    if (!mounted) return;
+    // Becoming a creator is also when the avatar is worth asking about again:
+    // the wizard that grants the role is the one that just set a profile
+    // picture up.
+    //
+    // The read is started outside setState and the body is a block, not an
+    // arrow: an arrow returns what it assigns, and setState asserts on being
+    // handed a Future — which this is.
+    final avatar = sl<AuthService>().getProfileUrl();
+    setState(() {
+      _avatar = avatar;
+    });
   }
 
   Future<void> _openMenu() async {
@@ -68,13 +97,20 @@ class _CreatorModeMenuState extends State<CreatorModeMenu> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return FutureBuilder<_CreatorIdentity>(
-      future: _identity,
+    return ValueListenableBuilder<String>(
+      valueListenable: AuthService.role,
+      builder: (context, role, _) {
+        if (role != 'photographer') return const SizedBox.shrink();
+        return _buildAvatar(context, ext);
+      },
+    );
+  }
+
+  Widget _buildAvatar(BuildContext context, AppThemeExtension ext) {
+    return FutureBuilder<String>(
+      future: _avatar,
       builder: (context, snapshot) {
-        final identity = snapshot.data;
-        if (identity == null || !identity.isPhotographer) {
-          return const SizedBox.shrink();
-        }
+        final identity = _CreatorIdentity(imageUrl: snapshot.data ?? '');
 
         return Semantics(
           button: true,
@@ -121,12 +157,9 @@ class _CreatorModeMenuState extends State<CreatorModeMenu> {
 }
 
 class _CreatorIdentity {
-  const _CreatorIdentity({required this.role, required this.imageUrl});
+  const _CreatorIdentity({required this.imageUrl});
 
-  final String role;
   final String imageUrl;
-
-  bool get isPhotographer => role == 'photographer';
 }
 
 enum _CreatorModeChoice { explorer, dashboard }

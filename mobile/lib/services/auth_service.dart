@@ -33,6 +33,25 @@ class AuthService {
   /// Seeded from storage at startup and kept in step by [setHasAddedFaces].
   static final hasAddedFaces = ValueNotifier<bool>(false);
 
+  /// The signed-in account's role — `'photographer'`, `'user'`, `'super_admin'`
+  /// — as a value screens can watch.
+  ///
+  /// Exists for the same reason as [hasAddedFaces], and for a sharper case:
+  /// upgrading to a creator changes the role *mid-session*, from a wizard
+  /// several routes deep, while the screens that key off it are already built
+  /// and sitting underneath. [getRole] answers a `Future` once, so every one
+  /// of them kept the answer it happened to read at build time — the creator
+  /// tools stayed hidden until the next sign-in, which is what the old "sign
+  /// in again to see your tools" message was apologising for.
+  ///
+  /// Anything that shows or hides on role should watch this rather than await
+  /// [getRole]. The async reader stays for callers that genuinely want storage
+  /// (a request header, a one-off check before a network call).
+  static final role = ValueNotifier<String>('');
+
+  /// Whether the account may upload and sell work.
+  static bool get isPhotographer => role.value == 'photographer';
+
   // ── Mobile backend ───────────────────────────────────────────────────────────
   static const _secure = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -201,9 +220,22 @@ class AuthService {
   Future<void> setProfileUrl(String url) => _write(_kProfileUrl, url);
   Future<String> getProfileUrl() async => await _read(_kProfileUrl) ?? '';
 
-  Future<void> setRole(String role) => _write(_kRole, role);
+  /// Writes the role and tells every screen watching [role] about it.
+  ///
+  /// The notifier is set first, and synchronously: an upgrade finishes by
+  /// navigating, and a screen rebuilding on the same frame should already see
+  /// the new role rather than whatever the pending write has not yet flushed.
+  Future<void> setRole(String value) {
+    AuthService.role.value = value;
+    return _write(_kRole, value);
+  }
+
   Future<String> getRole() async => await _read(_kRole) ?? '';
   Future<bool> isSuperAdmin() async => (await getRole()) == 'super_admin';
+
+  /// Seeds [role] from storage. Called once at startup, alongside the other
+  /// synchronous auth state — see `main()`.
+  Future<void> primeRole() async => AuthService.role.value = await getRole();
 
   // ── Onboarding ───────────────────────────────────────────────────────────────
   /// Device-level flag (not cleared on logout) — the 3-screen intro carousel
@@ -270,6 +302,10 @@ class AuthService {
     // in that their faces were already on file, so the app never asked them
     // for any — and their Found tab stayed empty with nothing explaining why.
     hasAddedFaces.value = false;
+    // Role is per-account by definition. Left standing, a photographer signing
+    // out handed the next person their creator tools — an upload button and a
+    // dashboard link for an account that has neither.
+    role.value = '';
     // Everything the session put in memory, on the socket, or in a feed cache.
     // Registered by its owners rather than listed here — see [SessionReset],
     // and add to it rather than to this method.

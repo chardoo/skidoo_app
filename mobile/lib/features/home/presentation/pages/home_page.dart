@@ -123,8 +123,10 @@ class _HomeViewState extends State<_HomeView> {
     if (!mounted) return;
     try {
       final auth = sl<AuthService>();
-      // Only clients are matched against galleries; skip photographers.
-      if ((await auth.getRole()) == 'photographer') return;
+      // Only clients are matched against galleries; skip photographers. Read
+      // from the live value rather than storage so somebody who upgraded a
+      // moment ago is not asked for reference photos they no longer need.
+      if (AuthService.isPhotographer) return;
       if (await auth.getHasAddedFaces()) return; // already added their photos
       final last = await auth.getLastFacePrompt();
       if (last != null &&

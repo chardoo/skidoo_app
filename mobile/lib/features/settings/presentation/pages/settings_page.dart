@@ -112,11 +112,16 @@ class SettingsPage extends StatelessWidget {
                     ),
                     // Photographer accounts only. A viewer has no portfolio,
                     // and a heading over an empty section is worse than no
-                    // heading. The role is read once, from the stored session.
-                    FutureBuilder<String>(
-                      future: sl<AuthService>().getRole(),
-                      builder: (context, snap) {
-                        if (snap.data != 'photographer') {
+                    // heading.
+                    //
+                    // Watched rather than read: this used to await the stored
+                    // role, which meant the section was missing for a frame on
+                    // every build, and — the real problem — stayed missing for
+                    // somebody who became a creator while this page was open.
+                    ValueListenableBuilder<String>(
+                      valueListenable: AuthService.role,
+                      builder: (context, role, _) {
+                        if (role != 'photographer') {
                           return const SizedBox.shrink();
                         }
                         return SettingsSection(

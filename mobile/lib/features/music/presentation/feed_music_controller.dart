@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:jperg_app/features/music/domain/entities/music_track.dart';
 import 'package:jperg_app/features/music/presentation/feed_music_player.dart';
@@ -73,8 +74,56 @@ class FeedMusicController with WidgetsBindingObserver {
   final ValueNotifier<bool> muted = ValueNotifier<bool>(false);
 
   /// The lit pill, or null when nothing is playing.
+  ///
+  /// Written through [_publishNowPlaying], never directly — see there for why
+  /// a plain assignment crashed the feed.
   final ValueNotifier<FeedMusicNowPlaying?> nowPlaying =
       ValueNotifier<FeedMusicNowPlaying?>(null);
+
+  /// Set while a publish is waiting for the current frame to finish.
+  ///
+  /// Holds the *latest* intended value rather than a queue: a card leaving and
+  /// its successor claiming inside one frame should end on the successor's
+  /// track, and replaying both in order would land there by a longer route.
+  FeedMusicNowPlaying? _deferredNowPlaying;
+  bool _publishScheduled = false;
+
+  /// Publishes to [nowPlaying] without notifying listeners mid-build.
+  ///
+  /// [claim] and [release] are called from widget lifecycle callbacks —
+  /// `didChangeDependencies` among them, which runs *during* build. Assigning
+  /// a ValueNotifier there notifies its listeners synchronously, so every
+  /// ValueListenableBuilder on the pill called setState while the tree was
+  /// being built, and Flutter threw "setState() or markNeedsBuild() called
+  /// during build". The feed then failed to lay out the card that was
+  /// mid-build when it happened.
+  ///
+  /// Deferring is safe because nothing reads this back: it is a notification
+  /// to whoever draws the pill, and the controller's own state — [_owner],
+  /// [_tracks], [_generation] — is set synchronously either way.
+  void _publishNowPlaying(FeedMusicNowPlaying? value) {
+    if (_disposed) return;
+
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    // Idle and postFrameCallbacks are both outside the build/layout/paint
+    // window, so a listener may rebuild immediately.
+    final safeNow = phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks;
+    if (safeNow) {
+      nowPlaying.value = value;
+      return;
+    }
+
+    _deferredNowPlaying = value;
+    if (_publishScheduled) return;
+    _publishScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _publishScheduled = false;
+      if (_disposed) return;
+      nowPlaying.value = _deferredNowPlaying;
+      _deferredNowPlaying = null;
+    });
+  }
 
   Object? _owner;
   String? _eventId;
@@ -121,7 +170,7 @@ class FeedMusicController with WidgetsBindingObserver {
     _settle?.cancel();
     // The pill goes dark immediately. Leaving the old track named while a new
     // card is on screen is worse than a moment with no pill at all.
-    nowPlaying.value = null;
+    _publishNowPlaying(null);
     unawaited(_silence());
 
     if (_tracks.isEmpty) return;
@@ -147,7 +196,7 @@ class FeedMusicController with WidgetsBindingObserver {
     _tracks = const [];
     _generation++;
     _settle?.cancel();
-    nowPlaying.value = null;
+    _publishNowPlaying(null);
     unawaited(_silence());
   }
 
@@ -168,7 +217,7 @@ class FeedMusicController with WidgetsBindingObserver {
     _tracks = const [];
     _generation++;
     _settle?.cancel();
-    nowPlaying.value = null;
+    _publishNowPlaying(null);
     unawaited(_silence());
   }
 
@@ -220,7 +269,7 @@ class FeedMusicController with WidgetsBindingObserver {
       // provider outage means no pill and no sound — never a message, because
       // there is nothing the viewer asked for or could act on.
       debugPrint('[Music] could not play soundtrack: $e');
-      if (generation == _generation) nowPlaying.value = null;
+      if (generation == _generation) _publishNowPlaying(null);
     }
   }
 
@@ -287,12 +336,13 @@ class FeedMusicController with WidgetsBindingObserver {
     final eventId = _eventId;
     final tracks = _tracks;
     if (eventId == null || tracks.isEmpty) {
-      nowPlaying.value = null;
+      _publishNowPlaying(null);
       return;
     }
     final index = _trackIndex.clamp(0, tracks.length - 1);
-    nowPlaying.value =
-        FeedMusicNowPlaying(eventId: eventId, track: tracks[index]);
+    _publishNowPlaying(
+      FeedMusicNowPlaying(eventId: eventId, track: tracks[index]),
+    );
   }
 
   @override

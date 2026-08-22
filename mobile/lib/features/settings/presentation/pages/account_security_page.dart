@@ -36,7 +36,6 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
 
   /// Read once from the stored session rather than from the profile state,
   /// which does not carry the role.
-  bool _isPhotographer = false;
 
   @override
   void initState() {
@@ -52,11 +51,9 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
   Future<void> _load({bool forceRefresh = false}) async {
     try {
       final settings = await _api.fetch(forceRefresh: forceRefresh);
-      final role = await sl<AuthService>().getRole();
       if (!mounted) return;
       setState(() {
         _settings = settings;
-        _isPhotographer = role == 'photographer';
         _loading = false;
       });
     } catch (_) {
@@ -107,9 +104,9 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
       MaterialPageRoute(
           builder: (_) => const PortfolioEditPage(isCreatorSetup: true)),
     );
-    // Their tools appear where their role decides, so the page behind this
-    // has to be told the role moved — and told by the server, not by the copy
-    // that was cached before any of this happened.
+    // The role itself needs no reloading — it is watched now, and the wizard
+    // set it on its way through. This is for the rest of the settings, which
+    // the server may have changed alongside it.
     if (done == true && mounted) _load(forceRefresh: true);
   }
 
@@ -199,11 +196,22 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
                         // Only for someone who is not one already — a
                         // photographer being invited to become a creator would
                         // read as the app not knowing who they are.
-                        if (!_isPhotographer)
-                          _BecomeCreator(
-                            ext: ext,
-                            onStart: _becomeCreator,
-                          ),
+                        //
+                        // Watched rather than held: the wizard this offer
+                        // launches is what grants the role, and it can finish
+                        // on a screen that replaces itself rather than popping
+                        // a result back here. Reading the role once meant the
+                        // invitation was still sitting there afterwards.
+                        ValueListenableBuilder<String>(
+                          valueListenable: AuthService.role,
+                          builder: (context, role, _) =>
+                              role == 'photographer'
+                                  ? const SizedBox.shrink()
+                                  : _BecomeCreator(
+                                      ext: ext,
+                                      onStart: _becomeCreator,
+                                    ),
+                        ),
                         SettingsSection(
                           children: [
                             SettingsRow(
