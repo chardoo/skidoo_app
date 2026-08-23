@@ -178,6 +178,14 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   /// seek the video.
   static const double _videoControlsBand = 40;
 
+  /// The strip along the bottom the floating nav bar occupies.
+  ///
+  /// Left clear of the caption scrim so the bar has real photo behind it to
+  /// frost. Roughly the pill's height plus the margin it floats on; it does
+  /// not have to be exact, only to keep the darkest end of the gradient out
+  /// from under the glass.
+  static const double _navBand = 96;
+
   /// Whether the owner permits engagement on what is on screen.
   ///
   /// `comments_enabled` is the "no feedback on this" switch, so a disabled
@@ -350,12 +358,22 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           ),
 
           // ── Bottom gradient scrim for text legibility ───────────────────
-          const Positioned(
+          //
+          // It stops short of the very bottom, and that is deliberate: the
+          // floating nav bar sits in the last ~100px, and this used to run to
+          // 67 % black straight underneath it. The bar frosts whatever is
+          // behind it, so it was faithfully blurring a near-black gradient and
+          // reading as an opaque slab — no tint or blur radius could have
+          // fixed that, because there was genuinely nothing back there to see.
+          //
+          // The caption sits above this band, so it keeps the contrast it
+          // needs; the strip the bar occupies is left as photo.
+          Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: _navBand,
             height: 220,
-            child: IgnorePointer(
+            child: const IgnorePointer(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
