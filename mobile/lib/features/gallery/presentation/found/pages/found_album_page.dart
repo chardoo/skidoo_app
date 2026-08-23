@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/navigation/app_page_routes.dart';
@@ -74,7 +75,27 @@ class _FoundAlbumViewState extends State<_FoundAlbumView> {
   FoundAlbum get album => widget.album;
 
   @override
+  void initState() {
+    super.initState();
+    // A scan opened from "View photos" keeps streaming after the album opens,
+    // writing an identification row per match. This grid was fetched from
+    // those rows, so it is out of date the moment the next one lands.
+    //
+    // Safe to refetch under the person's fingers: PhotoSelection stores the
+    // ids they have *toggled*, not the whole selection, so photos arriving
+    // mid-review default to selected and every "not me" they have already
+    // marked survives the replacement.
+    AppCacheSignals.foundPhotos.addListener(_onScanProgressed);
+  }
+
+  void _onScanProgressed() {
+    if (!mounted) return;
+    context.read<FoundAlbumBloc>().add(const FoundAlbumPhotosRequested());
+  }
+
+  @override
   void dispose() {
+    AppCacheSignals.foundPhotos.removeListener(_onScanProgressed);
     _selection.dispose();
     super.dispose();
   }

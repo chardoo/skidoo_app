@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
@@ -7,6 +8,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/gallery/data/event_scan.dart';
 import 'package:jperg_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
@@ -43,6 +45,19 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
   /// it; a slow one is not padded.
   static const _minimumScan = Duration(milliseconds: 1400);
 
+  /// The live scan, which outlives this page — see [EventScan] and
+  /// [_openAlbumWhileScanning]. Not final: Retry starts a fresh one.
+  late EventScan _scan = EventScan(code: widget.code);
+
+  /// True once the orb has been up for [_minimumScan], so a fast scan does not
+  /// flash its result.
+  bool _minimumElapsed = false;
+
+  /// Whether the person walked into the album rather than waiting. The scan
+  /// keeps running when they do, so this page must not cancel it on the way
+  /// out — see [dispose].
+  bool _handedOver = false;
+
   FoundAlbum? _album;
   bool _loading = true;
   String? _error;
@@ -50,18 +65,84 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
   @override
   void initState() {
     super.initState();
-    _scan();
+    _scan.isRunning.addListener(_onScanState);
+    _scan.start();
+    Future<void>.delayed(_minimumScan, () {
+      if (!mounted) return;
+      setState(() => _minimumElapsed = true);
+      _onScanState();
+    });
   }
 
-  Future<void> _scan() async {
-    final started = DateTime.now();
+  @override
+  void dispose() {
+    _scan.isRunning.removeListener(_onScanState);
+    // Only when they left without opening the album. A scan nobody is waiting
+    // for should not keep spending recognition calls; one they walked into
+    // must keep filling the grid they are looking at.
+    if (_handedOver) {
+      _scan.cancel();
+    } else {
+      _scan.dispose();
+    }
+    super.dispose();
+  }
+
+  /// Throws the failed scan away and runs another.
+  void _restart() {
+    _scan.isRunning.removeListener(_onScanState);
+    _scan.dispose();
+    setState(() {
+      _scan = EventScan(code: widget.code);
+      _loading = true;
+      _error = null;
+      _album = null;
+    });
+    _scan.isRunning.addListener(_onScanState);
+    _scan.start();
+  }
+
+  /// Opens the album without waiting for the scan to finish.
+  ///
+  /// The scan is handed over rather than stopped: it keeps writing matches,
+  /// and the album refetches on each batch (see AppCacheSignals.foundPhotos),
+  /// so the grid fills while it is being read.
+  Future<void> _openAlbumWhileScanning() async {
+    final page = await sl<GetFoundPhotosUseCase>().albums(
+      filters: FoundFilters(
+        eventIds: {widget.code},
+        status: FoundMatchStatus.all,
+      ),
+      limit: 1,
+    );
+    if (!mounted) return;
+    if (page.albums.isEmpty) return;
+    _album = page.albums.first;
+    _openAlbum();
+  }
+
+  /// The stream ended, or the orb has been up long enough — either way, decide
+  /// whether the result card can be shown yet.
+  void _onScanState() {
+    if (!mounted) return;
+    if (_scan.isRunning.value || !_minimumElapsed) return;
+    _showResult();
+  }
+
+  /// Turns the finished scan into the card.
+  ///
+  /// The album comes from `/client/my-photos`, not from the stream: the scan
+  /// wrote an identification row per match as it went, so the rows are there
+  /// by now, and the album page reads the same source — one answer, not two
+  /// that can disagree.
+  Future<void> _showResult() async {
+    if (!_loading) return;
     try {
       final page = await sl<GetFoundPhotosUseCase>().albums(
-        // `all`, not the default: the album this opens is a review — everything
-        // preselected, "tap to deselect photos that aren't you" — and the
-        // matches waiting to be answered are exactly the ones it exists to ask
-        // about. Filtered to confirmed, a first scan answered "no photos" for
-        // an event full of them.
+        // `all`, not the default: the rows the scan just wrote are pending
+        // until the person answers for them, and this screen is what asks.
+        // Filtered to confirmed, a first scan answered "no photos" for an
+        // event full of them.
         //
         // The code goes in as an event id and the server resolves either form.
         // A scanned QR carries the access code, not the id.
@@ -71,10 +152,6 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
         ),
         limit: 1,
       );
-      final elapsed = DateTime.now().difference(started);
-      if (elapsed < _minimumScan) {
-        await Future<void>.delayed(_minimumScan - elapsed);
-      }
       if (!mounted) return;
       setState(() {
         _album = page.albums.isEmpty ? null : page.albums.first;
@@ -84,7 +161,9 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'We could not open that event. Check the code and try again.';
+        _error = _scan.error.value != null || _scan.mineCount.value == 0
+            ? 'We could not open that event. Check the code and try again.'
+            : null;
       });
     }
   }
@@ -92,6 +171,9 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
   void _openAlbum() {
     final album = _album;
     if (album == null) return;
+    // Tells dispose to leave the scan running — the album is about to start
+    // listening for what it finds next.
+    _handedOver = _scan.isRunning.value;
     // pushReplacement: the result card has done its job once it is tapped, and
     // backing out of the album should return to wherever the scan started
     // rather than to a card announcing a number.
@@ -132,19 +214,26 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
   }
 
   Widget _buildState(AppThemeExtension ext) {
-    if (_loading) return _Scanning(ext: ext);
+    if (_loading) {
+      return _Scanning(
+        ext: ext,
+        // Live, so a long scan shows progress rather than a spinner that could
+        // be stuck. Counts photos of *this person* — an owner scanning their
+        // own event receives the whole album, and "247 photos of you" would be
+        // a lie about someone else's wedding.
+        found: _scan.mineCount,
+        // Offered the moment there is something to look at: waiting out a
+        // large event to see photos already found is a wait for nothing. The
+        // scan keeps running behind the album.
+        onViewNow: _openAlbumWhileScanning,
+      );
+    }
 
     if (_error != null) {
       return AppErrorView(
         message: _error!,
         icon: Icons.qr_code_scanner_rounded,
-        onRetry: () {
-          setState(() {
-            _loading = true;
-            _error = null;
-          });
-          _scan();
-        },
+        onRetry: _restart,
       );
     }
 
@@ -164,9 +253,18 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
 }
 
 class _Scanning extends StatelessWidget {
-  const _Scanning({required this.ext});
+  const _Scanning({
+    required this.ext,
+    required this.found,
+    required this.onViewNow,
+  });
 
   final AppThemeExtension ext;
+
+  /// Photos of this person found so far.
+  final ValueListenable<int> found;
+
+  final VoidCallback onViewNow;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +283,32 @@ class _Scanning extends StatelessWidget {
           'Analyzing event photos',
           textAlign: TextAlign.center,
           style: AppTypography.caption.copyWith(color: ext.searchHintColor),
+        ),
+        ValueListenableBuilder<int>(
+          valueListenable: found,
+          builder: (context, count, __) {
+            // Nothing at all until the first match. "0 photos of you so far"
+            // is a worse thing to read than the line above it, and it is what
+            // the screen would say for the whole of an event they are not in.
+            if (count == 0) return const SizedBox.shrink();
+            final photoWord = count == 1 ? 'photo' : 'photos';
+            return Column(
+              children: [
+                SizedBox(height: AppSpacing.xxl.h),
+                Text(
+                  '$count $photoWord of you so far',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.body.copyWith(color: ext.accentGold),
+                ),
+                SizedBox(height: AppSpacing.sm.h),
+                AppButton(
+                  label: 'View photos',
+                  variant: AppButtonVariant.text,
+                  onPressed: onViewNow,
+                ),
+              ],
+            );
+          },
         ),
       ],
     );

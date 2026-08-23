@@ -70,9 +70,12 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
       'Content-Type': 'application/json',
       if (token.isNotEmpty) 'Authorization': 'Bearer $token',
     })
+    // No uiqueName. Whose face to look for comes from the token — the server
+    // ignores a body value, and has to: a person id the request could name is
+    // a person id it could name for somebody else. [email] is kept on the
+    // signature for the callers that still pass it.
     ..body = jsonEncode({
       'eventId': eventId,
-      'uiqueName': email,
       'isTrue': alwaysPublicImages,
     });
 

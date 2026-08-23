@@ -100,4 +100,12 @@ class AppCacheSignals {
 
   /// The photographer's portfolio or samples changed.
   static final portfolio = CacheSignal('portfolio');
+
+  /// A face scan found more photos of the signed-in person.
+  ///
+  /// Bumped while `POST /client/search-images` is still streaming — see
+  /// [EventScan]. The scan writes an identification row per match, so a grid
+  /// already on screen is out of date the moment the next one lands; this is
+  /// what tells it to ask again.
+  static final foundPhotos = CacheSignal('foundPhotos');
 }

@@ -15,6 +15,7 @@ import 'package:jperg_app/features/gallery/presentation/found/widgets/face_gate_
 import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_empty_state.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/event_scan_result_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_album_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_album_section.dart';
@@ -161,6 +162,31 @@ class _FoundFeedState extends State<FoundFeed> {
   void _reload() =>
       context.read<FoundBloc>().add(const FoundPhotosRequested());
 
+  /// Scan a photographer's code, then run the same live search the unlock
+  /// sheet runs.
+  ///
+  /// This link is shown to people with no matches, which is exactly the case
+  /// the live scan exists for: an event uploaded before they had an account
+  /// has no stored identifications, so the listing behind this screen can only
+  /// ever answer "nothing". Popping the raw code back here — what this used to
+  /// do — left the person holding a code and no way to spend it.
+  Future<void> _scanCode(BuildContext context) async {
+    final code = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(builder: (_) => const QrScanPage()),
+    );
+    if (!mounted || code == null || code.isEmpty) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => EventScanResultPage(code: code),
+      ),
+    );
+    // Whatever they confirmed in there belongs in this list.
+    if (mounted) {
+      _reload();
+      unawaited(_loadPending());
+    }
+  }
+
   Future<void> _openFilters(FoundFilters current) async {
     setState(() => _sheetOpen = true);
     final applied = await FoundFilterSheet.show(context, initial: current);
@@ -283,9 +309,7 @@ class _FoundFeedState extends State<FoundFeed> {
         );
         if (empty == FoundEmptyState.scanning) {
           return FoundScanningState(
-            onEnterCode: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const QrScanPage()),
-            ),
+            onEnterCode: () => _scanCode(context),
           );
         }
 
