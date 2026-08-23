@@ -68,13 +68,22 @@ void main() {
         reason: 'white on a light page needs a shadow to read as in front');
   });
 
-  testWidgets('dark mode is unchanged — the black pill needs no shadow',
+  testWidgets('dark mode lifts the pill off the page rather than sinking it',
       (t) async {
+    // It used to be pure black on a #111110 page — *darker* than the surface
+    // it floats over, which reads as a hole punched in the page rather than
+    // something in front of it. A raised surface is lighter than its ground;
+    // that is what tonal elevation means and what Material 3 does.
     await t.pumpWidget(host(AppThemeExtension.dark));
 
     final decoration = pill(t);
-    expect(decoration.color, Colors.black);
-    expect(decoration.boxShadow, isNull);
+    final page = AppThemeExtension.dark.homeBackground;
+    expect(decoration.color, isNot(Colors.black));
+    expect(
+      decoration.color!.computeLuminance(),
+      greaterThan(page.computeLuminance()),
+      reason: 'the pill must sit above the page, not below it',
+    );
   });
 
   testWidgets('light mode draws the active label in the accent, not out of it',
@@ -144,10 +153,13 @@ void main() {
     await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
 
     final decoration = pill(t);
-    expect(decoration.color, Colors.black);
-    expect(decoration.boxShadow, isNull,
-        reason: 'a shadow is how the white pill earns an edge; the dark one '
-            'does not need it');
+    // Dark, whatever the app theme says — the feed is an island. Not pure
+    // black: see the dark-mode test above.
+    expect(
+      decoration.color!.computeLuminance(),
+      lessThan(0.2),
+      reason: 'the bar has to join the dark island it floats over',
+    );
   });
 
   testWidgets('over the feed the inactive icons go light, not grey',
@@ -190,7 +202,8 @@ void main() {
   testWidgets('in dark mode every tab keeps the dark pill', (t) async {
     for (final tab in [0, 1, 2, 3]) {
       await t.pumpWidget(host(AppThemeExtension.dark, selected: tab));
-      expect(pill(t).color, Colors.black, reason: 'tab \$tab');
+      expect(pill(t).color!.computeLuminance(), lessThan(0.2),
+          reason: 'tab \$tab');
     }
   });
 

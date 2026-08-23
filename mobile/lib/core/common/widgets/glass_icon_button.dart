@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/common/widgets/glass_surface.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 /// The circular "glass" icon button used in app bars/headers across the app
@@ -29,19 +30,22 @@ class GlassIconButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: semanticLabel ?? tooltip,
-      child: Container(
+      // Real frost on iOS, a tonal circle elsewhere — see [GlassSurface].
+      // This used to be a flat tint that only *called* itself glass: over a
+      // busy photo it was a grey disc, because there was nothing behind it
+      // being blurred.
+      child: SizedBox(
         width: size.w,
         height: size.w,
-        decoration: BoxDecoration(
-          color: ext.glassFill,
-          shape: BoxShape.circle,
-          border: Border.all(color: ext.glassBorder, width: 1.5),
-        ),
-        child: IconButton(
-          padding: EdgeInsets.zero,
-          tooltip: tooltip,
-          icon: Icon(icon, color: ext.glassIcon, size: (iconSize ?? 20).sp),
-          onPressed: onPressed,
+        child: GlassSurface(
+          borderRadius: BorderRadius.circular(size.w / 2),
+          blurSigma: 18,
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            tooltip: tooltip,
+            icon: Icon(icon, color: ext.glassIcon, size: (iconSize ?? 20).sp),
+            onPressed: onPressed,
+          ),
         ),
       ),
     );

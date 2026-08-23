@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/constants/icons.dart';
+import 'package:jperg_app/core/common/widgets/glass_surface.dart';
+import 'package:jperg_app/core/navigation/chrome_visibility.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -51,83 +53,89 @@ class AppNavbar extends StatelessWidget {
     return SafeArea(
       top: false,
       minimum: EdgeInsets.only(bottom: AppSpacing.md.h),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.w),
-        child: Container(
-          height: 58.h,
-          padding: EdgeInsets.symmetric(horizontal: 10.w),
-          decoration: BoxDecoration(
-            // The pill floats over arbitrary content, so it has to read as a
-            // surface in front of the page rather than a hole in it. Dark mode
-            // gets that from being blacker than everything behind it; light
-            // mode can't, so it takes the palette's white and earns its edge
-            // from a shadow instead — white on the light background is only a
-            // few percent apart.
-            color: onDark ? Colors.black : ext.cardSurface,
-            borderRadius: BorderRadius.circular(29.r),
-            boxShadow: onDark
-                ? null
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-          ),
-          // Tabs size to their own content (not 4 equal Expanded slots) so
-          // the active tab's icon+label pill gets exactly the room it
-          // needs — equal-width slots left too little space for even the
-          // shortest label ("Home") on real phone widths.
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _NavTab(
-                label: 'Home',
-                iconPath: IconsPath.home,
-                selected: selectedIndex == _feedTabIndex,
-                ext: ext,
+      // Reading further narrows the bar to bare icons; coming back up opens
+      // it. One notifier for this and the top tabs, so the two halves of the
+      // chrome can never disagree about which way the thumb went — see
+      // [ChromeVisibility].
+      child: ValueListenableBuilder<bool>(
+        valueListenable: ChromeVisibility.expanded,
+        builder: (context, expanded, _) => Padding(
+          // Centred rather than stretched, so the collapsed bar shrinks toward
+          // the middle instead of leaving a stub against one edge.
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.w),
+          child: Center(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              child: GlassSurface(
+                borderRadius: BorderRadius.circular(29.r),
+                // The ground decides, not the theme: the feed is a dark island
+                // whatever the app is set to, and the bar has to join it.
                 onDark: onDark,
-                onTap: () => onchange(0),
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
+                child: SizedBox(
+                  height: 58.h,
+                  // Tabs size to their own content (not 4 equal Expanded slots) so
+                  // the active tab's icon+label pill gets exactly the room it
+                  // needs — equal-width slots left too little space for even the
+                  // shortest label ("Home") on real phone widths.
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _NavTab(
+                        label: 'Home',
+                        iconPath: IconsPath.home,
+                        selected: selectedIndex == _feedTabIndex,
+                        ext: ext,
+                        onDark: onDark,
+                        expanded: expanded,
+                        onTap: () => onchange(0),
+                      ),
+                      _NavTab(
+                        // 'Alerts', not 'Notifications' — the word is what the design
+                        // calls that screen, and the long one overflowed the pill by
+                        // ~97px when its tab was active, since only the active tab
+                        // shows a label and the row is sized to its content.
+                        label: 'Alerts',
+                        icon: Icons.notifications_none_rounded,
+                        selectedIcon: Icons.notifications_rounded,
+                        selected: selectedIndex == 2,
+                        ext: ext,
+                        onDark: onDark,
+                        expanded: expanded,
+                        onTap: () => onchange(2),
+                      ),
+                      _NavTab(
+                        // 'Chats', matching the screen's own title.
+                        label: 'Chats',
+                        // Two overlapping bubbles, per the design — a conversation
+                        // rather than a single message. The lone bubble this used to
+                        // carry is the app's "comment" glyph, and the two surfaces were
+                        // indistinguishable at 20 dp.
+                        icon: Icons.forum_outlined,
+                        selectedIcon: Icons.forum_rounded,
+                        selected: selectedIndex == 1,
+                        ext: ext,
+                        onDark: onDark,
+                        expanded: expanded,
+                        unreadCount: messageUnreadCount,
+                        onTap: () => onchange(1),
+                      ),
+                      _NavTab(
+                        label: 'Profile',
+                        icon: Icons.person_outline_rounded,
+                        selectedIcon: Icons.person_rounded,
+                        selected: selectedIndex == 3,
+                        ext: ext,
+                        onDark: onDark,
+                        expanded: expanded,
+                        onTap: () => onchange(3),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              _NavTab(
-                // 'Alerts', not 'Notifications' — the word is what the design
-                // calls that screen, and the long one overflowed the pill by
-                // ~97px when its tab was active, since only the active tab
-                // shows a label and the row is sized to its content.
-                label: 'Alerts',
-                icon: Icons.notifications_none_rounded,
-                selectedIcon: Icons.notifications_rounded,
-                selected: selectedIndex == 2,
-                ext: ext,
-                onDark: onDark,
-                onTap: () => onchange(2),
-              ),
-              _NavTab(
-                // 'Chats', matching the screen's own title.
-                label: 'Chats',
-                // Two overlapping bubbles, per the design — a conversation
-                // rather than a single message. The lone bubble this used to
-                // carry is the app's "comment" glyph, and the two surfaces were
-                // indistinguishable at 20 dp.
-                icon: Icons.forum_outlined,
-                selectedIcon: Icons.forum_rounded,
-                selected: selectedIndex == 1,
-                ext: ext,
-                onDark: onDark,
-                unreadCount: messageUnreadCount,
-                onTap: () => onchange(1),
-              ),
-              _NavTab(
-                label: 'Profile',
-                icon: Icons.person_outline_rounded,
-                selectedIcon: Icons.person_rounded,
-                selected: selectedIndex == 3,
-                ext: ext,
-                onDark: onDark,
-                onTap: () => onchange(3),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -143,6 +151,7 @@ class _NavTab extends StatelessWidget {
     required this.selected,
     required this.ext,
     required this.onDark,
+    required this.expanded,
     required this.onTap,
     this.iconPath,
     this.icon,
@@ -156,6 +165,11 @@ class _NavTab extends StatelessWidget {
 
   /// Whether the bar is sitting on a dark ground — see [AppNavbar].
   final bool onDark;
+
+  /// Whether the bar is at full size. Collapsed, the active tab drops its
+  /// label and its chip and becomes a bare icon like the rest — the accent
+  /// still marks it, so which tab you are on survives the collapse.
+  final bool expanded;
   final VoidCallback onTap;
   final String? iconPath;
   final IconData? icon;
@@ -191,7 +205,8 @@ class _NavTab extends StatelessWidget {
             size: 20.sp,
             color: iconColor,
           )
-        : ExcludeSemantics(child: Image.asset(
+        : ExcludeSemantics(
+            child: Image.asset(
             iconPath!,
             width: 20.sp,
             height: 20.sp,
@@ -248,11 +263,11 @@ class _NavTab extends StatelessWidget {
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeOutCubic,
               padding: EdgeInsets.symmetric(
-                horizontal: selected ? 16.w : 10.w,
+                horizontal: selected && expanded ? 16.w : 10.w,
                 vertical: 10.h,
               ),
               decoration: BoxDecoration(
-                color: selected ? activeColor : Colors.transparent,
+                color: selected && expanded ? activeColor : Colors.transparent,
                 borderRadius: BorderRadius.circular(AppRadius.xl.r),
               ),
               child: Row(
@@ -264,7 +279,7 @@ class _NavTab extends StatelessWidget {
                   // design). maxLines/overflow stay as a safety net, but
                   // tabs are no longer squeezed into an equal-width slot
                   // so this shouldn't actually trigger in normal use.
-                  if (selected) ...[
+                  if (selected && expanded) ...[
                     SizedBox(width: 6.w),
                     Text(
                       label,

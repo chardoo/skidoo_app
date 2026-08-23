@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/navigation/chrome_visibility.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -349,6 +350,10 @@ class _HomeViewState extends State<_HomeView> {
   final _profileKey = GlobalKey<UserProfilePageState>();
 
   void _changeTab(int index) {
+    // Home / Alerts / Chats / Profile are different screens, and only some of
+    // them scroll. A bar left narrowed on a short one has no gesture that
+    // could open it again — see [ChromeVisibility.reset].
+    ChromeVisibility.reset();
     if (kIsWeb) {
       // Pop any sub-pages (SearchResults, EventPictures, AccountPage, etc.)
       // that were pushed on top of HomePage before switching tabs.

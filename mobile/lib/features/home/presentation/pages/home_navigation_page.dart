@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/glass_surface.dart';
+import 'package:jperg_app/core/navigation/chrome_visibility.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -162,6 +164,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   /// Single entry point for switching pills so the header rule below can't be
   /// forgotten at one of the call sites.
   void _selectTab(int index) {
+    // A new tab starts at its own scroll position and the person is no longer
+    // reading — a bar left collapsed here could only be reopened by finding
+    // something to scroll, which on a short tab may not exist.
+    ChromeVisibility.reset();
     setState(() {
       _selectedTab = index;
       // Found never hides its header (see [_onScrollNotification]), so make
@@ -254,6 +260,12 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool _onScrollNotification(ScrollNotification notification) {
     // On web the header is always visible (Column layout) — skip hide logic.
     if (kIsWeb) return false;
+
+    // The bottom bar collapses on every tab, Found included: it floats over
+    // the content everywhere and narrowing it gives the grid its width back.
+    // Fed before the Found guard below, which is only about the *header*.
+    ChromeVisibility.handle(notification);
+
     // Found is a grid, not full-bleed media: its content is padded to start
     // below the header rather than running under it, so hiding the header
     // would only open a blank strip. Keep it pinned there.
@@ -424,21 +436,42 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
           // photos/videos instead of relying on an opaque reserved strip.
           // Found needs no scrim: its header sits on the solid page
           // background, where a gradient would just read as a smudge.
+          //
+          // On iOS this is frost instead of a gradient — the platform's own
+          // bars separate from content by blurring it, and a black gradient
+          // over a frosted bar would be two answers to one question. It rides
+          // with the header, so scrolling away takes the frost with it rather
+          // than leaving a smudged band over the photo.
           if (_selectedTab != 0)
-            const Positioned(
+            Positioned(
               left: 0,
               right: 0,
               top: 0,
-              height: 140,
+              height: _headerHeight > 0 ? _headerHeight + topPadding : 140,
               child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0x99000000), Color(0x00000000)],
-                    ),
-                  ),
+                child: AnimatedSlide(
+                  offset: _headerVisible ? Offset.zero : const Offset(0, -1),
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  child: GlassSurface.isFrosted
+                      ? GlassSurface(
+                          borderRadius: BorderRadius.zero,
+                          bordered: false,
+                          blurSigma: 18,
+                          // The feed is a dark island whatever the app theme
+                          // is, and this sits on it.
+                          onDark: true,
+                          child: const SizedBox.expand(),
+                        )
+                      : const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0x99000000), Color(0x00000000)],
+                            ),
+                          ),
+                        ),
                 ),
               ),
             ),
