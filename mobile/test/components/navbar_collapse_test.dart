@@ -30,6 +30,48 @@ void main() {
   setUp(ChromeVisibility.reset);
   tearDown(ChromeVisibility.reset);
 
+  testWidgets('the bar is only as tall as the pill', (t) async {
+    // The bug this was written for: the pill was centred with `Center`, which
+    // expands to its constraints — and in the bottomNavigationBar slot those
+    // are loose. The bar grew to fill the screen, floated in the middle of
+    // itself, and made the Scaffold reserve that whole height as bottom
+    // inset, which pushed the feed's full-screen cards apart and left a black
+    // gap through the middle of the page.
+    await t.pumpWidget(host());
+    await t.pumpAndSettle();
+
+    final bar = t.getSize(find.byType(AppNavbar)).height;
+    final screen = t.getSize(find.byType(Scaffold)).height;
+
+    expect(bar, lessThan(screen / 3),
+        reason: 'the nav bar is filling the screen instead of hugging its pill');
+  });
+
+  testWidgets('the bar sits at the bottom, not adrift in the middle',
+      (t) async {
+    await t.pumpWidget(host());
+    await t.pumpAndSettle();
+
+    final barBottom = t.getRect(find.byType(AppNavbar)).bottom;
+    final screenBottom = t.getRect(find.byType(Scaffold)).bottom;
+
+    expect(screenBottom - barBottom, lessThan(24),
+        reason: 'the bar has floated away from the bottom edge');
+  });
+
+  testWidgets('collapsing does not change the bar\'s height', (t) async {
+    // It narrows. A collapse that also changed height would move the feed
+    // under it on every scroll.
+    await t.pumpWidget(host());
+    await t.pumpAndSettle();
+    final before = t.getSize(find.byType(AppNavbar)).height;
+
+    ChromeVisibility.expanded.value = false;
+    await t.pumpAndSettle();
+
+    expect(t.getSize(find.byType(AppNavbar)).height, before);
+  });
+
   testWidgets('expanded, the active tab carries its label', (t) async {
     await t.pumpWidget(host());
     await t.pumpAndSettle();

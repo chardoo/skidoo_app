@@ -27,7 +27,7 @@ class GlassSurface extends StatelessWidget {
     super.key,
     required this.child,
     required this.borderRadius,
-    this.blurSigma = 24,
+    this.blurSigma = 30,
     this.bordered = true,
     this.padding,
     this.onDark,
@@ -135,11 +135,16 @@ class GlassSurface extends StatelessWidget {
 
   /// The tint laid over the blur.
   ///
-  /// Heavier than a hairline and lighter than a surface: enough that text and
-  /// icons on it stay legible over a bright photo, not so much that the
-  /// content stops showing through — which is the only reason to blur at all.
+  /// Light enough that the content keeps showing through, which is the only
+  /// reason to blur at all. The first version used 35 % black, and over a dark
+  /// photo that is indistinguishable from an opaque slab — the blur was
+  /// running and paying for itself while looking like a painted rectangle.
+  ///
+  /// This is closer to what iOS calls a *thin* material: the frost separates
+  /// the chrome from the content without hiding it, and legibility comes from
+  /// the blur destroying detail rather than from the tint covering it.
   static Color _frostedFill(AppThemeExtension ext, {required bool dark}) =>
       dark
-          ? const Color(0x59121211) // near-black, 35 %
-          : const Color(0x8CFFFFFF); // white, 55 %
+          ? const Color(0x2E121211) // near-black, 18 %
+          : const Color(0x66FFFFFF); // white, 40 %
 }

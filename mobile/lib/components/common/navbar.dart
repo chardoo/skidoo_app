@@ -63,7 +63,14 @@ class AppNavbar extends StatelessWidget {
           // Centred rather than stretched, so the collapsed bar shrinks toward
           // the middle instead of leaving a stub against one edge.
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxxl.w),
-          child: Center(
+          // Align with heightFactor, not Center: Center expands to fill its
+          // constraints, and in the bottomNavigationBar slot those are loose —
+          // so the bar grew to fill the screen, floated in the middle of
+          // itself, and made the Scaffold reserve that whole height as bottom
+          // inset. heightFactor: 1 sizes to the child instead.
+          child: Align(
+            alignment: Alignment.center,
+            heightFactor: 1,
             child: AnimatedSize(
               duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutCubic,

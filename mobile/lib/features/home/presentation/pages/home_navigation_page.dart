@@ -447,7 +447,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
               left: 0,
               right: 0,
               top: 0,
-              height: _headerHeight > 0 ? _headerHeight + topPadding : 140,
+              // _headerHeight is measured on the Padding that already carries
+              // topPadding, so adding it again drew a strip a status bar
+              // taller than the header it was backing.
+              height: _headerHeight > 0 ? _headerHeight : 140,
               child: IgnorePointer(
                 child: AnimatedSlide(
                   offset: _headerVisible ? Offset.zero : const Offset(0, -1),

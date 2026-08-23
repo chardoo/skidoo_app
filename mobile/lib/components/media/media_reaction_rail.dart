@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:jperg_app/core/common/widgets/glass_surface.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/media/media_rail_action.dart';
-import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
@@ -222,28 +220,15 @@ class MediaReactionRail extends StatelessWidget {
       children.add(_build(action, ext));
     }
 
-    // A frosted capsule behind the column, rather than a disc per glyph.
+    // Each reaction stands on its own, transparent — no capsule behind the
+    // column.
     //
-    // These sit on full-bleed photos, where the icons used to rely on a drop
-    // shadow alone — which fails on exactly the photos that need it most, a
-    // bright sky or a white dress. One capsule gives the whole rail a ground
-    // to sit on and keeps it reading as a single control; discs would make
-    // five separate objects out of one.
-    //
-    // Sized to the icons: [AnimatedSize] is not involved, so the capsule is
-    // whatever the column needs and nothing is re-laid-out on scroll.
-    return GlassSurface(
-      borderRadius: BorderRadius.circular(AppRadius.xl.r),
-      blurSigma: 16,
-      // Always the dark treatment: the ground is a photo, not the app's
-      // background, and a white capsule over someone's wedding is glare.
-      onDark: true,
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm.w,
-        vertical: AppSpacing.md.h,
-      ),
-      child: Column(mainAxisSize: MainAxisSize.min, children: children),
-    );
+    // Grouping them in one glass panel was wrong twice over. It made five
+    // separate engagements read as a single control, and over a dark photo the
+    // tinted panel went nearly opaque, so it looked like a black slab rather
+    // than glass. Instagram and every feed like it leave these bare over the
+    // media; the glyph's own outline plus its shadow is what carries it.
+    return Column(mainAxisSize: MainAxisSize.min, children: children);
   }
 
   Widget _build(MediaReaction r, AppThemeExtension ext) => MediaRailAction(
