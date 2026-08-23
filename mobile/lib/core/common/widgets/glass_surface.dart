@@ -27,7 +27,7 @@ class GlassSurface extends StatelessWidget {
     super.key,
     required this.child,
     required this.borderRadius,
-    this.blurSigma = 30,
+    this.blurSigma = 14,
     this.bordered = true,
     this.padding,
     this.onDark,
@@ -36,9 +36,14 @@ class GlassSurface extends StatelessWidget {
   final Widget child;
   final BorderRadius borderRadius;
 
-  /// How soft the frost is. Modest by default: the point is to separate the
-  /// chrome from the content, not to erase what is behind it, and the cost
-  /// of a blur rises with its radius.
+  /// How soft the frost is.
+  ///
+  /// Low on purpose, and this is the setting that decides whether the glass
+  /// reads as glass. A wide blur smears everything behind it into one flat
+  /// tone, so the chrome looks like a painted panel however transparent the
+  /// tint is — you can see *a colour* through it, not *the content*. Keeping
+  /// the radius short leaves the shapes behind recognisable, which is the
+  /// entire effect. It is cheaper, too: blur cost rises with radius.
   final double blurSigma;
 
   /// The hairline that gives the glass an edge. Off for surfaces that already
@@ -135,16 +140,16 @@ class GlassSurface extends StatelessWidget {
 
   /// The tint laid over the blur.
   ///
-  /// Light enough that the content keeps showing through, which is the only
-  /// reason to blur at all. The first version used 35 % black, and over a dark
-  /// photo that is indistinguishable from an opaque slab — the blur was
-  /// running and paying for itself while looking like a painted rectangle.
+  /// Barely there. Two rounds of this were too heavy — 35 % black read as an
+  /// opaque slab over a dark photo, and 18 % still hid what was behind it. The
+  /// tint is not what makes the chrome legible; the blur is. Its only job is
+  /// to keep the surface from disappearing entirely against a mid-grey photo.
   ///
-  /// This is closer to what iOS calls a *thin* material: the frost separates
-  /// the chrome from the content without hiding it, and legibility comes from
-  /// the blur destroying detail rather than from the tint covering it.
+  /// Paired with a short [blurSigma]: a light tint over a wide blur still
+  /// looks flat, because the blur has already thrown away everything that
+  /// would tell you there is content back there.
   static Color _frostedFill(AppThemeExtension ext, {required bool dark}) =>
       dark
-          ? const Color(0x2E121211) // near-black, 18 %
-          : const Color(0x66FFFFFF); // white, 40 %
+          ? const Color(0x14121211) // near-black, 8 %
+          : const Color(0x33FFFFFF); // white, 20 %
 }

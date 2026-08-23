@@ -39,7 +39,6 @@ class GlassIconButton extends StatelessWidget {
         height: size.w,
         child: GlassSurface(
           borderRadius: BorderRadius.circular(size.w / 2),
-          blurSigma: 18,
           child: IconButton(
             padding: EdgeInsets.zero,
             tooltip: tooltip,

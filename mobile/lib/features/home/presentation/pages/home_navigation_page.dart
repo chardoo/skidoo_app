@@ -460,7 +460,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
                       ? GlassSurface(
                           borderRadius: BorderRadius.zero,
                           bordered: false,
-                          blurSigma: 18,
                           // The feed is a dark island whatever the app theme
                           // is, and this sits on it.
                           onDark: true,
