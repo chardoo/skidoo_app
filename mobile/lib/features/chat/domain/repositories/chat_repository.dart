@@ -44,6 +44,15 @@ abstract class ChatRepository {
     required String messageId,
   });
 
+  /// Pin [messageId] to the top of [roomId], replacing any current pin.
+  Future<void> pinMessage({
+    required String roomId,
+    required String messageId,
+  });
+
+  /// Clear [roomId]'s pinned message.
+  Future<void> unpinMessage(String roomId);
+
   /// Local-only: update content + updatedAt for an edited message.
   Future<void> updateCachedMessage(
       String messageId, String content, DateTime updatedAt);

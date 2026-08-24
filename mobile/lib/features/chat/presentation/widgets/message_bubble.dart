@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/cloudinary_transform.dart';
 import 'package:jperg_app/features/chat/presentation/chat_time.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/mention_text.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -16,7 +17,7 @@ import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 /// patterns (Cloudinary /video/upload/) and file extensions as fallback.
 bool _isVideoUrl(String url) => CloudinaryTransform.isVideoUrl(url);
 
-class MessageBubble extends StatelessWidget {
+class MessageBubble extends StatefulWidget {
   const MessageBubble({
     super.key,
     required this.message,
@@ -25,8 +26,12 @@ class MessageBubble extends StatelessWidget {
     this.senderImageUrl,
     this.onUserTap,
     this.onLongPress,
+    this.onReplyTap,
     this.readCount = 0,
     this.totalOthers = 0,
+    this.mentionHandles = const {},
+    this.mentionNames = const {},
+    this.myUserId = '',
   });
 
   final ChatMessage message;
@@ -46,17 +51,58 @@ class MessageBubble extends StatelessWidget {
   /// Called when user long-presses to initiate a reply.
   final VoidCallback? onLongPress;
 
+  /// Jump to the message this one is quoting. Null when the quoted message
+  /// isn't in the loaded history, which leaves the quote as context only.
+  final VoidCallback? onReplyTap;
+
   /// How many non-sender participants have read this message.
   final int readCount;
 
   /// Total non-sender participants in the room (1 for DM, N-1 for group).
   final int totalOthers;
 
-  bool get _showsAttribution => isGroup && !isMe;
+  /// {userId: handle} for the room, so `@devon_a` in the body can be resolved
+  /// to a member and drawn as a mention. Empty in rooms where mentions don't
+  /// apply, which short-circuits the whole path.
+  final Map<String, String> mentionHandles;
+
+  /// {userId: display name}, so a mention renders as "@Devon" rather than the
+  /// handle that was typed.
+  final Map<String, String> mentionNames;
+
+  /// Whose mentions read as "@You".
+  final String myUserId;
+
+  @override
+  State<MessageBubble> createState() => _MessageBubbleState();
+}
+
+class _MessageBubbleState extends State<MessageBubble> {
+  /// How far the current horizontal swipe has travelled. Only meaningful
+  /// between a drag's start and its end.
+  double _dragDx = 0;
+
+  /// Whether this swipe has already opened the menu.
+  ///
+  /// The whole reason this widget has state: onHorizontalDragUpdate fires on
+  /// every pointer move, and it used to call the handler each time. A single
+  /// ordinary swipe delivers about ten of them, so it pushed ten stacked
+  /// bottom sheets that all had to be dismissed one by one.
+  bool _swipeHandled = false;
+
+  /// Far enough to be a deliberate swipe rather than a slip while scrolling.
+  static const double _swipeThreshold = 36;
+
+  bool get _showsAttribution => widget.isGroup && !widget.isMe;
 
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final message = widget.message;
+    final isMe = widget.isMe;
+    final readCount = widget.readCount;
+    final totalOthers = widget.totalOthers;
+    final onLongPress = widget.onLongPress;
 
     // Sent messages are a filled accent block with white text; received ones sit
     // on the neutral surface. The contrast is what separates the two sides at a
@@ -68,9 +114,20 @@ class MessageBubble extends StatelessWidget {
 
     return GestureDetector(
       onLongPress: onLongPress,
-      onHorizontalDragUpdate: (details) {
-        onLongPress?.call();
+      onHorizontalDragStart: (_) {
+        _dragDx = 0;
+        _swipeHandled = false;
       },
+      onHorizontalDragUpdate: (details) {
+        if (_swipeHandled) return;
+        _dragDx += details.delta.dx;
+        if (_dragDx.abs() >= _swipeThreshold) {
+          _swipeHandled = true;
+          onLongPress?.call();
+        }
+      },
+      onHorizontalDragEnd: (_) => _swipeHandled = false,
+      onHorizontalDragCancel: () => _swipeHandled = false,
       child: Padding(
         padding:
             EdgeInsets.symmetric(vertical: 4.h, horizontal: AppSpacing.md.w),
@@ -105,12 +162,12 @@ class MessageBubble extends StatelessWidget {
               children: [
                 if (_showsAttribution) ...[
                   UserAvatar(
-                    imageUrl: senderImageUrl,
+                    imageUrl: widget.senderImageUrl,
                     initial: message.displayName.isNotEmpty
                         ? message.displayName
                         : message.senderId,
                     radius: 14,
-                    onTap: onUserTap,
+                    onTap: widget.onUserTap,
                   ),
                   SizedBox(width: 6.w),
                 ],
@@ -155,6 +212,7 @@ class MessageBubble extends StatelessWidget {
                           preview: message.replyPreview!,
                           isMe: isMe,
                           ext: ext,
+                          onTap: widget.onReplyTap,
                         ),
                       // Media (image or video).
                       //
@@ -182,7 +240,10 @@ class MessageBubble extends StatelessWidget {
                                   aspectRatio: message.mediaAspectRatio,
                                 ),
                         ),
-                      // Text content
+                      // Text content, with the timestamp tucked into its
+                      // bottom-right corner — the designs put the time inside
+                      // the bubble, where it reads as part of the message
+                      // rather than a line of its own under every one.
                       if (message.isEncrypted || message.content.isNotEmpty)
                         Padding(
                           padding: EdgeInsets.fromLTRB(
@@ -192,36 +253,91 @@ class MessageBubble extends StatelessWidget {
                                 ? 8.h
                                 : 10.h,
                             14.w,
-                            10.h,
+                            8.h,
                           ),
-                          child: message.isEncrypted
-                              ? Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.lock_outline,
-                                      size: 13.sp,
-                                      color: mutedTextColor,
-                                    ),
-                                    SizedBox(width: AppSpacing.xs.w),
-                                    Text(
-                                      'Encrypted message',
+                          child: Column(
+                            // Two cases, because the bubble is sized two ways.
+                            //
+                            // Text only: the bubble hugs its content, so `end`
+                            // is what puts the time in the corner. An Align
+                            // here instead would take every pixel it is
+                            // offered and drag "Bro" back out to the full 72%
+                            // the bubble is allowed.
+                            //
+                            // With media above, the bubble is already as wide
+                            // as the photo, so the caption must stay left —
+                            // `end` would push a short caption to the right
+                            // edge. There the time gets the Align, which costs
+                            // nothing on a bubble that is full width anyway.
+                            crossAxisAlignment: message.imageUrl != null
+                                ? CrossAxisAlignment.start
+                                : CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              message.isEncrypted
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.lock_outline,
+                                          size: 13.sp,
+                                          color: mutedTextColor,
+                                        ),
+                                        SizedBox(width: AppSpacing.xs.w),
+                                        Text(
+                                          'Encrypted message',
+                                          style: TextStyle(
+                                            color: mutedTextColor,
+                                            fontSize: 13.sp,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : MentionText(
+                                      text: message.content,
                                       style: TextStyle(
-                                        color: mutedTextColor,
-                                        fontSize: 13.sp,
-                                        fontStyle: FontStyle.italic,
+                                        color: textColor,
+                                        fontSize: 14.sp,
+                                        height: 1.4,
                                       ),
+                                      mentionStyle: TextStyle(
+                                        // On a filled bubble the accent green
+                                        // would disappear into it, so a mention
+                                        // there is carried by weight instead.
+                                        color: isMe
+                                            ? Colors.white
+                                            : ext.accentGold,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      handles: widget.mentionHandles,
+                                      displayNames: widget.mentionNames,
+                                      myUserId: widget.myUserId,
                                     ),
-                                  ],
-                                )
-                              : Text(
-                                  message.content,
-                                  style: TextStyle(
-                                    color: textColor,
-                                    fontSize: 14.sp,
-                                    height: 1.4,
+                              SizedBox(height: 3.h),
+                              if (message.imageUrl != null)
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: _Timestamp(
+                                    message: message,
+                                    isMe: isMe,
+                                    ext: ext,
+                                    color: mutedTextColor,
+                                    readCount: readCount,
+                                    totalOthers: totalOthers,
                                   ),
+                                )
+                              else
+                                _Timestamp(
+                                  message: message,
+                                  isMe: isMe,
+                                  ext: ext,
+                                  color: mutedTextColor,
+                                  readCount: readCount,
+                                  totalOthers: totalOthers,
                                 ),
+                            ],
+                          ),
                         ),
                     ],
                   ),
@@ -229,22 +345,24 @@ class MessageBubble extends StatelessWidget {
               ],
             ),
 
-            // The time sits under the bubble, outside it — so it never competes
-            // with the message for space and reads the same on both sides.
-            Padding(
-              padding: EdgeInsets.only(
-                top: 4.h,
-                left: isMe ? 0 : (_showsAttribution ? 40.w : 4.w),
-                right: isMe ? 4.w : 0,
+            // A media-only bubble has no text block to put the time in, so it
+            // keeps the line underneath. Overlaying it on the photo would put
+            // grey-on-unknown text over whatever happens to be in that corner.
+            if (!message.isEncrypted && message.content.isEmpty)
+              Padding(
+                padding: EdgeInsets.only(
+                  top: 4.h,
+                  left: isMe ? 0 : (_showsAttribution ? 40.w : 4.w),
+                  right: isMe ? 4.w : 0,
+                ),
+                child: _Timestamp(
+                  message: message,
+                  isMe: isMe,
+                  ext: ext,
+                  readCount: readCount,
+                  totalOthers: totalOthers,
+                ),
               ),
-              child: _Timestamp(
-                message: message,
-                isMe: isMe,
-                ext: ext,
-                readCount: readCount,
-                totalOthers: totalOthers,
-              ),
-            ),
           ],
         ),
       ),
@@ -259,24 +377,38 @@ class _ReplyPreviewStrip extends StatelessWidget {
     required this.preview,
     required this.isMe,
     required this.ext,
+    this.onTap,
   });
 
   final ReplyPreview preview;
   final bool isMe;
   final AppThemeExtension ext;
 
+  /// Jump to the quoted message. Null when it isn't loaded.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
-    final bg = ext.homeBackground.withValues(alpha: 0.6);
-    final accent = ext.searchHintColor;
+    // On a filled bubble the quote is a darker patch of the same colour with a
+    // white rule down its edge — the designs treat it as a shadow of the bubble
+    // rather than a card sitting on it. On a received bubble there is no fill to
+    // darken, so it takes the accent green for the rule and a wash of the page
+    // colour behind, which is the same relationship inverted.
+    final bg = isMe
+        ? Colors.black.withValues(alpha: 0.16)
+        : ext.homeBackground.withValues(alpha: 0.7);
+    final rule = isMe ? Colors.white.withValues(alpha: 0.9) : ext.accentGold;
+    final nameColor = isMe ? Colors.white : ext.accentGold;
+    final bodyColor =
+        isMe ? Colors.white.withValues(alpha: 0.85) : ext.searchHintColor;
 
-    return Container(
+    final strip = Container(
       margin: EdgeInsets.fromLTRB(6.w, 6.h, 6.w, 0),
       padding: EdgeInsets.fromLTRB(8.w, 6.h, 8.w, 6.h),
       decoration: BoxDecoration(
         color: bg,
         border: Border(
-          left: BorderSide(color: accent, width: 3),
+          left: BorderSide(color: rule, width: 3),
         ),
         borderRadius: BorderRadius.circular(6.r),
       ),
@@ -295,7 +427,7 @@ class _ReplyPreviewStrip extends StatelessWidget {
                 Text(
                   preview.senderName,
                   style: TextStyle(
-                    color: accent,
+                    color: nameColor,
                     fontSize: 11.sp,
                     fontWeight: FontWeight.w700,
                   ),
@@ -307,7 +439,7 @@ class _ReplyPreviewStrip extends StatelessWidget {
                   Text(
                     preview.content!,
                     style: TextStyle(
-                      color: ext.searchHintColor,
+                      color: bodyColor,
                       fontSize: 11.sp,
                     ),
                     maxLines: 1,
@@ -321,13 +453,13 @@ class _ReplyPreviewStrip extends StatelessWidget {
                             ? Icons.videocam_rounded
                             : Icons.image_rounded,
                         size: 12.sp,
-                        color: ext.searchHintColor,
+                        color: bodyColor,
                       ),
                       SizedBox(width: AppSpacing.xs.w),
                       Text(
                         preview.isVideo ? 'Video' : 'Photo',
                         style: TextStyle(
-                          color: ext.searchHintColor,
+                          color: bodyColor,
                           fontSize: 11.sp,
                         ),
                       ),
@@ -362,6 +494,13 @@ class _ReplyPreviewStrip extends StatelessWidget {
             ),
         ],
       ),
+    );
+
+    if (onTap == null) return strip;
+    return Semantics(
+      button: true,
+      label: 'Go to replied message',
+      child: GestureDetector(onTap: onTap, child: strip),
     );
   }
 }
@@ -603,19 +742,27 @@ class _Timestamp extends StatelessWidget {
     required this.message,
     required this.isMe,
     required this.ext,
+    this.color,
     this.readCount = 0,
     this.totalOthers = 0,
   });
   final ChatMessage message;
   final bool isMe;
   final AppThemeExtension ext;
+
+  /// Set when the timestamp sits inside the bubble, where the theme's muted
+  /// grey is unreadable on a filled accent ground. Null keeps the muted grey
+  /// used under a media-only bubble.
+  final Color? color;
+
   final int readCount;
   final int totalOthers;
 
   @override
   Widget build(BuildContext context) {
     // createdAt is UTC; ChatTime puts it on the phone's clock.
-    final timeStr = ChatTime.clock(message.createdAt);
+    final timeStr = ChatTime.bubbleClock(message.createdAt);
+    final tint = color ?? ext.searchHintColor;
 
     // Read-status logic (only for my sent messages with known participant count).
     Widget? readIndicator;
@@ -627,7 +774,7 @@ class _Timestamp extends StatelessWidget {
         readIndicator = Icon(
           allRead ? Icons.done_all_rounded : Icons.done_rounded,
           size: 11.sp,
-          color: allRead ? ext.infoBlue : ext.searchHintColor,
+          color: allRead ? ext.infoBlue : tint,
         );
       } else {
         // Group: double tick when all read; "Read by N" when partial; single tick when none.
@@ -641,7 +788,7 @@ class _Timestamp extends StatelessWidget {
           readIndicator = Text(
             'Read by $readCount',
             style: TextStyle(
-              color: ext.searchHintColor,
+              color: tint,
               fontSize: 9.sp,
             ),
           );
@@ -649,7 +796,7 @@ class _Timestamp extends StatelessWidget {
           readIndicator = Icon(
             Icons.done_rounded,
             size: 11.sp,
-            color: ext.searchHintColor,
+            color: tint,
           );
         }
       }
@@ -658,7 +805,7 @@ class _Timestamp extends StatelessWidget {
       readIndicator = Icon(
         message.isLocal ? Icons.access_time_rounded : Icons.done_all_rounded,
         size: 11.sp,
-        color: ext.searchHintColor,
+        color: tint,
       );
     }
 
@@ -668,8 +815,8 @@ class _Timestamp extends StatelessWidget {
         Text(
           timeStr,
           style: TextStyle(
-            color: ext.searchHintColor,
-            fontSize: 9.sp,
+            color: tint,
+            fontSize: 10.sp,
           ),
         ),
         if (message.isEdited) ...[
@@ -677,8 +824,8 @@ class _Timestamp extends StatelessWidget {
           Text(
             'edited',
             style: TextStyle(
-              color: ext.searchHintColor,
-              fontSize: 9.sp,
+              color: tint,
+              fontSize: 10.sp,
               fontStyle: FontStyle.italic,
             ),
           ),

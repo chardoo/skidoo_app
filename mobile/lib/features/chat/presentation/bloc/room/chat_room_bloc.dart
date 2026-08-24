@@ -13,6 +13,7 @@ import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.
         WsChatErrorEvent,
         WsKeyBundlesEvent, WsKeyRotationEvent, WsMessageDeletedEvent,
         WsMessageEditedEvent, WsParticipantKeyAvailable,
+        WsMessagePinnedEvent,
         WsParticipantRemovedEvent, WsReadReceiptEvent, WsRoomDeletedEvent,
         WsRoomSettingsUpdatedEvent, WsSenderKeyDistributionEvent,
         WsTypingEvent, WsUserJoinedEvent;
@@ -38,6 +39,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   final UploadChatImageUseCase _uploadImage;
   final EditMessageUseCase _editMessage;
   final DeleteMessageUseCase _deleteMessage;
+  final PinMessageUseCase _pinMessage;
   final UpdateCachedMessageUseCase _updateCachedMessage;
   final DeleteCachedMessageUseCase _deleteCachedMessage;
   final GrantAdminUseCase _grantAdmin;
@@ -87,6 +89,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   StreamSubscription<WsKeyRotationEvent>? _wsKeyRotationSub;
   StreamSubscription<WsMessageEditedEvent>? _wsEditSub;
   StreamSubscription<WsMessageDeletedEvent>? _wsDeleteSub;
+  StreamSubscription<WsMessagePinnedEvent>? _wsPinSub;
   StreamSubscription<WsUserJoinedEvent>? _wsUserJoinedSub;
   StreamSubscription<WsAdminGrantedEvent>? _wsAdminGrantedSub;
   StreamSubscription<WsAdminRevokedEvent>? _wsAdminRevokedSub;
@@ -115,6 +118,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     required UploadChatImageUseCase uploadImage,
     required EditMessageUseCase editMessage,
     required DeleteMessageUseCase deleteMessage,
+    required PinMessageUseCase pinMessage,
     required UpdateCachedMessageUseCase updateCachedMessage,
     required DeleteCachedMessageUseCase deleteCachedMessage,
     required GrantAdminUseCase grantAdmin,
@@ -137,6 +141,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         _uploadImage = uploadImage,
         _editMessage = editMessage,
         _deleteMessage = deleteMessage,
+        _pinMessage = pinMessage,
         _updateCachedMessage = updateCachedMessage,
         _deleteCachedMessage = deleteCachedMessage,
         _grantAdmin = grantAdmin,
@@ -175,6 +180,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_KeyRotationReceived>(_onKeyRotationReceived);
     on<ChatRoomMessageEditRequested>(_onMessageEditRequested);
     on<ChatRoomMessageDeleteRequested>(_onMessageDeleteRequested);
+    on<ChatRoomForwardRequested>(_onForwardRequested);
+    on<ChatRoomPinToggled>(_onPinToggled);
+    on<_MessagePinned>(_onMessagePinned);
     on<_MessageEdited>(_onMessageEdited);
     on<_MessageDeleted>(_onMessageDeleted);
     on<_WsUserJoined>(_onWsUserJoined);
@@ -441,6 +449,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsKeyRotationSub?.cancel();
     _wsEditSub?.cancel();
     _wsDeleteSub?.cancel();
+    _wsPinSub?.cancel();
     _wsUserJoinedSub?.cancel();
     _wsAdminGrantedSub?.cancel();
     _wsAdminRevokedSub?.cancel();
@@ -460,6 +469,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsKeyRotationSub = null;
     _wsEditSub = null;
     _wsDeleteSub = null;
+    _wsPinSub = null;
     _wsUserJoinedSub = null;
     _wsAdminGrantedSub = null;
     _wsAdminRevokedSub = null;
@@ -543,6 +553,14 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       (event) {
         if (!isClosed && event.roomId == roomId) {
           add(_MessageDeleted(event.id));
+        }
+      },
+    );
+
+    _wsPinSub = _ws.messagePinnedEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_MessagePinned(event.pinned));
         }
       },
     );
@@ -641,7 +659,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // room_id, e.g. "Only admins can send messages in this room").
     _wsErrorSub = _ws.errorEvents.listen(
       (event) {
-        if (!isClosed && (event.roomId == null || event.roomId == roomId)) {
+        // Errors for the room on screen, general ones, and refusals from a
+        // room this bloc has just forwarded into — see [_forwardTargets].
+        final forRoom = event.roomId == null ||
+            event.roomId == roomId ||
+            _forwardTargets.contains(event.roomId);
+        if (!isClosed && forRoom) {
           add(_WsServerError(event.message));
         }
       },
@@ -1931,6 +1954,155 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       // Re-fetch messages to restore on failure.
       emit(state.copyWith(errorMessage: 'Could not delete message.'));
     }
+  }
+
+  // ── Forward ────────────────────────────────────────────────────────────────
+
+  /// Rooms this bloc has recently forwarded into.
+  ///
+  /// The socket reports a refused send against the room it was aimed at, and
+  /// the error listener only accepts frames for the room on screen — so a
+  /// forward the server rejected used to vanish, leaving the user with a
+  /// confirmation for a message that was never delivered. Entries are dropped
+  /// after a few seconds; any error worth showing arrives immediately.
+  final Set<String> _forwardTargets = {};
+
+  void _onForwardRequested(
+    ChatRoomForwardRequested event,
+    Emitter<ChatRoomState> emit,
+  ) {
+    final msg = event.message;
+    if (msg.isEncrypted) {
+      // The body on screen is ciphertext this room's key opened; the target
+      // room has a different one. Forwarding it would deliver noise.
+      emit(state.copyWith(
+          errorMessage: 'Encrypted messages cannot be forwarded.'));
+      return;
+    }
+    if (!_ws.isConnected) {
+      emit(state.copyWith(errorMessage: 'Not connected — try again in a moment.'));
+      return;
+    }
+
+    _forwardTargets.add(event.targetRoomId);
+    Timer(const Duration(seconds: 8), () {
+      _forwardTargets.remove(event.targetRoomId);
+    });
+    // Sent over the shared socket with an explicit room_id rather than by
+    // opening the target room: the connection already carries every room the
+    // user is in, and the server checks membership on the frame. Nothing about
+    // forwarding requires leaving the conversation you are reading.
+    //
+    // Plaintext even when the target is an E2EE DM — the key material for that
+    // room belongs to its own bloc, which isn't running. The recipient sees a
+    // readable message; what it costs is that this one copy isn't encrypted.
+    _ws.send(
+      msg.content.isEmpty ? null : msg.content,
+      imageUrl: msg.imageUrl,
+      isVideo: msg.isVideo,
+      roomId: event.targetRoomId,
+    );
+
+    // Confirmed here rather than by the screen that opened the picker, so the
+    // message is only claimed once the frame has actually gone out. Emitted and
+    // immediately cleared so forwarding twice to the same room confirms twice
+    // — a notice that is already on the state would not read as a change.
+    final where =
+        event.targetName.isNotEmpty ? ' to ${event.targetName}' : '';
+    emit(state.copyWith(systemNotice: 'Forwarded$where'));
+    emit(state.copyWith(clearSystemNotice: true));
+  }
+
+  // ── Pin ────────────────────────────────────────────────────────────────────
+
+  /// Build the banner preview for [messageId] from what is already on screen.
+  ///
+  /// The server sends its own preview back over the socket, but that round trip
+  /// is what makes an optimistic update worth having: the banner appears the
+  /// moment the user taps Pin. Returns null when the message isn't loaded,
+  /// which only leaves the banner to the WS event.
+  PinnedMessage? _localPreviewFor(String messageId) {
+    final msg = state.messages.where((m) => m.id == messageId).firstOrNull;
+    if (msg == null) return null;
+    return PinnedMessage(
+      id: msg.id,
+      senderId: msg.senderId,
+      senderName: msg.displayName,
+      content: msg.content.isEmpty ? null : msg.content,
+      imageUrl: msg.imageUrl,
+      isVideo: msg.isVideo,
+      isEncrypted: msg.isEncrypted,
+      createdAt: msg.createdAt,
+    );
+  }
+
+  Future<void> _onPinToggled(
+    ChatRoomPinToggled event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+
+    final room = state.room;
+    if (room == null) {
+      // No room object to update optimistically, but the request itself is
+      // still valid — send it and let the message_pinned broadcast fill the
+      // banner in. Returning here would make the control do nothing at all.
+      try {
+        await _pinMessage(roomId: roomId, messageId: event.messageId);
+      } catch (e) {
+        emit(state.copyWith(
+          errorMessage: chatErrorText(e,
+              fallback: event.messageId == null
+                  ? 'Could not unpin message.'
+                  : 'Could not pin message.'),
+        ));
+      }
+      return;
+    }
+
+    final previous = room.pinnedMessage;
+    final optimistic = event.messageId == null
+        ? null
+        : (_localPreviewFor(event.messageId!) ?? previous);
+    emit(state.copyWith(
+      room: event.messageId == null
+          ? room.copyWith(clearPinnedMessage: true)
+          : (optimistic != null
+              ? room.copyWith(pinnedMessage: optimistic)
+              : room),
+    ));
+
+    try {
+      await _pinMessage(roomId: roomId, messageId: event.messageId);
+    } catch (e) {
+      // Put the previous pin back — the banner must not claim something the
+      // server rejected (e.g. an admin-only room the user cannot pin in).
+      final current = state.room;
+      emit(state.copyWith(
+        room: current == null
+            ? current
+            : (previous == null
+                ? current.copyWith(clearPinnedMessage: true)
+                : current.copyWith(pinnedMessage: previous)),
+        errorMessage: chatErrorText(
+          e,
+          fallback: event.messageId == null
+              ? 'Could not unpin message.'
+              : 'Could not pin message.',
+        ),
+      ));
+    }
+  }
+
+  void _onMessagePinned(_MessagePinned event, Emitter<ChatRoomState> emit) {
+    final room = state.room;
+    if (room == null) return;
+    emit(state.copyWith(
+      room: event.pinned == null
+          ? room.copyWith(clearPinnedMessage: true)
+          : room.copyWith(pinnedMessage: event.pinned),
+    ));
   }
 
   void _onMessageEdited(_MessageEdited event, Emitter<ChatRoomState> emit) {

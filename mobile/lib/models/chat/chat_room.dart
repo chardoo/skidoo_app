@@ -225,6 +225,66 @@ class LastMessage {
       };
 }
 
+/// The message pinned to the top of a room, as the banner draws it.
+///
+/// Its own type rather than a [ChatMessage] because the pinned message is
+/// usually far enough back that the client has not loaded it — the server sends
+/// this preview with the room so the banner can be drawn without a second
+/// fetch, and it carries only what one truncated line needs.
+class PinnedMessage {
+  final String id;
+  final String senderId;
+  final String senderName;
+  final String? content;
+  final String? imageUrl;
+  final bool isVideo;
+  final bool isEncrypted;
+  final DateTime createdAt;
+
+  const PinnedMessage({
+    required this.id,
+    required this.senderId,
+    required this.senderName,
+    this.content,
+    this.imageUrl,
+    this.isVideo = false,
+    this.isEncrypted = false,
+    required this.createdAt,
+  });
+
+  /// The single line the banner shows. Never empty — an attachment with no
+  /// caption still has to say what was pinned.
+  String get preview {
+    if (isEncrypted) return 'Encrypted message';
+    final text = content?.trim();
+    if (text != null && text.isNotEmpty) return text;
+    if (imageUrl != null) return isVideo ? 'Video' : 'Photo';
+    return 'Message';
+  }
+
+  factory PinnedMessage.fromJson(Map<String, dynamic> json) => PinnedMessage(
+        id: json['id'] as String,
+        senderId: (json['sender_id'] as String?) ?? '',
+        senderName: (json['sender_name'] as String?) ?? '',
+        content: json['content'] as String?,
+        imageUrl: json['image_url'] as String?,
+        isVideo: json['is_video'] == true,
+        isEncrypted: (json['is_encrypted'] as bool?) ?? false,
+        createdAt: parseServerTime(json['created_at'] as String),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'sender_id': senderId,
+        'sender_name': senderName,
+        'content': content,
+        'image_url': imageUrl,
+        'is_video': isVideo,
+        'is_encrypted': isEncrypted,
+        'created_at': createdAt.toUtc().toIso8601String(),
+      };
+}
+
 class ChatRoom {
   final String id;
   final RoomType type;
@@ -253,6 +313,10 @@ class ChatRoom {
   /// don't pay for it, since no screen that uses them draws a preview.
   final LastMessage? lastMessage;
 
+  /// The message pinned to the top of this conversation, or null for none.
+  /// Only the per-room endpoint fills it in — the inbox draws no banner.
+  final PinnedMessage? pinnedMessage;
+
   const ChatRoom({
     required this.id,
     required this.type,
@@ -265,6 +329,7 @@ class ChatRoom {
     this.adminOnly = false,
     this.unreadCount = 0,
     this.lastMessage,
+    this.pinnedMessage,
   });
 
   /// Human-readable display name.
@@ -399,6 +464,11 @@ class ChatRoom {
     bool? adminOnly,
     int? unreadCount,
     LastMessage? lastMessage,
+    PinnedMessage? pinnedMessage,
+    /// Unpinning has to be expressible: passing null for [pinnedMessage] means
+    /// "leave it alone" everywhere else in this method, so clearing needs its
+    /// own flag.
+    bool clearPinnedMessage = false,
   }) =>
       ChatRoom(
         id: id ?? this.id,
@@ -412,6 +482,8 @@ class ChatRoom {
         adminOnly: adminOnly ?? this.adminOnly,
         unreadCount: unreadCount ?? this.unreadCount,
         lastMessage: lastMessage ?? this.lastMessage,
+        pinnedMessage:
+            clearPinnedMessage ? null : (pinnedMessage ?? this.pinnedMessage),
       );
 
   factory ChatRoom.fromJson(Map<String, dynamic> json) {
@@ -425,6 +497,7 @@ class ChatRoom {
         : const <String, bool>{};
 
     final rawLast = json['last_message'] as Map<String, dynamic>?;
+    final rawPinned = json['pinned_message'] as Map<String, dynamic>?;
 
     return ChatRoom(
       id: json['id'] as String,
@@ -438,6 +511,8 @@ class ChatRoom {
       adminOnly: (json['admin_only'] as bool?) ?? false,
       unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
       lastMessage: rawLast != null ? LastMessage.fromJson(rawLast) : null,
+      pinnedMessage:
+          rawPinned != null ? PinnedMessage.fromJson(rawPinned) : null,
     );
   }
 

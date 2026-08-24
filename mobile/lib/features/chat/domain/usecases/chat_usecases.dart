@@ -151,6 +151,25 @@ class DeleteMessageUseCase {
       _repo.deleteMessage(roomId: roomId, messageId: messageId);
 }
 
+/// Pin a message to the top of a room, or clear the pin.
+///
+/// One use case for both directions because they are the same decision made
+/// twice — the action menu offers "Pin" or "Unpin" depending on what is already
+/// pinned, and the banner's control does the same.
+class PinMessageUseCase {
+  final ChatRepository _repo;
+  PinMessageUseCase(this._repo);
+
+  /// Pins [messageId], or clears the room's pin when [messageId] is null.
+  Future<void> call({
+    required String roomId,
+    String? messageId,
+  }) =>
+      messageId == null
+          ? _repo.unpinMessage(roomId)
+          : _repo.pinMessage(roomId: roomId, messageId: messageId);
+}
+
 class UpdateCachedMessageUseCase {
   final ChatRepository _repo;
   UpdateCachedMessageUseCase(this._repo);

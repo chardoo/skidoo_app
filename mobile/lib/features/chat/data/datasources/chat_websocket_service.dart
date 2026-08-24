@@ -110,6 +110,25 @@ class WsAdminRevokedEvent {
   });
 }
 
+/// Broadcast when the room's pinned message changes.
+///
+/// A single event for both directions: [pinned] is null when the pin was
+/// cleared, which is also what the server sends when the pinned message is
+/// deleted. Clients that only ever draw one banner then have one thing to
+/// listen to.
+class WsMessagePinnedEvent {
+  final String roomId;
+  final String? messageId;
+  final PinnedMessage? pinned;
+  final String pinnedBy;
+  const WsMessagePinnedEvent({
+    required this.roomId,
+    required this.messageId,
+    required this.pinned,
+    required this.pinnedBy,
+  });
+}
+
 /// Broadcast when an admin changes room-level settings (e.g. admin_only mode).
 class WsRoomSettingsUpdatedEvent {
   final String roomId;
@@ -262,6 +281,7 @@ class ChatWebSocketService {
   StreamController<WsUserJoinedEvent>? _userJoinedController;
   StreamController<WsAdminGrantedEvent>? _adminGrantedController;
   StreamController<WsAdminRevokedEvent>? _adminRevokedController;
+  StreamController<WsMessagePinnedEvent>? _msgPinnedController;
   StreamController<WsRoomSettingsUpdatedEvent>? _roomSettingsController;
   StreamController<WsParticipantRemovedEvent>? _participantRemovedController;
   StreamController<WsParticipantLeftEvent>? _participantLeftController;
@@ -310,6 +330,10 @@ class ChatWebSocketService {
   /// Emits when a message is deleted by its sender.
   Stream<WsMessageDeletedEvent> get messageDeletedEvents =>
       _msgDeletedController?.stream ?? const Stream.empty();
+
+  /// Emits when the room's pinned message is set or cleared.
+  Stream<WsMessagePinnedEvent> get messagePinnedEvents =>
+      _msgPinnedController?.stream ?? const Stream.empty();
 
   /// Emits when the current user receives a group invite (personal channel push).
   Stream<WsGroupInviteEvent> get groupInviteEvents =>
@@ -431,6 +455,7 @@ class ChatWebSocketService {
     _keyRotationController = StreamController<WsKeyRotationEvent>.broadcast();
     _msgEditedController = StreamController<WsMessageEditedEvent>.broadcast();
     _msgDeletedController = StreamController<WsMessageDeletedEvent>.broadcast();
+    _msgPinnedController = StreamController<WsMessagePinnedEvent>.broadcast();
     _groupInviteController = StreamController<WsGroupInviteEvent>.broadcast();
     _userJoinedController = StreamController<WsUserJoinedEvent>.broadcast();
     _adminGrantedController = StreamController<WsAdminGrantedEvent>.broadcast();
@@ -554,6 +579,18 @@ class ChatWebSocketService {
                 id: json['id'] as String,
                 roomId: json['room_id'] as String,
                 senderId: json['sender_id'] as String? ?? '',
+              ));
+            }
+          } else if (type == 'message_pinned') {
+            if (json['room_id'] is String) {
+              final raw = json['pinned_message'];
+              _msgPinnedController?.add(WsMessagePinnedEvent(
+                roomId: json['room_id'] as String,
+                messageId: json['message_id'] as String?,
+                pinned: raw is Map<String, dynamic>
+                    ? PinnedMessage.fromJson(raw)
+                    : null,
+                pinnedBy: json['pinned_by'] as String? ?? '',
               ));
             }
           } else if (type == 'group_invite') {
@@ -859,6 +896,7 @@ class ChatWebSocketService {
     _keyRotationController?.close();
     _msgEditedController?.close();
     _msgDeletedController?.close();
+    _msgPinnedController?.close();
     _groupInviteController?.close();
     _userJoinedController?.close();
     _adminGrantedController?.close();
@@ -880,6 +918,7 @@ class ChatWebSocketService {
     _keyRotationController = null;
     _msgEditedController = null;
     _msgDeletedController = null;
+    _msgPinnedController = null;
     _groupInviteController = null;
     _userJoinedController = null;
     _adminGrantedController = null;

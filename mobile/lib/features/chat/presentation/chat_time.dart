@@ -33,8 +33,7 @@ class ChatTime {
   /// Whether [a] and [b] land on the same calendar day for this user.
   static bool sameDay(DateTime a, DateTime b) => _dayOf(a) == _dayOf(b);
 
-  /// 24-hour clock — "14:03". Used inside message bubbles, where the day is
-  /// already established by a separator above.
+  /// 24-hour clock — "14:03".
   static String clock(DateTime t) {
     final l = local(t);
     return '${l.hour.toString().padLeft(2, '0')}:'
@@ -43,12 +42,21 @@ class ChatTime {
 
   /// 12-hour clock — "2:03 pm". Used in the inbox, which mixes times and day
   /// names and reads better without leading zeros.
-  static String clock12(DateTime t) {
+  ///
+  /// [upperPeriod] gives "2:03 PM", which is what the message bubble uses: the
+  /// time sits inside the bubble at a small size, where a capitalised period
+  /// stays legible against the fill.
+  static String clock12(DateTime t, {bool upperPeriod = false}) {
     final l = local(t);
     final period = l.hour >= 12 ? 'pm' : 'am';
     final hour = l.hour == 0 ? 12 : (l.hour > 12 ? l.hour - 12 : l.hour);
-    return '$hour:${l.minute.toString().padLeft(2, '0')} $period';
+    return '$hour:${l.minute.toString().padLeft(2, '0')} '
+        '${upperPeriod ? period.toUpperCase() : period}';
   }
+
+  /// The clock face drawn inside a message bubble — "2:03 PM". The day is
+  /// already established by the separator above it, so only the time is needed.
+  static String bubbleClock(DateTime t) => clock12(t, upperPeriod: true);
 
   static const _weekdays = [
     'Monday', 'Tuesday', 'Wednesday', 'Thursday',

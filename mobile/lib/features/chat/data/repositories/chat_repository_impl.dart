@@ -162,6 +162,16 @@ class ChatRepositoryImpl implements ChatRepository {
       _rest.deleteMessage(roomId: roomId, messageId: messageId);
 
   @override
+  Future<void> pinMessage({
+    required String roomId,
+    required String messageId,
+  }) =>
+      _rest.pinMessage(roomId: roomId, messageId: messageId);
+
+  @override
+  Future<void> unpinMessage(String roomId) => _rest.unpinMessage(roomId);
+
+  @override
   Future<void> updateCachedMessage(
           String messageId, String content, DateTime updatedAt) =>
       _db.updateMessageContent(messageId, content, updatedAt);

@@ -497,6 +497,8 @@ Future<void> setupServiceLocator() async {
       EditMessageUseCase(sl<ChatRepository>()));
   sl.registerSingleton<DeleteMessageUseCase>(
       DeleteMessageUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<PinMessageUseCase>(
+      PinMessageUseCase(sl<ChatRepository>()));
   sl.registerSingleton<UpdateCachedMessageUseCase>(
       UpdateCachedMessageUseCase(sl<ChatRepository>()));
   sl.registerSingleton<DeleteCachedMessageUseCase>(
@@ -594,6 +596,7 @@ Future<void> setupServiceLocator() async {
         uploadImage: sl<UploadChatImageUseCase>(),
         editMessage: sl<EditMessageUseCase>(),
         deleteMessage: sl<DeleteMessageUseCase>(),
+        pinMessage: sl<PinMessageUseCase>(),
         updateCachedMessage: sl<UpdateCachedMessageUseCase>(),
         deleteCachedMessage: sl<DeleteCachedMessageUseCase>(),
         grantAdmin: sl<GrantAdminUseCase>(),

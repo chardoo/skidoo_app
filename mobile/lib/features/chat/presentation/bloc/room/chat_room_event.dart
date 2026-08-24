@@ -92,6 +92,37 @@ class ChatRoomMessageDeleteRequested extends ChatRoomEvent {
   const ChatRoomMessageDeleteRequested(this.messageId);
 }
 
+/// Send a copy of [message] into another room.
+///
+/// The copy is a new message from the forwarding user, not a reference: the
+/// target room may have entirely different members, and a pointer into a
+/// conversation they cannot read would show them nothing.
+class ChatRoomForwardRequested extends ChatRoomEvent {
+  final ChatMessage message;
+  final String targetRoomId;
+
+  /// What to call the destination when confirming. Carried on the event so the
+  /// confirmation is emitted by the same code that knows whether the send
+  /// actually happened.
+  final String targetName;
+
+  const ChatRoomForwardRequested(
+    this.message,
+    this.targetRoomId, {
+    this.targetName = '',
+  });
+}
+
+/// Pin [messageId] to the top of the room, or clear the pin when it is null.
+///
+/// One event for both directions because the UI offers exactly one control at a
+/// time: "Pin" on an unpinned message, "Unpin" on the pinned one and on the
+/// banner itself.
+class ChatRoomPinToggled extends ChatRoomEvent {
+  final String? messageId;
+  const ChatRoomPinToggled(this.messageId);
+}
+
 // ── Internal events (dispatched by the bloc itself) ───────────────────────────
 
 class _WsConnected extends ChatRoomEvent {
@@ -146,6 +177,12 @@ class _MessageEdited extends ChatRoomEvent {
 class _MessageDeleted extends ChatRoomEvent {
   final String messageId;
   const _MessageDeleted(this.messageId);
+}
+
+/// WS broadcast: the room's pinned message changed. Null means unpinned.
+class _MessagePinned extends ChatRoomEvent {
+  final PinnedMessage? pinned;
+  const _MessagePinned(this.pinned);
 }
 
 /// Server sent participant key bundles on DM room join.

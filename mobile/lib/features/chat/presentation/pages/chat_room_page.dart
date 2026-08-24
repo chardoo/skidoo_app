@@ -1,10 +1,9 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:flutter/services.dart' show Clipboard, ClipboardData, HapticFeedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_confirm_dialog.dart';
-import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -16,10 +15,14 @@ import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.da
 import 'package:jperg_app/features/chat/presentation/pages/contact_info_page.dart';
 import 'package:jperg_app/features/chat/presentation/pages/group_info_page.dart';
 import 'package:jperg_app/features/chat/presentation/pages/invite_to_group_page.dart';
+import 'package:jperg_app/features/chat/presentation/mentions.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/chat_input_bar.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/forward_message_sheet.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/message_action_sheet.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/day_separator.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/message_entrance.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/pinned_message_banner.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/room_avatar.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/system_message_row.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/typing_indicator.dart';
@@ -63,11 +66,40 @@ class _ChatRoomView extends StatefulWidget {
 
 class _ChatRoomViewState extends State<_ChatRoomView> {
   final _inputCtrl = TextEditingController();
+  final _inputFocus = FocusNode();
   final _scrollCtrl = ScrollController();
   late final ChatRoomBloc _bloc;
 
+  /// The message the composer is currently editing, or null when it is writing
+  /// a new one. Lives here rather than in the bloc: nothing outside the
+  /// composer changes while an edit is in flight, and the edit itself is a
+  /// one-shot event.
+  ChatMessage? _editing;
+
+  /// What the composer held before [_editing] took it over, restored on cancel.
+  String? _draftBeforeEdit;
+
   final Set<String> _knownIds = {};
   final Set<String> _animateIds = {};
+
+  /// The message a jump just landed on, tinted for a moment so the reader can
+  /// find it. Cleared on a timer — a permanent highlight would look like state.
+  String? _highlightedMessageId;
+
+  /// A key per message row, so a jump can scroll to the real widget instead of
+  /// guessing an offset from an average row height.
+  ///
+  /// Only rows the list has actually built have a live context; the rest hold a
+  /// key that resolves to null, which is exactly the signal [_jumpToMessage]
+  /// needs to fall back. Cleared when the conversation is replaced so the map
+  /// cannot outlive the messages it points at.
+  final Map<String, GlobalKey> _rowKeys = {};
+
+  /// The message list [_rowKeys] was last pruned against.
+  List<ChatMessage>? _rowKeysSyncedTo;
+
+  GlobalKey _rowKeyFor(String messageId) =>
+      _rowKeys.putIfAbsent(messageId, () => GlobalKey());
 
   bool get _isEventRoom =>
       widget.room.type == RoomType.event ||
@@ -261,6 +293,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   void dispose() {
     _bloc.add(const ChatRoomLeft());
     _inputCtrl.dispose();
+    _inputFocus.dispose();
     _scrollCtrl.dispose();
     _isBlockedNotifier.dispose();
     super.dispose();
@@ -274,6 +307,12 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   }
 
   void _send(String? replyToId, {bool hasPendingImage = false}) {
+    // While editing, the send button is the edit's confirm — same button, same
+    // Enter key, so there is nothing new to learn.
+    if (_editing != null) {
+      _commitEdit();
+      return;
+    }
     final text = _inputCtrl.text.trim();
     if (text.isEmpty && !hasPendingImage) return;
     _bloc.add(ChatRoomMessageSent(
@@ -298,27 +337,48 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
 
   void _onMessageOptions(BuildContext context, ChatMessage msg, bool isMe) {
     HapticFeedback.selectionClick();
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final canEdit = isMe && !msg.isEncrypted && msg.imageUrl == null;
+    final hasText = !msg.isEncrypted && msg.content.trim().isNotEmpty;
     final screenW = MediaQuery.of(context).size.width;
+    final isPinned = _bloc.state.room?.pinnedMessage?.id == msg.id;
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       constraints: BoxConstraints(
           maxWidth: screenW > 600 ? 480 : double.infinity),
-      builder: (_) => _MessageOptionsSheet(
-        ext: ext,
-        canEdit: canEdit,
-        canDelete: isMe,
+      builder: (_) => MessageActionSheet(
+        isPinned: isPinned,
         onReply: () {
           Navigator.pop(context);
           _onReply(msg);
         },
+        // Nothing to forward from a message the app could not decrypt — the
+        // body on screen belongs to this room's key, not the next room's.
+        onForward: msg.isEncrypted
+            ? null
+            : () {
+                Navigator.pop(context);
+                _forwardMessage(context, msg);
+              },
+        onCopy: hasText
+            ? () {
+                Navigator.pop(context);
+                _copyMessage(context, msg);
+              }
+            : null,
+        // Only conversations have a banner to pin to; an event or photo room
+        // is a comment thread with no header of its own.
+        onPin: _canPin
+            ? () {
+                Navigator.pop(context);
+                _bloc.add(ChatRoomPinToggled(isPinned ? null : msg.id));
+              }
+            : null,
         onEdit: canEdit
             ? () {
                 Navigator.pop(context);
-                _showEditDialog(context, msg);
+                _beginEdit(msg);
               }
             : null,
         onDelete: isMe
@@ -331,46 +391,138 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     );
   }
 
-  Future<void> _showEditDialog(BuildContext context, ChatMessage msg) async {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final ctrl = TextEditingController(text: msg.content);
+  /// Whether the reader may change what is pinned here.
+  ///
+  /// Mirrors the server's rule so the menu doesn't offer an action that comes
+  /// back rejected: any active member, except in an admin-only room, where
+  /// pinning follows the same restriction as speaking.
+  bool get _canPin {
+    if (!_hasDetailsScreen) return false;
+    final state = _bloc.state;
+    if (state.room?.adminOnly == true && !state.amIAdmin) return false;
+    return true;
+  }
 
-    final newContent = await showDialog<String>(
+  void _copyMessage(BuildContext context, ChatMessage msg) {
+    Clipboard.setData(ClipboardData(text: msg.content));
+    AppSnackBar.success(context, 'Copied to clipboard');
+  }
+
+  Future<void> _forwardMessage(BuildContext context, ChatMessage msg) async {
+    final target = await showModalBottomSheet<ChatRoom>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: ext.cardSurface,
-        title: Text(AppLocalizations.of(context)!.chatRoomEditMessage,
-            style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
-        content: AppTextField(
-          controller: ctrl,
-          autofocus: true,
-          maxLines: null,
-          filled: false,
-          hint: AppLocalizations.of(context)!.chatRoomEditYourMessage,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-                Text(AppLocalizations.of(context)!.chatRoomCancel, style: TextStyle(color: ext.searchHintColor)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-            child: Text(AppLocalizations.of(context)!.chatRoomSave,
-                style: TextStyle(
-                    color: ext.accentGold, fontWeight: FontWeight.bold)),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ForwardMessageSheet(
+        myUserId: _bloc.state.myUserId,
+        excludeRoomId: widget.room.id,
       ),
     );
-    ctrl.dispose();
+    if (target == null || !context.mounted) return;
+    // No confirmation here: the bloc announces the forward once the frame has
+    // gone out, and reports the refusal otherwise. Saying "Forwarded" from the
+    // caller claimed success for sends that never left.
+    _bloc.add(ChatRoomForwardRequested(
+      msg,
+      target.id,
+      targetName: target.displayNameFor(_bloc.state.myUserId),
+    ));
+  }
 
-    if (newContent != null &&
-        newContent.isNotEmpty &&
-        newContent != msg.content &&
-        context.mounted) {
-      _bloc.add(ChatRoomMessageEditRequested(msg.id, newContent));
+  /// Scroll the conversation to [messageId], or report that it is too far back
+  /// to reach without loading more history.
+  void _jumpToMessage(String messageId) {
+    final rows = _buildRows(_bloc.state);
+    final index = rows.indexWhere(
+        (row) => row.kind == _RowKind.message && row.message!.id == messageId);
+    if (index < 0) {
+      AppSnackBar.info(context, 'That message is further back in the chat');
+      return;
     }
+    if (!_scrollCtrl.hasClients) return;
+
+    // Prefer the real thing. A row that is currently built — which covers the
+    // common case, replying to something a screen or two back — can be scrolled
+    // to exactly, and ensureVisible does nothing when it is already in view
+    // rather than sliding the conversation for no reason.
+    final target = _rowKeys[messageId]?.currentContext;
+    if (target != null) {
+      Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOut,
+        alignment: 0.4,
+      );
+    } else {
+      // Not built, so its offset is unknown: rows are variable height and the
+      // list only lays out what is near the viewport. Step by an average row
+      // and let the highlight do the rest of the work.
+      _scrollCtrl.animateTo(
+        (index * 78.0).clamp(0.0, _scrollCtrl.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOut,
+      );
+    }
+    setState(() => _highlightedMessageId = messageId);
+    Future.delayed(const Duration(milliseconds: 1600), () {
+      if (mounted && _highlightedMessageId == messageId) {
+        setState(() => _highlightedMessageId = null);
+      }
+    });
+  }
+
+  /// Loads [msg] back into the composer instead of opening a dialog — editing
+  /// happens where the text was written in the first place, and the message
+  /// stays on screen behind the keyboard for comparison.
+  void _beginEdit(ChatMessage msg) {
+    HapticFeedback.selectionClick();
+    // Editing and replying both own the composer; a reply left staged would be
+    // attached to nothing once the edit is applied.
+    if (_bloc.state.replyingTo != null) {
+      _bloc.add(const ChatRoomReplySet(null));
+    }
+    // An edit carries text only, so a picked-but-unsent photo cannot ride along
+    // with it. Dropping it here beats leaving a preview above a composer whose
+    // send button no longer sends.
+    if (_bloc.state.pendingImagePath != null ||
+        _bloc.state.pendingShareUrl != null) {
+      _bloc.add(const ChatRoomImageCleared());
+    }
+    setState(() {
+      // Whatever was half-typed is not lost: cancelling the edit puts it back.
+      _draftBeforeEdit = _inputCtrl.text;
+      _editing = msg;
+    });
+    _inputCtrl.value = TextEditingValue(
+      text: msg.content,
+      selection: TextSelection.collapsed(offset: msg.content.length),
+    );
+    _inputFocus.requestFocus();
+  }
+
+  void _cancelEdit() {
+    final draft = _draftBeforeEdit ?? '';
+    setState(() {
+      _editing = null;
+      _draftBeforeEdit = null;
+    });
+    _inputCtrl.value = TextEditingValue(
+      text: draft,
+      selection: TextSelection.collapsed(offset: draft.length),
+    );
+    _bloc.add(ChatRoomTypingChanged(draft.trim().isNotEmpty));
+  }
+
+  /// Applies the edit the composer currently holds. An unchanged body is
+  /// treated as a cancel — stamping "edited" on a message nobody changed is a
+  /// lie the reader can see.
+  void _commitEdit() {
+    final msg = _editing!;
+    final text = _inputCtrl.text.trim();
+    if (text.isNotEmpty && text != msg.content.trim()) {
+      _bloc.add(ChatRoomMessageEditRequested(msg.id, text));
+    }
+    _cancelEdit();
   }
 
   Future<void> _showDeleteDialog(BuildContext context, ChatMessage msg) async {
@@ -468,6 +620,60 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   // index 0 (visually the bottom), and a day separator follows the last message
   // of that day (visually above it).
 
+  // ── Mentions ──────────────────────────────────────────────────────────────
+  //
+  // Only groups have them. In a DM there is one other person, already named in
+  // the header — "@Marcus" in a conversation with only Marcus in it says
+  // nothing, and offering the picker would only get in the way of typing an
+  // email address.
+
+  /// Cache for the three derived maps below.
+  ///
+  /// They are read once per message row, so recomputing them per call meant
+  /// allocating a list, a map and a set for every bubble on screen on every
+  /// frame — the cost of scrolling a long group conversation. The participant
+  /// list is the only input, so it is also the cache key: a new list instance
+  /// (any membership or profile change) invalidates, nothing else has to.
+  List<ChatParticipant>? _mentionCacheKey;
+  List<ChatParticipant> _mentionCandidatesCache = const [];
+  Map<String, String> _mentionHandlesCache = const {};
+  Map<String, String> _mentionNamesCache = const {};
+
+  void _refreshMentionCache(ChatRoomState state) {
+    final participants = state.room?.participants ?? const <ChatParticipant>[];
+    if (identical(_mentionCacheKey, participants)) return;
+    _mentionCacheKey = participants;
+
+    // Members who can be mentioned: everyone active in the room, the reader
+    // included. Mentioning yourself is odd but harmless, and excluding it would
+    // mean the handle you see on your own messages resolves to nobody.
+    _mentionCandidatesCache = _isGroup
+        ? [
+            for (final p in participants)
+              if (!p.isPending) p,
+          ]
+        : const [];
+    _mentionHandlesCache = Mentions.handlesFor(_mentionCandidatesCache);
+    _mentionNamesCache = {
+      for (final p in _mentionCandidatesCache) p.userId: p.displayName,
+    };
+  }
+
+  List<ChatParticipant> _mentionCandidates(ChatRoomState state) {
+    _refreshMentionCache(state);
+    return _mentionCandidatesCache;
+  }
+
+  Map<String, String> _mentionHandles(ChatRoomState state) {
+    _refreshMentionCache(state);
+    return _mentionHandlesCache;
+  }
+
+  Map<String, String> _mentionNames(ChatRoomState state) {
+    _refreshMentionCache(state);
+    return _mentionNamesCache;
+  }
+
   List<_Row> _buildRows(ChatRoomState state) {
     final rows = <_Row>[];
 
@@ -532,7 +738,11 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
             .where((p) => p.userId != msg.senderId)
             .length;
 
-        final bubble = MessageBubble(
+        final replyToId = msg.replyPreview?.id;
+        final canJumpToReply = replyToId != null &&
+            state.messages.any((m) => m.id == replyToId);
+
+        Widget bubble = MessageBubble(
           key: ValueKey(msg.id),
           message: msg,
           isMe: isMe,
@@ -540,24 +750,53 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
           senderImageUrl: participant?.userImage,
           readCount: msg.readBy.length,
           totalOthers: totalOthers,
+          mentionHandles: _mentionHandles(state),
+          mentionNames: _mentionNames(state),
+          myUserId: state.myUserId,
           onUserTap: isMe ? null : () => _onUserTap(context, msg),
           onLongPress: () => _onMessageOptions(context, msg, isMe),
+          onReplyTap: canJumpToReply ? () => _jumpToMessage(replyToId) : null,
         );
 
+        if (_highlightedMessageId == msg.id) {
+          bubble = ColoredBox(
+            color: Theme.of(context)
+                .extension<AppThemeExtension>()!
+                .accentGold
+                .withValues(alpha: 0.12),
+            child: bubble,
+          );
+        }
+
         if (_animateIds.contains(msg.id)) {
-          return MessageEntrance(
+          bubble = MessageEntrance(
             key: ValueKey('anim_${msg.id}'),
             fromRight: isMe,
             child: bubble,
           );
         }
-        return bubble;
+
+        // The key goes on the outermost wrapper so it resolves to whatever is
+        // actually in the tree — a jump has to find the row however it is
+        // currently decorated.
+        return KeyedSubtree(key: _rowKeyFor(msg.id), child: bubble);
     }
   }
 
   void _syncAnimationState(List<ChatMessage> messages, bool isLoadingHistory) {
     if (isLoadingHistory) return;
     final currentIds = messages.map((m) => m.id).toSet();
+
+    // Drop keys for messages that are gone — deleted, or replaced when an
+    // optimistic id was swapped for the server's. Left alone the map would
+    // grow for the life of the screen and keep handing out keys that can never
+    // resolve. Keyed on the list's identity rather than its length, because a
+    // delete and an arrival in the same update leave the count unchanged.
+    if (!identical(_rowKeysSyncedTo, messages)) {
+      _rowKeysSyncedTo = messages;
+      _rowKeys.removeWhere((id, _) => !currentIds.contains(id));
+    }
+
     if (_knownIds.isEmpty) {
       _knownIds.addAll(currentIds);
       return;
@@ -716,6 +955,28 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                           )
                         : const SizedBox.shrink(),
                   ),
+
+                  // ── Pinned message banner ─────────────────────────────
+                  BlocBuilder<ChatRoomBloc, ChatRoomState>(
+                    buildWhen: (p, c) =>
+                        p.room?.pinnedMessage?.id != c.room?.pinnedMessage?.id ||
+                        p.messages != c.messages ||
+                        p.amIAdmin != c.amIAdmin,
+                    builder: (context, state) {
+                      final pinned = state.room?.pinnedMessage;
+                      if (pinned == null) return const SizedBox.shrink();
+                      final isLoaded =
+                          state.messages.any((m) => m.id == pinned.id);
+                      return PinnedMessageBanner(
+                        pinned: pinned,
+                        onTap:
+                            isLoaded ? () => _jumpToMessage(pinned.id) : null,
+                        onUnpin: _canPin
+                            ? () => _bloc.add(const ChatRoomPinToggled(null))
+                            : null,
+                      );
+                    },
+                  ),
                   Expanded(
                     child: BlocConsumer<ChatRoomBloc, ChatRoomState>(
                       listenWhen: (p, c) =>
@@ -813,7 +1074,12 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                     buildWhen: (p, c) =>
                         p.room?.adminOnly != c.room?.adminOnly ||
                         p.amIAdmin != c.amIAdmin ||
-                        p.isConnected != c.isConnected,
+                        p.isConnected != c.isConnected ||
+                        // The composer's mention picker is built from the
+                        // participant list, so a member joining or leaving has
+                        // to reach it — without this the picker would keep
+                        // offering whoever was in the room when it was opened.
+                        p.room?.participants != c.room?.participants,
                     builder: (context, adminState) {
                       final isAdminOnly =
                           adminState.room?.adminOnly == true;
@@ -873,6 +1139,9 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                                   inputState.pendingShareUrl != null,
                         ),
                         ext: ext,
+                        focusNode: _inputFocus,
+                        editing: _editing,
+                        onCancelEdit: _cancelEdit,
                         replyingTo: inputState.replyingTo,
                         onClearReply: _clearReply,
                         onImagePicked: _onImagePicked,
@@ -884,6 +1153,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                         isUploadingImage: inputState.isUploadingImage,
                         onTypingChanged: (isTyping) =>
                             _bloc.add(ChatRoomTypingChanged(isTyping)),
+                        mentionCandidates: _mentionCandidates(adminState),
+                        mentionHandles: _mentionHandles(adminState),
                       );
                     },
                   ),
@@ -894,7 +1165,15 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    // Back leaves the edit before it leaves the room: while a message is loaded
+    // into the composer, the composer is what the user is "in".
+    return PopScope(
+      canPop: _editing == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _cancelEdit();
+      },
+      child: webWrap(page, backgroundColor: ext.homeBackground),
+    );
   }
 }
 
@@ -1122,73 +1401,6 @@ class _SheetOption extends StatelessWidget {
         ),
       ),
     ));
-  }
-}
-
-// ── Message options sheet (reply / edit / delete) ─────────────────────────────
-
-class _MessageOptionsSheet extends StatelessWidget {
-  const _MessageOptionsSheet({
-    required this.ext,
-    required this.canEdit,
-    required this.canDelete,
-    required this.onReply,
-    this.onEdit,
-    this.onDelete,
-  });
-
-  final AppThemeExtension ext;
-  final bool canEdit;
-  final bool canDelete;
-  final VoidCallback onReply;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 36.h),
-      decoration: BoxDecoration(
-        color: ext.cardSurface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Center(
-            child: Container(
-              width: 36.w,
-              height: 4.h,
-              margin: EdgeInsets.only(bottom: 18.h),
-              decoration: BoxDecoration(
-                color: ext.searchHintColor.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-          ),
-          _SheetOption(
-            icon: Icons.reply_rounded,
-            label: AppLocalizations.of(context)!.chatRoomReply,
-            accentColor: Colors.teal,
-            onTap: onReply,
-          ),
-          if (canEdit)
-            _SheetOption(
-              icon: Icons.edit_rounded,
-              label: AppLocalizations.of(context)!.chatRoomEdit,
-              accentColor: Colors.blueAccent,
-              onTap: onEdit!,
-            ),
-          if (canDelete)
-            _SheetOption(
-              icon: Icons.delete_outline_rounded,
-              label: AppLocalizations.of(context)!.chatRoomDelete,
-              accentColor: Colors.redAccent,
-              onTap: onDelete!,
-            ),
-        ],
-      ),
-    );
   }
 }
 

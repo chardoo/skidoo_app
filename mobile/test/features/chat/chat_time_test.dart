@@ -45,6 +45,9 @@ void main() {
       final onThePhone = DateTime(2026, 8, 18, 14, 3);
       expect(ChatTime.clock(parseServerTime(asServerSends(onThePhone))),
           '14:03');
+      // The bubble itself draws the 12-hour form the designs specify.
+      expect(ChatTime.bubbleClock(parseServerTime(asServerSends(onThePhone))),
+          '2:03 PM');
     });
 
     test('midnight and noon read correctly on the 12-hour inbox clock', () {

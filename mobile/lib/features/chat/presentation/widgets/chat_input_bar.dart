@@ -13,7 +13,10 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/core/widgets/emoji_panel.dart';
+import 'package:jperg_app/features/chat/presentation/mentions.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/mention_picker.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -26,6 +29,9 @@ class ChatInputBar extends StatefulWidget {
     required this.ext,
     this.replyingTo,
     this.onClearReply,
+    this.editing,
+    this.onCancelEdit,
+    this.focusNode,
     this.onImagePicked,
     this.pendingImagePath,
     this.pendingIsVideo = false,
@@ -33,6 +39,8 @@ class ChatInputBar extends StatefulWidget {
     this.onClearImage,
     this.isUploadingImage = false,
     this.onTypingChanged,
+    this.mentionCandidates = const [],
+    this.mentionHandles = const {},
   });
 
   final TextEditingController controller;
@@ -41,6 +49,18 @@ class ChatInputBar extends StatefulWidget {
 
   final ChatMessage? replyingTo;
   final VoidCallback? onClearReply;
+
+  /// The message being edited, if any. The composer holds its text, [onSend]
+  /// applies the change, and the bar above says which message is being changed
+  /// — no dialog, so the conversation stays visible while it is rewritten.
+  final ChatMessage? editing;
+
+  /// Leaves edit mode without applying anything.
+  final VoidCallback? onCancelEdit;
+
+  /// Focus for the text field, so the caller can put the caret in the composer
+  /// when it loads a message in for editing.
+  final FocusNode? focusNode;
 
   /// Called with the local file path, optional MIME type, and whether it is a video.
   /// On web [filePath] is a blob URL; [mimeType] is the browser-reported MIME type.
@@ -66,12 +86,88 @@ class ChatInputBar extends StatefulWidget {
   /// there is nothing to debounce here.
   final ValueChanged<bool>? onTypingChanged;
 
+  /// Who can be mentioned here. Empty in a DM — there is one other person and
+  /// naming them in a conversation with only them in it says nothing.
+  final List<ChatParticipant> mentionCandidates;
+
+  /// {userId: handle} for [mentionCandidates], resolved once by the caller so
+  /// the same assignment is used by the picker and by the message renderer.
+  final Map<String, String> mentionHandles;
+
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
 }
 
 class _ChatInputBarState extends State<ChatInputBar> {
   bool _emojiOpen = false;
+
+  /// The `@…` fragment under the caret, or null when the user isn't writing a
+  /// mention. Recomputed on every change to the field — including caret moves,
+  /// since clicking into an existing `@name` should reopen the picker.
+  MentionQuery? _mentionQuery;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_syncMentionQuery);
+  }
+
+  @override
+  void didUpdateWidget(ChatInputBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_syncMentionQuery);
+      widget.controller.addListener(_syncMentionQuery);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_syncMentionQuery);
+    super.dispose();
+  }
+
+  void _syncMentionQuery() {
+    if (widget.mentionCandidates.isEmpty) return;
+    final selection = widget.controller.selection;
+    // A collapsed selection is a caret. While text is selected there is no
+    // single insertion point, so there is nothing to complete.
+    final query = selection.isValid && selection.isCollapsed
+        ? Mentions.queryAt(widget.controller.text, selection.baseOffset)
+        : null;
+    if (query?.query == _mentionQuery?.query &&
+        query?.start == _mentionQuery?.start) {
+      return;
+    }
+    setState(() => _mentionQuery = query);
+  }
+
+  /// Members matching what has been typed after the `@`.
+  List<ChatParticipant> get _mentionMatches {
+    final query = _mentionQuery;
+    if (query == null || widget.mentionCandidates.isEmpty) return const [];
+    return Mentions.matches(
+      widget.mentionCandidates,
+      widget.mentionHandles,
+      query.query,
+    );
+  }
+
+  void _insertMention(ChatParticipant participant) {
+    final query = _mentionQuery;
+    final handle = widget.mentionHandles[participant.userId];
+    if (query == null || handle == null) return;
+
+    final result = Mentions.insert(widget.controller.text, query, handle);
+    widget.controller.value = TextEditingValue(
+      text: result.text,
+      selection: TextSelection.collapsed(offset: result.caret),
+    );
+    setState(() => _mentionQuery = null);
+    // The composer is no longer empty, and the field's own onChanged does not
+    // fire for a programmatic edit.
+    widget.onTypingChanged?.call(result.text.trim().isNotEmpty);
+  }
 
   void _toggleEmoji() {
     setState(() => _emojiOpen = !_emojiOpen);
@@ -137,10 +233,21 @@ class _ChatInputBarState extends State<ChatInputBar> {
     final ext = widget.ext;
     final hasStaged =
         widget.pendingImagePath != null || widget.pendingShareUrl != null;
+    final isEditing = widget.editing != null;
+    final mentionMatches = _mentionMatches;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // ── Mention picker — above everything else in the composer stack, so
+        // it sits directly over the conversation while an @ is being typed ──
+        if (mentionMatches.isNotEmpty)
+          MentionPicker(
+            participants: mentionMatches,
+            handles: widget.mentionHandles,
+            onSelected: _insertMention,
+          ),
+
         // ── Emoji panel — sibling above the input row so it's never clipped ─
         if (_emojiOpen)
           EmojiPickerPanel(
@@ -170,8 +277,14 @@ class _ChatInputBarState extends State<ChatInputBar> {
             onClear: widget.onClearImage,
           ),
 
-        // ── Reply preview strip ─────────────────────────────────────────────
-        if (widget.replyingTo != null)
+        // ── Editing / reply preview strip ───────────────────────────────────
+        // Never both: loading a message in for editing clears any staged reply.
+        if (widget.editing != null)
+          _EditBar(
+              message: widget.editing!,
+              ext: ext,
+              onCancel: widget.onCancelEdit)
+        else if (widget.replyingTo != null)
           _ReplyBar(
               message: widget.replyingTo!,
               ext: ext,
@@ -191,11 +304,13 @@ class _ChatInputBarState extends State<ChatInputBar> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               // Media picker — disabled while uploading or already staged
+              // ...and while editing: an edit changes text, it cannot grow a
+              // photo the original message never had.
               Semantics(
                   button: true,
                   label: 'Show media picker',
                   child: GestureDetector(
-                    onTap: (widget.isUploadingImage || hasStaged)
+                    onTap: (widget.isUploadingImage || hasStaged || isEditing)
                         ? null
                         : _showMediaPicker,
                     child: Container(
@@ -207,10 +322,14 @@ class _ChatInputBarState extends State<ChatInputBar> {
                       ),
                       alignment: Alignment.center,
                       child: Icon(
-                        Icons.attach_file_rounded,
-                        color: (widget.isUploadingImage || hasStaged)
-                            ? ext.searchHintColor.withValues(alpha: 0.4)
-                            : ext.searchHintColor,
+                        // A plus, not a paperclip: the designs draw it as
+                        // "add something", and the sheet it opens offers a
+                        // photo or a video rather than a file to attach.
+                        Icons.add_rounded,
+                        color:
+                            (widget.isUploadingImage || hasStaged || isEditing)
+                                ? ext.searchHintColor.withValues(alpha: 0.4)
+                                : ext.searchHintColor,
                         size: 20.sp,
                       ),
                     ),
@@ -230,6 +349,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
               Expanded(
                 child: AppTextField(
                   controller: widget.controller,
+                  focusNode: widget.focusNode,
                   onChanged: (value) =>
                       widget.onTypingChanged?.call(value.trim().isNotEmpty),
                   onTap: () {
@@ -257,20 +377,24 @@ class _ChatInputBarState extends State<ChatInputBar> {
                   textCapitalization: TextCapitalization.sentences,
                   dense: true,
                   borderRadius: 22.r,
-                  hint: hasStaged
-                      ? 'Add a caption… (optional)'
-                      : widget.replyingTo != null
-                          ? 'Reply…'
-                          : 'Type a message…',
+                  hint: isEditing
+                      ? 'Edit your message…'
+                      : hasStaged
+                          ? 'Add a caption… (optional)'
+                          : widget.replyingTo != null
+                              ? 'Reply…'
+                              : 'Type a message…',
                   onFieldSubmitted: (_) => widget.onSend(),
                 ),
               ),
               SizedBox(width: AppSpacing.sm.w),
 
               // Send button
+              // Send doubles as the edit's confirm, and says so: a check, not a
+              // paper plane, since nothing new is being sent.
               Semantics(
                   button: true,
-                  label: 'Send',
+                  label: isEditing ? 'Save edit' : 'Send',
                   child: GestureDetector(
                     onTap: widget.isUploadingImage ? null : widget.onSend,
                     child: AnimatedContainer(
@@ -291,8 +415,12 @@ class _ChatInputBarState extends State<ChatInputBar> {
                               child: const CircularProgressIndicator(
                                   strokeWidth: 2, color: Colors.white),
                             )
-                          : Icon(Icons.send_rounded,
-                              color: Colors.white, size: 20.sp),
+                          : Icon(
+                              isEditing
+                                  ? Icons.check_rounded
+                                  : Icons.send_rounded,
+                              color: Colors.white,
+                              size: 20.sp),
                     ),
                   )),
             ],
@@ -699,6 +827,91 @@ class _StagedNetworkImagePreview extends StatelessWidget {
   }
 }
 
+// ── Edit banner ───────────────────────────────────────────────────────────────
+
+/// Sits above the composer while a message is being rewritten: same tinted band
+/// and accent rail as [_ReplyBar], a pencil instead of a name, and the original
+/// text underneath so the change is visible against what was there before.
+class _EditBar extends StatelessWidget {
+  const _EditBar({
+    required this.message,
+    required this.ext,
+    this.onCancel,
+  });
+
+  final ChatMessage message;
+  final AppThemeExtension ext;
+  final VoidCallback? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg.w, AppSpacing.sm.h, AppSpacing.md.w, AppSpacing.sm.h),
+      decoration: BoxDecoration(
+        color: ext.accentGold.withValues(alpha: 0.10),
+        border: Border(
+          top: BorderSide(color: ext.searchHintColor.withValues(alpha: 0.1)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 34.h,
+            decoration: BoxDecoration(
+              color: ext.accentGold,
+              borderRadius: BorderRadius.circular(2.r),
+            ),
+            margin: EdgeInsets.only(right: AppSpacing.md.w),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.edit_rounded,
+                        size: 12.sp, color: ext.accentGold),
+                    SizedBox(width: AppSpacing.xs.w),
+                    Text(
+                      'Edit message',
+                      style: TextStyle(
+                        color: ext.accentGold,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 1.h),
+                Text(
+                  message.content,
+                  style: TextStyle(color: ext.greetingColor, fontSize: 12.sp),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Semantics(
+            button: true,
+            label: 'Cancel edit',
+            child: IconButton(
+              onPressed: onCancel,
+              tooltip: 'Cancel edit',
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.close_rounded,
+                  size: 20.sp, color: ext.searchHintColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Reply preview bar ─────────────────────────────────────────────────────────
 
 class _ReplyBar extends StatelessWidget {
@@ -722,11 +935,14 @@ class _ReplyBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A tinted band rather than the plain composer surface: what is being
+    // replied to has to be visible at a glance while typing, and the accent
+    // wash is what tells the two states apart in the designs.
     return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg.w, vertical: AppSpacing.sm.h),
+      padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg.w, AppSpacing.sm.h, AppSpacing.md.w, AppSpacing.sm.h),
       decoration: BoxDecoration(
-        color: ext.cardSurface,
+        color: ext.accentGold.withValues(alpha: 0.10),
         border: Border(
           top: BorderSide(color: ext.searchHintColor.withValues(alpha: 0.1)),
         ),
@@ -735,9 +951,12 @@ class _ReplyBar extends StatelessWidget {
         children: [
           Container(
             width: 3,
-            height: 32.h,
-            color: ext.searchHintColor,
-            margin: EdgeInsets.only(right: AppSpacing.sm.w),
+            height: 34.h,
+            decoration: BoxDecoration(
+              color: ext.accentGold,
+              borderRadius: BorderRadius.circular(2.r),
+            ),
+            margin: EdgeInsets.only(right: AppSpacing.md.w),
           ),
           Expanded(
             child: Column(
@@ -749,27 +968,33 @@ class _ReplyBar extends StatelessWidget {
                       ? message.senderName
                       : message.senderRole,
                   style: TextStyle(
-                    color: ext.searchHintColor,
-                    fontSize: 11.sp,
+                    color: ext.accentGold,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.w700,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                SizedBox(height: 1.h),
                 Text(
                   _preview,
-                  style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+                  style: TextStyle(color: ext.greetingColor, fontSize: 12.sp),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          IconButton(
-            onPressed: onClear,
-            tooltip: 'Clear',
-            icon: Icon(Icons.close_rounded,
-                size: 18.sp, color: ext.searchHintColor),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+          Semantics(
+            button: true,
+            label: 'Cancel reply',
+            child: IconButton(
+              onPressed: onClear,
+              tooltip: 'Cancel reply',
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.cancel_outlined,
+                  size: 20.sp, color: ext.searchHintColor),
+            ),
           ),
         ],
       ),

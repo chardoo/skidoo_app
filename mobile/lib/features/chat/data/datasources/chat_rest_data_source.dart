@@ -198,6 +198,16 @@ abstract class ChatRestDataSource {
     required String messageId,
   });
 
+  /// PUT /chat/rooms/{room_id}/pin/{message_id} — pin a message to the top of
+  /// the room, replacing whatever was pinned before.
+  Future<void> pinMessage({
+    required String roomId,
+    required String messageId,
+  });
+
+  /// DELETE /chat/rooms/{room_id}/pin — clear the room's pinned message.
+  Future<void> unpinMessage(String roomId);
+
   /// POST /chat/rooms/group — create a group room with optional initial invitees.
   Future<ChatRoom> createGroupRoom({
     required String name,
@@ -512,6 +522,19 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   }) async {
     await _wrap(
         () => _client.dio.delete('/chat/rooms/$roomId/messages/$messageId'));
+  }
+
+  @override
+  Future<void> pinMessage({
+    required String roomId,
+    required String messageId,
+  }) async {
+    await _wrap(() => _client.dio.put('/chat/rooms/$roomId/pin/$messageId'));
+  }
+
+  @override
+  Future<void> unpinMessage(String roomId) async {
+    await _wrap(() => _client.dio.delete('/chat/rooms/$roomId/pin'));
   }
 
   @override

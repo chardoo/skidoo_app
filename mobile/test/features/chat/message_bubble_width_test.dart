@@ -53,9 +53,10 @@ void main() {
     );
 
     expect(short, lessThan(long));
-    // "Bro" plus 14 of padding each side lands near 80; nowhere near the 72%
-    // (≈281) it used to take.
-    expect(short, lessThan(120));
+    // The floor is now the timestamp, which sits inside the bubble: "2:50 PM"
+    // plus a tick and 14 of padding each side lands near 124. Still nowhere
+    // near the 72% (≈281) a text-only bubble used to take.
+    expect(short, lessThan(140));
   });
 
   testWidgets('a long message still stops at the 72% cap', (t) async {
