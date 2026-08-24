@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/features/ads/data/models/ad_model.dart';
+import 'package:jperg_app/features/ads/models/boost_tier.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/models/ad.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
@@ -451,6 +452,72 @@ class AdsRepository {
       queryParameters: {'status': status},
     );
     debugPrint('$_tag closeRequest ← status=${resp.statusCode}');
+  }
+
+  // ── Boost ──────────────────────────────────────────────────────────────
+
+  /// The boost menu, as the server sells it.
+  ///
+  /// Fetched rather than built into the sheet so the price on the button is the
+  /// price that will be charged — a client drawing its own menu can be a
+  /// version behind, and the gap between the two is somebody paying the wrong
+  /// amount.
+  Future<BoostCatalogue> boostTiers() async {
+    debugPrint('$_tag boostTiers →');
+    final resp = await _dio.get('/ads/requests/boost/tiers');
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    debugPrint('$_tag boostTiers ← ${resp.statusCode}');
+    return BoostCatalogue.fromJson(data);
+  }
+
+  /// Start paying for a boost. Returns the Paystack URL to open.
+  ///
+  /// `alreadyPaid` is true when a previous attempt turned out to have gone
+  /// through — the server applies the boost rather than charging again, and
+  /// there is no checkout to open.
+  Future<
+      ({
+        String authorizationUrl,
+        String reference,
+        double amountGhs,
+        int days,
+        bool alreadyPaid,
+      })> startBoost(String requestId, {required int days}) async {
+    debugPrint('$_tag startBoost → id=$requestId days=$days');
+    final resp = await _dio.post(
+      '/ads/requests/$requestId/boost',
+      data: {'days': days},
+    );
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    debugPrint('$_tag startBoost ← ${resp.statusCode} data=$data');
+    return (
+      authorizationUrl: data['authorization_url'] as String? ?? '',
+      reference: data['reference'] as String? ?? '',
+      amountGhs: (data['amount_ghs'] as num?)?.toDouble() ?? 0.0,
+      days: (data['days'] as num?)?.toInt() ?? days,
+      alreadyPaid: data['already_paid'] == true,
+    );
+  }
+
+  /// Confirm a boost after checkout closes.
+  ///
+  /// The webhook is the authority and usually lands first; this exists because
+  /// "usually" is not good enough when the user is waiting on a success screen.
+  /// Both paths are idempotent, so calling this after the webhook has already
+  /// applied the boost is harmless.
+  Future<({bool success, String message, bool isBoosted, int daysRemaining})>
+      verifyBoost(String requestId) async {
+    debugPrint('$_tag verifyBoost → id=$requestId');
+    final resp = await _dio.post('/ads/requests/$requestId/verify-boost');
+    final body = resp.data as Map<String, dynamic>? ?? const {};
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    debugPrint('$_tag verifyBoost ← ${resp.statusCode} data=$data');
+    return (
+      success: body['success'] == true,
+      message: data['message'] as String? ?? '',
+      isBoosted: data['is_boosted'] == true,
+      daysRemaining: (data['boost_days_remaining'] as num?)?.toInt() ?? 0,
+    );
   }
 
   Future<Map<String, dynamic>> promoteRequest(String requestId) async {

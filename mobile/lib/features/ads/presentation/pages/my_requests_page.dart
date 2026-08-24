@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
@@ -10,6 +11,10 @@ import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/presentation/pages/create_campaign_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/review_photographers_page.dart';
+import 'package:jperg_app/features/ads/models/boost_tier.dart';
+import 'package:jperg_app/features/ads/presentation/pages/ads_checkout_page.dart';
+import 'package:jperg_app/features/ads/presentation/pages/boost_success_page.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/boost_request_sheet.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/interested_row.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -160,6 +165,94 @@ class _MyRequestsPageState extends State<MyRequestsPage>
       debugPrint('[MyRequestsPage] _promote ERROR: $e');
       if (!mounted) return;
       AppSnackBar.error(context, 'Failed to promote request.');
+    }
+  }
+
+  /// Buy a boost: pick a tier, pay, then confirm before claiming anything.
+  ///
+  /// The success screen is only reached once the server has said the money
+  /// landed. Paystack redirecting back is not the same as the payment having
+  /// been confirmed, and a receipt for a boost that did not happen is worse
+  /// than no receipt at all.
+  Future<void> _boost(FeedRequestModel req) async {
+    debugPrint('[MyRequestsPage] _boost id=${req.id}');
+
+    BoostCatalogue catalogue;
+    try {
+      catalogue = await _repo.boostTiers();
+    } catch (e) {
+      debugPrint('[MyRequestsPage] _boost tiers ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Could not load boost options. Try again.');
+      return;
+    }
+    if (!mounted) return;
+    if (catalogue.tiers.isEmpty) {
+      AppSnackBar.error(context, 'Boosting is not available right now.');
+      return;
+    }
+
+    final tier = await showModalBottomSheet<BoostTier>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => BoostRequestSheet(catalogue: catalogue),
+    );
+    if (tier == null || !mounted) return;
+
+    try {
+      final started = await _repo.startBoost(req.id, days: tier.days);
+      if (!mounted) return;
+
+      // A previous attempt turned out to have gone through. The server has
+      // applied the boost rather than charging again, so there is no checkout
+      // to open — go straight to the receipt.
+      if (!started.alreadyPaid) {
+        if (started.authorizationUrl.isEmpty) {
+          AppSnackBar.error(context, 'Could not start the payment. Try again.');
+          return;
+        }
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => AdsCheckoutPage(
+              authorizationUrl: started.authorizationUrl,
+              reference: started.reference,
+              amountGhs: started.amountGhs,
+              onSuccess: () {},
+            ),
+          ),
+        );
+        if (!mounted) return;
+
+        final verified = await _repo.verifyBoost(req.id);
+        if (!mounted) return;
+        if (!verified.isBoosted) {
+          // Closing the WebView without paying lands here, which is the common
+          // case and not an error worth alarming anybody about.
+          AppSnackBar.info(
+            context,
+            verified.message.isNotEmpty
+                ? verified.message
+                : 'Payment not confirmed yet.',
+          );
+          await _load();
+          return;
+        }
+      }
+
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => BoostSuccessPage(
+            requestTitle: req.title,
+            days: started.days,
+          ),
+        ),
+      );
+      if (mounted) await _load();
+    } catch (e) {
+      debugPrint('[MyRequestsPage] _boost ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Could not boost this request. Try again.');
     }
   }
 
@@ -319,6 +412,9 @@ class _MyRequestsPageState extends State<MyRequestsPage>
                             onOpen: () => _openRequest(req),
                             onRepublish: () => _republish(req),
                             onInterestedTap: () => _openRequest(req),
+                            // Only an active, not-already-boosted request has
+                            // anything to buy — the server refuses the rest.
+                            onBoost: req.canBoost ? () => _boost(req) : null,
                           );
                         },
                       ),
@@ -340,6 +436,7 @@ class _MyRequestTile extends StatelessWidget {
     this.onRepublish,
     this.onInterestedTap,
     this.onOpen,
+    this.onBoost,
   });
   final FeedRequestModel request;
   final AppThemeExtension ext;
@@ -349,6 +446,10 @@ class _MyRequestTile extends StatelessWidget {
   final VoidCallback? onOpen;
   final VoidCallback? onRepublish;
   final VoidCallback? onInterestedTap;
+
+  /// Offered only on an active request that is not already boosted — see
+  /// [FeedRequestModel.canBoost]. Null hides the button entirely.
+  final VoidCallback? onBoost;
 
   @override
   Widget build(BuildContext context) {
@@ -398,6 +499,7 @@ class _MyRequestTile extends StatelessWidget {
                     ? ext.searchHintColor
                     : statusColor,
                 ext: ext,
+                isBoosted: r.isBoosted,
               ),
             ],
           ),
@@ -409,13 +511,27 @@ class _MyRequestTile extends StatelessWidget {
               fontSize: 12.sp,
             ),
           ),
-          if (r.interestedCount > 0) ...[
+          // The answers and the Boost button share a row: the designs put
+          // them on the same line, and on a card with no answers yet the
+          // button still sits where it always does, at the right.
+          if (r.interestedCount > 0 || onBoost != null) ...[
             SizedBox(height: AppSpacing.md.h),
-            InterestedRow(
-              interested: r.interested,
-              count: r.interestedCount,
-              ext: ext,
-              onTap: onInterestedTap,
+            Row(
+              children: [
+                if (r.interestedCount > 0)
+                  Flexible(
+                    child: InterestedRow(
+                      interested: r.interested,
+                      count: r.interestedCount,
+                      ext: ext,
+                      onTap: onInterestedTap,
+                    ),
+                  ),
+                if (onBoost != null) ...[
+                  const Spacer(),
+                  _BoostButton(onTap: onBoost!, ext: ext),
+                ],
+              ],
             ),
           ],
           // A closed request keeps its answers, so republishing is offered
@@ -472,12 +588,68 @@ class _MyRequestTile extends StatelessWidget {
   }
 }
 
+/// The outlined "Boost Request" pill on an active card.
+///
+/// Outlined rather than filled: the card already carries a status badge and a
+/// row of faces, and a solid accent block would make every unboosted request
+/// shout. It is an offer, not the point of the card.
+class _BoostButton extends StatelessWidget {
+  const _BoostButton({required this.onTap, required this.ext});
+
+  final VoidCallback onTap;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Boost request',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.xl.r),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.xl.r),
+            border: Border.all(color: ext.accentGold, width: 1.2),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.trending_up_rounded, size: 15.sp, color: ext.accentGold),
+              SizedBox(width: AppSpacing.xs.w),
+              Text(
+                'Boost Request',
+                style: TextStyle(
+                  color: ext.accentGold,
+                  fontSize: 12.5.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge(
-      {required this.status, required this.color, required this.ext});
+      {required this.status,
+      required this.color,
+      required this.ext,
+      this.isBoosted = false});
   final String status;
   final Color color;
   final AppThemeExtension ext;
+
+  /// Reads "Active | Boosted" rather than getting its own pill. It qualifies
+  /// the status — a boost on a closed request would mean nothing — so it
+  /// belongs inside the same badge rather than beside it.
+  final bool isBoosted;
 
   /// The card says Active or Closed. The server has more states than that —
   /// promoted, filled, rejected — but from the requester's side the only
@@ -501,7 +673,7 @@ class _StatusBadge extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.4), width: 0.8),
       ),
       child: Text(
-        _label(status),
+        isBoosted ? '${_label(status)} | Boosted' : _label(status),
         style: TextStyle(
           color: color,
           fontSize: 10.sp,
@@ -992,10 +1164,10 @@ class _EditPhotos extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AppRadius.sm.r),
                     child: ColoredBox(
                       color: ext.searchFieldFill,
-                      child: Image.network(
-                        item.url,
+                      child: JpergImage(
+                        imageUrl: item.url,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(
+                        errorWidget: (_, __, ___) => Icon(
                           Icons.broken_image_outlined,
                           size: 18.r,
                           color: ext.searchHintColor,

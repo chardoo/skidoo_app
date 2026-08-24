@@ -13,6 +13,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/boost_active_bar.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/presentation/pages/my_requests_page.dart'
     show EditRequestSheet;
@@ -624,44 +625,67 @@ class _RequestCard extends StatelessWidget {
         color: ext.accentGold.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppRadius.lg.r),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  request.title,
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      request.title,
+                      style: TextStyle(
+                        color: ext.greetingColor,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      _meta,
+                      style: TextStyle(
+                        color: ext.searchHintColor, fontSize: 12.sp,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 2.h),
-                Text(
-                  _meta,
-                  style: TextStyle(
-                    color: ext.searchHintColor, fontSize: 12.sp,
-                  ),
+              ),
+              Text(
+                active
+                    ? 'Active'
+                    : (request.isExpired && request.status == 'open'
+                        ? 'Expired'
+                        : 'Closed'),
+                style: TextStyle(
+                  color: active ? ext.accentGold : ext.searchHintColor,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Text(
-            active
-                ? 'Active'
-                : (request.isExpired && request.status == 'open'
-                    ? 'Expired'
-                    : 'Closed'),
-            style: TextStyle(
-              color: active ? ext.accentGold : ext.searchHintColor,
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w600,
+          // The countdown for what was paid for, inside the same card and
+          // under a rule — it describes this request rather than standing
+          // beside it. Only while the boost is live: a lapsed one has nothing
+          // left to count, and the owner can simply buy another.
+          if (request.isBoosted) ...[
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+              child: Divider(
+                height: 1,
+                color: ext.searchHintColor.withValues(alpha: 0.2),
+              ),
             ),
-          ),
+            BoostActiveBar(
+              daysRemaining: request.boostDaysRemaining ?? 0,
+              totalDays: request.boostDays ?? 0,
+            ),
+          ],
         ],
       ),
     );

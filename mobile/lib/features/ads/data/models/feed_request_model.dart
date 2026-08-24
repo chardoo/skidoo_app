@@ -22,6 +22,10 @@ class FeedRequestModel {
     this.targetLocations = const [],
     this.targetLocationsLabel = 'Everywhere',
     this.promotedCampaignId,
+    this.isBoosted = false,
+    this.boostedUntil,
+    this.boostDays,
+    this.boostDaysRemaining,
     this.assetUrl,
     this.assetType,
     this.createdAt,
@@ -135,6 +139,29 @@ class FeedRequestModel {
   /// on what they wrote instead of a blank box.
   final String? viewerMessage;
 
+  // ── Boost ─────────────────────────────────────────────────────────────
+  //
+  // Whether the paid-for reach is live *now*. Decided by the server, not by
+  // comparing [boostedUntil] here: a device with a skewed clock would badge a
+  // boost that had already lapsed, and the countdown would be wrong by the
+  // same amount.
+  final bool isBoosted;
+
+  /// When the boost runs out. Non-null for a request that has ever been
+  /// boosted, including one whose boost has since lapsed.
+  final DateTime? boostedUntil;
+
+  /// The length of the whole run, so the details bar can say "5 of 7 days".
+  final int? boostDays;
+
+  /// Days left, rounded up — a boost with hours left still reads as 1.
+  final int? boostDaysRemaining;
+
+  /// Whether the card should offer the Boost button: an active request that
+  /// is not already boosted. A closed or expired one has nothing to promote,
+  /// and the server refuses it.
+  bool get canBoost => isLive && !isBoosted;
+
   factory FeedRequestModel.fromJson(Map<String, dynamic> json) {
     final rawMedia = (json['media'] as List<dynamic>? ?? [])
         .whereType<Map<String, dynamic>>()
@@ -176,6 +203,12 @@ class FeedRequestModel {
       targetLocationsLabel:
           json['target_locations_label'] as String? ?? 'Everywhere',
       promotedCampaignId: json['promoted_campaign_id'] as String?,
+      isBoosted: json['is_boosted'] == true,
+      boostedUntil: json['boosted_until'] != null
+          ? DateTime.tryParse(json['boosted_until'] as String)
+          : null,
+      boostDays: (json['boost_days'] as num?)?.toInt(),
+      boostDaysRemaining: (json['boost_days_remaining'] as num?)?.toInt(),
       status: json['status'] as String? ?? 'open',
       assetUrl: legacyUrl,
       assetType: legacyType,
@@ -203,6 +236,10 @@ class FeedRequestModel {
     int? interestedCount,
     bool? viewerInterested,
     String? viewerMessage,
+    bool? isBoosted,
+    DateTime? boostedUntil,
+    int? boostDays,
+    int? boostDaysRemaining,
   }) {
     return FeedRequestModel(
       id: id,
@@ -224,6 +261,10 @@ class FeedRequestModel {
       targetLocations: targetLocations,
       targetLocationsLabel: targetLocationsLabel,
       promotedCampaignId: promotedCampaignId,
+      isBoosted: isBoosted ?? this.isBoosted,
+      boostedUntil: boostedUntil ?? this.boostedUntil,
+      boostDays: boostDays ?? this.boostDays,
+      boostDaysRemaining: boostDaysRemaining ?? this.boostDaysRemaining,
       assetUrl: assetUrl,
       assetType: assetType,
       createdAt: createdAt,
