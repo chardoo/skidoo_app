@@ -253,6 +253,12 @@ class _MyRequestsPageState extends State<MyRequestsPage>
       debugPrint('[MyRequestsPage] _boost ERROR: $e');
       if (!mounted) return;
       AppSnackBar.error(context, 'Could not boost this request. Try again.');
+      // Reload before inviting a retry. A failure here does not mean nothing
+      // happened: a boost can be applied and confirmed server-side and still
+      // come back as an error, which is exactly what a bug in verify-boost did.
+      // Leaving the stale card up offers "Boost Request" on something already
+      // paid for, and "Try again" then charges for it twice.
+      await _load();
     }
   }
 
