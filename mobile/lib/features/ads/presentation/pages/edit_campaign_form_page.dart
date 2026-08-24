@@ -15,6 +15,7 @@ import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/features/ads/models/ad_media.dart';
 import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.dart';
+import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
 
 /// Edit Campaign — the whole wizard on one page.
 ///
@@ -55,7 +56,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
       : _c.placements.toSet();
   // Prefilled from the campaign. Opening on empty chips and then saving would
   // write the emptiness back over whatever the wizard chose.
-  late final _locations = _c.locations.toSet();
+  late final _targetLocations = [..._c.targetLocations];
   late final _interests = _c.interests.toSet();
   late String _audience = _c.audience;
   // Prefilled from the campaign, falling back to the widest band rather than a
@@ -97,7 +98,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
 
   bool get _complete =>
       _mediaOk &&
-      _locations.isNotEmpty &&
+      _targetLocations.isNotEmpty &&
       _headline.text.trim().isNotEmpty &&
       _copy.text.trim().isNotEmpty &&
       _ctaText.text.trim().isNotEmpty &&
@@ -175,7 +176,8 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
         body: _copy.text.trim(),
         ctaText: _ctaText.text.trim(),
         ctaUrl: _ctaUrl.text.trim(),
-        locations: _locations.toList(),
+        targetLocations:
+            _targetLocations.map((p) => p.toJson()).toList(),
         // Sent even when empty — clearing every interest tag is a real edit,
         // and omitting the field would silently keep the old ones.
         interests: _interests.toList(),
@@ -289,22 +291,21 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
 
           _Section('3. Audience settings', ext: ext),
           _FieldLabel('Location', ext: ext, required: true),
-          Wrap(
-            spacing: AppSpacing.sm.w,
-            runSpacing: AppSpacing.xs.h,
-            children: [
-              for (final location in kCampaignLocations)
-                _Chip(
-                  ext: ext,
-                  label: location,
-                  selected: _locations.contains(location),
-                  onTap: () => setState(() {
-                    _locations.contains(location)
-                        ? _locations.remove(location)
-                        : _locations.add(location);
-                  }),
-                ),
-            ],
+          LocationChips(
+            places: _targetLocations,
+            emptyLabel: 'Pick at least one country or city',
+            onAdd: () async {
+              final place = await LocationPickerSheet.show(
+                context,
+                title: 'Where should this run?',
+              );
+              if (place == null || !mounted) return;
+              if (!_targetLocations.contains(place)) {
+                setState(() => _targetLocations.add(place));
+              }
+            },
+            onRemove: (place) =>
+                setState(() => _targetLocations.remove(place)),
           ),
           _FieldLabel('Interest tags', ext: ext),
           Wrap(

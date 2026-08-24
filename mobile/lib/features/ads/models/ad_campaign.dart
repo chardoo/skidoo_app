@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:jperg_app/features/ads/models/ad_media.dart';
 import 'package:jperg_app/features/ads/models/ad_set.dart';
+import 'package:jperg_app/features/location/data/models/place.dart';
 
 class AdCampaign {
   final String id;
@@ -53,6 +54,13 @@ class AdCampaign {
   /// form can open on what was chosen rather than on empty chips, which
   /// saving would then write back as nothing.
   final List<String> locations;
+
+  /// The same targeting as resolved places — country codes and coordinates.
+  /// What the edit form reopens on, and the only form the country gate and the
+  /// distance ranking can read. Empty for campaigns built before the picker,
+  /// which keep [locations] and the old substring matching.
+  final List<Place> targetLocations;
+
   final List<String> interests;
   final String audience;
 
@@ -125,6 +133,7 @@ class AdCampaign {
     this.reach = 0,
     this.placements = const [],
     this.locations = const [],
+    this.targetLocations = const [],
     this.interests = const [],
     this.audience = 'all',
     this.ageMin,
@@ -189,6 +198,10 @@ class AdCampaign {
             .toList(),
         locations: (j['locations'] as List<dynamic>? ?? [])
             .whereType<String>()
+            .toList(),
+        targetLocations: (j['target_locations'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(Place.fromJson)
             .toList(),
         interests: (j['interests'] as List<dynamic>? ?? [])
             .whereType<String>()

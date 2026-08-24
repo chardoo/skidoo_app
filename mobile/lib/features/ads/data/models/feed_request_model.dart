@@ -1,4 +1,5 @@
 import 'package:jperg_app/features/ads/models/ad_media.dart';
+import 'package:jperg_app/features/location/data/models/place.dart';
 
 class FeedRequestModel {
   const FeedRequestModel({
@@ -18,6 +19,8 @@ class FeedRequestModel {
     this.budgetMax,
     this.requesterPhoto,
     this.visibleTo,
+    this.targetLocations = const [],
+    this.targetLocationsLabel = 'Everywhere',
     this.promotedCampaignId,
     this.assetUrl,
     this.assetType,
@@ -57,6 +60,14 @@ class FeedRequestModel {
 
   /// Who can see this request: "photographers" | "clients"
   final String? visibleTo;
+
+  /// Where it is aimed, as resolved places. Empty means everywhere, which is
+  /// what every request posted before the picker existed means.
+  final List<Place> targetLocations;
+
+  /// The same thing as one line — "Accra, Kumasi", or "Everywhere" — for a
+  /// card with no room to list them.
+  final String targetLocationsLabel;
   final String? promotedCampaignId;
 
   /// "pending_review" | "open" | "promoted" | "filled" | "closed" | "rejected"
@@ -158,6 +169,12 @@ class FeedRequestModel {
       currency: json['currency'] as String? ?? 'USD',
       requesterPhoto: json['requester_photo'] as String?,
       visibleTo: json['visible_to'] as String?,
+      targetLocations: (json['target_locations'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(Place.fromJson)
+          .toList(),
+      targetLocationsLabel:
+          json['target_locations_label'] as String? ?? 'Everywhere',
       promotedCampaignId: json['promoted_campaign_id'] as String?,
       status: json['status'] as String? ?? 'open',
       assetUrl: legacyUrl,
@@ -204,6 +221,8 @@ class FeedRequestModel {
       budgetMax: budgetMax,
       requesterPhoto: requesterPhoto,
       visibleTo: visibleTo,
+      targetLocations: targetLocations,
+      targetLocationsLabel: targetLocationsLabel,
       promotedCampaignId: promotedCampaignId,
       assetUrl: assetUrl,
       assetType: assetType,

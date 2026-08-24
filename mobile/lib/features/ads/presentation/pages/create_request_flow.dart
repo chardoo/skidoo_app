@@ -11,6 +11,8 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/features/location/data/models/place.dart';
+import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
 
 /// Posting a request: fill it in, read it back, publish.
 ///
@@ -31,7 +33,30 @@ class RequestDraft {
   String title = '';
   DateTime? eventDate;
   String? eventType;
-  String location = '';
+
+  /// Where the shoot is, as a resolved place rather than typed text.
+  ///
+  /// It is one question doing two jobs, which is why it is one field. The
+  /// requester is saying where the job is; the board reads the same answer to
+  /// decide which photographers ever see it, because a wedding in Accra is not
+  /// a job for someone who works in another country. Asking "where is it" and
+  /// then "who should see it" would be asking the same thing twice.
+  Place? place;
+
+  /// Anywhere else worth reaching — a shoot near a border, or a client happy
+  /// to fly someone in. Optional, and empty for almost every request.
+  final List<Place> alsoReach = [];
+
+  /// The event's location as the card shows it.
+  String get location => place?.label ?? '';
+
+  /// What the board filters and ranks on.
+  List<Place> get targetLocations => [
+        if (place != null) place!,
+        for (final extra in alsoReach)
+          if (extra != place) extra,
+      ];
+
   String description = '';
   double? budgetMin;
   double? budgetMax;
@@ -44,7 +69,7 @@ class RequestDraft {
       title.trim().isNotEmpty &&
       eventDate != null &&
       (eventType?.isNotEmpty ?? false) &&
-      location.trim().isNotEmpty &&
+      place != null &&
       photos.isNotEmpty;
 }
 
@@ -84,7 +109,6 @@ class _NewRequestStep extends StatefulWidget {
 class _NewRequestStepState extends State<_NewRequestStep> {
   final _picker = ImagePicker();
   late final _title = TextEditingController(text: widget.draft.title);
-  late final _location = TextEditingController(text: widget.draft.location);
   late final _description = TextEditingController(text: widget.draft.description);
   late final _budgetMin = TextEditingController(
     text: widget.draft.budgetMin?.toStringAsFixed(0) ?? '',
@@ -95,7 +119,7 @@ class _NewRequestStepState extends State<_NewRequestStep> {
 
   @override
   void dispose() {
-    for (final c in [_title, _location, _description, _budgetMin, _budgetMax]) {
+    for (final c in [_title, _description, _budgetMin, _budgetMax]) {
       c.dispose();
     }
     super.dispose();
@@ -104,7 +128,6 @@ class _NewRequestStepState extends State<_NewRequestStep> {
   void _sync() {
     widget.draft
       ..title = _title.text
-      ..location = _location.text
       ..description = _description.text
       ..budgetMin = double.tryParse(_budgetMin.text.trim())
       ..budgetMax = double.tryParse(_budgetMax.text.trim());
@@ -197,8 +220,8 @@ class _NewRequestStepState extends State<_NewRequestStep> {
           _Field(
             ext: ext,
             label: 'Location',
-            child: _Input(controller: _location, hint: 'Location', ext: ext,
-                onChanged: (_) => setState(_sync)),
+            child: _LocationField(draft: widget.draft, ext: ext,
+                onChanged: () => setState(_sync)),
           ),
           _Field(
             ext: ext,
@@ -329,6 +352,8 @@ class _ReviewStepState extends State<_ReviewStep> {
         description: draft.description.trim(),
         eventType: draft.eventType!.toLowerCase(),
         location: draft.location.trim(),
+        targetLocations:
+            draft.targetLocations.map((p) => p.toJson()).toList(),
         eventDate: draft.eventDate,
         budgetMin: draft.budgetMin,
         budgetMax: draft.budgetMax,
@@ -525,6 +550,119 @@ PreferredSizeWidget _stepBar(
         ),
       ),
     );
+
+/// Where the shoot is, picked rather than typed.
+///
+/// It was a free-text box, and free text is why targeting could not work: the
+/// board had nothing to gate on and nothing to measure a distance from, so
+/// every open request went to every photographer whatever country they work in.
+///
+/// The line underneath says who the answer reaches, because that consequence
+/// is not obvious from a field labelled "Location" and it is the reason the
+/// field changed.
+class _LocationField extends StatelessWidget {
+  const _LocationField({
+    required this.draft,
+    required this.ext,
+    required this.onChanged,
+  });
+
+  final RequestDraft draft;
+  final AppThemeExtension ext;
+  final VoidCallback onChanged;
+
+  Future<void> _pick(BuildContext context) async {
+    final place = await LocationPickerSheet.show(
+      context,
+      title: 'Where is the shoot?',
+    );
+    if (place == null) return;
+    draft.place = place;
+    // Somewhere chosen as the venue is no longer an "also reach" — it is the
+    // place itself, and listing it twice would say the same thing twice.
+    draft.alsoReach.remove(place);
+    onChanged();
+  }
+
+  Future<void> _addExtra(BuildContext context) async {
+    final place = await LocationPickerSheet.show(
+      context,
+      title: 'Also show photographers in…',
+    );
+    if (place == null) return;
+    if (place != draft.place && !draft.alsoReach.contains(place)) {
+      draft.alsoReach.add(place);
+      onChanged();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final place = draft.place;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          button: true,
+          label: 'Choose the location',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _pick(context),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md.w, vertical: 13.h),
+              decoration: BoxDecoration(
+                color: ext.searchFieldFill,
+                borderRadius: BorderRadius.circular(AppRadius.md.r),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.place_outlined,
+                      size: 18.r, color: ext.searchHintColor),
+                  SizedBox(width: AppSpacing.sm.w),
+                  Expanded(
+                    child: Text(
+                      place?.label ?? 'Choose a location',
+                      style: TextStyle(
+                        color: place == null
+                            ? ext.searchHintColor
+                            : ext.greetingColor,
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.expand_more_rounded,
+                      size: 20.r, color: ext.searchHintColor),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (place != null) ...[
+          SizedBox(height: AppSpacing.sm.h),
+          Text(
+            place.isCountryWide
+                ? 'Photographers across ${place.country ?? place.countryCode} '
+                    'will see this.'
+                : 'Photographers near ${place.label} see this first.',
+            style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+          ),
+          SizedBox(height: AppSpacing.sm.h),
+          LocationChips(
+            places: draft.alsoReach,
+            emptyLabel: '',
+            onAdd: () => _addExtra(context),
+            onRemove: (extra) {
+              draft.alsoReach.remove(extra);
+              onChanged();
+            },
+          ),
+        ],
+      ],
+    );
+  }
+}
 
 class _Field extends StatelessWidget {
   const _Field({required this.label, required this.child, required this.ext});

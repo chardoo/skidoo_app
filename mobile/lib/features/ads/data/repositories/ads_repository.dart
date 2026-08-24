@@ -270,6 +270,9 @@ class AdsRepository {
     required String description,
     required String eventType,
     required String location,
+    /// Where the request is aimed, as resolved places. Empty means everywhere,
+    /// which is what every request posted before the picker existed means.
+    List<Map<String, dynamic>> targetLocations = const [],
     DateTime? eventDate,
     double? budgetMin,
     double? budgetMax,
@@ -285,6 +288,7 @@ class AdsRepository {
       'description': description,
       'event_type': eventType,
       'location': location,
+      'target_locations': targetLocations,
       if (eventDate != null)
         'event_date': eventDate.toIso8601String().split('T').first,
       if (budgetMin != null) 'budget_min': budgetMin,
@@ -411,6 +415,9 @@ class AdsRepository {
     String? description,
     String? eventType,
     String? location,
+    /// Absent leaves targeting alone; an empty list clears it back to
+    /// everywhere.
+    List<Map<String, dynamic>>? targetLocations,
     DateTime? eventDate,
     double? budgetMin,
     double? budgetMax,
@@ -424,6 +431,7 @@ class AdsRepository {
       if (description != null) 'description': description,
       if (eventType != null) 'event_type': eventType,
       if (location != null) 'location': location,
+      if (targetLocations != null) 'target_locations': targetLocations,
       if (eventDate != null)
         'event_date': eventDate.toIso8601String().split('T').first,
       if (budgetMin != null) 'budget_min': budgetMin,
@@ -546,6 +554,10 @@ class AdsRepository {
     required String ctaText,
     required String ctaUrl,
     List<String> locations = const [],
+    /// Resolved places from the location search. The one the country gate and
+    /// the distance ranking read — `locations` above is the old free-text list,
+    /// which the server now derives from these so the two cannot disagree.
+    List<Map<String, dynamic>> targetLocations = const [],
     List<String> interests = const [],
     String audience = 'all',
     int? ageMin,
@@ -570,6 +582,7 @@ class AdsRepository {
       'cta_text': ctaText,
       'cta_url': ctaUrl,
       'locations': locations,
+      'target_locations': targetLocations,
       'interests': interests,
       'audience': audience,
       if (ageMin != null) 'age_min': ageMin,
@@ -980,6 +993,9 @@ class AdsRepository {
     String? ctaText,
     String? ctaUrl,
     List<String>? locations,
+    /// Absent leaves targeting alone; an empty list clears it back to
+    /// everywhere. Two different intentions, and a PATCH has to say either.
+    List<Map<String, dynamic>>? targetLocations,
     List<String>? interests,
     String? audience,
     int? ageMin,
@@ -1001,6 +1017,7 @@ class AdsRepository {
       if (ctaText != null) 'cta_text': ctaText,
       if (ctaUrl != null) 'cta_url': ctaUrl,
       if (locations != null) 'locations': locations,
+      if (targetLocations != null) 'target_locations': targetLocations,
       if (interests != null) 'interests': interests,
       if (audience != null) 'audience': audience,
       if (ageMin != null) 'age_min': ageMin,

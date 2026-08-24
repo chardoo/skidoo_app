@@ -24,6 +24,7 @@ import 'package:flutter/foundation.dart';
 import 'package:jperg_app/core/utils/video_pause_notifier.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/location/presentation/location_mismatch_prompt.dart';
 
 class HomeNavigationPage extends StatefulWidget {
   const HomeNavigationPage({super.key});
@@ -143,13 +144,29 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
   Future<void> _resolveGuest() async {
     final isGuest = (await sl<AuthService>().getToken()).isEmpty;
-    if (!mounted || isGuest == _isGuest) return;
-    setState(() {
-      _isGuest = isGuest;
-      // Following (2) has no guest equivalent; anyone parked there when the
-      // check resolves lands on Explore rather than on a tab that no longer
-      // exists.
-      if (isGuest && _selectedTab >= _guestTabs.length) _selectedTab = 1;
+    if (!mounted) return;
+    if (isGuest != _isGuest) {
+      setState(() {
+        _isGuest = isGuest;
+        // Following (2) has no guest equivalent; anyone parked there when the
+        // check resolves lands on Explore rather than on a tab that no longer
+        // exists.
+        if (isGuest && _selectedTab >= _guestTabs.length) _selectedTab = 1;
+      });
+    }
+    if (!isGuest) _checkLocation();
+  }
+
+  /// Ask once, quietly, whether the account's location is still right.
+  ///
+  /// Deferred to after the first frame so the shell paints before anything
+  /// can put a sheet over it, and unawaited because nothing about launching
+  /// the app should wait on it. Signed-in only: a guest has no location to
+  /// disagree with. See [LocationMismatchPrompt] for the rate limiting, which
+  /// is most of why this is safe to call on every launch.
+  void _checkLocation() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) LocationMismatchPrompt.maybeShow(context);
     });
   }
 

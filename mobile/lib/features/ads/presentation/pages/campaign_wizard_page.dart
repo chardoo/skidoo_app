@@ -13,6 +13,8 @@ import 'package:jperg_app/core/utils/number_format.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/features/location/data/models/place.dart';
+import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 
 /// Everything the five steps collect, in one place.
@@ -30,7 +32,10 @@ class CampaignDraft {
   final ctaUrl = TextEditingController();
   final photos = <XFile>[];
 
-  final locations = <String>{};
+  /// Where the campaign is aimed, as resolved places. `locations` below is
+  /// derived from these for the review card and older reads; the server
+  /// re-derives it too, so the two cannot disagree about one campaign.
+  final targetLocations = <Place>[];
   final interests = <String>{};
   String audience = 'all';
   /// Who to show it to, by age. Defaults to the widest the picker offers
@@ -69,7 +74,8 @@ class CampaignDraft {
         photos.length <= high;
   }
 
-  bool get audienceDone => locations.isNotEmpty && placements.isNotEmpty;
+  bool get audienceDone =>
+      targetLocations.isNotEmpty && placements.isNotEmpty;
 
   bool get budgetDone =>
       budgetValue > 0 &&
@@ -94,7 +100,11 @@ const kCampaignInterests = [
   'Corporate', 'Nature', 'Product',
 ];
 
-const kCampaignLocations = [
+/// The seven cities this used to offer, kept only for reading campaigns that
+/// were built from them. Targeting is picked from the location search now — see
+/// [LocationPickerSheet] — because a name cannot be gated on or measured from,
+/// and seven cities is not a country.
+const kLegacyCampaignLocations = [
   'Accra', 'Kumasi', 'Takoradi', 'Tamale', 'Cape Coast', 'Ho', 'Sunyani',
 ];
 
@@ -167,7 +177,8 @@ class _CampaignWizardPageState extends State<CampaignWizardPage> {
         body: _draft.copy.text.trim(),
         ctaText: _draft.ctaText.text.trim(),
         ctaUrl: _draft.ctaUrl.text.trim(),
-        locations: _draft.locations.toList(),
+        targetLocations:
+            _draft.targetLocations.map((p) => p.toJson()).toList(),
         interests: _draft.interests.toList(),
         audience: _draft.audience,
         placements: _draft.placements.toList(),
@@ -999,24 +1010,29 @@ class _AudienceStep extends StatelessWidget {
       children: [
         _Heading('Audience Targeting', ext: ext),
         _Label('Location', ext: ext, required: true),
-        Wrap(
-          spacing: AppSpacing.sm.w,
-          runSpacing: AppSpacing.xs.h,
-          children: [
-            for (final location in kCampaignLocations)
-              _Choice(
-                label: location,
-                selected: draft.locations.contains(location),
-                ext: ext,
-                onTap: () {
-                  draft.locations.contains(location)
-                      ? draft.locations.remove(location)
-                      : draft.locations.add(location);
-                  onChanged();
-                },
-              ),
-          ],
-        ),
+        Builder(builder: (context) {
+          return LocationChips(
+            places: draft.targetLocations,
+            emptyLabel: 'Pick at least one country or city',
+            onAdd: () async {
+              final place = await LocationPickerSheet.show(
+                context,
+                title: 'Where should this run?',
+              );
+              if (place == null) return;
+              // The picker can return somewhere already chosen — Place
+              // compares on country and point, so this is one entry either way.
+              if (!draft.targetLocations.contains(place)) {
+                draft.targetLocations.add(place);
+              }
+              onChanged();
+            },
+            onRemove: (place) {
+              draft.targetLocations.remove(place);
+              onChanged();
+            },
+          );
+        }),
         _Label('Interest tags', ext: ext),
         Wrap(
           spacing: AppSpacing.sm.w,
@@ -1545,7 +1561,10 @@ class _ReviewStep extends StatelessWidget {
           ext: ext,
           onEdit: () => onEdit(2),
           rows: [
-            ('Locations', draft.locations.join(', ')),
+            (
+              'Locations',
+              draft.targetLocations.map((p) => p.label).join(', '),
+            ),
             ('Target Age',
                 '${draft.ages.start.round()} – ${draft.ages.end.round()} years'),
             if (draft.interests.isNotEmpty)

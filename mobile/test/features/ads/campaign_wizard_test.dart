@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.dart';
+import 'package:jperg_app/features/location/data/models/place.dart';
 
 /// The wizard's rules, away from the widgets that render them.
 ///
@@ -105,7 +106,9 @@ void main() {
     test('audience needs a location and somewhere to run', () {
       final d = CampaignDraft();
       expect(d.audienceDone, isFalse, reason: 'no location chosen');
-      d.locations.add('Accra');
+      d.targetLocations.add(const Place(
+        countryCode: 'GH', name: 'Accra', lat: 5.55602, lon: -0.1969,
+      ));
       expect(d.audienceDone, isTrue);
       d.placements.clear();
       expect(d.audienceDone, isFalse, reason: 'nowhere to place it');
@@ -345,13 +348,32 @@ void _editPrefill() {
       expect(c.audience, 'all');
     });
 
-    test('the chip lists the two screens offer are the same list', () {
-      // The wizard and the edit form used to hold their own copies; a location
+    test('the interest chips are one shared list', () {
+      // The wizard and the edit form used to hold their own copies; a tag
       // added to one and not the other is a filter nobody can clear.
-      expect(kCampaignLocations, contains('Accra'));
       expect(kCampaignInterests, contains('Weddings'));
-      expect(kCampaignLocations, isNotEmpty);
       expect(kCampaignInterests, isNotEmpty);
+    });
+
+    test('locations come back as resolved places', () {
+      // The seven hardcoded cities are gone: they could not be gated on and
+      // could not be measured from, which is why targeting never worked.
+      final c = campaign({
+        'target_locations': [
+          {
+            'id': 2306104, 'name': 'Accra', 'admin1': 'Greater Accra Region',
+            'country_code': 'GH', 'country': 'Ghana',
+            'lat': 5.55602, 'lon': -0.1969,
+          },
+        ],
+      });
+      expect(c.targetLocations.single.name, 'Accra');
+      expect(c.targetLocations.single.countryCode, 'GH');
+      expect(c.targetLocations.single.lat, 5.55602);
+    });
+
+    test('a campaign built before the picker has none', () {
+      expect(campaign({}).targetLocations, isEmpty);
     });
   });
 
