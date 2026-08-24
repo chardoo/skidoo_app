@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/widgets/media_backdrop.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
@@ -727,33 +728,20 @@ class _MediaBackground extends StatelessWidget {
       );
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: JpergImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
-            isBlurBackground: true,
-            placeholder: (_, __) => const JpergImagePlaceholder(),
-            errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
-          ),
+    return MediaBackdrop(
+      url: url,
+      child: JpergImage(
+        imageUrl: url,
+        fit: BoxFit.contain,
+        semanticLabel: 'Advertisement image',
+        // Non-opaque — the blurred backdrop stays visible behind the
+        // spinner while the full-res image is still loading.
+        placeholder: (_, __) => Center(
+          child: CircularProgressIndicator(
+              color: ext.accentGold, strokeWidth: 2),
         ),
-        ColoredBox(color: ext.mediaBackdropVeil),
-        JpergImage(
-          imageUrl: url,
-          fit: BoxFit.contain,
-          semanticLabel: 'Advertisement image',
-          // Non-opaque — the blurred backdrop stays visible behind the
-          // spinner while the full-res image is still loading.
-          placeholder: (_, __) => Center(
-            child: CircularProgressIndicator(
-                color: ext.accentGold, strokeWidth: 2),
-          ),
-          errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
-        ),
-      ],
+        errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
+      ),
     );
   }
 }

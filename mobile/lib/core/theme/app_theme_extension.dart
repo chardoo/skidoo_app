@@ -102,9 +102,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   /// Wash laid over the blurred cover-fit copy of a photo that fills those
   /// bands, so the backdrop doesn't compete with the sharp image on top.
   ///
-  /// Light mode needs a heavier veil than dark mode needs a scrim: most photos
-  /// are mid-to-dark, so a light wash has more to cover before the surround
-  /// reads as belonging to a light page.
+  /// Half in both themes: past roughly that the veil stops knocking the
+  /// backdrop back and starts erasing it, which leaves a flat slab rather than
+  /// the photo's own light. The two differ in colour, not in strength — black
+  /// in dark mode, the page's own background in light.
   final Color mediaBackdropVeil;
 
   /// Values sampled directly from the Jperg product designs (folders 1 and 4).
@@ -142,7 +143,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     glassIcon:   Color(0xB3FFFFFF), // white 70 %
     glassHint:   Color(0x8CFFFFFF), // white 55 %
     mediaLetterbox:    Color(0xFF000000),
-    mediaBackdropVeil: Color(0x55000000), // black 33 %
+    mediaBackdropVeil: Color(0x80000000), // black 50 %
   );
 
   /// The same warm-neutral system inverted, sampled from the light designs in
@@ -181,10 +182,12 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     // The page background itself, so a letterboxed photo sits on the same
     // surface as the rest of the app rather than in a black box.
     mediaLetterbox:    Color(0xFFF7F7F2),
-    // 70 %: enough that a dark photo's blur still lands lighter than mid-grey,
-    // while leaving a hint of the photo's colour so the bands read as belonging
-    // to the image. Tune here — it is the one knob for the whole feed.
-    mediaBackdropVeil: Color(0xB3F7F7F2), // background 70 %
+    // 50 %, matching dark mode. It was 70 %, which is opaque enough to erase
+    // what it sits on: the backdrop stopped reading as the photo's own colour
+    // and became a flat pale slab, so in light mode the feature was effectively
+    // off. Half lets the colour through while keeping it well behind the sharp
+    // image. Tune here — it is the one knob for the whole feed.
+    mediaBackdropVeil: Color(0x80F7F7F2), // background 50 %
   );
 
   @override

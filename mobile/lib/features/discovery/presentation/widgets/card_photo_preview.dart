@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/widgets/media_backdrop.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 
@@ -80,14 +81,21 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
           return Stack(
             fit: StackFit.expand,
             children: [
-              _SliderVideoItem(
+              // A contained video letterboxes on nearly every card, so the fill
+              // is most of the screen. It used to be a flat colour; now it is
+              // the clip's own poster frame, the same treatment the photo
+              // slides get.
+              MediaBackdrop(
                 url: pic.url,
-                index: index,
-                activeIndex: _activeIndex,
-                onTap: widget.onTap,
-                cardIndex: widget.cardIndex,
-                activeCardIndex: widget.activeCardIndex,
-                fit: BoxFit.contain,
+                child: _SliderVideoItem(
+                  url: pic.url,
+                  index: index,
+                  activeIndex: _activeIndex,
+                  onTap: widget.onTap,
+                  cardIndex: widget.cardIndex,
+                  activeCardIndex: widget.activeCardIndex,
+                  fit: BoxFit.contain,
+                ),
               ),
               if (isLastLocked)
                 _LockedOverlay(remaining: widget.pics.length - 3),
@@ -105,38 +113,24 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // ── Blurred background — tiny decode, blur hides all detail ─
-                  ImageFiltered(
-                    imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  MediaBackdrop(
+                    url: pic.url,
+                    // ── Sharp full image, uncropped — actual size, no forced fill ──
                     child: JpergImage(
                       imageUrl: pic.url,
-                      fit: BoxFit.cover,
-                      isBlurBackground: true,
-                      placeholder: (_, __) =>
-                          const JpergImagePlaceholder(spinner: true),
+                      fit: BoxFit.contain,
+                      semanticLabel: 'Event photo',
+                      // Non-opaque — the blurred backdrop stays visible behind
+                      // the spinner while the full-res image is still loading.
+                      // The accent reads on that backdrop in either theme;
+                      // white70 disappeared into the light-mode wash.
+                      placeholder: (_, __) => Center(
+                        child: CircularProgressIndicator(
+                            color: ext.accentGold, strokeWidth: 2),
+                      ),
                       errorWidget: (_, __, ___) =>
                           const JpergImagePlaceholder(),
                     ),
-                  ),
-                  // Veil the blur layer so it doesn't compete with the main
-                  // image. Follows the theme: a dark scrim in dark mode, a
-                  // light wash in light mode — this fills the letterbox bands,
-                  // so a fixed black one made the whole feed read as dark.
-                  ColoredBox(color: ext.mediaBackdropVeil),
-                  // ── Sharp full image, uncropped — actual size, no forced fill ──
-                  JpergImage(
-                    imageUrl: pic.url,
-                    fit: BoxFit.contain,
-                    semanticLabel: 'Event photo',
-                    // Non-opaque — the blurred backdrop stays visible behind the
-                    // spinner while the full-res image is still loading. The
-                    // accent reads on that backdrop in either theme; white70
-                    // disappeared into the light-mode wash.
-                    placeholder: (_, __) => Center(
-                      child: CircularProgressIndicator(
-                          color: ext.accentGold, strokeWidth: 2),
-                    ),
-                    errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
                   ),
                   if (isLastLocked)
                     _LockedOverlay(remaining: widget.pics.length - 3),
@@ -200,8 +194,6 @@ class _SliderVideoItemState extends State<_SliderVideoItem> {
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>() ??
-        AppThemeExtension.dark;
     return GestureDetector(
       // Outer tap fires the card's own tap (e.g. open EventPicturesPage)
       // only when the video is not yet considered "tapped" by the player.
@@ -214,10 +206,11 @@ class _SliderVideoItemState extends State<_SliderVideoItem> {
         loop: true,
         fit: widget.fit,
         showControls: true,
-        // A contained video letterboxes on nearly every card, so this fill is
-        // most of the screen — it has to follow the theme. (The player's own
-        // controls stay light either way: they sit over the video.)
-        backgroundColor: ext.mediaLetterbox,
+        // Transparent so the [MediaBackdrop] behind this slide shows through
+        // the letterbox bands. The player paints this colour across its whole
+        // box, so any opaque value here — themed or not — would cover the
+        // backdrop completely and put the flat fill back.
+        backgroundColor: Colors.transparent,
         listenToPauseNotifier: true,
       ),
     );
