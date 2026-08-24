@@ -462,6 +462,8 @@ class _FeedItemCardState extends State<FeedItemCard>
     // Scales up out of the way when a comment sheet opens — see
     // [CommentPushArea].
     return CommentPushArea(
+      // Column-shaped: header, media, caption, interaction bar. See [fillsBand].
+      fillsBand: false,
       child: LayoutBuilder(builder: (context, constraints) {
         final availableW =
             constraints.maxWidth.isFinite ? constraints.maxWidth : size.width;
@@ -790,7 +792,10 @@ class _CreatorAvatar extends StatelessWidget {
                 )
               : null,
           image: photo != null
-              ? DecorationImage(image: NetworkImage(photo), fit: BoxFit.cover)
+              ? DecorationImage(
+                  image: boundedNetworkImage(context, photo,
+                      diameter: 38.w - borderPad * 2),
+                  fit: BoxFit.cover)
               : null,
         ),
         alignment: Alignment.center,

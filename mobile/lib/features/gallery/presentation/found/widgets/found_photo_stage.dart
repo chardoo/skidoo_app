@@ -117,12 +117,18 @@ class FoundPhotoStage extends StatelessWidget {
                     errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
                   ),
 
+                // Everything below is chrome over the photo, and all of it
+                // goes while a comment sheet is open — see [CommentSheetHide].
+                // The band above the sheet is media and nothing else, the same
+                // as it is on the feeds.
                 Positioned(
                   left: AppSpacing.md.w,
                   top: AppSpacing.md.h,
-                  child: counter == null
-                      ? FoundVisibilityBadge(isPublic: photo.isPublic)
-                      : FoundCounterPill(label: counter!),
+                  child: CommentSheetHide(
+                    child: counter == null
+                        ? FoundVisibilityBadge(isPublic: photo.isPublic)
+                        : FoundCounterPill(label: counter!),
+                  ),
                 ),
 
                 // "GHS 20 | Buy". Sits above the action rail, which is centred
@@ -132,9 +138,11 @@ class FoundPhotoStage extends StatelessWidget {
                   Positioned(
                     right: AppSpacing.md.w,
                     top: AppSpacing.md.h,
-                    child: FoundBuyPill(
-                      photo: photo,
-                      selection: selection!,
+                    child: CommentSheetHide(
+                      child: FoundBuyPill(
+                        photo: photo,
+                        selection: selection!,
+                      ),
                     ),
                   ),
 
@@ -154,10 +162,12 @@ class FoundPhotoStage extends StatelessWidget {
                       // action reachable instead of clipping the bottom one off.
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
-                        child: FoundActionRail(
-                          key: ValueKey('found_actions_${photo.id}'),
-                          photo: photo,
-                          purchaseGated: purchaseGated,
+                        child: CommentSheetHide(
+                          child: FoundActionRail(
+                            key: ValueKey('found_actions_${photo.id}'),
+                            photo: photo,
+                            purchaseGated: purchaseGated,
+                          ),
                         ),
                       ),
                     ),
@@ -170,8 +180,10 @@ class FoundPhotoStage extends StatelessWidget {
                   left: 0,
                   right: 0,
                   bottom: photo.isVideo ? _videoControlsBand.h : 0,
-                  child:
-                      FoundPhotoMetaBar(photo: photo, onViewAlbum: onViewAlbum),
+                  child: CommentSheetHide(
+                    child: FoundPhotoMetaBar(
+                        photo: photo, onViewAlbum: onViewAlbum),
+                  ),
                 ),
               ],
             ),

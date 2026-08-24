@@ -368,18 +368,25 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           //
           // The caption sits above this band, so it keeps the contrast it
           // needs; the strip the bar occupies is left as photo.
-          Positioned(
+          //
+          // The scrim, the caption and the rail are all chrome over the photo,
+          // and all of it goes while a comment sheet is open — see
+          // [CommentSheetHide]. The band above the sheet is media and nothing
+          // else, which is what the designs draw.
+          const Positioned(
             left: 0,
             right: 0,
             bottom: _navBand,
             height: 220,
-            child: const IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Color(0xAA000000)],
+            child: CommentSheetHide(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Color(0xAA000000)],
+                    ),
                   ),
                 ),
               ),
@@ -393,81 +400,83 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
             left: 16.w,
             right: 88.w,
             bottom: _activeMediaIsVideo ? (24 + _videoControlsBand).h : 24.h,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  event.eventName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (event.description.isNotEmpty) ...[
-                  SizedBox(height: AppSpacing.xs.h),
-                  ExpandableCaption(
-                    text: event.description,
-                    collapsedMaxLines: 2,
+            child: CommentSheetHide(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    event.eventName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: 13.sp,
-                      height: 1.3,
-                    ),
-                    linkStyle: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ],
-                // ── Now playing ─────────────────────────────────────────────
-                // Lit only while this card actually holds the feed's one
-                // player, so exactly one pill can be visible at a time. A
-                // scored event whose turn has not come shows nothing, which is
-                // the honest answer — the pill is a statement about sound, not
-                // a badge saying music exists.
-                if (_music != null)
-                  ValueListenableBuilder<FeedMusicNowPlaying?>(
-                    valueListenable: _music!.nowPlaying,
-                    builder: (context, playing, _) {
-                      if (playing == null || playing.eventId != event.id) {
-                        return const SizedBox.shrink();
-                      }
-                      return Padding(
-                        padding: EdgeInsets.only(top: AppSpacing.xs.h),
-                        child: ValueListenableBuilder<bool>(
-                          valueListenable: _music!.muted,
-                          builder: (context, muted, __) => FeedMusicPill(
-                            track: playing.track,
-                            muted: muted,
-                            onToggleMute: _music!.toggleMute,
+                  if (event.description.isNotEmpty) ...[
+                    SizedBox(height: AppSpacing.xs.h),
+                    ExpandableCaption(
+                      text: event.description,
+                      collapsedMaxLines: 2,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 13.sp,
+                        height: 1.3,
+                      ),
+                      linkStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  // ── Now playing ─────────────────────────────────────────────
+                  // Lit only while this card actually holds the feed's one
+                  // player, so exactly one pill can be visible at a time. A
+                  // scored event whose turn has not come shows nothing, which is
+                  // the honest answer — the pill is a statement about sound, not
+                  // a badge saying music exists.
+                  if (_music != null)
+                    ValueListenableBuilder<FeedMusicNowPlaying?>(
+                      valueListenable: _music!.nowPlaying,
+                      builder: (context, playing, _) {
+                        if (playing == null || playing.eventId != event.id) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: EdgeInsets.only(top: AppSpacing.xs.h),
+                          child: ValueListenableBuilder<bool>(
+                            valueListenable: _music!.muted,
+                            builder: (context, muted, __) => FeedMusicPill(
+                              track: playing.track,
+                              muted: muted,
+                              onToggleMute: _music!.toggleMute,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                if (event.contentTags.isNotEmpty) ...[
-                  SizedBox(height: AppSpacing.xs.h),
-                  ExpandableCaption(
-                    text: event.contentTags.map((t) => '#$t').join(' '),
-                    collapsedMaxLines: 2,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: 13.sp,
-                      height: 1.3,
+                        );
+                      },
                     ),
-                    linkStyle: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
+                  if (event.contentTags.isNotEmpty) ...[
+                    SizedBox(height: AppSpacing.xs.h),
+                    ExpandableCaption(
+                      text: event.contentTags.map((t) => '#$t').join(' '),
+                      collapsedMaxLines: 2,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 13.sp,
+                        height: 1.3,
+                      ),
+                      linkStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
 
@@ -476,105 +485,107 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
             right: 12.w,
             top: 0,
             bottom: 0,
-            child: Align(
-              alignment: const Alignment(0, 0.4),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      Semantics(
-                        button: true,
-                        label: "View ${event.photographerName}'s profile",
-                        child: GestureDetector(
-                          onTap: _openPhotographerProfile,
-                          child: CircleAvatar(
-                            radius: 20.r,
-                            backgroundColor: Colors.white24,
-                            backgroundImage:
-                                event.photographerProfileUrl != null
-                                    ? CachedNetworkImageProvider(
-                                        event.photographerProfileUrl!,
-                                        cacheManager: kIsWeb
-                                            ? null
-                                            : JpergImageCache.instance,
-                                      )
-                                    : null,
-                            child: event.photographerProfileUrl == null
-                                ? Text(
-                                    event.photographerName.isNotEmpty
-                                        ? event.photographerName[0]
-                                            .toUpperCase()
-                                        : '?',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700),
-                                  )
-                                : null,
+            child: CommentSheetHide(
+              child: Align(
+                alignment: const Alignment(0, 0.4),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.bottomCenter,
+                      children: [
+                        Semantics(
+                          button: true,
+                          label: "View ${event.photographerName}'s profile",
+                          child: GestureDetector(
+                            onTap: _openPhotographerProfile,
+                            child: CircleAvatar(
+                              radius: 20.r,
+                              backgroundColor: Colors.white24,
+                              backgroundImage:
+                                  event.photographerProfileUrl != null
+                                      ? CachedNetworkImageProvider(
+                                          event.photographerProfileUrl!,
+                                          cacheManager: kIsWeb
+                                              ? null
+                                              : JpergImageCache.instance,
+                                        )
+                                      : null,
+                              child: event.photographerProfileUrl == null
+                                  ? Text(
+                                      event.photographerName.isNotEmpty
+                                          ? event.photographerName[0]
+                                              .toUpperCase()
+                                          : '?',
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700),
+                                    )
+                                  : null,
+                            ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        bottom: -8.h,
-                        child: FollowButton(
-                          photographerId: event.photographerId,
-                          onImage: true,
-                          compact: true,
-                          initialFollowing: event.isFollowed,
-                          onLoginRequired:
-                              widget.isAuthenticated ? null : widget.onTap,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 26.h),
-                  // Only the bookmark reads bloc state, but the rail is one
-                  // widget now, so the builder wraps the lot.
-                  BlocBuilder<DiscoveryBloc, DiscoveryState>(
-                    buildWhen: (prev, next) =>
-                        prev.savedEventIds != next.savedEventIds,
-                    builder: (context, state) => MediaReactionRail(
-                      actions: [
-                        // Like disappears when engagement is off; comment stays
-                        // and is drawn unavailable. They are not the same case:
-                        // a missing heart says nothing, but a rail with no
-                        // comment button at all reads as one that never had one,
-                        // and the owner having closed the thread is worth
-                        // stating. Same split the card bar and the web column
-                        // already make.
-                        if (_engagementAllowed)
-                          MediaReaction.like(
-                            liked: liked,
-                            count: event.likes,
-                            onTap: _toggleLike,
+                        Positioned(
+                          bottom: -8.h,
+                          child: FollowButton(
+                            photographerId: event.photographerId,
+                            onImage: true,
+                            compact: true,
+                            initialFollowing: event.isFollowed,
+                            onLoginRequired:
+                                widget.isAuthenticated ? null : widget.onTap,
                           ),
-                        if (_engagementAllowed)
-                          MediaReaction.comment(
-                            count: event.commentCount,
-                            onTap: _openComments,
-                          )
-                        else
-                          MediaReaction.commentsDisabled(
-                            count: event.commentCount,
-                          ),
-                        MediaReaction.bookmark(
-                          saved: state.savedEventIds.contains(event.id),
-                          onTap: _toggleSave,
                         ),
-                        // One button, two destinations, named in the sheet it
-                        // opens — the paper plane and the share arrow beside it
-                        // were two buttons for one intention.
-                        MediaReaction.share(
-                          busy: _sharingExternal,
-                          onTap: _openShareTargets,
-                        ),
-                        MediaReaction.more(onTap: _showMoreOptions),
                       ],
                     ),
-                  ),
-                ],
+                    SizedBox(height: 26.h),
+                    // Only the bookmark reads bloc state, but the rail is one
+                    // widget now, so the builder wraps the lot.
+                    BlocBuilder<DiscoveryBloc, DiscoveryState>(
+                      buildWhen: (prev, next) =>
+                          prev.savedEventIds != next.savedEventIds,
+                      builder: (context, state) => MediaReactionRail(
+                        actions: [
+                          // Like disappears when engagement is off; comment stays
+                          // and is drawn unavailable. They are not the same case:
+                          // a missing heart says nothing, but a rail with no
+                          // comment button at all reads as one that never had one,
+                          // and the owner having closed the thread is worth
+                          // stating. Same split the card bar and the web column
+                          // already make.
+                          if (_engagementAllowed)
+                            MediaReaction.like(
+                              liked: liked,
+                              count: event.likes,
+                              onTap: _toggleLike,
+                            ),
+                          if (_engagementAllowed)
+                            MediaReaction.comment(
+                              count: event.commentCount,
+                              onTap: _openComments,
+                            )
+                          else
+                            MediaReaction.commentsDisabled(
+                              count: event.commentCount,
+                            ),
+                          MediaReaction.bookmark(
+                            saved: state.savedEventIds.contains(event.id),
+                            onTap: _toggleSave,
+                          ),
+                          // One button, two destinations, named in the sheet it
+                          // opens — the paper plane and the share arrow beside it
+                          // were two buttons for one intention.
+                          MediaReaction.share(
+                            busy: _sharingExternal,
+                            onTap: _openShareTargets,
+                          ),
+                          MediaReaction.more(onTap: _showMoreOptions),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

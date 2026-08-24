@@ -25,6 +25,11 @@ class PhotoCommentSheet {
   }) {
     showCommentSheet(
       context,
+      // A viewer is a PageView of unrelated photos and this sheet is bound to
+      // one picture id, so the band must not swipe: it would leave the reader
+      // under another photo's comments. Feeds are the opposite case — see
+      // [showCommentSheet].
+      allowMediaGestures: false,
       builder: (ctx) => BlocProvider(
         create: (_) => sl<ChatRoomBloc>(),
         child: _PhotoCommentSheetContent(pictureId: pictureId),

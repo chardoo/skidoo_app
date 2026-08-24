@@ -11,17 +11,12 @@ import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 /// last one wrong and the page stays shrunk over a screen with no sheet on it,
 /// which is unrecoverable without leaving the route.
 void main() {
-  /// The rect the pushed child is actually painted into.
+  /// The rect the pushed child actually occupies.
   ///
-  /// Measured rather than read off the widget: [Transform.scale] does not
-  /// populate its matrix until the render object is created, so introspecting
-  /// the widget reports an identity that never reaches the screen. The global
-  /// rect is the thing the user sees, and it is what the scale is *for*.
+  /// Measured off the child rather than read off any wrapper widget: what the
+  /// user sees is where the media ends up, and that is the only thing worth
+  /// asserting on.
   Rect paintedRect(WidgetTester t) => t.getRect(find.byKey(const Key('page')));
-
-  /// How much of its own size the child is currently drawn at.
-  double paintedScale(WidgetTester t, {required double restingHeight}) =>
-      paintedRect(t).height / restingHeight;
 
   Widget host({Key? childKey}) => MaterialApp(
         home: Scaffold(
@@ -42,11 +37,40 @@ void main() {
         ),
       );
 
+  /// The card as the real feeds build it: inside a vertical [PageView], which
+  /// hands its pages **tight** constraints.
+  Widget tightHost() => MaterialApp(
+        home: Scaffold(
+          body: PageView(
+            scrollDirection: Axis.vertical,
+            children: [
+              CommentPushArea(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    const SizedBox.expand(key: Key('page')),
+                    Builder(
+                      builder: (context) => TextButton(
+                        onPressed: () => showCommentSheet<void>(
+                          context,
+                          builder: (_) => const SizedBox(height: 300),
+                        ),
+                        child: const Text('comments'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
   setUp(CommentSheetScope.reset);
   tearDown(CommentSheetScope.reset);
 
-  testWidgets('inserts no transform layer while no sheet is open', (t) async {
-    // Not a transform of 1.0 — no transform layer at all. This widget wraps
+  testWidgets('inserts no extra box while no sheet is open', (t) async {
+    // Not a box sized to the full screen — no box at all. This widget wraps
     // every feed card and photo viewer in the app, so its resting state has to
     // be free.
     await t.pumpWidget(host());
@@ -54,24 +78,48 @@ void main() {
     expect(
       find.descendant(
         of: find.byType(CommentPushArea),
-        matching: find.byType(Transform),
+        matching: find.byType(OverflowBox),
       ),
       findsNothing,
     );
   });
 
-  testWidgets('scales the page into the strip above the sheet', (t) async {
+  testWidgets('the media fills the strip — full width, not a centred thumbnail',
+      (t) async {
+    // The bug this replaced: a uniform scale-down shrank the width along with
+    // the height, leaving a small photo marooned mid-band with empty margins
+    // either side. The designs fill that band edge to edge.
     await t.pumpWidget(host());
-    final resting = paintedRect(t).height;
+    final screen = t.getSize(find.byType(MaterialApp));
 
     await t.tap(find.text('comments'));
     await t.pumpAndSettle();
 
-    // The sheet takes kCommentSheetFraction of the screen; what is left is
-    // what the page is drawn into.
+    final media = paintedRect(t);
+    expect(media.height,
+        closeTo(screen.height * (1 - kCommentSheetFraction), 1));
+    expect(media.width, closeTo(screen.width, 0.5),
+        reason: 'the media must span the full width of the strip');
+  });
+
+  testWidgets('pushes under TIGHT constraints — the shape the real feeds use',
+      (t) async {
+    // Every feed card and photo viewer is a PageView page, and a PageView
+    // hands its pages tight constraints. Under a tight constraint a box cannot
+    // make itself shorter than its parent says, so a SizedBox-based push
+    // silently does nothing there and the old look stays on screen. A Scaffold
+    // body hands out loose constraints, so testing only through [host] would
+    // report success either way. Hence this one.
+    await t.pumpWidget(tightHost());
+    final screen = t.getSize(find.byType(MaterialApp));
+
+    await t.tap(find.text('comments'));
+    await t.pumpAndSettle();
+
     expect(
-      paintedScale(t, restingHeight: resting),
-      closeTo((1 - kCommentSheetFraction) * 0.94, 0.001),
+      t.getRect(find.byKey(const Key('page'))).height,
+      closeTo(screen.height * (1 - kCommentSheetFraction), 1),
+      reason: 'a layout push that ignores tight constraints does nothing here',
     );
   });
 
@@ -99,12 +147,233 @@ void main() {
 
     await t.tap(find.text('comments'));
     await t.pumpAndSettle();
-    expect(paintedScale(t, restingHeight: resting), lessThan(1));
+    expect(paintedRect(t).height, lessThan(resting));
 
     Navigator.of(t.element(find.text('comments'))).pop();
     await t.pumpAndSettle();
 
-    expect(paintedScale(t, restingHeight: resting), closeTo(1, 0.001));
+    expect(paintedRect(t).height, closeTo(resting, 0.5));
+  });
+
+  group('the media stays live behind the sheet', () {
+    // A modal barrier spans the whole screen and wins the gesture arena for
+    // every pointer that lands on it, colour or no colour. That made the band
+    // above the sheet a picture of a carousel rather than a carousel. The
+    // reader has to be able to swipe a post's photos while reading about them.
+    Widget carouselHost(PageController controller,
+            {bool allowMediaGestures = true}) =>
+        MaterialApp(
+          home: Scaffold(
+            body: CommentPushArea(
+              child: Stack(fit: StackFit.expand, children: [
+                PageView(
+                  controller: controller,
+                  children: const [
+                    ColoredBox(color: Color(0xFFFF0000)),
+                    ColoredBox(color: Color(0xFF00FF00)),
+                  ],
+                ),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Builder(
+                    builder: (context) => TextButton(
+                      onPressed: () => showCommentSheet<void>(
+                        context,
+                        allowMediaGestures: allowMediaGestures,
+                        builder: (_) => const SizedBox(height: 300),
+                      ),
+                      child: const Text('comments'),
+                    ),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        );
+
+    testWidgets('the carousel still swipes with the sheet open', (t) async {
+      final controller = PageController();
+      addTearDown(controller.dispose);
+      await t.pumpWidget(carouselHost(controller));
+
+      await t.tap(find.text('comments'));
+      await t.pumpAndSettle();
+      expect(controller.page, 0.0);
+
+      // Inside the band, well above the sheet's top edge.
+      await t.dragFrom(const Offset(600, 80), const Offset(-400, 0));
+      await t.pumpAndSettle();
+
+      expect(controller.page, 1.0, reason: 'the swipe must reach the carousel');
+      expect(CommentSheetScope.isOpen, isTrue,
+          reason: 'swiping the photo must not close the comments');
+    });
+
+    testWidgets('a viewer keeps the band sealed — one photo, one thread',
+        (t) async {
+      // The opposite case, and it is not a nicety. A viewer is a PageView of
+      // unrelated photos and its sheet is bound to one picture id, so a swipe
+      // that reached the carousel would leave the reader under photo B looking
+      // at photo A's comments, with a like button wired to A.
+      final controller = PageController();
+      addTearDown(controller.dispose);
+      await t.pumpWidget(carouselHost(controller, allowMediaGestures: false));
+
+      await t.tap(find.text('comments'));
+      await t.pumpAndSettle();
+
+      await t.dragFrom(const Offset(600, 80), const Offset(-400, 0));
+      await t.pumpAndSettle();
+
+      expect(controller.page, 0.0,
+          reason: 'the viewer must not swipe off the commented photo');
+    });
+
+    testWidgets('tapping the media does not dismiss the sheet', (t) async {
+      // It is the subject of the conversation, not somewhere "outside" the
+      // sheet. Dismissal is the ✕, a downward drag, or back.
+      final controller = PageController();
+      addTearDown(controller.dispose);
+      await t.pumpWidget(carouselHost(controller));
+
+      await t.tap(find.text('comments'));
+      await t.pumpAndSettle();
+
+      await t.tapAt(const Offset(400, 60));
+      await t.pumpAndSettle();
+
+      expect(CommentSheetScope.isOpen, isTrue);
+    });
+  });
+
+  group('a column-shaped card', () {
+    // header / media / reaction bar. A Column does not shrink to fit, so the
+    // strip-height box the media-shaped cards get would overflow it — stripes
+    // in debug, silently clipped in release. Those cards opt out and are
+    // clipped to the band instead.
+    Widget columnHost() => MaterialApp(
+          home: Scaffold(
+            body: ListView(children: [
+              CommentPushArea(
+                fillsBand: false,
+                child: Column(children: [
+                  Container(height: 60, color: Colors.grey),
+                  Container(height: 500, color: Colors.blue, key: const Key('page')),
+                  Builder(
+                    builder: (context) => TextButton(
+                      onPressed: () => showCommentSheet<void>(
+                        context,
+                        builder: (_) => const SizedBox(height: 300),
+                      ),
+                      child: const Text('comments'),
+                    ),
+                  ),
+                ]),
+              ),
+            ]),
+          ),
+        );
+
+    testWidgets('does not overflow', (t) async {
+      await t.pumpWidget(columnHost());
+      await t.tap(find.text('comments'));
+      await t.pumpAndSettle();
+
+      // pumpAndSettle rethrows the overflow FlutterError, so getting here is
+      // the assertion. Confirm nothing was swallowed either.
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('is still clipped to the band', (t) async {
+      await t.pumpWidget(columnHost());
+      final screen = t.getSize(find.byType(MaterialApp));
+
+      await t.tap(find.text('comments'));
+      await t.pumpAndSettle();
+
+      final clip = find.descendant(
+        of: find.byType(CommentPushArea),
+        matching: find.byType(ClipRect),
+      );
+      final clipper = t.widget<ClipRect>(clip).clipper!;
+      expect(
+        clipper.getClip(t.getSize(clip)).height,
+        closeTo(screen.height * (1 - kCommentSheetFraction), 1),
+      );
+    });
+  });
+
+  group('CommentSheetHide', () {
+    Widget hideHost() => MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                Builder(
+                  builder: (context) => TextButton(
+                    onPressed: () => showCommentSheet<void>(
+                      context,
+                      builder: (_) => const SizedBox(height: 300),
+                    ),
+                    child: const Text('comments'),
+                  ),
+                ),
+                const CommentSheetHide(child: Text('like', key: Key('rail'))),
+              ],
+            ),
+          ),
+        );
+
+    double railOpacity(WidgetTester t) => t
+        .widget<Opacity>(find
+            .ancestor(
+              of: find.byKey(const Key('rail')),
+              matching: find.byType(Opacity),
+            )
+            .first)
+        .opacity;
+
+    testWidgets('the engagement rail is there with no sheet open', (t) async {
+      await t.pumpWidget(hideHost());
+      expect(railOpacity(t), 1);
+    });
+
+    testWidgets('the engagement rail goes when the sheet opens', (t) async {
+      await t.pumpWidget(hideHost());
+      await t.tap(find.text('comments'));
+      await t.pumpAndSettle();
+      expect(railOpacity(t), 0);
+    });
+
+    testWidgets('a hidden rail takes no taps', (t) async {
+      // Still in the tree — removing it would relayout the stack mid-animation
+      // — so it has to stop accepting the taps meant for the sheet over it.
+      await t.pumpWidget(hideHost());
+      await t.tap(find.text('comments'));
+      await t.pumpAndSettle();
+
+      expect(
+        t
+            .widget<IgnorePointer>(find
+                .ancestor(
+                  of: find.byKey(const Key('rail')),
+                  matching: find.byType(IgnorePointer),
+                )
+                .first)
+            .ignoring,
+        isTrue,
+      );
+    });
+
+    testWidgets('it comes back when the sheet closes', (t) async {
+      await t.pumpWidget(hideHost());
+      await t.tap(find.text('comments'));
+      await t.pumpAndSettle();
+
+      Navigator.of(t.element(find.text('comments'))).pop();
+      await t.pumpAndSettle();
+
+      expect(railOpacity(t), 1);
+    });
   });
 
   group('the open flag', () {
@@ -113,11 +382,17 @@ void main() {
       // A barrier tap pops the route without telling anyone, which is exactly
       // the case a naive "set false when I close it" would miss.
       await t.pumpWidget(host());
+      final screen = t.getSize(find.byType(MaterialApp));
       await t.tap(find.text('comments'));
       await t.pumpAndSettle();
       expect(CommentSheetScope.isOpen, isTrue);
 
-      await t.tapAt(const Offset(10, 10));
+      // Below the media band, where the barrier still is — see the
+      // pass-through test above for why the band itself no longer dismisses.
+      await t.tapAt(Offset(
+        10,
+        screen.height * (1 - kCommentSheetFraction) + 10,
+      ));
       await t.pumpAndSettle();
 
       expect(CommentSheetScope.isOpen, isFalse);

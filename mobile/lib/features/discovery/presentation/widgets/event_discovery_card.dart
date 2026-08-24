@@ -942,6 +942,8 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     // [CommentPushArea]. Wraps the card rather than the feed around it, so
     // the post being discussed moves and the list under it does not.
     return CommentPushArea(
+      // Column-shaped: header, media, reaction bar. See [fillsBand].
+      fillsBand: false,
       child: kIsWeb
           ? _buildWebCard(context, ext, pics, screenH)
           // Native iOS / Android — reactions beneath the image.

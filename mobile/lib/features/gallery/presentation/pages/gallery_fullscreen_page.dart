@@ -38,8 +38,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
   @override
   void initState() {
     super.initState();
-    _currentIndex =
-        widget.initialIndex.clamp(0, widget.photos.length - 1);
+    _currentIndex = widget.initialIndex.clamp(0, widget.photos.length - 1);
     _pageCtrl = PageController(initialPage: _currentIndex);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
   }
@@ -80,60 +79,64 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
           ),
 
           // ── Top bar ─────────────────────────────────────────────────────
+          // Both bars go while a comment sheet is open — see
+          // [CommentSheetHide]. The band above the sheet is the photo and
+          // nothing else, the same as on the feeds.
           AnimatedPositioned(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOut,
             top: _barsVisible ? 0 : -120.h,
             left: 0,
             right: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xCC000000), Colors.transparent],
+            child: CommentSheetHide(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xCC000000), Colors.transparent],
+                  ),
                 ),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: AppSpacing.xs.h),
-                  child: Row(
-                    children: [
-                      if (!kIsWeb)
-                        const AppBackButton(color: Colors.white),
-                      const Spacer(),
-                      Flexible(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (_photo.eventName.isNotEmpty)
-                              Text(
-                                _photo.eventName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w600,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm.w, vertical: AppSpacing.xs.h),
+                    child: Row(
+                      children: [
+                        if (!kIsWeb) const AppBackButton(color: Colors.white),
+                        const Spacer(),
+                        Flexible(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_photo.eventName.isNotEmpty)
+                                Text(
+                                  _photo.eventName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                            if (total > 1)
-                              Text(
-                                '${_currentIndex + 1} / $total',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.w500,
+                              if (total > 1)
+                                Text(
+                                  '${_currentIndex + 1} / $total',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const Spacer(),
-                      SizedBox(width: 48.w),
-                    ],
+                        const Spacer(),
+                        SizedBox(width: 48.w),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -147,40 +150,43 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
             bottom: _barsVisible ? 0 : -140.h,
             left: 0,
             right: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [Color(0xDD000000), Colors.transparent],
+            child: CommentSheetHide(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Color(0xDD000000), Colors.transparent],
+                  ),
                 ),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xxl.w, vertical: AppSpacing.xl.h),
-                  child: MediaActionButtons(
-                    // Keyed so the action row rebuilds for the current photo.
-                    key: ValueKey(_photo.id),
-                    imageId: _photo.id,
-                    imageUrl: _photo.url,
-                    eventName: _photo.eventName,
-                    photographerName: _photo.photographerName,
-                    // The photo being viewed, not its event. A /p/ link opens
-                    // the album *and* the photo inside it, so the recipient
-                    // gets the context an event link used to provide plus the
-                    // picture that was actually shared.
-                    link: _photo.id.isNotEmpty
-                        ? DeepLink(DeepLinkKind.picture, id: _photo.id)
-                        : null,
-                    axis: Axis.horizontal,
-                    showLike: false,
-                    showComment: false,
-                    onSend: () => GalleryShareSheet.show(
-                      context,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xxl.w,
+                        vertical: AppSpacing.xl.h),
+                    child: MediaActionButtons(
+                      // Keyed so the action row rebuilds for the current photo.
+                      key: ValueKey(_photo.id),
+                      imageId: _photo.id,
                       imageUrl: _photo.url,
-                      photoLabel: _photo.eventName,
+                      eventName: _photo.eventName,
+                      photographerName: _photo.photographerName,
+                      // The photo being viewed, not its event. A /p/ link opens
+                      // the album *and* the photo inside it, so the recipient
+                      // gets the context an event link used to provide plus the
+                      // picture that was actually shared.
+                      link: _photo.id.isNotEmpty
+                          ? DeepLink(DeepLinkKind.picture, id: _photo.id)
+                          : null,
+                      axis: Axis.horizontal,
+                      showLike: false,
+                      showComment: false,
+                      onSend: () => GalleryShareSheet.show(
+                        context,
+                        imageUrl: _photo.url,
+                        photoLabel: _photo.eventName,
+                      ),
                     ),
                   ),
                 ),
