@@ -1,7 +1,6 @@
-import 'dart:io' show File;
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
@@ -215,11 +214,8 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                 SizedBox(height: 10.h),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10.r),
-                  child: kIsWeb
-                      ? Image.network(_idDocument!.path,
-                          height: 120.h, fit: BoxFit.cover)
-                      : Image.file(File(_idDocument!.path),
-                          height: 120.h, fit: BoxFit.cover),
+                  child: XFileImage(_idDocument!,
+                      height: 120.h, fit: BoxFit.cover),
                 ),
               ],
               SizedBox(height: AppSpacing.xxl.h),

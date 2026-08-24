@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
@@ -161,7 +162,8 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
                   radius: 26.r,
                   backgroundColor: ext.avatarBackground,
                   backgroundImage: (_p.profileUrl?.isNotEmpty ?? false)
-                      ? NetworkImage(_p.profileUrl!)
+                      ? boundedNetworkImage(context, _p.profileUrl!,
+                          diameter: 52.r)
                       : null,
                   child: (_p.profileUrl?.isNotEmpty ?? false)
                       ? null
@@ -391,10 +393,10 @@ class _Banner extends StatelessWidget {
       height: 140.h,
       width: double.infinity,
       child: (banner?.isNotEmpty ?? false)
-          ? Image.network(
-              banner!,
+          ? JpergImage(
+              imageUrl: banner!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
+              errorWidget: (_, __, ___) =>
                   ColoredBox(color: ext.avatarBackground),
             )
           : ColoredBox(color: ext.accentGold.withValues(alpha: 0.15)),
@@ -654,11 +656,11 @@ class _PortfolioState extends State<_Portfolio> {
                     borderRadius: BorderRadius.circular(AppRadius.md.r),
                     child: ColoredBox(
                       color: widget.ext.avatarBackground,
-                      child: Image.network(
-                        widget.media[i].url,
+                      child: JpergImage(
+                        imageUrl: widget.media[i].url,
                         fit: BoxFit.cover,
                         width: double.infinity,
-                        errorBuilder: (_, __, ___) => Icon(
+                        errorWidget: (_, __, ___) => Icon(
                           Icons.broken_image_outlined,
                           color: widget.ext.searchHintColor,
                         ),

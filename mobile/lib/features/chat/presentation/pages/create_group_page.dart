@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' show File;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:jperg_app/core/common/widgets/app_section_label.dart';
@@ -15,7 +15,6 @@ import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/web_panel_route.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_media_limits.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
@@ -308,14 +307,12 @@ class _PhotoPicker extends StatelessWidget {
             children: [
               if (localPath != null)
                 ClipOval(
-                  child: kIsWeb
-                      ? JpergImage(
-                          imageUrl: localPath!,
-                          width: size,
-                          height: size,
-                          fit: BoxFit.cover,
-                        )
-                      : Image.file(File(localPath!), fit: BoxFit.cover),
+                  child: XFileImage(
+                    XFile(localPath!),
+                    width: size,
+                    height: size,
+                    fit: BoxFit.cover,
+                  ),
                 )
               else
                 _DashedCircle(size: size, ext: ext),

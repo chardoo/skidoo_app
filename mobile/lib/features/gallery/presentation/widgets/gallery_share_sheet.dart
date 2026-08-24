@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/search_field.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
@@ -375,7 +376,9 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                               backgroundColor:
                                   ext.accentGold.withValues(alpha: 0.15),
                               backgroundImage: u.imageUrl != null
-                                  ? NetworkImage(u.imageUrl!)
+                                  ? boundedNetworkImage(
+                                      context, u.imageUrl!,
+                                      diameter: 44.r)
                                   : null,
                               child: u.imageUrl == null
                                   ? Icon(Icons.person_rounded,
@@ -476,7 +479,10 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                 radius: 22.r,
                 backgroundColor: ext.accentGold.withValues(alpha: 0.15),
                 backgroundImage:
-                    p.profileUrl != null ? NetworkImage(p.profileUrl!) : null,
+                    p.profileUrl != null
+                        ? boundedNetworkImage(context, p.profileUrl!,
+                            diameter: 44.r)
+                        : null,
                 child: p.profileUrl == null
                     ? Icon(Icons.person_rounded,
                         color: ext.accentGold, size: 20.sp)

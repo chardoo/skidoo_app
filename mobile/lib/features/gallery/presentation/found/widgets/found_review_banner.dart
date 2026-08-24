@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -50,10 +51,11 @@ class FoundReviewBanner extends StatelessWidget {
                   height: 56.r,
                   child: pending.coverUrl == null
                       ? ColoredBox(color: ext.avatarBackground)
-                      : Image.network(
-                          pending.coverUrl!,
+                      : JpergImage(
+                          imageUrl: pending.coverUrl!,
+                          logicalWidth: 56.r,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
+                          errorWidget: (_, __, ___) =>
                               ColoredBox(color: ext.avatarBackground),
                         ),
                 ),

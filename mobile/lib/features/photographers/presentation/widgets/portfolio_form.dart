@@ -1,7 +1,6 @@
-import 'dart:io' show File;
-
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/xfile_image.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:jperg_app/core/constants/photography_specialties.dart';
@@ -286,15 +285,13 @@ class _PortfolioFormState extends State<PortfolioForm> {
             for (final sample in _keptExisting)
               _SampleThumb(
                 ext: ext,
-                image: Image.network(sample.url, fit: BoxFit.cover),
+                image: JpergImage(imageUrl: sample.url, fit: BoxFit.cover),
                 onRemove: () => _removeExistingSample(sample),
               ),
             for (final file in _newSamples)
               _SampleThumb(
                 ext: ext,
-                image: kIsWeb
-                    ? Image.network(file.path, fit: BoxFit.cover)
-                    : Image.file(File(file.path), fit: BoxFit.cover),
+                image: XFileImage(file, fit: BoxFit.cover),
                 onRemove: () => _removeNewSample(file),
               ),
             Semantics(
@@ -391,13 +388,17 @@ class _ProfilePhotoPicker extends StatelessWidget {
     Widget content;
     if (localFile != null) {
       content = ClipOval(
-        child: kIsWeb
-            ? Image.network(localFile!.path, fit: BoxFit.cover, width: size, height: size)
-            : Image.file(File(localFile!.path), fit: BoxFit.cover, width: size, height: size),
+        child: XFileImage(localFile!,
+            fit: BoxFit.cover, width: size, height: size),
       );
     } else if (networkUrl != null && networkUrl!.isNotEmpty) {
       content = ClipOval(
-        child: Image.network(networkUrl!, fit: BoxFit.cover, width: size, height: size),
+        child: JpergImage(
+            imageUrl: networkUrl!,
+            fit: BoxFit.cover,
+            width: size,
+            height: size,
+            logicalWidth: size),
       );
     } else {
       content = Icon(Icons.add_a_photo_outlined, color: ext.accentGold, size: 28.sp);
@@ -428,11 +429,11 @@ class _StudioImagePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget content;
     if (localFile != null) {
-      content = kIsWeb
-          ? Image.network(localFile!.path, fit: BoxFit.cover, width: double.infinity)
-          : Image.file(File(localFile!.path), fit: BoxFit.cover, width: double.infinity);
+      content =
+          XFileImage(localFile!, fit: BoxFit.cover, width: double.infinity);
     } else if (networkUrl != null && networkUrl!.isNotEmpty) {
-      content = Image.network(networkUrl!, fit: BoxFit.cover, width: double.infinity);
+      content = JpergImage(
+          imageUrl: networkUrl!, fit: BoxFit.cover, width: double.infinity);
     } else {
       content = Center(
         child: Icon(Icons.add_photo_alternate_outlined, color: ext.accentGold, size: 28.sp),

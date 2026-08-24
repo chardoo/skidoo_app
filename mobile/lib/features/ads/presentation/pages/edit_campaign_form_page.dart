@@ -1,7 +1,7 @@
-import 'dart:io' show File;
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
@@ -765,12 +765,13 @@ class _EditPhotoStrip extends StatelessWidget {
               for (final media in existing)
                 _Thumb(
                   ext: ext,
-                  child: Image.network(
-                    media.url,
+                  child: JpergImage(
+                    imageUrl: media.url,
                     width: 96.w,
                     height: 96.h,
+                    logicalWidth: 96.w,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => ColoredBox(
+                    errorWidget: (_, __, ___) => ColoredBox(
                       color: ext.avatarBackground,
                       child: Icon(Icons.broken_image_outlined,
                           color: ext.searchHintColor),
@@ -781,11 +782,8 @@ class _EditPhotoStrip extends StatelessWidget {
               for (final file in added)
                 _Thumb(
                   ext: ext,
-                  child: kIsWeb
-                      ? Image.network(file.path,
-                          width: 96.w, height: 96.h, fit: BoxFit.cover)
-                      : Image.file(File(file.path),
-                          width: 96.w, height: 96.h, fit: BoxFit.cover),
+                  child: XFileImage(file,
+                      width: 96.w, height: 96.h, fit: BoxFit.cover),
                   onRemove: () => onRemoveAdded(file),
                 ),
               if (_count < max)

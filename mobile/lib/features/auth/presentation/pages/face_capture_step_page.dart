@@ -1,10 +1,10 @@
-import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:dio/dio.dart' as dio_pkg;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/core/common/widgets/selfie_capture_screen.dart';
@@ -205,9 +205,7 @@ class _ConfirmedPhoto extends StatelessWidget {
               ],
             ),
             child: ClipOval(
-              child: kIsWeb
-                  ? Image.network(file.path, fit: BoxFit.cover)
-                  : Image.file(File(file.path), fit: BoxFit.cover),
+              child: XFileImage(file, fit: BoxFit.cover),
             ),
           ),
         ),

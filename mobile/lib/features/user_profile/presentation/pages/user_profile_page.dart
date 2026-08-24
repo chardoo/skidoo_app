@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/cache/session_cache.dart';
@@ -561,7 +562,9 @@ class _Header extends StatelessWidget {
             radius: 36.r,
             backgroundColor: ext.avatarBackground,
             backgroundImage:
-                photo != null && photo.isNotEmpty ? NetworkImage(photo) : null,
+                photo != null && photo.isNotEmpty
+                    ? boundedNetworkImage(context, photo, diameter: 72.r)
+                    : null,
             child: photo != null && photo.isNotEmpty
                 ? null
                 : Text(

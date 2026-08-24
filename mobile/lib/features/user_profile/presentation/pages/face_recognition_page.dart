@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:dio/dio.dart' as dio_pkg;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
@@ -286,17 +287,11 @@ class _SelfieTile extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(10.r),
-          child: kIsWeb
-              ? Semantics(
-                  image: true,
-                  label: 'Your photo',
-                  child: Image.network(file.path, fit: BoxFit.cover))
-              : FutureBuilder<Uint8List>(
-                  future: file.readAsBytes(),
-                  builder: (_, snap) => snap.hasData
-                      ? Image.memory(snap.data!, fit: BoxFit.cover)
-                      : const SizedBox(),
-                ),
+          child: Semantics(
+            image: true,
+            label: 'Your photo',
+            child: XFileImage(file, fit: BoxFit.cover),
+          ),
         ),
         // Face-confirmed badge
         Positioned(

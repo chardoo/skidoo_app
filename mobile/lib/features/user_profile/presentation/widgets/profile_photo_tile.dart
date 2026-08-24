@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -90,10 +91,12 @@ class _ProfilePhotoTileState extends State<ProfilePhotoTile> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              photo.url,
+            JpergImage(
+              imageUrl: photo.url,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Icon(
+              // See the review grid: a spinner per tile reads as flicker.
+              placeholder: (_, __) => const JpergImagePlaceholder(),
+              errorWidget: (_, __, ___) => Icon(
                 Icons.broken_image_outlined,
                 color: ext.searchHintColor,
                 size: 20.r,

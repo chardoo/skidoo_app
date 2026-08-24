@@ -4,6 +4,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/campaign_status_pill.dart';
 
@@ -91,10 +92,14 @@ class CampaignRow extends StatelessWidget {
                           child: Icon(Icons.campaign_outlined,
                               size: 22.r, color: ext.searchHintColor),
                         )
-                      : Image.network(
-                          cover,
+                      // JpergImage, not Image.network: the cover is the
+                      // uploaded original, and decoding one of those at full
+                      // resolution for a 56 px thumbnail cost ~50 MB a row.
+                      : JpergImage(
+                          imageUrl: cover,
+                          logicalWidth: 56.w,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => ColoredBox(
+                          errorWidget: (_, __, ___) => ColoredBox(
                             color: ext.avatarBackground,
                             child: Icon(Icons.broken_image_outlined,
                                 size: 20.r, color: ext.searchHintColor),

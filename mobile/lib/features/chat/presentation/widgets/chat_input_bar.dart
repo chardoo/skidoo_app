@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:flutter/services.dart' show MaxLengthEnforcement;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -531,14 +530,14 @@ class _StagedImagePreview extends StatelessWidget {
                         ? Semantics(
                             image: true,
                             label: 'Selected image',
-                            child: Image.network(
-                              filePath,
+                            child: XFileImage(
+                              XFile(filePath),
                               width: 64.w,
                               height: 64.w,
                               fit: BoxFit.cover,
                             ))
-                        : Image.file(
-                            File(filePath),
+                        : XFileImage(
+                            XFile(filePath),
                             width: 64.w,
                             height: 64.w,
                             fit: BoxFit.cover,
@@ -614,9 +613,7 @@ class _StagedImageFullScreen extends StatelessWidget {
                 child: Semantics(
                   image: true,
                   label: 'Attached photo',
-                  child: kIsWeb
-                      ? Image.network(filePath, fit: BoxFit.contain)
-                      : Image.file(File(filePath), fit: BoxFit.contain),
+                  child: XFileImage(XFile(filePath), fit: BoxFit.contain),
                 ),
               ),
             ),

@@ -243,3 +243,31 @@ class JpergImagePlaceholder extends StatelessWidget {
     );
   }
 }
+
+/// A bounded [ImageProvider] for the handful of slots that need a raw provider
+/// rather than a widget — `CircleAvatar.backgroundImage` and
+/// `DecorationImage`, neither of which accepts a child widget.
+///
+/// A bare `NetworkImage` decodes whatever the server sent at its full size: a
+/// profile photo shot on a phone is 12–48 MP, which is 50–200 MB of RAM once
+/// decoded, in a 40 px circle. A list of them is an out-of-memory kill, and
+/// that is not hypothetical — it is what took the app down on the campaigns
+/// list. This asks Cloudinary for a version sized to the slot and caps the
+/// decode with [ResizeImage] so a non-Cloudinary URL is bounded too.
+///
+/// Prefer [UserAvatar] where a widget will do; this is for the slots where one
+/// won't.
+ImageProvider boundedNetworkImage(
+  BuildContext context,
+  String url, {
+  required double diameter,
+}) {
+  final dpr = MediaQuery.devicePixelRatioOf(context);
+  final optimised = CloudinaryTransform.image(url,
+      displayWidth: diameter, devicePixelRatio: dpr);
+  return ResizeImage(
+    NetworkImage(optimised),
+    width: (diameter * dpr).ceil().clamp(1, 4096),
+    policy: ResizeImagePolicy.fit,
+  );
+}

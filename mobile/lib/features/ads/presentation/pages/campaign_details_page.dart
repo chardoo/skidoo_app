@@ -4,6 +4,7 @@ import 'package:dio/dio.dart' show DioException;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -360,10 +361,10 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
             SizedBox(
               height: 162.h,
               width: double.infinity,
-              child: Image.network(
-                cover,
+              child: JpergImage(
+                imageUrl: cover,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
+                errorWidget: (_, __, ___) =>
                     ColoredBox(color: ext.avatarBackground),
               ),
             ),
@@ -749,10 +750,11 @@ class _Card extends StatelessWidget {
                 if (leading != null) ...[
                   ClipRRect(
                     borderRadius: BorderRadius.circular(AppRadius.sm.r),
-                    child: Image.network(
-                      leading!,
-                      width: 48.w, height: 48.w, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => SizedBox(
+                    child: JpergImage(
+                      imageUrl: leading!,
+                      width: 48.w, height: 48.w, logicalWidth: 48.w,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => SizedBox(
                         width: 48.w, height: 48.w,
                       ),
                     ),

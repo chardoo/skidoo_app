@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
@@ -100,12 +101,12 @@ class _Face extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: photo != null && photo.isNotEmpty
-          ? Image.network(
-              photo,
+          ? JpergImage(
+              imageUrl: photo,
               fit: BoxFit.cover,
               // A face that will not load falls back to the initial rather
               // than a broken-image glyph in the middle of the stack.
-              errorBuilder: (_, __, ___) => _Initial(initial: initial, ext: ext),
+              errorWidget: (_, __, ___) => _Initial(initial: initial, ext: ext),
             )
           : _Initial(initial: initial, ext: ext),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -81,7 +82,9 @@ class PhotographerTile extends StatelessWidget {
                             backgroundColor: ext.avatarBackground,
                             backgroundImage:
                                 (person.profileUrl?.isNotEmpty ?? false)
-                                    ? NetworkImage(person.profileUrl!)
+                                    ? boundedNetworkImage(
+                                        context, person.profileUrl!,
+                                        diameter: 44.r)
                                     : null,
                             child: (person.profileUrl?.isNotEmpty ?? false)
                                 ? null

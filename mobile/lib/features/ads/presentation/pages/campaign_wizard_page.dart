@@ -1,7 +1,6 @@
-import 'dart:io' show File;
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
@@ -927,11 +926,11 @@ class _PhotoStrip extends StatelessWidget {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(AppRadius.md.r),
-                          child: kIsWeb
-                              ? Image.network(photo.path,
-                                  width: 96.w, height: 96.h, fit: BoxFit.cover)
-                              : Image.file(File(photo.path),
-                                  width: 96.w, height: 96.h, fit: BoxFit.cover),
+                          // XFileImage, not Image.file: it decodes to the size
+                          // of the thumbnail. A camera frame decoded whole is
+                          // ~50 MB, and ten of them is an out-of-memory kill.
+                          child: XFileImage(photo,
+                              width: 96.w, height: 96.h, fit: BoxFit.cover),
                         ),
                         Positioned(
                           top: 2, right: 2,
@@ -1547,11 +1546,8 @@ class _ReviewStep extends StatelessWidget {
               ? null
               : ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.sm.r),
-                  child: kIsWeb
-                      ? Image.network(draft.photos.first.path,
-                          width: 48.w, height: 48.w, fit: BoxFit.cover)
-                      : Image.file(File(draft.photos.first.path),
-                          width: 48.w, height: 48.w, fit: BoxFit.cover),
+                  child: XFileImage(draft.photos.first,
+                      width: 48.w, height: 48.w, fit: BoxFit.cover),
                 ),
           body: draft.headline.text.trim(),
           bodySub: 'CTA: ${draft.ctaText.text.trim()}',

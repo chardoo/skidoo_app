@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -242,7 +243,8 @@ class ReviewCard extends StatelessWidget {
                 radius: 16.r,
                 backgroundColor: ext.avatarBackground,
                 backgroundImage: (review.clientPhotoUrl?.isNotEmpty ?? false)
-                    ? NetworkImage(review.clientPhotoUrl!)
+                    ? boundedNetworkImage(context, review.clientPhotoUrl!,
+                        diameter: 32.r)
                     : null,
                 child: (review.clientPhotoUrl?.isNotEmpty ?? false)
                     ? null
@@ -487,7 +489,9 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
                   backgroundColor: ext.avatarBackground,
                   backgroundImage:
                       (widget.photographerPhotoUrl?.isNotEmpty ?? false)
-                          ? NetworkImage(widget.photographerPhotoUrl!)
+                          ? boundedNetworkImage(
+                              context, widget.photographerPhotoUrl!,
+                              diameter: 40.r)
                           : null,
                 ),
                 SizedBox(width: AppSpacing.md.w),
