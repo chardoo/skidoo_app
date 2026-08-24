@@ -88,13 +88,27 @@ class ImageAspectCache {
     _resolved.clear();
     _inFlight.clear();
   }
+
+  /// Record [ratio] for [url] as though it had been measured, so a test can
+  /// exercise what happens once a real shape is known without a network fetch.
+  @visibleForTesting
+  static void seed(String url, double ratio) {
+    _resolved[url] = ratio;
+  }
 }
 
 /// Hands [builder] the truest aspect ratio available for [imageUrl].
 ///
-/// [knownAspect] — the server's `width`/`height` — is used as-is when present,
-/// which is the normal path and costs no work. Only when it is missing does
-/// this fall back to measuring the image, rebuilding once with the real shape.
+/// [knownAspect] — the server's `width`/`height` — is what the first frame
+/// draws when it is present, so the box never jumps. It is not taken on trust:
+/// the image is measured either way, and a stored shape that disagrees with the
+/// photo itself is corrected.
+///
+/// That check exists because the stored value has been wrong. Dimensions
+/// recorded for an R2 upload ignored the EXIF orientation tag, so every rotated
+/// phone photo went into the database transposed — and this widget used to
+/// return early whenever a value was present, which made a bad row permanent:
+/// a portrait photo drawn in a landscape box, shrunk to roughly half size.
 /// [fallback] is what the first frame uses while that is in flight.
 class ResolvedAspect extends StatefulWidget {
   const ResolvedAspect({
@@ -136,10 +150,24 @@ class _ResolvedAspectState extends State<ResolvedAspect> {
     }
   }
 
+  /// How far the stored ratio may sit from the measured one before the
+  /// measurement is believed instead.
+  ///
+  /// Wide enough to ignore rounding and a server that rounds differently, and
+  /// far narrower than the error that matters: a transposed pair inverts the
+  /// ratio, so 3:4 arrives as 4:3 — off by 78 %, nowhere near this.
+  static const double _disagreementTolerance = 0.05;
+
   void _measure() {
-    if (widget.knownAspect != null) return;
-    // Anything already measured is applied synchronously, so a photo revisited
-    // in the same session never flashes the fallback shape again.
+    // Measured even when a ratio was supplied. The stored value is still what
+    // the first frame draws — it is there so the box does not jump — but a
+    // wrong one used to be permanent: this returned early, so nothing ever
+    // checked it. That is how a single bad row put a portrait photo in a
+    // landscape box and shrank it to half size for the life of the install.
+    //
+    // Resolving is close to free: it goes through the same image provider the
+    // widget renders with, so a photo on screen is served from Flutter's cache
+    // rather than fetched again.
     final cached = ImageAspectCache.peek(widget.imageUrl);
     if (cached != null) {
       _measured = cached;
@@ -151,9 +179,23 @@ class _ResolvedAspectState extends State<ResolvedAspect> {
     });
   }
 
+  /// The stored ratio, unless the photo itself says otherwise.
+  double get _aspect {
+    final known = widget.knownAspect;
+    final measured = _measured;
+
+    if (known == null || known <= 0) return measured ?? widget.fallback;
+    if (measured == null || measured <= 0) return known;
+
+    // Compared as a proportion, not a difference: an absolute gap means
+    // something different at 0.5 than at 2.0.
+    final disagreement = (known - measured).abs() / measured;
+    return disagreement > _disagreementTolerance ? measured : known;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final aspect = widget.knownAspect ?? _measured ?? widget.fallback;
+    final aspect = _aspect;
     return widget.builder(context, aspect > 0 ? aspect : widget.fallback);
   }
 }
