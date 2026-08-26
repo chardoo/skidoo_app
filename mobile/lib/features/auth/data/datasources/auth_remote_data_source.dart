@@ -265,6 +265,27 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     }
     if (status == 404) return const app_exceptions.NotFoundException();
     if (status == 409) {
+      // Sign-up conflicts are not all the same conflict. An unverified account
+      // is a sign-up to resume, a verified one is a login to offer — only the
+      // generic 409 is a plain error message. See the exception docs.
+      final code = _extractErrorCode(data);
+      if (code == 'ACCOUNT_EXISTS_UNVERIFIED') {
+        final email = _extractField(data, 'email');
+        if (email != null) {
+          return app_exceptions.AccountExistsUnverifiedException(
+            serverMessage ??
+                'This account still needs to be verified. We have sent you a new code.',
+            email: email,
+          );
+        }
+      }
+      if (code == 'ACCOUNT_EXISTS') {
+        return app_exceptions.AccountExistsException(
+          serverMessage ?? 'You already have an account. Please log in.',
+          email: _extractField(data, 'email'),
+          field: _extractField(data, 'field') ?? 'email',
+        );
+      }
       return app_exceptions.ServerException(
           serverMessage ?? 'An account with this email or contact already exists.');
     }
@@ -291,12 +312,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     return null;
   }
 
-  String? _extractErrorCode(dynamic data) {
+  String? _extractErrorCode(dynamic data) => _extractField(data, 'code');
+
+  /// Reads one key off the `error` object of the standard envelope. The
+  /// backend flattens its extra context (`email`, `field`) alongside `code`
+  /// and `message` rather than nesting it, so one reader serves all of them.
+  String? _extractField(dynamic data, String key) {
     if (data is Map) {
       final error = data['error'];
       if (error is Map) {
-        final code = error['code'];
-        if (code is String) return code;
+        final value = error[key];
+        if (value is String && value.isNotEmpty) return value;
       }
     }
     return null;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
@@ -111,9 +112,13 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                       onFieldSubmitted: (_) => _submit(),
                     ),
                     if (_error != null) ...[
-                      SizedBox(height: 14.h),
-                      Text(_error!,
-                          style: TextStyle(color: ext.errorRed, fontSize: 12.5.sp)),
+                      SizedBox(height: AppSpacing.lg.h),
+                      // Same banner as every other step of the flow — the four
+                      // reset screens reported failures four different ways.
+                      AppInlineBanner(
+                        message: _error!,
+                        onDismiss: () => setState(() => _error = null),
+                      ),
                     ],
                     SizedBox(height: AppSpacing.xxl.h),
                     AppButton(

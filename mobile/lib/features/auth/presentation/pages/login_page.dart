@@ -8,11 +8,11 @@ import 'package:jperg_app/features/auth/presentation/bloc/login/login_bloc.dart'
 import 'package:jperg_app/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:jperg_app/features/auth/presentation/pages/forget_password_page.dart';
 import 'package:jperg_app/features/auth/presentation/pages/interests_page.dart';
+import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
@@ -64,7 +64,14 @@ class _LoginViewState extends State<_LoginView>
   }
 
   void _onFieldChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    // Typing is the user answering the banner — take it down rather than
+    // leaving a stale "Incorrect password" over a password being retyped.
+    final bloc = context.read<LoginBloc>();
+    if (bloc.state.errorMessage != null) {
+      bloc.add(const LoginErrorCleared());
+    }
   }
 
   bool get _fieldsFilled =>
@@ -136,9 +143,9 @@ class _LoginViewState extends State<_LoginView>
             context.read<LoginBloc>().add(const LoginEmailVerificationHandled());
             EmailVerificationPage.push(context, email: _emailController.text.trim());
           }
-          if (state.errorMessage != null && !state.isLoading) {
-            AppSnackBar.error(context, state.errorMessage!);
-          }
+          // Failures are drawn in the form as a banner (see the builder) so the
+          // message is still on screen when the user goes back to the field it
+          // is about.
         },
         builder: (context, state) {
           return Stack(
@@ -229,6 +236,20 @@ class _LoginViewState extends State<_LoginView>
                             ),
                           ),
                           SizedBox(height: 44.h),
+
+                          // ── Problem banner ─────────────────────────────
+                          // In the form rather than a SnackBar at the foot of
+                          // the screen: "Incorrect password" is only useful
+                          // while you are looking at the password field.
+                          if (state.errorMessage != null) ...[
+                            AppInlineBanner(
+                              message: state.errorMessage!,
+                              onDismiss: () => context
+                                  .read<LoginBloc>()
+                                  .add(const LoginErrorCleared()),
+                            ),
+                            SizedBox(height: AppSpacing.lg.h),
+                          ],
 
                           // ── Email ──────────────────────────────────────
                           AppTextField(

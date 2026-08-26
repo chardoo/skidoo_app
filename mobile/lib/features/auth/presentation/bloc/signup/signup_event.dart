@@ -26,3 +26,9 @@ class SignUpSubmitted extends SignUpEvent {
 class SignUpErrorCleared extends SignUpEvent {
   const SignUpErrorCleared();
 }
+
+/// The screen has navigated to the verification step, so the flag that sent it
+/// there must come down before a later, unrelated rebuild acts on it again.
+class SignUpEmailVerificationHandled extends SignUpEvent {
+  const SignUpEmailVerificationHandled();
+}

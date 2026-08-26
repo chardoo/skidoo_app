@@ -38,6 +38,14 @@ class DeepLinkService {
       : _links = links ?? AppLinks(),
         _isSignedIn = isSignedIn {
     instance = this;
+    // A push tapped from cold can be parsed before this object exists — see
+    // [parkEarly]. Adopting it here is what turns that tap into a navigation
+    // instead of a dropped link.
+    final early = _earlyLink;
+    if (early != null) {
+      _earlyLink = null;
+      _park(early);
+    }
   }
 
   /// The live service, for callers that arrive from outside the widget tree.
@@ -79,6 +87,27 @@ class DeepLinkService {
   /// MaterialApp. It survives the service being disposed and rebuilt, which is
   /// why it is set from every path that parks a link rather than in one place.
   static final ValueNotifier<bool> isWaiting = ValueNotifier<bool>(false);
+
+  /// A link that arrived before there was any service to hold it.
+  ///
+  /// Static for the same reason [isWaiting] is: the one caller that needs it
+  /// cannot reach an instance. OneSignal's click listener is registered from
+  /// initPush, which `main()` starts *before* runApp, so a notification tapped
+  /// on a killed app can be delivered and parsed while [instance] is still
+  /// null — [DeepLinkHost] has not built yet. That tap used to be logged and
+  /// dropped, which is the hardest kind of "sometimes it just opens the home
+  /// screen" to reproduce, because it only loses the race on a cold start.
+  static DeepLink? _earlyLink;
+
+  /// Hold a link until a service exists to follow it.
+  ///
+  /// The constructor adopts whatever is here, and the post-frame
+  /// [resumePending] follows it. Last one wins: two taps before startup means
+  /// the person is looking at the second one.
+  static void parkEarly(DeepLink link) {
+    _earlyLink = link;
+    isWaiting.value = true;
+  }
 
   void _park(DeepLink link) {
     _pending = link;

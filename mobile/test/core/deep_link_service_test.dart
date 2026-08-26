@@ -48,4 +48,28 @@ void main() {
     await service.resumePending();
     expect(service.pending, afterFirst);
   });
+
+  // A push tapped on a killed app is parsed by OneSignal's click listener,
+  // which main() registers before runApp — so it can land before DeepLinkHost
+  // has built anything. It used to be logged and dropped.
+  test('a push tapped before the service exists is adopted, not dropped', () async {
+    DeepLinkService.instance = null;
+    DeepLinkService.parkEarly(const DeepLink(DeepLinkKind.request, id: 'r1'));
+
+    final service = DeepLinkService(isSignedIn: () async => true);
+    expect(service.pending, const DeepLink(DeepLinkKind.request, id: 'r1'),
+        reason: 'the tap that launched the app must survive the launch');
+  });
+
+  test('an early link is handed to one service only', () async {
+    DeepLinkService.instance = null;
+    DeepLinkService.parkEarly(const DeepLink(DeepLinkKind.event, id: 'e2'));
+
+    final first = DeepLinkService(isSignedIn: () async => true);
+    expect(first.pending, isNotNull);
+
+    final second = DeepLinkService(isSignedIn: () async => true);
+    expect(second.pending, isNull,
+        reason: 'a rebuild must not replay a link that was already taken');
+  });
 }

@@ -18,6 +18,7 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
         super(const SignUpState()) {
     on<SignUpSubmitted>(_onSignUpSubmitted);
     on<SignUpErrorCleared>(_onErrorCleared);
+    on<SignUpEmailVerificationHandled>(_onEmailVerificationHandled);
   }
 
   Future<void> _onSignUpSubmitted(
@@ -33,6 +34,21 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
       await _registerUseCase(RegisterParams(fields: fields));
       emit(state.copyWith(
           isLoading: false, isSuccess: true, email: event.email));
+    } on AccountExistsUnverifiedException catch (e) {
+      // Signing up over an account that never verified is how somebody says
+      // "the first code never arrived". The backend has already sent another
+      // one, so this is not a failure — it is the same wizard, resumed at the
+      // step it stopped at.
+      emit(state.copyWith(
+        isLoading: false,
+        email: e.email,
+        needsEmailVerification: true,
+      ));
+    } on AccountExistsException catch (e) {
+      // Kept out of errorMessage so the screen can tell the two apart: this
+      // one gets a banner with a "Log in" button, a plain error does not.
+      emit(state.copyWith(
+          isLoading: false, existingAccountMessage: e.message));
     } on NetworkException catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.message));
     } on ServerException catch (e) {
@@ -46,5 +62,10 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
 
   void _onErrorCleared(SignUpErrorCleared event, Emitter<SignUpState> emit) {
     emit(state.copyWith(clearError: true));
+  }
+
+  void _onEmailVerificationHandled(
+      SignUpEmailVerificationHandled event, Emitter<SignUpState> emit) {
+    emit(state.copyWith(needsEmailVerification: false));
   }
 }

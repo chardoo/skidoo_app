@@ -80,10 +80,13 @@ Future<void> initPush() async {
       // here instead would mean writing that twice and getting it wrong once.
       final links = DeepLinkService.instance;
       if (links == null) {
-        // DeepLinkHost has not built yet. Rare — this listener is registered
-        // from initPush, which runs after the first frame — but a tap that
-        // arrives in that window would otherwise be silently dropped.
-        debugPrint('$_tag no DeepLinkService yet — dropping $link');
+        // DeepLinkHost has not built yet. This is the cold-start case, not a
+        // rare one: main() kicks off initPush before runApp, so a tap that
+        // launched the app can be parsed before the host widget exists.
+        // Parked rather than dropped — the service adopts it as it is built
+        // and the post-frame resume follows it.
+        debugPrint('$_tag no DeepLinkService yet — holding $link');
+        DeepLinkService.parkEarly(link);
         return;
       }
       unawaited(links.follow(link));

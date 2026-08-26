@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
@@ -123,9 +124,15 @@ class _SetNewPasswordPageState extends State<SetNewPasswordPage> {
                       textInputAction: TextInputAction.done,
                     ),
                     if (_error != null) ...[
-                      SizedBox(height: 14.h),
-                      Text(_error!,
-                          style: TextStyle(color: ext.errorRed, fontSize: 12.5.sp)),
+                      SizedBox(height: AppSpacing.lg.h),
+                      // The server rejects a reset back onto the current
+                      // password, and that rejection is the whole reason this
+                      // submit failed — a 12.5-px line of red under the fields
+                      // is not enough to carry it.
+                      AppInlineBanner(
+                        message: _error!,
+                        onDismiss: () => setState(() => _error = null),
+                      ),
                     ],
                     SizedBox(height: AppSpacing.xxl.h),
                     AppButton(

@@ -62,7 +62,33 @@ class FeedMusicController with WidgetsBindingObserver {
         _fadeDuration = fadeDuration,
         _persistMuted = persistMuted {
     WidgetsBinding.instance.addObserver(this);
-    _indexSub = _player.currentIndexStream.listen(_onTrackIndexChanged);
+    // `onError` is not optional here. A listener without one lets a stream
+    // error escape as an unhandled async error — fatal to the zone in debug,
+    // silent in release — so a platform that could not play would take the
+    // feed down or say nothing at all, depending on the build.
+    _indexSub = _player.currentIndexStream.listen(
+      _onTrackIndexChanged,
+      onError: (Object e) => _reportPlaybackFailure(e),
+    );
+    _errorSub = _player.errorStream.listen(
+      _reportPlaybackFailure,
+      onError: (Object e) => _reportPlaybackFailure(e),
+    );
+  }
+
+  /// The one place a playback failure is written down.
+  ///
+  /// Music is decoration, so nothing is shown to a viewer and nothing is
+  /// retried. What this exists for is the report that starts "it does not work
+  /// on Android": audio is where the platforms diverge, and until this landed
+  /// a failure on one of them produced no error anywhere to go on.
+  ///
+  /// The pill is cleared too. A lit pill on a card producing no sound is worse
+  /// than no pill — it claims something the card is not doing.
+  void _reportPlaybackFailure(Object error) {
+    if (_disposed) return;
+    debugPrint('[Music] playback failed: $error');
+    if (nowPlaying.value != null) _publishNowPlaying(null);
   }
 
   final FeedMusicPlayer _player;
@@ -137,6 +163,7 @@ class FeedMusicController with WidgetsBindingObserver {
   Timer? _settle;
   Timer? _fade;
   StreamSubscription<int?>? _indexSub;
+  StreamSubscription<Object>? _errorSub;
 
   /// False while the app is backgrounded. Playback is held rather than given
   /// up, so coming back resumes the card still on screen instead of leaving a
@@ -372,6 +399,7 @@ class FeedMusicController with WidgetsBindingObserver {
     _settle?.cancel();
     _fade?.cancel();
     await _indexSub?.cancel();
+    await _errorSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     muted.dispose();
     nowPlaying.dispose();

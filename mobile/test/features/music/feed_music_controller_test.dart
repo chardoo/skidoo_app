@@ -30,6 +30,7 @@ class FakePlayer implements FeedMusicPlayer {
   bool playNeverCompletes = false;
 
   final _index = StreamController<int?>.broadcast();
+  final _errors = StreamController<Object>.broadcast();
 
   bool get isPlaying => _playing;
 
@@ -39,7 +40,18 @@ class FakePlayer implements FeedMusicPlayer {
   @override
   Stream<int?> get currentIndexStream => _index.stream;
 
+  @override
+  Stream<Object> get errorStream => _errors.stream;
+
   void emitIndex(int i) => _index.add(i);
+
+  /// What the platform reports when it cannot play something — a refused
+  /// redirect, an unsupported codec, a URL that 404s.
+  void emitError(Object error) => _errors.add(error);
+
+  /// An error delivered on the index stream rather than as a value, which is
+  /// how just_audio surfaces some failures.
+  void emitIndexError(Object error) => _index.addError(error);
 
   @override
   Future<void> load(List<String> urls) async {
@@ -403,6 +415,46 @@ void main() {
 
       expect(player.isPlaying, isTrue);
       expect(music.nowPlaying.value?.eventId, 'event-2');
+    });
+
+    testWidgets('a platform error clears the pill rather than lighting a lie',
+        (t) async {
+      // With preload:false nothing validates the source until playback starts,
+      // so a failure arrives on the player's error stream after the pill is
+      // already lit. A lit pill over a silent card claims something the card
+      // is not doing.
+      final player = FakePlayer();
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+      expect(music.nowPlaying.value, isNotNull);
+
+      player.emitError(StateError('ExoPlaybackException'));
+      await settle(t);
+
+      expect(music.nowPlaying.value, isNull);
+    });
+
+    testWidgets('an error on the index stream does not escape the zone',
+        (t) async {
+      // A `listen` without `onError` lets a stream error become an unhandled
+      // async error — fatal in debug, silent in release. Either way the
+      // failure never reaches whoever has to fix it.
+      final player = FakePlayer();
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+
+      player.emitIndexError(StateError('source error'));
+      await settle(t);
+
+      // Reaching here at all is the assertion: an unhandled error would have
+      // failed this test.
+      expect(music.nowPlaying.value, isNull);
     });
   });
 

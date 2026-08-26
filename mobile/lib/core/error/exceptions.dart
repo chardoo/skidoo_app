@@ -71,3 +71,49 @@ class EmailNotVerifiedException implements Exception {
   @override
   String toString() => message;
 }
+
+/// Sign-up hit an account that already exists and can be used as-is
+/// (backend: 409, error.code == "ACCOUNT_EXISTS").
+///
+/// Distinct from a bare 409 so the UI can offer the way out — the login
+/// screen — rather than only reporting that the email or phone is taken.
+class AccountExistsException implements Exception {
+  const AccountExistsException(
+    this.message, {
+    this.email,
+    this.field = 'email',
+  });
+
+  final String message;
+
+  /// Present only when the *email* the user typed is the one on file, so
+  /// echoing it back tells them nothing they did not just enter. Absent on a
+  /// phone-number clash, where the account's address belongs to a different
+  /// sign-up.
+  final String? email;
+
+  /// Which field collided: `email` or `contact`.
+  final String field;
+
+  @override
+  String toString() => message;
+}
+
+/// Sign-up hit an existing account that never confirmed its email
+/// (backend: 409, error.code == "ACCOUNT_EXISTS_UNVERIFIED").
+///
+/// Not an error the user can act on by changing what they typed: the account
+/// is theirs and half-made. The backend has already re-sent the code, so the
+/// only sensible response is to drop them into the verification step.
+class AccountExistsUnverifiedException implements Exception {
+  const AccountExistsUnverifiedException(this.message, {required this.email});
+
+  final String message;
+
+  /// The address the fresh code was sent to — addresses the verification
+  /// screen and its own resend button.
+  final String email;
+
+  @override
+  String toString() => message;
+}

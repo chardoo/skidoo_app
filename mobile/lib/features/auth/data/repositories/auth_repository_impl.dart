@@ -37,6 +37,13 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> register(Map<String, String> fields, Uint8List? imageBytes, String? imageFilename) async {
     try {
       await _remoteDataSource.register(fields, imageBytes, imageFilename);
+    } on AccountExistsUnverifiedException {
+      // Neither of these is a ServerException, so without an explicit rethrow
+      // the catch-all below would flatten them into one — losing the email the
+      // verification screen needs and the "log in instead" the other one earns.
+      rethrow;
+    } on AccountExistsException {
+      rethrow;
     } on ServerException {
       rethrow;
     } on NetworkException {

@@ -7,9 +7,9 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/validators/validators.dart';
 import 'package:jperg_app/features/auth/presentation/bloc/signup/signup_bloc.dart';
 import 'package:jperg_app/features/auth/presentation/pages/email_verification_page.dart';
-import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/auth/presentation/pages/login_page.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/discovery_page.dart';
+import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
 import 'package:jperg_app/core/common/widgets/app_phone_field.dart';
@@ -107,7 +107,15 @@ class _SignUpViewState extends State<_SignUpView>
   }
 
   void _onFieldChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    // Editing anything is the user answering the banner. Leaving it up while
+    // they fix the field it complained about makes the screen look stuck.
+    final bloc = context.read<SignUpBloc>();
+    if (bloc.state.errorMessage != null ||
+        bloc.state.existingAccountMessage != null) {
+      bloc.add(const SignUpErrorCleared());
+    }
   }
 
   bool get _requiredTextFilled =>
@@ -154,9 +162,18 @@ class _SignUpViewState extends State<_SignUpView>
           if (state.isSuccess) {
             EmailVerificationPage.push(context, email: state.email);
           }
-          if (state.errorMessage != null && !state.isLoading) {
-            AppSnackBar.error(context, state.errorMessage!);
+          if (state.needsEmailVerification) {
+            // An account that exists but was never verified is the same wizard
+            // half-finished — the backend has already sent a fresh code, so go
+            // to the step that consumes it. Cleared first so a later rebuild
+            // can't push the screen a second time.
+            context
+                .read<SignUpBloc>()
+                .add(const SignUpEmailVerificationHandled());
+            EmailVerificationPage.push(context, email: state.email);
           }
+          // Failures are drawn in the form as a banner (see the builder), not
+          // thrown at the bottom of the screen where the keyboard covers them.
         },
         builder: (context, state) {
           return Stack(
@@ -249,6 +266,32 @@ class _SignUpViewState extends State<_SignUpView>
                             ),
                           ),
                           SizedBox(height: 36.h),
+
+                          // ── Problem banner ─────────────────────────────
+                          // Above the fields, because that is where the eye
+                          // goes back to after a failed submit, and because a
+                          // message below the button is behind the keyboard.
+                          if (state.existingAccountMessage != null) ...[
+                            AppInlineBanner(
+                              message: state.existingAccountMessage!,
+                              kind: AppBannerKind.info,
+                              actionLabel: 'Log in instead',
+                              onAction: () => Navigator.of(context)
+                                  .pushReplacementNamed(LoginPage.routeName),
+                              onDismiss: () => context
+                                  .read<SignUpBloc>()
+                                  .add(const SignUpErrorCleared()),
+                            ),
+                            SizedBox(height: AppSpacing.lg.h),
+                          ] else if (state.errorMessage != null) ...[
+                            AppInlineBanner(
+                              message: state.errorMessage!,
+                              onDismiss: () => context
+                                  .read<SignUpBloc>()
+                                  .add(const SignUpErrorCleared()),
+                            ),
+                            SizedBox(height: AppSpacing.lg.h),
+                          ],
 
                           // ── Email ──────────────────────────────────────
                           AppTextField(

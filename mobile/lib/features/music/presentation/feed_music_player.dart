@@ -42,6 +42,14 @@ abstract class FeedMusicPlayer {
   /// before anything is queued.
   Stream<int?> get currentIndexStream;
 
+  /// Whatever the platform said when it could not play something.
+  ///
+  /// Music is decoration and none of this is shown to a viewer, but a failure
+  /// that reports nothing anywhere is a failure nobody can fix — and audio is
+  /// exactly where the two platforms diverge, so "it works on one of them" is
+  /// a report that needs the other one's error to go anywhere.
+  Stream<Object> get errorStream;
+
   Future<void> dispose();
 }
 
@@ -62,7 +70,6 @@ class JustAudioFeedMusicPlayer implements FeedMusicPlayer {
   @override
   Future<void> load(List<String> urls) async {
     if (_loaded != null && listEquals(_loaded, urls)) return;
-    _loaded = List.unmodifiable(urls);
 
     // LoopMode.all over the whole queue: with one track it repeats that track,
     // with several it cycles them. Either way the card never goes quiet on its
@@ -79,6 +86,17 @@ class JustAudioFeedMusicPlayer implements FeedMusicPlayer {
       // has gates to check first.
       preload: false,
     );
+
+    // Recorded only once the source is actually set.
+    //
+    // This used to be assigned before the await, which turned any single
+    // failure into a permanent one: the throw left `_loaded` holding urls the
+    // player had never accepted, so every later attempt at the same soundtrack
+    // matched the guard above and returned immediately — skipping the load
+    // that would have fixed it, on a player with no source at all. The card
+    // then reported itself as playing and produced silence, for the rest of
+    // the session.
+    _loaded = List.unmodifiable(urls);
   }
 
   @override
@@ -100,6 +118,26 @@ class JustAudioFeedMusicPlayer implements FeedMusicPlayer {
       debugPrint('[Music] playback failed: $error');
     }));
   }
+
+  @override
+  Stream<Object> get errorStream => _player.playbackEventStream.transform(
+        // `playbackEventStream` is where just_audio reports a source that
+        // would not load or decode. With `preload: false` nothing touches the
+        // network until `play()`, so this — not the `setAudioSource` above —
+        // is the only place a bad URL, a refused redirect or an unsupported
+        // codec surfaces.
+        //
+        // The transform turns those errors into ordinary values and drops the
+        // events themselves. Both halves matter: an error on a stream nobody
+        // handles becomes an unhandled async error, which takes out the zone
+        // in debug and vanishes in release — which is exactly how a
+        // platform-specific playback failure ends up with nothing anywhere
+        // saying what went wrong.
+        StreamTransformer<PlaybackEvent, Object>.fromHandlers(
+          handleData: (_, __) {},
+          handleError: (error, _, sink) => sink.add(error),
+        ),
+      );
 
   @override
   Future<void> pause() => _player.pause();

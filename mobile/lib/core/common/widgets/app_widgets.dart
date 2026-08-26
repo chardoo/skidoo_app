@@ -12,3 +12,4 @@ export 'jperg_logo.dart';
 export 'app_section_label.dart';
 export 'app_drag_handle.dart';
 export 'app_confirm_dialog.dart';
+export 'app_inline_banner.dart';
