@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/features/music/domain/entities/music_track.dart';
 
-/// The "♪ Title · Artist" chip over a feed card, and the mute control.
+/// The "♪ Title · Artist — powered by Audiomack" chip over a feed card.
 ///
 /// Sits in the caption column rather than floating on its own, because it is
 /// part of what the post says about itself — the same reading order as the
@@ -11,70 +11,143 @@ import 'package:jperg_app/features/music/domain/entities/music_track.dart';
 /// Drawn light-on-dark unconditionally: it is always over media, under the
 /// card's bottom scrim, never over the app's own background. Following the
 /// theme here would make it invisible on half the photos in the feed.
+///
+/// ## Two taps, not one
+///
+/// The note icon mutes; the rest of the pill opens the track sheet.
+///
+/// The design shows one chip and one obvious destination — the sheet — but
+/// this pill was previously the *only* mute control anywhere on the feed, and
+/// making the whole thing open a sheet would have left somebody scrolling in
+/// public with no way to silence it. Splitting the target keeps both: the icon
+/// is the thing that already looked like a sound control, and it changes to a
+/// struck-through speaker when muted, so its job stays legible.
 class FeedMusicPill extends StatelessWidget {
   const FeedMusicPill({
     super.key,
     required this.track,
     required this.muted,
     required this.onToggleMute,
+    required this.onOpenTrack,
   });
 
   final MusicTrack track;
   final bool muted;
   final VoidCallback onToggleMute;
 
+  /// Opens the track sheet — what the song is, and where to hear all of it.
+  final VoidCallback onOpenTrack;
+
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      // Names the track as well as the action: a screen-reader user gets no
-      // benefit from the sound itself, so the label is the only way this
-      // conveys what is playing.
-      label: muted
-          ? 'Music muted. ${track.label}. Tap to unmute'
-          : 'Now playing ${track.label}. Tap to mute',
-      excludeSemantics: true,
-      child: GestureDetector(
-        onTap: onToggleMute,
-        // The pill is small and the gesture is forgiving on purpose — this is
-        // the only mute control on the screen.
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.38),
-            borderRadius: BorderRadius.circular(100),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                muted
-                    ? Icons.volume_off_rounded
-                    : Icons.music_note_rounded,
-                size: 13.sp,
-                color: Colors.white,
-              ),
-              SizedBox(width: 6.w),
-              // Bounded, so a long title truncates instead of pushing the pill
-              // under the action rail. The caption column above it is already
-              // inset from the rail by the card.
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: 180.w),
-                child: Text(
-                  track.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11.5.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Mute ──────────────────────────────────────────────────────
+          Semantics(
+            button: true,
+            // Names the track as well as the action: a screen-reader user gets
+            // no benefit from the sound itself, so the label is the only way
+            // this conveys what is playing.
+            label: muted
+                ? 'Music muted. ${track.label}. Tap to unmute'
+                : 'Now playing ${track.label}. Tap to mute',
+            excludeSemantics: true,
+            child: GestureDetector(
+              onTap: onToggleMute,
+              // Small target, forgiving gesture — and padding rather than a
+              // bare icon so the tap area is a thumb rather than a glyph.
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                child: Icon(
+                  muted ? Icons.volume_off_rounded : Icons.music_note_rounded,
+                  size: 13.sp,
+                  color: Colors.white,
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+
+          // ── Track, and where it came from ─────────────────────────────
+          Semantics(
+            button: true,
+            label: 'About ${track.label}. Tap to open',
+            excludeSemantics: true,
+            child: GestureDetector(
+              onTap: onOpenTrack,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: EdgeInsets.only(right: 8.w),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Bounded, so a long title truncates instead of pushing
+                    // the pill under the action rail. The caption column above
+                    // it is already inset from the rail by the card.
+                    //
+                    // Tighter than it was, because the pill now carries the
+                    // attribution too: at the old width the two together ran
+                    // most of the way across the card. The design truncates
+                    // hard for the same reason — "Regular – Mercy C…" — and
+                    // the full title is a tap away in the sheet.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: 118.w),
+                      child: Text(
+                        track.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.5.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    // A hairline rather than a bullet: the attribution is a
+                    // different kind of thing from the title, and a separator
+                    // that reads as punctuation would run the two together.
+                    Container(
+                      width: 1,
+                      height: 11.h,
+                      color: Colors.white.withValues(alpha: 0.28),
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      'powered by',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(width: 4.w),
+                    // Set in the provider's own weight rather than shipped as
+                    // artwork: there is no Audiomack asset in the bundle, and
+                    // an approximation of somebody's logo is worse than their
+                    // name plainly written.
+                    Text(
+                      'Audiomack',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

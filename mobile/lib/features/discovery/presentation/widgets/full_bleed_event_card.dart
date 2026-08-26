@@ -24,6 +24,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/features/music/presentation/feed_music_controller.dart';
 import 'package:jperg_app/features/music/presentation/widgets/feed_music_pill.dart';
+import 'package:jperg_app/features/music/presentation/widgets/music_track_sheet.dart';
 
 /// One full-screen page of the TikTok-style vertical feed — the photo/video
 /// carousel fills the entire page edge-to-edge, with the caption and action
@@ -453,6 +454,9 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                               track: playing.track,
                               muted: muted,
                               onToggleMute: _music!.toggleMute,
+                              onOpenTrack: () => MusicTrackSheet.show(
+                                context, playing.track,
+                              ),
                             ),
                           ),
                         );
