@@ -226,4 +226,66 @@ void main() {
       expect(state.terms.platformFeePercent, 10);
     });
   });
+
+  _declineGroup();
+}
+
+/// What a declined quote leaves behind.
+///
+/// Declining cancels the unpaid booking and marks the quote `declined`, so the
+/// booking is gone and the quote is the only thing that still describes the
+/// job. A screen reading the booking alone shows nothing at all — which is how
+/// a refused quote came to look exactly like one still waiting for an answer.
+void _declineGroup() {
+  group('a declined quote', () {
+    test('is still readable after the booking is cancelled', () {
+      final state = BookingState.fromJson({
+        'quote': _quoteJson(status: 'declined'),
+        'booking': null,
+        'viewerRole': 'photographer',
+      });
+
+      expect(state.quote, isNotNull);
+      expect(state.quote!.isDeclined, isTrue);
+      expect(state.booking, isNull);
+    });
+
+    test('carries the reason, which is what to revise against', () {
+      final state = BookingState.fromJson({
+        'quote': {..._quoteJson(status: 'declined'), 'declineReason': 'Over budget'},
+        'booking': null,
+        'viewerRole': 'photographer',
+      });
+
+      expect(state.quote!.declineReason, 'Over budget');
+    });
+
+    test('counts as awaiting a new quote, so the form reopens', () {
+      final state = BookingState.fromJson({
+        'quote': _quoteJson(status: 'declined'),
+        'viewerRole': 'photographer',
+      });
+
+      expect(state.awaitingQuote, isTrue);
+    });
+  });
+
+  group('reviewing', () {
+    test('waits for the job to be finished', () {
+      // canReview is the server's answer and it waits for the money to be
+      // released — offering it earlier asks somebody to rate work that has
+      // not happened.
+      for (final status in const ['pending_deposit', 'deposit_paid', 'paid_in_full']) {
+        final booking = RequestBooking.fromJson(
+          _bookingJson(status: status, canReview: false),
+        );
+        expect(booking.canReview, isFalse, reason: '$status is not finished');
+      }
+
+      final done = RequestBooking.fromJson(
+        _bookingJson(status: 'completed', canReview: true),
+      );
+      expect(done.canReview, isTrue);
+    });
+  });
 }

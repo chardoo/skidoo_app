@@ -304,13 +304,28 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            quote == null ? 'Send them a quote' : 'Your quote',
-            style: TextStyle(
-              color: ext.greetingColor,
-              fontSize: 15.sp,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  quote == null ? 'Send them a quote' : 'Your quote',
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              // The state of the quote, at a glance.
+              //
+              // A decline leaves no booking behind — the unpaid one is
+              // cancelled and the quote is marked `declined` — so a screen
+              // that reads only the booking shows nothing at all here. A
+              // refused quote then looks exactly like one still waiting: same
+              // figure, same silence, no reason to revise it.
+              if (quote != null) _statusChip(quote, booking, ext),
+            ],
           ),
           SizedBox(height: 4.h),
           Text(
@@ -410,6 +425,64 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// Where this quote has got to, in one word.
+  ///
+  /// The quote is consulted before the booking: a declined quote has no live
+  /// booking to describe it, and it is the state the photographer most needs
+  /// to see, because it is the one they can act on.
+  Widget _statusChip(
+    RequestQuote quote, RequestBooking? booking, AppThemeExtension ext,
+  ) {
+    late final String label;
+    late final Color colour;
+
+    if (quote.isDeclined) {
+      label = 'Declined';
+      colour = const Color(0xFFEF4444);
+    } else if (booking == null || booking.canPayDeposit) {
+      label = 'Awaiting response';
+      colour = ext.accentGold;
+    } else {
+      switch (booking.status) {
+        case 'deposit_paid':
+          label = 'Deposit paid';
+          colour = ext.infoBlue;
+        case 'paid_in_full':
+          label = 'Paid in full';
+          colour = ext.infoBlue;
+        case 'partially_released':
+          label = 'Balance owing';
+          colour = ext.accentGold;
+        case 'completed':
+          label = 'Completed';
+          colour = const Color(0xFF10B981);
+        case 'disputed':
+          label = 'Under review';
+          colour = const Color(0xFFEF4444);
+        case 'refunded':
+          label = 'Refunded';
+          colour = ext.searchHintColor;
+        default:
+          label = booking.status;
+          colour = ext.searchHintColor;
+      }
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: colour.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999.r),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: colour, fontSize: 11.sp, fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

@@ -76,6 +76,16 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
   /// money, and the two would both be charged.
   bool _bookingBusy = false;
 
+  /// A review was left from this screen, so the prompt is withdrawn.
+  ///
+  /// Local to the visit rather than fetched: whether *this* person has already
+  /// reviewed is not on any payload the screen loads, and one more round trip
+  /// to find out would slow the common case — nobody has — to answer a
+  /// question that only matters for the few seconds after writing one.
+  /// Reopening the screen shows the prompt again; the server refuses the
+  /// second submission, which is where the rule actually lives.
+  bool _reviewed = false;
+
   @override
   void initState() {
     super.initState();
@@ -513,7 +523,12 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
       ),
     );
     // The rating on their row moved, so the list is stale either way.
-    if (done == true && mounted) await _load(showSpinner: false);
+    if (done == true && mounted) {
+      // A review is once-only — the server refuses a second — so the prompt
+      // goes rather than sitting there inviting something that would fail.
+      setState(() => _reviewed = true);
+      await _load(showSpinner: false);
+    }
   }
 
   Future<void> _delete() async {
@@ -765,17 +780,26 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                         onConfirm: _confirmJobDone,
                         onReportProblem: _reportProblem,
                       ),
-                    // Only once the job is actually done.
+                    // Only once the job is actually done, and only once.
                     //
                     // This used to appear the moment anybody was selected,
-                    // which asked people to rate work that had not happened
-                    // yet. `canReview` is the server's answer, and it waits for
-                    // the payment to be released. Where there is no booking at
-                    // all the old behaviour stands: plenty of jobs are agreed
-                    // and paid for outside the app, and those still deserve a
-                    // review.
-                    if (booking?.booking == null ||
-                        booking!.booking!.canReview)
+                    // which asked people to rate work that had not happened.
+                    // `canReview` is the server's answer and it waits for the
+                    // payment to be released.
+                    //
+                    // No booking used to fall through to showing it, on the
+                    // reasoning that jobs agreed outside the app still deserve
+                    // a review. That is no longer true of *this* screen: the
+                    // server now requires a completed booking or a photo
+                    // purchase, so offering it here would open a form that
+                    // 403s on submit. Somebody who bought their photos can
+                    // still review from the photographer's profile, which is
+                    // where that path belongs.
+                    //
+                    // `reviewed` hides it afterwards — a second review is
+                    // refused, so leaving the prompt up promises something
+                    // that cannot happen.
+                    if (booking?.booking?.canReview == true && !_reviewed)
                       _ReviewPrompt(
                         name: selected.name ?? 'them',
                         ext: ext,
