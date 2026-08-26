@@ -11,6 +11,7 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/auth/presentation/pages/login_page.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
+import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
 import 'package:jperg_app/core/common/widgets/app_phone_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
@@ -213,30 +214,13 @@ class _SignUpViewState extends State<_SignUpView>
                         children: [
                           SizedBox(height: 48.h),
 
-                          // ── Logo mark ──────────────────────────────────
-                          Container(
-                            width: 52.w,
-                            height: 52.w,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [_kTeal, _kTealDark],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(14.r),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _kTeal.withValues(alpha: 0.35),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.photo_camera_rounded,
-                              color: Colors.white,
-                              size: 26.sp,
-                            ),
+                          // ── Logo ───────────────────────────────────────
+                          // Centred, matching the login screen — see the note
+                          // there for why the Align is needed inside a
+                          // start-aligned column.
+                          Align(
+                            alignment: Alignment.center,
+                            child: JpergLogo(height: 34.h, color: _kTeal),
                           ),
                           SizedBox(height: 28.h),
 

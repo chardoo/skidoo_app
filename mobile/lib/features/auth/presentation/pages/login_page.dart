@@ -9,6 +9,8 @@ import 'package:jperg_app/features/auth/presentation/pages/email_verification_pa
 import 'package:jperg_app/features/auth/presentation/pages/forget_password_page.dart';
 import 'package:jperg_app/features/auth/presentation/pages/interests_page.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
+import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
@@ -68,6 +70,29 @@ class _LoginViewState extends State<_LoginView>
   bool get _fieldsFilled =>
       _emailController.text.trim().isNotEmpty &&
       _passwordController.text.isNotEmpty;
+
+  /// Leave the gate and carry on without an account.
+  ///
+  /// Two ways onto this screen, and they want opposite things. Opened as a
+  /// route by somebody starting the app signed out, there is nothing behind it
+  /// — so the guest feed replaces the stack. Pushed on top of a feed a guest
+  /// was already browsing (the Found gate, via `openSignIn`), popping is what
+  /// "continue" means: it puts them back exactly where they were, still
+  /// looking at whatever sent them here.
+  ///
+  /// `canPop` rather than a flag on the constructor, because `openSignIn`
+  /// pushes this by *name* and a named route cannot carry a callback. Asking
+  /// the navigator is the same question with an answer that is already true.
+  void _continueAsGuest() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else {
+      navigator.pushNamedAndRemoveUntil(
+        DiscoveryPage.routeName, (route) => false,
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -165,30 +190,20 @@ class _LoginViewState extends State<_LoginView>
                         children: [
                           SizedBox(height: 60.h),
 
-                          // ── Logo mark ──────────────────────────────────
-                          Container(
-                            width: 52.w,
-                            height: 52.w,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [_kTeal, _kTealDark],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(14.r),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _kTeal.withValues(alpha: 0.35),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.photo_camera_rounded,
-                              color: Colors.white,
-                              size: 26.sp,
-                            ),
+                          // ── Logo ───────────────────────────────────────
+                          //
+                          // The real wordmark, centred. This was a generic
+                          // camera glyph in a gradient tile — a stand-in that
+                          // said "photo app" rather than which one, on the
+                          // first screen anybody sees.
+                          //
+                          // Centred while the copy below stays left-aligned:
+                          // the column is crossAxisAlignment.start, so the
+                          // logo asks for the full width and centres itself
+                          // inside that.
+                          Align(
+                            alignment: Alignment.center,
+                            child: JpergLogo(height: 34.h, color: _kTeal),
                           ),
                           SizedBox(height: AppSpacing.xxxl.h),
 
@@ -291,6 +306,31 @@ class _LoginViewState extends State<_LoginView>
                                   ),
                                 )),
                               ],
+                            ),
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+
+                          // ── Continue as guest ───────────────────────────
+                          // The signed-out feed is a real destination, not a
+                          // consolation: someone can browse, search and find
+                          // their photos before ever making an account. Sign-up
+                          // has offered this from the start; login sent people
+                          // looking for a way past it back out through Back.
+                          Center(
+                            child: Semantics(
+                              button: true,
+                              label: 'Continue as guest',
+                              child: TextButton(
+                                onPressed: _continueAsGuest,
+                                child: Text(
+                                  'Continue as guest',
+                                  style: TextStyle(
+                                    color: ext.searchHintColor,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                           SizedBox(height: AppSpacing.xxxl.h),
