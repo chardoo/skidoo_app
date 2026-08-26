@@ -5,6 +5,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/features/ads/data/models/ad_model.dart';
 import 'package:jperg_app/features/ads/models/boost_tier.dart';
+import 'package:jperg_app/features/ads/data/models/booking_model.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/models/ad.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
@@ -603,6 +604,188 @@ class AdsRepository {
   Future<void> deleteRequest(String requestId) async {
     debugPrint('$_tag deleteRequest → $requestId');
     await _dio.delete('/ads/requests/$requestId');
+  }
+
+  // ── Quotes and bookings ───────────────────────────────────────────────────
+  //
+  // The money half of a request: the chosen photographer prices the job, the
+  // requester pays a deposit and then the balance, and confirming releases it.
+  // Visible only to those two people — anyone else gets a 403.
+
+  /// The live quote and booking on a request, for whichever side is asking.
+  ///
+  /// Returns null rather than throwing when there is nothing to show yet: an
+  /// unanswered request is the ordinary case, and the screen renders it as an
+  /// absence rather than an error.
+  Future<BookingState?> getBookingState(String requestId) async {
+    debugPrint('$_tag getBookingState → $requestId');
+    try {
+      final resp = await _dio.get('/ads/requests/$requestId/quote');
+      final data = _unwrap<Map<String, dynamic>>(resp);
+      if (data == null) return null;
+      return BookingState.fromJson(data);
+    } catch (e) {
+      debugPrint('$_tag getBookingState ERROR: $e');
+      return null;
+    }
+  }
+
+  /// Every quote sent on this request, newest first — the negotiation.
+  Future<List<RequestQuote>> getQuoteHistory(String requestId) async {
+    debugPrint('$_tag getQuoteHistory → $requestId');
+    try {
+      final resp = await _dio.get('/ads/requests/$requestId/quotes');
+      return _unwrapList<Map<String, dynamic>>(resp)
+          .map(RequestQuote.fromJson)
+          .toList();
+    } catch (e) {
+      debugPrint('$_tag getQuoteHistory ERROR: $e');
+      return const [];
+    }
+  }
+
+  /// Price the job. Only the photographer who was picked, and only while
+  /// nothing has been paid — sending again supersedes the previous figure.
+  Future<RequestQuote> sendQuote(
+    String requestId, {
+    required List<QuoteLineItem> lineItems,
+    String? notes,
+  }) async {
+    debugPrint('$_tag sendQuote → $requestId (${lineItems.length} items)');
+    final resp = await _dio.post(
+      '/ads/requests/$requestId/quote',
+      data: {
+        'line_items': lineItems.map((item) => item.toJson()).toList(),
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+      },
+    );
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? const {};
+    return RequestQuote.fromJson(data);
+  }
+
+  /// Turn the quote down. The photographer can send a revised one; the
+  /// selection is untouched, because declining a price is not the same as
+  /// dropping the photographer.
+  Future<void> declineQuote(String requestId, {String? reason}) async {
+    debugPrint('$_tag declineQuote → $requestId');
+    await _dio.post(
+      '/ads/requests/$requestId/quote/decline',
+      data: {if (reason != null && reason.isNotEmpty) 'reason': reason},
+    );
+  }
+
+  /// Begin paying — `kind` is 'deposit' or 'balance'.
+  ///
+  /// Nothing is credited here. `authorizationUrl` opens Paystack; the booking
+  /// only advances once the money is confirmed, by the webhook or by
+  /// [verifyBookingPayment]. An empty URL with [alreadyPaid] set means a
+  /// previous attempt had in fact gone through and was applied instead of
+  /// being charged again.
+  Future<
+      ({
+        String authorizationUrl,
+        String reference,
+        double amount,
+        bool alreadyPaid,
+        RequestBooking? booking,
+      })> startBookingPayment(
+    String requestId, {
+    String kind = 'deposit',
+  }) async {
+    debugPrint('$_tag startBookingPayment → $requestId kind=$kind');
+    final resp = await _dio.post(
+      '/ads/requests/$requestId/booking/checkout',
+      data: {'kind': kind},
+    );
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? const {};
+    debugPrint('$_tag startBookingPayment ← ${resp.statusCode} data=$data');
+    return (
+      authorizationUrl: data['authorization_url'] as String? ?? '',
+      reference: data['reference'] as String? ?? '',
+      amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
+      alreadyPaid: data['already_paid'] == true,
+      booking: data['booking'] is Map<String, dynamic>
+          ? RequestBooking.fromJson(data['booking'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+
+  /// Confirm a booking payment after checkout closes.
+  ///
+  /// The webhook is the authority and usually lands first; this exists because
+  /// "usually" is not good enough when somebody is watching a success screen.
+  /// Both are idempotent, so calling this after the webhook has already applied
+  /// the payment is harmless.
+  Future<({bool success, String message, RequestBooking? booking})>
+      verifyBookingPayment(String requestId, {String? reference}) async {
+    debugPrint('$_tag verifyBookingPayment → $requestId ref=$reference');
+    final resp = await _dio.post(
+      '/ads/requests/$requestId/booking/verify',
+      queryParameters: {if (reference != null) 'reference': reference},
+    );
+    final body = resp.data as Map<String, dynamic>? ?? const {};
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    return (
+      success: body['success'] == true,
+      message: data['message'] as String? ?? '',
+      booking: data['booking'] is Map<String, dynamic>
+          ? RequestBooking.fromJson(data['booking'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+
+  /// "Job done" — release the money to the photographer.
+  ///
+  /// Refused while anything is outstanding: confirming with a balance owed
+  /// would close the booking and write the rest off in silence.
+  Future<RequestBooking?> confirmJobDone(String requestId) async {
+    debugPrint('$_tag confirmJobDone → $requestId');
+    final resp = await _dio.post('/ads/requests/$requestId/booking/confirm');
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? const {};
+    return data['booking'] is Map<String, dynamic>
+        ? RequestBooking.fromJson(data['booking'] as Map<String, dynamic>)
+        : null;
+  }
+
+  /// "Report a problem" — freezes the release timer and puts the booking in
+  /// front of an admin. It does not refund anything by itself.
+  Future<RequestBooking?> reportBookingProblem(
+    String requestId, {
+    required String reason,
+  }) async {
+    debugPrint('$_tag reportBookingProblem → $requestId');
+    final resp = await _dio.post(
+      '/ads/requests/$requestId/booking/dispute',
+      data: {'reason': reason},
+    );
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? const {};
+    return data['booking'] is Map<String, dynamic>
+        ? RequestBooking.fromJson(data['booking'] as Map<String, dynamic>)
+        : null;
+  }
+
+  /// A person's bookings, from whichever side they are on.
+  Future<List<RequestBooking>> getMyBookings({
+    String role = 'photographer',
+    String? status,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    debugPrint('$_tag getMyBookings role=$role status=$status');
+    try {
+      final resp = await _dio.get('/ads/bookings/mine', queryParameters: {
+        'role': role,
+        if (status != null) 'status': status,
+        'page': page,
+        'limit': limit,
+      });
+      return _unwrapList<Map<String, dynamic>>(resp)
+          .map(RequestBooking.fromJson)
+          .toList();
+    } catch (e) {
+      debugPrint('$_tag getMyBookings ERROR: $e');
+      return const [];
+    }
   }
 
   // ── Campaign management ───────────────────────────────────────────────────

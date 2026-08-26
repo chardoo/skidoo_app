@@ -12,7 +12,10 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
+import 'package:jperg_app/features/ads/data/models/booking_model.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/features/ads/presentation/pages/ads_checkout_page.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/booking_panel.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/boost_active_bar.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/presentation/pages/my_requests_page.dart'
@@ -64,6 +67,15 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
   /// chosen photographer, an edit. Viewing does not count.
   bool _changed = false;
 
+  /// The quote and the money against it. Null until someone has been picked
+  /// and priced the job — most requests on this screen have neither.
+  BookingState? _booking;
+
+  /// A payment or confirmation is in flight. Every button in the panel goes
+  /// inert: a second tap on "Pay deposit" opens a second checkout for the same
+  /// money, and the two would both be charged.
+  bool _bookingBusy = false;
+
   @override
   void initState() {
     super.initState();
@@ -79,10 +91,17 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
       _errorMessage = null;
     });
     try {
-      final people = await _repo.getRequestInterests(_request.id);
+      // Both at once. They are independent reads and the screen needs both
+      // before it can draw anything, so running them in sequence would double
+      // the wait on a connection where each already costs a round trip.
+      final results = await Future.wait([
+        _repo.getRequestInterests(_request.id),
+        _repo.getBookingState(_request.id),
+      ]);
       if (!mounted) return;
       setState(() {
-        _people = people;
+        _people = results[0] as List<RequestInterest>;
+        _booking = results[1] as BookingState?;
         _loading = false;
       });
     } catch (e) {
@@ -225,6 +244,259 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     if (mounted) AppSnackBar.success(context, 'Photographer changed successfully');
   }
 
+  // ── The money ───────────────────────────────────────────────────────────
+
+  /// Pay the deposit or the balance, through Paystack.
+  ///
+  /// The webhook is what actually credits the booking and usually lands first.
+  /// The verify call after checkout closes exists because "usually" is not good
+  /// enough while somebody is watching the screen; both are idempotent, so
+  /// whichever arrives second applies nothing.
+  Future<void> _pay({required String kind}) async {
+    if (_bookingBusy) return;
+    setState(() => _bookingBusy = true);
+    try {
+      final started = await _repo.startBookingPayment(_request.id, kind: kind);
+      if (!mounted) return;
+
+      // A previous attempt turned out to have gone through. The server applied
+      // it rather than charging again, so there is no checkout to open.
+      if (!started.alreadyPaid) {
+        if (started.authorizationUrl.isEmpty) {
+          // A zero deposit is legitimate — the server confirms the booking
+          // outright and there is nothing to charge.
+          if (started.booking != null) {
+            await _load(showSpinner: false);
+            return;
+          }
+          AppSnackBar.error(context, 'Could not start the payment. Try again.');
+          return;
+        }
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => AdsCheckoutPage(
+              authorizationUrl: started.authorizationUrl,
+              reference: started.reference,
+              amountGhs: started.amount,
+              onSuccess: () {},
+            ),
+          ),
+        );
+        if (!mounted) return;
+
+        final verified = await _repo.verifyBookingPayment(
+          _request.id, reference: started.reference,
+        );
+        if (!mounted) return;
+        final paid = verified.booking?.amountPaid ?? 0;
+        if (!verified.success || paid <= 0) {
+          // Closing the WebView without paying lands here. That is the common
+          // case and not an error worth alarming anybody about.
+          AppSnackBar.info(
+            context,
+            verified.message.isNotEmpty
+                ? verified.message
+                : 'Payment not confirmed yet.',
+          );
+          await _load(showSpinner: false);
+          return;
+        }
+      }
+
+      _changed = true;
+      await _load(showSpinner: false);
+      if (!mounted) return;
+      AppSnackBar.success(
+        context,
+        kind == 'deposit'
+            ? 'Booking confirmed. Your photographer has been notified.'
+            : 'Balance paid.',
+      );
+    } catch (e) {
+      debugPrint('[ReviewPhotographers] pay ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, _bookingError(e, 'Could not take the payment.'));
+      // Reload before inviting a retry. A failure here does not mean nothing
+      // happened — a payment can be confirmed server-side and still come back
+      // as an error, and a stale panel would then offer to charge for it twice.
+      await _load(showSpinner: false);
+    } finally {
+      if (mounted) setState(() => _bookingBusy = false);
+    }
+  }
+
+  Future<void> _declineQuote() async {
+    final reason = await _askForText(
+      title: 'Decline this quote?',
+      body: 'Your photographer can send a revised one. This does not change '
+          'who you picked.',
+      hint: 'Why? (optional)',
+      confirmLabel: 'Decline',
+      required: false,
+    );
+    if (reason == null || !mounted) return;
+
+    setState(() => _bookingBusy = true);
+    try {
+      await _repo.declineQuote(_request.id, reason: reason);
+      _changed = true;
+      await _load(showSpinner: false);
+      if (mounted) AppSnackBar.success(context, 'Quote declined.');
+    } catch (e) {
+      debugPrint('[ReviewPhotographers] declineQuote ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, _bookingError(e, 'Could not decline it.'));
+    } finally {
+      if (mounted) setState(() => _bookingBusy = false);
+    }
+  }
+
+  /// "Job done" — the money goes to the photographer, and cannot come back.
+  /// Confirmed twice deliberately: this is the irreversible step in the flow.
+  Future<void> _confirmJobDone() async {
+    final booking = _booking?.booking;
+    if (booking == null) return;
+
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Mark the job as done?'),
+        content: Text(
+          'This releases ${booking.currency} '
+          '${booking.heldAmount.toStringAsFixed(2)} to your photographer. '
+          'It cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Not yet'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Release payment'),
+          ),
+        ],
+      ),
+    );
+    if (sure != true || !mounted) return;
+
+    setState(() => _bookingBusy = true);
+    try {
+      await _repo.confirmJobDone(_request.id);
+      _changed = true;
+      await _load(showSpinner: false);
+      if (mounted) {
+        AppSnackBar.success(context, 'Payment released. Thanks!');
+      }
+    } catch (e) {
+      debugPrint('[ReviewPhotographers] confirm ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, _bookingError(e, 'Could not confirm the job.'));
+      await _load(showSpinner: false);
+    } finally {
+      if (mounted) setState(() => _bookingBusy = false);
+    }
+  }
+
+  Future<void> _reportProblem() async {
+    final reason = await _askForText(
+      title: 'Report a problem',
+      body: 'Tell us what went wrong. Your payment is held while our team '
+          'looks into it, and your photographer is told a report was made.',
+      hint: 'What happened?',
+      confirmLabel: 'Report',
+      required: true,
+    );
+    if (reason == null || reason.isEmpty || !mounted) return;
+
+    setState(() => _bookingBusy = true);
+    try {
+      await _repo.reportBookingProblem(_request.id, reason: reason);
+      _changed = true;
+      await _load(showSpinner: false);
+      if (mounted) {
+        AppSnackBar.success(context, 'Reported. We will be in touch.');
+      }
+    } catch (e) {
+      debugPrint('[ReviewPhotographers] dispute ERROR: $e');
+      if (!mounted) return;
+      AppSnackBar.error(context, _bookingError(e, 'Could not send the report.'));
+    } finally {
+      if (mounted) setState(() => _bookingBusy = false);
+    }
+  }
+
+  /// The server's own wording where it has some.
+  ///
+  /// Every refusal in this flow explains itself — "GHS 10,000 is still
+  /// outstanding", "this request has a paid booking" — and replacing that with
+  /// a generic failure throws away the only thing that tells someone what to do
+  /// next.
+  String _bookingError(Object error, String fallback) {
+    try {
+      final response = (error as dynamic).response;
+      final message = response?.data?['error']?['message'];
+      if (message is String && message.isNotEmpty) return message;
+    } catch (_) {
+      // Not a Dio error, or shaped differently. Fall through.
+    }
+    return fallback;
+  }
+
+  /// A dialog with one text field. Returns null if dismissed, the text
+  /// otherwise — which may be empty when [required] is false.
+  Future<String?> _askForText({
+    required String title,
+    required String body,
+    required String hint,
+    required String confirmLabel,
+    required bool required,
+  }) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (_, setDialogState) => AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(body, style: TextStyle(fontSize: 13.sp, height: 1.4)),
+              SizedBox(height: AppSpacing.md.h),
+              TextField(
+                controller: controller,
+                maxLines: 3,
+                maxLength: 500,
+                decoration: InputDecoration(
+                  hintText: hint,
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: (_) => setDialogState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              // A required reason with nothing typed leaves the button dead
+              // rather than failing on the server with a validation message.
+              onPressed: required && controller.text.trim().length < 5
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(controller.text.trim()),
+              child: Text(confirmLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
   Future<void> _leaveReview(RequestInterest person) async {
     final done = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -359,6 +631,11 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     // Expired counts as closed here: nobody can answer it, so editing it is
     // pointless and republishing is the only thing that helps.
     final closed = !_request.isLive;
+    final booking = _booking;
+    // Money has changed hands. The request is pinned to this photographer and
+    // these terms until the booking settles, so everything that would move it
+    // out from under the payment is withdrawn from the screen.
+    final booked = booking?.booking?.isLocked ?? false;
 
     final page = Scaffold(
       backgroundColor: ext.homeBackground,
@@ -389,12 +666,19 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
             },
             // Everything that used to sit behind the card's "Manage" button
             // lives here now, since the card itself opens this screen.
+            //
+            // A paid booking removes most of it. Editing would rewrite terms
+            // that were paid for, and closing, deleting or unpicking would
+            // strand the money with no screen left to release it — the server
+            // refuses all four, so offering them here would only produce
+            // errors. What is left is cancelling the booking, which is a
+            // support matter, not a menu item.
             itemBuilder: (_) => [
-              if (!closed)
+              if (!closed && !booked)
                 const PopupMenuItem(
                   value: 'edit', child: Text('Edit request'),
                 ),
-              if (!closed)
+              if (!closed && !booked)
                 const PopupMenuItem(
                   value: 'close', child: Text('Close request'),
                 ),
@@ -403,13 +687,14 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                 const PopupMenuItem(
                   value: 'republish', child: Text('Republish request'),
                 ),
-              if (selected != null)
+              if (selected != null && !booked)
                 const PopupMenuItem(
                   value: 'unselect', child: Text('Undo selection'),
                 ),
-              const PopupMenuItem(
-                value: 'delete', child: Text('Delete request'),
-              ),
+              if (!booked)
+                const PopupMenuItem(
+                  value: 'delete', child: Text('Delete request'),
+                ),
             ],
           ),
         ],
@@ -448,28 +733,54 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                       // talk to them.
                       onMessage: () => _message(selected),
                     ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _changePhotographer,
-                        child: Text(
-                          'Change photographer?',
-                          style: TextStyle(
-                            color: ext.searchHintColor,
-                            fontSize: 12.sp,
-                            decoration: TextDecoration.underline,
+                    // Hidden once money is held against this photographer.
+                    // Swapping them would leave the escrow pointing at somebody
+                    // no longer on the job — the server refuses it, and
+                    // offering a button that fails is worse than not offering
+                    // it. Cancelling the booking is the way out.
+                    if (!booked)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _changePhotographer,
+                          child: Text(
+                            'Change photographer?',
+                            style: TextStyle(
+                              color: ext.searchHintColor,
+                              fontSize: 12.sp,
+                              decoration: TextDecoration.underline,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    // Offered once there is someone to review. Nothing here
-                    // knows whether the shoot has happened, so it is a prompt
-                    // rather than a demand.
-                    _ReviewPrompt(
-                      name: selected.name ?? 'them',
-                      ext: ext,
-                      onTap: () => _leaveReview(selected),
-                    ),
+                    // The quote, what has been paid, and whatever comes next.
+                    if (booking != null)
+                      BookingPanel(
+                        state: booking,
+                        ext: ext,
+                        busy: _bookingBusy,
+                        onPayDeposit: () => _pay(kind: 'deposit'),
+                        onPayBalance: () => _pay(kind: 'balance'),
+                        onDecline: _declineQuote,
+                        onConfirm: _confirmJobDone,
+                        onReportProblem: _reportProblem,
+                      ),
+                    // Only once the job is actually done.
+                    //
+                    // This used to appear the moment anybody was selected,
+                    // which asked people to rate work that had not happened
+                    // yet. `canReview` is the server's answer, and it waits for
+                    // the payment to be released. Where there is no booking at
+                    // all the old behaviour stands: plenty of jobs are agreed
+                    // and paid for outside the app, and those still deserve a
+                    // review.
+                    if (booking?.booking == null ||
+                        booking!.booking!.canReview)
+                      _ReviewPrompt(
+                        name: selected.name ?? 'them',
+                        ext: ext,
+                        onTap: () => _leaveReview(selected),
+                      ),
                     // Everyone else is deliberately not listed here. Once a
                     // choice is made this screen is about that choice; the
                     // others live behind "Change photographer?", which is the

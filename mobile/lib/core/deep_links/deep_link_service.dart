@@ -11,6 +11,7 @@ import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/presentation/pages/campaign_details_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/my_campaigns_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/request_board_page.dart';
+import 'package:jperg_app/features/ads/presentation/pages/photographer_booking_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/review_photographers_page.dart';
 import 'package:jperg_app/features/cart/presentation/pages/cart_page.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
@@ -398,12 +399,29 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
             });
             return;
           }
+          // Two different screens behind one link, because two different
+          // people follow it. "You have a new invitation" goes to whoever
+          // posted the request; "your invitation was accepted" and every
+          // payment notice after it go to the photographer. They need opposite
+          // things — one decides and pays, the other quotes and waits — so the
+          // link resolves to whichever side the viewer is actually on.
+          //
+          // The server answers that, via `viewerRole` on the booking state:
+          // it reads the caller's token, which is the only thing that can be
+          // trusted about who is asking. A photographer who is not the chosen
+          // one gets no booking state at all and lands on the requester
+          // screen, which shows them the request and nothing private.
+          final viewer = await AdsRepository().getBookingState(request.id);
+          if (!mounted) return;
+
           // Replaces itself so Back returns to where the link was tapped
           // rather than to a spinner that has nothing left to do.
           _swapSelfFor(
             MaterialPageRoute<void>(
               settings: const RouteSettings(name: 'deeplink/request'),
-              builder: (_) => ReviewPhotographersPage(request: request),
+              builder: (_) => viewer != null && !viewer.isRequester
+                  ? PhotographerBookingPage(request: request)
+                  : ReviewPhotographersPage(request: request),
             ),
           );
           return;
