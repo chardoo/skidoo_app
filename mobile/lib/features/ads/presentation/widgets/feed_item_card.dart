@@ -632,6 +632,11 @@ class _FeedItemCardState extends State<FeedItemCard>
                 likeCount: 0,
                 dislikeCount: 0,
                 commentCount: d.commentCount,
+                // Keeps the badge honest the moment a comment is posted. The
+                // count arrives inside immutable feed data, so without this it
+                // shows whatever the feed was fetched with until the list is
+                // rebuilt — which, for a cached feed, can be a long time.
+                commentTargetId: d.id,
                 commentsEnabled: d.commentsEnabled,
                 // An ad or campaign with engagement switched off collects no
                 // reactions either, same rule as events.

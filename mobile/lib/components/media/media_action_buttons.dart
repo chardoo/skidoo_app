@@ -1,3 +1,4 @@
+import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'dart:convert' show base64Encode;
 import 'dart:io';
 import 'dart:ui';
@@ -521,14 +522,22 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
                 ),
       ),
       if (widget.showComment)
-        btn(
-          icon: Icons.mode_comment_outlined,
-          label: _fmt(_commentCount),
-          semanticLabel: 'Comments',
-          onTap: () => PhotoCommentSheet.show(
-            context,
-            pictureId: widget.pictureId,
-            imageUrl: widget.imageUrl,
+        // `_commentCount` is seeded once from the caller and never moves
+        // again, so posting a comment left this label a step behind for as
+        // long as the sheet's parent stayed alive. It is the fallback now, not
+        // the source.
+        LiveCommentCount(
+          targetId: widget.pictureId,
+          fallback: _commentCount,
+          builder: (context, liveCount) => btn(
+            icon: Icons.mode_comment_outlined,
+            label: _fmt(liveCount),
+            semanticLabel: 'Comments',
+            onTap: () => PhotoCommentSheet.show(
+              context,
+              pictureId: widget.pictureId,
+              imageUrl: widget.imageUrl,
+            ),
           ),
         ),
     ];

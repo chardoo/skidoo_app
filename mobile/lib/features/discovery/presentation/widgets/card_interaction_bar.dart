@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/cache/comment_counts.dart';
 
 class CardInteractionBar extends StatelessWidget {
   const CardInteractionBar({
@@ -24,6 +25,7 @@ class CardInteractionBar extends StatelessWidget {
     this.onShareExternal,
     this.commentsEnabled = true,
     this.reactionsEnabled = true,
+    this.commentTargetId,
   });
 
   final bool liked;
@@ -33,6 +35,15 @@ class CardInteractionBar extends StatelessWidget {
   final int dislikeCount;
   final int commentCount;
   final bool commentsEnabled;
+
+  /// The id comments are filed against — a picture, event, ad, request or
+  /// campaign id.
+  ///
+  /// Given this, the badge follows [CommentCounts] and corrects itself the
+  /// moment somebody comments, instead of showing whatever number the feed was
+  /// fetched with until the list happens to be rebuilt. Optional: a card that
+  /// does not pass one simply renders [commentCount] as before.
+  final String? commentTargetId;
 
   /// Like and dislike. Follows the owner's `comments_enabled` setting: turning
   /// engagement off on an event, ad or campaign is meant to silence *all*
@@ -60,6 +71,14 @@ class CardInteractionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return LiveCommentCount(
+      targetId: commentTargetId,
+      fallback: commentCount,
+      builder: _build,
+    );
+  }
+
+  Widget _build(BuildContext context, int commentCount) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 7.h),
       child: Row(

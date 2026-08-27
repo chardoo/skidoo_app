@@ -1,3 +1,4 @@
+import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
@@ -541,6 +542,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           likeCount: _likeCount,
           dislikeCount: _dislikeCount,
           commentCount: widget.event.commentCount,
+          commentTargetId: widget.event.id,
           commentsEnabled: commentsEnabled,
           reactionsEnabled: _engagementAllowed,
           ext: ext,
@@ -791,6 +793,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
         likeCount: _likeCount,
         dislikeCount: _dislikeCount,
         commentCount: widget.event.commentCount,
+        commentTargetId: widget.event.id,
         commentsEnabled: _commentsEnabled,
         reactionsEnabled: _engagementAllowed,
         ext: ext,
@@ -978,5 +981,19 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   /// live without waiting for a reload.
   void _onCommentSent() {
     _discoveryBloc?.add(DiscoveryCommentAdded(widget.event.id));
+    // The line above only moves this event's card inside the discovery feed.
+    // The same album also appears in search, in saved items and on a
+    // photographer's profile, and those read the count straight off their own
+    // copy of the event. Reporting it here corrects all of them at once.
+    //
+    // A local +1 rather than a server figure: event comments go through the
+    // chat socket, which acknowledges the message without carrying a count
+    // back. It is replaced by an authoritative number the next time the list
+    // is fetched.
+    CommentCounts.instance.adjust(
+      widget.event.id,
+      1,
+      base: widget.event.commentCount,
+    );
   }
 }

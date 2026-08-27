@@ -1,3 +1,4 @@
+import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/web_action_widgets.dart';
@@ -14,6 +15,7 @@ class WebReactionsColumn extends StatelessWidget {
     required this.likeCount,
     required this.dislikeCount,
     required this.commentCount,
+    this.commentTargetId,
     required this.commentsEnabled,
     this.reactionsEnabled = true,
     required this.ext,
@@ -41,6 +43,9 @@ class WebReactionsColumn extends StatelessWidget {
   final int likeCount;
   final int dislikeCount;
   final int commentCount;
+
+  /// See [CardInteractionBar.commentTargetId] — same job, web layout.
+  final String? commentTargetId;
   final bool commentsEnabled;
 
   /// Like and dislike, following the owner's `comments_enabled` setting — see
@@ -135,20 +140,27 @@ class WebReactionsColumn extends StatelessWidget {
               ),
               SizedBox(height: gap),
             ],
-            WebActionBtn(
-              icon: commentsEnabled
-                  ? Icons.mode_comment_outlined
-                  : Icons.comments_disabled_rounded,
-              iconColor: commentsEnabled
-                  ? ext.greetingColor
-                  : ext.searchHintColor.withValues(alpha: 0.4),
-              count: commentCount,
-              countColor: commentsEnabled
-                  ? ext.greetingColor
-                  : ext.searchHintColor.withValues(alpha: 0.4),
-              iconSize: iconSize,
-              onTap: onComment,
-              semanticLabel: commentsEnabled ? 'Comments' : 'Comments disabled',
+            // Listens rather than reads: a bare lookup in a StatelessWidget
+            // would be right once and then never move again.
+            LiveCommentCount(
+              targetId: commentTargetId,
+              fallback: commentCount,
+              builder: (_, liveCount) => WebActionBtn(
+                icon: commentsEnabled
+                    ? Icons.mode_comment_outlined
+                    : Icons.comments_disabled_rounded,
+                iconColor: commentsEnabled
+                    ? ext.greetingColor
+                    : ext.searchHintColor.withValues(alpha: 0.4),
+                count: liveCount,
+                countColor: commentsEnabled
+                    ? ext.greetingColor
+                    : ext.searchHintColor.withValues(alpha: 0.4),
+                iconSize: iconSize,
+                onTap: onComment,
+                semanticLabel:
+                    commentsEnabled ? 'Comments' : 'Comments disabled',
+              ),
             ),
             SizedBox(height: gap),
             WebActionBtn(

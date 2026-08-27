@@ -1,3 +1,4 @@
+import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:jperg_app/features/photo_comments/data/photo_comment_remote_data_source.dart';
@@ -290,7 +291,12 @@ class PhotoCommentBloc extends Bloc<PhotoCommentEvent, PhotoCommentState> {
           isPosting: false,
         ));
       } else {
-        // Prepend top-level comment
+        // The badge on whatever card opened this sheet reads its count from
+        // immutable feed data that nothing rewrites, so without this it keeps
+        // showing the number it was built with. The server's figure is used
+        // rather than a local +1: replies do not count, this list is
+        // paginated, and somebody else may have commented since it loaded.
+        CommentCounts.instance.report(state.pictureId, comment.targetCommentCount);
         emit(state.copyWith(
           comments: [comment, ...state.comments],
           isPosting: false,

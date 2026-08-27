@@ -1,3 +1,4 @@
+import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
@@ -77,6 +78,19 @@ class _FoundActionRailState extends State<FoundActionRail> {
     // Cheap and shared: the id set is fetched once per session, so every rail
     // can ask without any of them costing a request.
     _saved?.ensureLoaded();
+    // A listener rather than a wrapper widget: MediaReaction is a value the
+    // rail renders, not a widget slot something can be inserted around.
+    CommentCounts.instance.addListener(_onCommentCountsChanged);
+  }
+
+  @override
+  void dispose() {
+    CommentCounts.instance.removeListener(_onCommentCountsChanged);
+    super.dispose();
+  }
+
+  void _onCommentCountsChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -233,12 +247,18 @@ class _FoundActionRailState extends State<FoundActionRail> {
             onTap: () => _requireAccount(_toggleLike),
           ),
           MediaReaction.comment(
-            count: widget.photo.commentCount,
+            // Live, so the rail corrects itself the moment a comment is
+            // posted instead of showing the count the photo was fetched with.
+            count: CommentCounts.instance.countFor(widget.photo.id) ??
+                widget.photo.commentCount,
             onTap: () => _requireAccount(_openComments),
           ),
         ],
         if (offered.commentsDisabled)
-          MediaReaction.commentsDisabled(count: widget.photo.commentCount),
+          MediaReaction.commentsDisabled(
+            count: CommentCounts.instance.countFor(widget.photo.id) ??
+                widget.photo.commentCount,
+          ),
         // Neither the bookmark nor the download has a count behind it, so the
         // rail renders the glyph alone rather than a fake "0".
         if (offered.save && _saved != null)
