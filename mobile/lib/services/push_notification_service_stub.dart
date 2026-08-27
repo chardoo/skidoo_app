@@ -20,3 +20,5 @@ Future<PushPermission> pushPermissionState() async => PushPermission.denied;
 Future<void> pushLogin(String userId) async {}
 
 Future<void> pushLogout() async {}
+
+Future<void> setPushSubscribed(bool subscribed) async {}

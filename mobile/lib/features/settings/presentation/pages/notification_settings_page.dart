@@ -71,6 +71,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final allowed = await PushNotificationService.instance.hasPermission();
     if (mounted && !allowed && _pushOn) setState(() => _pushOn = false);
 
+    // Heal devices that turned push off before the switch did anything about
+    // it. Until now it wrote `notifications_muted` and nothing else, so those
+    // devices are still opted in at OneSignal and still receiving — the switch
+    // reads off and the notifications keep coming. Re-asserting the stored
+    // preference here is what closes that for someone who already flipped it;
+    // the write is idempotent, so doing it on every open costs nothing.
+    await PushNotificationService.instance.setSubscribed(!muted);
+
     try {
       final prefs = await _api.fetch();
       if (!mounted) return;
@@ -129,6 +137,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         return;
       }
     }
+
+    // The part that actually stops them arriving. The preference below is read
+    // only by the chat code, so writing it alone left every server-sent push
+    // coming through a switch that said it would not.
+    await PushNotificationService.instance.setSubscribed(on);
 
     // Local, and applied immediately: there is no request to fail and nothing
     // to reconcile with another device.

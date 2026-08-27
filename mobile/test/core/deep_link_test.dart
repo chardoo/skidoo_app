@@ -123,4 +123,38 @@ void main() {
       expect(parsePushScreen('  '), isNull);
     });
   });
+
+
+  // The app claims all of /photographer/*, and the creator portal puts its own
+  // screens directly under that prefix. Both live on jperg.com.
+  group('the /photographer/ prefix is shared with the web portal', () {
+    test('a portal screen is not read as a profile', () {
+      for (final screen in const [
+        'dashboard', 'payouts', 'events', 'messages',
+        'analytics', 'upload', 'requests', 'broadcasts', 'profile', 'samples',
+      ]) {
+        expect(
+          parseDeepLink(Uri.parse('https://jperg.com/photographer/$screen')),
+          isNull,
+          reason: '/photographer/$screen is a portal page, not a photographer',
+        );
+      }
+    });
+
+    test('a real profile still opens', () {
+      expect(
+        parseDeepLink(Uri.parse(
+            'https://jperg.com/photographer/6adb7476-73b5-4249-9388-e11a09328410')),
+        const DeepLink(DeepLinkKind.photographer,
+            id: '6adb7476-73b5-4249-9388-e11a09328410'),
+      );
+    });
+
+    test('the plural form the website uses opens too', () {
+      expect(
+        parseDeepLink(Uri.parse('https://jperg.com/photographers/abc123')),
+        const DeepLink(DeepLinkKind.photographer, id: 'abc123'),
+      );
+    });
+  });
 }

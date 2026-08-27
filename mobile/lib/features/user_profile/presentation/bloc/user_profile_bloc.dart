@@ -122,6 +122,10 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
         return;
       }
     }
+    // The part that actually stops them arriving — the preference below is read
+    // only by the chat code, so on its own it silenced nothing the server sent.
+    await PushNotificationService.instance.setSubscribed(!event.isMuted);
+
     await _notifPrefs.setMuted(event.isMuted);
     emit(state.copyWith(isMuted: event.isMuted));
   }

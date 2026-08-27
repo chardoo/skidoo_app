@@ -80,6 +80,19 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
     if (!kIsWeb) {
       unawaited(() async {
         await PushNotificationService.instance.login(user.id);
+
+        // Subscribe this device for the account that just signed in.
+        //
+        // The opt-out is the *device's* and survives OneSignal.logout(), so
+        // one person turning push off left the next person to sign in on the
+        // same phone silently unsubscribed — their switch read on, the OS
+        // permission was granted, and nothing arrived. Sign-out clears the
+        // stored preference; this is what puts the subscription back.
+        //
+        // Cannot prompt: it opts in only where permission already exists, so
+        // it does not pre-empt the deliberate ask below.
+        await PushNotificationService.instance.setSubscribed(true);
+
         // Prompted here rather than at first launch: asking someone who has
         // just signed in converts far better than asking a stranger on the
         // splash screen, and iOS only ever lets you ask once.

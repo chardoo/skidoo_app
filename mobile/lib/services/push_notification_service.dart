@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/widgets.dart';
 import 'package:jperg_app/services/push_permission.dart';
 
 import 'push_notification_service_stub.dart'
@@ -38,6 +41,19 @@ class PushNotificationService {
   /// Returns false on web/desktop, on failure, or when the user declines.
   Future<bool> requestPermission() => impl.requestPushPermission();
 
+  /// Opt this device in or out of receiving pushes at all.
+  ///
+  /// What the "Push notifications" master switch has to call. The local
+  /// `notifications_muted` preference beside it is read only by the chat code,
+  /// so on its own it silenced nothing the server sent — the switch said push
+  /// was off and the pushes kept arriving.
+  ///
+  /// Never prompts: opting in is skipped when permission has not been granted,
+  /// because the SDK's `optIn()` raises the dialog itself. Safe to call from a
+  /// signed-out launch. Use [ensurePermission] where asking is the intent.
+  Future<void> setSubscribed(bool subscribed) =>
+      impl.setPushSubscribed(subscribed);
+
   /// Whether the OS is currently letting this app post notifications.
   ///
   /// The app's own on/off switches are a stored preference and nothing more —
@@ -58,7 +74,39 @@ class PushNotificationService {
   /// OS is done showing its own dialog, which every launch is far too often.
   Future<void> promptIfUndecided() async {
     if (await permissionState() != PushPermission.undecided) return;
+    // iOS will not present the dialog unless the app is frontmost, and the
+    // attempt is spent rather than queued — so a prompt fired while the person
+    // is on their home screen is a launch where they were simply never asked,
+    // with nothing to show it happened. The wait before this one is ten
+    // seconds, which is long enough to lose the race often.
+    if (!await _waitForForeground()) return;
+    if (await permissionState() != PushPermission.undecided) return;
     await requestPermission();
+  }
+
+  /// Resolves once the app is frontmost, or false if it does not become so
+  /// within [timeout] — in which case the ask is left for the next launch,
+  /// which is better than spending it on a dialog nobody can see.
+  Future<bool> _waitForForeground({
+    Duration timeout = const Duration(minutes: 2),
+  }) async {
+    if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      return true;
+    }
+
+    final completer = Completer<bool>();
+    late final AppLifecycleListener listener;
+    listener = AppLifecycleListener(
+      onResume: () {
+        if (!completer.isCompleted) completer.complete(true);
+      },
+    );
+
+    try {
+      return await completer.future.timeout(timeout, onTimeout: () => false);
+    } finally {
+      listener.dispose();
+    }
   }
 
   /// Turns notifications on for real: grants first, preference second.

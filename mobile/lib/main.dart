@@ -12,6 +12,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 // import 'package:jperg_app/core/security/screenshot_guard.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/services/notification_prefs_service.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 
 void main() async {
@@ -181,17 +182,38 @@ void main() async {
   if (!kIsWeb) {
     unawaited(() async {
       await PushNotificationService.instance.init();
-      if (AuthService.isAuthenticated.value) {
-        final userId = await authService.getUserId();
-        await PushNotificationService.instance.login(userId);
-        // Only where there is still a question to ask. It used to call
-        // requestPermission outright on the belief that a recorded decision
-        // makes it a no-op — it does not: with fallbackToSettings it opens the
-        // system settings page, so anyone who had declined was sent there ten
-        // seconds after opening the app, every single time.
-        await Future.delayed(PushNotificationService.permissionPromptDelay);
-        await PushNotificationService.instance.promptIfUndecided();
-      }
+
+      // Make the device's subscription match the master switch. Until
+      // recently that switch only wrote a local `notifications_muted` flag —
+      // a flag nothing outside the chat code read — so every device that
+      // turned push off is still opted in at OneSignal and still receiving.
+      // Re-asserted on every launch rather than only when the settings screen
+      // is opened, because the people affected are precisely the ones who
+      // already went there once and believe it is dealt with.
+      //
+      // Safe for a signed-out launch: setSubscribed never asks for permission,
+      // so this cannot put a dialog in front of a guest. See its doc comment.
+      await PushNotificationService.instance
+          .setSubscribed(!sl<NotificationPrefsService>().isMuted);
+
+      // Signed in only. A guest is never asked — the prompt is a one-shot on
+      // iOS, and spending it on someone with no account is spending it on
+      // someone with nothing to be notified about yet and every reason to
+      // decline. Sign-up reaches this through LoginUseCase.establishSession,
+      // which VerifyCodeUseCase also calls, so a new account is asked at the
+      // point it is created rather than waiting for a second launch.
+      if (!AuthService.isAuthenticated.value) return;
+
+      final userId = await authService.getUserId();
+      await PushNotificationService.instance.login(userId);
+
+      // Only where there is still a question to ask. It used to call
+      // requestPermission outright on the belief that a recorded decision
+      // makes it a no-op — it does not: with fallbackToSettings it opens the
+      // system settings page, so anyone who had declined was sent there ten
+      // seconds after opening the app, every single time.
+      await Future.delayed(PushNotificationService.permissionPromptDelay);
+      await PushNotificationService.instance.promptIfUndecided();
     }());
   }
 

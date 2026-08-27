@@ -158,6 +158,49 @@ Future<bool> requestPushPermission() async {
   }
 }
 
+/// Opt this device's push subscription in or out.
+///
+/// What the "Push notifications" master switch actually has to do. It used to
+/// write a local `notifications_muted` flag and stop there — a flag only the
+/// chat code ever read — so turning push off silenced nothing the server sent
+/// and the notifications kept arriving from a switch that said they would not.
+///
+/// Opting out rather than revoking the OS permission, because the switch is
+/// this device's and reversible from inside the app: revoking is not something
+/// an app can do, and sending someone to system settings to undo their own tap
+/// is a worse answer than one they can take back where they made it.
+///
+/// **Never asks for permission.** `optIn()` prompts if permission has not been
+/// granted — the SDK says so outright — so opting in is skipped unless the OS
+/// has already said yes. That keeps this callable from app launch, where a
+/// dialog would land on a guest who has no account and nothing to be notified
+/// about. Asking is [requestPushPermission]'s job and belongs at a moment
+/// somebody chose: the settings switch, or just after signing in.
+///
+/// Opting *out* never prompts, so it always applies. That is the direction
+/// that matters here anyway — it is what a muted device needs.
+Future<void> setPushSubscribed(bool subscribed) async {
+  if (!_supported) return;
+  if (!_initialised) await initPush();
+
+  try {
+    if (!subscribed) {
+      OneSignal.User.pushSubscription.optOut();
+      debugPrint('$_tag push subscription optedOut');
+      return;
+    }
+
+    if (!await hasPushPermission()) {
+      debugPrint('$_tag optIn skipped — no permission yet, and optIn would ask');
+      return;
+    }
+    OneSignal.User.pushSubscription.optIn();
+    debugPrint('$_tag push subscription optedIn');
+  } catch (e) {
+    debugPrint('$_tag opt${subscribed ? 'In' : 'Out'} FAILED: $e');
+  }
+}
+
 Future<void> pushLogin(String userId) async {
   if (!_supported || userId.isEmpty) return;
   if (!_initialised) await initPush();

@@ -166,11 +166,47 @@ DeepLink? parseDeepLink(Uri? uri) {
     'r' ||
     'request' when at(1) != null =>
       DeepLink(DeepLinkKind.request, id: at(1)),
-    'photographer' when at(1) != null =>
+    'photographer' when at(1) != null && !_isPortalScreen(at(1)!) =>
+      DeepLink(DeepLinkKind.photographer, id: at(1)),
+    // `photographers` — plural — is where the web portal serves the same
+    // profile. Read as well as the singular so a link copied from a browser
+    // address bar opens the app rather than bouncing to the website.
+    'photographers' when at(1) != null =>
       DeepLink(DeepLinkKind.photographer, id: at(1)),
     _ => null,
   };
 }
+
+/// The creator portal's own screens, which share the `/photographer/` prefix
+/// with profile links.
+///
+/// The app claims all of `/photographer/*`, and the portal puts its private
+/// screens directly under it — `/photographer/payouts`,
+/// `/photographer/dashboard`. So tapping a portal link on a phone with the app
+/// installed opened the app and asked it for a photographer whose id was
+/// "payouts", which is a profile page for somebody who does not exist.
+///
+/// Excluded here rather than in the Android intent filter because pathPrefix
+/// has no way to say "except these"; the link still opens the app, but it now
+/// resolves to nothing and the app carries on to its normal launch screen
+/// instead of a dead profile.
+///
+/// Keep in step with the literal `/photographer/*` routes in
+/// picco-v2/src/router/index.ts. A name missing here is a portal screen that
+/// opens a broken profile; a name wrongly added is a photographer whose id
+/// happens to be an English word, which ids are not.
+bool _isPortalScreen(String segment) => const {
+      'dashboard',
+      'events',
+      'upload',
+      'requests',
+      'messages',
+      'broadcasts',
+      'analytics',
+      'payouts',
+      'profile',
+      'samples',
+    }.contains(segment.toLowerCase());
 
 /// The same mapping the push payloads already use — `{"screen": "my_photos"}`
 /// — so a notification and a link end up in one place rather than two.

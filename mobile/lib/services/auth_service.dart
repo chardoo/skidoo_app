@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jperg_app/core/session/session_reset.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/services/notification_prefs_service.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 
 /// Platform-adaptive credential store.
@@ -310,6 +312,10 @@ class AuthService {
     // Registered by its owners rather than listed here — see [SessionReset],
     // and add to it rather than to this method.
     await SessionReset.run();
+    // Both of these are one person's answers, not the phone's — see
+    // clearForSignOut. Before OneSignal.logout(), so the next sign-in reads
+    // first-run values rather than the previous account's.
+    await sl<NotificationPrefsService>().clearForSignOut();
     await PushNotificationService.instance.logout();
     await Future.wait([
       _delete(_kToken),
