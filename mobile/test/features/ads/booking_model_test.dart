@@ -21,6 +21,8 @@ Map<String, dynamic> _bookingJson({
   bool canConfirm = false,
   bool canDispute = true,
   bool canReview = false,
+  bool requiresCashConfirmation = false,
+  double offlineSettled = 0,
   String? autoReleaseAt,
 }) =>
     {
@@ -45,6 +47,8 @@ Map<String, dynamic> _bookingJson({
       'canConfirm': canConfirm,
       'canDispute': canDispute,
       'canReview': canReview,
+      'requiresCashConfirmation': requiresCashConfirmation,
+      'offlineSettledAmount': offlineSettled,
       'autoReleaseAt': autoReleaseAt,
       'createdAt': '2026-08-01T10:00:00+00:00',
     };
@@ -228,6 +232,8 @@ void main() {
   });
 
   _declineGroup();
+
+  _cashGroup();
 }
 
 /// What a declined quote leaves behind.
@@ -286,6 +292,83 @@ void _declineGroup() {
         _bookingJson(status: 'completed', canReview: true),
       );
       expect(done.canReview, isTrue);
+    });
+  });
+}
+
+/// A balance handed over in cash rather than paid through the app.
+///
+/// The money that matters is the money that is not there: cash never passes
+/// through the platform, so it must never reach the release ledger. The app's
+/// job is to ask before it settles anything, and to keep the two figures
+/// visibly apart afterwards.
+void _cashGroup() {
+  group('settling in cash', () {
+    test('Done is offered alongside Pay balance once the deposit lands', () {
+      // It used to be hidden until the balance cleared, which left a job paid
+      // in hand stuck open and still being chased.
+      final booking = RequestBooking.fromJson(_bookingJson(
+        status: 'deposit_paid',
+        canPayBalance: true,
+        canConfirm: true,
+        requiresCashConfirmation: true,
+      ));
+
+      expect(booking.canPayBalance, isTrue);
+      expect(booking.canConfirm, isTrue);
+    });
+
+    test('flags when confirming would settle a balance as cash', () {
+      // This is what makes the app ask. Without it the tap would close the job
+      // and write off the outstanding amount silently.
+      final booking = RequestBooking.fromJson(_bookingJson(
+        status: 'deposit_paid', canConfirm: true, requiresCashConfirmation: true,
+      ));
+
+      expect(booking.requiresCashConfirmation, isTrue);
+      expect(booking.outstanding, greaterThan(0));
+    });
+
+    test('does not flag when the balance was paid properly', () {
+      final booking = RequestBooking.fromJson(_bookingJson(
+        status: 'paid_in_full',
+        amountPaid: 12500,
+        outstanding: 0,
+        canConfirm: true,
+        canPayBalance: false,
+      ));
+
+      expect(booking.requiresCashConfirmation, isFalse);
+    });
+
+    test('keeps the cash apart from what went through the app', () {
+      // Two separate figures on the receipt, because only one of them is
+      // money the platform can account for.
+      final booking = RequestBooking.fromJson(_bookingJson(
+        status: 'completed',
+        amountPaid: 2500,
+        outstanding: 0,
+        offlineSettled: 10000,
+        held: 0,
+      ));
+
+      expect(booking.amountPaid, 2500);
+      expect(booking.offlineSettledAmount, 10000);
+      expect(booking.heldAmount, 0, reason: 'cash is never held in escrow');
+    });
+
+    test('a cash-settled job is finished, so it can be reviewed', () {
+      final booking = RequestBooking.fromJson(_bookingJson(
+        status: 'completed', outstanding: 0, offlineSettled: 10000,
+        canReview: true,
+      ));
+
+      expect(booking.isComplete, isTrue);
+      expect(booking.canReview, isTrue);
+    });
+
+    test('reads zero for a booking with no cash against it', () {
+      expect(RequestBooking.fromJson(_bookingJson()).offlineSettledAmount, 0);
     });
   });
 }

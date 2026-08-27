@@ -363,18 +363,34 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
 
   /// "Job done" — the money goes to the photographer, and cannot come back.
   /// Confirmed twice deliberately: this is the irreversible step in the flow.
+  ///
+  /// Two versions of the question. With the balance settled through the app it
+  /// is simply "release the money". With a balance still owing, confirming
+  /// *means* it was handed over in cash — so the dialog asks that outright and
+  /// names the figure, rather than letting somebody close the job and discover
+  /// afterwards that they had written off ten thousand cedis.
   Future<void> _confirmJobDone() async {
     final booking = _booking?.booking;
     if (booking == null) return;
 
+    final cash = booking.requiresCashConfirmation;
+    final name = _selected?.name ?? 'your photographer';
+    final outstanding =
+        '${booking.currency} ${booking.outstanding.toStringAsFixed(2)}';
+
     final sure = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Mark the job as done?'),
+        title: Text(cash ? 'Have you paid $name?' : 'Mark the job as done?'),
         content: Text(
-          'This releases ${booking.currency} '
-          '${booking.heldAmount.toStringAsFixed(2)} to your photographer. '
-          'It cannot be undone.',
+          cash
+              ? 'There is still $outstanding outstanding on this booking.\n\n'
+                  'Only continue if you have already handed that money to '
+                  '$name directly. We will record it as paid, tell them, and '
+                  'close the job — this cannot be undone.'
+              : 'This releases ${booking.currency} '
+                  '${booking.heldAmount.toStringAsFixed(2)} to your '
+                  'photographer. It cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -383,7 +399,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Release payment'),
+            child: Text(cash ? 'Yes, I paid them' : 'Release payment'),
           ),
         ],
       ),
@@ -392,11 +408,16 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
 
     setState(() => _bookingBusy = true);
     try {
-      await _repo.confirmJobDone(_request.id);
+      await _repo.confirmJobDone(_request.id, settledOffline: cash);
       _changed = true;
       await _load(showSpinner: false);
       if (mounted) {
-        AppSnackBar.success(context, 'Payment released. Thanks!');
+        AppSnackBar.success(
+          context,
+          cash
+              ? 'Marked as paid and closed. $name has been told.'
+              : 'Payment released. Thanks!',
+        );
       }
     } catch (e) {
       debugPrint('[ReviewPhotographers] confirm ERROR: $e');

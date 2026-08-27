@@ -188,8 +188,15 @@ class BookingPanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _line('Paid so far', _money(booking.amountPaid, currency),
+          _line('Paid in the app', _money(booking.amountPaid, currency),
               bold: false),
+          // Named as its own line rather than folded into "paid". It is the
+          // one figure here the platform cannot vouch for — the two of them
+          // settled it between themselves — and a receipt that blurs that is
+          // claiming more than it knows.
+          if (booking.offlineSettledAmount > 0)
+            _line('Paid directly, in cash',
+                _money(booking.offlineSettledAmount, currency), bold: false),
           if (booking.outstanding > 0)
             _line('Still to pay', _money(booking.outstanding, currency),
                 bold: true, highlight: true),
@@ -268,6 +275,8 @@ class BookingPanel extends StatelessWidget {
         SizedBox(height: AppSpacing.sm.h),
         _secondary(label: 'Decline this quote', onTap: onDecline),
       ],
+      // Paying the balance is the primary route, so it keeps the filled
+      // button; confirming sits under it as the alternative.
       if (booking?.canPayBalance == true) ...[
         _primary(
           label: 'Pay ${_money(booking!.outstanding, booking.currency)} balance',
@@ -276,11 +285,25 @@ class BookingPanel extends StatelessWidget {
         SizedBox(height: AppSpacing.sm.h),
       ],
       if (booking?.canConfirm == true) ...[
-        _primary(label: 'Mark job as done', onTap: onConfirm),
+        // Both appear together once the deposit lands. Plenty of balances are
+        // handed over on the day rather than paid online, and hiding this
+        // until the balance cleared left those jobs stuck open — still being
+        // chased for money that had already changed hands.
+        if (booking!.canPayBalance)
+          _outlined(label: 'Mark job as done', onTap: onConfirm)
+        else
+          _primary(label: 'Mark job as done', onTap: onConfirm),
         SizedBox(height: AppSpacing.sm.h),
         Text(
-          'This releases the payment to your photographer. Only do this once '
-          'you have what you agreed.',
+          booking.requiresCashConfirmation
+              // Says outright what confirming now would mean, before the
+              // dialog asks it properly. Somebody who has not paid the balance
+              // should not reach that dialog by surprise.
+              ? 'Only mark this done once you have what you agreed. If you '
+                  'paid the remaining ${_money(booking.outstanding, booking.currency)} '
+                  'directly, we will ask you to confirm that.'
+              : 'This releases the payment to your photographer. Only do this '
+                  'once you have what you agreed.',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: ext.searchHintColor, fontSize: 11.sp, height: 1.4,
@@ -334,6 +357,33 @@ class BookingPanel extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+        ),
+      );
+
+  /// An outlined button, for an action offered beside a filled one.
+  ///
+  /// "Mark job as done" is a real choice rather than a fallback, so it stays a
+  /// button — but it must not compete with "Pay balance" when both are up.
+  Widget _outlined({required String label, required VoidCallback onTap}) =>
+      SizedBox(
+        width: double.infinity,
+        height: 46.h,
+        child: OutlinedButton(
+          onPressed: busy ? null : onTap,
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(color: ext.accentGold.withValues(alpha: 0.6)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(999.r),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: ext.accentGold,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
       );
 

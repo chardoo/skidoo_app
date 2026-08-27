@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
+import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -300,10 +301,8 @@ class _FoundFilterSheetState extends State<FoundFilterSheet> {
                     if (_error != null)
                       Padding(
                         padding: EdgeInsets.only(bottom: AppSpacing.lg.h),
-                        child: Text(
-                          "Couldn't load filter options. $_error",
-                          style: TextStyle(
-                              color: ext.errorRed, fontSize: 12.sp),
+                        child: AppInlineBanner(
+                          message: "Couldn't load filter options. $_error",
                         ),
                       ),
                     _FilterGroup(

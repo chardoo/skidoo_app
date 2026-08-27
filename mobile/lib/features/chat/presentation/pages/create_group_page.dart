@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show File;
 
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -259,9 +260,11 @@ class _GroupNamePageState extends State<_GroupNamePage> {
               ),
 
               if (_error != null) ...[
-                SizedBox(height: AppSpacing.sm.h),
-                Text(_error!,
-                    style: TextStyle(color: ext.errorRed, fontSize: 12.sp)),
+                SizedBox(height: AppSpacing.md.h),
+                AppInlineBanner(
+                  message: _error!,
+                  onDismiss: () => setState(() => _error = null),
+                ),
               ],
 
               SizedBox(height: AppSpacing.xl.h),

@@ -108,6 +108,7 @@ class RequestBooking {
     required this.releasedAmount,
     required this.refundedAmount,
     required this.heldAmount,
+    required this.offlineSettledAmount,
     required this.platformFeePercent,
     required this.depositPercent,
     required this.status,
@@ -116,6 +117,8 @@ class RequestBooking {
     required this.canConfirm,
     required this.canDispute,
     required this.canReview,
+    required this.requiresCashConfirmation,
+    this.offlineSettledAt,
     this.autoReleaseAt,
     this.confirmedAt,
     this.releasedAt,
@@ -138,7 +141,11 @@ class RequestBooking {
   final double depositAmount;
   final double amountPaid;
 
-  /// Still owed. Must be zero before the job can be signed off.
+  /// Still owed, by any route — escrow or cash.
+  ///
+  /// Signing the job off no longer waits for this to reach zero: confirming
+  /// with a balance owing means it was handed over directly. See
+  /// [requiresCashConfirmation].
   final double outstanding;
 
   /// Net of fee, and already in the photographer's balance.
@@ -147,6 +154,14 @@ class RequestBooking {
 
   /// Paid, but neither released nor refunded — sitting in escrow.
   final double heldAmount;
+
+  /// The part of the balance handed over in cash, outside the app.
+  ///
+  /// Deliberately not part of [amountPaid]: the platform never held it, so it
+  /// is never released and never refundable. It counts only towards the job
+  /// being settled.
+  final double offlineSettledAmount;
+  final DateTime? offlineSettledAt;
 
   final int platformFeePercent;
   final int depositPercent;
@@ -168,6 +183,11 @@ class RequestBooking {
   /// The review prompt waits for this. Offering it while the job is still in
   /// the air asks somebody to rate work that has not happened.
   final bool canReview;
+
+  /// Confirming would settle an outstanding balance as cash, so the app must
+  /// ask before it does. Never a silent write-off — the server refuses a
+  /// confirm that does not say so explicitly.
+  final bool requiresCashConfirmation;
 
   final DateTime? autoReleaseAt;
   final DateTime? confirmedAt;
@@ -205,6 +225,8 @@ class RequestBooking {
         releasedAmount: _toDouble(json['releasedAmount']),
         refundedAmount: _toDouble(json['refundedAmount']),
         heldAmount: _toDouble(json['heldAmount']),
+        offlineSettledAmount: _toDouble(json['offlineSettledAmount']),
+        offlineSettledAt: _toDate(json['offlineSettledAt']),
         platformFeePercent: _toInt(json['platformFeePercent']),
         depositPercent: _toInt(json['depositPercent']),
         status: json['status'] as String? ?? 'pending_deposit',
@@ -213,6 +235,7 @@ class RequestBooking {
         canConfirm: json['canConfirm'] == true,
         canDispute: json['canDispute'] == true,
         canReview: json['canReview'] == true,
+        requiresCashConfirmation: json['requiresCashConfirmation'] == true,
         autoReleaseAt: _toDate(json['autoReleaseAt']),
         confirmedAt: _toDate(json['confirmedAt']),
         releasedAt: _toDate(json['releasedAt']),

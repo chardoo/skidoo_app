@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -125,59 +126,84 @@ class _AppPhoneFieldState extends State<AppPhoneField> {
     final idleLabel = ext.searchHintColor;
     final focusedColor = ext.accentGold;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      decoration: BoxDecoration(
-        color: ext.searchFieldFill,
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(
-          color: _isFocused ? focusedColor : idleLabel.withValues(alpha: 0.25),
-          width: _isFocused ? 1.5 : 1,
-        ),
-      ),
-      child: TextFormField(
-        controller: _nationalCtrl,
-        focusNode: _focusNode,
-        keyboardType: TextInputType.phone,
-        textInputAction: widget.textInputAction,
-        validator: widget.validator,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: TextStyle(color: textColor, fontSize: 15.sp, letterSpacing: 0.2),
-        decoration: InputDecoration(
-          labelText: widget.label,
-          hintText: widget.hint,
-          labelStyle: TextStyle(
-            color: _isFocused ? focusedColor : idleLabel,
-            fontSize: 14.sp,
+    // Same structure as AppTextField, and for the same reason: the border is
+    // this widget's AnimatedContainer, so an InputDecorator error would be
+    // drawn inside the box. See the note on AppTextField.
+    return FormField<String>(
+      initialValue: widget.controller.text,
+      validator: widget.validator,
+      builder: (state) {
+        final hasError = state.hasError;
+        final accent =
+            hasError ? ext.errorRed : (_isFocused ? focusedColor : idleLabel);
+
+        final input = AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            color: ext.searchFieldFill,
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(
+              color: hasError
+                  ? ext.errorRed
+                  : (_isFocused
+                      ? focusedColor
+                      : idleLabel.withValues(alpha: 0.25)),
+              width: (_isFocused || hasError) ? 1.5 : 1,
+            ),
           ),
-          hintStyle: TextStyle(color: idleLabel, fontSize: 14.sp),
-          prefixIcon: _DialCodeDropdown(
-            iso2: _iso2,
-            isFocused: _isFocused,
-            textColor: textColor,
-            idleColor: idleLabel,
-            focusedColor: focusedColor,
-            fillColor: ext.searchFieldFill,
-            onChanged: (v) {
-              setState(() => _iso2 = v);
-              _syncFullNumber();
-            },
+          child: TextField(
+            controller: _nationalCtrl,
+            focusNode: _focusNode,
+            keyboardType: TextInputType.phone,
+            textInputAction: widget.textInputAction,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            // The validator reads the full E.164 number the parent controller
+            // holds, not the national digits typed here, so the FormField is
+            // fed the same value the form will submit.
+            onChanged: (_) => state.didChange(widget.controller.text),
+            style:
+                TextStyle(color: textColor, fontSize: 15.sp, letterSpacing: 0.2),
+            decoration: InputDecoration(
+              labelText: widget.label,
+              hintText: widget.hint,
+              labelStyle: TextStyle(color: accent, fontSize: 14.sp),
+              hintStyle: TextStyle(color: idleLabel, fontSize: 14.sp),
+              prefixIcon: _DialCodeDropdown(
+                iso2: _iso2,
+                isFocused: _isFocused,
+                textColor: textColor,
+                idleColor: idleLabel,
+                focusedColor: focusedColor,
+                fillColor: ext.searchFieldFill,
+                onChanged: (v) {
+                  setState(() => _iso2 = v);
+                  _syncFullNumber();
+                  state.didChange(widget.controller.text);
+                },
+              ),
+              prefixIconConstraints:
+                  const BoxConstraints(minWidth: 0, minHeight: 0),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              // Matches AppTextField's vertical rhythm — the phone field sits
+              // directly beside those in the signup form, so the two have to be
+              // the same height.
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 10.w, vertical: 12.h),
+            ),
           ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          errorBorder: InputBorder.none,
-          focusedErrorBorder: InputBorder.none,
-          // Matches AppTextField's vertical rhythm — the phone field sits
-          // directly beside those in the signup form, so the two have to be
-          // the same height.
-          contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 12.h),
-          errorStyle: TextStyle(color: ext.errorRed, fontSize: 11.5.sp, height: 0.1),
-          errorMaxLines: 1,
-        ),
-      ),
+        );
+
+        if (!hasError) return input;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [input, AppFieldError(state.errorText!)],
+        );
+      },
     );
   }
 }

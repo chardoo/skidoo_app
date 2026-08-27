@@ -736,11 +736,18 @@ class AdsRepository {
 
   /// "Job done" — release the money to the photographer.
   ///
-  /// Refused while anything is outstanding: confirming with a balance owed
-  /// would close the booking and write the rest off in silence.
-  Future<RequestBooking?> confirmJobDone(String requestId) async {
-    debugPrint('$_tag confirmJobDone → $requestId');
-    final resp = await _dio.post('/ads/requests/$requestId/booking/confirm');
+  /// [settledOffline] says the outstanding balance was handed over in cash.
+  /// The server refuses a confirm that leaves money owing without it, so this
+  /// can never write off a balance by accident — the caller has to have asked.
+  Future<RequestBooking?> confirmJobDone(
+    String requestId, {
+    bool settledOffline = false,
+  }) async {
+    debugPrint('$_tag confirmJobDone → $requestId cash=$settledOffline');
+    final resp = await _dio.post(
+      '/ads/requests/$requestId/booking/confirm',
+      data: {'settled_offline': settledOffline},
+    );
     final data = _unwrap<Map<String, dynamic>>(resp) ?? const {};
     return data['booking'] is Map<String, dynamic>
         ? RequestBooking.fromJson(data['booking'] as Map<String, dynamic>)
