@@ -205,6 +205,26 @@ class WsTypingEvent {
   });
 }
 
+/// Somebody came online or went offline.
+///
+/// Sent on transitions only — the server renews its presence lease silently, so
+/// no frame arrives to say "still here". A client that wants the current state
+/// on arrival asks for it (`getPresence`); these keep it current afterwards.
+///
+/// [lastSeen] is the moment the server last heard from them, which on an
+/// `online: true` frame is essentially now and on an offline one is when they
+/// went. Null when the account has never connected since presence existed.
+class WsPresenceEvent {
+  final String userId;
+  final bool online;
+  final DateTime? lastSeen;
+  const WsPresenceEvent({
+    required this.userId,
+    required this.online,
+    this.lastSeen,
+  });
+}
+
 /// Pushed directly to a member when another member distributes their group
 /// sender key (on join or after a re-key triggered by a member departure).
 class WsSenderKeyDistributionEvent {
@@ -289,6 +309,7 @@ class ChatWebSocketService {
   StreamController<WsSenderKeyDistributionEvent>? _senderKeyDistController;
   StreamController<WsReadReceiptEvent>? _readReceiptController;
   StreamController<WsTypingEvent>? _typingController;
+  StreamController<WsPresenceEvent>? _presenceController;
   StreamSubscription? _sub;
 
   /// Emits the initial server handshake (userId + room list).
@@ -378,6 +399,13 @@ class ChatWebSocketService {
 
   Stream<WsReadReceiptEvent> get readReceiptEvents =>
       _readReceiptController?.stream ?? const Stream.empty();
+
+  /// Emits when somebody this user shares a conversation with comes online or
+  /// goes offline. Lazily created like [typingEvents], because a listener can
+  /// subscribe before the socket has connected.
+  Stream<WsPresenceEvent> get presenceEvents =>
+      (_presenceController ??= StreamController<WsPresenceEvent>.broadcast())
+          .stream;
 
   bool _connected = false;
   bool get isConnected => _connected;
@@ -480,6 +508,9 @@ class ChatWebSocketService {
     }
 
     _connected = true;
+    // Anything read while the socket was down is told to the server now. See
+    // [_pendingAcks].
+    _flushPendingAcks();
 
     _sub = _channel!.stream.listen(
       (raw) {
@@ -682,6 +713,16 @@ class ChatWebSocketService {
                 isTyping: json['is_typing'] as bool? ?? true,
               ));
             }
+          } else if (type == 'presence') {
+            if (json['user_id'] is String) {
+              _presenceController?.add(WsPresenceEvent(
+                userId: json['user_id'] as String,
+                online: json['online'] as bool? ?? false,
+                lastSeen: DateTime.tryParse(
+                  json['last_seen'] as String? ?? '',
+                )?.toUtc(),
+              ));
+            }
           } else if (type == 'read_receipt') {
             if (json['room_id'] is String && json['reader_id'] is String) {
               _readReceiptController?.add(WsReadReceiptEvent(
@@ -864,24 +905,59 @@ class ChatWebSocketService {
     });
   }
 
+  /// Acks that could not be sent, newest cursor per room.
+  ///
+  /// A map rather than a list because a bulk ack covers everything below its
+  /// cursor: two unsent acks for one room are one ack for the later of them,
+  /// so the queue stays the size of the number of rooms read while offline
+  /// rather than the number of times somebody looked at one.
+  final Map<String, String> _pendingAcks = {};
+
+  /// Tell the server this room has been read up to [upToMessageId].
+  ///
+  /// Not fire-and-forget, unlike [sendTyping] beside it. That distinction is
+  /// the bug this fixes: both went through [_sendRaw], which drops the frame
+  /// when the socket is down. For a typing indicator that is right — it is
+  /// worthless by the time a reconnect would deliver it. For an ack it is
+  /// permanent data loss, because unread is derived from the absence of a read
+  /// row on the server: a dropped ack means the message is unread again on the
+  /// next device and after the next sign-in, with nothing to put it right.
+  ///
+  /// So a frame that cannot go now is held and sent on reconnect. The HTTP
+  /// fallback in ChatRepositoryImpl.markRoomAsRead covers the case where this
+  /// app never reconnects at all.
   void sendAck(String roomId, String upToMessageId) {
-    _sendRaw({
+    final sent = _sendRaw({
       'type': 'ack',
       'room_id': roomId,
       'up_to_message_id': upToMessageId,
     });
+    if (!sent) _pendingAcks[roomId] = upToMessageId;
   }
 
-  void _sendRaw(Map<String, dynamic> data) {
-    if (!_connected || _channel == null) return;
+  void _flushPendingAcks() {
+    if (_pendingAcks.isEmpty) return;
+    // Copied before iterating: _sendRaw can fail again and write back into the
+    // map, and mutating while iterating throws.
+    final queued = Map<String, String>.from(_pendingAcks);
+    _pendingAcks.clear();
+    queued.forEach(sendAck);
+  }
+
+  /// Returns whether the frame actually went out, so callers that cannot
+  /// afford to lose one — [sendAck] — can hold it instead.
+  bool _sendRaw(Map<String, dynamic> data) {
+    if (!_connected || _channel == null) return false;
     // Every outbound event must include room_id per the global-endpoint protocol.
     if (_roomId != null && !data.containsKey('room_id')) {
       data['room_id'] = _roomId;
     }
     try {
       _channel!.sink.add(jsonEncode(data));
+      return true;
     } catch (_) {
       _connected = false;
+      return false;
     }
   }
 
@@ -908,6 +984,7 @@ class ChatWebSocketService {
     _senderKeyDistController?.close();
     _readReceiptController?.close();
     _typingController?.close();
+    _presenceController?.close();
     _connectedController = null;
     _errorController = null;
     _msgController = null;
@@ -930,6 +1007,7 @@ class ChatWebSocketService {
     _senderKeyDistController = null;
     _readReceiptController = null;
     _typingController = null;
+    _presenceController = null;
   }
 
   /// Gracefully close the connection.

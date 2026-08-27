@@ -11,6 +11,26 @@ import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/shared_media.dart';
 import 'package:http_parser/http_parser.dart';
+/// Whether somebody is online, and when they were last seen.
+///
+/// `lastSeen` is null for an account that has never connected since presence
+/// existed — which a screen should read as "we cannot say", not as "a long
+/// time ago". The two look identical to a user and only one of them is true.
+class PresenceSnapshot {
+  final bool online;
+  final DateTime? lastSeen;
+
+  const PresenceSnapshot({required this.online, this.lastSeen});
+
+  const PresenceSnapshot.unknown() : online = false, lastSeen = null;
+
+  factory PresenceSnapshot.fromJson(Map<String, dynamic> json) =>
+      PresenceSnapshot(
+        online: json['online'] as bool? ?? false,
+        lastSeen: DateTime.tryParse(json['last_seen'] as String? ?? '')?.toUtc(),
+      );
+}
+
 /// Reaction state for an event (from GET /chat/events/{id}/reaction).
 class EventReaction {
   final String? userReaction; // 'like', 'dislike', or null
@@ -207,6 +227,22 @@ abstract class ChatRestDataSource {
 
   /// DELETE /chat/rooms/{room_id}/pin — clear the room's pinned message.
   Future<void> unpinMessage(String roomId);
+
+  /// POST /chat/rooms/{id}/read — record that this room has been read.
+  ///
+  /// The WebSocket ack does the same thing and is faster, but it is dropped
+  /// when the socket is down and nothing retries it. This is the path that
+  /// always arrives, which matters because unread is derived from the absence
+  /// of a read row: a lost ack means the message is unread again on the next
+  /// device and the next sign-in.
+  Future<void> markRoomRead(String roomId, {String? upToMessageId});
+
+  /// GET /chat/presence — who of these people is online right now.
+  ///
+  /// The pushed frames say what *changed* while listening; this says what is
+  /// true on arrival. Without it, a conversation opened after the other person
+  /// came online would show them offline until they happened to reconnect.
+  Future<Map<String, PresenceSnapshot>> getPresence(List<String> userIds);
 
   /// POST /chat/rooms/group — create a group room with optional initial invitees.
   Future<ChatRoom> createGroupRoom({
@@ -535,6 +571,31 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   @override
   Future<void> unpinMessage(String roomId) async {
     await _wrap(() => _client.dio.delete('/chat/rooms/$roomId/pin'));
+  }
+
+  @override
+  Future<void> markRoomRead(String roomId, {String? upToMessageId}) async {
+    await _wrap(() => _client.dio.post(
+          '/chat/rooms/$roomId/read',
+          data: {if (upToMessageId != null) 'up_to_message_id': upToMessageId},
+        ));
+  }
+
+  @override
+  Future<Map<String, PresenceSnapshot>> getPresence(List<String> userIds) async {
+    if (userIds.isEmpty) return const {};
+    final res = await _wrap(() => _client.dio.get(
+          '/chat/presence',
+          queryParameters: {'user_ids': userIds.join(',')},
+        ));
+    final data = res.data['data'];
+    if (data is! Map) return const {};
+    return {
+      for (final entry in data.entries)
+        entry.key as String: PresenceSnapshot.fromJson(
+          Map<String, dynamic>.from(entry.value as Map),
+        ),
+    };
   }
 
   @override

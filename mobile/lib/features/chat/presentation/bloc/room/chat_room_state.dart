@@ -83,6 +83,13 @@ class ChatRoomState extends Equatable {
   /// True when the signed-in user has muted this room.
   final bool isMuted;
 
+  /// Presence for the other people in this room, as {userId: snapshot}.
+  ///
+  /// Absent means "we have not been told", which the header draws as offline —
+  /// the honest reading, since presence is a claim about somebody being there
+  /// and we cannot make it without an answer.
+  final Map<String, PresenceSnapshot> presence;
+
   const ChatRoomState({
     this.messages = const [],
     this.isConnected = false,
@@ -114,6 +121,7 @@ class ChatRoomState extends Equatable {
     this.isDeleted = false,
     this.typingUsers = const {},
     this.isMuted = false,
+    this.presence = const {},
   });
 
   ChatRoomState copyWith({
@@ -152,6 +160,7 @@ class ChatRoomState extends Equatable {
     bool? isDeleted,
     Map<String, String>? typingUsers,
     bool? isMuted,
+    Map<String, PresenceSnapshot>? presence,
   }) =>
       ChatRoomState(
         messages: messages ?? this.messages,
@@ -184,6 +193,7 @@ class ChatRoomState extends Equatable {
         isDeleted: isDeleted ?? this.isDeleted,
         typingUsers: typingUsers ?? this.typingUsers,
         isMuted: isMuted ?? this.isMuted,
+        presence: presence ?? this.presence,
       );
 
   @override
@@ -218,5 +228,6 @@ class ChatRoomState extends Equatable {
         isDeleted,
         typingUsers,
         isMuted,
+        presence,
       ];
 }

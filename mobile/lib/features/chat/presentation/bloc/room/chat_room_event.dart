@@ -357,6 +357,25 @@ class _TypingReceived extends ChatRoomEvent {
   });
 }
 
+/// Somebody came online or went offline.
+class _PresenceReceived extends ChatRoomEvent {
+  final String userId;
+  final bool online;
+  final DateTime? lastSeen;
+  const _PresenceReceived({
+    required this.userId,
+    required this.online,
+    this.lastSeen,
+  });
+}
+
+/// The presence of everyone in this room, fetched on open — what the pushed
+/// frames then keep current.
+class _PresenceLoaded extends ChatRoomEvent {
+  final Map<String, PresenceSnapshot> presence;
+  const _PresenceLoaded(this.presence);
+}
+
 /// A typing indicator has gone stale and should be dropped.
 ///
 /// Needed because a stop frame is an optimisation, not a guarantee: an app that

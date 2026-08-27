@@ -16,6 +16,7 @@ import 'package:jperg_app/features/chat/presentation/pages/contact_info_page.dar
 import 'package:jperg_app/features/chat/presentation/pages/group_info_page.dart';
 import 'package:jperg_app/features/chat/presentation/pages/invite_to_group_page.dart';
 import 'package:jperg_app/features/chat/presentation/mentions.dart';
+import 'package:jperg_app/features/chat/presentation/presence_label.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/chat_input_bar.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/forward_message_sheet.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/message_action_sheet.dart';
@@ -122,6 +123,21 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     final names = [for (final p in others) _firstName(p.displayName)];
     // "You" last, matching the designs — the list is about who else is here.
     return '${names.join(', ')}, You';
+  }
+
+  /// The line under the name in a one-to-one conversation.
+  ///
+  /// Only for direct rooms: a group has a roster, and "online" there would beg
+  /// the question of whose. Groups keep the member list [_headerSubtitle]
+  /// gives them. The wording itself lives in [presenceLabel].
+  String? _presenceSubtitle(ChatRoom room, ChatRoomState state) {
+    if (room.type != RoomType.direct) return null;
+    final peer = room
+        .othersFor(state.myUserId)
+        .where((p) => !p.isPending)
+        .firstOrNull;
+    if (peer == null) return null;
+    return presenceLabel(state.presence[peer.userId]);
   }
 
   static String _firstName(String full) {
@@ -825,7 +841,12 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
           buildWhen: (p, c) => p.room != c.room || p.myUserId != c.myUserId,
           builder: (_, state) {
             final room = state.room ?? widget.room;
-            final subtitle = _headerSubtitle(room, state.myUserId);
+            // A group lists its members; a one-to-one says where the other
+            // person is. Never both — they occupy the same line.
+            final subtitle =
+                _headerSubtitle(room, state.myUserId) ??
+                    _presenceSubtitle(room, state);
+            final isOnline = subtitle == 'Online';
             return Semantics(
               // Event and photo rooms have no details screen, so the header is
               // not a button there — announcing one that does nothing is worse
@@ -859,14 +880,37 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           if (subtitle != null)
-                            Text(
-                              subtitle,
-                              style: TextStyle(
-                                color: ext.searchHintColor,
-                                fontSize: 11.sp,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Only when they are actually there. A grey
+                                // dot beside "Last seen 3h ago" adds nothing
+                                // the words have not already said.
+                                if (isOnline) ...[
+                                  Container(
+                                    width: 6.w,
+                                    height: 6.w,
+                                    decoration: BoxDecoration(
+                                      color: ext.accentGold,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  SizedBox(width: AppSpacing.xs.w),
+                                ],
+                                Flexible(
+                                  child: Text(
+                                    subtitle,
+                                    style: TextStyle(
+                                      color: isOnline
+                                          ? ext.accentGold
+                                          : ext.searchHintColor,
+                                      fontSize: 11.sp,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                         ],
                       ),

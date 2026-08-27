@@ -132,7 +132,14 @@ abstract class ChatRepository {
   Future<Map<String, DateTime>> getLastMessageTimes();
 
   /// Local-only: mark all messages in [roomId] as read.
-  Future<void> markRoomAsRead(String roomId);
+  /// Mark a room read on this device *and* on the server.
+  ///
+  /// Both halves, because either alone is wrong. The local write is what makes
+  /// the badge clear instantly; the server write is what makes it stay clear on
+  /// the next device and the next sign-in. This used to do only the first, and
+  /// the local cache then masked the missing server write until a logout wiped
+  /// it and every read message came back unread.
+  Future<void> markRoomAsRead(String roomId, {String? upToMessageId});
 
   /// Upload an image file and return the hosted URL.
   /// [mimeType] is the MIME type; on web it comes from the browser File API.
@@ -140,6 +147,10 @@ abstract class ChatRepository {
 
   /// GET /chat/events/{eventId}/reaction — user's reaction + aggregate counts.
   Future<EventReaction> getEventReaction(String eventId, String userId);
+
+  /// Who of these people is online right now. Empty when it cannot be asked —
+  /// presence is a decoration, and unknown reads as offline.
+  Future<Map<String, PresenceSnapshot>> getPresence(List<String> userIds);
 
   /// GET /chat/events/reactions/batch — reactions for many events in one call.
   Future<Map<String, EventReaction>> getEventReactionsBatch(

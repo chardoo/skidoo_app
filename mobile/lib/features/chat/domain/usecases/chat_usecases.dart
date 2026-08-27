@@ -330,7 +330,8 @@ class MarkRoomAsReadUseCase {
   final ChatRepository _repo;
   MarkRoomAsReadUseCase(this._repo);
 
-  Future<void> call(String roomId) => _repo.markRoomAsRead(roomId);
+  Future<void> call(String roomId, {String? upToMessageId}) =>
+      _repo.markRoomAsRead(roomId, upToMessageId: upToMessageId);
 }
 
 class UploadChatImageUseCase {
@@ -339,6 +340,16 @@ class UploadChatImageUseCase {
 
   Future<String> call(File file, {String? mimeType}) =>
       _repo.uploadImage(file, mimeType: mimeType);
+}
+
+/// Who of these people is online right now — the state on arrival, which the
+/// pushed presence frames then keep current.
+class GetPresenceUseCase {
+  final ChatRepository _repo;
+  GetPresenceUseCase(this._repo);
+
+  Future<Map<String, PresenceSnapshot>> call(List<String> userIds) =>
+      _repo.getPresence(userIds);
 }
 
 class GetEventReactionUseCase {

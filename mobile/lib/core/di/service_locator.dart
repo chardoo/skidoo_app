@@ -542,6 +542,8 @@ Future<void> setupServiceLocator() async {
       GetLastMessageTimesUseCase(sl<ChatRepository>()));
   sl.registerSingleton<MarkRoomAsReadUseCase>(
       MarkRoomAsReadUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetPresenceUseCase>(
+      GetPresenceUseCase(sl<ChatRepository>()));
   sl.registerSingleton<UploadChatImageUseCase>(
       UploadChatImageUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetEventReactionUseCase>(
@@ -593,6 +595,7 @@ Future<void> setupServiceLocator() async {
         getCachedMessages: sl<GetCachedMessagesUseCase>(),
         cacheMessage: sl<CacheMessageUseCase>(),
         markRoomAsRead: sl<MarkRoomAsReadUseCase>(),
+        getPresence: sl<GetPresenceUseCase>(),
         uploadImage: sl<UploadChatImageUseCase>(),
         editMessage: sl<EditMessageUseCase>(),
         deleteMessage: sl<DeleteMessageUseCase>(),

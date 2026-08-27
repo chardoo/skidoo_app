@@ -14,9 +14,12 @@ import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.
         WsKeyBundlesEvent, WsKeyRotationEvent, WsMessageDeletedEvent,
         WsMessageEditedEvent, WsParticipantKeyAvailable,
         WsMessagePinnedEvent,
-        WsParticipantRemovedEvent, WsReadReceiptEvent, WsRoomDeletedEvent,
+        WsParticipantRemovedEvent, WsPresenceEvent, WsReadReceiptEvent,
+        WsRoomDeletedEvent,
         WsRoomSettingsUpdatedEvent, WsSenderKeyDistributionEvent,
         WsTypingEvent, WsUserJoinedEvent;
+import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.dart'
+    show PresenceSnapshot;
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/features/chat/presentation/typing_announcer.dart';
@@ -36,6 +39,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   final GetCachedMessagesUseCase _getCachedMessages;
   final CacheMessageUseCase _cacheMessage;
   final MarkRoomAsReadUseCase _markAsRead;
+  final GetPresenceUseCase _getPresence;
   final UploadChatImageUseCase _uploadImage;
   final EditMessageUseCase _editMessage;
   final DeleteMessageUseCase _deleteMessage;
@@ -100,6 +104,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   StreamSubscription? _wsParticipantLeftSub;
   StreamSubscription<WsReadReceiptEvent>? _wsReadReceiptSub;
   StreamSubscription<WsTypingEvent>? _wsTypingSub;
+  StreamSubscription<WsPresenceEvent>? _wsPresenceSub;
   StreamSubscription<WsChatErrorEvent>? _wsErrorSub;
   // Waits for ChatBackgroundService to signal the WS is (re)connected.
   StreamSubscription<bool>? _wsConnectionSub;
@@ -115,6 +120,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     required GetCachedMessagesUseCase getCachedMessages,
     required CacheMessageUseCase cacheMessage,
     required MarkRoomAsReadUseCase markRoomAsRead,
+    required GetPresenceUseCase getPresence,
     required UploadChatImageUseCase uploadImage,
     required EditMessageUseCase editMessage,
     required DeleteMessageUseCase deleteMessage,
@@ -138,6 +144,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         _getCachedMessages = getCachedMessages,
         _cacheMessage = cacheMessage,
         _markAsRead = markRoomAsRead,
+        _getPresence = getPresence,
         _uploadImage = uploadImage,
         _editMessage = editMessage,
         _deleteMessage = deleteMessage,
@@ -205,6 +212,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_ReadReceiptReceived>(_onReadReceiptReceived);
     on<ChatRoomTypingChanged>(_onTypingChanged);
     on<_TypingReceived>(_onTypingReceived);
+    on<_PresenceReceived>(_onPresenceReceived);
+    on<_PresenceLoaded>(_onPresenceLoaded);
     on<_TypingExpired>(_onTypingExpired);
     on<ChatRoomMuteToggled>(_onMuteToggled);
   }
@@ -327,6 +336,23 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     _isGroupRoom = roomType == RoomType.group;
 
+    // Where the other people in this room stand right now. The pushed frames
+    // only report *changes*, so without this a conversation opened after they
+    // came online would show them offline until they happened to reconnect.
+    //
+    // Unawaited: it is a green dot, and nothing on this screen should wait for
+    // it. `_getPresence` swallows its own failures.
+    final peers = event.room?.participants
+            .where((p) => p.userId != _myUserId)
+            .map((p) => p.userId)
+            .toList() ??
+        const <String>[];
+    if (peers.isNotEmpty) {
+      unawaited(_getPresence(peers).then((snapshot) {
+        if (!isClosed && snapshot.isNotEmpty) add(_PresenceLoaded(snapshot));
+      }));
+    }
+
     try {
       // Fetch messages and fresh room data (for up-to-date adminOnly /
       // participants) in parallel — both are network calls, so running them
@@ -369,11 +395,19 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
       // Send bulk ack for all loaded messages so the server can notify senders
       // that we've read their messages.
+      //
+      // Both paths, and this is the call site that most needs both: opening a
+      // room is often the first thing that happens after a cold start, while
+      // the socket is still handshaking. The ack is queued if it cannot go now
+      // (see sendAck), and the HTTP write below covers a session that never
+      // reconnects at all.
       final latestMessage = merged
           .where((m) => !m.isLocal && m.senderId != _myUserId)
           .firstOrNull;
       if (latestMessage != null) {
         _ws.sendAck(event.roomId, latestMessage.id);
+        await _markAsRead(event.roomId, upToMessageId: latestMessage.id)
+            .catchError((_) {});
       }
 
       if (!kIsWeb) {
@@ -460,6 +494,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsParticipantLeftSub?.cancel();
     _wsReadReceiptSub?.cancel();
     _wsTypingSub?.cancel();
+    _wsPresenceSub?.cancel();
     _wsErrorSub?.cancel();
     _wsMsgSub = null;
     _wsLikeSub = null;
@@ -480,6 +515,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsParticipantLeftSub = null;
     _wsReadReceiptSub = null;
     _wsTypingSub = null;
+    _wsPresenceSub = null;
     _wsErrorSub = null;
   }
 
@@ -650,6 +686,22 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             userId: event.userId,
             userName: event.userName,
             isTyping: event.isTyping,
+          ));
+        }
+      },
+    );
+
+    // Presence is per *person*, not per room: the same frame answers "is Ama
+    // online" in every conversation she is in, so it is not filtered by room
+    // the way typing is. Only people other than us are kept — our own presence
+    // is not something this screen has any use for.
+    _wsPresenceSub = _ws.presenceEvents.listen(
+      (event) {
+        if (!isClosed && event.userId != _myUserId) {
+          add(_PresenceReceived(
+            userId: event.userId,
+            online: event.online,
+            lastSeen: event.lastSeen,
           ));
         }
       },
@@ -1424,10 +1476,14 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // (i.e. the user navigated away). close() already called _bgService.resume;
     // any message BgService saves between now and here must stay unread.
     if (!isClosed && roomId != null) {
-      await _markAsRead(roomId).catchError((_) {});
+      final peerMessage = msg.senderId != _myUserId && !msg.isLocal;
+      // The cursor goes to both paths, so the socket ack and the HTTP write
+      // record the same range rather than one of them guessing.
+      await _markAsRead(roomId, upToMessageId: peerMessage ? msg.id : null)
+          .catchError((_) {});
       _bgService.onRoomRead?.call(roomId);
       // Ack this message so the sender sees their read receipt.
-      if (msg.senderId != _myUserId && !msg.isLocal) {
+      if (peerMessage) {
         _ws.sendAck(roomId, msg.id);
       }
     }
@@ -2460,6 +2516,26 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   /// that legitimately want to say it (going idle, sending, clearing the box,
   /// leaving the room) can all just call it.
   void _stopTyping() => _typing.markStopped();
+
+  void _onPresenceReceived(_PresenceReceived event, Emitter<ChatRoomState> emit) {
+    emit(state.copyWith(presence: {
+      ...state.presence,
+      event.userId: PresenceSnapshot(
+        online: event.online,
+        // An offline frame carries the moment they went, which is what "last
+        // seen" wants. On an online frame it is essentially now and unused,
+        // but keeping it means the value is already right the moment they go.
+        lastSeen: event.lastSeen ?? state.presence[event.userId]?.lastSeen,
+      ),
+    }));
+  }
+
+  void _onPresenceLoaded(_PresenceLoaded event, Emitter<ChatRoomState> emit) {
+    // Merged under what is already held rather than over it: a frame that
+    // arrived while this fetch was in flight is newer than its answer, and
+    // overwriting would put the screen back to a state that has since changed.
+    emit(state.copyWith(presence: {...event.presence, ...state.presence}));
+  }
 
   void _onTypingReceived(_TypingReceived event, Emitter<ChatRoomState> emit) {
     final updated = Map<String, String>.from(state.typingUsers);

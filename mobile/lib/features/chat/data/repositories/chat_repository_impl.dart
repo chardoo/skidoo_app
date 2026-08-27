@@ -307,7 +307,18 @@ class ChatRepositoryImpl implements ChatRepository {
       _db.getLastMessageTimes();
 
   @override
-  Future<void> markRoomAsRead(String roomId) => _db.markAllAsRead(roomId);
+  Future<void> markRoomAsRead(String roomId, {String? upToMessageId}) async {
+    // Local first, so the badge clears at once whatever the network is doing.
+    await _db.markAllAsRead(roomId);
+    try {
+      await _rest.markRoomRead(roomId, upToMessageId: upToMessageId);
+    } catch (_) {
+      // Swallowed: the caller is a screen being opened, and a failed read must
+      // not surface as an error on it. The cost of losing this one is that the
+      // room reads as unread again on another device — which the WebSocket ack
+      // and the next open both get another chance to put right.
+    }
+  }
 
   @override
   Future<String> uploadImage(File file, {String? mimeType}) =>
@@ -316,6 +327,17 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<EventReaction> getEventReaction(String eventId, String userId) =>
       _rest.getEventReaction(eventId, userId);
+
+  @override
+  Future<Map<String, PresenceSnapshot>> getPresence(List<String> userIds) async {
+    try {
+      return await _rest.getPresence(userIds);
+    } catch (_) {
+      // A green dot is never worth failing a screen for. Empty reads as
+      // offline, which is the honest answer when we could not ask.
+      return const {};
+    }
+  }
 
   @override
   Future<Map<String, EventReaction>> getEventReactionsBatch(
