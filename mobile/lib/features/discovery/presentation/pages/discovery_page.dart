@@ -9,6 +9,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/focus_utils.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/dark_media_surface.dart';
 import 'package:jperg_app/features/auth/presentation/widgets/login_bottom_sheet.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
@@ -204,8 +205,15 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
+    // Explore is a full-bleed media feed and is dark whatever the app's theme
+    // is, exactly as the signed-in Feed tab is — see [DarkMediaSurface]. The
+    // background is switched here as well as inside the wrapper so no light
+    // band shows through the safe-area insets while the feed paints.
+    final onFeed = _selectedTab == 1;
+
     final page = Scaffold(
-      backgroundColor: ext.homeBackground,
+      backgroundColor:
+          onFeed ? AppThemeExtension.dark.homeBackground : ext.homeBackground,
       body: Focus(
         focusNode: _feedFocusNode,
         onKeyEvent: kIsWeb ? _handleKeyEvent : null,
@@ -240,9 +248,17 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
 
             // ── Explore — fills the entire screen; the app bar floats on top,
             // matching the logged-in Home feed (no solid bar pushing it down).
+            //
+            // Wrapped in [DarkMediaSurface] for the same reason the signed-in
+            // feed is: the card's letterbox and backdrop are themed, so under a
+            // light theme the surround came out cream while the overlays drawn
+            // on top of it — white captions, white counts, white hashtags — kept
+            // assuming a dark ground and became unreadable. Signing in is not
+            // what makes a photo feed dark; being a photo feed is.
             if (_selectedTab == 1)
               Positioned.fill(
-                child: BlocBuilder<DiscoveryBloc, DiscoveryState>(
+                child: DarkMediaSurface(
+                  child: BlocBuilder<DiscoveryBloc, DiscoveryState>(
                   // Exclude savedEventIds/savedItemRecordIds/hiddenEventIds —
                   // they're handled by inner BlocBuilders inside each card,
                   // so they must not trigger a full ListView rebuild mid-scroll.
@@ -296,6 +312,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                       },
                     );
                   },
+                  ),
                 ),
               ),
 
