@@ -76,7 +76,13 @@ class FeedMusicPill extends StatelessWidget {
           ),
 
           // ── Track, and where it came from ─────────────────────────────
-          Semantics(
+          //
+          // Flexible so the pill can never be wider than the space it is given.
+          // Without it the row asked for its natural width and overflowed on a
+          // narrower screen — 9 px on a 6.1", and the yellow-and-black stripes
+          // land across the bottom of somebody's photograph.
+          Flexible(
+            child: Semantics(
             button: true,
             label: 'About ${track.label}. Tap to open',
             excludeSemantics: true,
@@ -88,25 +94,31 @@ class FeedMusicPill extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Bounded, so a long title truncates instead of pushing
-                    // the pill under the action rail. The caption column above
-                    // it is already inset from the rail by the card.
+                    // Capped *and* flexible, and it needs both.
                     //
-                    // Tighter than it was, because the pill now carries the
-                    // attribution too: at the old width the two together ran
-                    // most of the way across the card. The design truncates
-                    // hard for the same reason — "Regular – Mercy C…" — and
-                    // the full title is a tap away in the sheet.
-                    ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: 118.w),
-                      child: Text(
-                        track.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11.5.sp,
-                          fontWeight: FontWeight.w600,
+                    // The cap is the design's: a long title truncates rather
+                    // than running the pill across the card, which is why it
+                    // reads "Regular – Mercy C…" with the whole thing a tap
+                    // away in the sheet. The caption column above is already
+                    // inset from the action rail by the card.
+                    //
+                    // The Flexible is what lets the title give way when even
+                    // the cap does not fit. A fixed 118 beside an attribution
+                    // that cannot shrink is wider than a narrow screen allows,
+                    // and the row then overflowed — 9 px on a 6.1", drawn as
+                    // yellow-and-black stripes across somebody's photograph.
+                    Flexible(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: 118.w),
+                        child: Text(
+                          track.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -120,12 +132,26 @@ class FeedMusicPill extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.28),
                     ),
                     SizedBox(width: 8.w),
-                    Text(
-                      'powered by',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 9.sp,
-                        fontWeight: FontWeight.w500,
+                    // Second to give way, after the title and before the name.
+                    //
+                    // The order is deliberate. On a narrow card something has
+                    // to yield, and of the three this is the one that carries
+                    // no information: "Audiomack" alone still credits them,
+                    // where "powered by" alone credits nobody. So the title
+                    // shrinks first, these two words second, and the provider's
+                    // name is the last thing standing — it is the attribution
+                    // the licence actually rests on.
+                    Flexible(
+                      child: Text(
+                        'powered by',
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                        softWrap: false,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 9.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                     SizedBox(width: 4.w),
@@ -146,6 +172,7 @@ class FeedMusicPill extends StatelessWidget {
                 ),
               ),
             ),
+          ),
           ),
         ],
       ),

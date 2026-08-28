@@ -43,6 +43,75 @@ void main() {
     view.devicePixelRatio = 3;
   });
 
+  group('the pill fits the space it is given', () {
+    // It did not. On a 6.1" screen the row overflowed by 9 px and Flutter drew
+    // yellow-and-black stripes across the bottom of the photograph — the title
+    // was capped at a fixed width beside an attribution that cannot shrink,
+    // and the two together were wider than the card allowed.
+    //
+    // Widths rather than a golden file: the failure is a layout constraint, and
+    // an overflow raises during layout, so pumping inside a narrow box is the
+    // whole test.
+
+    Widget boxed(double width, Widget child) => ScreenUtilInit(
+          designSize: const Size(390, 844),
+          builder: (_, __) => MaterialApp(
+            theme: ThemeData.dark().copyWith(
+              extensions: const [AppThemeExtension.dark],
+              splashFactory: NoSplash.splashFactory,
+            ),
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(width: width, child: child),
+              ),
+            ),
+          ),
+        );
+
+    for (final width in <double>[278, 240, 200, 160]) {
+      testWidgets('does not overflow at ${width.toInt()} px', (tester) async {
+        await tester.pumpWidget(boxed(
+          width,
+          FeedMusicPill(
+            track: _track,
+            muted: false,
+            onToggleMute: () {},
+            onOpenTrack: () {},
+          ),
+        ));
+        await tester.pump();
+
+        // takeException() returns the layout assertion when a RenderFlex has
+        // overflowed, and null when nothing went wrong.
+        expect(tester.takeException(), isNull,
+            reason: 'the pill overflowed at ${width.toInt()} px');
+      });
+    }
+
+    testWidgets('a very long title still fits, truncated', (tester) async {
+      await tester.pumpWidget(boxed(
+        240,
+        FeedMusicPill(
+          track: const MusicTrack(
+            id: '2',
+            title: 'Nathaniel Bassey ft. Dunsin Oyekan & Dasola Akinbule — Iba',
+            artist: 'Nathaniel Bassey',
+            streamUrl: 'https://audio.example/iba.mp3',
+            pageUrl: '',
+          ),
+          muted: false,
+          onToggleMute: () {},
+          onOpenTrack: () {},
+        ),
+      ));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      // The attribution is the point of the pill and must survive the squeeze.
+      expect(find.text('Audiomack'), findsOneWidget);
+    });
+  });
+
   group('the pill', () {
     testWidgets('names the track and credits the provider', (tester) async {
       await tester.pumpWidget(host(FeedMusicPill(
