@@ -7,7 +7,13 @@ class EventPicture {
   final String id;
   final String url;
   final String imageId;
-  final int price;
+  /// In whole currency units, with the pesewas kept.
+  ///
+  /// Was an `int`, and this is a money path: it becomes `Photo.price`, which
+  /// decides whether a photo is bought or saved for nothing. Truncating turned
+  /// a photo priced 0.50 into 0 — free, given away — and undercharged 6.27 by
+  /// the 27 pesewas.
+  final double price;
   final MediaType mediaType;
   final bool owner;
   final int likeCount;
@@ -79,7 +85,7 @@ class EventPicture {
       id: json['id']?.toString() ?? '',
       url: json['url']?.toString() ?? '',
       imageId: json['imageId']?.toString() ?? '',
-      price: (json['price'] as num?)?.toInt() ?? 0,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
       mediaType: typeRaw == 'video' ? MediaType.video : MediaType.photo,
       owner: json['owner'] == true,
       isPurchased:

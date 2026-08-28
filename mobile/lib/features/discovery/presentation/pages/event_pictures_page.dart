@@ -41,7 +41,7 @@ List<Photo> photosOfEvent(EventDiscovery event) => [
           p.imageId,
           p.url,
           event.photographerId,
-          p.price.toDouble(),
+          p.price,
           '',
           null,
           // Everything reachable from the public feed is public; the badge over
