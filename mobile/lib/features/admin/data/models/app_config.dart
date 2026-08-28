@@ -1,3 +1,23 @@
+/// The tag vocabulary shipped with the build.
+///
+/// A first-launch and offline fallback only — /config is the source of truth,
+/// because it is also what the web portal reads when a photographer tags an
+/// album, and the two matching is the entire point. Keep in step with
+/// `picco-v2/src/services/contentTags.ts` and the seed in main's
+/// `f1a2b3c4d5e6_content_tag_vocabulary` migration.
+const List<String> kContentTagFallback = [
+  // Occasions — what an album usually is
+  'Wedding', 'Birthday', 'Funeral', 'Graduation', 'Naming Ceremony',
+  'Anniversary', 'Engagement', 'Baby Shower', 'Bridal Shower',
+  'Festival', 'Concert', 'Party', 'Conference', 'Corporate', 'Church',
+  'Sports', 'Fashion Show', 'Award Show', 'Culture', 'Traditional',
+  // Genres — what somebody photographs, or wants to look at
+  'Portrait', 'Landscape', 'Nature', 'Wildlife', 'Street', 'Travel',
+  'Architecture', 'Food', 'Documentary', 'Lifestyle', 'Fashion',
+  'Macro', 'Aerial', 'Night', 'Fine Art', 'Photojournalism', 'Abstract',
+  'Animals', 'Aviation', 'Technology',
+];
+
 /// App-wide configuration controlled by the super admin.
 class AppConfig {
   const AppConfig({
@@ -7,6 +27,7 @@ class AppConfig {
     this.requestsEveryNEvents = 20,
     this.commentsEnabled = true,
     this.minCampaignBudgetGhs = 30.0,
+    this.contentTags = kContentTagFallback,
   });
 
   /// Whether ad slots appear in the home feed.
@@ -27,6 +48,21 @@ class AppConfig {
   /// Minimum total campaign budget in GHS.
   final double minCampaignBudgetGhs;
 
+  /// The one tag vocabulary — the words this screen offers as interests, and
+  /// the words a photographer picks from when tagging an album.
+  ///
+  /// They have to be the same words. They were not: interests came from a
+  /// hardcoded list of photography genres here, while album tags were a
+  /// free-text box in the web portal, so photographers typed what the event
+  /// was — "Ga state", "Ghana weddings", "Homowo". Two vocabularies describing
+  /// different things, and the content half of the feed matched almost nothing
+  /// as a result.
+  ///
+  /// Served from /config so it cannot drift again. This app alone had shipped
+  /// two lists that disagreed with each other, one saying "Portraits" and the
+  /// other "Portrait".
+  final List<String> contentTags;
+
   factory AppConfig.fromJson(Map<String, dynamic> json) {
     final data = json['data'] is Map<String, dynamic>
         ? json['data'] as Map<String, dynamic>
@@ -40,6 +76,13 @@ class AppConfig {
       commentsEnabled: data['comments_enabled'] as bool? ?? true,
       minCampaignBudgetGhs:
           (data['min_campaign_budget_ghs'] as num?)?.toDouble() ?? 30.0,
+      contentTags: () {
+        final raw = data['content_tags'];
+        if (raw is List && raw.isNotEmpty) {
+          return raw.map((t) => t.toString()).toList(growable: false);
+        }
+        return kContentTagFallback;
+      }(),
     );
   }
 
@@ -50,6 +93,7 @@ class AppConfig {
         'requests_every_n_events': requestsEveryNEvents,
         'comments_enabled': commentsEnabled,
         'min_campaign_budget_ghs': minCampaignBudgetGhs,
+        'content_tags': contentTags,
       };
 
   AppConfig copyWith({
@@ -59,6 +103,7 @@ class AppConfig {
     int? requestsEveryNEvents,
     bool? commentsEnabled,
     double? minCampaignBudgetGhs,
+    List<String>? contentTags,
   }) {
     return AppConfig(
       adsEnabled: adsEnabled ?? this.adsEnabled,
@@ -67,6 +112,7 @@ class AppConfig {
       requestsEveryNEvents: requestsEveryNEvents ?? this.requestsEveryNEvents,
       commentsEnabled: commentsEnabled ?? this.commentsEnabled,
       minCampaignBudgetGhs: minCampaignBudgetGhs ?? this.minCampaignBudgetGhs,
+      contentTags: contentTags ?? this.contentTags,
     );
   }
 }

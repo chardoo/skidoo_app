@@ -1,3 +1,4 @@
+import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
@@ -28,23 +29,14 @@ class InterestsPage extends StatelessWidget {
 class _InterestsView extends StatelessWidget {
   const _InterestsView();
 
-  static const _interests = [
-    'Wedding',
-    'Nature',
-    'Fashion',
-    'Food',
-    'Sports',
-    'Events',
-    'Documentary',
-    'Concert',
-    'Travel',
-    'Architecture',
-    'Portraits',
-    'Lifestyle',
-    'Technology',
-    'Aviation',
-    'Animals',
-  ];
+  /// The shared vocabulary, from /config.
+  ///
+  /// Was a hardcoded list here, and a *different* hardcoded list on the
+  /// profile form — this one said "Portraits" and "Events" where that one said
+  /// "Portrait" and "Event", so the same person could hold two spellings of
+  /// one interest. Neither matched what photographers typed on their albums,
+  /// which is what the feed actually compares them against.
+  List<String> get _interests => AppConfigRepository.current.contentTags;
 
   @override
   Widget build(BuildContext context) {

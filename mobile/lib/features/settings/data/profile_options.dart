@@ -1,3 +1,5 @@
+import 'package:jperg_app/features/admin/data/models/app_config.dart';
+
 /// The fixed lists the profile form offers: where you are, what language you
 /// read, what time it is where you are, and what you photograph.
 ///
@@ -89,23 +91,11 @@ const Map<String, String> kTimezoneOptions = {
 
 /// What somebody photographs, or wants photographed. The chips on the profile
 /// form, and the tags the feed is personalised from.
-const List<String> kInterestTags = [
-  'Portrait',
-  'Landscape',
-  'Street',
-  'Wildlife',
-  'Architecture',
-  'Sports',
-  'Travel',
-  'Macro',
-  'Fashion',
-  'Wedding',
-  'Event',
-  'Food',
-  'Aerial',
-  'Night',
-  'Documentary',
-  'Abstract',
-  'Fine Art',
-  'Photojournalism',
-];
+///
+/// A build-time fallback now, not the list itself: the real one comes from
+/// /config, because the web portal reads the same list when a photographer
+/// tags an album and the two matching is the whole point of having it. This
+/// copy and the one in interests_page.dart used to disagree with each other —
+/// "Portrait" here, "Portraits" there — so one person could end up holding
+/// both spellings of a single interest.
+const List<String> kInterestTags = kContentTagFallback;
