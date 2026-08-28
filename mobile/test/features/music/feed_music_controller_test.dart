@@ -91,13 +91,21 @@ MusicTrack track(String id, {String url = ''}) => MusicTrack(
 
 const _settle = Duration(milliseconds: 10);
 
-FeedMusicController build(FakePlayer player, {List<bool>? persisted}) =>
+FeedMusicController build(
+  FakePlayer player, {
+  List<bool>? persisted,
+  Future<String?> Function(String)? resolveSource,
+}) =>
     FeedMusicController(
       player: player,
       settleDelay: _settle,
       // Ramping is orthogonal to every rule under test, and stepping a timer
       // through eight slices in each one would only obscure them.
       fadeDuration: Duration.zero,
+      // Straight through by default: the real one downloads audio to disk, and
+      // none of the rules under test here are about caching. The tests that
+      // *are* pass their own.
+      resolveSource: resolveSource ?? (url) async => url,
       persistMuted: persisted == null
           ? null
           : (muted) async => persisted.add(muted),
@@ -505,6 +513,101 @@ void main() {
       await settle(t);
 
       expect(player.isPlaying, isFalse);
+    });
+  });
+
+  group('paying for audio', () {
+    // Audiomack bills per request, and the feed is the one path that would
+    // otherwise generate them without limit: every card scrolled into view asks
+    // for its soundtrack. What keeps that bounded is the device cache — a track
+    // heard once plays from disk afterwards.
+    //
+    // The controller's part is small but load-bearing: ask the resolver once
+    // per track and hand the player what comes back, so a cache hit genuinely
+    // avoids the network rather than merely sitting behind one.
+
+    testWidgets('the player is given what the resolver returned, not the URL',
+        (t) async {
+      final player = FakePlayer();
+      final asked = <String>[];
+      final music = build(
+        player,
+        resolveSource: (url) async {
+          asked.add(url);
+          return '/cache/${asked.length}.mp3';
+        },
+      );
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a'), track('b')]);
+      await settle(t);
+
+      expect(asked, ['https://cdn.test/a.mp3', 'https://cdn.test/b.mp3'],
+          reason: 'one resolution per track');
+      // Local paths, not the network URLs. This is the whole point: handing the
+      // player the URL would resolve upstream on every play.
+      expect(player.loads.single, ['/cache/1.mp3', '/cache/2.mp3']);
+    });
+
+    testWidgets('a track that will not download is dropped, not fatal',
+        (t) async {
+      // One unreachable song must not silence a card that has two others.
+      final player = FakePlayer();
+      final music = build(
+        player,
+        resolveSource: (url) async => url.contains('/b.mp3') ? null : url,
+      );
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a'), track('b'), track('c')]);
+      await settle(t);
+
+      expect(player.loads.single,
+          ['https://cdn.test/a.mp3', 'https://cdn.test/c.mp3']);
+      expect(player.isPlaying, isTrue);
+    });
+
+    testWidgets('a soundtrack that resolves to nothing stays silent',
+        (t) async {
+      final player = FakePlayer();
+      final music = build(player, resolveSource: (_) async => null);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+
+      expect(player.loads, isEmpty);
+      expect(player.isPlaying, isFalse,
+          reason: 'nothing to play is silence, not a lit pill');
+    });
+
+    testWidgets('a card swiped away mid-download does not play over its successor',
+        (t) async {
+      // Downloading is slower than a thumb, so the generation check has to hold
+      // across the resolve and not only across the load.
+      final player = FakePlayer();
+      final gate = Completer<void>();
+      final music = build(
+        player,
+        resolveSource: (url) async {
+          if (url.contains('/slow.mp3')) await gate.future;
+          return url;
+        },
+      );
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('slow')]);
+      await t.pump(_settle);
+
+      // The thumb moves on before the download finishes.
+      music.claim(#cardB, 'event-2', [track('fast')]);
+      await settle(t);
+
+      gate.complete();
+      await t.pumpAndSettle();
+
+      expect(player.loads.map((l) => l.single), ['https://cdn.test/fast.mp3'],
+          reason: 'the abandoned card loaded over its successor');
     });
   });
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
+import 'package:jperg_app/core/cache/jperg_music_cache.dart';
 import 'package:jperg_app/features/music/domain/entities/music_track.dart';
 import 'package:jperg_app/features/music/presentation/feed_music_player.dart';
 
@@ -57,7 +58,9 @@ class FeedMusicController with WidgetsBindingObserver {
     Duration settleDelay = const Duration(milliseconds: 250),
     Duration fadeDuration = const Duration(milliseconds: 200),
     Future<void> Function(bool muted)? persistMuted,
+    Future<String?> Function(String streamUrl)? resolveSource,
   })  : _player = player ?? JustAudioFeedMusicPlayer(),
+        _resolveSource = resolveSource ?? _defaultResolveSource,
         _settleDelay = settleDelay,
         _fadeDuration = fadeDuration,
         _persistMuted = persistMuted {
@@ -262,6 +265,29 @@ class FeedMusicController with WidgetsBindingObserver {
 
   // ── Internals ────────────────────────────────────────────────────────────
 
+  /// Local file paths for these tracks, downloading any this device has not
+  /// heard before.
+  ///
+  /// Injected rather than called directly so a widget test can play a whole
+  /// feed without a disk or a network — the default is the real cache.
+  final Future<String?> Function(String streamUrl) _resolveSource;
+
+  /// The real one: cache on disk, fetch once, play from the file thereafter.
+  static Future<String?> _defaultResolveSource(String streamUrl) async {
+    final file = await cachedAudioFile(streamUrl);
+    return file?.path;
+  }
+
+  Future<List<String>> _resolveSources(List<MusicTrack> tracks) async {
+    // Concurrently: a four-track soundtrack on a cold cache is one download's
+    // wait rather than four, and this sits between the card appearing and the
+    // sound starting.
+    final resolved = await Future.wait([
+      for (final t in tracks) _resolveSource(t.streamUrl),
+    ]);
+    return [for (final path in resolved) if (path != null) path];
+  }
+
   Future<void> _start(int generation) async {
     if (_disposed || generation != _generation || !_appActive) return;
 
@@ -269,7 +295,19 @@ class FeedMusicController with WidgetsBindingObserver {
     if (tracks.isEmpty) return;
 
     try {
-      await _player.load([for (final t in tracks) t.streamUrl]);
+      // From disk where we already hold it, from the network only the first
+      // time this device meets the track. Audiomack bills per request and the
+      // feed is the one path that would otherwise generate them without limit
+      // — see JpergMusicCache.
+      //
+      // A track that will not download is dropped rather than allowed to fail
+      // the queue: one unreachable song should not silence a card that has
+      // three others.
+      final sources = await _resolveSources(tracks);
+      if (generation != _generation) return;
+      if (sources.isEmpty) return;
+
+      await _player.load(sources);
       if (generation != _generation) return;
 
       // Come up from silence rather than punching in at full volume: the load
