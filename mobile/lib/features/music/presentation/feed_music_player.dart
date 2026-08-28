@@ -67,6 +67,19 @@ class JustAudioFeedMusicPlayer implements FeedMusicPlayer {
   @override
   Stream<int?> get currentIndexStream => _player.currentIndexStream;
 
+  /// A source string as a URI the platform players will accept.
+  ///
+  /// `Uri.parse` on a bare filesystem path — `/var/mobile/…`, which is what a
+  /// disk cache hands back — produces a URI with no scheme, and AVPlayer
+  /// answers that with `-1002 unsupported URL`. Callers are expected to pass a
+  /// proper `file://` URI, but this is the one place that turns a string into
+  /// a URI, so it is also the right place to stop a scheme-less one reaching
+  /// the platform at all.
+  static Uri _toUri(String source) {
+    final uri = Uri.parse(source);
+    return uri.hasScheme ? uri : Uri.file(source);
+  }
+
   @override
   Future<void> load(List<String> urls) async {
     if (_loaded != null && listEquals(_loaded, urls)) return;
@@ -79,7 +92,7 @@ class JustAudioFeedMusicPlayer implements FeedMusicPlayer {
     await _player.setAudioSource(
       ConcatenatingAudioSource(
         children: [
-          for (final url in urls) AudioSource.uri(Uri.parse(url)),
+          for (final url in urls) AudioSource.uri(_toUri(url)),
         ],
       ),
       // Queued, not started. The controller decides when sound begins, and it
@@ -143,7 +156,20 @@ class JustAudioFeedMusicPlayer implements FeedMusicPlayer {
   Future<void> pause() => _player.pause();
 
   @override
-  Future<void> setVolume(double volume) => _player.setVolume(volume);
+  Future<void> setVolume(double volume) async {
+    // Swallowed and logged, like `play()` above, and for a sharper reason than
+    // tidiness: the controller fades the volume on a timer, so these calls
+    // outlive the thing they are talking to. When a source fails to load the
+    // platform player is torn down, the next fade tick finds no method channel,
+    // and the MissingPluginException lands as an *unhandled* async error —
+    // which is fatal to the zone in debug. A feed that cannot play its music
+    // must not take the app down over the volume of the silence.
+    try {
+      await _player.setVolume(volume);
+    } catch (error) {
+      debugPrint('[Music] could not set volume: $error');
+    }
+  }
 
   @override
   Future<void> dispose() async {

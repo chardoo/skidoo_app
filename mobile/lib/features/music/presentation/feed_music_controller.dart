@@ -275,7 +275,12 @@ class FeedMusicController with WidgetsBindingObserver {
   /// The real one: cache on disk, fetch once, play from the file thereafter.
   static Future<String?> _defaultResolveSource(String streamUrl) async {
     final file = await cachedAudioFile(streamUrl);
-    return file?.path;
+    // `file.uri`, not `file.path`. A path is `/var/mobile/…`, and parsing that
+    // as a URI gives one with no scheme at all — which AVPlayer rejects
+    // outright as `-1002 unsupported URL`, so every cached track failed to play
+    // on iOS while the download had worked perfectly. `File.uri` produces the
+    // `file:///var/mobile/…` form the platform players expect.
+    return file?.uri.toString();
   }
 
   Future<List<String>> _resolveSources(List<MusicTrack> tracks) async {
