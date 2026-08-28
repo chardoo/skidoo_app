@@ -36,36 +36,79 @@ class InterestedRow extends StatelessWidget {
   Widget build(BuildContext context) {
     if (count == 0) return const SizedBox.shrink();
 
-    final faces = interested.take(_maxFaces).toList();
     final label = count == 1 ? '1 interested' : '${compactCount(count)} interested';
+    final labelStyle = TextStyle(
+      color: ext.accentGold,
+      fontSize: 12.sp,
+      fontWeight: FontWeight.w600,
+    );
 
-    final row = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (faces.isNotEmpty)
-          SizedBox(
-            height: 26.r,
-            width: (26 + (faces.length - 1) * (26 - _overlap)).r,
-            child: Stack(
-              children: [
-                for (var i = 0; i < faces.length; i++)
-                  Positioned(
-                    left: i * (26 - _overlap).r,
-                    child: _Face(person: faces[i], ext: ext),
-                  ),
-              ],
+    // How many faces are drawn depends on the room there is, because the two
+    // halves of this row are not equally worth keeping: the count is the
+    // information — "4 interested" is the whole point — and the faces are
+    // decoration on top of it. A fixed three overflowed a narrow card by 12 px
+    // and Flutter striped the corner of it.
+    //
+    // So the faces are dropped one at a time until the label fits, rather than
+    // the label being truncated to "4 inter…" beside a full set of avatars.
+    final row = LayoutBuilder(
+      builder: (context, constraints) {
+        final gap = 8.w;
+        final step = (26 - _overlap).r;
+        final faceWidth = 26.r;
+
+        var fit = interested.length < _maxFaces ? interested.length : _maxFaces;
+        if (constraints.maxWidth.isFinite) {
+          // Measured rather than estimated: the label's width depends on the
+          // count's digits and the platform's font, and guessing it is how a
+          // row like this comes to overflow by twelve pixels.
+          final painter = TextPainter(
+            text: TextSpan(text: label, style: labelStyle),
+            textDirection: Directionality.of(context),
+            maxLines: 1,
+          )..layout();
+
+          while (fit > 0) {
+            final stack = faceWidth + (fit - 1) * step;
+            if (stack + gap + painter.width <= constraints.maxWidth) break;
+            fit--;
+          }
+        }
+
+        final faces = interested.take(fit).toList();
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (faces.isNotEmpty) ...[
+              SizedBox(
+                height: 26.r,
+                width: faceWidth + (faces.length - 1) * step,
+                child: Stack(
+                  children: [
+                    for (var i = 0; i < faces.length; i++)
+                      Positioned(
+                        left: i * step,
+                        child: _Face(person: faces[i], ext: ext),
+                      ),
+                  ],
+                ),
+              ),
+              SizedBox(width: gap),
+            ],
+            // The last guard. With every face dropped the label still has to
+            // fit whatever is left, and a card narrow enough to defeat that
+            // should ellipsize rather than stripe.
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: labelStyle,
+              ),
             ),
-          ),
-        if (faces.isNotEmpty) SizedBox(width: 8.w),
-        Text(
-          label,
-          style: TextStyle(
-            color: ext.accentGold,
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
 
     if (onTap == null) return row;
