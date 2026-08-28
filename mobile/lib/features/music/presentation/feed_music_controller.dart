@@ -285,7 +285,24 @@ class FeedMusicController with WidgetsBindingObserver {
     final resolved = await Future.wait([
       for (final t in tracks) _resolveSource(t.streamUrl),
     ]);
-    return [for (final path in resolved) if (path != null) path];
+
+    // A track the cache could not provide falls back to its URL, which is what
+    // the player was given before any of this existed.
+    //
+    // This is the difference between a cache and a gate, and getting it wrong
+    // silenced the whole feed: the first version dropped anything the cache
+    // missed, so a failure to *save a request* became a failure to play. On
+    // web that was total — flutter_cache_manager stores through path_provider,
+    // which has no web implementation, so every resolution returned null, the
+    // list came back empty, and the card published no pill and no sound.
+    //
+    // The cache exists to avoid paying for the same audio twice. When it
+    // cannot help, the right outcome is the old one: fetch and play. Never
+    // silence.
+    return [
+      for (var i = 0; i < tracks.length; i++)
+        resolved[i] ?? tracks[i].streamUrl,
+    ];
   }
 
   Future<void> _start(int generation) async {
@@ -298,11 +315,8 @@ class FeedMusicController with WidgetsBindingObserver {
       // From disk where we already hold it, from the network only the first
       // time this device meets the track. Audiomack bills per request and the
       // feed is the one path that would otherwise generate them without limit
-      // — see JpergMusicCache.
-      //
-      // A track that will not download is dropped rather than allowed to fail
-      // the queue: one unreachable song should not silence a card that has
-      // three others.
+      // — see JpergMusicCache. Anything the cache cannot provide falls back to
+      // its URL, so playback never depends on the cache working.
       final sources = await _resolveSources(tracks);
       if (generation != _generation) return;
       if (sources.isEmpty) return;

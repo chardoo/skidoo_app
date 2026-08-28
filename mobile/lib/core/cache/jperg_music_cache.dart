@@ -102,11 +102,11 @@ class _KeepFor implements FileServiceResponse {
 
   @override
   String get fileExtension {
-    // Their audio is served from signed URLs with query strings and often no
-    // extension at all, which the default derives an empty one from — and an
-    // extensionless file is one the platform players sniff rather than trust.
-    final guess = _inner.fileExtension;
-    return guess.isEmpty ? '.mp3' : guess;
+    // Delegated, deliberately. An earlier version forced `.mp3` whenever this
+    // came back empty, which would have named AAC data as MP3 — Audiomack
+    // serves `audio/mp4` as well as `audio/mpeg`. The package already derives
+    // this from the Content-Type header, which is the right answer for both.
+    return _inner.fileExtension;
   }
 }
 
@@ -118,9 +118,18 @@ class _KeepFor implements FileServiceResponse {
 /// the rest.
 Future<File?> cachedAudioFile(String streamUrl) async {
   if (streamUrl.isEmpty) return null;
+
+  // Nothing to cache into on web. flutter_cache_manager stores through
+  // path_provider, which has no web implementation, so every call here would
+  // throw and be logged once per play. The browser has its own HTTP cache and
+  // the response carries a fortnight of Cache-Control, so the saving is not
+  // lost — it simply happens a layer down, where we cannot see it.
+  if (kIsWeb) return null;
+
   try {
     return await JpergMusicCache.instance.getSingleFile(streamUrl);
   } catch (e) {
+    // The caller falls back to the URL, so this costs a request, not silence.
     debugPrint('[music] could not cache $streamUrl: $e');
     return null;
   }

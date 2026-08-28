@@ -549,36 +549,46 @@ void main() {
       expect(player.loads.single, ['/cache/1.mp3', '/cache/2.mp3']);
     });
 
-    testWidgets('a track that will not download is dropped, not fatal',
-        (t) async {
-      // One unreachable song must not silence a card that has two others.
+    testWidgets('a track the cache misses falls back to its URL', (t) async {
+      // The cache is an optimisation, not a gatekeeper. A track it cannot
+      // provide is fetched over the network exactly as it was before any
+      // caching existed.
       final player = FakePlayer();
       final music = build(
         player,
-        resolveSource: (url) async => url.contains('/b.mp3') ? null : url,
+        resolveSource: (url) async => url.contains('/b.mp3') ? null : '/disk/b',
       );
       addTearDown(music.dispose);
 
       music.claim(#cardA, 'event-1', [track('a'), track('b'), track('c')]);
       await settle(t);
 
-      expect(player.loads.single,
-          ['https://cdn.test/a.mp3', 'https://cdn.test/c.mp3']);
+      expect(player.loads.single, [
+        '/disk/b',
+        'https://cdn.test/b.mp3', // the miss, played from its URL
+        '/disk/b',
+      ]);
       expect(player.isPlaying, isTrue);
     });
 
-    testWidgets('a soundtrack that resolves to nothing stays silent',
-        (t) async {
+    testWidgets('a cache that cannot store anything still plays', (t) async {
+      // The regression this group exists for. The first version dropped every
+      // track the cache missed, so a resolver that always fails — which is web,
+      // where flutter_cache_manager has no storage — published no pill and no
+      // sound. A failure to *save a request* must never become a failure to
+      // play.
       final player = FakePlayer();
       final music = build(player, resolveSource: (_) async => null);
       addTearDown(music.dispose);
 
-      music.claim(#cardA, 'event-1', [track('a')]);
+      music.claim(#cardA, 'event-1', [track('a'), track('b')]);
       await settle(t);
 
-      expect(player.loads, isEmpty);
-      expect(player.isPlaying, isFalse,
-          reason: 'nothing to play is silence, not a lit pill');
+      expect(player.loads.single,
+          ['https://cdn.test/a.mp3', 'https://cdn.test/b.mp3']);
+      expect(player.isPlaying, isTrue);
+      expect(music.nowPlaying.value?.eventId, 'event-1',
+          reason: 'the pill must light even when nothing could be cached');
     });
 
     testWidgets('a card swiped away mid-download does not play over its successor',
