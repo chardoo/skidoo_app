@@ -1,3 +1,6 @@
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/cache/disk_cache.dart';
+import 'dart:async';
 import 'package:dio/dio.dart' as dio;
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/core/error/exceptions.dart' as app_ex;
@@ -120,6 +123,16 @@ class FoundRemoteDataSourceImpl implements FoundRemoteDataSource {
       'page': page,
       'limit': limit,
     });
+
+    // Keep the unfiltered first page so the tab opens to the albums it last
+    // showed, with or without a connection. Filtered results are somebody
+    // mid-search — restoring those on a cold launch would open the tab to a
+    // narrowed list with no visible reason for it.
+    if (page == 1 && filters == FoundFilters.none) {
+      unawaited(
+        sl<DiskCache>(instanceName: kFoundAlbumsCache).save(_dataList(raw)),
+      );
+    }
     return parseAlbumsPage(raw);
   }
 

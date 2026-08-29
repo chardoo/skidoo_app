@@ -1,3 +1,5 @@
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/cache/disk_cache.dart';
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:equatable/equatable.dart';
@@ -70,14 +72,25 @@ class FoundBloc extends Bloc<FoundEvent, FoundState> {
     final filters = event.filters ?? state.filters;
     final nextPage = event.loadMore ? state.page + 1 : 1;
 
+    // The albums this tab last showed, straight off disk, so a cold open —
+    // and an offline one — starts with content instead of a spinner. Only for
+    // an unfiltered first load: a filter change must not be answered with the
+    // unfiltered list, and a "load more" already has the earlier pages.
+    final cached = (!event.loadMore && event.filters == null && state.albums.isEmpty)
+        ? _restoreAlbums()
+        : const <FoundAlbum>[];
+
     emit(state.copyWith(
       filters: filters,
-      isLoading: !event.loadMore,
+      // Nothing to wait for when there is already something to read.
+      isLoading: !event.loadMore && cached.isEmpty,
       isLoadingMore: event.loadMore,
       clearError: true,
       // A filter change replaces the list; keeping the old albums on screen
       // under a spinner would show results that no longer match the chips.
-      albums: event.loadMore || event.filters == null ? null : const [],
+      albums: cached.isNotEmpty
+          ? cached
+          : (event.loadMore || event.filters == null ? null : const []),
     ));
 
     try {
@@ -113,11 +126,38 @@ class FoundBloc extends Bloc<FoundEvent, FoundState> {
     }
   }
 
+  /// A failed refresh keeps whatever is on screen.
+  ///
+  /// The error is still reported, but the albums stay: with no connection the
+  /// restored list is the only thing this tab has, and replacing it with an
+  /// error message would undo the caching it was just restored from. The
+  /// message reads as "could not refresh" rather than "nothing here".
   FoundState _failure(String message) => state.copyWith(
         isLoading: false,
         isLoadingMore: false,
         errorMessage: message,
       );
+
+  /// The last unfiltered first page, parsed with the same constructor the
+  /// network response uses. Empty when there is no cache, or it is unreadable.
+  List<FoundAlbum> _restoreAlbums() {
+    try {
+      final rows = sl<DiskCache>(instanceName: kFoundAlbumsCache).restore();
+      if (rows.isEmpty) return const [];
+      final albums = <FoundAlbum>[];
+      for (final row in rows) {
+        try {
+          final album = FoundAlbum.fromJson(row);
+          if (album.photos.isNotEmpty) albums.add(album);
+        } catch (_) {
+          // One bad row is not worth losing the rest of the tab.
+        }
+      }
+      return albums;
+    } catch (_) {
+      return const [];
+    }
+  }
 
   /// Dedupes on append: a new match between two page fetches shifts the
   /// server's window, which would otherwise repeat an event.

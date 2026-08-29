@@ -1,3 +1,5 @@
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/cache/disk_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -110,8 +112,44 @@ class _FollowingFeedState extends State<FollowingFeed> {
   void initState() {
     super.initState();
     FollowRepository.followedRevision.addListener(_onFollowedChanged);
+    _restoreFromDisk();
     _load();
     _loadSuggestions();
+  }
+
+  /// Paint the last-seen posts before the request goes out.
+  ///
+  /// Synchronous, so this lands in the first frame — the tab opens to content
+  /// rather than to a spinner, and with no connection it opens to content
+  /// rather than to an error. The photos come with it: their bytes are already
+  /// in the image cache, and what was missing was only the list saying which
+  /// ones to draw.
+  ///
+  /// `_loading` stays false afterwards so the refresh runs underneath. If it
+  /// succeeds the list is replaced; if it fails the cached posts stay up,
+  /// which for somebody with no signal is the whole point.
+  void _restoreFromDisk() {
+    // Not when a loader has been injected: that is a test or a preview
+    // driving this widget with its own data, and the real account's cache
+    // has nothing to do with it.
+    if (widget.loadFeed != null) return;
+    try {
+      final rows = sl<DiskCache>(instanceName: kFollowingFeedCache).restore();
+      if (rows.isEmpty) return;
+      final events = <EventDiscovery>[];
+      for (final row in rows) {
+        try {
+          events.add(EventDiscovery.fromMap(row));
+        } catch (_) {
+          // One unreadable row is not worth losing the rest of the screen.
+        }
+      }
+      if (events.isEmpty) return;
+      _events = events;
+      _loading = false;
+    } catch (_) {
+      // No cache is simply a cold start.
+    }
   }
 
   @override
@@ -267,7 +305,11 @@ class _FollowingFeedState extends State<FollowingFeed> {
 
     if (_loading) return const AppLoadingIndicator();
 
-    if (_error != null) {
+    // Only when there is nothing to read. A refresh that failed over posts
+    // restored from disk is a failed refresh, not an empty screen — and with
+    // no connection those posts are the only thing this tab has, so replacing
+    // them with "wifi off" would undo the caching that just supplied them.
+    if (_error != null && _events.isEmpty) {
       return AppErrorView(
         message: _error!,
         icon: Icons.wifi_off_outlined,

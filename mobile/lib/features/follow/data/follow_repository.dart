@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
+import 'package:jperg_app/core/cache/disk_cache.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
@@ -491,6 +495,14 @@ class FollowRepository {
         list = raw;
       } else {
         list = [];
+      }
+
+      // Keep the first page so the tab has something to open to next launch,
+      // with or without a connection. Only the first: later pages are scroll
+      // state, and restoring page 7 to somebody who has just opened the app
+      // would be a list starting in the middle of nowhere.
+      if (page == 1) {
+        unawaited(sl<DiskCache>(instanceName: kFollowingFeedCache).save(list));
       }
 
       // ── Parse events ──────────────────────────────────────────────────────

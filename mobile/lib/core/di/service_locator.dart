@@ -19,6 +19,7 @@ import 'package:jperg_app/features/photo_comments/data/picture_like_service.dart
 import 'package:jperg_app/features/photo_comments/presentation/bloc/photo_comment_bloc.dart';
 import 'package:jperg_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
 import 'package:jperg_app/features/discovery/data/repositories/discovery_repository_impl.dart';
+import 'package:jperg_app/core/cache/disk_cache.dart';
 import 'package:jperg_app/features/discovery/data/services/feed_cache_service.dart';
 import 'package:jperg_app/features/discovery/domain/repositories/discovery_repository.dart';
 import 'package:jperg_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
@@ -142,6 +143,21 @@ Future<void> setupServiceLocator() async {
   }
   sl.registerSingleton<AuthService>(authService);
   sl.registerSingleton<FeedCacheService>(FeedCacheService(prefs));
+
+  // The other two tabs. The feed has survived a cold, offline launch since
+  // FeedCacheService shipped; Following and Found fetched from scratch every
+  // time and showed a spinner then an error with no connection, even though
+  // the photos themselves were still on disk in the image cache. Named
+  // instances rather than one shared store so signing out drops both, and so
+  // one going stale cannot take the other with it.
+  sl.registerSingleton<DiskCache>(
+    DiskCache(prefs, key: 'jperg.following_feed.v1', maxEntries: 8),
+    instanceName: kFollowingFeedCache,
+  );
+  sl.registerSingleton<DiskCache>(
+    DiskCache(prefs, key: 'jperg.found_albums.v1', maxEntries: 12),
+    instanceName: kFoundAlbumsCache,
+  );
   sl.registerSingleton<NotificationPrefsService>(
       NotificationPrefsService(prefs));
   sl.registerSingleton<ThemeCubit>(ThemeCubit(prefs));
@@ -369,6 +385,18 @@ Future<void> setupServiceLocator() async {
     FeedCacheService,
     'FeedCacheService',
     () => sl<FeedCacheService>().clear(),
+  );
+  // Both carry per-viewer flags — isLikedByUser, owner, isPurchased — so they
+  // must not outlive the account that fetched them. See DiskCache.
+  SessionReset.register(
+    kFollowingFeedCache,
+    'DiskCache(following)',
+    () => sl<DiskCache>(instanceName: kFollowingFeedCache).clear(),
+  );
+  SessionReset.register(
+    kFoundAlbumsCache,
+    'DiskCache(found)',
+    () => sl<DiskCache>(instanceName: kFoundAlbumsCache).clear(),
   );
   SessionReset.register(
     FollowRepository,
