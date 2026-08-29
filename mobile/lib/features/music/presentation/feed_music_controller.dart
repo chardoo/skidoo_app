@@ -273,14 +273,32 @@ class FeedMusicController with WidgetsBindingObserver {
   final Future<String?> Function(String streamUrl) _resolveSource;
 
   /// The real one: cache on disk, fetch once, play from the file thereafter.
+  /// The real one: play what is already on disk, and never wait for what is
+  /// not.
+  ///
+  /// A cache hit returns the local file and playback starts instantly. A miss
+  /// returns null — which the caller turns into the track's own URL — and
+  /// starts the download in the background for next time.
+  ///
+  /// The order matters more than it looks. Fetching the file first and playing
+  /// it afterwards is the obvious reading of "cache the audio", and it makes
+  /// the *first* encounter with every track worse than having no cache at all:
+  /// half a megabyte has to arrive before a single note, so the card sits
+  /// silent on a slow connection while a progress-free download runs. Streaming
+  /// starts in a moment and the disk copy lands quietly behind it.
   static Future<String?> _defaultResolveSource(String streamUrl) async {
-    final file = await cachedAudioFile(streamUrl);
+    final file = await cachedAudioFileIfPresent(streamUrl);
+    if (file == null) {
+      // Not held yet: stream it now, keep it for later.
+      unawaited(warmAudioCache(streamUrl));
+      return null;
+    }
     // `file.uri`, not `file.path`. A path is `/var/mobile/…`, and parsing that
     // as a URI gives one with no scheme at all — which AVPlayer rejects
     // outright as `-1002 unsupported URL`, so every cached track failed to play
     // on iOS while the download had worked perfectly. `File.uri` produces the
     // `file:///var/mobile/…` form the platform players expect.
-    return file?.uri.toString();
+    return file.uri.toString();
   }
 
   Future<List<String>> _resolveSources(List<MusicTrack> tracks) async {

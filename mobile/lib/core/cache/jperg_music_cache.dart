@@ -110,27 +110,54 @@ class _KeepFor implements FileServiceResponse {
   }
 }
 
-/// Resolves a track's stream URL to a local file, downloading it once.
+/// Whether this device can hold audio at all.
 ///
-/// Returns null when the audio cannot be had — no network on a cold cache, a
-/// track the provider has withdrawn, a device with no room. Music is
-/// decoration on a feed: the caller plays what it can and stays quiet about
-/// the rest.
-Future<File?> cachedAudioFile(String streamUrl) async {
-  if (streamUrl.isEmpty) return null;
+/// flutter_cache_manager stores through path_provider, which has no web
+/// implementation, so every call there would throw and be logged once per
+/// play. The browser has its own HTTP cache and the response carries a
+/// fortnight of Cache-Control, so the saving is not lost on web — it simply
+/// happens a layer down, where we cannot see it.
+bool get _cacheUsable => !kIsWeb;
 
-  // Nothing to cache into on web. flutter_cache_manager stores through
-  // path_provider, which has no web implementation, so every call here would
-  // throw and be logged once per play. The browser has its own HTTP cache and
-  // the response carries a fortnight of Cache-Control, so the saving is not
-  // lost — it simply happens a layer down, where we cannot see it.
-  if (kIsWeb) return null;
+/// URLs being fetched right now, so a card revisited mid-download does not
+/// start a second fetch of the same track.
+final Set<String> _warming = <String>{};
 
+/// The track's audio **only if it is already on this device**.
+///
+/// Never downloads. That is the whole point: the caller uses this to decide
+/// between playing a local file and streaming, and a version that fetched on
+/// a miss would make that decision by doing the very thing it is deciding
+/// about.
+Future<File?> cachedAudioFileIfPresent(String streamUrl) async {
+  if (streamUrl.isEmpty || !_cacheUsable) return null;
   try {
-    return await JpergMusicCache.instance.getSingleFile(streamUrl);
+    final info = await JpergMusicCache.instance.getFileFromCache(streamUrl);
+    return info?.file;
   } catch (e) {
-    // The caller falls back to the URL, so this costs a request, not silence.
-    debugPrint('[music] could not cache $streamUrl: $e');
+    debugPrint('[music] could not read the audio cache: $e');
     return null;
+  }
+}
+
+/// Fetch this track into the cache for next time, without making anyone wait.
+///
+/// Fire and forget, and deliberately not awaited by playback. A preview is
+/// roughly half a megabyte; downloading it before the first note means the
+/// card sits silent for as long as that takes on a slow connection, which is
+/// the opposite of what the cache is for. The network copy plays immediately
+/// while this runs, and every later encounter with the track comes off the
+/// disk.
+Future<void> warmAudioCache(String streamUrl) async {
+  if (streamUrl.isEmpty || !_cacheUsable) return;
+  if (!_warming.add(streamUrl)) return;
+  try {
+    await JpergMusicCache.instance.downloadFile(streamUrl);
+  } catch (e) {
+    // Nothing is waiting on this. The track played from the network, and the
+    // next encounter will simply try again.
+    debugPrint('[music] could not cache $streamUrl: $e');
+  } finally {
+    _warming.remove(streamUrl);
   }
 }

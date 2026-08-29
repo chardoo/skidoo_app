@@ -45,15 +45,20 @@ void main() {
     });
   });
 
-  group('the cache on web', () {
-    test('does not attempt storage it has no implementation for', () async {
-      // flutter_cache_manager stores through path_provider, which has no web
-      // implementation. Returning null lets the caller fall back to the URL
-      // instead of throwing once per play.
-      //
-      // kIsWeb is false under `flutter test`, so this asserts the contract that
-      // holds on every platform: an empty URL is never a cache lookup.
-      expect(await cachedAudioFile(''), isNull);
+  group('reading the cache', () {
+    test('an empty url is never a lookup', () async {
+      expect(await cachedAudioFileIfPresent(''), isNull);
     });
+
+    test('an empty url is never a download', () async {
+      // Returns rather than throwing, so a track with no stream URL costs
+      // nothing and reports nothing.
+      await warmAudioCache('');
+    });
+
+    // A cache *hit* needs real storage, which needs path_provider, which needs
+    // a device — so the interesting half is proven at the controller instead,
+    // where the resolver is injectable. See "sound starts before the download
+    // finishes" in feed_music_controller_test.dart.
   });
 }

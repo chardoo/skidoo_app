@@ -591,6 +591,58 @@ void main() {
           reason: 'the pill must light even when nothing could be cached');
     });
 
+    testWidgets('sound starts before the download finishes', (t) async {
+      // The requirement in one test: a track this phone has never met must not
+      // make anybody wait for half a megabyte before the first note.
+      //
+      // The resolver stands in for a cold cache — it reports "not held" at once
+      // and leaves a download running behind it — and playback has to be under
+      // way while that download is still in flight.
+      final player = FakePlayer();
+      final downloadFinished = Completer<void>();
+      var downloadsStarted = 0;
+
+      final music = build(
+        player,
+        resolveSource: (url) async {
+          downloadsStarted++;
+          // Kept deliberately unawaited, exactly as the real one does.
+          unawaited(downloadFinished.future);
+          return null; // not on disk — the caller streams it
+        },
+      );
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+
+      expect(player.isPlaying, isTrue,
+          reason: 'playback waited for the download');
+      expect(player.loads.single, ['https://cdn.test/a.mp3'],
+          reason: 'a cold track must stream from its URL');
+      expect(downloadsStarted, 1, reason: 'the cache should still be warmed');
+      expect(downloadFinished.isCompleted, isFalse,
+          reason: 'the download is still running — and nothing waited for it');
+
+      downloadFinished.complete();
+    });
+
+    testWidgets('a track already on disk plays from the file', (t) async {
+      // The other half: once it is held, nothing touches the network.
+      final player = FakePlayer();
+      final music = build(
+        player,
+        resolveSource: (url) async => 'file:///cache/a.m4a',
+      );
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+
+      expect(player.loads.single, ['file:///cache/a.m4a']);
+      expect(player.isPlaying, isTrue);
+    });
+
     testWidgets('a card swiped away mid-download does not play over its successor',
         (t) async {
       // Downloading is slower than a thumb, so the generation check has to hold
