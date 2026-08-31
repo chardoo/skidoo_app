@@ -11,6 +11,9 @@ import 'package:jperg_app/features/music/presentation/feed_music_player.dart';
 class FakePlayer implements FeedMusicPlayer {
   final List<List<String>> loads = [];
   final List<double> volumes = [];
+
+  /// Every seek asked for, in order — how the resume rules are asserted.
+  final List<({Duration position, int index})> seeks = [];
   int plays = 0;
   int pauses = 0;
   bool disposed = false;
@@ -54,9 +57,45 @@ class FakePlayer implements FeedMusicPlayer {
   void emitIndexError(Object error) => _index.addError(error);
 
   @override
+  Duration get position => _position;
+  Duration _position = Duration.zero;
+
+  /// Which queue entry the fake is on, moved only by [seek] — the controller
+  /// learns about natural advances through [emitIndex] instead.
+  int queueIndex = 0;
+
+  /// Stands in for time passing while a card is on screen. Nothing here runs a
+  /// clock; tests say where playback has got to.
+  void advanceTo(Duration position) => _position = position;
+
+  /// What is queued, so the fake reproduces the real player's most
+  /// consequential behaviour for these tests: re-loading the *same* sources is
+  /// a no-op and leaves the position alone, while loading anything else starts
+  /// a new queue at zero. Without that, resuming would look like it worked
+  /// even if the controller never seeked.
+  List<String>? _loaded;
+
+  @override
   Future<void> load(List<String> urls) async {
     if (loadError != null) throw loadError!;
     loads.add(List.of(urls));
+    if (_loaded != null && _loaded!.length == urls.length) {
+      var same = true;
+      for (var i = 0; i < urls.length; i++) {
+        if (_loaded![i] != urls[i]) same = false;
+      }
+      if (same) return;
+    }
+    _loaded = List.of(urls);
+    _position = Duration.zero;
+    queueIndex = 0;
+  }
+
+  @override
+  Future<void> seek(Duration position, {int index = 0}) async {
+    seeks.add((position: position, index: index));
+    _position = position;
+    queueIndex = index;
   }
 
   @override
@@ -276,6 +315,184 @@ void main() {
 
       expect(player.isPlaying, isTrue);
       expect(music.nowPlaying.value?.eventId, 'event-1');
+    });
+  });
+
+  group('coming back to an event', () {
+    // A feed is scrolled back through as much as forward. A soundtrack that
+    // restarts every time its card returns means the first few seconds of a
+    // track are the only part anybody ever hears — most sharply on a card
+    // carrying a video, where reaching the video slide and swiping back is a
+    // release and a claim of the same event seconds apart.
+
+    testWidgets('an event picked back up resumes where it left off', (t) async {
+      final player = FakePlayer();
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+      player.advanceTo(const Duration(seconds: 12));
+
+      // Away to another scored event, which loads over event-1's queue — this
+      // is what makes a seek necessary rather than merely tidy.
+      music.claim(#cardB, 'event-2', [track('b')]);
+      await settle(t);
+      expect(player.position, Duration.zero, reason: 'event-2 starts at its top');
+
+      music.claim(#cardA2, 'event-1', [track('a')]);
+      await settle(t);
+
+      expect(player.seeks, [(position: const Duration(seconds: 12), index: 0)]);
+      expect(player.isPlaying, isTrue);
+    });
+
+    testWidgets('a video slide interrupts the track rather than ending it',
+        (t) async {
+      // The reported case. Swiping onto a card's video releases the music so
+      // the two soundtracks do not overlap; swiping back off it claims the same
+      // event again, and that has to land where the track was.
+      final player = FakePlayer();
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+      player.advanceTo(const Duration(seconds: 9));
+
+      music.release(#cardA); // onto the video slide
+      await t.pumpAndSettle();
+      expect(player.isPlaying, isFalse);
+
+      music.claim(#cardA, 'event-1', [track('a')]); // and back onto a photo
+      await settle(t);
+
+      expect(player.seeks.single.position, const Duration(seconds: 9));
+      expect(player.isPlaying, isTrue);
+    });
+
+    testWidgets('a multi-track soundtrack resumes in the track it was on',
+        (t) async {
+      final player = FakePlayer();
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a'), track('b'), track('c')]);
+      await settle(t);
+      player.emitIndex(2);
+      await t.pumpAndSettle();
+      player.advanceTo(const Duration(seconds: 4));
+
+      music.claim(#cardB, 'event-2', [track('z')]);
+      await settle(t);
+      music.claim(#cardA2, 'event-1', [track('a'), track('b'), track('c')]);
+      await settle(t);
+
+      expect(player.seeks.single,
+          (position: const Duration(seconds: 4), index: 2));
+      expect(music.nowPlaying.value?.track.id, 'c',
+          reason: 'the pill names the track being resumed, not the first one');
+    });
+
+    testWidgets('a card swiped past before it sounded remembers nothing',
+        (t) async {
+      // The trap: the player's position belongs to whatever last played. A card
+      // claimed and gone inside the settle delay never started, so saving the
+      // position under *its* id would drop it into the middle of a track it has
+      // never played a note of.
+      final player = FakePlayer();
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+      player.advanceTo(const Duration(seconds: 12));
+
+      // Straight past event-2 without it ever making a sound.
+      music.claim(#cardB, 'event-2', [track('b')]);
+      music.claim(#cardC, 'event-3', [track('c')]);
+      await settle(t);
+
+      music.claim(#cardB2, 'event-2', [track('b')]);
+      await settle(t);
+
+      expect(player.seeks, isEmpty,
+          reason: 'event-2 has never been heard — it starts at its top');
+    });
+
+    testWidgets('returning from the background does not rewind', (t) async {
+      // The resume point is spent when it is applied. Left in place it would be
+      // re-applied by the next start for the same card — and backgrounding and
+      // returning is exactly that — jumping back to wherever the card was when
+      // it was last scrolled away from.
+      final player = FakePlayer();
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+      player.advanceTo(const Duration(seconds: 5));
+      music.release(#cardA);
+      await t.pumpAndSettle();
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+      expect(player.seeks.single.position, const Duration(seconds: 5));
+
+      // Played on, then the phone was locked and unlocked.
+      player.advanceTo(const Duration(seconds: 20));
+      music.didChangeAppLifecycleState(AppLifecycleState.paused);
+      await t.pumpAndSettle();
+      music.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await t.pumpAndSettle();
+
+      expect(player.seeks, hasLength(1), reason: 'no second seek backwards');
+      expect(player.position, const Duration(seconds: 20));
+      expect(player.isPlaying, isTrue);
+    });
+
+    testWidgets('what was being listened to does not survive sign-out',
+        (t) async {
+      final player = FakePlayer();
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+      player.advanceTo(const Duration(seconds: 7));
+
+      music.endSession();
+      await t.pumpAndSettle();
+
+      music.claim(#cardA2, 'event-1', [track('a')]);
+      await settle(t);
+
+      expect(player.seeks, isEmpty,
+          reason: 'the next person to sign in starts the track at its top');
+    });
+
+    testWidgets('the memory is bounded', (t) async {
+      // An infinite feed is exactly where an unbounded map matters.
+      final player = FakePlayer();
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#card0, 'event-0', [track('0')]);
+      await settle(t);
+      player.advanceTo(const Duration(seconds: 3));
+
+      for (var i = 1; i <= 40; i++) {
+        music.claim(#card, 'event-$i', [track('$i')]);
+        await settle(t);
+        player.advanceTo(const Duration(seconds: 3));
+      }
+
+      player.seeks.clear();
+      music.claim(#cardBack, 'event-0', [track('0')]);
+      await settle(t);
+
+      expect(player.seeks, isEmpty,
+          reason: 'the oldest event has been forgotten');
     });
   });
 

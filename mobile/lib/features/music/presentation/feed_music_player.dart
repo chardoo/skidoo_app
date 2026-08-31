@@ -38,6 +38,16 @@ abstract class FeedMusicPlayer {
   /// the fade, because it is the thing that knows what a fade is for.
   Future<void> setVolume(double volume);
 
+  /// How far into the current queue entry playback has got.
+  ///
+  /// Read at the moment a card gives the player up, so the same card can be
+  /// put back where it was rather than started again. Zero before anything is
+  /// queued.
+  Duration get position;
+
+  /// Resume point: entry [index] of the last [load], [position] into it.
+  Future<void> seek(Duration position, {int index});
+
   /// Which entry of the last [load] is playing, so a pill can name it. Null
   /// before anything is queued.
   Stream<int?> get currentIndexStream;
@@ -154,6 +164,23 @@ class JustAudioFeedMusicPlayer implements FeedMusicPlayer {
 
   @override
   Future<void> pause() => _player.pause();
+
+  @override
+  Duration get position => _player.position;
+
+  @override
+  Future<void> seek(Duration position, {int index = 0}) async {
+    // Same reasoning as `setVolume`: a seek is issued while a card is settling,
+    // and the source underneath it may have failed and torn its platform player
+    // down in the meantime. Landing at the wrong point is a worse outcome than
+    // the alternative only if the alternative is a crash — it is not, so this
+    // logs and plays from wherever the player already was.
+    try {
+      await _player.seek(position, index: index);
+    } catch (error) {
+      debugPrint('[Music] could not seek: $error');
+    }
+  }
 
   @override
   Future<void> setVolume(double volume) async {

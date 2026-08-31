@@ -28,6 +28,19 @@ class FeedMusicNowPlaying {
   int get hashCode => Object.hash(eventId, track);
 }
 
+/// Where one event's soundtrack was when it last gave the player up.
+///
+/// The index matters as much as the position: a multi-track soundtrack left
+/// twenty seconds into its third track resumes there, not twenty seconds into
+/// its first.
+@immutable
+class _ResumePoint {
+  const _ResumePoint({required this.index, required this.position});
+
+  final int index;
+  final Duration position;
+}
+
 /// The feed's music, for the whole app.
 ///
 /// **One player, not one per card.** A feed builds and destroys cards as fast
@@ -52,6 +65,13 @@ class FeedMusicNowPlaying {
 /// than either. Every await is followed by a [_generation] check: any claim or
 /// release bumps the counter, so work started for a card that has since lost
 /// focus discards itself instead of playing over its successor.
+///
+/// ## Coming back
+///
+/// An event that has been heard before resumes rather than restarts — see
+/// [_resume]. One player serving a whole feed means the queue is loaded over
+/// every time focus moves, so continuing is something this has to do
+/// deliberately; the player cannot do it on its own.
 class FeedMusicController with WidgetsBindingObserver {
   FeedMusicController({
     FeedMusicPlayer? player,
@@ -91,6 +111,9 @@ class FeedMusicController with WidgetsBindingObserver {
   void _reportPlaybackFailure(Object error) {
     if (_disposed) return;
     debugPrint('[Music] playback failed: $error');
+    // Nothing is playing, so there is no position worth keeping: whatever the
+    // player reports now describes a source it could not play.
+    _sounding = false;
     if (nowPlaying.value != null) _publishNowPlaying(null);
   }
 
@@ -159,6 +182,33 @@ class FeedMusicController with WidgetsBindingObserver {
   List<MusicTrack> _tracks = const [];
   int _trackIndex = 0;
 
+  /// True once [_start] has actually put sound on this card, cleared when the
+  /// card gives the player up.
+  ///
+  /// The one thing [_rememberPosition] needs to know: the player's position
+  /// belongs to whatever last played, which is *not* this event if the settle
+  /// timer was cancelled before it ever started. Writing that position down
+  /// under this event's id would resume it at some other card's offset.
+  bool _sounding = false;
+
+  /// Where each event's soundtrack had got to when it last lost the player.
+  ///
+  /// A feed is scrolled back through as much as forward, and a soundtrack that
+  /// starts from the top every time an event comes back on screen makes the
+  /// first few seconds of a track the only part anyone ever hears — most
+  /// audibly when a card carries a video, because reaching the video slide and
+  /// returning is a release and a claim of the same event, seconds apart.
+  ///
+  /// Insertion-ordered, and rewritten on every save, so the oldest key is the
+  /// least recently played — which is what [_forgetOldestPositions] drops. The
+  /// map is otherwise unbounded, and an infinite feed is exactly the place an
+  /// unbounded map matters.
+  final Map<String, _ResumePoint> _resume = <String, _ResumePoint>{};
+
+  /// How many events keep a resume point. Well past what a thumb can scroll
+  /// back through in a session, and small enough to be free.
+  static const int _resumeMemory = 32;
+
   /// Bumped on every claim and release; async work carries the value it began
   /// with and abandons itself if it no longer matches.
   int _generation = 0;
@@ -191,10 +241,16 @@ class FeedMusicController with WidgetsBindingObserver {
     if (_disposed) return;
     if (identical(_owner, owner) && _eventId == eventId) return;
 
+    _rememberPosition();
+
     _owner = owner;
     _eventId = eventId;
     _tracks = tracks.where((t) => t.isPlayable).toList(growable: false);
-    _trackIndex = 0;
+    // The pill should name the track this event will resume into, not the
+    // first one, from the moment the claim lands.
+    _trackIndex = _tracks.isEmpty
+        ? 0
+        : (_resume[eventId]?.index ?? 0).clamp(0, _tracks.length - 1);
     final generation = ++_generation;
 
     _settle?.cancel();
@@ -221,6 +277,8 @@ class FeedMusicController with WidgetsBindingObserver {
     if (_disposed) return;
     if (!identical(_owner, owner)) return;
 
+    _rememberPosition();
+
     _owner = null;
     _eventId = null;
     _tracks = const [];
@@ -242,6 +300,11 @@ class FeedMusicController with WidgetsBindingObserver {
   /// which keeps the stored preference for the same reason.
   void endSession() {
     if (_disposed) return;
+    // Resume points go with the account, unlike [muted]: they are a record of
+    // what somebody was listening to, and the next person to sign in on this
+    // phone has no business being dropped into the middle of it.
+    _sounding = false;
+    _resume.clear();
     _owner = null;
     _eventId = null;
     _tracks = const [];
@@ -264,6 +327,44 @@ class FeedMusicController with WidgetsBindingObserver {
   Future<void> toggleMute() => setMuted(!muted.value);
 
   // ── Internals ────────────────────────────────────────────────────────────
+
+  /// Writes down where the event that is losing the player had got to.
+  ///
+  /// Called at the top of [claim] and [release], before anything is cleared and
+  /// before [_silence] — the position has to be read while it still describes
+  /// this event.
+  ///
+  /// Silent unless the event was genuinely sounding: a card claimed and swiped
+  /// past inside the settle delay never started, so the player's position is
+  /// still the *previous* card's, and saving it here would resume this event at
+  /// a stranger's offset.
+  void _rememberPosition() {
+    final eventId = _eventId;
+    final wasSounding = _sounding;
+    _sounding = false;
+    if (eventId == null || !wasSounding) return;
+
+    Duration position;
+    try {
+      position = _player.position;
+    } catch (e) {
+      debugPrint('[Music] could not read position: $e');
+      return;
+    }
+    if (position < Duration.zero) position = Duration.zero;
+
+    // Removed first so the re-insert moves it to the end: the map's order is
+    // what makes eviction least-recently-played rather than arbitrary.
+    _resume.remove(eventId);
+    _resume[eventId] = _ResumePoint(index: _trackIndex, position: position);
+    _forgetOldestPositions();
+  }
+
+  void _forgetOldestPositions() {
+    while (_resume.length > _resumeMemory) {
+      _resume.remove(_resume.keys.first);
+    }
+  }
 
   /// Local file paths for these tracks, downloading any this device has not
   /// heard before.
@@ -332,7 +433,8 @@ class FeedMusicController with WidgetsBindingObserver {
     if (_disposed || generation != _generation || !_appActive) return;
 
     final tracks = _tracks;
-    if (tracks.isEmpty) return;
+    final eventId = _eventId;
+    if (tracks.isEmpty || eventId == null) return;
 
     try {
       // From disk where we already hold it, from the network only the first
@@ -346,6 +448,32 @@ class FeedMusicController with WidgetsBindingObserver {
 
       await _player.load(sources);
       if (generation != _generation) return;
+
+      // Back where this event left off, if it has been heard before.
+      //
+      // Needed even though the player keeps its own position across a pause,
+      // because it only does so while nothing else has been loaded over it —
+      // and scrolling away is very often exactly that. Seeking with an explicit
+      // index also covers the multi-track case, where "where it left off" is a
+      // point in the third track, not the first.
+      //
+      // The seek happens before [play] rather than after, so the resumed
+      // position is where the first audible note is; seeking afterwards plays a
+      // fraction of a second from the top of the track first.
+      final resume = _resume[eventId];
+      if (resume != null) {
+        await _player.seek(
+          resume.position,
+          index: resume.index.clamp(0, sources.length - 1),
+        );
+        // Spent. From here the player's own position is the truth for this
+        // event, and a resume point left lying about would be applied again by
+        // the next [_start] for the same card — which is what returning from
+        // the background is. That one would jump *backwards*, to wherever the
+        // card was when it was last scrolled away from.
+        _resume.remove(eventId);
+        if (generation != _generation) return;
+      }
 
       // Come up from silence rather than punching in at full volume: the load
       // above may have taken a moment, and starting loud is jarring.
@@ -364,6 +492,7 @@ class FeedMusicController with WidgetsBindingObserver {
         return;
       }
 
+      _sounding = true;
       _publish();
       _fadeTo(muted.value ? 0 : 1, generation);
     } catch (e) {
