@@ -134,10 +134,10 @@ class _FollowingFeedState extends State<FollowingFeed> {
     // has nothing to do with it.
     if (widget.loadFeed != null) return;
     try {
-      final rows = sl<DiskCache>(instanceName: kFollowingFeedCache).restore();
-      if (rows.isEmpty) return;
+      final cached = sl<DiskCache>(instanceName: kFollowingFeedCache).restore();
+      if (cached.isEmpty) return;
       final events = <EventDiscovery>[];
-      for (final row in rows) {
+      for (final row in cached.rows) {
         try {
           events.add(EventDiscovery.fromMap(row));
         } catch (_) {
@@ -147,6 +147,11 @@ class _FollowingFeedState extends State<FollowingFeed> {
       if (events.isEmpty) return;
       _events = events;
       _loading = false;
+      // Where the paging had got to, not just what it had fetched. Restoring
+      // three pages of posts as "page 1" would make the next load-more ask
+      // for page 2 — posts already on screen, appended a second time.
+      _page = cached.page;
+      _hasMore = cached.hasMore;
     } catch (_) {
       // No cache is simply a cold start.
     }
@@ -183,9 +188,11 @@ class _FollowingFeedState extends State<FollowingFeed> {
 
   Future<void> _load() async {
     setState(() {
-      _loading = true;
+      // Only when there is nothing to read. With posts already restored from
+      // disk this is a refresh happening underneath them, and a spinner over
+      // content that is on screen and correct would undo the restore.
+      _loading = _events.isEmpty;
       _error = null;
-      _page = 1;
     });
     try {
       final result = widget.loadFeed != null
@@ -195,6 +202,10 @@ class _FollowingFeedState extends State<FollowingFeed> {
       setState(() {
         _events = result.events;
         _loading = false;
+        // Reset here rather than before the request: a refresh that fails
+        // leaves the restored pages on screen, and calling those "page 1"
+        // would make the next load-more refetch pages already shown.
+        _page = 1;
         _hasMore = result.hasMore;
       });
     } catch (e) {

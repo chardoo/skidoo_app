@@ -76,21 +76,26 @@ class FoundBloc extends Bloc<FoundEvent, FoundState> {
     // and an offline one — starts with content instead of a spinner. Only for
     // an unfiltered first load: a filter change must not be answered with the
     // unfiltered list, and a "load more" already has the earlier pages.
-    final cached = (!event.loadMore && event.filters == null && state.albums.isEmpty)
-        ? _restoreAlbums()
-        : const <FoundAlbum>[];
+    final restored =
+        (!event.loadMore && event.filters == null && state.albums.isEmpty)
+            ? _restoreAlbums()
+            : null;
 
     emit(state.copyWith(
       filters: filters,
       // Nothing to wait for when there is already something to read.
-      isLoading: !event.loadMore && cached.isEmpty,
+      isLoading: !event.loadMore && restored == null,
       isLoadingMore: event.loadMore,
       clearError: true,
       // A filter change replaces the list; keeping the old albums on screen
       // under a spinner would show results that no longer match the chips.
-      albums: cached.isNotEmpty
-          ? cached
-          : (event.loadMore || event.filters == null ? null : const []),
+      albums: restored?.albums ??
+          (event.loadMore || event.filters == null ? null : const []),
+      // Where the paging had got to, so scrolling on from restored albums
+      // asks for the page after them rather than refetching what is already
+      // on screen. Both are corrected by the refresh running underneath.
+      page: restored?.page,
+      hasMore: restored?.hasMore,
     ));
 
     try {
@@ -138,14 +143,15 @@ class FoundBloc extends Bloc<FoundEvent, FoundState> {
         errorMessage: message,
       );
 
-  /// The last unfiltered first page, parsed with the same constructor the
-  /// network response uses. Empty when there is no cache, or it is unreadable.
-  List<FoundAlbum> _restoreAlbums() {
+  /// The last unfiltered pages, parsed with the same constructor the network
+  /// response uses. Null when there is no cache, or nothing readable in it —
+  /// which is the difference between "open to this" and "show a spinner".
+  ({List<FoundAlbum> albums, int page, bool hasMore})? _restoreAlbums() {
     try {
-      final rows = sl<DiskCache>(instanceName: kFoundAlbumsCache).restore();
-      if (rows.isEmpty) return const [];
+      final cached = sl<DiskCache>(instanceName: kFoundAlbumsCache).restore();
+      if (cached.isEmpty) return null;
       final albums = <FoundAlbum>[];
-      for (final row in rows) {
+      for (final row in cached.rows) {
         try {
           final album = FoundAlbum.fromJson(row);
           if (album.photos.isNotEmpty) albums.add(album);
@@ -153,9 +159,10 @@ class FoundBloc extends Bloc<FoundEvent, FoundState> {
           // One bad row is not worth losing the rest of the tab.
         }
       }
-      return albums;
+      if (albums.isEmpty) return null;
+      return (albums: albums, page: cached.page, hasMore: cached.hasMore);
     } catch (_) {
-      return const [];
+      return null;
     }
   }
 

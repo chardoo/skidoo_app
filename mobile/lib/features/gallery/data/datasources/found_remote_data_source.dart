@@ -124,16 +124,20 @@ class FoundRemoteDataSourceImpl implements FoundRemoteDataSource {
       'limit': limit,
     });
 
-    // Keep the unfiltered first page so the tab opens to the albums it last
-    // showed, with or without a connection. Filtered results are somebody
-    // mid-search — restoring those on a cold launch would open the tab to a
-    // narrowed list with no visible reason for it.
-    if (page == 1 && filters == FoundFilters.none) {
-      unawaited(
-        sl<DiskCache>(instanceName: kFoundAlbumsCache).save(_dataList(raw)),
-      );
+    final parsed = parseAlbumsPage(raw);
+
+    // Record unfiltered pages so the tab opens to the albums it last showed,
+    // as far as the reader had scrolled, with or without a connection.
+    // Filtered results are somebody mid-search — restoring those on a cold
+    // launch would open the tab to a narrowed list with no visible reason.
+    if (filters == FoundFilters.none) {
+      unawaited(sl<DiskCache>(instanceName: kFoundAlbumsCache).save(
+        _dataList(raw),
+        page: page,
+        hasMore: parsed.pagination.hasNext,
+      ));
     }
-    return parseAlbumsPage(raw);
+    return parsed;
   }
 
   @override

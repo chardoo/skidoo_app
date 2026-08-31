@@ -151,11 +151,11 @@ Future<void> setupServiceLocator() async {
   // instances rather than one shared store so signing out drops both, and so
   // one going stale cannot take the other with it.
   sl.registerSingleton<DiskCache>(
-    DiskCache(prefs, key: 'jperg.following_feed.v1', maxEntries: 8),
+    DiskCache(prefs, key: 'jperg.following_feed.v1', maxEntries: 40),
     instanceName: kFollowingFeedCache,
   );
   sl.registerSingleton<DiskCache>(
-    DiskCache(prefs, key: 'jperg.found_albums.v1', maxEntries: 12),
+    DiskCache(prefs, key: 'jperg.found_albums.v1', maxEntries: 40),
     instanceName: kFoundAlbumsCache,
   );
   sl.registerSingleton<NotificationPrefsService>(

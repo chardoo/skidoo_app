@@ -497,14 +497,6 @@ class FollowRepository {
         list = [];
       }
 
-      // Keep the first page so the tab has something to open to next launch,
-      // with or without a connection. Only the first: later pages are scroll
-      // state, and restoring page 7 to somebody who has just opened the app
-      // would be a list starting in the middle of nowhere.
-      if (page == 1) {
-        unawaited(sl<DiskCache>(instanceName: kFollowingFeedCache).save(list));
-      }
-
       // ── Parse events ──────────────────────────────────────────────────────
       final events = <EventDiscovery>[];
       for (final item in list) {
@@ -537,6 +529,12 @@ class FollowRepository {
       } else {
         hasMore = events.length == limit;
       }
+
+      // Record this page so the tab can open to it next launch, with or
+      // without a connection. Page 1 replaces the cache and later pages append,
+      // so what is restored is as far as the reader had actually scrolled.
+      unawaited(sl<DiskCache>(instanceName: kFollowingFeedCache)
+          .save(list, page: page, hasMore: hasMore));
 
       debugPrint(
           '$_tag getFollowFeed — ${events.length} events, hasMore=$hasMore');

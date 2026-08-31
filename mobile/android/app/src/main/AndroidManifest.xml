@@ -52,10 +52,28 @@
     <!-- Camera plugin may use flash -->
     <uses-permission android:name="android.permission.FLASHLIGHT" />
 
+    <!-- android:allowBackup is off, because the default is on and nothing here
+         wants backing up.
+
+         Left at its default, `adb backup` can pull this app's private storage
+         over USB without root on older Android — which includes the image
+         cache (real JPEGs under cache/jpergImageCache/, neither encrypted nor
+         transformed) and the SharedPreferences holding the feed, Following and
+         Found caches.
+
+         Android 12 restricted `adb backup` and 13 excludes app data from it by
+         default, so this is about older devices; there is no reason to leave
+         the door open on them. Nothing is lost by turning it off: the session
+         lives in the Keychain / EncryptedSharedPreferences, and every cache
+         here is rebuilt from the server on first launch.
+
+         dataExtractionRules/fullBackupContent are not needed once this is
+         false — they describe *what* to back up, and the answer is nothing. -->
     <application
         android:label="jperg"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
         android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="false">
         <activity
