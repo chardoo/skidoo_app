@@ -16,17 +16,29 @@ class DiscoveryLoadMoreRequested extends DiscoveryEvent {
   const DiscoveryLoadMoreRequested();
 }
 
-/// Toggle like or dislike for an event card in the feed.
+/// Toggle like or dislike for an event card in any feed.
 class DiscoveryReactionToggled extends DiscoveryEvent {
   final String eventId;
 
   /// true = like/unlike action, false = dislike/undislike action.
   final bool isLike;
 
-  const DiscoveryReactionToggled(this.eventId, {required this.isLike});
+  /// Where the card believes the event stands, for events this bloc does not
+  /// carry — the Following tab fetches its own posts, and the counts on a card
+  /// there live in that feed's list rather than in [DiscoveryState.events].
+  ///
+  /// Ignored when the bloc already knows the event: its own record is fresher
+  /// than a card's, having taken every server echo since the feed was fetched.
+  final EventReactionState? snapshot;
+
+  const DiscoveryReactionToggled(
+    this.eventId, {
+    required this.isLike,
+    this.snapshot,
+  });
 
   @override
-  List<Object?> get props => [eventId, isLike];
+  List<Object?> get props => [eventId, isLike, snapshot];
 }
 
 /// Dispatched by the card widget when it enters the viewport.

@@ -19,6 +19,9 @@ class AdModel {
     this.advertiserType,
     this.commentsEnabled = true,
     this.commentCount = 0,
+    this.contentTags = const [],
+    this.likeCount = 0,
+    this.viewerLiked = false,
     this.media = const [],
   });
 
@@ -41,6 +44,16 @@ class AdModel {
   final String? advertiserType;
   final bool commentsEnabled;
   final int commentCount;
+
+  /// The "#wedding #photography" line on the card. Written on the campaign,
+  /// delivered with every ad in it.
+  final List<String> contentTags;
+
+  /// The heart on the rail. Counted per campaign rather than per creative: a
+  /// campaign runs one ad per placement, and nobody thinks of their campaign
+  /// as having a separate number of likes in the feed and in explore.
+  final int likeCount;
+  final bool viewerLiked;
   final String placement;
   final String impressionToken;
   final List<AdMedia> media;
@@ -74,6 +87,11 @@ class AdModel {
         advertiserType: json['advertiser_type'] as String?,
         commentsEnabled: json['comments_enabled'] as bool? ?? true,
         commentCount: (json['comment_count'] as num?)?.toInt() ?? 0,
+        contentTags: (json['content_tags'] as List<dynamic>? ?? [])
+            .whereType<String>()
+            .toList(),
+        likeCount: (json['like_count'] as num?)?.toInt() ?? 0,
+        viewerLiked: json['viewer_liked'] as bool? ?? false,
         placement: json['placement'] as String? ?? '',
         impressionToken: json['impression_token'] as String? ?? '',
         media: () {

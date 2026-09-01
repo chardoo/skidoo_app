@@ -29,6 +29,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   late bool _commentsEnabled;
   late int _adsEvery;
   late int _requestsEvery;
+  late int _slideInterval;
   late double _minBudget;
 
   @override
@@ -44,6 +45,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     _commentsEnabled = c.commentsEnabled;
     _adsEvery = c.adsEveryNEvents;
     _requestsEvery = c.requestsEveryNEvents;
+    _slideInterval = c.feedSlideIntervalSeconds;
     _minBudget = c.minCampaignBudgetGhs;
   }
 
@@ -66,6 +68,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
         commentsEnabled: _commentsEnabled,
         adsEveryNEvents: _adsEvery,
         requestsEveryNEvents: _requestsEvery,
+        feedSlideIntervalSeconds: _slideInterval,
         minCampaignBudgetGhs: _minBudget,
       ));
       if (!mounted) return;
@@ -164,6 +167,20 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                         min: 5,
                         max: 100,
                         onChanged: (v) => setState(() => _requestsEvery = v),
+                        ext: ext,
+                      ),
+                      _Divider(ext),
+                      _StepperRow(
+                        label: 'Feed slide every N seconds',
+                        // Zero is the off switch, not "slide immediately" —
+                        // worth saying, because a stepper that bottoms out at 0
+                        // otherwise reads as a broken minimum.
+                        subtitle: 'Auto-slide a post\'s photos until the third,'
+                            ' where Explore takes over. 0 turns it off',
+                        value: _slideInterval,
+                        min: 0,
+                        max: 30,
+                        onChanged: (v) => setState(() => _slideInterval = v),
                         ext: ext,
                       ),
                     ]),

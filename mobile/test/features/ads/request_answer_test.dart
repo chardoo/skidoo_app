@@ -57,7 +57,10 @@ void main() {
         onAnswerTap: () => answered++,
       );
 
-      expect(data.ctaLabel, 'Message Requester');
+      // "Express interest", not "Message Requester": the old label promised a
+      // conversation the board deliberately does not offer, and the button
+      // never opened one — it posted an answer.
+      expect(data.ctaLabel, 'Express interest');
       expect(data.ctaUrl, isNull, reason: 'nothing to launch — it posts');
       data.onCtaTap!();
       expect(answered, 1);
@@ -68,7 +71,7 @@ void main() {
         _request(viewerInterested: true),
         onAnswerTap: () {},
       );
-      expect(data.ctaLabel, 'Invitation sent');
+      expect(data.ctaLabel, 'Interest sent');
     });
 
     test('your own request has no action at all', () {

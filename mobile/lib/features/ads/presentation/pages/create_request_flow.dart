@@ -29,9 +29,72 @@ class CreateRequestFlow extends StatefulWidget {
   State<CreateRequestFlow> createState() => _CreateRequestFlowState();
 }
 
+/// How much of the day a photographer is being asked for.
+///
+/// A list rather than a text field, so the line reads the same on every card
+/// and can be filtered on later — with two escape hatches, because nobody
+/// should have to describe an unusual job in somebody else's words.
+enum RequestCoverage {
+  halfDay('half_day', 'Half day', '~4 hrs'),
+  fullDay('full_day', 'Full day', '~8 hrs'),
+  multiDay('multi_day', 'Multi-day', 'More than one day'),
+  hourly('hourly', 'Hourly', 'Say how many'),
+  other('other', 'Other', 'Describe it yourself');
+
+  const RequestCoverage(this.wire, this.label, this.hint);
+
+  /// What the server stores.
+  final String wire;
+  final String label;
+  final String hint;
+}
+
 class RequestDraft {
   String title = '';
   DateTime? eventDate;
+
+  /// What time the shoot starts. Optional — plenty of requests are posted
+  /// before the day is planned that far, and a made-up time is worse than
+  /// none.
+  TimeOfDay? eventTime;
+
+  RequestCoverage? coverage;
+
+  /// Hours, when [coverage] is hourly.
+  int? coverageHours;
+
+  /// What they wrote, when [coverage] is other.
+  String coverageNote = '';
+
+  /// The line the card will show, or null when nothing was said.
+  String? get coverageLabel {
+    switch (coverage) {
+      case RequestCoverage.halfDay:
+        return 'Half Day Coverage (~4 hrs)';
+      case RequestCoverage.fullDay:
+        return 'Full Day Coverage (~8 hrs)';
+      case RequestCoverage.multiDay:
+        return 'Multi-Day Coverage';
+      case RequestCoverage.hourly:
+        final hours = coverageHours;
+        if (hours == null) return null;
+        return 'Hourly Coverage (~$hours ${hours == 1 ? 'hr' : 'hrs'})';
+      case RequestCoverage.other:
+        final note = coverageNote.trim();
+        return note.isEmpty ? null : note;
+      case null:
+        return null;
+    }
+  }
+
+  /// "HH:MM" on a 24-hour clock, which is what the server stores.
+  String? get eventTimeWire {
+    final time = eventTime;
+    if (time == null) return null;
+    return '${time.hour.toString().padLeft(2, '0')}:'
+        '${time.minute.toString().padLeft(2, '0')}';
+  }
+
   String? eventType;
 
   /// Where the shoot is, as a resolved place rather than typed text.
@@ -145,6 +208,136 @@ class _NewRequestStepState extends State<_NewRequestStep> {
     if (picked != null) setState(() => widget.draft.eventDate = picked);
   }
 
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: widget.draft.eventTime ??
+          const TimeOfDay(hour: 10, minute: 0),
+    );
+    if (picked != null) setState(() => widget.draft.eventTime = picked);
+  }
+
+  /// Pick the coverage, and ask for the detail the choice needs.
+  ///
+  /// Hourly with no hours and Other with no note both come out as a label with
+  /// nothing after it, so the follow-up is part of choosing rather than a
+  /// second field to forget.
+  Future<void> _pickCoverage() async {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final picked = await showModalBottomSheet<RequestCoverage>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        decoration: BoxDecoration(
+          color: ext.homeBackground,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final option in RequestCoverage.values)
+                ListTile(
+                  title: Text(option.label,
+                      style: TextStyle(color: ext.greetingColor)),
+                  subtitle: Text(option.hint,
+                      style: TextStyle(
+                          color: ext.searchHintColor, fontSize: 12.sp)),
+                  onTap: () => Navigator.of(sheetContext).pop(option),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+
+    if (picked == RequestCoverage.hourly) {
+      final hours = await _askForText(
+        title: 'How many hours?',
+        hint: 'e.g. 3',
+        number: true,
+        initial: widget.draft.coverageHours?.toString() ?? '',
+      );
+      if (hours == null || !mounted) return;
+      final parsed = int.tryParse(hours.trim());
+      if (parsed == null || parsed < 1) return;
+      setState(() {
+        widget.draft.coverage = picked;
+        widget.draft.coverageHours = parsed;
+        widget.draft.coverageNote = '';
+      });
+      return;
+    }
+
+    if (picked == RequestCoverage.other) {
+      final note = await _askForText(
+        title: 'What coverage do you need?',
+        hint: 'e.g. Ceremony only',
+        initial: widget.draft.coverageNote,
+      );
+      if (note == null || !mounted) return;
+      if (note.trim().isEmpty) return;
+      setState(() {
+        widget.draft.coverage = picked;
+        widget.draft.coverageNote = note.trim();
+        widget.draft.coverageHours = null;
+      });
+      return;
+    }
+
+    setState(() {
+      widget.draft.coverage = picked;
+      widget.draft.coverageHours = null;
+      widget.draft.coverageNote = '';
+    });
+  }
+
+  Future<String?> _askForText({
+    required String title,
+    required String hint,
+    String initial = '',
+    bool number = false,
+  }) async {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final controller = TextEditingController(text: initial);
+    final answer = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: ext.cardSurface,
+        title: Text(title,
+            style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: number ? TextInputType.number : TextInputType.text,
+          maxLength: number ? 3 : 60,
+          style: TextStyle(color: ext.greetingColor),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: ext.searchHintColor),
+            counterText: '',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text('Cancel',
+                style: TextStyle(color: ext.searchHintColor)),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text),
+            child: Text('Done', style: TextStyle(color: ext.accentGold)),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return answer;
+  }
+
   Future<void> _addPhoto() async {
     final file = await _picker.pickImage(
       source: ImageSource.gallery, imageQuality: 85,
@@ -191,6 +384,47 @@ class _NewRequestStepState extends State<_NewRequestStep> {
                     : _formatDate(draft.eventDate!),
                 style: TextStyle(
                   color: draft.eventDate == null
+                      ? ext.searchHintColor
+                      : ext.greetingColor,
+                  fontSize: 14.sp,
+                ),
+              ),
+            ),
+          ),
+          // Both optional, and both what a photographer reads first: when they
+          // have to be there, and for how long. A request that says neither is
+          // still a request, so neither gates the button.
+          _Field(
+            ext: ext,
+            label: 'Start Time',
+            child: _Tappable(
+              ext: ext,
+              onTap: _pickTime,
+              child: Text(
+                draft.eventTime == null
+                    ? 'Optional'
+                    : draft.eventTime!.format(context),
+                style: TextStyle(
+                  color: draft.eventTime == null
+                      ? ext.searchHintColor
+                      : ext.greetingColor,
+                  fontSize: 14.sp,
+                ),
+              ),
+            ),
+          ),
+          _Field(
+            ext: ext,
+            label: 'Coverage',
+            child: _Tappable(
+              ext: ext,
+              onTap: _pickCoverage,
+              trailing: Icon(Icons.expand_more_rounded,
+                  color: ext.searchHintColor, size: 20.r),
+              child: Text(
+                draft.coverageLabel ?? 'Optional',
+                style: TextStyle(
+                  color: draft.coverage == null
                       ? ext.searchHintColor
                       : ext.greetingColor,
                   fontSize: 14.sp,
@@ -355,6 +589,14 @@ class _ReviewStepState extends State<_ReviewStep> {
         targetLocations:
             draft.targetLocations.map((p) => p.toJson()).toList(),
         eventDate: draft.eventDate,
+        eventTime: draft.eventTimeWire,
+        coverageKind: draft.coverage?.wire,
+        coverageHours: draft.coverage == RequestCoverage.hourly
+            ? draft.coverageHours
+            : null,
+        coverageNote: draft.coverage == RequestCoverage.other
+            ? draft.coverageNote.trim()
+            : null,
         budgetMin: draft.budgetMin,
         budgetMax: draft.budgetMax,
         currency: 'GHS',
@@ -402,6 +644,18 @@ class _ReviewStepState extends State<_ReviewStep> {
             value: draft.eventDate == null ? '' : _formatDate(draft.eventDate!),
             ext: ext,
           ),
+          // Only when they were given: this screen exists to be read, and a
+          // row saying "Start Time —" is noise between the rows that say
+          // something.
+          if (draft.eventTime != null)
+            _ReadBack(
+              label: 'Start Time',
+              value: draft.eventTime!.format(context),
+              ext: ext,
+            ),
+          if (draft.coverageLabel != null)
+            _ReadBack(
+              label: 'Coverage', value: draft.coverageLabel!, ext: ext),
           _ReadBack(label: 'Event Type', value: draft.eventType ?? '', ext: ext),
           _ReadBack(label: 'Location', value: draft.location, ext: ext),
           _ReadBack(

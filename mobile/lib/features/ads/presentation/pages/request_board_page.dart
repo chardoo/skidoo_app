@@ -151,9 +151,8 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
     final result = await InvitationSheet.show(
       context,
       requestTitle: req.title,
-      requesterName: req.requesterName.isNotEmpty
-          ? req.requesterName
-          : 'The requester',
+      requesterName:
+          req.requesterName.isNotEmpty ? req.requesterName : 'The requester',
       existingMessage: req.viewerInterested ? (req.viewerMessage ?? '') : null,
     );
     if (result == null || !mounted) return;
@@ -220,9 +219,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
+        leading: kIsWeb ? null : const AppBackButton(),
         title: Text(
           'Request Board',
           style: TextStyle(
@@ -295,44 +292,54 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                           // Sponsored ad at position 0
                           if (hasAd && i == 0) {
                             final ad = _sponsoredAd!;
-                            return FeedItemCard(
-                              key: ValueKey('sponsored_${ad.adId}'),
-                              data: FeedItemData.fromAd(
-                                ad,
-                                onCtaTap: () => _repo.trackClick(
-                                  adId: ad.adId,
-                                  campaignId: ad.campaignId,
-                                  impressionId: _sponsoredImpressionId,
-                                ),
-                                onInit: () async {
-                                  final id = await _repo.trackImpression(
+                            // Boxed: the same poster the feed shows, as a tile
+                            // in a list. See [FeedItemCard.fullBleed].
+                            return _BoardTile(
+                              child: FeedItemCard(
+                                fullBleed: false,
+                                key: ValueKey('sponsored_${ad.adId}'),
+                                data: FeedItemData.fromAd(
+                                  ad,
+                                  onCtaTap: () => _repo.trackClick(
                                     adId: ad.adId,
-                                    adsetId: ad.adsetId,
                                     campaignId: ad.campaignId,
-                                    placement: 'request_board',
-                                    impressionToken: ad.impressionToken,
-                                  );
-                                  if (mounted) {
-                                    setState(() => _sponsoredImpressionId = id);
-                                  }
-                                },
+                                    impressionId: _sponsoredImpressionId,
+                                  ),
+                                  onInit: () async {
+                                    final id = await _repo.trackImpression(
+                                      adId: ad.adId,
+                                      adsetId: ad.adsetId,
+                                      campaignId: ad.campaignId,
+                                      placement: 'request_board',
+                                      impressionToken: ad.impressionToken,
+                                    );
+                                    if (mounted) {
+                                      setState(
+                                          () => _sponsoredImpressionId = id);
+                                    }
+                                  },
+                                ),
+                                onHide: () =>
+                                    setState(() => _sponsoredAd = null),
                               ),
-                              onHide: () => setState(() => _sponsoredAd = null),
                             );
                           }
 
                           final req = visible[i - adOffset];
-                          return FeedItemCard(
-                            data: FeedItemData.fromRequest(
-                              req,
-                              // Your own request is one you cannot answer, so
-                              // the card shows its count without the button.
-                              onAnswerTap: req.requesterId == _myUserId
-                                  ? null
-                                  : () => _answer(req),
+                          return _BoardTile(
+                            child: FeedItemCard(
+                              fullBleed: false,
+                              data: FeedItemData.fromRequest(
+                                req,
+                                // Your own request is one you cannot answer, so
+                                // the card shows its count without the button.
+                                onAnswerTap: req.requesterId == _myUserId
+                                    ? null
+                                    : () => _answer(req),
+                              ),
+                              onHide: () =>
+                                  setState(() => _hiddenIds.add(req.id)),
                             ),
-                            onHide: () =>
-                                setState(() => _hiddenIds.add(req.id)),
                           );
                         },
                       ),
@@ -534,5 +541,33 @@ class _FilterChip extends StatelessWidget {
             ),
           ),
         ));
+  }
+}
+
+/// One poster in the board's list.
+///
+/// The card it holds is the feed's page, boxed: same media, same pill, same
+/// button, given a height and a corner radius so a list of them reads as a
+/// list rather than as a stack of screens. The height is the poster shape the
+/// designs draw — tall enough for the copy block to sit on real photo.
+class _BoardTile extends StatelessWidget {
+  const _BoardTile({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md.w,
+        AppSpacing.sm.h,
+        AppSpacing.md.w,
+        AppSpacing.sm.h,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.lg.r),
+        child: SizedBox(height: 520.h, child: child),
+      ),
+    );
   }
 }

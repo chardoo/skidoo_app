@@ -13,6 +13,8 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
+import 'package:jperg_app/features/admin/data/models/app_config.dart';
+import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/ads/models/ad_media.dart';
 import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.dart';
 import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
@@ -58,6 +60,10 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
   // write the emptiness back over whatever the wizard chose.
   late final _targetLocations = [..._c.targetLocations];
   late final _interests = _c.interests.toSet();
+  late final _contentTags = _c.contentTags.toSet();
+  // Editable here for the first time. It could only ever be set at creation,
+  // so an advertiser who wanted the thread closed had to start again.
+  late bool _commentsEnabled = _c.commentsEnabled;
   late String _audience = _c.audience;
   // Prefilled from the campaign, falling back to the widest band rather than a
   // narrower guess that would silently shrink the audience on save.
@@ -181,6 +187,9 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
         // Sent even when empty — clearing every interest tag is a real edit,
         // and omitting the field would silently keep the old ones.
         interests: _interests.toList(),
+        // Same rule: an empty list is "clear the line", not "leave it alone".
+        contentTags: _contentTags.toList(),
+        commentsEnabled: _commentsEnabled,
         audience: _audience,
         ageMin: _ages.start.round(),
         ageMax: _ages.end.round(),
@@ -266,6 +275,47 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
           _FieldLabel('Destination URL', ext: ext, required: true),
           _Text(controller: _ctaUrl, ext: ext, keyboardType: TextInputType.url,
               onChanged: (_) => setState(() {})),
+
+          // Copy, so it sits with the creative — the interest tags further
+          // down are targeting. See AdCampaign.contentTags.
+          _FieldLabel('Tags', ext: ext),
+          ValueListenableBuilder<AppConfig>(
+            valueListenable: AppConfigRepository.notifier,
+            builder: (context, config, _) => Wrap(
+              spacing: AppSpacing.sm.w,
+              runSpacing: AppSpacing.xs.h,
+              children: [
+                for (final tag in config.contentTags)
+                  _Chip(
+                    ext: ext,
+                    label: tag,
+                    selected: _contentTags.contains(tag),
+                    onTap: () => setState(() {
+                      if (_contentTags.contains(tag)) {
+                        _contentTags.remove(tag);
+                      } else if (_contentTags.length <
+                          CampaignDraft.maxContentTags) {
+                        _contentTags.add(tag);
+                      }
+                    }),
+                  ),
+              ],
+            ),
+          ),
+
+          // The switch that decides whether the card carries a comment button
+          // at all. Set at creation and, until now, never again.
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: _commentsEnabled,
+            onChanged: (v) => setState(() => _commentsEnabled = v),
+            title: Text('Allow comments',
+                style: TextStyle(color: ext.greetingColor, fontSize: 14.sp)),
+            subtitle: Text(
+              'People can reply to this campaign in the feed',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+            ),
+          ),
 
           _FieldLabel(
             _format.mediaRange.$2 == 1

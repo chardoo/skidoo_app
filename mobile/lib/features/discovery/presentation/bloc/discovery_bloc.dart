@@ -452,11 +452,13 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   void _onReactionUpdated(
       _DiscoveryLikeUpdateReceived event, Emitter<DiscoveryState> emit) {
     final update = event.update;
-    final idx = state.events.indexWhere((e) => e.id == update.eventId);
-    if (idx == -1) return;
-
-    final current = state.events[idx];
     final isOwnAction = update.senderId == _currentUserId;
+
+    // An echo about a post this bloc does not carry is still worth keeping: it
+    // is the server confirming what somebody just did in Following, or someone
+    // else liking a post they are looking at there.
+    final current = state.reactionFor(update.eventId);
+    if (current == null && !isOwnAction) return;
 
     // Always use the server-authoritative counts.
     // Only change userReaction if this update came from the current user.
@@ -466,16 +468,16 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
             : update.disliked
                 ? 'dislike'
                 : null)
-        : current.userReaction;
+        : current?.userReaction;
 
-    final updated = List<EventDiscovery>.from(state.events);
-    updated[idx] = current.copyWith(
-      likes: update.likes,
-      dislikes: update.dislikes,
-      userReaction: reaction,
-      clearReaction: reaction == null && isOwnAction,
-    );
-    emit(state.copyWith(events: updated));
+    emit(state.withReaction(
+      update.eventId,
+      EventReactionState(
+        likes: update.likes,
+        dislikes: update.dislikes,
+        userReaction: reaction,
+      ),
+    ));
   }
 
   // ── Comment added by the current user ─────────────────────────────────────
@@ -496,48 +498,19 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     DiscoveryReactionToggled event,
     Emitter<DiscoveryState> emit,
   ) async {
-    final idx = state.events.indexWhere((e) => e.id == event.eventId);
-    if (idx == -1) return;
-
-    final current = state.events[idx];
-
-    final String action;
-    if (event.isLike) {
-      action = current.userReaction == 'like' ? 'unlike' : 'like';
-    } else {
-      action = current.userReaction == 'dislike' ? 'undislike' : 'dislike';
-    }
-
-    // Optimistic update
-    int newLikes = current.likes;
-    int newDislikes = current.dislikes;
-    String? newReaction;
-
-    switch (action) {
-      case 'like':
-        newLikes++;
-        if (current.userReaction == 'dislike') newDislikes--;
-        newReaction = 'like';
-      case 'unlike':
-        newLikes = (newLikes - 1).clamp(0, 999999999);
-        newReaction = null;
-      case 'dislike':
-        newDislikes++;
-        if (current.userReaction == 'like') newLikes--;
-        newReaction = 'dislike';
-      case 'undislike':
-        newDislikes = (newDislikes - 1).clamp(0, 999999999);
-        newReaction = null;
-    }
-
-    final optimistic = List<EventDiscovery>.from(state.events);
-    optimistic[idx] = current.copyWith(
-      likes: newLikes,
-      dislikes: newDislikes,
-      userReaction: newReaction,
-      clearReaction: newReaction == null,
+    // Not "is it in the Feed tab's list" any more. A post in Following is just
+    // as real, and this used to give up on one — see [EventReactionState].
+    final toggle = state.toggleReaction(
+      event.eventId,
+      isLike: event.isLike,
+      snapshot: event.snapshot,
     );
-    emit(state.copyWith(events: optimistic));
+    if (toggle == null) return;
+
+    final current = toggle.previous;
+    final action = toggle.action;
+
+    emit(toggle.state);
 
     // The profile's Liked tab holds its grid rather than refetching on every
     // visit, so this is what tells it an event joined or left the list.
@@ -557,13 +530,9 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       room = _roomCache[event.eventId];
     }
     if (room == null) {
-      // Revert optimistic update — can't route without room_id.
-      final revertIdx = state.events.indexWhere((e) => e.id == event.eventId);
-      if (revertIdx != -1) {
-        final reverted = List<EventDiscovery>.from(state.events);
-        reverted[revertIdx] = current;
-        emit(state.copyWith(events: reverted));
-      }
+      // Revert the optimistic update — there is no room to route through, so
+      // nothing was recorded anywhere but here.
+      emit(state.withReaction(event.eventId, current));
       return;
     }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/navigation/chrome_visibility.dart';
+import 'package:jperg_app/core/navigation/feed_chrome.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -89,8 +90,11 @@ class _HomeViewState extends State<_HomeView> {
   static const _kWebTabKey = 'home.selected_tab';
 
   int _selectedTab = 0;
-  // Tab 0 starts with chrome hidden — shows only on deliberate tap.
-  bool _navBarVisible = false;
+
+  // Tab 0 starts with chrome hidden — a tap on a feed card is what summons it.
+  // The state lives in [FeedChrome] rather than here: the tap happens on a card
+  // several layers down while the bar hangs off this Scaffold, and the sound
+  // control in the same band has to agree with it.
 
   // Accumulates downward scroll px. Resets on any upward movement or tab
   // switch. The nav bar hides only after the user has scrolled down a clear,
@@ -370,12 +374,10 @@ class _HomeViewState extends State<_HomeView> {
     VideoPauseNotifier.pauseAll();
     _downAccum = 0;
 
-    // Nav bar always shows on a deliberate tab switch — it only hides again
-    // in response to an actual downward scroll, never on a timer.
-    setState(() {
-      _selectedTab = index;
-      _navBarVisible = true;
-    });
+    // Nav bar always shows on a deliberate tab switch — it only hides again in
+    // response to a downward scroll or a tap on a feed card, never on a timer.
+    FeedChrome.show();
+    setState(() => _selectedTab = index);
 
     if (index == 1) {
       // Full reload so any newly created rooms appear immediately.
@@ -400,16 +402,12 @@ class _HomeViewState extends State<_HomeView> {
       if (delta > 0) {
         // Downward — accumulate and hide once past threshold.
         _downAccum += delta;
-        if (_downAccum >= _hideThreshold && _navBarVisible) {
-          setState(() => _navBarVisible = false);
-        }
+        if (_downAccum >= _hideThreshold) FeedChrome.hide();
       } else if (delta < 0) {
         // Upward — always show nav (home tab included). No layout shift because
         // AnimatedSlide + extendBody means the body height never changes.
         _downAccum = 0;
-        if (!_navBarVisible) {
-          setState(() => _navBarVisible = true);
-        }
+        FeedChrome.show();
       }
     } else if (notification is ScrollEndNotification) {
       // Scrolling stopped — nav stays exactly as it is (visible or hidden);
@@ -463,23 +461,29 @@ class _HomeViewState extends State<_HomeView> {
             ),
           ],
         ),
-        bottomNavigationBar: kIsWeb ? null : AnimatedSlide(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          offset: _navBarVisible ? Offset.zero : const Offset(0, 1),
-          child: IgnorePointer(
-            ignoring: !_navBarVisible,
-            child: BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
-              selector: (state) =>
-                  state.unreadCounts.values.fold(0, (sum, c) => sum + c),
-              builder: (context, totalUnread) => AppNavbar(
-                selectedIndex: _selectedTab,
-                onchange: _changeTab,
-                messageUnreadCount: totalUnread,
+        // Listens rather than reading this build's value: a tap on a feed card
+        // flips [FeedChrome] from outside this widget entirely, and nothing
+        // here would know to rebuild.
+        bottomNavigationBar: kIsWeb
+            ? null
+            : ValueListenableBuilder<bool>(
+                valueListenable: FeedChrome.visible,
+                builder: (context, navVisible, child) => AnimatedSlide(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  offset: navVisible ? Offset.zero : const Offset(0, 1),
+                  child: IgnorePointer(ignoring: !navVisible, child: child),
+                ),
+                child: BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
+                  selector: (state) =>
+                      state.unreadCounts.values.fold(0, (sum, c) => sum + c),
+                  builder: (context, totalUnread) => AppNavbar(
+                    selectedIndex: _selectedTab,
+                    onchange: _changeTab,
+                    messageUnreadCount: totalUnread,
+                  ),
+                ),
               ),
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -62,6 +62,14 @@ class AdCampaign {
   final List<Place> targetLocations;
 
   final List<String> interests;
+
+  /// The "#wedding #photography" line on the feed card.
+  ///
+  /// Copy the advertiser wrote, not the [interests] beside it: interests are
+  /// targeting — who should be shown this — while these say what is being
+  /// sold, to a person reading it. They overlap constantly and mean different
+  /// things, which is exactly why they are two fields.
+  final List<String> contentTags;
   final String audience;
 
   /// "Target Age: 25 – 55 years". Null when the campaign never set one.
@@ -135,6 +143,7 @@ class AdCampaign {
     this.locations = const [],
     this.targetLocations = const [],
     this.interests = const [],
+    this.contentTags = const [],
     this.audience = 'all',
     this.ageMin,
     this.ageMax,
@@ -204,6 +213,9 @@ class AdCampaign {
             .map(Place.fromJson)
             .toList(),
         interests: (j['interests'] as List<dynamic>? ?? [])
+            .whereType<String>()
+            .toList(),
+        contentTags: (j['content_tags'] as List<dynamic>? ?? [])
             .whereType<String>()
             .toList(),
         audience: j['audience'] as String? ?? 'all',

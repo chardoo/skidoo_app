@@ -497,27 +497,23 @@ class _EventsFeedState extends State<EventsFeed> {
                   final ad = adIdx < _ads.length ? _ads[adIdx] : null;
                   if (ad == null) return const SizedBox.shrink();
 
-                  return FittedBox(
-                    fit: BoxFit.contain,
-                    child: SizedBox(
-                      width: MediaQuery.sizeOf(context).width,
-                      child: FeedItemCard(
-                        key: ValueKey('ad_$adIdx'),
-                        data: FeedItemData.fromAd(
-                          ad,
-                          onCtaTap: () => _repo.trackClick(
-                            adId: ad.adId,
-                            campaignId: ad.campaignId,
-                            impressionId: adIdx < _impressionIds.length
-                                ? _impressionIds[adIdx]
-                                : null,
-                          ),
-                        ),
-                        onHide: () => setState(() {
-                          if (adIdx < _ads.length) _ads[adIdx] = null;
-                        }),
+                  // Not scaled into a card any more: a campaign is a page of
+                  // this feed like any other, and it fills one.
+                  return FeedItemCard(
+                    key: ValueKey('ad_$adIdx'),
+                    data: FeedItemData.fromAd(
+                      ad,
+                      onCtaTap: () => _repo.trackClick(
+                        adId: ad.adId,
+                        campaignId: ad.campaignId,
+                        impressionId: adIdx < _impressionIds.length
+                            ? _impressionIds[adIdx]
+                            : null,
                       ),
                     ),
+                    onHide: () => setState(() {
+                      if (adIdx < _ads.length) _ads[adIdx] = null;
+                    }),
                   );
                 }
 
@@ -527,22 +523,16 @@ class _EventsFeedState extends State<EventsFeed> {
                     return const SizedBox.shrink();
                   }
                   final req = visibleRequests[item.requestIndex];
-                  return FittedBox(
-                    fit: BoxFit.contain,
-                    child: SizedBox(
-                      width: MediaQuery.sizeOf(context).width,
-                      child: FeedItemCard(
-                        key: ValueKey('req_${req.id}'),
-                        data: FeedItemData.fromRequest(
-                          req,
-                          onAnswerTap: req.requesterId == _myUserId
-                              ? null
-                              : () => _answerRequest(req),
-                        ),
-                        onHide: () =>
-                            setState(() => _hiddenRequestIds.add(req.id)),
-                      ),
+                  return FeedItemCard(
+                    key: ValueKey('req_${req.id}'),
+                    data: FeedItemData.fromRequest(
+                      req,
+                      onAnswerTap: req.requesterId == _myUserId
+                          ? null
+                          : () => _answerRequest(req),
                     ),
+                    onHide: () =>
+                        setState(() => _hiddenRequestIds.add(req.id)),
                   );
                 }
 

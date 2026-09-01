@@ -172,6 +172,32 @@ class AdsRepository {
     }
   }
 
+  /// Like a campaign, or take the like back. Returns where it landed.
+  ///
+  /// The likes live in the chat service, beside the comments on the same
+  /// campaigns — this is one call to the same place the comment sheet already
+  /// talks to, not a new seam.
+  ///
+  /// A toggle rather than two verbs: the heart is one button in two states,
+  /// and the card should not have to choose a call from a count it may have
+  /// loaded minutes ago.
+  Future<({bool liked, int likes})?> toggleCampaignLike(
+      String campaignId) async {
+    if (campaignId.isEmpty) return null;
+    debugPrint('$_tag toggleCampaignLike → campaignId=$campaignId');
+    try {
+      final resp = await _dio.post('/chat/likes/campaign/$campaignId');
+      final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+      return (
+        liked: data['liked'] as bool? ?? false,
+        likes: (data['likes'] as num?)?.toInt() ?? 0,
+      );
+    } catch (e) {
+      debugPrint('$_tag toggleCampaignLike ERROR: $e');
+      return null;
+    }
+  }
+
   Future<void> trackConversion({
     required String adId,
     required String campaignId,
@@ -276,6 +302,15 @@ class AdsRepository {
     /// which is what every request posted before the picker existed means.
     List<Map<String, dynamic>> targetLocations = const [],
     DateTime? eventDate,
+
+    /// "HH:MM" at the venue — see AdRequest.event_time on the server for why
+    /// this travels as text rather than folded into [eventDate].
+    String? eventTime,
+
+    /// half_day | full_day | multi_day | hourly | other.
+    String? coverageKind,
+    int? coverageHours,
+    String? coverageNote,
     double? budgetMin,
     double? budgetMax,
     double? budgetAmount,
@@ -293,6 +328,10 @@ class AdsRepository {
       'target_locations': targetLocations,
       if (eventDate != null)
         'event_date': eventDate.toIso8601String().split('T').first,
+      if (eventTime != null) 'event_time': eventTime,
+      if (coverageKind != null) 'coverage_kind': coverageKind,
+      if (coverageHours != null) 'coverage_hours': coverageHours,
+      if (coverageNote != null) 'coverage_note': coverageNote,
       if (budgetMin != null) 'budget_min': budgetMin,
       if (budgetMax != null) 'budget_max': budgetMax,
       if (budgetAmount != null) 'budget_amount': budgetAmount,
@@ -421,6 +460,10 @@ class AdsRepository {
     /// everywhere.
     List<Map<String, dynamic>>? targetLocations,
     DateTime? eventDate,
+    String? eventTime,
+    String? coverageKind,
+    int? coverageHours,
+    String? coverageNote,
     double? budgetMin,
     double? budgetMax,
     double? budgetAmount,
@@ -436,6 +479,10 @@ class AdsRepository {
       if (targetLocations != null) 'target_locations': targetLocations,
       if (eventDate != null)
         'event_date': eventDate.toIso8601String().split('T').first,
+      if (eventTime != null) 'event_time': eventTime,
+      if (coverageKind != null) 'coverage_kind': coverageKind,
+      if (coverageHours != null) 'coverage_hours': coverageHours,
+      if (coverageNote != null) 'coverage_note': coverageNote,
       if (budgetMin != null) 'budget_min': budgetMin,
       if (budgetMax != null) 'budget_max': budgetMax,
       if (budgetAmount != null) 'budget_amount': budgetAmount,
@@ -810,6 +857,10 @@ class AdsRepository {
     String? body,
     required String ctaText,
     required String ctaUrl,
+
+    /// The "#wedding #photography" line on the card — copy, not targeting.
+    /// [interests] below is the targeting; see AdCampaign.contentTags.
+    List<String> contentTags = const [],
     List<String> locations = const [],
     /// Resolved places from the location search. The one the country gate and
     /// the distance ranking read — `locations` above is the old free-text list,
@@ -838,6 +889,7 @@ class AdsRepository {
       if (body != null && body.isNotEmpty) 'body': body,
       'cta_text': ctaText,
       'cta_url': ctaUrl,
+      'content_tags': contentTags,
       'locations': locations,
       'target_locations': targetLocations,
       'interests': interests,
@@ -1249,6 +1301,14 @@ class AdsRepository {
     String? body,
     String? ctaText,
     String? ctaUrl,
+
+    /// The hashtag line. Absent leaves it alone; an empty list clears it.
+    List<String>? contentTags,
+
+    /// Whether the card offers a comment button. Editable now — it could only
+    /// be set at creation before, so an advertiser who wanted the thread
+    /// closed had to start the campaign again.
+    bool? commentsEnabled,
     List<String>? locations,
     /// Absent leaves targeting alone; an empty list clears it back to
     /// everywhere. Two different intentions, and a PATCH has to say either.
@@ -1273,6 +1333,8 @@ class AdsRepository {
       if (body != null) 'body': body,
       if (ctaText != null) 'cta_text': ctaText,
       if (ctaUrl != null) 'cta_url': ctaUrl,
+      if (contentTags != null) 'content_tags': contentTags,
+      if (commentsEnabled != null) 'comments_enabled': commentsEnabled,
       if (locations != null) 'locations': locations,
       if (targetLocations != null) 'target_locations': targetLocations,
       if (interests != null) 'interests': interests,

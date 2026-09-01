@@ -1,39 +1,36 @@
-import 'dart:async';
 import 'dart:ui';
 
-import 'package:jperg_app/core/widgets/jperg_image.dart';
-import 'package:jperg_app/core/widgets/media_backdrop.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:jperg_app/core/common/widgets/get_app_sheet.dart';
 
-import 'package:jperg_app/core/config/chat_config.dart';
-import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
+import 'package:jperg_app/components/media/media_reaction_rail.dart';
+import 'package:jperg_app/core/common/widgets/get_app_sheet.dart';
+import 'package:jperg_app/core/navigation/feed_chrome.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/widgets/media_backdrop.dart';
+import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/features/ads/data/models/ad_model.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/models/ad.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/features/ads/models/ad_media.dart';
 import 'package:jperg_app/features/ads/presentation/pages/feed_comment_sheet.dart';
-import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
-import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
-import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
-import 'package:jperg_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
-import 'package:jperg_app/features/discovery/presentation/widgets/card_photo_preview.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/card_photo_preview.dart'
+    show CardGradientPlaceholder;
 import 'package:jperg_app/features/discovery/presentation/widgets/report_sheet.dart';
-import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
-import 'package:jperg_app/core/theme/app_radius.dart';
-import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Data model — same shape for ads and requests, mirrors EventDiscovery fields
+// Data model — same shape for campaigns and requests
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum FeedItemType { ad, request }
@@ -44,17 +41,23 @@ class FeedItemData {
     required this.id,
     required this.title,
     required this.creatorName,
+    this.campaignId = '',
     this.creatorId = '',
-    this.creatorRole = '',
     this.creatorPhotoUrl,
     this.mediaUrl,
     this.mediaIsVideo = false,
     this.mediaList = const <AdMedia>[],
     this.body,
-    this.secondaryLabel,
+    this.contentTags = const <String>[],
     this.commentsEnabled = true,
     this.commentCount = 0,
-    this.interestedCount = 0,
+    this.likeCount = 0,
+    this.viewerLiked = false,
+    this.eventDate,
+    this.eventTime,
+    this.location,
+    this.coverageLabel,
+    this.budgetLabel,
     this.viewerInterested = false,
     this.ctaLabel,
     this.ctaUrl,
@@ -64,55 +67,71 @@ class FeedItemData {
 
   final FeedItemType type;
 
-  /// ad_id or request_id
+  /// ad_id or request_id — what a comment is filed against.
   final String id;
 
-  /// headline (ad) · request title
+  /// The campaign the ad belongs to. Likes are counted per campaign, not per
+  /// creative: one campaign runs an ad per placement, and nobody thinks of
+  /// theirs as having separate numbers in the feed and in explore.
+  final String campaignId;
+
+  /// headline (campaign) · request title
   final String title;
 
-  /// advertiser name (ad) · requester name
+  /// advertiser name (campaign) · requester name
   final String creatorName;
-
-  /// advertiser_id (ad) · requester_id — used by the Follow button.
   final String creatorId;
-
-  /// "photographer" | "client" — used to open a direct chat room.
-  final String creatorRole;
   final String? creatorPhotoUrl;
 
   final String? mediaUrl;
   final bool mediaIsVideo;
 
-  /// Ordered list of media items (new API). Falls back to single-item wrapping
-  /// of mediaUrl for backward compat.
+  /// Ordered media. Falls back to wrapping [mediaUrl] for older payloads.
   final List<AdMedia> mediaList;
 
-  /// ad body copy · request description — shown as expandable caption
+  /// Body copy (campaign) · description (request).
   final String? body;
 
-  /// Footer subtitle: null for ads (creator already in header);
-  /// "WeddingType · Accra" for requests.
-  final String? secondaryLabel;
+  /// "#wedding #photography" — campaign copy the advertiser wrote. Not the
+  /// campaign's targeting interests, which say who sees it rather than what it
+  /// is about.
+  final List<String> contentTags;
 
   final bool commentsEnabled;
   final int commentCount;
 
-  /// Request cards only: how many photographers have answered, whether this
-  /// viewer is one of them, and the toggle. Null handler on your own request —
-  /// you cannot answer yourself, and the count still shows.
-  final int interestedCount;
+  /// Campaign only. Real, server-side, and per campaign — see [campaignId].
+  final int likeCount;
+  final bool viewerLiked;
+
+  // ── Request only ─────────────────────────────────────────────────────────
+  //
+  // The three lines under the title on a request card: when, where, and how
+  // much of the day. Each is null on requests that did not say, and the row is
+  // left out rather than drawn empty.
+  final DateTime? eventDate;
+
+  /// "10:00" at the venue. Shown beside the date when given.
+  final String? eventTime;
+  final String? location;
+
+  /// "Full Day Coverage (~8 hrs)".
+  final String? coverageLabel;
+
+  /// "GHS 4,500 - GHS 6,000".
+  final String? budgetLabel;
+
+  /// Whether this viewer has already answered.
   final bool viewerInterested;
 
   final String? ctaLabel;
 
-  /// The URL to open in the external browser when the CTA is tapped.
-  /// Null for request cards, which use [onCtaTap] for messaging instead.
+  /// Opened in the browser when the CTA is pressed. Null for requests, which
+  /// use [onCtaTap] to open the interest sheet instead.
   final String? ctaUrl;
-
-  /// For ads: click-tracking callback. For requests: opens the chat.
   final VoidCallback? onCtaTap;
 
-  /// Called once after first render (ad impression tracking)
+  /// Called once after the first frame — the ad impression.
   final VoidCallback? onInit;
 
   // ── Factories ──────────────────────────────────────────────────────────────
@@ -130,18 +149,21 @@ class FeedItemData {
     return FeedItemData(
       type: FeedItemType.ad,
       id: ad.adId,
+      campaignId: ad.campaignId,
       title: ad.headline,
       creatorName:
           ad.advertiserName.isNotEmpty ? ad.advertiserName : 'Advertiser',
       creatorId: ad.advertiserId,
-      creatorRole: ad.advertiserType ?? ChatConfig.rolePhotographer,
       creatorPhotoUrl: ad.advertiserPhoto,
       mediaUrl: ad.mediaUrl,
       mediaIsVideo: ad.isVideo,
       mediaList: mediaList,
       body: ad.body.isNotEmpty ? ad.body : null,
+      contentTags: ad.contentTags,
       commentsEnabled: ad.commentsEnabled,
       commentCount: ad.commentCount,
+      likeCount: ad.likeCount,
+      viewerLiked: ad.viewerLiked,
       ctaLabel: ad.ctaUrl.isNotEmpty
           ? (ad.ctaText.isEmpty ? 'Learn More' : ad.ctaText)
           : null,
@@ -151,11 +173,10 @@ class FeedItemData {
     );
   }
 
-  /// Builds a sponsored-content slot directly from an [AdCampaign].
-  /// Used when the ad-serve endpoint returns null (campaign not yet active
-  /// in the targeting pipeline) so the feed falls back to direct campaign data.
+  /// A sponsored slot straight from a campaign, for when the ad-serve endpoint
+  /// has nothing to hand back — the campaign is live but not yet through the
+  /// targeting pipeline.
   factory FeedItemData.fromCampaign(AdCampaign campaign) {
-    // Collect the first Ad creative across all ad sets.
     Ad? firstAd;
     for (final adSet in campaign.adSets) {
       if (adSet.ads.isNotEmpty) {
@@ -164,17 +185,14 @@ class FeedItemData {
       }
     }
 
-    // Media priority:
-    //   1. Campaign-level media list (covers/banners).
-    //   2. Ad-level mediaUrl collected across every ad in every ad set.
-    //   3. Empty → the card shows a gradient placeholder.
+    // Media priority: the campaign's own uploads, then whatever the creatives
+    // carry, then nothing — which draws the gradient.
     List<AdMedia> mediaList = campaign.media;
     if (mediaList.isEmpty) {
       final collected = <AdMedia>[];
       for (final adSet in campaign.adSets) {
         for (final ad in adSet.ads) {
           if (ad.media.isNotEmpty) {
-            // Use the full media list from the ad (backend stores multiple images here)
             collected.addAll(ad.media);
           } else if (ad.mediaUrl != null && ad.mediaUrl!.isNotEmpty) {
             collected.add(AdMedia(
@@ -189,18 +207,6 @@ class FeedItemData {
     }
 
     final firstMedia = mediaList.isNotEmpty ? mediaList.first : null;
-
-    debugPrint(
-      '[FeedItemCard] fromCampaign id=${campaign.id} '
-      'name="${campaign.name}" '
-      'campaignMedia=${campaign.media.length} '
-      'adSets=${campaign.adSets.length} '
-      'resolvedMedia=${mediaList.length} '
-      'firstMediaUrl=${firstMedia?.url} '
-      'firstAd=${firstAd?.id}',
-    );
-
-    // Use ad-creative copy when available — more descriptive than campaign name.
     final title = (firstAd?.headline.isNotEmpty ?? false)
         ? firstAd!.headline
         : campaign.name;
@@ -215,19 +221,18 @@ class FeedItemData {
     return FeedItemData(
       type: FeedItemType.ad,
       id: campaign.id,
+      campaignId: campaign.id,
       title: title,
       creatorName: (campaign.advertiserName?.isNotEmpty ?? false)
           ? campaign.advertiserName!
           : 'Advertiser',
       creatorId: campaign.advertiserId,
-      creatorRole: campaign.advertiserType.isNotEmpty
-          ? campaign.advertiserType
-          : ChatConfig.rolePhotographer,
       creatorPhotoUrl: campaign.advertiserPhoto,
       mediaUrl: firstMedia?.url,
       mediaIsVideo: firstMedia?.isVideo ?? false,
       mediaList: mediaList,
       body: body,
+      contentTags: campaign.contentTags,
       commentsEnabled: campaign.commentsEnabled,
       commentCount: campaign.commentCount,
       ctaLabel: (ctaUrl != null && ctaUrl.isNotEmpty) ? ctaLabel : null,
@@ -238,13 +243,10 @@ class FeedItemData {
 
   factory FeedItemData.fromRequest(
     FeedRequestModel req, {
-    /// Answering the request — the photographer's only action on it. Null on
-    /// your own request, which you cannot answer.
+    /// Answering it — the photographer's only action on a request. Null on
+    /// your own, which you cannot answer.
     VoidCallback? onAnswerTap,
   }) {
-    final parts = <String>[];
-    if (req.eventType.isNotEmpty) parts.add(req.eventType);
-    if (req.location.isNotEmpty) parts.add(req.location);
     final mediaList = req.media.isNotEmpty
         ? req.media
         : (req.assetUrl != null && req.assetUrl!.isNotEmpty
@@ -262,22 +264,20 @@ class FeedItemData {
       creatorName:
           req.requesterName.isNotEmpty ? req.requesterName : 'Anonymous',
       creatorId: req.requesterId,
-      creatorRole: req.requesterType.isNotEmpty
-          ? req.requesterType
-          : ChatConfig.roleClient,
       creatorPhotoUrl: req.requesterPhoto,
       mediaUrl: req.assetUrl,
       mediaIsVideo: req.assetType == 'video',
       mediaList: mediaList,
       body: req.description.isNotEmpty ? req.description : null,
-      secondaryLabel: parts.isEmpty ? null : parts.join(' · '),
       commentsEnabled: req.commentsEnabled,
       commentCount: req.commentCount,
-      interestedCount: req.interestedCount,
+      eventDate: req.eventDate,
+      eventTime: req.eventTime,
+      location: req.location.isNotEmpty ? req.location : null,
+      coverageLabel: req.coverageLabel,
+      budgetLabel: req.budgetLabel,
       viewerInterested: req.viewerInterested,
-      // One action, and it is not a conversation: answering puts the
-      // photographer in front of the requester, who decides whether to talk.
-      ctaLabel: req.viewerInterested ? 'Invitation sent' : 'Message Requester',
+      ctaLabel: req.viewerInterested ? 'Interest sent' : 'Express interest',
       ctaUrl: null,
       onCtaTap: onAnswerTap,
     );
@@ -285,9 +285,21 @@ class FeedItemData {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Card widget — mirrors EventDiscoveryCard layout exactly
+// The card — one full-screen page of the feed, like the event cards beside it
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// A sponsored campaign or a photographer request, as a page of the feed.
+///
+/// It used to be an Instagram-shaped column — header, image, buttons, caption —
+/// scaled down inside a [FittedBox] to fit a pager built for full-bleed media.
+/// Between two edge-to-edge posts it read as a different app: a small card
+/// floating in a black screen, with an avatar and a follow button no other page
+/// of the feed had.
+///
+/// So it is the same page shape as an event now. The media fills the screen,
+/// the copy sits on it, and the only things that differ are the ones that
+/// should: a pill naming what this is, and a button that does the one thing the
+/// card exists for.
 class FeedItemCard extends StatefulWidget {
   const FeedItemCard({
     super.key,
@@ -295,12 +307,23 @@ class FeedItemCard extends StatefulWidget {
     this.onHide,
     this.isAuthenticated = true,
     this.onLoginRequired,
+    this.fullBleed = true,
   });
+
   final FeedItemData data;
   final VoidCallback? onHide;
 
-  /// Set false for guest/unauthenticated users — all interactive actions will
-  /// call [onLoginRequired] instead of performing the real action.
+  /// Whether this is a page of the feed or a tile in a list.
+  ///
+  /// The request board deals the same poster into a scrolling list, where two
+  /// things about a feed page make no sense: the copy stepping up over a
+  /// navigation bar that is always visible there, and a tap toggling chrome
+  /// the reader can already see. Everything else — the media, the pill, the
+  /// rail, the button — is the same card, which is the point of the flag
+  /// rather than a second widget.
+  final bool fullBleed;
+
+  /// False for guests — every action calls [onLoginRequired] instead.
   final bool isAuthenticated;
   final VoidCallback? onLoginRequired;
 
@@ -308,26 +331,31 @@ class FeedItemCard extends StatefulWidget {
   State<FeedItemCard> createState() => _FeedItemCardState();
 }
 
-class _FeedItemCardState extends State<FeedItemCard>
-    with WidgetsBindingObserver {
+class _FeedItemCardState extends State<FeedItemCard> {
   final PageController _pageCtrl = PageController();
-  int _currentPage = 0;
+  final _repo = AdsRepository();
 
-  bool _liked = false;
-  bool _disliked = false;
-  bool _saved = false;
-  bool _bodyExpanded = false;
+  int _currentPage = 0;
   bool _initFired = false;
-  bool _chatLoading = false;
+  bool _sharing = false;
+
+  /// The heart, optimistically. Server-backed now — it used to be a bool that
+  /// forgot itself the moment the card scrolled out of the pager.
+  late bool _liked = widget.data.viewerLiked;
+  late int _likes = widget.data.likeCount;
+
+  /// The strip along the bottom the floating nav bar occupies, matched to the
+  /// event card's so the two kinds of page put their copy in the same place.
+  static const double _navBand = 96;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _pageCtrl.addListener(() {
       final page = _pageCtrl.page?.round() ?? 0;
       if (page != _currentPage && mounted) setState(() => _currentPage = page);
     });
+    FeedChrome.visible.addListener(_onChromeChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _initFired) return;
       _initFired = true;
@@ -336,13 +364,28 @@ class _FeedItemCardState extends State<FeedItemCard>
   }
 
   @override
+  void didUpdateWidget(FeedItemCard old) {
+    super.didUpdateWidget(old);
+    // A recycled slot showing a different campaign must not inherit the last
+    // one's heart.
+    if (old.data.id != widget.data.id) {
+      _liked = widget.data.viewerLiked;
+      _likes = widget.data.likeCount;
+    }
+  }
+
+  void _onChromeChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    FeedChrome.visible.removeListener(_onChromeChanged);
     _pageCtrl.dispose();
     super.dispose();
   }
 
-  /// Returns true and fires the login prompt when the user is not authenticated.
+  /// True when the caller is a guest — and prompts them to sign in.
   bool _requireAuth() {
     if (!widget.isAuthenticated) {
       widget.onLoginRequired?.call();
@@ -351,74 +394,34 @@ class _FeedItemCardState extends State<FeedItemCard>
     return false;
   }
 
-  void _handleLike() {
-    if (_requireAuth()) return;
-    HapticFeedback.lightImpact();
-    setState(() {
-      _liked = !_liked;
-      if (_liked) _disliked = false;
-    });
-  }
-
-  void _handleDislike() {
-    if (_requireAuth()) return;
-    HapticFeedback.lightImpact();
-    setState(() {
-      _disliked = !_disliked;
-      if (_disliked) _liked = false;
-    });
-  }
-
-  void _handleSave() {
-    if (_requireAuth()) return;
-    HapticFeedback.selectionClick();
-    setState(() => _saved = !_saved);
-  }
-
-  Future<void> _handleCtaTap() async {
+  Future<void> _toggleLike() async {
     if (_requireAuth()) return;
     final d = widget.data;
-    // For requests: onCtaTap opens the chat — call it and stop.
-    if (d.type == FeedItemType.request) {
-      d.onCtaTap?.call();
+    if (d.campaignId.isEmpty) return;
+
+    HapticFeedback.lightImpact();
+    final wasLiked = _liked;
+    final wasLikes = _likes;
+    setState(() {
+      _liked = !wasLiked;
+      _likes = (wasLiked ? wasLikes - 1 : wasLikes + 1).clamp(0, 1 << 31);
+    });
+
+    final result = await _repo.toggleCampaignLike(d.campaignId);
+    if (!mounted) return;
+    if (result == null) {
+      // Nothing was recorded, so the heart goes back rather than sitting there
+      // filled on the strength of a request that failed.
+      setState(() {
+        _liked = wasLiked;
+        _likes = wasLikes;
+      });
       return;
     }
-    // For ads/campaigns: fire tracking (non-blocking) then open URL.
-    d.onCtaTap?.call();
-    final raw = d.ctaUrl;
-    if (raw == null || raw.isEmpty) return;
-    final uri = Uri.tryParse(raw);
-    if (uri == null || !uri.hasScheme) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  Future<void> _openChat() async {
-    if (_requireAuth()) return;
-    final d = widget.data;
-    if (d.creatorId.isEmpty || _chatLoading) return;
-    HapticFeedback.lightImpact();
-    setState(() => _chatLoading = true);
-    try {
-      final room = await sl<GetOrCreateDirectRoomUseCase>().call(
-        recipientId: d.creatorId,
-        recipientRole: d.creatorRole.isNotEmpty
-            ? d.creatorRole
-            : ChatConfig.rolePhotographer,
-        localDisplayName: d.creatorName,
-      );
-      if (!mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ChatRoomPage(room: room)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      AppSnackBar.error(
-        context,
-        chatErrorText(e, fallback: 'Could not open chat. Try again.'),
-      );
-    } finally {
-      if (mounted) setState(() => _chatLoading = false);
-    }
+    setState(() {
+      _liked = result.liked;
+      _likes = result.likes;
+    });
   }
 
   void _handleComment() {
@@ -438,15 +441,61 @@ class _FeedItemCardState extends State<FeedItemCard>
 
   Future<void> _handleShare() async {
     if (_requireAuth()) return;
+    if (_sharing) return;
     if (kIsWeb) {
       final ext = Theme.of(context).extension<AppThemeExtension>()!;
       GetAppSheet.show(context, ext: ext);
       return;
     }
-    final text =
-        widget.data.title.isNotEmpty ? widget.data.title : 'Check this out';
-    await Share.share(text, subject: widget.data.title);
+    setState(() => _sharing = true);
+    try {
+      final text =
+          widget.data.title.isNotEmpty ? widget.data.title : 'Check this out';
+      await Share.share(text, subject: widget.data.title);
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
   }
+
+  Future<void> _handleCta() async {
+    if (_requireAuth()) return;
+    final d = widget.data;
+
+    // A request's button opens the interest sheet; there is no URL to follow.
+    if (d.type == FeedItemType.request) {
+      d.onCtaTap?.call();
+      return;
+    }
+
+    // A campaign's: count the click, then hand over to the browser.
+    d.onCtaTap?.call();
+    final raw = d.ctaUrl;
+    if (raw == null || raw.isEmpty) return;
+    final uri = Uri.tryParse(raw);
+    if (uri == null || !uri.hasScheme) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackBar.error(context, 'Could not open that link.');
+    }
+  }
+
+  void _showMoreOptions() {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    _FeedItemMoreOptionsSheet.show(
+      context,
+      ext: ext,
+      type: widget.data.type,
+      assetId: widget.data.id,
+      onHide: widget.onHide,
+    );
+  }
+
+  /// Where the copy sits above the bottom edge — the event card's rule, so the
+  /// two kinds of page agree: the block steps over the navigation bar when it
+  /// appears rather than being buried under frosted glass.
+  double get _blockBottom => FeedChrome.visible.value ? _navBand + 12 : 24.h;
 
   @override
   Widget build(BuildContext context) {
@@ -454,284 +503,182 @@ class _FeedItemCardState extends State<FeedItemCard>
     if (d.id.isEmpty && d.title.isEmpty) return const SizedBox.shrink();
 
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final size = MediaQuery.sizeOf(context);
-
-    final isVideo =
-        d.mediaList.length == 1 ? d.mediaList[0].isVideo : d.mediaIsVideo;
+    final isAd = d.type == FeedItemType.ad;
 
     // Scales up out of the way when a comment sheet opens — see
-    // [CommentPushArea].
+    // [CommentPushArea]. `fillsBand` is the default now: the card is a page of
+    // full-bleed media like every other one in this pager.
     return CommentPushArea(
-      // Column-shaped: header, media, caption, interaction bar. See [fillsBand].
-      fillsBand: false,
-      child: LayoutBuilder(builder: (context, constraints) {
-        final availableW =
-            constraints.maxWidth.isFinite ? constraints.maxWidth : size.width;
-        final firstMedia = d.mediaList.isNotEmpty ? d.mediaList[0] : null;
-        final ar = firstMedia?.aspectRatio;
-        final mediaH = ar != null
-            ? (availableW / ar).clamp(380.0, size.height * 0.92)
-            : isVideo
-                ? (size.height * 0.80).clamp(540.0, 780.0)
-                : (size.height * 0.75).clamp(480.0, 740.0);
+      child: GestureDetector(
+        // Same gesture as an event card: the chrome is what a tap is for on a
+        // full-bleed page. The CTA and the rail take their own taps.
+        onTap:
+            widget.isAuthenticated ? FeedChrome.toggle : widget.onLoginRequired,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _FeedItemMedia(
+              data: d,
+              ext: ext,
+              pageController: _pageCtrl,
+            ),
 
-        return Container(
-          color: Colors.transparent,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── 1. Header — above the image ───────────────────────────────────
-              Padding(
-                padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 10.h),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _CreatorAvatar(data: d),
-                    SizedBox(width: 10.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            d.creatorName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: ext.greetingColor,
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                          SizedBox(height: 2.h),
-                          _TypeLabel(type: d.type, ext: ext),
-                        ],
+            // Page dots for a carousel campaign. Above the copy block, which is
+            // where the eye already is.
+            if (d.mediaList.length > 1)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: _blockBottom + 220.h,
+                child: CommentSheetHide(
+                  child: _AdPageDots(
+                      count: d.mediaList.length, current: _currentPage),
+                ),
+              ),
+
+            // The scrim the copy sits on. On a page it stops short of the very
+            // bottom for the same reason the event card's does: the nav bar
+            // frosts what is behind it, and a near-black gradient gives it
+            // nothing to frost. In a tile there is no bar, so it runs to the
+            // edge.
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: widget.fullBleed ? _navBand : 0,
+              height: 320,
+              child: const CommentSheetHide(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Color(0xCC000000)],
                       ),
                     ),
-                    SizedBox(width: AppSpacing.sm.w),
-                    FollowButton(
-                      photographerId: d.creatorId,
-                      onLoginRequired: widget.isAuthenticated
-                          ? null
-                          : widget.onLoginRequired,
-                    ),
-                    SizedBox(width: 6.w),
-                    Semantics(
-                        button: true,
-                        label: 'Hide',
-                        child: GestureDetector(
-                          onTap: () => _FeedItemMoreOptionsSheet.show(
-                            context,
-                            ext: ext,
-                            type: d.type,
-                            assetId: d.id,
-                            onHide: widget.onHide,
-                          ),
-                          child: Icon(Icons.more_horiz_rounded,
-                              color: ext.searchHintColor, size: 22.sp),
-                        )),
-                  ],
+                  ),
                 ),
               ),
+            ),
 
-              // ── 2. Media ───────────────────────────────────────────────────────
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeInOut,
-                width: double.infinity,
-                height: mediaH,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (d.mediaList.length > 1)
-                      PageView.builder(
-                        controller: _pageCtrl,
-                        itemCount: d.mediaList.length,
-                        itemBuilder: (_, i) => _SingleMediaFrame(
-                          media: d.mediaList[i],
-                          ext: ext,
-                          title: d.title,
-                          creatorName: d.creatorName,
+            // ── The rail ─────────────────────────────────────────────────────
+            //
+            // A campaign can be liked, discussed and passed on. A request
+            // carries share alone: it is a job going begging, not a post — the
+            // way to answer one is the button, and a heart on somebody's work
+            // enquiry says nothing they can use.
+            Positioned(
+              right: 12.w,
+              top: 0,
+              bottom: 0,
+              child: CommentSheetHide(
+                child: Align(
+                  alignment: const Alignment(0, 0.15),
+                  child: MediaReactionRail(
+                    actions: [
+                      if (isAd && d.commentsEnabled)
+                        MediaReaction.like(
+                          liked: _liked,
+                          count: _likes,
+                          onTap: _toggleLike,
                         ),
-                      )
-                    else if (d.mediaList.length == 1 && !d.mediaList[0].isVideo)
-                      // Single image from mediaList — use _SingleMediaFrame so it
-                      // reads media.url directly instead of the legacy data.mediaUrl.
-                      _SingleMediaFrame(
-                        media: d.mediaList[0],
-                        ext: ext,
-                        title: d.title,
-                        creatorName: d.creatorName,
-                      )
-                    else
-                      // Single video or legacy mediaUrl
-                      _MediaBackground(data: d, ext: ext),
-
-                    // Bottom gradient
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      height: 130.h,
-                      child: const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [Color(0xDD000000), Color(0x00000000)],
-                          ),
-                        ),
+                      if (isAd)
+                        if (d.commentsEnabled)
+                          MediaReaction.comment(
+                            count: d.commentCount,
+                            onTap: _handleComment,
+                          )
+                        else
+                          MediaReaction.commentsDisabled(count: d.commentCount),
+                      MediaReaction.share(
+                        busy: _sharing,
+                        onTap: _handleShare,
                       ),
-                    ),
-
-                    // Footer: title + secondary label
-                    Positioned(
-                      bottom: 14.h,
-                      left: 14.w,
-                      right: 14.w,
-                      child: _FooterOverlay(data: d),
-                    ),
-
-                    // Page dots for multi-image (Instagram-style)
-                    if (d.mediaList.length > 1)
-                      Positioned(
-                        bottom: 58.h,
-                        left: 0,
-                        right: 0,
-                        child: _AdPageDots(
-                          count: d.mediaList.length,
-                          current: _currentPage,
-                          ext: ext,
-                        ),
-                      ),
-                  ],
+                      // Not in the design, and kept: this is how an ad gets
+                      // reported or hidden, and removing that from advertising
+                      // is not a simplification.
+                      MediaReaction.more(onTap: _showMoreOptions),
+                    ],
+                  ),
                 ),
               ),
+            ),
 
-              // ── 3. CTA strip — between image and reactions ────────────────────
-              // Show when: ad/campaign has a URL, or request has an answer handler.
-              if (d.type == FeedItemType.request && d.interestedCount > 0)
-                _InterestStrip(count: d.interestedCount, ext: ext),
-
-              if (d.ctaLabel != null &&
-                  (d.ctaUrl?.isNotEmpty == true ||
-                      (d.type == FeedItemType.request && d.onCtaTap != null)))
-                _CtaStrip(
-                  label: d.ctaLabel!,
-                  onTap: _handleCtaTap,
-                  ext: ext,
-                  type: d.type,
-                ),
-
-              // ── 4. Interaction bar ─────────────────────────────────────────────
-              CardInteractionBar(
-                liked: _liked,
-                disliked: _disliked,
-                saved: _saved,
-                likeCount: 0,
-                dislikeCount: 0,
-                commentCount: d.commentCount,
-                // Keeps the badge honest the moment a comment is posted. The
-                // count arrives inside immutable feed data, so without this it
-                // shows whatever the feed was fetched with until the list is
-                // rebuilt — which, for a cached feed, can be a long time.
-                commentTargetId: d.id,
-                commentsEnabled: d.commentsEnabled,
-                // An ad or campaign with engagement switched off collects no
-                // reactions either, same rule as events.
-                reactionsEnabled: d.commentsEnabled,
-                ext: ext,
-                onLike: _handleLike,
-                onDislike: _handleDislike,
-                onComment: _handleComment,
-                onShare: _handleShare,
-                onSave: _handleSave,
-                // No DM on a request. Answering it is how a photographer reaches
-                // the requester, and the requester decides who they talk to.
-                onMessage:
-                    (d.type == FeedItemType.request || d.creatorId.isEmpty)
-                        ? null
-                        : (_chatLoading ? null : _openChat),
+            // ── The copy, and the one button ────────────────────────────────
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              left: 16.w,
+              right: 72.w,
+              bottom: _blockBottom,
+              child: CommentSheetHide(
+                child: isAd
+                    ? _CampaignCopy(data: d, ext: ext, onCta: _handleCta)
+                    : _RequestCopy(data: d, ext: ext, onCta: _handleCta),
               ),
-
-              // ── 5. Caption ─────────────────────────────────────────────────────
-              if (d.body != null)
-                _BodyText(
-                  creatorName: d.creatorName,
-                  body: d.body!,
-                  ext: ext,
-                  expanded: _bodyExpanded,
-                  onToggle: () =>
-                      setState(() => _bodyExpanded = !_bodyExpanded),
-                ),
-
-              SizedBox(height: 6.h),
-
-              // ── 6. Divider ─────────────────────────────────────────────────────
-              Divider(
-                height: 1,
-                thickness: 0.5,
-                color: ext.searchHintColor.withValues(alpha: 0.1),
-              ),
-            ],
-          ),
-        );
-      }), // LayoutBuilder
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-// ── Media background ──────────────────────────────────────────────────────────
-/// Renders either a [JpergVideoPlayer] for video items or a blurred image
-/// background for photo items.
+// ── Media ────────────────────────────────────────────────────────────────────
 
-class _MediaBackground extends StatelessWidget {
-  const _MediaBackground({required this.data, required this.ext});
+/// The picture behind everything: one image, a swipeable few, a clip, or — for
+/// a campaign with no cover — a gradient that at least belongs to the app.
+///
+/// Contained rather than cropped. An advertiser's flyer has words on it and a
+/// requester's photo is of a venue; filling the screen with either means
+/// cutting something off the edges that was put there deliberately.
+class _FeedItemMedia extends StatelessWidget {
+  const _FeedItemMedia({
+    required this.data,
+    required this.ext,
+    required this.pageController,
+  });
 
   final FeedItemData data;
   final AppThemeExtension ext;
+  final PageController pageController;
 
   @override
   Widget build(BuildContext context) {
     final d = data;
 
-    // ── Video ──────────────────────────────────────────────────────────────
-    if (d.mediaIsVideo || (d.mediaList.length == 1 && d.mediaList[0].isVideo)) {
-      final url = d.mediaList.isNotEmpty ? d.mediaList[0].url : d.mediaUrl;
-      if (url != null && url.isNotEmpty) {
-        return JpergVideoPlayer(
-          url: url,
-          autoPlay: true,
-          loop: true,
-          fit: BoxFit.contain,
-          // Letterbox fill, so it follows the theme — these cards are dealt
-          // into the same feed as the event cards and were the one thing in it
-          // that stayed black in light mode.
-          backgroundColor: ext.mediaLetterbox,
-          showControls: true,
-          allowFullscreen: true,
-          listenToPauseNotifier: true,
-        );
-      }
-      return ColoredBox(
-        color: ext.mediaLetterbox,
-        child: Center(
-          child: SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(
-                color: ext.accentGold, strokeWidth: 2),
-          ),
+    if (d.mediaList.length > 1) {
+      return PageView.builder(
+        controller: pageController,
+        itemCount: d.mediaList.length,
+        itemBuilder: (_, i) => _SingleMediaFrame(
+          media: d.mediaList[i],
+          title: d.title,
+          creatorName: d.creatorName,
         ),
       );
     }
 
-    // ── Image (legacy mediaUrl path) ────────────────────────────────────────
-    final url = data.mediaUrl;
+    final single = d.mediaList.isNotEmpty ? d.mediaList.first : null;
+    final url = single?.url ?? d.mediaUrl;
+    final isVideo = single?.isVideo ?? d.mediaIsVideo;
+
     if (url == null || url.isEmpty) {
       return CardGradientPlaceholder(
-        name: data.title.isNotEmpty ? data.title : data.creatorName,
+        name: d.title.isNotEmpty ? d.title : d.creatorName,
+      );
+    }
+
+    if (isVideo) {
+      return JpergVideoPlayer(
+        url: url,
+        autoPlay: true,
+        loop: true,
+        fit: BoxFit.contain,
+        backgroundColor: ext.mediaLetterbox,
+        showControls: true,
+        allowFullscreen: true,
+        listenToPauseNotifier: true,
       );
     }
 
@@ -740,12 +687,11 @@ class _MediaBackground extends StatelessWidget {
       child: JpergImage(
         imageUrl: url,
         fit: BoxFit.contain,
-        semanticLabel: 'Advertisement image',
-        // Non-opaque — the blurred backdrop stays visible behind the
-        // spinner while the full-res image is still loading.
+        semanticLabel:
+            d.type == FeedItemType.ad ? 'Advertisement image' : 'Request image',
         placeholder: (_, __) => Center(
-          child: CircularProgressIndicator(
-              color: ext.accentGold, strokeWidth: 2),
+          child:
+              CircularProgressIndicator(color: ext.accentGold, strokeWidth: 2),
         ),
         errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
       ),
@@ -753,289 +699,195 @@ class _MediaBackground extends StatelessWidget {
   }
 }
 
-// ── Creator avatar ────────────────────────────────────────────────────────────
+// ── The copy blocks ──────────────────────────────────────────────────────────
 
-class _CreatorAvatar extends StatelessWidget {
-  const _CreatorAvatar({required this.data});
-  final FeedItemData data;
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final photo = data.creatorPhotoUrl;
-    final name = data.creatorName;
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-    const borderPad = 2.0;
-
-    return Container(
-      width: 38.w,
-      height: 38.w,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [ext.accentGold, ext.accentGoldDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: ext.accentGold.withValues(alpha: 0.40),
-            blurRadius: 10,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(borderPad),
-      child: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: photo == null
-              ? const LinearGradient(
-                  colors: [Color(0xFF3DD9B4), Color(0xFF16795B)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          image: photo != null
-              ? DecorationImage(
-                  image: boundedNetworkImage(context, photo,
-                      diameter: 38.w - borderPad * 2),
-                  fit: BoxFit.cover)
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: photo == null
-            ? Text(
-                initial,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
-              )
-            : null,
-      ),
-    );
-  }
-}
-
-// ── Type label — small inline subtitle below creator name ────────────────────
-
-class _TypeLabel extends StatelessWidget {
-  const _TypeLabel({required this.type, required this.ext});
-  final FeedItemType type;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    final isAd = type == FeedItemType.ad;
-    final bgColor = isAd ? ext.accentGold : ext.infoBlue;
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.5.h),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(AppRadius.xs.r),
-        boxShadow: [
-          BoxShadow(
-            color: bgColor.withValues(alpha: 0.35),
-            blurRadius: 6,
-            spreadRadius: 0,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isAd ? Icons.bolt_rounded : Icons.radio_button_checked_rounded,
-            size: 10.sp,
-            color: Colors.white,
-          ),
-          SizedBox(width: 2.w),
-          Text(
-            isAd ? 'Sponsored' : 'Open Request',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── CTA strip — sits between image and reactions, full-width tappable ─────────
-
-class _CtaStrip extends StatefulWidget {
-  const _CtaStrip({
-    required this.label,
-    required this.onTap,
+class _CampaignCopy extends StatelessWidget {
+  const _CampaignCopy({
+    required this.data,
     required this.ext,
-    required this.type,
+    required this.onCta,
   });
-  final String label;
-  final VoidCallback onTap;
-  final AppThemeExtension ext;
-  final FeedItemType type;
 
-  @override
-  State<_CtaStrip> createState() => _CtaStripState();
-}
-
-class _CtaStripState extends State<_CtaStrip>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 550),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    // Pulse twice to signal this is interactive, then come to rest.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _ctrl.forward().then((_) => _ctrl.reverse()).then(
-          (_) => mounted ? _ctrl.forward().then((_) => _ctrl.reverse()) : null);
-    });
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isAd = widget.type == FeedItemType.ad;
-    final ext = widget.ext;
-    final accentColor = isAd ? ext.accentGold : ext.infoBlue;
-
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, child) {
-        final p = _ctrl.value;
-        return Semantics(
-            button: true,
-            label: widget.label,
-            child: GestureDetector(
-              onTap: widget.onTap,
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg.w, vertical: 13.h),
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.07 + p * 0.14),
-                  border: Border.symmetric(
-                    horizontal: BorderSide(
-                      color: accentColor.withValues(alpha: 0.18 + p * 0.5),
-                      width: 0.8 + p * 0.8,
-                    ),
-                  ),
-                  boxShadow: p > 0
-                      ? [
-                          BoxShadow(
-                            color: accentColor.withValues(alpha: 0.18 * p),
-                            blurRadius: 10 * p,
-                            spreadRadius: 0,
-                          ),
-                        ]
-                      : null,
-                ),
-                child: child,
-              ),
-            ));
-      },
-      child: Row(
-        children: [
-          // Left accent bar
-          Container(
-            width: 3.w,
-            height: 16.h,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isAd
-                    ? [widget.ext.accentGold, ext.accentGoldDark]
-                    : [ext.infoBlue, const Color(0xFF1D4ED8)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: BorderRadius.circular(2.r),
-            ),
-          ),
-          SizedBox(width: 10.w),
-          Expanded(
-            child: Text(
-              widget.label,
-              style: TextStyle(
-                color: isAd ? widget.ext.accentGold : ext.infoBlue,
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.1,
-              ),
-            ),
-          ),
-          Icon(
-            isAd ? Icons.open_in_new_rounded : Icons.arrow_forward_ios_rounded,
-            size: isAd ? 16.sp : 13.sp,
-            color: (isAd ? widget.ext.accentGold : ext.infoBlue)
-                .withValues(alpha: 0.7),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Footer overlay — mirrors _ImageFooter from EventDiscoveryCard ─────────────
-
-class _FooterOverlay extends StatelessWidget {
-  const _FooterOverlay({required this.data});
   final FeedItemData data;
+  final AppThemeExtension ext;
+  final VoidCallback onCta;
 
   @override
   Widget build(BuildContext context) {
+    final d = data;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (data.title.isNotEmpty)
+        _KindPill(
+          label: 'Sponsored',
+          color: ext.publicAmber,
+        ),
+        SizedBox(height: AppSpacing.sm.h),
+        Text(
+          d.creatorName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (d.title.isNotEmpty) ...[
+          SizedBox(height: 2.h),
           Text(
-            data.title,
+            d.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 20.sp,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-              height: 1.2,
-              shadows: const [
-                Shadow(blurRadius: 12, color: Colors.black87),
-                Shadow(blurRadius: 4, color: Colors.black54),
-              ],
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w600,
             ),
           ),
-        if (data.secondaryLabel != null && data.secondaryLabel!.isNotEmpty) ...[
-          SizedBox(height: 3.h),
+        ],
+        if (d.body != null && d.body!.isNotEmpty) ...[
+          SizedBox(height: AppSpacing.xs.h),
           Text(
-            data.secondaryLabel!,
+            d.body!,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 13.sp,
+              height: 1.35,
+            ),
+          ),
+        ],
+        if (d.contentTags.isNotEmpty) ...[
+          SizedBox(height: AppSpacing.xs.h),
+          Text(
+            d.contentTags.map((t) => '#$t').join(' '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: Colors.white70,
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.1,
-              shadows: const [
-                Shadow(blurRadius: 8, color: Colors.black87),
-              ],
+              color: Colors.white.withValues(alpha: 0.75),
+              fontSize: 13.sp,
             ),
+          ),
+        ],
+        if (d.ctaLabel != null) ...[
+          SizedBox(height: AppSpacing.md.h),
+          _CtaButton(label: d.ctaLabel!, ext: ext, onTap: onCta),
+        ],
+      ],
+    );
+  }
+}
+
+class _RequestCopy extends StatelessWidget {
+  const _RequestCopy({
+    required this.data,
+    required this.ext,
+    required this.onCta,
+  });
+
+  final FeedItemData data;
+  final AppThemeExtension ext;
+  final VoidCallback onCta;
+
+  /// "Sep 15, 2026 · 10:00 AM", or just the date, or nothing at all.
+  String? get _whenLabel {
+    final date = data.eventDate;
+    if (date == null) return null;
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final day = '${months[date.month - 1]} ${date.day}, ${date.year}';
+    final time = data.eventTime;
+    if (time == null || time.isEmpty) return day;
+
+    // "14:30" as the venue would say it out loud.
+    final parts = time.split(':');
+    final hour = int.tryParse(parts.first);
+    if (hour == null || parts.length < 2) return day;
+    final suffix = hour < 12 ? 'AM' : 'PM';
+    final twelve = hour % 12 == 0 ? 12 : hour % 12;
+    return '$day · $twelve:${parts[1]} $suffix';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = data;
+    final when = _whenLabel;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _KindPill(label: 'Photographer Request', color: ext.accentGold),
+        SizedBox(height: AppSpacing.sm.h),
+        Text(
+          d.creatorName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (d.title.isNotEmpty) ...[
+          SizedBox(height: 2.h),
+          Text(
+            d.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+        // What a photographer decides on: when, where, how long. Every one of
+        // them is optional on the request, and a row with nothing to say is
+        // left out rather than drawn as an icon beside a dash.
+        if (when != null)
+          _RequestRow(icon: Icons.calendar_today_rounded, label: when),
+        if (d.location != null)
+          _RequestRow(icon: Icons.place_rounded, label: d.location!),
+        if (d.coverageLabel != null)
+          _RequestRow(icon: Icons.access_time_rounded, label: d.coverageLabel!),
+        if (d.budgetLabel != null) ...[
+          SizedBox(height: AppSpacing.sm.h),
+          Text(
+            d.budgetLabel!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: ext.accentGold,
+              fontSize: 20.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+        if (d.ctaLabel != null) ...[
+          SizedBox(height: AppSpacing.md.h),
+          _CtaButton(
+            label: d.ctaLabel!,
+            ext: ext,
+            onTap: onCta,
+            // Your own request, or one you have already answered: the button
+            // still says where it stands, it just has nothing left to do.
+            enabled: d.onCtaTap != null,
           ),
         ],
       ],
@@ -1043,98 +895,136 @@ class _FooterOverlay extends StatelessWidget {
   }
 }
 
-// ── Body caption — mirrors CardDescriptionText pattern ────────────────────────
+/// One line of a request: an icon and a fact.
+class _RequestRow extends StatelessWidget {
+  const _RequestRow({required this.icon, required this.label});
 
-class _BodyText extends StatelessWidget {
-  const _BodyText({
-    required this.creatorName,
-    required this.body,
-    required this.ext,
-    required this.expanded,
-    required this.onToggle,
-  });
-  final String creatorName;
-  final String body;
-  final AppThemeExtension ext;
-  final bool expanded;
-  final VoidCallback onToggle;
+  final IconData icon;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 4.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: EdgeInsets.only(top: 6.h),
+      child: Row(
         children: [
-          Semantics(
-              button: true,
-              label: 'Toggle',
-              child: GestureDetector(
-                onTap: onToggle,
-                child: RichText(
-                  maxLines: expanded ? null : 2,
-                  overflow:
-                      expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-                  text: TextSpan(
-                    style: TextStyle(
-                        fontSize: 13.sp, height: 1.5, color: ext.greetingColor),
-                    children: [
-                      TextSpan(
-                        text: '$creatorName  ',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: ext.greetingColor,
-                        ),
-                      ),
-                      TextSpan(text: body),
-                    ],
-                  ),
-                ),
-              )),
-          if (!expanded) ...[
-            SizedBox(height: 2.h),
-            Semantics(
-                button: true,
-                label: 'Toggle',
-                child: GestureDetector(
-                  onTap: onToggle,
-                  child: Text(
-                    'more',
-                    style:
-                        TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-                  ),
-                )),
-          ],
+          Icon(icon, size: 14.sp, color: Colors.white.withValues(alpha: 0.85)),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 13.sp,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// ── More options sheet ────────────────────────────────────────────────────────
+/// "Sponsored" / "Photographer Request" — what this page is, said plainly.
+///
+/// Over an arbitrary photograph, so it carries its own ground rather than
+/// relying on the scrim reaching this far up.
+class _KindPill extends StatelessWidget {
+  const _KindPill({required this.label, required this.color});
 
-// ── Single media frame (used inside PageView for multi-image) ─────────────────
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.20),
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11.sp,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// The one thing the card is for: "Book Now", "Express interest".
+///
+/// Outlined rather than filled, per the design — it sits on somebody's
+/// photograph, and a solid block of colour there reads as a banner ad pasted
+/// over the picture rather than as part of the post.
+class _CtaButton extends StatelessWidget {
+  const _CtaButton({
+    required this.label,
+    required this.ext,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  final String label;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        enabled ? ext.accentGold : Colors.white.withValues(alpha: 0.45);
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: Container(
+          width: double.infinity,
+          height: 46.h,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: color, width: 1.4),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── One page of a carousel campaign ──────────────────────────────────────────
 
 class _SingleMediaFrame extends StatelessWidget {
   const _SingleMediaFrame({
     required this.media,
-    required this.ext,
     required this.title,
     required this.creatorName,
   });
+
   final AdMedia media;
-  final AppThemeExtension ext;
   final String title;
   final String creatorName;
 
   @override
   Widget build(BuildContext context) {
-    debugPrint(
-      '[_SingleMediaFrame] build — url="${media.url}" '
-      'mediaType=${media.mediaType} isVideo=${media.isVideo}',
-    );
     if (media.url.isEmpty) {
-      debugPrint('[_SingleMediaFrame] ← url empty, showing placeholder');
       return CardGradientPlaceholder(
         name: title.isNotEmpty ? title : creatorName,
       );
@@ -1157,8 +1047,6 @@ class _SingleMediaFrame extends StatelessWidget {
           imageUrl: media.url,
           fit: BoxFit.contain,
           semanticLabel: 'Advertisement image',
-          // Non-opaque — the blurred backdrop stays visible behind the
-          // spinner while the full-res image is still loading.
           placeholder: (_, __) => const Center(
             child: CircularProgressIndicator(
                 color: Colors.white70, strokeWidth: 2),
@@ -1167,28 +1055,21 @@ class _SingleMediaFrame extends StatelessWidget {
         ),
         if (media.isVideo)
           const Center(
-            child: Icon(
-              Icons.play_circle_rounded,
-              color: Colors.white70,
-              size: 54,
-            ),
+            child: Icon(Icons.play_circle_rounded,
+                color: Colors.white70, size: 54),
           ),
       ],
     );
   }
 }
 
-// ── Instagram-style page dots ─────────────────────────────────────────────────
+// ── Page dots ────────────────────────────────────────────────────────────────
 
 class _AdPageDots extends StatelessWidget {
-  const _AdPageDots({
-    required this.count,
-    required this.current,
-    required this.ext,
-  });
+  const _AdPageDots({required this.count, required this.current});
+
   final int count;
   final int current;
-  final AppThemeExtension ext;
 
   @override
   Widget build(BuildContext context) {
@@ -1212,7 +1093,7 @@ class _AdPageDots extends StatelessWidget {
   }
 }
 
-// ── More options sheet ────────────────────────────────────────────────────────
+// ── More options ─────────────────────────────────────────────────────────────
 
 class _FeedItemMoreOptionsSheet extends StatelessWidget {
   const _FeedItemMoreOptionsSheet({
@@ -1221,6 +1102,7 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
     required this.assetId,
     this.onHide,
   });
+
   final AppThemeExtension ext;
   final FeedItemType type;
   final String assetId;
@@ -1275,8 +1157,6 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
-
-              // Hide
               ListTile(
                 leading: Container(
                   width: 40.w,
@@ -1305,11 +1185,8 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
                   onHide?.call();
                 },
               ),
-
               Divider(
                   height: 1, color: ext.searchHintColor.withValues(alpha: 0.1)),
-
-              // Report
               ListTile(
                 leading: Container(
                   width: 40.w,
@@ -1345,36 +1222,9 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
                   );
                 },
               ),
-
               SizedBox(height: AppSpacing.sm.h),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// "3 interested" — how many photographers have answered.
-///
-/// Count only. Answering happens once, through the sheet below it; there is no
-/// toggle here to disagree with the server about.
-class _InterestStrip extends StatelessWidget {
-  const _InterestStrip({required this.count, required this.ext});
-
-  final int count;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 0),
-      child: Text(
-        count == 1 ? '1 interested' : '$count interested',
-        style: TextStyle(
-          color: ext.searchHintColor,
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );

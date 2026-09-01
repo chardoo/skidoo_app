@@ -34,19 +34,9 @@ class FollowingFeed extends StatefulWidget {
   const FollowingFeed({
     super.key,
     this.chromeTopPadding = 0,
-    this.onEventTap,
     this.loadSuggestions,
     this.loadFeed,
   });
-
-  /// Opens a post's event. Tapping a card here did nothing at all until now —
-  /// the Feed tab has always opened the event's grid on a tap and this one was
-  /// built without the hookup, so a post in Following was the one post in the
-  /// app you could not get into.
-  ///
-  /// Supplied by the host rather than pushed from here, which is where the
-  /// Feed tab's own card taps are routed from too.
-  final ValueChanged<EventDiscovery>? onEventTap;
 
   /// Posts between one suggestion card and the next.
   static const eventsPerSuggestionCard = 5;
@@ -385,7 +375,11 @@ class _FollowingFeedState extends State<FollowingFeed> {
             // nothing plays while one is on screen.
             cardIndex: i,
             activeCardIndex: _activeCardIndex,
-            onTap: () => widget.onEventTap?.call(event),
+            // A tap belongs to the chrome here, exactly as it does on the Feed
+            // tab — the card handles it. The way into an album is the card's
+            // own "Explore event photos", so this feed has no destination of
+            // its own to hand down.
+            onTap: () {},
             onHide: () => _onHide(event.id),
           );
         },

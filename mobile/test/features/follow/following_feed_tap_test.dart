@@ -9,17 +9,20 @@ import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/features/follow/presentation/widgets/following_feed.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
-/// Tapping a post in Following opens its event, exactly as the Feed tab has
-/// always done.
+/// Following builds the same card as the Feed tab, with the same wiring.
 ///
-/// It did nothing at all before: the card was handed `onTap: () {}`, so a post
-/// from someone you had gone out of your way to follow was the one post in the
-/// app you could not get into.
+/// This file was written for an older bug — the feed handed its cards
+/// `onTap: () {}`, so a post from someone you had gone out of your way to
+/// follow was the one post in the app you could not get into. The fix then was
+/// a callback down to the host that opened the event's grid.
 ///
-/// The card's own tap gesture belongs to its media, which these do not render
-/// — an image in a widget test leaves a network timer pending and the feed
-/// never settles. What broke was the callback the feed hands down, so that is
-/// what is checked: the card is asked for the callback it was built with.
+/// Both ends of that have since gone. A tap belongs to the navigation chrome
+/// now and the card handles it itself, and the grid is out of the feed flow
+/// entirely — the way into an album is the card's own "Explore event photos".
+/// So there is no destination for this feed to hand down, and what is worth
+/// holding is the other half of the original bug: that Following builds real
+/// cards, wired the same way the Feed tab wires them, rather than something
+/// inert.
 EventDiscovery event(String id) => EventDiscovery(
       id: id,
       eventName: 'Event $id',
@@ -36,11 +39,7 @@ class _StubDiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState>
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-Widget host({
-  required List<EventDiscovery> feed,
-  ValueChanged<EventDiscovery>? onEventTap,
-}) =>
-    ScreenUtilInit(
+Widget host({required List<EventDiscovery> feed}) => ScreenUtilInit(
       designSize: const Size(390, 844),
       builder: (_, __) => MaterialApp(
         theme: ThemeData.dark()
@@ -49,7 +48,6 @@ Widget host({
           body: BlocProvider<DiscoveryBloc>(
             create: (_) => _StubDiscoveryBloc(),
             child: FollowingFeed(
-              onEventTap: onEventTap,
               loadFeed: (page, limit) async => (
                 events: page == 1 ? feed : <EventDiscovery>[],
                 hasMore: false
@@ -61,54 +59,42 @@ Widget host({
       ),
     );
 
-/// The tap callback the feed built the first post's card with.
-VoidCallback firstCardTap(WidgetTester t) =>
-    t.widgetList<FullBleedEventCard>(find.byType(FullBleedEventCard)).first
-        .onTap;
+List<FullBleedEventCard> cards(WidgetTester t) =>
+    t.widgetList<FullBleedEventCard>(find.byType(FullBleedEventCard)).toList();
 
 void main() {
   setUp(FollowRepository.debugClearFollowed);
   tearDown(FollowRepository.debugClearFollowed);
 
-  testWidgets('a post opens its own event', (t) async {
-    EventDiscovery? opened;
-
-    await t.pumpWidget(host(
-      feed: [event('e0'), event('e1')],
-      onEventTap: (e) => opened = e,
-    ));
+  testWidgets('every post is dealt a card of its own event', (t) async {
+    await t.pumpWidget(host(feed: [event('e0'), event('e1')]));
     await t.pumpAndSettle();
 
-    firstCardTap(t)();
-
-    // The first post's event specifically, not merely "an" event — it is what
-    // the grid on the other side is built from.
-    expect(opened?.id, 'e0');
+    // The first post's event specifically, not merely "an" event — the pager
+    // and the card have to agree about which post is which.
+    expect(cards(t).first.event.id, 'e0');
   });
 
-  testWidgets('the callback is optional', (t) async {
-    // Nothing wired up must not mean a crash on tap: the parameter is
-    // nullable and the Following tab is not its only possible host.
+  testWidgets('the cards are told where they sit in the pager', (t) async {
+    // [cardIndex] against [activeCardIndex] is what decides which post may play
+    // its video and hold the feed's soundtrack, and it is the slot index here
+    // rather than the post index because a suggestions card takes a slot too.
+    await t.pumpWidget(host(feed: [event('e0'), event('e1')]));
+    await t.pumpAndSettle();
+
+    expect(cards(t).first.cardIndex, 0);
+    expect(cards(t).first.activeCardIndex.value, 0);
+  });
+
+  testWidgets('tapping a post is not wired to a destination any more',
+      (t) async {
+    // The card decides what a tap means — chrome, or a login prompt for a
+    // guest. A feed handing down a page to push would be the old flow coming
+    // back through the side door.
     await t.pumpWidget(host(feed: [event('e0')]));
     await t.pumpAndSettle();
 
-    expect(firstCardTap(t), returnsNormally);
-  });
-
-  testWidgets('the wiring is not the empty callback it used to be', (t) async {
-    // The regression this file exists for. A card built with `() {}` passes
-    // every other test here — it is a perfectly good VoidCallback that does
-    // nothing — so the assertion has to be that calling it reaches the host.
-    var reached = 0;
-
-    await t.pumpWidget(host(
-      feed: [event('e0')],
-      onEventTap: (_) => reached++,
-    ));
-    await t.pumpAndSettle();
-
-    firstCardTap(t)();
-
-    expect(reached, 1);
+    expect(cards(t).first.onTap, returnsNormally);
+    expect(find.byType(FullBleedEventCard), findsOneWidget);
   });
 }

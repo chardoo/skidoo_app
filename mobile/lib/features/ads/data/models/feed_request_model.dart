@@ -15,6 +15,10 @@ class FeedRequestModel {
     required this.status,
     this.budgetAmount,
     this.eventDate,
+    this.eventTime,
+    this.coverageKind,
+    this.coverageHours,
+    this.coverageNote,
     this.budgetMin,
     this.budgetMax,
     this.requesterPhoto,
@@ -54,6 +58,49 @@ class FeedRequestModel {
   /// When the shoot is — what the card shows, and the thing a photographer
   /// needs before answering. Not the day it was posted.
   final DateTime? eventDate;
+
+  /// What time it starts, as "HH:MM" at the venue. Deliberately not folded
+  /// into [eventDate]: ten in the morning at a Labadi Beach wedding is ten in
+  /// the morning whatever timezone the reader's phone is set to, and a
+  /// DateTime invites something downstream to helpfully convert it.
+  final String? eventTime;
+
+  /// How much of the day is being asked for: half_day | full_day | multi_day |
+  /// hourly | other. Null on every request posted before the field existed,
+  /// and on any where the requester did not say.
+  final String? coverageKind;
+
+  /// The number of hours, for hourly coverage.
+  final int? coverageHours;
+
+  /// What they wrote, for coverage that fits none of the choices. Shown as
+  /// written.
+  final String? coverageNote;
+
+  /// The card's coverage line — "Full Day Coverage (~8 hrs)".
+  ///
+  /// Worded here rather than on the server so the wording can change without a
+  /// deploy of a service; the server stores the choice, which is the part that
+  /// has to stay stable.
+  String? get coverageLabel {
+    switch (coverageKind) {
+      case 'half_day':
+        return 'Half Day Coverage (~4 hrs)';
+      case 'full_day':
+        return 'Full Day Coverage (~8 hrs)';
+      case 'multi_day':
+        return 'Multi-Day Coverage';
+      case 'hourly':
+        final hours = coverageHours;
+        if (hours == null) return null;
+        return 'Hourly Coverage (~$hours ${hours == 1 ? 'hr' : 'hrs'})';
+      case 'other':
+        final note = coverageNote?.trim();
+        return (note == null || note.isEmpty) ? null : note;
+      default:
+        return null;
+    }
+  }
 
   /// What it pays, as a range. budgetAmount holds the midpoint for anything
   /// that still reads a single figure.
@@ -194,6 +241,10 @@ class FeedRequestModel {
       budgetMin: (json['budget_min'] as num?)?.toDouble(),
       budgetMax: (json['budget_max'] as num?)?.toDouble(),
       currency: json['currency'] as String? ?? 'USD',
+      eventTime: json['event_time'] as String?,
+      coverageKind: json['coverage_kind'] as String?,
+      coverageHours: (json['coverage_hours'] as num?)?.toInt(),
+      coverageNote: json['coverage_note'] as String?,
       requesterPhoto: json['requester_photo'] as String?,
       visibleTo: json['visible_to'] as String?,
       targetLocations: (json['target_locations'] as List<dynamic>? ?? [])
@@ -254,6 +305,10 @@ class FeedRequestModel {
       status: status ?? this.status,
       budgetAmount: budgetAmount,
       eventDate: eventDate,
+      eventTime: eventTime,
+      coverageKind: coverageKind,
+      coverageHours: coverageHours,
+      coverageNote: coverageNote,
       budgetMin: budgetMin,
       budgetMax: budgetMax,
       requesterPhoto: requesterPhoto,

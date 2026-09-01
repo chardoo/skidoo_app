@@ -25,6 +25,7 @@ class AppConfig {
     this.requestsEnabled = true,
     this.adsEveryNEvents = 10,
     this.requestsEveryNEvents = 20,
+    this.feedSlideIntervalSeconds = 3,
     this.commentsEnabled = true,
     this.minCampaignBudgetGhs = 30.0,
     this.contentTags = kContentTagFallback,
@@ -41,6 +42,14 @@ class AppConfig {
 
   /// Insert a request after every N events (e.g. 20 → request at position 20, 40, …).
   final int requestsEveryNEvents;
+
+  /// How long a feed card holds on one photo before sliding to the next by
+  /// itself. The slide stops at the third photo, where "Explore event photos"
+  /// takes over, so this paces an introduction to an album rather than running
+  /// a slideshow.
+  ///
+  /// Zero switches it off and leaves every card swipe-only.
+  final int feedSlideIntervalSeconds;
 
   /// Global kill switch — hides comment input on all cards when false.
   final bool commentsEnabled;
@@ -73,6 +82,8 @@ class AppConfig {
       adsEveryNEvents: (data['ads_every_n_events'] as num?)?.toInt() ?? 10,
       requestsEveryNEvents:
           (data['requests_every_n_events'] as num?)?.toInt() ?? 20,
+      feedSlideIntervalSeconds:
+          (data['feed_slide_interval_seconds'] as num?)?.toInt() ?? 3,
       commentsEnabled: data['comments_enabled'] as bool? ?? true,
       minCampaignBudgetGhs:
           (data['min_campaign_budget_ghs'] as num?)?.toDouble() ?? 30.0,
@@ -91,6 +102,7 @@ class AppConfig {
         'requests_enabled': requestsEnabled,
         'ads_every_n_events': adsEveryNEvents,
         'requests_every_n_events': requestsEveryNEvents,
+        'feed_slide_interval_seconds': feedSlideIntervalSeconds,
         'comments_enabled': commentsEnabled,
         'min_campaign_budget_ghs': minCampaignBudgetGhs,
         'content_tags': contentTags,
@@ -101,6 +113,7 @@ class AppConfig {
     bool? requestsEnabled,
     int? adsEveryNEvents,
     int? requestsEveryNEvents,
+    int? feedSlideIntervalSeconds,
     bool? commentsEnabled,
     double? minCampaignBudgetGhs,
     List<String>? contentTags,
@@ -110,6 +123,8 @@ class AppConfig {
       requestsEnabled: requestsEnabled ?? this.requestsEnabled,
       adsEveryNEvents: adsEveryNEvents ?? this.adsEveryNEvents,
       requestsEveryNEvents: requestsEveryNEvents ?? this.requestsEveryNEvents,
+      feedSlideIntervalSeconds:
+          feedSlideIntervalSeconds ?? this.feedSlideIntervalSeconds,
       commentsEnabled: commentsEnabled ?? this.commentsEnabled,
       minCampaignBudgetGhs: minCampaignBudgetGhs ?? this.minCampaignBudgetGhs,
       contentTags: contentTags ?? this.contentTags,

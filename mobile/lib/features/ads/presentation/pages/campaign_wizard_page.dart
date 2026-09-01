@@ -14,6 +14,8 @@ import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/location/data/models/place.dart';
 import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
+import 'package:jperg_app/features/admin/data/models/app_config.dart';
+import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 
 /// Everything the five steps collect, in one place.
@@ -36,6 +38,13 @@ class CampaignDraft {
   /// re-derives it too, so the two cannot disagree about one campaign.
   final targetLocations = <Place>[];
   final interests = <String>{};
+
+  /// The "#wedding #photography" line on the card. Copy, not targeting —
+  /// [interests] above is the targeting, and they are two fields on purpose.
+  final contentTags = <String>{};
+
+  /// The card gives the tag line one row.
+  static const maxContentTags = 5;
   String audience = 'all';
   /// Who to show it to, by age. Defaults to the widest the picker offers
   /// rather than a guess — narrowing is a decision, and it should be one the
@@ -179,6 +188,7 @@ class _CampaignWizardPageState extends State<CampaignWizardPage> {
         targetLocations:
             _draft.targetLocations.map((p) => p.toJson()).toList(),
         interests: _draft.interests.toList(),
+        contentTags: _draft.contentTags.toList(),
         audience: _draft.audience,
         placements: _draft.placements.toList(),
         ageMin: _draft.ages.start.round(),
@@ -850,7 +860,65 @@ class _CreativeStep extends StatelessWidget {
           keyboardType: TextInputType.url,
           onChanged: (_) => onChanged(),
         ),
+        // Copy, and so part of the creative — not the interest tags in the
+        // Audience step, which decide who is shown this. The two look alike
+        // and mean opposite ends of the same sentence.
+        _Label(
+          'Tags',
+          ext: ext,
+          hint: '(Shown on the card as #hashtags, up to '
+              '${CampaignDraft.maxContentTags})',
+        ),
+        _TagPicker(draft: draft, ext: ext, onChanged: onChanged),
       ],
+    );
+  }
+}
+
+/// The words from the app's own vocabulary, the same ones photographers tag
+/// albums with, so a campaign and an album about the same thing say it the
+/// same way. Served from /config; the built-in list is the offline fallback.
+class _TagPicker extends StatelessWidget {
+  const _TagPicker({
+    required this.draft,
+    required this.ext,
+    required this.onChanged,
+  });
+
+  final CampaignDraft draft;
+  final AppThemeExtension ext;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<AppConfig>(
+      valueListenable: AppConfigRepository.notifier,
+      builder: (context, config, _) {
+        final vocabulary = config.contentTags;
+        return Wrap(
+          spacing: AppSpacing.sm.w,
+          runSpacing: AppSpacing.xs.h,
+          children: [
+            for (final tag in vocabulary)
+              _Choice(
+                label: tag,
+                selected: draft.contentTags.contains(tag),
+                ext: ext,
+                onTap: () {
+                  if (draft.contentTags.contains(tag)) {
+                    draft.contentTags.remove(tag);
+                  } else if (draft.contentTags.length <
+                      CampaignDraft.maxContentTags) {
+                    // Silently at the cap rather than an error: the card gives
+                    // this line one row, and five is what fits.
+                    draft.contentTags.add(tag);
+                  }
+                  onChanged();
+                },
+              ),
+          ],
+        );
+      },
     );
   }
 }

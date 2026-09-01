@@ -101,7 +101,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
                   ),
                 ),
                 Text(
-                  _sent ? 'Your invitation' : 'Send an invitation',
+                  _sent ? 'Your interest' : 'Express Interest',
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontSize: 18.sp,
@@ -111,23 +111,34 @@ class _InvitationSheetState extends State<InvitationSheet> {
                 ),
                 SizedBox(height: 4.h),
                 Text(
-                  // Says plainly what happens next, because "Message
-                  // Requester" reads like a chat and is not one.
-                  '${widget.requesterName} will see that you can shoot '
-                  '"${widget.requestTitle}", along with your profile and your '
-                  'work. They start the conversation if they want to.',
+                  // Says plainly what happens next, because a button called
+                  // "Message Requester" reads like a chat and is not one:
+                  // the photographer offers, and the requester decides who
+                  // they talk to.
+                  'Let ${widget.requesterName} know you are interested in this '
+                  "request. We'll share your profile and contact details with "
+                  'them.',
                   style: TextStyle(
                     color: ext.searchHintColor, fontSize: 13.sp, height: 1.45,
                   ),
                 ),
                 SizedBox(height: AppSpacing.lg.h),
+                Text(
+                  'Additional message (optional)',
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.sm.h),
                 TextField(
                   controller: _note,
                   maxLines: 4,
                   maxLength: 500,
                   style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                   decoration: InputDecoration(
-                    hintText: 'Add a note (optional)',
+                    hintText: 'Anything they should know',
                     hintStyle: TextStyle(
                       color: ext.searchHintColor, fontSize: 14.sp,
                     ),
@@ -159,7 +170,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
                       ),
                     ),
                     child: Text(
-                      _sent ? 'Update note' : 'Send invitation',
+                      _sent ? 'Update message' : 'Express Interest',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 15.sp,
@@ -175,7 +186,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
                         const InvitationResult(InvitationAction.withdraw),
                       ),
                       child: Text(
-                        'Withdraw my invitation',
+                        'Withdraw my interest',
                         style: TextStyle(
                           color: ext.errorRed, fontSize: 13.sp,
                         ),

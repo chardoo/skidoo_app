@@ -7,7 +7,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/dark_media_surface.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/event_comment_page.dart';
-import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/open_event_photos.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:jperg_app/features/search/presentation/pages/search_page.dart';
@@ -253,12 +253,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       // submitted, dismissed by the handle, or tapped out of.
       if (mounted) setState(() => _unlockSheetOpen = false);
     }
-  }
-
-  void _openEventImages(BuildContext context, EventDiscovery event) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => EventPicturesPage(event: event)),
-    );
   }
 
   void _openEventComments(BuildContext context, EventDiscovery event) {
@@ -585,12 +579,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         TickerMode(
           enabled: _selectedTab == 2,
           child: DarkMediaSurface(
-            child: FollowingFeed(
-              chromeTopPadding: _headerClearance,
-              // The same destination the Feed tab's cards have: an event's
-              // grid of pictures.
-              onEventTap: (event) => _openEventImages(context, event),
-            ),
+            child: FollowingFeed(chromeTopPadding: _headerClearance),
           ),
         ),
       ],
@@ -609,7 +598,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         EventsFeed(
           discoveryState: discoveryState,
           topPadding: _feedTopPadding,
-          onCardTap: (event) => _openEventImages(context, event),
+          // Keyboard only — see [EventsFeed.onCardTap]. A tap on a card belongs
+          // to the chrome now, and the way into an album is the card's own
+          // "Explore event photos".
+          onCardTap: (event) => openEventPhotos(context, event),
           onCommentTap: (event) => _openEventComments(context, event),
           onLoadMore: () => context
               .read<DiscoveryBloc>()
