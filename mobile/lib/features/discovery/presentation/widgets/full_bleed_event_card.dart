@@ -10,6 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
 import 'package:jperg_app/components/media/share_target_sheet.dart';
+import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/common/widgets/expandable_caption.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -282,10 +283,13 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     widget.activeCardIndex.addListener(_onActiveCardChanged);
     // The caption steps up out of the navigation bar's way when it appears,
     // and the sound control appears with it — see [_captionBottom].
-    FeedChrome.visible.addListener(_onChromeChanged);
+    // Two things outside this card change what it draws: the navigation bar
+    // coming and going, and somebody commenting.
+    FeedChrome.visible.addListener(_rebuild);
+    CommentCounts.instance.addListener(_rebuild);
   }
 
-  void _onChromeChanged() {
+  void _rebuild() {
     if (mounted) setState(() {});
   }
 
@@ -348,13 +352,14 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   /// from under the glass.
   static const double _navBand = 96;
 
-  /// Whether the owner permits engagement on what is on screen.
+  /// Whether the owner is taking comments on what is on screen.
   ///
-  /// `comments_enabled` is the "no feedback on this" switch, so a disabled
-  /// event collects neither comments nor reactions — including the
-  /// double-tap-to-like shortcut, which would otherwise be a silent way past
-  /// a hidden button.
-  bool get _engagementAllowed {
+  /// Comments only. This used to gate the heart as well, on the reading that
+  /// `comments_enabled` meant "no feedback of any kind" — which took the like
+  /// off a post whose owner had merely declined a conversation, and left
+  /// somebody who liked it yesterday with no way to like it today and no
+  /// explanation for either. Closing the thread closes the thread.
+  bool get _commentsAllowed {
     final pics = widget.event.pictures;
     if (!widget.event.commentsEnabled) return false;
     if (pics.isEmpty) return true;
@@ -384,7 +389,8 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   @override
   void dispose() {
     widget.activeCardIndex.removeListener(_onActiveCardChanged);
-    FeedChrome.visible.removeListener(_onChromeChanged);
+    FeedChrome.visible.removeListener(_rebuild);
+    CommentCounts.instance.removeListener(_rebuild);
     _slideTimer?.cancel();
     // Hands the sound back before going: a card scrolled out of the PageView's
     // cache would otherwise keep the feed's one player held for a post that no
@@ -429,12 +435,39 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
         .add(DiscoveryEventSaveToggled(widget.event.id));
   }
 
+  /// The number on the comment glyph.
+  ///
+  /// Read live rather than from the event this card was built with, which is
+  /// whatever the feed was fetched with and does not move when somebody
+  /// comments. The badge sat at the old number until the list happened to be
+  /// rebuilt — so posting a comment, closing the sheet, and finding the count
+  /// unchanged was the ordinary experience of commenting.
+  int get _commentCount =>
+      CommentCounts.instance.countFor(widget.event.id) ??
+      widget.event.commentCount;
+
   void _openComments() {
     if (!widget.isAuthenticated) {
       widget.onTap();
       return;
     }
-    EventCommentPage.show(context, widget.event);
+    EventCommentPage.show(context, widget.event, onCommentSent: _onCommentSent);
+  }
+
+  /// A comment of this viewer's just went. Move the badge now.
+  ///
+  /// An event's comments are messages in its room, so there is no count in a
+  /// response to read back — the server increments `Event.commentCount` on the
+  /// same path (see chat's ws_handler), and this is the client's optimistic
+  /// half of that. The next fetch confirms it.
+  void _onCommentSent() {
+    CommentCounts.instance
+        .adjust(widget.event.id, 1, base: widget.event.commentCount);
+    // Keeps the Feed tab's own list honest for anything that rebuilds from it
+    // rather than from the live count above.
+    if (mounted) {
+      context.read<DiscoveryBloc>().add(DiscoveryCommentAdded(widget.event.id));
+    }
   }
 
   void _share() {
@@ -533,7 +566,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
             pics: event.pictures,
             pageController: _mediaPageCtrl,
             showBlur: false,
-            onDoubleTap: _engagementAllowed ? _toggleLike : () {},
+            onDoubleTap: _toggleLike,
             onTap: _onCardTapped,
             cardIndex: widget.cardIndex,
             activeCardIndex: widget.activeCardIndex,
@@ -815,27 +848,27 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                             state.reactions[event.id] ?? _ownReaction;
                         return MediaReactionRail(
                           actions: [
-                            // Like disappears when engagement is off; comment stays
-                            // and is drawn unavailable. They are not the same case:
-                            // a missing heart says nothing, but a rail with no
-                            // comment button at all reads as one that never had one,
-                            // and the owner having closed the thread is worth
-                            // stating. Same split the card bar and the web column
-                            // already make.
-                            if (_engagementAllowed)
-                              MediaReaction.like(
-                                liked: reaction.liked,
-                                count: reaction.likes,
-                                onTap: _toggleLike,
-                              ),
-                            if (_engagementAllowed)
+                            // The heart is always here. Closing the thread is
+                            // the owner declining a conversation, not
+                            // declining reactions — see [_commentsAllowed].
+                            //
+                            // Where they have closed it the comment glyph
+                            // stays, drawn unavailable: a rail with no comment
+                            // button at all reads as one that never had one,
+                            // and their decision is worth stating.
+                            MediaReaction.like(
+                              liked: reaction.liked,
+                              count: reaction.likes,
+                              onTap: _toggleLike,
+                            ),
+                            if (_commentsAllowed)
                               MediaReaction.comment(
-                                count: event.commentCount,
+                                count: _commentCount,
                                 onTap: _openComments,
                               )
                             else
                               MediaReaction.commentsDisabled(
-                                count: event.commentCount,
+                                count: _commentCount,
                               ),
                             MediaReaction.bookmark(
                               saved: state.savedEventIds.contains(event.id),

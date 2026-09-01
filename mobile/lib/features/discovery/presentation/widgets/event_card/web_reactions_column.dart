@@ -17,7 +17,6 @@ class WebReactionsColumn extends StatelessWidget {
     required this.commentCount,
     this.commentTargetId,
     required this.commentsEnabled,
-    this.reactionsEnabled = true,
     required this.ext,
     required this.isExternalPanel,
     required this.onLike,
@@ -48,9 +47,6 @@ class WebReactionsColumn extends StatelessWidget {
   final String? commentTargetId;
   final bool commentsEnabled;
 
-  /// Like and dislike, following the owner's `comments_enabled` setting — see
-  /// CardInteractionBar.reactionsEnabled for the reasoning.
-  final bool reactionsEnabled;
   final AppThemeExtension ext;
   final bool isExternalPanel;
   final VoidCallback onLike;
@@ -118,9 +114,11 @@ class WebReactionsColumn extends StatelessWidget {
             ],
 
             // ── Reactions ─────────────────────────────────────────────────────
-            if (reactionsEnabled) ...[
+            ...[
               WebActionBtn(
-                icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                icon: liked
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
                 iconColor: liked ? ext.likeRed : ext.greetingColor,
                 count: likeCount,
                 countColor: liked ? ext.likeRed : ext.greetingColor,
@@ -130,7 +128,9 @@ class WebReactionsColumn extends StatelessWidget {
               ),
               SizedBox(height: gap),
               WebActionBtn(
-                icon: disliked ? Icons.thumb_down_rounded : Icons.thumb_down_outlined,
+                icon: disliked
+                    ? Icons.thumb_down_rounded
+                    : Icons.thumb_down_outlined,
                 iconColor: disliked ? ext.dislikeBlue : ext.greetingColor,
                 count: dislikeCount,
                 countColor: disliked ? ext.dislikeBlue : ext.greetingColor,
@@ -164,7 +164,9 @@ class WebReactionsColumn extends StatelessWidget {
             ),
             SizedBox(height: gap),
             WebActionBtn(
-              icon: saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+              icon: saved
+                  ? Icons.bookmark_rounded
+                  : Icons.bookmark_border_rounded,
               iconColor: saved ? ext.accentGold : ext.greetingColor,
               count: null,
               countColor: ext.greetingColor,

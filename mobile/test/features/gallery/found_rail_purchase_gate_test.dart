@@ -79,8 +79,7 @@ List<IconData> railOrder(WidgetTester t) {
       .where((i) => i.icon != null)
       .toList();
   final positions = {
-    for (final i in icons)
-      i.icon!: t.getCenter(find.byIcon(i.icon!).first).dy,
+    for (final i in icons) i.icon!: t.getCenter(find.byIcon(i.icon!).first).dy,
   };
   final ordered = positions.keys.toList()
     ..sort((a, b) => positions[a]!.compareTo(positions[b]!));
@@ -181,7 +180,8 @@ void main() {
       expect(await pumpRail(t, photo(price: 20, isPublic: true)),
           isNot(contains(download)));
       expect(
-          await pumpRail(t, photo(price: 20, isPublic: true, isPurchased: true)),
+          await pumpRail(
+              t, photo(price: 20, isPublic: true, isPurchased: true)),
           contains(download));
     });
   });
@@ -191,8 +191,7 @@ void main() {
       // Free to look at and free to pass on, but not free to keep — the
       // download button is the paid photo's extra.
       expect(await pumpRail(t, photo()), {share});
-      expect(await pumpRail(t, photo(isPublic: true)),
-          {like, comment, share});
+      expect(await pumpRail(t, photo(isPublic: true)), {like, comment, share});
     });
 
     testWidgets('needs no purchase to be reactable', (t) async {
@@ -205,9 +204,13 @@ void main() {
   });
 
   group('the owner switch', () {
-    testWidgets('takes the like and leaves the comment, drawn off', (t) async {
-      // Not the same as hiding it. The owner closed the thread, and a rail
-      // with no comment glyph at all reads as one that never had comments.
+    testWidgets('closes the thread and leaves the heart', (t) async {
+      // It used to take the like with it, on the reading that the switch meant
+      // "no feedback of any kind". It means "no discussion": somebody who
+      // liked this yesterday must still be able to like it today.
+      //
+      // The comment glyph stays too, drawn off — a rail with none at all reads
+      // as one that never had comments.
       final rail = await pumpRail(
         t,
         photo(
@@ -218,14 +221,14 @@ void main() {
         ),
       );
 
-      expect(rail, {commentOff, download, share});
+      expect(rail, {like, commentOff, download, share});
     });
 
     testWidgets('says so on the ungated screens too', (t) async {
       final rail =
           await pumpRail(t, photo(commentsEnabled: false), gated: false);
 
-      expect(rail, {commentOff, bookmark, share});
+      expect(rail, {like, commentOff, bookmark, share});
     });
 
     testWidgets('a private photo shows no comment glyph, crossed or not',
@@ -319,7 +322,8 @@ void main() {
 
       expect(await pumpRail(t, bought, gated: true), contains(download));
       // Same photo, opened from a screen that shows someone's work.
-      expect(await pumpRail(t, bought, gated: false), isNot(contains(download)));
+      expect(
+          await pumpRail(t, bought, gated: false), isNot(contains(download)));
     });
   });
 }

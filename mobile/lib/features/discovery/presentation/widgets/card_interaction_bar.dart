@@ -24,7 +24,6 @@ class CardInteractionBar extends StatelessWidget {
     this.onMessage,
     this.onShareExternal,
     this.commentsEnabled = true,
-    this.reactionsEnabled = true,
     this.commentTargetId,
   });
 
@@ -44,14 +43,6 @@ class CardInteractionBar extends StatelessWidget {
   /// fetched with until the list happens to be rebuilt. Optional: a card that
   /// does not pass one simply renders [commentCount] as before.
   final String? commentTargetId;
-
-  /// Like and dislike. Follows the owner's `comments_enabled` setting: turning
-  /// engagement off on an event, ad or campaign is meant to silence *all*
-  /// reactions to it, not just written ones.
-  ///
-  /// Share and save stay available either way — they distribute or bookmark the
-  /// post rather than react to it, and nothing is published back to the owner.
-  final bool reactionsEnabled;
 
   final AppThemeExtension ext;
   final VoidCallback onLike;
@@ -85,94 +76,92 @@ class CardInteractionBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // ── Like ────────────────────────────────────────────────────────
-          if (reactionsEnabled)
-            _AnimatedActionBtn(
-              semanticLabel: 'Like',
-              onTap: () {
-                HapticFeedback.lightImpact();
-                onLike();
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    switchInCurve: Curves.elasticOut,
-                    switchOutCurve: Curves.easeIn,
-                    transitionBuilder: (child, anim) => ScaleTransition(
-                      scale: anim,
-                      child: child,
-                    ),
-                    child: Icon(
-                      liked
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      key: ValueKey(liked),
+          _AnimatedActionBtn(
+            semanticLabel: 'Like',
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onLike();
+            },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  switchInCurve: Curves.elasticOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: anim,
+                    child: child,
+                  ),
+                  child: Icon(
+                    liked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    key: ValueKey(liked),
+                    color: liked ? ext.likeRed : ext.greetingColor,
+                    size: 26.sp,
+                  ),
+                ),
+                if (likeCount > 0) ...[
+                  SizedBox(width: 5.w),
+                  Text(
+                    _fmt(likeCount),
+                    style: TextStyle(
                       color: liked ? ext.likeRed : ext.greetingColor,
-                      size: 26.sp,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (likeCount > 0) ...[
-                    SizedBox(width: 5.w),
-                    Text(
-                      _fmt(likeCount),
-                      style: TextStyle(
-                        color: liked ? ext.likeRed : ext.greetingColor,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
+          ),
 
-          if (reactionsEnabled) SizedBox(width: 14.w),
+          SizedBox(width: 14.w),
 
           // ── Dislike ──────────────────────────────────────────────────────
-          if (reactionsEnabled)
-            _AnimatedActionBtn(
-              semanticLabel: 'Dislike',
-              onTap: () {
-                HapticFeedback.lightImpact();
-                onDislike();
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    switchInCurve: Curves.elasticOut,
-                    switchOutCurve: Curves.easeIn,
-                    transitionBuilder: (child, anim) => ScaleTransition(
-                      scale: anim,
-                      child: child,
-                    ),
-                    child: Icon(
-                      disliked
-                          ? Icons.thumb_down_rounded
-                          : Icons.thumb_down_outlined,
-                      key: ValueKey(disliked),
+          _AnimatedActionBtn(
+            semanticLabel: 'Dislike',
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onDislike();
+            },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  switchInCurve: Curves.elasticOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: anim,
+                    child: child,
+                  ),
+                  child: Icon(
+                    disliked
+                        ? Icons.thumb_down_rounded
+                        : Icons.thumb_down_outlined,
+                    key: ValueKey(disliked),
+                    color: disliked ? ext.dislikeBlue : ext.greetingColor,
+                    size: 24.sp,
+                  ),
+                ),
+                if (dislikeCount > 0) ...[
+                  SizedBox(width: 5.w),
+                  Text(
+                    _fmt(dislikeCount),
+                    style: TextStyle(
                       color: disliked ? ext.dislikeBlue : ext.greetingColor,
-                      size: 24.sp,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (dislikeCount > 0) ...[
-                    SizedBox(width: 5.w),
-                    Text(
-                      _fmt(dislikeCount),
-                      style: TextStyle(
-                        color: disliked ? ext.dislikeBlue : ext.greetingColor,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
+          ),
 
-          if (reactionsEnabled) SizedBox(width: 18.w),
+          SizedBox(width: 18.w),
 
           // ── Comment ──────────────────────────────────────────────────────
           if (commentsEnabled)

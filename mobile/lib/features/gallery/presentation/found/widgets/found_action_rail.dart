@@ -236,16 +236,17 @@ class _FoundActionRailState extends State<FoundActionRail> {
 
     return MediaReactionRail(
       actions: [
-        // Like and comment follow the owner's engagement switch for this
-        // picture, and in Found you the photo's visibility as well. Where the
-        // owner has closed the thread the comment glyph stays, drawn
-        // unavailable — see [MediaReaction.commentsDisabled].
-        if (offered.engagement) ...[
+        // The heart does not follow the comment switch. Closing the thread is
+        // the owner declining a conversation, not declining reactions — see
+        // [FoundPhotoActions.like]. Where they have closed it the comment glyph
+        // stays, drawn unavailable — see [MediaReaction.commentsDisabled].
+        if (offered.like)
           MediaReaction.like(
             liked: _liked,
             count: _likeCount,
             onTap: () => _requireAccount(_toggleLike),
           ),
+        if (offered.comment)
           MediaReaction.comment(
             // Live, so the rail corrects itself the moment a comment is
             // posted instead of showing the count the photo was fetched with.
@@ -253,7 +254,6 @@ class _FoundActionRailState extends State<FoundActionRail> {
                 widget.photo.commentCount,
             onTap: () => _requireAccount(_openComments),
           ),
-        ],
         if (offered.commentsDisabled)
           MediaReaction.commentsDisabled(
             count: CommentCounts.instance.countFor(widget.photo.id) ??

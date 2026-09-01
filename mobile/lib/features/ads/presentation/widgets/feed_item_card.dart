@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
+import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:jperg_app/core/common/widgets/get_app_sheet.dart';
 import 'package:jperg_app/core/navigation/feed_chrome.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -344,6 +345,14 @@ class _FeedItemCardState extends State<FeedItemCard> {
   late bool _liked = widget.data.viewerLiked;
   late int _likes = widget.data.likeCount;
 
+  /// The number on the comment glyph, read live so it moves the moment
+  /// somebody comments rather than showing whatever the feed was fetched with
+  /// until the list is rebuilt. The comment sheet reports the server's count
+  /// here as it posts — see [CommentCounts].
+  int get _commentCount =>
+      CommentCounts.instance.countFor(widget.data.id) ??
+      widget.data.commentCount;
+
   /// The strip along the bottom the floating nav bar occupies, matched to the
   /// event card's so the two kinds of page put their copy in the same place.
   static const double _navBand = 96;
@@ -355,7 +364,8 @@ class _FeedItemCardState extends State<FeedItemCard> {
       final page = _pageCtrl.page?.round() ?? 0;
       if (page != _currentPage && mounted) setState(() => _currentPage = page);
     });
-    FeedChrome.visible.addListener(_onChromeChanged);
+    FeedChrome.visible.addListener(_rebuild);
+    CommentCounts.instance.addListener(_rebuild);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _initFired) return;
       _initFired = true;
@@ -374,13 +384,14 @@ class _FeedItemCardState extends State<FeedItemCard> {
     }
   }
 
-  void _onChromeChanged() {
+  void _rebuild() {
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    FeedChrome.visible.removeListener(_onChromeChanged);
+    FeedChrome.visible.removeListener(_rebuild);
+    CommentCounts.instance.removeListener(_rebuild);
     _pageCtrl.dispose();
     super.dispose();
   }
@@ -576,7 +587,10 @@ class _FeedItemCardState extends State<FeedItemCard> {
                   alignment: const Alignment(0, 0.15),
                   child: MediaReactionRail(
                     actions: [
-                      if (isAd && d.commentsEnabled)
+                      // Always, for a campaign. Closing the thread is the
+                      // advertiser declining a conversation, not declining
+                      // reactions.
+                      if (isAd)
                         MediaReaction.like(
                           liked: _liked,
                           count: _likes,
@@ -585,11 +599,11 @@ class _FeedItemCardState extends State<FeedItemCard> {
                       if (isAd)
                         if (d.commentsEnabled)
                           MediaReaction.comment(
-                            count: d.commentCount,
+                            count: _commentCount,
                             onTap: _handleComment,
                           )
                         else
-                          MediaReaction.commentsDisabled(count: d.commentCount),
+                          MediaReaction.commentsDisabled(count: _commentCount),
                       MediaReaction.share(
                         busy: _sharing,
                         onTap: _handleShare,

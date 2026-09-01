@@ -414,7 +414,7 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                         // like button — otherwise it is a silent way past a
                         // hidden control.
                         onDoubleTap: widget.isAuthenticated
-                            ? (_engagementAllowed ? _handleDoubleTap : () {})
+                            ? _handleDoubleTap
                             : widget.onTap,
                         cardIndex: widget.cardIndex,
                         activeCardIndex: widget.activeCardIndex,
@@ -544,7 +544,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
           commentCount: widget.event.commentCount,
           commentTargetId: widget.event.id,
           commentsEnabled: commentsEnabled,
-          reactionsEnabled: _engagementAllowed,
           ext: ext,
           isExternalPanel: isExternalPanel,
           mediaH: mediaH! * 1.5,
@@ -764,15 +763,15 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   bool get _commentsEnabled =>
       AppConfigRepository.current.commentsEnabled && _engagementAllowed;
 
-  /// Whether the owner permits engagement on what is currently on screen.
+  /// Whether the owner is taking comments on what is currently on screen.
   ///
-  /// Gates reactions as well as comments: `comments_enabled` is the owner's
-  /// "no feedback on this" switch, so a disabled event should not collect
-  /// likes or dislikes either.
+  /// Comments alone. `comments_enabled` closes the thread; it says nothing
+  /// about reactions, and taking the heart with it left a post somebody liked
+  /// yesterday with no way to like it today and no explanation for either.
   ///
   /// Unlike [_commentsEnabled] this ignores the global admin comments toggle —
-  /// that kill-switch is about written comments, and it would be wrong for an
-  /// admin disabling comments app-wide to also silence every like.
+  /// that kill-switch is about the whole comment feature, while this is one
+  /// owner's decision about one post.
   bool get _engagementAllowed =>
       widget.event.commentsEnabled &&
       (widget.event.pictures.isEmpty ||
@@ -795,7 +794,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
         commentCount: widget.event.commentCount,
         commentTargetId: widget.event.id,
         commentsEnabled: _commentsEnabled,
-        reactionsEnabled: _engagementAllowed,
         ext: ext,
         onLike: widget.isAuthenticated
             ? () {

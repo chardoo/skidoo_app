@@ -129,10 +129,11 @@ void main() {
       expect(like.active, isTrue, reason: 'the viewer has liked this one');
     });
 
-    testWidgets('drops the heart when the advertiser closed engagement',
+    testWidgets('keeps the heart when the advertiser closed the thread',
         (t) async {
-      // The "Allow comments" switch is the no-feedback switch: a campaign with
-      // it off collects neither comments nor likes.
+      // "Allow comments" closes the thread and nothing else. It used to take
+      // the like with it, which left a campaign somebody liked yesterday with
+      // no way to like it today.
       await t.pumpWidget(host(FeedItemData.fromAd(
         _ad(commentsEnabled: false),
         onCtaTap: () {},
@@ -140,10 +141,9 @@ void main() {
       await t.pump();
 
       final labels = railOf(t).map((a) => a.semanticLabel ?? '').toList();
-      expect(labels.any((l) => l.toLowerCase().contains('like')), isFalse);
-      // The comment button stays and is drawn unavailable — a rail with no
-      // comment button at all reads as one that never had one, and the owner
-      // having closed the thread is worth stating.
+      expect(labels.any((l) => l.toLowerCase().contains('like')), isTrue);
+      // The comment button stays too, drawn unavailable — a rail with none at
+      // all reads as one that never had comments.
       expect(labels.any((l) => l.toLowerCase().contains('comment')), isTrue);
     });
   });
@@ -200,9 +200,8 @@ void main() {
       await t.pumpWidget(host(FeedItemData.fromRequest(_request())));
       await t.pump();
 
-      final labels = railOf(t)
-          .map((a) => (a.semanticLabel ?? '').toLowerCase())
-          .toList();
+      final labels =
+          railOf(t).map((a) => (a.semanticLabel ?? '').toLowerCase()).toList();
       expect(labels.any((l) => l.contains('share')), isTrue);
       expect(labels.any((l) => l.contains('like')), isFalse,
           reason: 'a job going begging is not a post to like');

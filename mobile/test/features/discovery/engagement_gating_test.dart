@@ -6,9 +6,14 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
-/// `comments_enabled` is the owner's "no feedback on this" switch. It used to
-/// hide only the comment button, leaving like and dislike live — so an event,
-/// ad or campaign with engagement switched off still collected reactions.
+/// `comments_enabled` closes the thread, and closes nothing else.
+///
+/// It was read for a while as "no feedback of any kind", which took the heart
+/// off a post whose owner had merely declined a conversation: somebody who
+/// liked it yesterday had no way to like it today, and nothing on the card
+/// explained why. Reactions and comments are different things — one is a
+/// number, the other is somebody talking — and only the second is the owner's
+/// to switch off.
 Widget host(Widget child) => ScreenUtilInit(
       designSize: const Size(390, 844),
       builder: (_, __) => MaterialApp(
@@ -18,11 +23,7 @@ Widget host(Widget child) => ScreenUtilInit(
       ),
     );
 
-CardInteractionBar bar({
-  required bool commentsEnabled,
-  required bool reactionsEnabled,
-}) =>
-    CardInteractionBar(
+CardInteractionBar bar({required bool commentsEnabled}) => CardInteractionBar(
       liked: false,
       disliked: false,
       saved: false,
@@ -30,7 +31,6 @@ CardInteractionBar bar({
       dislikeCount: 3,
       commentCount: 7,
       commentsEnabled: commentsEnabled,
-      reactionsEnabled: reactionsEnabled,
       ext: AppThemeExtension.dark,
       onLike: () {},
       onDislike: () {},
@@ -59,10 +59,9 @@ void main() {
   });
 
   group('CardInteractionBar', () {
-    testWidgets('engagement on: like, dislike and comment all present',
+    testWidgets('comments on: like, dislike and comment all present',
         (tester) async {
-      await tester.pumpWidget(
-          host(bar(commentsEnabled: true, reactionsEnabled: true)));
+      await tester.pumpWidget(host(bar(commentsEnabled: true)));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
@@ -70,35 +69,36 @@ void main() {
       expect(find.byIcon(Icons.mode_comment_outlined), findsOneWidget);
     });
 
-    testWidgets('engagement off: no like, no dislike, no comment',
+    testWidgets('comments off: the thread closes and the heart stays',
         (tester) async {
-      await tester.pumpWidget(
-          host(bar(commentsEnabled: false, reactionsEnabled: false)));
+      await tester.pumpWidget(host(bar(commentsEnabled: false)));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
-      expect(find.byIcon(Icons.thumb_down_outlined), findsNothing);
+      // The regression this file now exists for.
+      expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.thumb_down_outlined), findsOneWidget);
+
       expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
-      // The bar shows a struck-through comment icon in place of the button.
+      // A struck-through comment icon in place of the button: a rail with no
+      // comment button at all reads as one that never had comments, and the
+      // owner's decision is worth stating.
       expect(find.byIcon(Icons.comments_disabled_rounded), findsOneWidget);
     });
 
     testWidgets('share and save survive: they distribute, not react',
         (tester) async {
-      await tester.pumpWidget(
-          host(bar(commentsEnabled: false, reactionsEnabled: false)));
+      await tester.pumpWidget(host(bar(commentsEnabled: false)));
       await tester.pumpAndSettle();
 
       expect(find.bySemanticsLabel('Send'), findsOneWidget);
     });
 
     testWidgets(
-        'admin comments kill-switch silences comments without killing reactions',
+        'the admin kill-switch silences comments without killing reactions',
         (tester) async {
-      // The global toggle is about written comments. An admin disabling those
-      // app-wide must not also remove every like.
-      await tester.pumpWidget(
-          host(bar(commentsEnabled: false, reactionsEnabled: true)));
+      // Same rule one level up: the global toggle is about the comment feature,
+      // and an admin disabling it app-wide has said nothing about likes.
+      await tester.pumpWidget(host(bar(commentsEnabled: false)));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
@@ -132,8 +132,8 @@ void main() {
       expect(find.byIcon(Icons.comments_disabled_rounded), findsOneWidget);
       // Matched loosely: the count merges into the same semantics node, so the
       // announcement is "Comments disabled" *and* the number.
-      expect(find.bySemanticsLabel(RegExp('Comments disabled')),
-          findsOneWidget);
+      expect(
+          find.bySemanticsLabel(RegExp('Comments disabled')), findsOneWidget);
     });
 
     testWidgets('dims the count along with the glyph', (tester) async {
@@ -141,8 +141,8 @@ void main() {
       await tester.pumpWidget(rail(commentsEnabled: false));
       await tester.pumpAndSettle();
 
-      final glyph = tester.widget<Icon>(
-          find.byIcon(Icons.comments_disabled_rounded));
+      final glyph =
+          tester.widget<Icon>(find.byIcon(Icons.comments_disabled_rounded));
       final count = tester.widget<Text>(find.text('7'));
 
       expect(glyph.color, isNot(Colors.white));

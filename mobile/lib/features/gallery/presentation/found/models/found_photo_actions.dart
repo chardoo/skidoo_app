@@ -24,6 +24,8 @@ import 'package:jperg_app/models/photos/Photo.dart';
 ///   but buy it.
 /// * **Like and comment are public-only.** A private photo has no audience to
 ///   react in front of — the thread would be the viewer talking to themselves.
+///   The owner's comment switch is a narrower thing and closes the thread
+///   alone: people may still like a photo nobody is allowed to discuss.
 /// * **Download is the paid extra**, and only ever appears once the photo has
 ///   actually been bought. A free photo is free to look at and free to pass
 ///   on, but it is not free to keep. This is the *only* rail in the app that
@@ -41,7 +43,8 @@ import 'package:jperg_app/models/photos/Photo.dart';
 /// above.
 class FoundPhotoActions {
   const FoundPhotoActions._({
-    required this.engagement,
+    required this.like,
+    required this.comment,
     required this.commentsDisabled,
     required this.save,
     required this.share,
@@ -49,7 +52,7 @@ class FoundPhotoActions {
   });
 
   /// Every entry point that isn't Found you: like, comment, bookmark, share
-  /// and send, subject only to the owner's engagement switch.
+  /// and send. The owner's switch closes the thread; the heart stays.
   ///
   /// **No download.** Writing the file to the phone is offered in exactly one
   /// place — Found you, on a photo the viewer has paid for — because that is
@@ -58,7 +61,8 @@ class FoundPhotoActions {
   /// show someone else's work: there is no purchase behind any of it, so a
   /// download button there hands out a photographer's photo for free.
   const FoundPhotoActions.unrestricted({required bool commentsEnabled})
-      : engagement = commentsEnabled,
+      : like = true,
+        comment = commentsEnabled,
         commentsDisabled = !commentsEnabled,
         save = true,
         share = true,
@@ -73,7 +77,11 @@ class FoundPhotoActions {
     if (!unlocked) return const FoundPhotoActions.none();
 
     return FoundPhotoActions._(
-      engagement: photo.commentsEnabled && photo.isPublic,
+      // Public is the test, not the comment switch. Closing the thread is the
+      // owner saying "no discussion", which is not the same as "no reactions"
+      // — see [like].
+      like: photo.isPublic,
+      comment: photo.commentsEnabled && photo.isPublic,
       // Only where the *owner* closed the thread. A private photo shows no
       // comment glyph at all, crossed or otherwise: it has no audience by
       // rule rather than by anyone's decision, and marking every private
@@ -93,17 +101,26 @@ class FoundPhotoActions {
   /// A rail with nothing on it. The stage renders no rail at all rather than
   /// an empty column — see [any].
   const FoundPhotoActions.none()
-      : engagement = false,
+      : like = false,
+        comment = false,
         commentsDisabled = false,
         save = false,
         share = false,
         download = false;
 
-  /// Like and comment, both live.
-  final bool engagement;
+  /// The heart, live.
+  ///
+  /// Deliberately not tied to the comment switch. Turning comments off is the
+  /// owner declining a conversation — it says nothing about whether people may
+  /// react, and taking the heart away with it left a photo somebody liked
+  /// yesterday with no way to like it today and no explanation for either.
+  final bool like;
 
-  /// The comment glyph drawn unavailable, in place of [engagement]'s pair.
-  /// Never true at the same time as [engagement].
+  /// The comment glyph, live.
+  final bool comment;
+
+  /// The comment glyph drawn unavailable, in place of [comment]. Never true at
+  /// the same time as it.
   final bool commentsDisabled;
 
   /// Bookmark into the user's saved items. Not a download — see [download].
@@ -118,5 +135,5 @@ class FoundPhotoActions {
   final bool download;
 
   bool get any =>
-      engagement || commentsDisabled || save || share || download;
+      like || comment || commentsDisabled || save || share || download;
 }

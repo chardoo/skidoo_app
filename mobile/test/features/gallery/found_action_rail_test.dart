@@ -104,14 +104,17 @@ void main() {
     expect(find.byIcon(Icons.ios_share_rounded), findsNothing);
   });
 
-  testWidgets('share survives the owner switching engagement off', (t) async {
-    // `comments_enabled` silences like and comment. Sharing is not engagement
-    // — it is the viewer passing the photo on — so it stays.
+  testWidgets('closing the thread takes the comment and nothing else',
+      (t) async {
+    // `comments_enabled` used to silence the like too. It is the owner
+    // declining a conversation: the heart stays, and so does sharing, which
+    // was never engagement — it is the viewer passing the photo on.
     await t.pumpWidget(
         host(FoundActionRail(photo: photo(commentsEnabled: false))));
 
-    expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
+    expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
     expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
+    expect(find.byIcon(Icons.comments_disabled_rounded), findsOneWidget);
     expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
   });
 }
