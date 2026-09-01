@@ -101,99 +101,110 @@ class _ForwardMessageSheetState extends State<ForwardMessageSheet> {
           color: ext.cardSurface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
         ),
-        child: Column(
-          children: [
-            SizedBox(height: AppSpacing.sm.h),
-            Container(
-              width: 36.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: ext.searchHintColor.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2.r),
+        // A ListTile paints its background and its ink on the nearest Material
+        // ancestor, and this decorated Container sits between the tiles and the
+        // sheet's — so it swallowed both, and asserted about it in debug. A
+        // transparency Material paints nothing and just gives the ink a surface
+        // to land on. Same treatment as the request flow's pickers and the feed
+        // card's options sheet.
+        child: Material(
+          type: MaterialType.transparency,
+          child: Column(
+            children: [
+              SizedBox(height: AppSpacing.sm.h),
+              Container(
+                width: 36.w,
+                height: 4.h,
+                decoration: BoxDecoration(
+                  color: ext.searchHintColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
               ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                  AppSpacing.xl.w, AppSpacing.lg.h, AppSpacing.xl.w, AppSpacing.sm.h),
-              child: Row(
-                children: [
-                  Text(
-                    'Forward to',
-                    style: TextStyle(
-                      color: ext.greetingColor,
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w700,
+              Padding(
+                padding: EdgeInsets.fromLTRB(AppSpacing.xl.w, AppSpacing.lg.h,
+                    AppSpacing.xl.w, AppSpacing.sm.h),
+                child: Row(
+                  children: [
+                    Text(
+                      'Forward to',
+                      style: TextStyle(
+                        color: ext.greetingColor,
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  if (_loading)
-                    SizedBox(
-                      width: 16.w,
-                      height: 16.w,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: ext.searchHintColor),
-                    ),
-                ],
+                    const Spacer(),
+                    if (_loading)
+                      SizedBox(
+                        width: 16.w,
+                        height: 16.w,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: ext.searchHintColor),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
-              child: TextField(
-                onChanged: (value) => setState(() => _query = value),
-                style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-                decoration: InputDecoration(
-                  isDense: true,
-                  filled: true,
-                  fillColor: ext.searchFieldFill,
-                  hintText: 'Search conversations',
-                  hintStyle:
-                      TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-                  prefixIcon: Icon(Icons.search_rounded,
-                      size: 18.sp, color: ext.searchHintColor),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(22.r),
-                    borderSide: BorderSide.none,
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
+                child: TextField(
+                  onChanged: (value) => setState(() => _query = value),
+                  style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: true,
+                    fillColor: ext.searchFieldFill,
+                    hintText: 'Search conversations',
+                    hintStyle:
+                        TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
+                    prefixIcon: Icon(Icons.search_rounded,
+                        size: 18.sp, color: ext.searchHintColor),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22.r),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ),
-            ),
-            SizedBox(height: AppSpacing.sm.h),
-            Expanded(
-              child: rooms.isEmpty
-                  ? Center(
-                      child: Text(
-                        _loading ? 'Loading…' : 'No conversations to forward to',
-                        style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 13.sp),
-                      ),
-                    )
-                  : ListView.builder(
-                      controller: scrollController,
-                      itemCount: rooms.length,
-                      itemBuilder: (context, index) {
-                        final room = rooms[index];
-                        return ListTile(
-                          leading: RoomAvatar(
-                            room: room,
-                            currentUserId: widget.myUserId,
-                            radius: 20,
-                          ),
-                          title: Text(
-                            room.displayNameFor(widget.myUserId),
-                            style: TextStyle(
-                              color: ext.greetingColor,
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w600,
+              SizedBox(height: AppSpacing.sm.h),
+              Expanded(
+                child: rooms.isEmpty
+                    ? Center(
+                        child: Text(
+                          _loading
+                              ? 'Loading…'
+                              : 'No conversations to forward to',
+                          style: TextStyle(
+                              color: ext.searchHintColor, fontSize: 13.sp),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: scrollController,
+                        itemCount: rooms.length,
+                        itemBuilder: (context, index) {
+                          final room = rooms[index];
+                          return ListTile(
+                            leading: RoomAvatar(
+                              room: room,
+                              currentUserId: widget.myUserId,
+                              radius: 20,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          onTap: () => Navigator.of(context).pop(room),
-                        );
-                      },
-                    ),
-            ),
-          ],
+                            title: Text(
+                              room.displayNameFor(widget.myUserId),
+                              style: TextStyle(
+                                color: ext.greetingColor,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () => Navigator.of(context).pop(room),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
