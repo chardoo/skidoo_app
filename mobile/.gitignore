@@ -19,6 +19,7 @@ migrate_working_dir/
 *.ipr
 *.iws
 .idea/
+./docs
 
 # Design exports and scratch photos. Three of the rules that used to sit here
 # never matched anything: `/mobile/docs` resolves to mobile/mobile/docs from
