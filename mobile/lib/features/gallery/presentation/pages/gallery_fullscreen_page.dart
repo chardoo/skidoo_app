@@ -35,6 +35,10 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
   late final PageController _pageCtrl;
   late int _currentIndex;
 
+  /// Frozen while the photo on screen is zoomed in, or panning across it would
+  /// page to the next one instead. See ZoomableArea.
+  bool _zoomed = false;
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +72,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
           PageView.builder(
             controller: _pageCtrl,
             itemCount: total,
+            physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
             onPageChanged: (i) => setState(() => _currentIndex = i),
             itemBuilder: (_, i) => _ZoomablePhoto(
               key: ValueKey(widget.photos[i].id),
@@ -75,6 +80,9 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
               ext: ext,
               isActive: i == _currentIndex,
               onTap: _toggleBars,
+              onZoomChanged: (zoomed) {
+                if (zoomed != _zoomed) setState(() => _zoomed = zoomed);
+              },
             ),
           ),
 
@@ -213,12 +221,16 @@ class _ZoomablePhoto extends StatelessWidget {
     required this.photo,
     required this.ext,
     required this.onTap,
+    this.onZoomChanged,
     this.isActive = true,
   });
 
   final Photo photo;
   final AppThemeExtension ext;
   final VoidCallback onTap;
+
+  /// Tells the page to freeze its pager while this photo is magnified.
+  final ValueChanged<bool>? onZoomChanged;
 
   /// Whether this page is the one on screen — only that one's video plays.
   final bool isActive;
@@ -243,6 +255,8 @@ class _ZoomablePhoto extends StatelessWidget {
       knownAspect: photo.aspectRatio,
       semanticLabel: 'Photo',
       onTap: onTap,
+      onZoomChanged: onZoomChanged,
+      isActive: isActive,
       errorWidget: (_, __, ___) => Center(
         child: Icon(
           Icons.broken_image_outlined,

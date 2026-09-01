@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -110,5 +111,95 @@ void main() {
           .isIdentity(),
       isTrue,
     );
+  });
+
+  testWidgets('double-tap magnifies the photo, and again puts it back',
+      (t) async {
+    await t.pumpWidget(host(const ZoomablePhoto(
+      imageUrl: 'https://cdn.example.com/a.jpg',
+      knownAspect: 1,
+    )));
+
+    final viewer = find.byType(InteractiveViewer);
+    double scale() => t
+        .widget<InteractiveViewer>(viewer)
+        .transformationController!
+        .value
+        .getMaxScaleOnAxis();
+
+    Future<void> doubleTap() async {
+      await t.tap(viewer);
+      await t.pump(kDoubleTapMinTime);
+      await t.tap(viewer);
+      // Not pumpAndSettle: the loading placeholder spins forever, so the tree
+      // never settles. One frame to start the zoom, one long enough to finish
+      // it — the first tick a ticker gets is its zero point.
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 300));
+    }
+
+    await doubleTap();
+    expect(scale(), greaterThan(1.5), reason: 'zoomed in on the tapped point');
+
+    await doubleTap();
+    expect(scale(), moreOrLessEquals(1, epsilon: 0.01));
+  });
+
+  testWidgets('a photo swiped away from does not keep its zoom', (t) async {
+    // The pager keeps its neighbours alive, so a page left magnified would
+    // still be magnified when it is swiped back to.
+    await t.pumpWidget(host(const ZoomablePhoto(
+      imageUrl: 'https://cdn.example.com/a.jpg',
+      knownAspect: 1,
+    )));
+
+    final viewer = find.byType(InteractiveViewer);
+    t.widget<InteractiveViewer>(viewer).transformationController!.value =
+        Matrix4.identity()..scaleByDouble(2.5, 2.5, 2.5, 1);
+    await t.pump();
+
+    await t.pumpWidget(host(const ZoomablePhoto(
+      imageUrl: 'https://cdn.example.com/a.jpg',
+      knownAspect: 1,
+      isActive: false,
+    )));
+
+    expect(
+      t
+          .widget<InteractiveViewer>(viewer)
+          .transformationController!
+          .value
+          .isIdentity(),
+      isTrue,
+    );
+  });
+
+  testWidgets('the host is told when the photo leaves 1x and when it returns',
+      (t) async {
+    final reported = <bool>[];
+
+    await t.pumpWidget(host(ZoomablePhoto(
+      imageUrl: 'https://cdn.example.com/a.jpg',
+      knownAspect: 1,
+      onZoomChanged: reported.add,
+    )));
+
+    final controller = t
+        .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+        .transformationController!;
+
+    controller.value = Matrix4.identity()..scaleByDouble(2.5, 2.5, 2.5, 1);
+    await t.pump();
+    expect(reported, [true]);
+
+    // The threshold sits a little above 1, so a pinch that ends fractionally
+    // off rest counts as back at rest rather than leaving the pager frozen.
+    controller.value = Matrix4.identity()..scaleByDouble(1.02, 1.02, 1.02, 1);
+    await t.pump();
+    expect(reported, [true, false]);
+
+    controller.value = Matrix4.identity();
+    await t.pump();
+    expect(reported, [true, false], reason: 'still at rest, nothing to say');
   });
 }

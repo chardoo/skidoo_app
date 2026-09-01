@@ -7,6 +7,7 @@ import 'package:jperg_app/features/gallery/presentation/found/models/found_photo
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_action_rail.dart';
 import 'package:jperg_app/core/widgets/image_aspect.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/widgets/zoomable_photo.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_meta_bar.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_visibility_badge.dart';
@@ -32,6 +33,7 @@ class FoundPhotoStage extends StatelessWidget {
     this.purchaseGated = false,
     this.selection,
     this.counter,
+    this.onZoomChanged,
   });
 
   final Photo photo;
@@ -61,6 +63,10 @@ class FoundPhotoStage extends StatelessWidget {
   final bool isActive;
 
   final VoidCallback? onViewAlbum;
+
+  /// Fires as the photo leaves 1× and as it returns. The viewer freezes its
+  /// pager in between — see [ZoomableArea].
+  final ValueChanged<bool>? onZoomChanged;
 
   /// Shape used for the first frame of a record the server sent no dimensions
   /// for. It is a starting point, not the answer: [ResolvedAspect] measures the
@@ -104,17 +110,28 @@ class FoundPhotoStage extends StatelessWidget {
                     listenToPauseNotifier: true,
                   )
                 else
-                  JpergImage(
-                    imageUrl: photo.url,
-                    // Identical to `cover` once the box is the photo's own
-                    // shape, which is the steady state. It differs only in the
-                    // moment before an unmeasured photo resolves, and there
-                    // `contain` shows the whole frame rather than cropping into
-                    // it and then jumping.
-                    fit: BoxFit.contain,
-                    semanticLabel: 'Found photo',
-                    placeholder: (_, __) => const JpergImagePlaceholder(),
-                    errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
+                  // Pinch or double-tap to look closer: this is where someone
+                  // decides whether the face in a crowd shot is theirs, and at
+                  // screen size it often isn't decidable. The zoom is bounded
+                  // by the photo's own box, so the magnified image stays under
+                  // the overlays that hang off its edges rather than sliding
+                  // out over the letterbox.
+                  ZoomableArea(
+                    isActive: isActive,
+                    resetToken: photo.id,
+                    onZoomChanged: onZoomChanged,
+                    child: JpergImage(
+                      imageUrl: photo.url,
+                      // Identical to `cover` once the box is the photo's own
+                      // shape, which is the steady state. It differs only in
+                      // the moment before an unmeasured photo resolves, and
+                      // there `contain` shows the whole frame rather than
+                      // cropping into it and then jumping.
+                      fit: BoxFit.contain,
+                      semanticLabel: 'Found photo',
+                      placeholder: (_, __) => const JpergImagePlaceholder(),
+                      errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
+                    ),
                   ),
 
                 // Everything below is chrome over the photo, and all of it

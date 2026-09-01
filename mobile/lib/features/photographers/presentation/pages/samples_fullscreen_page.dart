@@ -25,6 +25,10 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
   late final PageController _page;
   late int _current;
 
+  /// Frozen while the sample on screen is zoomed in, or panning across it
+  /// would page to the next one instead. See ZoomableArea.
+  bool _zoomed = false;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +51,7 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
           PageView.builder(
             controller: _page,
             itemCount: widget.samples.length,
+            physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
             onPageChanged: (i) => setState(() => _current = i),
             itemBuilder: (_, i) {
               final sample = widget.samples[i];
@@ -73,6 +78,10 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
                 // opens at its real shape rather than resolving into it.
                 knownAspect: sample.aspectRatio,
                 semanticLabel: 'Photographer sample',
+                isActive: i == _current,
+                onZoomChanged: (zoomed) {
+                  if (zoomed != _zoomed) setState(() => _zoomed = zoomed);
+                },
                 errorWidget: (_, __, ___) => const Center(
                   child: Icon(Icons.broken_image_rounded,
                       color: Colors.white24, size: 60),

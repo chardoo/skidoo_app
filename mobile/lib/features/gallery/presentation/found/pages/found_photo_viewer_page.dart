@@ -110,6 +110,15 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
 
   bool _checkingOut = false;
 
+  /// Whether the photo on screen is zoomed in.
+  ///
+  /// The pager is frozen while it is: a zoomed photo and a [PageView] both
+  /// want the horizontal drag and the pager wins, so panning across a
+  /// magnified shot would flick to the next photo instead. A page that is
+  /// swiped or scrubbed away from resets itself and clears this — see
+  /// ZoomableArea.
+  bool _zoomed = false;
+
   @override
   void didUpdateWidget(FoundPhotoViewerPage old) {
     super.didUpdateWidget(old);
@@ -160,6 +169,11 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
     } finally {
       if (mounted) setState(() => _checkingOut = false);
     }
+  }
+
+  void _setZoomed(bool zoomed) {
+    if (!mounted || zoomed == _zoomed) return;
+    setState(() => _zoomed = zoomed);
   }
 
   void _goTo(int index) {
@@ -305,6 +319,9 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
                   child: PageView.builder(
                     controller: _pageCtrl,
                     itemCount: total,
+                    physics: _zoomed
+                        ? const NeverScrollableScrollPhysics()
+                        : null,
                     onPageChanged: (i) {
                       setState(() => _index = i);
                       widget.onIndexChanged?.call(i);
@@ -326,6 +343,7 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
                       // counter is still up there and two would disagree.
                       counter:
                           widget.title == null ? null : '${i + 1} of $total',
+                      onZoomChanged: _setZoomed,
                     ),
                   ),
                 ),
