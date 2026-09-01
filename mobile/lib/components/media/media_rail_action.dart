@@ -52,7 +52,7 @@ class MediaRailAction extends StatefulWidget {
 
   final String? semanticLabel;
 
-  /// Glyph size. Defaults to the rail's 28sp.
+  /// Glyph size, before rounding. Defaults to 24 — see [_MediaRailActionState].
   final double? iconSize;
 
   /// Pads the glyph out to a fixed square so a row of these keeps a finger-
@@ -80,9 +80,32 @@ class _MediaRailActionState extends State<MediaRailAction>
     super.dispose();
   }
 
+  /// A tight drop shadow, offset, rather than a halo.
+  ///
+  /// This used to be a 4 px blur at 45 % black with no offset: a blurred copy
+  /// of the glyph in every direction at once, which thickens the stroke and
+  /// reads as an icon slightly out of focus. A shadow that falls *somewhere*
+  /// is what every native rail uses — one pixel down and two of blur separates
+  /// a white glyph from a bright photo without softening its edges.
+  static const _shadows = [
+    Shadow(color: Color(0x99000000), blurRadius: 2, offset: Offset(0, 1)),
+  ];
+
+  /// The glyph, at a whole number of logical pixels.
+  ///
+  /// Rounded deliberately. `.sp` lands on a fraction for most devices — 24 sp
+  /// is 26.46 on a 430 pt phone — and an icon font rasterised at a fractional
+  /// size sits between the pixel grid and comes out soft. Rounding is the
+  /// difference between a crisp glyph and a faintly smeared one, and costs at
+  /// most half a pixel of size.
+  ///
+  /// 24 rather than the 28 it was: the rail sits over somebody's photograph,
+  /// and at 28 the five glyphs were the loudest thing on the screen.
+  double get _size => (widget.iconSize ?? 24.sp).roundToDouble();
+
   @override
   Widget build(BuildContext context) {
-    final size = widget.iconSize ?? 28.sp;
+    final size = _size;
     final glyph = widget.busy
         ? SizedBox(
             width: size * 0.8,
@@ -90,9 +113,8 @@ class _MediaRailActionState extends State<MediaRailAction>
             child: CircularProgressIndicator(
                 strokeWidth: 2, color: widget.iconColor),
           )
-        : Icon(widget.icon, color: widget.iconColor, size: size, shadows: const [
-            Shadow(color: Colors.black45, blurRadius: 4),
-          ]);
+        : Icon(widget.icon,
+            color: widget.iconColor, size: size, shadows: _shadows);
 
     final inert = widget.busy || !widget.enabled;
 
@@ -129,11 +151,12 @@ class _MediaRailActionState extends State<MediaRailAction>
                   widget.label!,
                   style: TextStyle(
                     color: widget.labelColor ?? Colors.white,
-                    fontSize: 11.sp,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.w600,
-                    shadows: const [
-                      Shadow(color: Colors.black45, blurRadius: 4)
-                    ],
+                    // Same treatment as the glyph above it, so the pair reads
+                    // as one control rather than a sharp number under a soft
+                    // icon.
+                    shadows: _shadows,
                   ),
                 ),
               ],

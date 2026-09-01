@@ -157,12 +157,11 @@ void main() {
         // conditional — `liked ? filled : outline` — or declared as a
         // MediaReaction's `activeIcon`, which is that same conditional lifted
         // into the shared rail.
-        final line = source
-            .substring(0, match.start)
+        final line = source.substring(0, match.start).split('\n').length;
+        final context = source
             .split('\n')
-            .length;
-        final context = source.split('\n').sublist(
-            (line - 3).clamp(0, source.length), line).join('\n');
+            .sublist((line - 3).clamp(0, source.length), line)
+            .join('\n');
         expect(context, anyOf(contains('?'), contains('activeIcon:')),
             reason: '$path:$line — ${match.group(0)} with no active-state '
                 'condition around it, so it shows filled at rest');
@@ -195,10 +194,61 @@ void main() {
     ])));
 
     const ext = AppThemeExtension.dark;
-    expect(t.widget<Icon>(find.byIcon(Icons.favorite_rounded)).color,
-        ext.likeRed);
+    expect(
+        t.widget<Icon>(find.byIcon(Icons.favorite_rounded)).color, ext.likeRed);
     expect(t.widget<Icon>(find.byIcon(Icons.bookmark_rounded)).color,
         ext.accentGold);
+  });
+
+  group('the glyphs are sized and shadowed to read as native', () {
+    // Two things made them look soft and heavy over a photo: a 28 sp glyph,
+    // and a 4 px shadow with no offset — a blurred copy of the icon in every
+    // direction, which thickens the stroke into something faintly out of
+    // focus.
+    testWidgets('a glyph lands on whole pixels', (t) async {
+      // `.sp` is fractional on most devices (24 → 26.46 on a 430 pt phone) and
+      // an icon font rasterised between the pixel grid comes out smeared.
+      await t.pumpWidget(host(MediaReactionRail(actions: [
+        MediaReaction.like(liked: false, count: 206, onTap: () {}),
+      ])));
+
+      final size = t.widget<Icon>(find.byType(Icon)).size!;
+      expect(size, size.roundToDouble());
+    });
+
+    testWidgets('and is smaller than it was', (t) async {
+      // The rail sits over somebody's photograph. At 28 the five glyphs were
+      // the loudest thing on the screen.
+      await t.pumpWidget(host(MediaReactionRail(actions: [
+        MediaReaction.like(liked: false, count: 206, onTap: () {}),
+      ])));
+
+      expect(t.widget<Icon>(find.byType(Icon)).size, lessThan(28));
+    });
+
+    testWidgets('the shadow falls somewhere rather than everywhere', (t) async {
+      await t.pumpWidget(host(MediaReactionRail(actions: [
+        MediaReaction.like(liked: false, count: 206, onTap: () {}),
+      ])));
+
+      final shadow = t.widget<Icon>(find.byType(Icon)).shadows!.single;
+      expect(shadow.offset, isNot(Offset.zero),
+          reason: 'a centred shadow haloes the glyph instead of lifting it');
+      expect(shadow.blurRadius, lessThanOrEqualTo(2),
+          reason: 'wider than this and the stroke thickens');
+    });
+
+    testWidgets('the count is shadowed the same way as its glyph', (t) async {
+      // A sharp number under a soft icon reads as two separate things.
+      await t.pumpWidget(host(MediaReactionRail(actions: [
+        MediaReaction.like(liked: false, count: 206, onTap: () {}),
+      ])));
+
+      final icon = t.widget<Icon>(find.byType(Icon)).shadows!.single;
+      final count = t.widget<Text>(find.text('206')).style!.shadows!.single;
+      expect(count.offset, icon.offset);
+      expect(count.blurRadius, icon.blurRadius);
+    });
   });
 
   testWidgets('a reaction with no count renders the glyph alone', (t) async {
