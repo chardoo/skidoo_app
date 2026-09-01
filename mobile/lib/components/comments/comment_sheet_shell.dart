@@ -166,49 +166,70 @@ class CommentEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 56.w,
-            height: 56.w,
-            decoration: BoxDecoration(
-              color: (isDark ? Colors.white : Colors.black)
-                  .withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(18.r),
-              border: Border.all(
-                color: (isDark ? Colors.white : Colors.black)
-                    .withValues(alpha: 0.10),
-                width: 1,
+    // Sheds its parts as the room runs out, rather than overflowing.
+    //
+    // The sheet is short in the ordinary case, not an exotic one: raising the
+    // keyboard to write the first comment leaves this about 60 px, and the
+    // full arrangement wants 113 — so the state that says "be the first to say
+    // something" was painting a black-and-yellow overflow bar over itself at
+    // exactly the moment somebody was being invited to type.
+    //
+    // The icon goes first: it is decoration, and the sentence is the message.
+    // Below two lines' worth, the invitation goes too and the heading stands
+    // alone, which still says the thread is empty.
+    return LayoutBuilder(builder: (context, constraints) {
+      final room = constraints.maxHeight;
+      final showIcon = !room.isFinite || room >= 124.h;
+      final showInvite = !room.isFinite || room >= 46.h;
+
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showIcon) ...[
+              Container(
+                width: 56.w,
+                height: 56.w,
+                decoration: BoxDecoration(
+                  color: (isDark ? Colors.white : Colors.black)
+                      .withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(18.r),
+                  border: Border.all(
+                    color: (isDark ? Colors.white : Colors.black)
+                        .withValues(alpha: 0.10),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 26.sp,
+                  color: ext.searchHintColor,
+                ),
+              ),
+              SizedBox(height: 14.h),
+            ],
+            Text(
+              'No comments yet',
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontSize: 15.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
               ),
             ),
-            child: Icon(
-              Icons.chat_bubble_outline_rounded,
-              size: 26.sp,
-              color: ext.searchHintColor,
-            ),
-          ),
-          SizedBox(height: 14.h),
-          Text(
-            'No comments yet',
-            style: TextStyle(
-              color: ext.greetingColor,
-              fontSize: 15.sp,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.2,
-            ),
-          ),
-          SizedBox(height: 5.h),
-          Text(
-            'Be the first to say something',
-            style: TextStyle(
-              color: ext.searchHintColor,
-              fontSize: 13.sp,
-            ),
-          ),
-        ],
-      ),
-    );
+            if (showInvite) ...[
+              SizedBox(height: 5.h),
+              Text(
+                'Be the first to say something',
+                style: TextStyle(
+                  color: ext.searchHintColor,
+                  fontSize: 13.sp,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
   }
 }
