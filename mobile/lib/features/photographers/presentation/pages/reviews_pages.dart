@@ -408,6 +408,12 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
   int _rating = 0;
   bool _saving = false;
 
+  /// Set when the server says this person has already reviewed this
+  /// photographer. The form stays on screen so they can see what they wrote,
+  /// but Publish is spent — leaving it live would invite a tap that is
+  /// guaranteed to fail, which is how this read as a broken button.
+  bool _alreadyReviewed = false;
+
   @override
   void dispose() {
     _comment.dispose();
@@ -415,7 +421,7 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
   }
 
   Future<void> _submit() async {
-    if (_saving || _rating == 0) return;
+    if (_saving || _rating == 0 || _alreadyReviewed) return;
     setState(() => _saving = true);
     try {
       await _repo.leave(
@@ -428,7 +434,19 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
       await Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const ReviewSubmittedPage()),
       );
+    } on ReviewRejected catch (e) {
+      // The server said why — "you have already reviewed this photographer",
+      // or that the booking has to finish first. Repeating it beats the generic
+      // line below, which named neither the cause nor a way forward.
+      debugPrint('[WriteReview] submit REJECTED: $e');
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _alreadyReviewed = e.isFinal;
+      });
+      AppSnackBar.error(context, e.message);
     } catch (e) {
+      // No explanation to pass on — a timeout, no connection, a 500.
       debugPrint('[WriteReview] submit ERROR: $e');
       if (!mounted) return;
       setState(() => _saving = false);
@@ -581,7 +599,11 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
             height: 52.h,
             child: ElevatedButton(
               // A review with no stars is not a review; the words are optional.
-              onPressed: (_saving || _rating == 0) ? null : _submit,
+              // Once the server has said this person already reviewed this
+              // photographer, the button stays down: every further tap would
+              // fetch the same refusal.
+              onPressed:
+                  (_saving || _rating == 0 || _alreadyReviewed) ? null : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: ext.accentGold,
                 disabledBackgroundColor: ext.accentGold.withValues(alpha: 0.4),
@@ -598,7 +620,7 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
                       ),
                     )
                   : Text(
-                      'Submit Review',
+                      _alreadyReviewed ? 'Already Reviewed' : 'Submit Review',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 15.sp,

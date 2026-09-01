@@ -37,8 +37,17 @@ class ReviewsRepository {
     );
   }
 
-  /// Leave one, or change the one already left — the server treats a second
-  /// review from the same person as an edit.
+  /// Leave a review. Once.
+  ///
+  /// This used to say a second review was treated as an edit, and the screen
+  /// was built on that promise. The server stopped allowing it — a rating you
+  /// can keep adjusting is one a photographer's average can be walked down
+  /// with — and refuses the second attempt. The app was never told, so it went
+  /// on offering the form and turning the refusal into "Could not publish your
+  /// review", which names neither the cause nor anything to do about it.
+  ///
+  /// Throws [ReviewRejected] when the server explains itself, so the screen can
+  /// repeat the reason rather than invent one.
   Future<void> leave(
     String photographerId, {
     required int rating,
@@ -46,15 +55,44 @@ class ReviewsRepository {
     String? requestId,
   }) async {
     debugPrint('$_tag leave → $photographerId rating=$rating');
-    await _dio.post(
-      '/client/photographers/$photographerId/review',
-      data: {
-        'rating': rating,
-        if (comment != null && comment.isNotEmpty) 'comment': comment,
-        if (requestId != null) 'requestId': requestId,
-      },
-    );
+    try {
+      await _dio.post(
+        '/client/photographers/$photographerId/review',
+        data: {
+          'rating': rating,
+          if (comment != null && comment.isNotEmpty) 'comment': comment,
+          if (requestId != null) 'requestId': requestId,
+        },
+      );
+    } on DioException catch (e) {
+      final body = e.response?.data;
+      final error = body is Map ? body['error'] : null;
+      final message = error is Map ? error['message']?.toString() : null;
+      final code = error is Map ? error['code']?.toString() : null;
+      debugPrint('$_tag leave REJECTED ${e.response?.statusCode} $code');
+      if (message == null || message.isEmpty) rethrow;
+      throw ReviewRejected(message, code: code);
+    }
   }
+}
+
+/// The server refused a review and said why.
+///
+/// Carries the message so the screen can show the real reason, and the code so
+/// it can tell a settled state from a retryable one: `ALREADY_REVIEWED` means
+/// the review is published and tapping again will never work, while anything
+/// else may be worth another go.
+class ReviewRejected implements Exception {
+  const ReviewRejected(this.message, {this.code});
+
+  final String message;
+  final String? code;
+
+  /// This person has already had their say. Nothing to retry.
+  bool get isFinal => code == 'ALREADY_REVIEWED';
+
+  @override
+  String toString() => 'ReviewRejected($code): $message';
 }
 
 class ReviewPage {
