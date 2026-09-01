@@ -28,7 +28,11 @@ abstract class FeedCommentDataSource {
 
   Future<PhotoComment> editComment(String commentId, String content);
 
-  Future<void> deleteComment(String commentId);
+  /// Deletes the comment and answers the target's new comment count.
+  ///
+  /// Null means "leave the badge alone": the comment was a reply, which does
+  /// not count towards the total, or the server could not read the count back.
+  Future<int?> deleteComment(String commentId);
 }
 
 class FeedCommentDataSourceImpl implements FeedCommentDataSource {
@@ -141,11 +145,16 @@ class FeedCommentDataSourceImpl implements FeedCommentDataSource {
   }
 
   @override
-  Future<void> deleteComment(String commentId) async {
+  Future<int?> deleteComment(String commentId) async {
     final url = '/chat/comments/$commentId';
     debugPrint('[FeedComment] DELETE $url');
     try {
-      await _dio.delete(url);
+      final response = await _dio.delete(url);
+      // Tolerant of an empty body: this endpoint used to answer 204 with
+      // nothing in it, and a phone talking to an older chat service should
+      // keep its previous behaviour rather than fail a delete that worked.
+      final data = response.data;
+      return data is Map ? (data['comment_count'] as num?)?.toInt() : null;
     } on DioException catch (e) {
       debugPrint(
           '[FeedComment] deleteComment ERROR ${e.response?.statusCode} ${e.response?.data}');

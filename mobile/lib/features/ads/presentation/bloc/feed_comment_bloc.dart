@@ -292,7 +292,14 @@ class FeedCommentBloc extends Bloc<FeedCommentEvent, FeedCommentState> {
   Future<void> _onDeleted(
       FeedCommentDeleted event, Emitter<FeedCommentState> emit) async {
     try {
-      await _dataSource.deleteComment(event.commentId);
+      final targetCount = await _dataSource.deleteComment(event.commentId);
+
+      // Same reason as posting one: the badge on the card that opened this
+      // sheet reads its count from immutable feed data that nothing rewrites,
+      // so removing a comment left it showing the old number until the list was
+      // rebuilt. Null — a reply, which never counted — leaves it alone.
+      CommentCounts.instance.report(state.targetId, targetCount);
+
       final updatedComments =
           state.comments.where((c) => c.id != event.commentId).toList();
       final updatedReplies =

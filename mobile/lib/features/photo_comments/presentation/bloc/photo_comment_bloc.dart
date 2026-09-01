@@ -352,7 +352,13 @@ class PhotoCommentBloc extends Bloc<PhotoCommentEvent, PhotoCommentState> {
   Future<void> _onDeleted(
       PhotoCommentDeleted event, Emitter<PhotoCommentState> emit) async {
     try {
-      await _dataSource.deleteComment(event.commentId);
+      final targetCount = await _dataSource.deleteComment(event.commentId);
+
+      // Same reason as posting one: the badge on the card behind this sheet
+      // reads its count from immutable data that nothing rewrites, so removing
+      // a comment left it showing the old number until something forced a
+      // refetch. Null — a reply, which never counted — leaves it alone.
+      CommentCounts.instance.report(state.pictureId, targetCount);
 
       // Remove from top-level comments
       final updatedComments =

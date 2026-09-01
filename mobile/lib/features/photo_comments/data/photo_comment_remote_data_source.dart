@@ -11,7 +11,12 @@ abstract class PhotoCommentRemoteDataSource {
   Future<List<PhotoComment>> getReplies(String commentId,
       {int page = 1, int limit = 20});
   Future<PhotoComment> editComment(String commentId, String content);
-  Future<void> deleteComment(String commentId);
+
+  /// Deletes the comment and answers the target's new comment count.
+  ///
+  /// Null means "leave the badge alone": the comment was a reply, which does
+  /// not count towards the total, or the server could not read the count back.
+  Future<int?> deleteComment(String commentId);
   Future<({bool liked, int likes})> toggleLike(String pictureId);
   Future<({bool liked, int likes})> getLikeStatus(
       String pictureId, String userId);
@@ -23,6 +28,18 @@ class PhotoCommentRemoteDataSourceImpl implements PhotoCommentRemoteDataSource {
   final Dio _dio;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+
+  /// The count a delete reports back, if it reported one.
+  ///
+  /// Tolerant of an empty body on purpose. This endpoint used to answer 204
+  /// with nothing in it, so a phone running against an older chat service gets
+  /// null here and simply keeps the behaviour it had before — a badge that
+  /// waits for the next fetch, rather than an exception on a delete that
+  /// actually succeeded.
+  int? _targetCountFrom(dynamic data) {
+    if (data is Map) return (data['comment_count'] as num?)?.toInt();
+    return null;
+  }
 
   List<PhotoComment> _parseCommentList(dynamic data) {
     if (data is List) {
@@ -131,12 +148,13 @@ class PhotoCommentRemoteDataSourceImpl implements PhotoCommentRemoteDataSource {
   }
 
   @override
-  Future<void> deleteComment(String commentId) async {
+  Future<int?> deleteComment(String commentId) async {
     final url = '/chat/comments/$commentId';
     debugPrint('[PhotoComment] DELETE $url  commentId=$commentId');
     try {
       final response = await _dio.delete(url);
       debugPrint('[PhotoComment] deleteComment status=${response.statusCode}');
+      return _targetCountFrom(response.data);
     } on DioException catch (e) {
       debugPrint('[PhotoComment] deleteComment ERROR  status=${e.response?.statusCode}  body=${e.response?.data}');
       throw Exception(
