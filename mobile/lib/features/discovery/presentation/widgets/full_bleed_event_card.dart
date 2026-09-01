@@ -216,6 +216,21 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     return (_mediaIndex + 1) % _exploreEvery == 0;
   }
 
+  /// What the offer says, which depends on what is behind it.
+  ///
+  /// A post with one photo has no album: "Explore event photos" there promises
+  /// a set that does not exist, and whoever taps it lands on the single picture
+  /// they were already looking at, wondering where the rest went. The offer is
+  /// still worth making — a tap belongs to the chrome now, so this is the only
+  /// way to see that photo properly — it just has to say what it does.
+  String get _exploreCtaLabel {
+    final pics = widget.event.pictures;
+    if (pics.length != 1) return 'Explore event photos';
+    return pics.first.isVideo
+        ? ExploreEventCta.forOneVideo
+        : ExploreEventCta.forOneImage;
+  }
+
   /// Opens the album in the shared full-screen viewer, at the photo on screen.
   void _openEventPhotos() {
     // On the guest feed [onTap] is the login sheet, and the album is what
@@ -591,7 +606,10 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
               child: CommentSheetHide(
                 child: Align(
                   alignment: const Alignment(0, -0.05),
-                  child: ExploreEventCta(onTap: _openEventPhotos),
+                  child: ExploreEventCta(
+                    label: _exploreCtaLabel,
+                    onTap: _openEventPhotos,
+                  ),
                 ),
               ),
             ),

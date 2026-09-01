@@ -113,8 +113,7 @@ void main() {
   tearDown(() => AppConfigRepository.current = const AppConfig());
 
   group('the slide', () {
-    testWidgets('a post left alone walks itself to the third photo',
-        (t) async {
+    testWidgets('a post left alone walks itself to the third photo', (t) async {
       await t.pumpWidget(host(event()));
       await t.pump();
 
@@ -155,7 +154,8 @@ void main() {
     });
 
     testWidgets('zero seconds turns it off', (t) async {
-      AppConfigRepository.current = const AppConfig(feedSlideIntervalSeconds: 0);
+      AppConfigRepository.current =
+          const AppConfig(feedSlideIntervalSeconds: 0);
 
       await t.pumpWidget(host(event()));
       await t.pump();
@@ -174,8 +174,7 @@ void main() {
   });
 
   group('the offer', () {
-    testWidgets('is absent on the first photos and up on the third',
-        (t) async {
+    testWidgets('is absent on the first photos and up on the third', (t) async {
       await t.pumpWidget(host(event()));
       await t.pump();
       expect(find.byType(ExploreEventCta), findsNothing);
@@ -219,13 +218,52 @@ void main() {
       expect(find.byType(ExploreEventCta), findsOneWidget);
     });
 
-    testWidgets('a single-photo post still offers its album', (t) async {
-      // Its only photo is also its last, and with the tap given over to the
-      // chrome this offer is the only way in.
+    testWidgets('a single-photo post offers the photo, not an album',
+        (t) async {
+      // Its only photo is also its last, so the offer stands — with the tap
+      // given over to the chrome it is the only way to see that photo
+      // properly. What it must not do is promise an album: whoever tapped
+      // "Explore event photos" would land on the picture they were already
+      // looking at, wondering where the rest went.
       await t.pumpWidget(host(event(photos: 1)));
       await t.pump();
 
       expect(find.byType(ExploreEventCta), findsOneWidget);
+      expect(find.text('View full image'), findsOneWidget);
+      expect(find.text('Explore event photos'), findsNothing);
+    });
+
+    testWidgets('a single clip is offered as a clip', (t) async {
+      // Same case, different noun. "View full image" over a video is the kind
+      // of wrong that reads as the app not knowing what it is showing.
+      await t.pumpWidget(host(EventDiscovery(
+        id: 'e1',
+        eventName: 'University Graduation',
+        photographerName: 'Kwame Studios',
+        photographerId: 'p1',
+        pictures: const [
+          EventPicture(
+            id: 'clip',
+            url: 'https://cdn.example.com/clip.mp4',
+            imageId: 'clip',
+            price: 0,
+            mediaType: MediaType.video,
+          ),
+        ],
+      )));
+      await t.pump();
+
+      expect(find.text('View full video'), findsOneWidget);
+    });
+
+    testWidgets('two photos are an album again', (t) async {
+      // The moment there is something to browse, the offer says so. Two is the
+      // boundary, and the CTA stands on the last photo whatever the number.
+      await t.pumpWidget(host(event(photos: 2)));
+      await t.pump();
+      await swipeOn(t);
+
+      expect(find.text('Explore event photos'), findsOneWidget);
     });
   });
 }

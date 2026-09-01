@@ -10,16 +10,32 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 /// The rhythm is the point: an offer that stood on every photo would be
 /// wallpaper, and one that appeared only once would be missed by anyone who
 /// swiped past it.
+///
+/// The [label] moves with what is behind it. A post with one photo has no
+/// album to explore, and offering to explore it promises a set that is not
+/// there — see [ExploreEventCta.forOneImage].
 class ExploreEventCta extends StatelessWidget {
-  const ExploreEventCta({super.key, required this.onTap});
+  const ExploreEventCta({
+    super.key,
+    required this.onTap,
+    this.label = 'Explore event photos',
+  });
+
+  /// What a post with a single photo says instead: there is nothing to browse,
+  /// only this one thing to see properly.
+  static const forOneImage = 'View full image';
+
+  /// And when that single thing is a clip.
+  static const forOneVideo = 'View full video';
 
   final VoidCallback onTap;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'Explore event photos',
+      label: label,
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -39,7 +55,7 @@ class ExploreEventCta extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Explore event photos',
+                label,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 14.sp,
