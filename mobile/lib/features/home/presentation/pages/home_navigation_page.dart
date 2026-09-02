@@ -15,7 +15,9 @@ import 'package:jperg_app/features/home/presentation/widgets/web_search_photos_p
 import 'package:jperg_app/features/home/presentation/widgets/events_feed.dart';
 import 'package:jperg_app/features/home/presentation/widgets/home_empty_state.dart';
 import 'package:jperg_app/features/home/presentation/widgets/feed_top_bar.dart';
+import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/event_scan_result_page.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/face_gate_page.dart';
 import 'package:jperg_app/features/home/presentation/widgets/unlock_photos_sheet.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/features/follow/presentation/widgets/following_feed.dart';
@@ -115,8 +117,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       HomeNavigationPage._webEventTapHandler = (eventId, eventName) {
         if (!mounted) return;
         final homeBloc = context.read<HomeBloc>();
-        homeBloc.add(
-            HomeImagesSearched(eventId: eventId, eventName: eventName));
+        homeBloc
+            .add(HomeImagesSearched(eventId: eventId, eventName: eventName));
         // Route to the search-event page on the ROOT navigator so it opens on
         // top of whatever page/tab the user is currently on (Gallery, a
         // profile, chat, …) — the inline panel only showed on the Home tab.
@@ -242,7 +244,24 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   /// Leading action on the feed bar: a code the user types, or one scanned
   /// from the preview embedded in the same sheet. Both are the same code and
   /// take the same path as [_openQrScan].
+  ///
+  /// Asks for a face first. Scanning a code answers "are there photos of me in
+  /// here?", and face matching needs a reference selfie to answer it with —
+  /// without one the scan runs, finds nothing, and reports an event that
+  /// appears to hold no photos of them. That is the same screen the Found tab
+  /// shows for the same reason, put in front of the tap instead of after it.
   Future<void> _openUnlock() async {
+    if (await resolveFoundAccess() != FoundAccess.ready) {
+      if (!mounted) return;
+      // Comes back true once they are through it, so the scan they asked for
+      // still happens instead of being lost to the detour.
+      final passed = await FaceGatePage.show(context);
+      if (!passed) return;
+    }
+    // Covers both paths out of the gate above — taken or skipped, an await has
+    // happened and the feed may be gone.
+    if (!mounted) return;
+
     setState(() => _unlockSheetOpen = true);
     try {
       final code = await UnlockPhotosSheet.show(context);
@@ -653,32 +672,35 @@ class _PillTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: label, child: GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-        decoration: BoxDecoration(
-          color:
-              active ? ext.accentGold.withValues(alpha: 0.92) : ext.glassFill,
-          border: Border.all(
-            color: active ? ext.accentGold : ext.glassBorder,
-            width: 1.0,
+    return Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(
+              color: active
+                  ? ext.accentGold.withValues(alpha: 0.92)
+                  : ext.glassFill,
+              border: Border.all(
+                color: active ? ext.accentGold : ext.glassBorder,
+                width: 1.0,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: active ? Colors.black : ext.glassIcon,
+                fontSize: 12,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                letterSpacing: 0.3,
+              ),
+            ),
           ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.black : ext.glassIcon,
-            fontSize: 12,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            letterSpacing: 0.3,
-          ),
-        ),
-      ),
-    ));
+        ));
   }
 }
-
