@@ -285,152 +285,166 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
         color: ext.homeBackground,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
-      child: Column(
-        children: [
-          // Drag handle
-          Center(
-            child: Container(
-              margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
-              width: 40.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: ext.searchHintColor.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(2.r),
+      // ListTile ink paints on the nearest Material ancestor; this decorated
+      // Container sits between the sheet's Material and the tiles below and
+      // would swallow it (and assert in debug). A transparency Material paints
+      // nothing and just gives the ink somewhere to land.
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                width: 40.w,
+                height: 4.h,
+                decoration: BoxDecoration(
+                  color: ext.searchHintColor.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
               ),
             ),
-          ),
 
-          Padding(
-            padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
-            child: Text(
-              'Send to…',
-              style: TextStyle(
-                color: ext.greetingColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 17.sp,
+            Padding(
+              padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
+              child: Text(
+                'Send to…',
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17.sp,
+                ),
               ),
             ),
-          ),
 
-          // Search field
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-            child: SearchField(
-              controller: _searchCtrl,
-              hint: 'Search by name…',
-              // No autofocus — the sheet opens to recent chats/suggestions
-              // to browse, not straight to the keyboard.
-              autofocus: false,
-              loading: _loading,
-              onChanged: (q) => _search(q),
+            // Search field
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+              child: SearchField(
+                controller: _searchCtrl,
+                hint: 'Search by name…',
+                // No autofocus — the sheet opens to recent chats/suggestions
+                // to browse, not straight to the keyboard.
+                autofocus: false,
+                loading: _loading,
+                onChanged: (q) => _search(q),
+              ),
             ),
-          ),
 
-          SizedBox(height: AppSpacing.sm.h),
-          Divider(
-              height: 1, color: ext.searchHintColor.withValues(alpha: 0.12)),
+            SizedBox(height: AppSpacing.sm.h),
+            Divider(
+                height: 1, color: ext.searchHintColor.withValues(alpha: 0.12)),
 
-          // Results
-          Expanded(
-            child: _searchCtrl.text.trim().isEmpty
-                ? _buildBrowseList(ext)
-                : _error != null
-                ? Center(
-                    child: Text(_error!,
-                        style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 13.sp),
-                        textAlign: TextAlign.center))
-                : _results.isEmpty && !_loading
-                    ? Center(
-                        child: Text(
-                          _searchCtrl.text.isEmpty
-                              ? 'Type a name to search'
-                              : 'No users found.',
-                          style: TextStyle(
-                              color: ext.searchHintColor, fontSize: 13.sp),
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollCtrl,
-                        padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
-                        itemCount: _results.length + (_loadingMore ? 1 : 0),
-                        itemBuilder: (_, i) {
-                          if (i == _results.length) {
-                            return Padding(
-                              padding: EdgeInsets.symmetric(vertical: AppSpacing.lg.h),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 20.w,
-                                  height: 20.w,
-                                  child: CircularProgressIndicator(
-                                      color: ext.accentGold, strokeWidth: 2),
-                                ),
-                              ),
-                            );
-                          }
-                          final u = _results[i];
-                          final isSending = _sendingTo == u.id;
-                          return ListTile(
-                            leading: CircleAvatar(
-                              radius: 22.r,
-                              backgroundColor:
-                                  ext.accentGold.withValues(alpha: 0.15),
-                              backgroundImage: u.imageUrl != null
-                                  ? boundedNetworkImage(
-                                      context, u.imageUrl!,
-                                      diameter: 44.r)
-                                  : null,
-                              child: u.imageUrl == null
-                                  ? Icon(Icons.person_rounded,
-                                      color: ext.accentGold, size: 20.sp)
-                                  : null,
-                            ),
-                            title: Text(u.name,
+            // Results
+            Expanded(
+              child: _searchCtrl.text.trim().isEmpty
+                  ? _buildBrowseList(ext)
+                  : _error != null
+                      ? Center(
+                          child: Text(_error!,
+                              style: TextStyle(
+                                  color: ext.searchHintColor, fontSize: 13.sp),
+                              textAlign: TextAlign.center))
+                      : _results.isEmpty && !_loading
+                          ? Center(
+                              child: Text(
+                                _searchCtrl.text.isEmpty
+                                    ? 'Type a name to search'
+                                    : 'No users found.',
                                 style: TextStyle(
-                                    color: ext.greetingColor,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14.sp)),
-                            subtitle: Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 6.w, vertical: 2.h),
-                                  decoration: BoxDecoration(
-                                    color: (u.role == 'photographer'
-                                            ? ext.accentGold
-                                            : Colors.blueAccent)
-                                        .withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(AppRadius.xs.r),
-                                  ),
-                                  child: Text(
-                                    u.role == 'photographer'
-                                        ? 'Creator'
-                                        : 'User',
-                                    style: TextStyle(
-                                      color: u.role == 'photographer'
-                                          ? ext.accentGold
-                                          : Colors.blueAccent,
-                                      fontSize: 10.sp,
-                                      fontWeight: FontWeight.w600,
+                                    color: ext.searchHintColor,
+                                    fontSize: 13.sp),
+                              ),
+                            )
+                          : ListView.builder(
+                              controller: _scrollCtrl,
+                              padding: EdgeInsets.symmetric(
+                                  vertical: AppSpacing.sm.h),
+                              itemCount:
+                                  _results.length + (_loadingMore ? 1 : 0),
+                              itemBuilder: (_, i) {
+                                if (i == _results.length) {
+                                  return Padding(
+                                    padding: EdgeInsets.symmetric(
+                                        vertical: AppSpacing.lg.h),
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 20.w,
+                                        height: 20.w,
+                                        child: CircularProgressIndicator(
+                                            color: ext.accentGold,
+                                            strokeWidth: 2),
+                                      ),
                                     ),
+                                  );
+                                }
+                                final u = _results[i];
+                                final isSending = _sendingTo == u.id;
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    radius: 22.r,
+                                    backgroundColor:
+                                        ext.accentGold.withValues(alpha: 0.15),
+                                    backgroundImage: u.imageUrl != null
+                                        ? boundedNetworkImage(
+                                            context, u.imageUrl!,
+                                            diameter: 44.r)
+                                        : null,
+                                    child: u.imageUrl == null
+                                        ? Icon(Icons.person_rounded,
+                                            color: ext.accentGold, size: 20.sp)
+                                        : null,
                                   ),
-                                ),
-                              ],
+                                  title: Text(u.name,
+                                      style: TextStyle(
+                                          color: ext.greetingColor,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14.sp)),
+                                  subtitle: Row(
+                                    children: [
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 6.w, vertical: 2.h),
+                                        decoration: BoxDecoration(
+                                          color: (u.role == 'photographer'
+                                                  ? ext.accentGold
+                                                  : Colors.blueAccent)
+                                              .withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(
+                                              AppRadius.xs.r),
+                                        ),
+                                        child: Text(
+                                          u.role == 'photographer'
+                                              ? 'Creator'
+                                              : 'User',
+                                          style: TextStyle(
+                                            color: u.role == 'photographer'
+                                                ? ext.accentGold
+                                                : Colors.blueAccent,
+                                            fontSize: 10.sp,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  trailing: isSending
+                                      ? SizedBox(
+                                          width: 22.w,
+                                          height: 22.w,
+                                          child: CircularProgressIndicator(
+                                              color: ext.accentGold,
+                                              strokeWidth: 2))
+                                      : Icon(Icons.send_rounded,
+                                          color: ext.accentGold, size: 20.sp),
+                                  onTap: isSending ? null : () => _sendTo(u),
+                                );
+                              },
                             ),
-                            trailing: isSending
-                                ? SizedBox(
-                                    width: 22.w,
-                                    height: 22.w,
-                                    child: CircularProgressIndicator(
-                                        color: ext.accentGold, strokeWidth: 2))
-                                : Icon(Icons.send_rounded,
-                                    color: ext.accentGold, size: 20.sp),
-                            onTap: isSending ? null : () => _sendTo(u),
-                          );
-                        },
-                      ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -445,7 +459,10 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
         child: CircularProgressIndicator(color: ext.accentGold, strokeWidth: 2),
       );
     }
-    if (_rooms.isEmpty && _recommended.isEmpty && !_loadingRooms && !_loadingRecommended) {
+    if (_rooms.isEmpty &&
+        _recommended.isEmpty &&
+        !_loadingRooms &&
+        !_loadingRecommended) {
       return Center(
         child: Text(
           'Type a name to search',
@@ -478,11 +495,10 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
               leading: CircleAvatar(
                 radius: 22.r,
                 backgroundColor: ext.accentGold.withValues(alpha: 0.15),
-                backgroundImage:
-                    p.profileUrl != null
-                        ? boundedNetworkImage(context, p.profileUrl!,
-                            diameter: 44.r)
-                        : null,
+                backgroundImage: p.profileUrl != null
+                    ? boundedNetworkImage(context, p.profileUrl!,
+                        diameter: 44.r)
+                    : null,
                 child: p.profileUrl == null
                     ? Icon(Icons.person_rounded,
                         color: ext.accentGold, size: 20.sp)
@@ -495,8 +511,7 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                       fontSize: 14.sp)),
               subtitle: Container(
                 margin: const EdgeInsets.only(top: 2),
-                padding:
-                    EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                 decoration: BoxDecoration(
                   color: ext.accentGold.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(AppRadius.xs.r),
@@ -525,4 +540,3 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
     );
   }
 }
-
