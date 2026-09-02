@@ -858,6 +858,10 @@ class AdsRepository {
     required String ctaText,
     required String ctaUrl,
 
+    /// Where the advertised thing happens, free text. Descriptive only —
+    /// [targetLocations] below is what decides who is shown the campaign.
+    String? location,
+
     /// The "#wedding #photography" line on the card — copy, not targeting.
     /// [interests] below is the targeting; see AdCampaign.contentTags.
     List<String> contentTags = const [],
@@ -889,6 +893,7 @@ class AdsRepository {
       if (body != null && body.isNotEmpty) 'body': body,
       'cta_text': ctaText,
       'cta_url': ctaUrl,
+      if (location != null && location.isNotEmpty) 'location': location,
       'content_tags': contentTags,
       'locations': locations,
       'target_locations': targetLocations,
@@ -948,6 +953,10 @@ class AdsRepository {
     required String objective,
     required double budgetAmount,
     String currency = 'GHS',
+
+    /// Where the advertised thing happens, free text. Not targeting — that is
+    /// set on the ad sets, in [createAdSet].
+    String? location,
     String? startAt,
     String? endAt,
   }) async {
@@ -958,6 +967,7 @@ class AdsRepository {
       'objective': objective,
       'budget_amount': budgetAmount,
       'currency': currency,
+      if (location != null && location.isNotEmpty) 'location': location,
       if (startAt != null) 'start_at': startAt,
       if (endAt != null) 'end_at': endAt,
     });
@@ -1302,6 +1312,10 @@ class AdsRepository {
     String? ctaText,
     String? ctaUrl,
 
+    /// The venue. Absent leaves it alone; an empty string clears it, which is
+    /// how an advertiser drops a venue they no longer want named.
+    String? location,
+
     /// The hashtag line. Absent leaves it alone; an empty list clears it.
     List<String>? contentTags,
 
@@ -1333,6 +1347,7 @@ class AdsRepository {
       if (body != null) 'body': body,
       if (ctaText != null) 'cta_text': ctaText,
       if (ctaUrl != null) 'cta_url': ctaUrl,
+      if (location != null) 'location': location,
       if (contentTags != null) 'content_tags': contentTags,
       if (commentsEnabled != null) 'comments_enabled': commentsEnabled,
       if (locations != null) 'locations': locations,

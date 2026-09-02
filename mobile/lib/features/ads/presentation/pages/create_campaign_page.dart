@@ -83,7 +83,10 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   String _placement = _placements[0];
   String _audience = _audienceTypes[0];
   String? _targetEventType;
-  final _locationCtrl = TextEditingController();
+
+  /// Where the ad should be shown. Targeting, and the only thing on this step
+  /// that is — the venue moved to the creative step, where it belongs.
+  final _targetAreaCtrl = TextEditingController();
   final _dailyBudgetCtrl = TextEditingController();
 
   // Step 3 — Creative
@@ -91,6 +94,10 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   final _bodyCtrl = TextEditingController();
   final _ctaTextCtrl = TextEditingController();
   final _ctaLinkCtrl = TextEditingController();
+
+  /// Where the advertised thing happens. Optional, and never targeted on —
+  /// [_targetAreaCtrl] above is what decides who is shown the ad.
+  final _venueCtrl = TextEditingController();
 
   // Step 3 — Creative media
   final List<XFile> _creatives = [];
@@ -118,12 +125,13 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
   void dispose() {
     _nameCtrl.dispose();
     _budgetCtrl.dispose();
-    _locationCtrl.dispose();
+    _targetAreaCtrl.dispose();
     _dailyBudgetCtrl.dispose();
     _headlineCtrl.dispose();
     _bodyCtrl.dispose();
     _ctaTextCtrl.dispose();
     _ctaLinkCtrl.dispose();
+    _venueCtrl.dispose();
     super.dispose();
   }
 
@@ -214,8 +222,8 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
       dailyBudget: double.tryParse(_dailyBudgetCtrl.text.trim()) ?? 0,
       audience: _audience,
       eventTypes: _targetEventType != null ? [_targetEventType!] : [],
-      locations: _locationCtrl.text.trim().isNotEmpty
-          ? [_locationCtrl.text.trim()]
+      locations: _targetAreaCtrl.text.trim().isNotEmpty
+          ? [_targetAreaCtrl.text.trim()]
           : [],
     );
     _adsetId = result.id;
@@ -244,6 +252,13 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
     debugPrint('[CreateCampaignPage] _createAd — adId=$adId');
     if (adId.isEmpty) {
       throw Exception('Ad creation failed — no ID returned.');
+    }
+    // The venue is asked for on this step but lives on the campaign, which was
+    // created back at step one — so it is written now rather than there. Left
+    // alone when blank: it is optional, and the campaign has none yet anyway.
+    final venue = _venueCtrl.text.trim();
+    if (venue.isNotEmpty) {
+      await _repo.editCampaign(_campaignId!, location: venue);
     }
     if (_creatives.isNotEmpty) {
       // Upload images at the campaign level so campaign.media is populated in
@@ -420,7 +435,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           placement: _placement,
           audience: _audience,
           targetEventType: _targetEventType,
-          locationCtrl: _locationCtrl,
+          targetAreaCtrl: _targetAreaCtrl,
           dailyBudgetCtrl: _dailyBudgetCtrl,
           ext: ext,
           onPlacementChanged: (v) =>
@@ -436,6 +451,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           bodyCtrl: _bodyCtrl,
           ctaTextCtrl: _ctaTextCtrl,
           ctaLinkCtrl: _ctaLinkCtrl,
+          venueCtrl: _venueCtrl,
           creatives: _creatives,
           maxCreatives: _maxCreatives,
           commentsEnabled: _commentsEnabled,
@@ -459,7 +475,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           audience: _audience,
           dailyBudget: _dailyBudgetCtrl.text.trim(),
           targetEventType: _targetEventType,
-          location: _locationCtrl.text.trim(),
+          targetArea: _targetAreaCtrl.text.trim(),
           // Creative
           headline: _headlineCtrl.text.trim(),
           body: _bodyCtrl.text.trim(),
@@ -467,6 +483,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
               ? 'Learn More'
               : _ctaTextCtrl.text.trim(),
           ctaLink: _ctaLinkCtrl.text.trim(),
+          venue: _venueCtrl.text.trim(),
           mediaCount: _creatives.length,
           commentsEnabled: _commentsEnabled,
           ext: ext,
@@ -813,7 +830,7 @@ class _Step2 extends StatelessWidget {
     required this.placement,
     required this.audience,
     required this.targetEventType,
-    required this.locationCtrl,
+    required this.targetAreaCtrl,
     required this.dailyBudgetCtrl,
     required this.ext,
     required this.onPlacementChanged,
@@ -824,7 +841,7 @@ class _Step2 extends StatelessWidget {
   final String placement;
   final String audience;
   final String? targetEventType;
-  final TextEditingController locationCtrl;
+  final TextEditingController targetAreaCtrl;
   final TextEditingController dailyBudgetCtrl;
   final AppThemeExtension ext;
   final ValueChanged<String?> onPlacementChanged;
@@ -879,9 +896,17 @@ class _Step2 extends StatelessWidget {
           nullable: true,
         ),
         SizedBox(height: AppSpacing.xl.h),
-        _CLabel('Target location (optional)', ext),
+        // Targeting: where the people who should see the ad are. Not where the
+        // event is — that is asked for on the creative step, and the two used
+        // to be the same field on every screen in the app.
+        _CLabel('Target area (optional)', ext),
+        SizedBox(height: AppSpacing.xs.h),
+        Text(
+          'Who sees this ad, by place. Leave blank to reach everywhere.',
+          style: TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
+        ),
         SizedBox(height: AppSpacing.sm.h),
-        _CField(controller: locationCtrl, hint: 'e.g. Accra', ext: ext),
+        _CField(controller: targetAreaCtrl, hint: 'e.g. Accra', ext: ext),
       ],
     );
   }
@@ -896,6 +921,7 @@ class _Step3 extends StatelessWidget {
     required this.bodyCtrl,
     required this.ctaTextCtrl,
     required this.ctaLinkCtrl,
+    required this.venueCtrl,
     required this.creatives,
     required this.maxCreatives,
     required this.commentsEnabled,
@@ -909,6 +935,10 @@ class _Step3 extends StatelessWidget {
   final TextEditingController bodyCtrl;
   final TextEditingController ctaTextCtrl;
   final TextEditingController ctaLinkCtrl;
+
+  /// The venue. Part of the ad's copy, not its targeting — the target area is
+  /// on the previous step.
+  final TextEditingController venueCtrl;
   final List<XFile> creatives;
   final int maxCreatives;
   final bool commentsEnabled;
@@ -988,6 +1018,21 @@ class _Step3 extends StatelessWidget {
           ext: ext,
           keyboardType: TextInputType.url,
         ),
+        SizedBox(height: AppSpacing.xl.h),
+        // Copy, so it belongs with the rest of what a reader sees. The target
+        // area on the previous step decides who reads it.
+        _CLabel('Location (optional)', ext),
+        SizedBox(height: AppSpacing.xs.h),
+        Text(
+          'Where the event happens, if there is one.',
+          style: TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
+        ),
+        SizedBox(height: AppSpacing.sm.h),
+        _CField(
+          controller: venueCtrl,
+          hint: 'e.g. Labadi Beach Hotel, Accra',
+          ext: ext,
+        ),
         SizedBox(height: AppSpacing.lg.h),
         SwitchListTile(
           value: commentsEnabled,
@@ -1025,12 +1070,13 @@ class _Step4 extends StatelessWidget {
     required this.audience,
     required this.dailyBudget,
     required this.targetEventType,
-    required this.location,
+    required this.targetArea,
     // Creative
     required this.headline,
     required this.body,
     required this.ctaText,
     required this.ctaLink,
+    required this.venue,
     required this.mediaCount,
     required this.commentsEnabled,
     required this.ext,
@@ -1046,11 +1092,17 @@ class _Step4 extends StatelessWidget {
   final String audience;
   final String dailyBudget;
   final String? targetEventType;
-  final String location;
+
+  /// Who the ad is aimed at, by place.
+  final String targetArea;
   final String headline;
   final String body;
   final String ctaText;
   final String ctaLink;
+
+  /// Where the advertised thing happens. Read back with the creative, not with
+  /// the targeting above — they are two answers to two questions.
+  final String venue;
   final int mediaCount;
   final bool commentsEnabled;
   final AppThemeExtension ext;
@@ -1105,7 +1157,10 @@ class _Step4 extends StatelessWidget {
         _ReviewRow('Audience', _audienceLabels[audience] ?? audience, ext),
         _ReviewRow('Daily budget', dailyDisplay, ext),
         _ReviewRow('Event type', targetEventType ?? 'Any', ext),
-        _ReviewRow('Location', location.isEmpty ? 'Any' : location, ext),
+        // Read back as targeting, under the Targeting heading. The venue is
+        // read back with the creative below, where it was written.
+        _ReviewRow(
+            'Target area', targetArea.isEmpty ? 'Everywhere' : targetArea, ext),
 
         SizedBox(height: AppSpacing.xl.h),
 
@@ -1116,6 +1171,7 @@ class _Step4 extends StatelessWidget {
         _ReviewRow('Body', body.isEmpty ? '—' : body, ext),
         _ReviewRow('CTA button', ctaText, ext),
         _ReviewRow('CTA link', ctaLink.isEmpty ? '—' : ctaLink, ext),
+        _ReviewRow('Location', venue.isEmpty ? '—' : venue, ext),
         _ReviewRow(
             'Photos',
             mediaCount == 0

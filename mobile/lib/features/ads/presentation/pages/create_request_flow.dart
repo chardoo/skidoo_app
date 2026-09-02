@@ -97,28 +97,29 @@ class RequestDraft {
 
   String? eventType;
 
-  /// Where the shoot is, as a resolved place rather than typed text.
+  /// Where the shoot happens, written out: "Labadi Beach Hotel, Accra".
   ///
-  /// It is one question doing two jobs, which is why it is one field. The
-  /// requester is saying where the job is; the board reads the same answer to
-  /// decide which photographers ever see it, because a wedding in Accra is not
-  /// a job for someone who works in another country. Asking "where is it" and
-  /// then "who should see it" would be asking the same thing twice.
-  Place? place;
+  /// Free text on purpose. A venue is an address, a hotel, a stretch of beach —
+  /// things a city picker has no entry for — and the photographer reading the
+  /// card needs to know where to turn up, not which municipality it falls in.
+  ///
+  /// Descriptive only. Nothing filters on it; see [targetLocations].
+  String location = '';
 
-  /// Anywhere else worth reaching — a shoot near a border, or a client happy
-  /// to fly someone in. Optional, and empty for almost every request.
-  final List<Place> alsoReach = [];
-
-  /// The event's location as the card shows it.
-  String get location => place?.label ?? '';
-
-  /// What the board filters and ranks on.
-  List<Place> get targetLocations => [
-        if (place != null) place!,
-        for (final extra in alsoReach)
-          if (extra != place) extra,
-      ];
+  /// Who gets shown this — the areas the board gates and ranks on.
+  ///
+  /// Separate from [location], and the two answer different questions:
+  ///
+  ///     location        → where is the shoot?
+  ///     targetLocations → which photographers should see it?
+  ///
+  /// They usually name the same place and deliberately do not have to. A
+  /// wedding at a village venue outside Kumasi is a job for photographers in
+  /// Kumasi and Accra both, and a requester happy to fly someone in says so by
+  /// adding areas here — not by lying about where the wedding is.
+  ///
+  /// Empty means everywhere, which is what the server does with an empty list.
+  final List<Place> targetLocations = [];
 
   String description = '';
   double? budgetMin;
@@ -132,13 +133,26 @@ class RequestDraft {
       title.trim().isNotEmpty &&
       eventDate != null &&
       (eventType?.isNotEmpty ?? false) &&
-      place != null &&
+      location.trim().isNotEmpty &&
+      // At least one area, even though the server would accept none. A request
+      // nobody is aimed at goes to every photographer on the platform, and that
+      // is a decision worth making on purpose rather than by leaving a field
+      // alone.
+      targetLocations.isNotEmpty &&
       photos.isNotEmpty;
 }
 
 const requestEventTypes = [
-  'Wedding', 'Birthday', 'Corporate', 'Concert', 'Graduation',
-  'Engagement', 'Baby Shower', 'Anniversary', 'Sports', 'Other',
+  'Wedding',
+  'Birthday',
+  'Corporate',
+  'Concert',
+  'Graduation',
+  'Engagement',
+  'Baby Shower',
+  'Anniversary',
+  'Sports',
+  'Other',
 ];
 
 class _CreateRequestFlowState extends State<CreateRequestFlow> {
@@ -172,17 +186,19 @@ class _NewRequestStep extends StatefulWidget {
 class _NewRequestStepState extends State<_NewRequestStep> {
   final _picker = ImagePicker();
   late final _title = TextEditingController(text: widget.draft.title);
-  late final _description = TextEditingController(text: widget.draft.description);
+  late final _description =
+      TextEditingController(text: widget.draft.description);
   late final _budgetMin = TextEditingController(
     text: widget.draft.budgetMin?.toStringAsFixed(0) ?? '',
   );
   late final _budgetMax = TextEditingController(
     text: widget.draft.budgetMax?.toStringAsFixed(0) ?? '',
   );
+  late final _location = TextEditingController(text: widget.draft.location);
 
   @override
   void dispose() {
-    for (final c in [_title, _description, _budgetMin, _budgetMax]) {
+    for (final c in [_title, _description, _budgetMin, _budgetMax, _location]) {
       c.dispose();
     }
     super.dispose();
@@ -192,6 +208,7 @@ class _NewRequestStepState extends State<_NewRequestStep> {
     widget.draft
       ..title = _title.text
       ..description = _description.text
+      ..location = _location.text
       ..budgetMin = double.tryParse(_budgetMin.text.trim())
       ..budgetMax = double.tryParse(_budgetMax.text.trim());
   }
@@ -211,8 +228,8 @@ class _NewRequestStepState extends State<_NewRequestStep> {
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: widget.draft.eventTime ??
-          const TimeOfDay(hour: 10, minute: 0),
+      initialTime:
+          widget.draft.eventTime ?? const TimeOfDay(hour: 10, minute: 0),
     );
     if (picked != null) setState(() => widget.draft.eventTime = picked);
   }
@@ -232,21 +249,28 @@ class _NewRequestStepState extends State<_NewRequestStep> {
           color: ext.homeBackground,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
-        child: SafeArea(
-          top: false,
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              for (final option in RequestCoverage.values)
-                ListTile(
-                  title: Text(option.label,
-                      style: TextStyle(color: ext.greetingColor)),
-                  subtitle: Text(option.hint,
-                      style: TextStyle(
-                          color: ext.searchHintColor, fontSize: 12.sp)),
-                  onTap: () => Navigator.of(sheetContext).pop(option),
-                ),
-            ],
+        // ListTile ink paints on the nearest Material ancestor; this decorated
+        // Container sits between the sheet's Material and the tiles and would
+        // swallow it (and assert in debug). A transparency Material paints
+        // nothing and just gives the ink somewhere to land.
+        child: Material(
+          type: MaterialType.transparency,
+          child: SafeArea(
+            top: false,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final option in RequestCoverage.values)
+                  ListTile(
+                    title: Text(option.label,
+                        style: TextStyle(color: ext.greetingColor)),
+                    subtitle: Text(option.hint,
+                        style: TextStyle(
+                            color: ext.searchHintColor, fontSize: 12.sp)),
+                    onTap: () => Navigator.of(sheetContext).pop(option),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -323,12 +347,10 @@ class _NewRequestStepState extends State<_NewRequestStep> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('Cancel',
-                style: TextStyle(color: ext.searchHintColor)),
+            child: Text('Cancel', style: TextStyle(color: ext.searchHintColor)),
           ),
           TextButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(controller.text),
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
             child: Text('Done', style: TextStyle(color: ext.accentGold)),
           ),
         ],
@@ -340,7 +362,8 @@ class _NewRequestStepState extends State<_NewRequestStep> {
 
   Future<void> _addPhoto() async {
     final file = await _picker.pickImage(
-      source: ImageSource.gallery, imageQuality: 85,
+      source: ImageSource.gallery,
+      imageQuality: 85,
     );
     if (file == null) return;
     final error = await MediaValidator.validate(file, isVideo: false);
@@ -363,13 +386,19 @@ class _NewRequestStepState extends State<_NewRequestStep> {
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg.w, AppSpacing.lg.h, AppSpacing.lg.w, AppSpacing.xxl.h,
+          AppSpacing.lg.w,
+          AppSpacing.lg.h,
+          AppSpacing.lg.w,
+          AppSpacing.xxl.h,
         ),
         children: [
           _Field(
             ext: ext,
             label: 'Event Name',
-            child: _Input(controller: _title, hint: 'Event name', ext: ext,
+            child: _Input(
+                controller: _title,
+                hint: 'Event name',
+                ext: ext,
                 onChanged: (_) => setState(_sync)),
           ),
           _Field(
@@ -451,18 +480,37 @@ class _NewRequestStepState extends State<_NewRequestStep> {
               ),
             ),
           ),
+          // Two fields, because they are two questions — where the shoot is,
+          // and who should be shown it. They were one, and one answer had to
+          // serve both: picking the venue set the targeting, so a shoot outside
+          // town could only be reached by photographers outside town.
           _Field(
             ext: ext,
             label: 'Location',
-            child: _LocationField(draft: widget.draft, ext: ext,
+            child: _Input(
+              controller: _location,
+              hint: 'Where is the shoot? e.g. Labadi Beach Hotel, Accra',
+              ext: ext,
+              onChanged: (_) => setState(_sync),
+            ),
+          ),
+          _Field(
+            ext: ext,
+            label: 'Who should see this',
+            child: _TargetAreasField(
+                draft: widget.draft,
+                ext: ext,
                 onChanged: () => setState(_sync)),
           ),
           _Field(
             ext: ext,
             label: 'Description',
             child: _Input(
-              controller: _description, hint: 'Description', ext: ext,
-              maxLines: 4, onChanged: (_) => _sync(),
+              controller: _description,
+              hint: 'Description',
+              ext: ext,
+              maxLines: 4,
+              onChanged: (_) => _sync(),
             ),
           ),
           _Field(
@@ -472,8 +520,11 @@ class _NewRequestStepState extends State<_NewRequestStep> {
               children: [
                 Expanded(
                   child: _Input(
-                    controller: _budgetMin, hint: 'From', ext: ext,
-                    number: true, onChanged: (_) => setState(_sync),
+                    controller: _budgetMin,
+                    hint: 'From',
+                    ext: ext,
+                    number: true,
+                    onChanged: (_) => setState(_sync),
                   ),
                 ),
                 SizedBox(width: AppSpacing.sm.w),
@@ -481,8 +532,11 @@ class _NewRequestStepState extends State<_NewRequestStep> {
                 SizedBox(width: AppSpacing.sm.w),
                 Expanded(
                   child: _Input(
-                    controller: _budgetMax, hint: 'To', ext: ext,
-                    number: true, onChanged: (_) => setState(_sync),
+                    controller: _budgetMax,
+                    hint: 'To',
+                    ext: ext,
+                    number: true,
+                    onChanged: (_) => setState(_sync),
                   ),
                 ),
               ],
@@ -519,7 +573,9 @@ class _NewRequestStepState extends State<_NewRequestStep> {
               child: Text(
                 draft.photos.isEmpty
                     ? 'Add at least one photo to continue'
-                    : 'Fill in the name, date, type and location',
+                    : draft.targetLocations.isEmpty
+                        ? 'Pick at least one area that should see this'
+                        : 'Fill in the name, date, type and location',
                 style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
               ),
             ),
@@ -541,18 +597,23 @@ class _NewRequestStepState extends State<_NewRequestStep> {
             color: ext.homeBackground,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
           ),
-          child: SafeArea(
-            top: false,
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                for (final type in requestEventTypes)
-                  ListTile(
-                    title: Text(type,
-                        style: TextStyle(color: ext.greetingColor)),
-                    onTap: () => Navigator.of(sheetContext).pop(type),
-                  ),
-              ],
+          // See _pickCoverage: the decorated Container would otherwise hide the
+          // tiles' ink, since it sits between them and the sheet's Material.
+          child: Material(
+            type: MaterialType.transparency,
+            child: SafeArea(
+              top: false,
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final type in requestEventTypes)
+                    ListTile(
+                      title: Text(type,
+                          style: TextStyle(color: ext.greetingColor)),
+                      onTap: () => Navigator.of(sheetContext).pop(type),
+                    ),
+                ],
+              ),
             ),
           ),
         );
@@ -586,8 +647,7 @@ class _ReviewStepState extends State<_ReviewStep> {
         description: draft.description.trim(),
         eventType: draft.eventType!.toLowerCase(),
         location: draft.location.trim(),
-        targetLocations:
-            draft.targetLocations.map((p) => p.toJson()).toList(),
+        targetLocations: draft.targetLocations.map((p) => p.toJson()).toList(),
         eventDate: draft.eventDate,
         eventTime: draft.eventTimeWire,
         coverageKind: draft.coverage?.wire,
@@ -635,7 +695,10 @@ class _ReviewStepState extends State<_ReviewStep> {
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg.w, AppSpacing.lg.h, AppSpacing.lg.w, AppSpacing.xxl.h,
+          AppSpacing.lg.w,
+          AppSpacing.lg.h,
+          AppSpacing.lg.w,
+          AppSpacing.xxl.h,
         ),
         children: [
           _ReadBack(label: 'Event Name', value: draft.title, ext: ext),
@@ -654,12 +717,23 @@ class _ReviewStepState extends State<_ReviewStep> {
               ext: ext,
             ),
           if (draft.coverageLabel != null)
-            _ReadBack(
-              label: 'Coverage', value: draft.coverageLabel!, ext: ext),
-          _ReadBack(label: 'Event Type', value: draft.eventType ?? '', ext: ext),
-          _ReadBack(label: 'Location', value: draft.location, ext: ext),
+            _ReadBack(label: 'Coverage', value: draft.coverageLabel!, ext: ext),
           _ReadBack(
-            label: 'Description', value: draft.description, ext: ext, tall: true,
+              label: 'Event Type', value: draft.eventType ?? '', ext: ext),
+          _ReadBack(label: 'Location', value: draft.location, ext: ext),
+          // Read back separately from the venue, since this screen exists so
+          // nothing is published that the requester did not mean — and who the
+          // request reaches is the half they cannot see anywhere else.
+          _ReadBack(
+            label: 'Who should see this',
+            value: draft.targetLocations.map((p) => p.label).join(', '),
+            ext: ext,
+          ),
+          _ReadBack(
+            label: 'Description',
+            value: draft.description,
+            ext: ext,
+            tall: true,
           ),
           _ReadBack(label: 'Budget', value: _budgetLabel(draft), ext: ext),
           if (draft.photos.isNotEmpty)
@@ -737,7 +811,9 @@ class _PublishedStep extends StatelessWidget {
                 "We'll notify you when photographers express interest.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: ext.searchHintColor, fontSize: 14.sp, height: 1.4,
+                  color: ext.searchHintColor,
+                  fontSize: 14.sp,
+                  height: 1.4,
                 ),
               ),
               SizedBox(height: AppSpacing.xl.h),
@@ -752,7 +828,8 @@ class _PublishedStep extends StatelessWidget {
                   'Requests are automatically closed after 30 days.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: ext.searchHintColor, fontSize: 13.sp,
+                    color: ext.searchHintColor,
+                    fontSize: 13.sp,
                   ),
                 ),
               ),
@@ -772,8 +849,7 @@ class _PublishedStep extends StatelessWidget {
 }
 
 // ── Shared bits ─────────────────────────────────────────────────────────────
-String _formatDate(DateTime d) =>
-    '${d.day.toString().padLeft(2, '0')}.'
+String _formatDate(DateTime d) => '${d.day.toString().padLeft(2, '0')}.'
     '${d.month.toString().padLeft(2, '0')}.${d.year}';
 
 String _budgetLabel(RequestDraft draft) {
@@ -786,15 +862,15 @@ String _budgetLabel(RequestDraft draft) {
 }
 
 PreferredSizeWidget _stepBar(
-  BuildContext context, AppThemeExtension ext, String title,
+  BuildContext context,
+  AppThemeExtension ext,
+  String title,
 ) =>
     AppBar(
       elevation: 0,
       centerTitle: true,
       backgroundColor: Colors.transparent,
-      leading: kIsWeb
-          ? null
-          : const AppBackButton(),
+      leading: kIsWeb ? null : const AppBackButton(),
       title: Text(
         title,
         style: TextStyle(
@@ -805,17 +881,17 @@ PreferredSizeWidget _stepBar(
       ),
     );
 
-/// Where the shoot is, picked rather than typed.
+/// The areas the request is aimed at, picked rather than typed.
 ///
-/// It was a free-text box, and free text is why targeting could not work: the
-/// board had nothing to gate on and nothing to measure a distance from, so
-/// every open request went to every photographer whatever country they work in.
+/// Picked because free text cannot be targeted on: the board has to gate on a
+/// country and measure a distance, and two strings sharing letters is not a
+/// place. The venue above stays typed for the opposite reason — a photographer
+/// needs an address, and no picker has one.
 ///
-/// The line underneath says who the answer reaches, because that consequence
-/// is not obvious from a field labelled "Location" and it is the reason the
-/// field changed.
-class _LocationField extends StatelessWidget {
-  const _LocationField({
+/// The line underneath says what the choice does, because "who should see this"
+/// is a question a form has not asked anyone before.
+class _TargetAreasField extends StatelessWidget {
+  const _TargetAreasField({
     required this.draft,
     required this.ext,
     required this.onChanged,
@@ -825,96 +901,67 @@ class _LocationField extends StatelessWidget {
   final AppThemeExtension ext;
   final VoidCallback onChanged;
 
-  Future<void> _pick(BuildContext context) async {
+  Future<void> _add(BuildContext context) async {
     final place = await LocationPickerSheet.show(
       context,
-      title: 'Where is the shoot?',
+      title: 'Show photographers in…',
     );
     if (place == null) return;
-    draft.place = place;
-    // Somewhere chosen as the venue is no longer an "also reach" — it is the
-    // place itself, and listing it twice would say the same thing twice.
-    draft.alsoReach.remove(place);
-    onChanged();
-  }
-
-  Future<void> _addExtra(BuildContext context) async {
-    final place = await LocationPickerSheet.show(
-      context,
-      title: 'Also show photographers in…',
-    );
-    if (place == null) return;
-    if (place != draft.place && !draft.alsoReach.contains(place)) {
-      draft.alsoReach.add(place);
+    // The sheet can return somewhere already chosen; Place compares by value,
+    // so this is enough to keep the list from saying the same thing twice.
+    if (!draft.targetLocations.contains(place)) {
+      draft.targetLocations.add(place);
       onChanged();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final place = draft.place;
+    final places = draft.targetLocations;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Semantics(
-          button: true,
-          label: 'Choose the location',
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _pick(context),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md.w, vertical: 13.h),
-              decoration: BoxDecoration(
-                color: ext.searchFieldFill,
-                borderRadius: BorderRadius.circular(AppRadius.md.r),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.place_outlined,
-                      size: 18.r, color: ext.searchHintColor),
-                  SizedBox(width: AppSpacing.sm.w),
-                  Expanded(
-                    child: Text(
-                      place?.label ?? 'Choose a location',
-                      style: TextStyle(
-                        color: place == null
-                            ? ext.searchHintColor
-                            : ext.greetingColor,
-                        fontSize: 14.sp,
-                      ),
-                    ),
-                  ),
-                  Icon(Icons.expand_more_rounded,
-                      size: 20.r, color: ext.searchHintColor),
-                ],
-              ),
-            ),
-          ),
+        LocationChips(
+          places: places,
+          emptyLabel: 'Add at least one area',
+          onAdd: () => _add(context),
+          onRemove: (place) {
+            draft.targetLocations.remove(place);
+            onChanged();
+          },
         ),
-        if (place != null) ...[
-          SizedBox(height: AppSpacing.sm.h),
-          Text(
-            place.isCountryWide
-                ? 'Photographers across ${place.country ?? place.countryCode} '
-                    'will see this.'
-                : 'Photographers near ${place.label} see this first.',
-            style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
-          ),
-          SizedBox(height: AppSpacing.sm.h),
-          LocationChips(
-            places: draft.alsoReach,
-            emptyLabel: '',
-            onAdd: () => _addExtra(context),
-            onRemove: (extra) {
-              draft.alsoReach.remove(extra);
-              onChanged();
-            },
-          ),
-        ],
+        SizedBox(height: AppSpacing.sm.h),
+        Text(
+          places.isEmpty
+              ? 'Pick the cities or countries whose photographers should see '
+                  'this request.'
+              : _reachLine(places),
+          style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+        ),
       ],
     );
+  }
+
+  /// What the picked areas add up to, in a sentence.
+  ///
+  /// Country-wide and city targeting reach differently — one gates, the other
+  /// gates and then ranks by distance — and the difference is worth saying,
+  /// because "Ghana" and "Accra" look equally specific as chips.
+  static String _reachLine(List<Place> places) {
+    final countries = places.where((p) => p.isCountryWide).toList();
+    final cities = places.where((p) => !p.isCountryWide).toList();
+
+    final parts = <String>[
+      if (countries.isNotEmpty)
+        'Photographers across '
+            '${countries.map((p) => p.country ?? p.countryCode).join(', ')} '
+            'will see this.',
+      if (cities.isNotEmpty)
+        'Photographers near ${cities.map((p) => p.label).join(', ')} '
+            'see this first.',
+    ];
+    return parts.join(' ');
   }
 }
 
@@ -1046,7 +1093,9 @@ class _ReadBack extends StatelessWidget {
           child: Text(
             value.isEmpty ? '—' : value,
             style: TextStyle(
-              color: ext.searchHintColor, fontSize: 14.sp, height: 1.4,
+              color: ext.searchHintColor,
+              fontSize: 14.sp,
+              height: 1.4,
             ),
           ),
         ),
@@ -1095,7 +1144,8 @@ class _DraftPhotos extends StatelessWidget {
                       child: Container(
                         padding: EdgeInsets.all(2.r),
                         decoration: const BoxDecoration(
-                          color: Colors.black54, shape: BoxShape.circle,
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.close_rounded,
                             size: 12.r, color: Colors.white),
@@ -1116,11 +1166,12 @@ class _DraftPhotos extends StatelessWidget {
               color: ext.searchFieldFill,
               borderRadius: BorderRadius.circular(AppRadius.sm.r),
               border: Border.all(
-                color: ext.searchHintColor.withValues(alpha: 0.25), width: 0.8,
+                color: ext.searchHintColor.withValues(alpha: 0.25),
+                width: 0.8,
               ),
             ),
-            child: Icon(Icons.add_rounded,
-                color: ext.searchHintColor, size: 22.r),
+            child:
+                Icon(Icons.add_rounded, color: ext.searchHintColor, size: 22.r),
           ),
         ),
       ],
@@ -1158,7 +1209,8 @@ class _PrimaryButton extends StatelessWidget {
                   width: 18.r,
                   height: 18.r,
                   child: const CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white,
+                    strokeWidth: 2,
+                    color: Colors.white,
                   ),
                 )
               : Text(

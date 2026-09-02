@@ -33,9 +33,22 @@ class CampaignDraft {
   final ctaUrl = TextEditingController();
   final photos = <XFile>[];
 
+  /// Where the thing being advertised happens — "Labadi Beach Hotel, Accra".
+  ///
+  /// Optional and free text: plenty of campaigns sell a service rather than an
+  /// event and have no venue at all, and a venue that does exist is an address
+  /// rather than a city a picker could offer.
+  ///
+  /// Part of the creative, not the targeting. [targetLocations] below decides
+  /// who is shown the campaign; this only says what it is about.
+  final location = TextEditingController();
+
   /// Where the campaign is aimed, as resolved places. `locations` below is
   /// derived from these for the review card and older reads; the server
   /// re-derives it too, so the two cannot disagree about one campaign.
+  ///
+  /// Not the same question as [location] above, and the wizard asks both:
+  /// a concert at one venue is routinely advertised to a whole country.
   final targetLocations = <Place>[];
   final interests = <String>{};
 
@@ -97,6 +110,7 @@ class CampaignDraft {
     copy.dispose();
     ctaText.dispose();
     ctaUrl.dispose();
+    location.dispose();
     budget.dispose();
     duration.dispose();
   }
@@ -185,6 +199,7 @@ class _CampaignWizardPageState extends State<CampaignWizardPage> {
         body: _draft.copy.text.trim(),
         ctaText: _draft.ctaText.text.trim(),
         ctaUrl: _draft.ctaUrl.text.trim(),
+        location: _draft.location.text.trim(),
         targetLocations:
             _draft.targetLocations.map((p) => p.toJson()).toList(),
         interests: _draft.interests.toList(),
@@ -860,6 +875,22 @@ class _CreativeStep extends StatelessWidget {
           keyboardType: TextInputType.url,
           onChanged: (_) => onChanged(),
         ),
+        // The venue, on the creative step because it is copy: it tells a reader
+        // where to turn up. It is not the target areas in the Audience step,
+        // which decide who ever reads it — a concert at one hotel is regularly
+        // advertised to a whole country.
+        _Label(
+          'Location',
+          ext: ext,
+          hint: '(Where the event happens — optional)',
+        ),
+        _Input(
+          controller: draft.location,
+          ext: ext,
+          hint: 'e.g. Labadi Beach Hotel, Accra',
+          maxLength: 255,
+          onChanged: (_) => onChanged(),
+        ),
         // Copy, and so part of the creative — not the interest tags in the
         // Audience step, which decide who is shown this. The two look alike
         // and mean opposite ends of the same sentence.
@@ -1076,7 +1107,19 @@ class _AudienceStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _Heading('Audience Targeting', ext: ext),
-        _Label('Location', ext: ext, required: true),
+        // "Target areas", not "Location". The label used to be the latter and
+        // this is the only place a campaign said anything about a place, so it
+        // read as the venue — which it never was. The venue is its own field on
+        // the creative step now.
+        _Label('Target areas', ext: ext, required: true),
+        Padding(
+          padding: EdgeInsets.only(bottom: AppSpacing.sm.h),
+          child: Text(
+            'Where the people who should see this campaign are — not where the '
+            'event itself takes place.',
+            style: TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
+          ),
+        ),
         Builder(builder: (context) {
           return LocationChips(
             places: draft.targetLocations,
@@ -1084,7 +1127,7 @@ class _AudienceStep extends StatelessWidget {
             onAdd: () async {
               final place = await LocationPickerSheet.show(
                 context,
-                title: 'Where should this run?',
+                title: 'Show this to people in…',
               );
               if (place == null) return;
               // The picker can return somewhere already chosen — Place
@@ -1618,7 +1661,10 @@ class _ReviewStep extends StatelessWidget {
                       width: 48.w, height: 48.w, fit: BoxFit.cover),
                 ),
           body: draft.headline.text.trim(),
-          bodySub: 'CTA: ${draft.ctaText.text.trim()}',
+          bodySub: draft.location.text.trim().isEmpty
+              ? 'CTA: ${draft.ctaText.text.trim()}'
+              : 'CTA: ${draft.ctaText.text.trim()}  ·  '
+                  '${draft.location.text.trim()}',
         ),
         _ReviewCard(
           title: '3. Audience',
@@ -1626,7 +1672,10 @@ class _ReviewStep extends StatelessWidget {
           onEdit: () => onEdit(2),
           rows: [
             (
-              'Locations',
+              // Read back as what it is. It sat here as "Locations" beside a
+              // creative that named no venue, which is how the one place a
+              // campaign mentioned came to be the targeting.
+              'Target areas',
               draft.targetLocations.map((p) => p.label).join(', '),
             ),
             ('Target Age',

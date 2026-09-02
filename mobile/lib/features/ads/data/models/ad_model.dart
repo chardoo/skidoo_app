@@ -20,6 +20,7 @@ class AdModel {
     this.commentsEnabled = true,
     this.commentCount = 0,
     this.contentTags = const [],
+    this.location,
     this.likeCount = 0,
     this.viewerLiked = false,
     this.media = const [],
@@ -48,6 +49,14 @@ class AdModel {
   /// The "#wedding #photography" line on the card. Written on the campaign,
   /// delivered with every ad in it.
   final List<String> contentTags;
+
+  /// Where the advertised thing happens — "Labadi Beach Hotel, Accra". Written
+  /// on the campaign like the tags, and shown as written.
+  ///
+  /// It says nothing about why this viewer is being shown the ad: that is the
+  /// ad set's targeting, which the card never displays. Null when the
+  /// advertiser named no venue.
+  final String? location;
 
   /// The heart on the rail. Counted per campaign rather than per creative: a
   /// campaign runs one ad per placement, and nobody thinks of their campaign
@@ -90,6 +99,7 @@ class AdModel {
         contentTags: (json['content_tags'] as List<dynamic>? ?? [])
             .whereType<String>()
             .toList(),
+        location: json['location'] as String?,
         likeCount: (json['like_count'] as num?)?.toInt() ?? 0,
         viewerLiked: json['viewer_liked'] as bool? ?? false,
         placement: json['placement'] as String? ?? '',

@@ -28,6 +28,14 @@ class AdCampaign {
   final String? ctaText;
   final String? ctaUrl;
 
+  /// Where the advertised thing happens, as the advertiser typed it.
+  ///
+  /// Part of the creative, and never targeting: [targetLocations] below is what
+  /// decides who is shown this. Null for campaigns with no venue to name — a
+  /// studio advertising a service has none — and for every campaign made
+  /// before the field existed.
+  final String? location;
+
   final DateTime? submittedAt;
 
   /// "Paused on August 2, 2026", "Completed 14-day campaign on…" — the details
@@ -126,6 +134,7 @@ class AdCampaign {
     this.body,
     this.ctaText,
     this.ctaUrl,
+    this.location,
     this.submittedAt,
     this.pausedAt,
     this.completedAt,
@@ -181,6 +190,7 @@ class AdCampaign {
         body: j['body'] as String?,
         ctaText: j['cta_text'] as String?,
         ctaUrl: j['cta_url'] as String?,
+        location: j['location'] as String?,
         submittedAt: j['submitted_at'] != null
             ? DateTime.tryParse(j['submitted_at'] as String)
             : null,

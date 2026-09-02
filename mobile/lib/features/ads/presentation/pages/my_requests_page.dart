@@ -16,6 +16,8 @@ import 'package:jperg_app/features/ads/presentation/pages/ads_checkout_page.dart
 import 'package:jperg_app/features/ads/presentation/pages/boost_success_page.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/boost_request_sheet.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/interested_row.dart';
+import 'package:jperg_app/features/location/data/models/place.dart';
+import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -738,6 +740,11 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
   bool _commentsEnabled = true;
   bool _saving = false;
 
+  /// Who the request reaches, editable here for the same reason the venue is:
+  /// a requester who aimed too narrowly and got no answers has to be able to
+  /// widen it without deleting the request and posting it again.
+  late List<Place> _targets;
+
   @override
   void initState() {
     super.initState();
@@ -745,6 +752,7 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
     _titleCtrl = TextEditingController(text: r.title);
     _descCtrl = TextEditingController(text: r.description);
     _locationCtrl = TextEditingController(text: r.location);
+    _targets = List<Place>.from(r.targetLocations);
     _budgetCtrl = TextEditingController(
       text: r.budgetAmount != null ? r.budgetAmount!.toStringAsFixed(0) : '',
     );
@@ -826,6 +834,9 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
         location: _locationCtrl.text.trim().isEmpty
             ? null
             : _locationCtrl.text.trim(),
+        // Always sent, including empty: an empty list is a deliberate "show it
+        // everywhere", and the PATCH reads absent as "leave it alone".
+        targetLocations: _targets.map((p) => p.toJson()).toList(),
         budgetAmount: double.tryParse(_budgetCtrl.text.trim()),
         commentsEnabled: _commentsEnabled,
       );
@@ -892,6 +903,45 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
                     maxLines: 3),
                 SizedBox(height: AppSpacing.md.h),
                 _EditField(label: 'Location', ctrl: _locationCtrl, ext: ext),
+                SizedBox(height: AppSpacing.xs.h),
+                Text(
+                  'Where the shoot happens.',
+                  style:
+                      TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
+                ),
+                SizedBox(height: AppSpacing.md.h),
+                // The other half of what used to be one field. Separate here as
+                // it is on the create form: the venue says where to turn up,
+                // this says which photographers ever see the card.
+                Text(
+                  'Who should see this',
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xs.h),
+                LocationChips(
+                  places: _targets,
+                  emptyLabel: 'Everywhere',
+                  onAdd: () async {
+                    final place = await LocationPickerSheet.show(
+                      context,
+                      title: 'Show photographers in…',
+                    );
+                    if (place == null || !mounted) return;
+                    if (!_targets.contains(place)) {
+                      setState(() => _targets = [..._targets, place]);
+                    }
+                  },
+                  onRemove: (place) => setState(
+                    () => _targets = [
+                      for (final p in _targets)
+                        if (p != place) p,
+                    ],
+                  ),
+                ),
                 SizedBox(height: AppSpacing.md.h),
                 _EditField(
                   label: 'Budget (${widget.request.currency})',

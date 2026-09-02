@@ -41,6 +41,9 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
   late final _copy = TextEditingController(text: _c.body ?? '');
   late final _ctaText = TextEditingController(text: _c.ctaText ?? 'Book Now');
   late final _ctaUrl = TextEditingController(text: _c.ctaUrl ?? '');
+  // The venue. Empty is a real value here — saving it clears a venue the
+  // advertiser no longer wants named.
+  late final _location = TextEditingController(text: _c.location ?? '');
   late final _budget = TextEditingController(
     text: (_c.budgetMode == BudgetMode.daily
             ? (_c.dailyBudget ?? _c.budgetAmount)
@@ -122,6 +125,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
     _copy.dispose();
     _ctaText.dispose();
     _ctaUrl.dispose();
+    _location.dispose();
     _budget.dispose();
     _duration.dispose();
     super.dispose();
@@ -182,6 +186,9 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
         body: _copy.text.trim(),
         ctaText: _ctaText.text.trim(),
         ctaUrl: _ctaUrl.text.trim(),
+        // Sent even when empty, like the tags below: emptying the field is how
+        // a venue gets removed, and omitting it would keep the old one.
+        location: _location.text.trim(),
         targetLocations:
             _targetLocations.map((p) => p.toJson()).toList(),
         // Sent even when empty — clearing every interest tag is a real edit,
@@ -276,6 +283,20 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
           _Text(controller: _ctaUrl, ext: ext, keyboardType: TextInputType.url,
               onChanged: (_) => setState(() {})),
 
+          // Where the event happens — copy, so it sits with the creative. The
+          // target areas below decide who is shown it, which is a different
+          // question and used to be the only one the form asked.
+          _FieldLabel('Location', ext: ext),
+          _Text(controller: _location, ext: ext, maxLength: 255,
+              onChanged: (_) => setState(() {})),
+          Padding(
+            padding: EdgeInsets.only(bottom: AppSpacing.sm.h),
+            child: Text(
+              'Where the event happens. Optional.',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
+            ),
+          ),
+
           // Copy, so it sits with the creative — the interest tags further
           // down are targeting. See AdCampaign.contentTags.
           _FieldLabel('Tags', ext: ext),
@@ -340,14 +361,22 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
           ),
 
           _Section('3. Audience settings', ext: ext),
-          _FieldLabel('Location', ext: ext, required: true),
+          _FieldLabel('Target areas', ext: ext, required: true),
+          Padding(
+            padding: EdgeInsets.only(bottom: AppSpacing.sm.h),
+            child: Text(
+              'Where the people who should see this are — not where the event '
+              'takes place.',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
+            ),
+          ),
           LocationChips(
             places: _targetLocations,
             emptyLabel: 'Pick at least one country or city',
             onAdd: () async {
               final place = await LocationPickerSheet.show(
                 context,
-                title: 'Where should this run?',
+                title: 'Show this to people in…',
               );
               if (place == null || !mounted) return;
               if (!_targetLocations.contains(place)) {
