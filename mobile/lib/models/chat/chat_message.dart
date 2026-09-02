@@ -121,6 +121,22 @@ class ChatMessage {
   bool get isSystem =>
       systemType != null && _knownSystemTypes.contains(systemType);
 
+  /// Where this comment landed in its thread — 1 for the first, and so on.
+  ///
+  /// Only ever set on a comment room's message, and only on a top-level one:
+  /// replies do not move the count, so they carry null. The server reads it
+  /// back off the row it just incremented, which is the only place it can be
+  /// known — a client holds a paginated list and cannot count the thread.
+  ///
+  /// Two things read it: a badge that wants the real number rather than one
+  /// more than it had, and the confetti for whoever landed on a round one.
+  final int? targetCommentCount;
+
+  /// The heart on a comment row. Only meaningful in a comment room; a message
+  /// in a conversation is not liked, and carries the quiet state.
+  final int likeCount;
+  final bool viewerLiked;
+
   bool get isEdited => updatedAt != null;
 
   bool get isAdminMessage =>
@@ -155,6 +171,9 @@ class ChatMessage {
     this.stale,
     this.updatedAt,
     this.systemType,
+    this.targetCommentCount,
+    this.likeCount = 0,
+    this.viewerLiked = false,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -206,6 +225,9 @@ class ChatMessage {
           ? DateTime.tryParse(json['updated_at'] as String)
           : null,
       systemType: json['system_type'] as String?,
+      targetCommentCount: (json['target_comment_count'] as num?)?.toInt(),
+      likeCount: (json['like_count'] as num?)?.toInt() ?? 0,
+      viewerLiked: (json['viewer_liked'] as bool?) ?? false,
     );
   }
 
@@ -236,9 +258,14 @@ class ChatMessage {
         'stale': stale,
         'updated_at': updatedAt?.toIso8601String(),
         'system_type': systemType,
+        'target_comment_count': targetCommentCount,
+        'like_count': likeCount,
+        'viewer_liked': viewerLiked,
       };
 
   ChatMessage copyWith({
+    int? likeCount,
+    bool? viewerLiked,
     String? id,
     String? senderName,
     bool? isRead,
@@ -277,6 +304,9 @@ class ChatMessage {
       stale: stale,
       updatedAt: clearUpdatedAt ? null : (updatedAt ?? this.updatedAt),
       systemType: systemType,
+      targetCommentCount: targetCommentCount,
+      likeCount: likeCount ?? this.likeCount,
+      viewerLiked: viewerLiked ?? this.viewerLiked,
     );
   }
 }

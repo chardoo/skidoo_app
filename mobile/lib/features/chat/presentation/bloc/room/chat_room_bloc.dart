@@ -23,6 +23,7 @@ import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.d
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/features/chat/presentation/typing_announcer.dart';
+import 'package:jperg_app/core/celebration/comment_milestone.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/like_update.dart';
@@ -1244,6 +1245,20 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // the bubble appears — not whenever that finishes.
     final cleared = _typingCleared(msg.senderId);
     if (cleared != null) emit(state.copyWith(typingUsers: cleared));
+
+    // Where this comment landed in the thread.
+    //
+    // A photo's and an event's comments are messages in its room, so this is
+    // the only path a count arrives on — the server reads it back off the row
+    // it just incremented and puts it on the frame, which reaches the author as
+    // an echo. Only the author is congratulated: everybody else in the room is
+    // reading somebody else's milestone, which is not an achievement.
+    //
+    // Null on every message that is not a top-level comment, which is most of
+    // them, and [CommentMilestones] is silent for all of those.
+    if (msg.senderId == _myUserId && msg.targetCommentCount != null) {
+      CommentMilestones.instance.report(msg.targetCommentCount);
+    }
 
     debugPrint('[ChatRoomBloc] _onReceived: msgId=${msg.id}'
         ' roomId=${msg.roomId}'
