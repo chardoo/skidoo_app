@@ -1,4 +1,5 @@
 import 'package:jperg_app/core/cache/comment_counts.dart';
+import 'package:jperg_app/core/celebration/comment_milestone.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:jperg_app/features/photo_comments/data/photo_comment_remote_data_source.dart';
@@ -296,7 +297,11 @@ class PhotoCommentBloc extends Bloc<PhotoCommentEvent, PhotoCommentState> {
         // showing the number it was built with. The server's figure is used
         // rather than a local +1: replies do not count, this list is
         // paginated, and somebody else may have commented since it loaded.
-        CommentCounts.instance.report(state.pictureId, comment.targetCommentCount);
+        CommentCounts.instance.report(
+            state.pictureId, comment.targetCommentCount);
+        // Where their comment landed — first, hundredth, thousandth. The same
+        // server figure, read for a different reason; see [CommentMilestones].
+        CommentMilestones.instance.report(comment.targetCommentCount);
         emit(state.copyWith(
           comments: [comment, ...state.comments],
           isPosting: false,
