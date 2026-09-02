@@ -24,6 +24,7 @@ import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/models/ad.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/features/ads/models/ad_media.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/media_carousel.dart';
 import 'package:jperg_app/features/ads/presentation/pages/feed_comment_sheet.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/card_photo_preview.dart'
     show CardGradientPlaceholder;
@@ -161,6 +162,9 @@ class FeedItemData {
       mediaList: mediaList,
       body: ad.body.isNotEmpty ? ad.body : null,
       contentTags: ad.contentTags,
+      // The venue the advertiser named, if any. Same field the request card
+      // uses for the same thing — where it happens, never who sees it.
+      location: (ad.location?.isNotEmpty ?? false) ? ad.location : null,
       commentsEnabled: ad.commentsEnabled,
       commentCount: ad.commentCount,
       likeCount: ad.likeCount,
@@ -542,7 +546,7 @@ class _FeedItemCardState extends State<FeedItemCard> {
                 right: 0,
                 bottom: _blockBottom + 220.h,
                 child: CommentSheetHide(
-                  child: _AdPageDots(
+                  child: MediaPageDots(
                       count: d.mediaList.length, current: _currentPage),
                 ),
               ),
@@ -619,11 +623,20 @@ class _FeedItemCardState extends State<FeedItemCard> {
             ),
 
             // ── The copy, and the one button ────────────────────────────────
+            //
+            // Inset by the same 16 on both sides. The right edge used to clear
+            // 72 for the rail, which cost the button a fifth of the screen it
+            // had no reason to give up: the rail is centred at 0.15 and ends
+            // well above this block, so under it there was simply a gap.
+            //
+            // The rail still has to be cleared where it genuinely overlaps —
+            // the *text* can grow tall enough to reach it — so that clearance
+            // moved inside, onto the lines that need it. See [kRailClearance].
             AnimatedPositioned(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
               left: 16.w,
-              right: 72.w,
+              right: 16.w,
               bottom: _blockBottom,
               child: CommentSheetHide(
                 child: isAd
@@ -715,6 +728,18 @@ class _FeedItemMedia extends StatelessWidget {
 
 // ── The copy blocks ──────────────────────────────────────────────────────────
 
+/// How much of the right edge the reaction rail can reach into.
+///
+/// The copy block now runs the full width of the card, so anything in it that
+/// sits high enough to meet the rail has to keep out of its way itself. The
+/// button does not — it is always the bottom-most row and the rail ends above
+/// it — which is the whole point of moving this inwards: the one element with
+/// a reason to be wide gets to be wide.
+///
+/// Measured from the rail's own inset (12) plus its width, rounded up so a
+/// long caption stops short of the icons rather than touching them.
+const double kRailClearance = 56;
+
 class _CampaignCopy extends StatelessWidget {
   const _CampaignCopy({
     required this.data,
@@ -733,59 +758,95 @@ class _CampaignCopy extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _KindPill(
-          label: 'Sponsored',
-          color: ext.publicAmber,
-        ),
-        SizedBox(height: AppSpacing.sm.h),
-        Text(
-          d.creatorName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18.sp,
-            fontWeight: FontWeight.w700,
+        // The words keep clear of the rail; the button below does not need to.
+        Padding(
+          padding: EdgeInsets.only(right: kRailClearance.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _KindPill(
+                label: 'Sponsored',
+                color: ext.publicAmber,
+              ),
+              SizedBox(height: AppSpacing.sm.h),
+              Text(
+                d.creatorName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (d.title.isNotEmpty) ...[
+                SizedBox(height: 2.h),
+                Text(
+                  d.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              if (d.body != null && d.body!.isNotEmpty) ...[
+                SizedBox(height: AppSpacing.xs.h),
+                Text(
+                  d.body!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 13.sp,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+              // Where it happens, when the advertiser said. A campaign is often
+              // for an actual event, and until now the card had nowhere to say
+              // where — the only place a campaign named was its targeting,
+              // which the viewer never sees and should not.
+              if (d.location != null) ...[
+                SizedBox(height: AppSpacing.xs.h),
+                Row(
+                  children: [
+                    Icon(Icons.place_rounded,
+                        size: 14.r,
+                        color: Colors.white.withValues(alpha: 0.75)),
+                    SizedBox(width: 4.w),
+                    Expanded(
+                      child: Text(
+                        d.location!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 13.sp,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (d.contentTags.isNotEmpty) ...[
+                SizedBox(height: AppSpacing.xs.h),
+                Text(
+                  d.contentTags.map((t) => '#$t').join(' '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontSize: 13.sp,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-        if (d.title.isNotEmpty) ...[
-          SizedBox(height: 2.h),
-          Text(
-            d.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 15.sp,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-        if (d.body != null && d.body!.isNotEmpty) ...[
-          SizedBox(height: AppSpacing.xs.h),
-          Text(
-            d.body!,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 13.sp,
-              height: 1.35,
-            ),
-          ),
-        ],
-        if (d.contentTags.isNotEmpty) ...[
-          SizedBox(height: AppSpacing.xs.h),
-          Text(
-            d.contentTags.map((t) => '#$t').join(' '),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 13.sp,
-            ),
-          ),
-        ],
         if (d.ctaLabel != null) ...[
           SizedBox(height: AppSpacing.md.h),
           _CtaButton(label: d.ctaLabel!, ext: ext, onTap: onCta),
@@ -846,53 +907,64 @@ class _RequestCopy extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _KindPill(label: 'Photographer Request', color: ext.accentGold),
-        SizedBox(height: AppSpacing.sm.h),
-        Text(
-          d.creatorName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18.sp,
-            fontWeight: FontWeight.w700,
+        // The words keep clear of the rail; the button below does not need to.
+        Padding(
+          padding: EdgeInsets.only(right: kRailClearance.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _KindPill(label: 'Photographer Request', color: ext.accentGold),
+              SizedBox(height: AppSpacing.sm.h),
+              Text(
+                d.creatorName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (d.title.isNotEmpty) ...[
+                SizedBox(height: 2.h),
+                Text(
+                  d.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              // What a photographer decides on: when, where, how long. Every one of
+              // them is optional on the request, and a row with nothing to say is
+              // left out rather than drawn as an icon beside a dash.
+              if (when != null)
+                _RequestRow(icon: Icons.calendar_today_rounded, label: when),
+              if (d.location != null)
+                _RequestRow(icon: Icons.place_rounded, label: d.location!),
+              if (d.coverageLabel != null)
+                _RequestRow(
+                    icon: Icons.access_time_rounded, label: d.coverageLabel!),
+              if (d.budgetLabel != null) ...[
+                SizedBox(height: AppSpacing.sm.h),
+                Text(
+                  d.budgetLabel!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: ext.accentGold,
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-        if (d.title.isNotEmpty) ...[
-          SizedBox(height: 2.h),
-          Text(
-            d.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 15.sp,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-        // What a photographer decides on: when, where, how long. Every one of
-        // them is optional on the request, and a row with nothing to say is
-        // left out rather than drawn as an icon beside a dash.
-        if (when != null)
-          _RequestRow(icon: Icons.calendar_today_rounded, label: when),
-        if (d.location != null)
-          _RequestRow(icon: Icons.place_rounded, label: d.location!),
-        if (d.coverageLabel != null)
-          _RequestRow(icon: Icons.access_time_rounded, label: d.coverageLabel!),
-        if (d.budgetLabel != null) ...[
-          SizedBox(height: AppSpacing.sm.h),
-          Text(
-            d.budgetLabel!,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: ext.accentGold,
-              fontSize: 20.sp,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
         if (d.ctaLabel != null) ...[
           SizedBox(height: AppSpacing.md.h),
           _CtaButton(
@@ -1078,34 +1150,6 @@ class _SingleMediaFrame extends StatelessWidget {
 }
 
 // ── Page dots ────────────────────────────────────────────────────────────────
-
-class _AdPageDots extends StatelessWidget {
-  const _AdPageDots({required this.count, required this.current});
-
-  final int count;
-  final int current;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(count, (i) {
-        final active = i == current;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: active ? 18.0 : 6.0,
-          height: 6.0,
-          decoration: BoxDecoration(
-            color: active ? Colors.white : Colors.white.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(3),
-          ),
-        );
-      }),
-    );
-  }
-}
 
 // ── More options ─────────────────────────────────────────────────────────────
 

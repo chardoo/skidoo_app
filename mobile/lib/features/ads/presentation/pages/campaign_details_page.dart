@@ -18,6 +18,7 @@ import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/features/ads/presentation/pages/ads_checkout_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/edit_campaign_form_page.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/campaign_status_pill.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/media_carousel.dart';
 
 /// One campaign: what it is, and whatever it currently wants from its owner.
 ///
@@ -288,6 +289,14 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
     final c = _campaign;
     final cover = c.media.isNotEmpty ? c.media.first.url : null;
 
+    // The line under the headline on the creative card. The venue belongs here
+    // rather than on the audience card below: it says what the campaign is
+    // about, not who gets shown it. Either half can be missing.
+    final creativeSub = [
+      if (c.ctaText != null) 'CTA: ${c.ctaText}',
+      if (c.location != null && c.location!.isNotEmpty) c.location!,
+    ].join('  ·  ');
+
     final page = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
@@ -357,17 +366,16 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.only(bottom: 96.h),
         children: [
-          if (cover != null)
-            SizedBox(
-              height: 162.h,
-              width: double.infinity,
-              child: JpergImage(
-                imageUrl: cover,
-                fit: BoxFit.cover,
-                errorWidget: (_, __, ___) =>
-                    ColoredBox(color: ext.avatarBackground),
-              ),
-            ),
+          // Every image, not just the first.
+          //
+          // This used to be a single 162h box cropped to `cover`, so a campaign
+          // built from five photos showed one of them with its top and bottom
+          // cut off — and the owner checking their own campaign had no way to
+          // see what the other four looked like. Taller than the old cover
+          // strip because `contain` needs the room: letterboxing a portrait
+          // shot into 162h leaves a sliver.
+          if (c.media.isNotEmpty)
+            MediaCarousel(media: c.media, height: 240.h),
           Padding(
             padding: EdgeInsets.fromLTRB(
               AppSpacing.xl.w, AppSpacing.md.h, AppSpacing.xl.w, 0,
@@ -492,14 +500,14 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
                   ext: ext,
                   leading: cover,
                   body: c.headline,
-                  bodySub: c.ctaText == null ? null : 'CTA: ${c.ctaText}',
+                  bodySub: creativeSub.isEmpty ? null : creativeSub,
                 ),
                 _Card(
                   title: '3. Audience',
                   ext: ext,
                   rows: [
                     if (c.locations.isNotEmpty)
-                      ('Locations', c.locations.join(', ')),
+                      ('Target areas', c.locations.join(', ')),
                     if (c.ageLabel != null) ('Target Age', c.ageLabel!),
                     if (c.interests.isNotEmpty)
                       ('Interests', c.interests.join(', ')),
