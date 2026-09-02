@@ -10,11 +10,16 @@ import 'package:jperg_app/models/photos/Photo.dart';
 ///
 /// | | share | send | like + comment | download |
 /// |---|---|---|---|---|
-/// | free · private     | yes | yes | —   | never |
-/// | free · public      | yes | yes | yes | never |
+/// | free · private     | yes | yes | —   | once saved |
+/// | free · public      | yes | yes | yes | once saved |
 /// | paid · unbought    | —   | —   | —   | —     |
 /// | paid · bought · private | yes | yes | —   | yes |
 /// | paid · bought · public  | yes | yes | yes | yes |
+///
+/// Download is drawn by the bar across the bottom of the photo rather than by
+/// the rail — see [anyInBar]. Everything else, sharing included, stays on the
+/// rail with the other engagements. This class decides *whether* each is
+/// offered; where it is drawn is the widgets' business.
 ///
 /// The three things that decide it:
 ///
@@ -26,10 +31,9 @@ import 'package:jperg_app/models/photos/Photo.dart';
 ///   react in front of — the thread would be the viewer talking to themselves.
 ///   The owner's comment switch is a narrower thing and closes the thread
 ///   alone: people may still like a photo nobody is allowed to discuss.
-/// * **Download is the paid extra**, and only ever appears once the photo has
-///   actually been bought. A free photo is free to look at and free to pass
-///   on, but it is not free to keep. This is the *only* rail in the app that
-///   draws it: see [FoundPhotoActions.unrestricted].
+/// * **Download needs the photo to be the viewer's to keep** — bought if it
+///   has a price, bookmarked if it does not. Found you is the only surface in
+///   the app that draws it at all: see [FoundPhotoActions.unrestricted].
 ///
 /// The bookmark is deliberately absent from every row. Saving a photo is
 /// offered on the screens that show someone's *work* — discovery, search, a
@@ -49,6 +53,7 @@ class FoundPhotoActions {
     required this.save,
     required this.share,
     required this.download,
+    required this.isPublic,
   });
 
   /// Every entry point that isn't Found you: like, comment, bookmark, share
@@ -60,8 +65,10 @@ class FoundPhotoActions {
   /// search, a profile grid, a shared `/p/` link and the fullscreen viewer all
   /// show someone else's work: there is no purchase behind any of it, so a
   /// download button there hands out a photographer's photo for free.
-  const FoundPhotoActions.unrestricted({required bool commentsEnabled})
-      : like = true,
+  const FoundPhotoActions.unrestricted({
+    required bool commentsEnabled,
+    this.isPublic = true,
+  })  : like = true,
         comment = commentsEnabled,
         commentsDisabled = !commentsEnabled,
         save = true,
@@ -69,7 +76,10 @@ class FoundPhotoActions {
         download = false;
 
   /// The Found-you rules, applied to [photo].
-  factory FoundPhotoActions.forFoundPhoto(Photo photo) {
+  ///
+  /// [saved] is whether the viewer has bookmarked this photo, which is what
+  /// earns a *free* photo its download — see [download].
+  factory FoundPhotoActions.forFoundPhoto(Photo photo, {bool saved = false}) {
     // Free needs no transaction to be the viewer's; priced does. `isPurchased`
     // also covers a free photo already saved, but the price test alone is
     // enough to unlock and says why without needing the save to have landed.
@@ -93,8 +103,12 @@ class FoundPhotoActions {
       save: false,
       share: true,
       // Unlocked and priced means bought — the free case was unlocked by the
-      // other half of the test above, and free photos are never downloadable.
-      download: photo.price > 0,
+      // other half of the test above. A free photo earns its download by being
+      // saved: keeping it is a deliberate act either way, paid for with money
+      // or with the bookmark, and "free to look at but never to keep" left a
+      // photo of the viewer that they could see and never take away.
+      download: photo.price > 0 || saved,
+      isPublic: photo.isPublic,
     );
   }
 
@@ -106,7 +120,11 @@ class FoundPhotoActions {
         commentsDisabled = false,
         save = false,
         share = false,
-        download = false;
+        download = false,
+        // Nothing is offered, so nothing is placed. True rather than false
+        // only because [engagementsAtBottom] would otherwise claim a bottom
+        // row for a photo with no actions at all.
+        isPublic = true;
 
   /// The heart, live.
   ///
@@ -134,6 +152,49 @@ class FoundPhotoActions {
   /// Write the file to the phone.
   final bool download;
 
+  /// Whether anyone but the viewer can see this photo. Decides *where* the
+  /// engagements are drawn rather than which of them exist — see
+  /// [engagementsAtBottom].
+  final bool isPublic;
+
   bool get any =>
       like || comment || commentsDisabled || save || share || download;
+
+  /// Every engagement, wherever it ends up being drawn: the heart, the thread,
+  /// the bookmark and passing the photo on. Not the download, which is not an
+  /// engagement — see [download].
+  bool get anyEngagement =>
+      like || comment || commentsDisabled || save || share;
+
+  /// Whether the engagements belong in the bottom bar instead of the rail.
+  ///
+  /// **A private photo with no reactions on it.** Both halves matter:
+  ///
+  /// * Private, because that is the case this exists for — in Found you a
+  ///   private photo can be neither liked nor discussed (see [like]), so its
+  ///   rail comes down to passing the photo on. A vertical rail holding one
+  ///   glyph is a column only in name, and it costs the right-hand edge of a
+  ///   photograph to draw.
+  /// * And no reactions, because that is *why* it is worth moving. A private
+  ///   photo on a screen that shows someone's work still has the full set —
+  ///   heart, thread, bookmark, share, each with a count — and four counted
+  ///   actions laid beside the photographer's name is not a bar, it is an
+  ///   overflowing row. Those keep the rail.
+  ///
+  /// So this is not "private photos move"; it is "a rail with nothing to react
+  /// with is not a rail". Public photos are untouched either way.
+  bool get engagementsAtBottom =>
+      !isPublic && !like && !comment && !commentsDisabled;
+
+  /// What the vertical rail down the right edge draws.
+  ///
+  /// Empty for a private photo, whose engagements moved to the bar.
+  bool get anyInRail => anyEngagement && !engagementsAtBottom;
+
+  /// What the bottom bar draws, beside the photographer's name.
+  ///
+  /// The download always — it is the one action that takes the file off the
+  /// platform, and it sits next to the name of whoever took it. Plus the
+  /// engagements, on a private photo that has any.
+  bool get anyInBar => download || (anyEngagement && engagementsAtBottom);
 }

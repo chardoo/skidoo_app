@@ -26,7 +26,6 @@ class FoundPhotoViewerPage extends StatefulWidget {
     super.key,
     required this.photos,
     this.initialIndex = 0,
-    this.onViewAlbum,
     this.showSocialActions = true,
     this.purchaseGated = false,
     this.selection,
@@ -73,14 +72,6 @@ class FoundPhotoViewerPage extends StatefulWidget {
   /// viewer, there is nothing for them to have bought, and their rail is
   /// unchanged. See [FoundPhotoActions].
   final bool purchaseGated;
-
-  /// Shown as "View album" on the photo. Left null when the viewer was pushed
-  /// from the album page itself.
-  ///
-  /// Takes the photo it was pressed on, because one viewer can span several
-  /// events — see FoundResultsViewerPage. A fixed callback would send the
-  /// person to the album of whichever photo they happened to open at.
-  final ValueChanged<Photo>? onViewAlbum;
 
   /// Fires as the pager settles on each photo. Used by the results viewer to
   /// fetch the next page before the swiping reaches the end of what it has.
@@ -330,9 +321,6 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
                       key: ValueKey('stage_${widget.photos[i].id}'),
                       photo: widget.photos[i],
                       isActive: i == _index,
-                      onViewAlbum: widget.onViewAlbum == null
-                          ? null
-                          : () => widget.onViewAlbum!(widget.photos[i]),
                       showSocialActions: widget.showSocialActions,
                       purchaseGated: widget.purchaseGated,
                       // The one in play, not only an album's: this is what puts

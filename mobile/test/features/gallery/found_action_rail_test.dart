@@ -79,17 +79,22 @@ void main() {
     expect(find.byIcon(Icons.download_outlined), findsNothing);
   });
 
-  testWidgets('download is its own glyph, on the one rail that has it',
-      (t) async {
-    // Found you, priced, paid for. The bookmark is absent here for the
-    // opposite reason — see FoundPhotoActions.
+  testWidgets('the download is not on the rail, bought or not', (t) async {
+    // Found you, priced, paid for — the case that used to put a download at
+    // the foot of this rail. It is drawn by FoundPhotoQuickActions in the bar
+    // along the bottom of the photo now; see found_rail_purchase_gate_test for
+    // when it is offered. The bookmark is absent here for its own reason — see
+    // FoundPhotoActions.
     await t.pumpWidget(host(FoundActionRail(
       photo: photo(price: 20, isPurchased: true),
       purchaseGated: true,
     )));
 
-    expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.byIcon(Icons.download_rounded), findsNothing);
     expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
+    // Share stayed: it is an engagement like the rest of them.
+    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
   });
 
   testWidgets('send and share are one button, not two', (t) async {

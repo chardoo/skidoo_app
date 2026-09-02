@@ -116,15 +116,17 @@ void main() {
     await t.pumpWidget(host(FoundPhotoViewerPage(
       photos: album.photos,
       initialIndex: 2,
-      onViewAlbum: (value) {},
     )));
     await t.pump();
     // The counter is a Text.rich split across spans (tabular figures on the
     // numbers, a nudged WidgetSpan for " of "), so find.text can't reach it.
     expect(find.bySemanticsLabel('3 of 6'), findsOneWidget);
-    expect(find.text('Public'), findsOneWidget);
     expect(find.text('Daniella Daniels'), findsOneWidget);
     expect(find.text('Praise Reloaded 2026 | Accra'), findsOneWidget);
-    expect(find.text('View album'), findsOneWidget);
+    // "View album" went, and the visibility pill spells nothing out any more —
+    // it is an eye, open or struck through. See
+    // found_download_and_visibility_test.
+    expect(find.text('View album'), findsNothing);
+    expect(find.text('Public'), findsNothing);
   });
 }

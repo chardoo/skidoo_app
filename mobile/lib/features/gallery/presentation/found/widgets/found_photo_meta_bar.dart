@@ -1,13 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
-import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_photo_actions.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_action_rail.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_quick_actions.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
 /// Footer strip over the bottom of the photo in the Found viewer:
-/// photographer identity on the left, "View album" on the right.
+/// photographer identity on the left, the actions on the right.
+///
+/// What sits on that right-hand end depends on the photo. Every photo that
+/// earns one gets the download. A **private** photo gets its engagements here
+/// too, laid along the bottom instead of down the right edge — see
+/// [FoundPhotoActions.engagementsAtBottom], which explains why a private
+/// photo's rail was not worth having.
+///
+/// The right-hand end used to be a "View album" button. It went for two
+/// reasons: the album is one back-swipe away from almost everywhere this
+/// viewer is opened, and the two actions that belong beside a photographer's
+/// name are the ones that take their work out of the app. Those came down off
+/// the vertical rail to sit here, which is where the design puts them.
 ///
 /// Every text line degrades gracefully — an unnamed photographer, a photo
 /// with no event, or an event with no location each just drop out instead of
@@ -16,14 +30,14 @@ class FoundPhotoMetaBar extends StatelessWidget {
   const FoundPhotoMetaBar({
     super.key,
     required this.photo,
-    this.onViewAlbum,
+    this.purchaseGated = false,
   });
 
   final Photo photo;
 
-  /// Null hides the button — e.g. when the viewer was opened *from* the album
-  /// page, where "View album" would just go back where you came from.
-  final VoidCallback? onViewAlbum;
+  /// Whether the photo's price and visibility decide what is offered — true
+  /// only in Found you. Passed straight through to [FoundPhotoQuickActions].
+  final bool purchaseGated;
 
   String get _name =>
       photo.photographerName.isNotEmpty ? photo.photographerName : 'Photographer';
@@ -33,8 +47,17 @@ class FoundPhotoMetaBar extends StatelessWidget {
         if (photo.location.isNotEmpty) photo.location,
       ].join(' | ');
 
+  /// What this photo is offered, so the bar knows whether the engagements
+  /// belong to it. The same call the stage makes for the rail — one photo has
+  /// one set of permissions, and asking twice is how two surfaces start
+  /// disagreeing about the same photo.
+  FoundPhotoActions get _offered =>
+      FoundActionRail.actionsFor(photo, gated: purchaseGated);
+
   @override
   Widget build(BuildContext context) {
+    final offered = _offered;
+
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: AppSpacing.md.w, vertical: AppSpacing.md.h),
@@ -47,11 +70,28 @@ class FoundPhotoMetaBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: _PhotographerTapTarget(photo: photo, name: _name, subtitle: _subtitle)),
-          if (onViewAlbum != null) ...[
-            SizedBox(width: AppSpacing.sm.w),
-            _ViewAlbumButton(onTap: onViewAlbum!),
-          ],
+          Expanded(
+            child: _PhotographerTapTarget(
+                photo: photo, name: _name, subtitle: _subtitle),
+          ),
+          // A private photo's engagements, on the same line. The rail widget
+          // itself, turned on its side — every handler behind these glyphs is
+          // the same work wherever they are drawn.
+          if (offered.engagementsAtBottom && offered.anyEngagement)
+            Padding(
+              padding: EdgeInsets.only(left: AppSpacing.sm.w),
+              child: FoundActionRail(
+                key: ValueKey('found_actions_bar_${photo.id}'),
+                photo: photo,
+                purchaseGated: purchaseGated,
+                axis: Axis.horizontal,
+              ),
+            ),
+          // Zero-width when there is no download to offer, and it carries its
+          // own leading gap so there is none to take back. A spacer out here
+          // would narrow the name on every photo that has no button, which is
+          // most of them — enough to overflow the row on a long event title.
+          FoundPhotoQuickActions(photo: photo, purchaseGated: purchaseGated),
         ],
       ),
     );
@@ -147,41 +187,3 @@ class _PhotographerTapTarget extends StatelessWidget {
   }
 }
 
-class _ViewAlbumButton extends StatelessWidget {
-  const _ViewAlbumButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'View album',
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: EdgeInsets.symmetric(
-              horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.45),
-            borderRadius: BorderRadius.circular(AppRadius.sm.r),
-            // The design's outline is essentially opaque white — sampled at
-            // #F5EFE6 over a bright photo, which no 35 % white could reach.
-            // At 35 % it disappeared against light image content, which is
-            // exactly where the button most needs an edge.
-            border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
-          ),
-          child: Text(
-            'View album',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

@@ -273,12 +273,6 @@ class UserProfilePageState extends State<UserProfilePage>
         builder: (viewerContext) => FoundPhotoViewerPage(
           photos: photos,
           initialIndex: index,
-          // onViewAlbum: (value) => ,
-          onViewAlbum: (value) => Navigator.of(viewerContext).push(
-            MaterialPageRoute<Photo>(
-              builder: (_) => EventPicturesPage(event: event),
-            ),
-          ),
         ),
       ));
       // The viewer can like and unlike, so the tabs may be stale coming back.

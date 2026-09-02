@@ -5,6 +5,7 @@ import 'package:get_it/get_it.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/gallery/data/saved_photos.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_action_rail.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_quick_actions.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
 /// What the Found viewer's rail offers depends on the photo once it is reached
@@ -48,17 +49,20 @@ const like = Icons.favorite_border_rounded;
 const comment = Icons.mode_comment_outlined;
 const commentOff = Icons.comments_disabled_rounded;
 const bookmark = Icons.bookmark_border_rounded;
-const download = Icons.download_outlined;
+/// The bar's download glyph. Deliberately a different icon from the rail's
+/// old one, so a test cannot pass by finding the button in the wrong place.
+const download = Icons.download_rounded;
 const share = Icons.near_me_outlined;
 
 /// The glyphs on the rail, in the order the rail lists them.
 Set<IconData> railOf(WidgetTester t) => {
+      // No download: it is not a rail action any more. [barHasDownload] asks
+      // about it, and asking here as well would let a rail regression hide.
       for (final icon in [
         like,
         comment,
         commentOff,
         bookmark,
-        download,
         share,
       ])
         if (t.any(find.byIcon(icon))) icon,
@@ -68,6 +72,20 @@ Future<Set<IconData>> pumpRail(WidgetTester t, Photo p,
     {bool gated = true}) async {
   await t.pumpWidget(host(FoundActionRail(photo: p, purchaseGated: gated)));
   return railOf(t);
+}
+
+/// Whether the bar along the bottom of the photo offers the download.
+///
+/// The download moved off the rail and into that bar, beside the
+/// photographer's name — see [FoundPhotoQuickActions]. Every question about
+/// *whether* it is offered is still the same question, so it is asked here in
+/// the same shape rather than being dropped.
+Future<bool> barHasDownload(WidgetTester t, Photo p,
+    {bool gated = true}) async {
+  await t.pumpWidget(
+      host(FoundPhotoQuickActions(photo: p, purchaseGated: gated)));
+  await t.pump();
+  return t.any(find.byIcon(download));
 }
 
 /// The rail's glyphs top to bottom. [railOf] answers *which* actions are on
@@ -150,7 +168,7 @@ void main() {
       // goes is asked in ShareTargetSheet, not by a second button.
       final rail = await pumpRail(t, photo(price: 20, isPurchased: true));
 
-      expect(rail, {download, share});
+      expect(rail, {share});
     });
 
     testWidgets('public: comment and like as well', (t) async {
@@ -159,37 +177,43 @@ void main() {
         photo(price: 20, isPurchased: true, isPublic: true),
       );
 
-      expect(rail, {like, comment, download, share});
+      expect(rail, {like, comment, share});
     });
 
-    testWidgets('the download sits at the foot of the rail', (t) async {
-      // Everything above it is something done inside the app. The download
-      // takes the photo out, so it gets the end of the rail to itself rather
-      // than a slot in the middle of the reactions.
-      await t.pumpWidget(host(FoundActionRail(
-        photo: photo(price: 20, isPurchased: true, isPublic: true),
-        purchaseGated: true,
-      )));
+    testWidgets('the download is not on the rail at all', (t) async {
+      // It lives in the bar along the bottom now. Everything left on the rail
+      // is something done with the photo on the platform; the download is the
+      // one action that takes the file off it.
+      final p = photo(price: 20, isPurchased: true, isPublic: true);
 
-      expect(railOrder(t).last, download);
+      expect(await pumpRail(t, p), isNot(contains(download)));
+      expect(await barHasDownload(t, p), isTrue);
     });
 
     testWidgets('the download is what buying it unlocked', (t) async {
-      // The same photo before and after: download is the one glyph that
-      // payment adds, and it is never on offer before.
-      expect(await pumpRail(t, photo(price: 20, isPublic: true)),
-          isNot(contains(download)));
+      // The same photo before and after: download is the one thing payment
+      // adds, and it is never on offer before.
+      expect(await barHasDownload(t, photo(price: 20, isPublic: true)),
+          isFalse);
       expect(
-          await pumpRail(
-              t, photo(price: 20, isPublic: true, isPurchased: true)),
-          contains(download));
+        await barHasDownload(
+            t, photo(price: 20, isPublic: true, isPurchased: true)),
+        isTrue,
+      );
     });
   });
 
   group('a free photo', () {
-    testWidgets('is never downloadable, public or not', (t) async {
-      // Free to look at and free to pass on, but not free to keep — the
-      // download button is the paid photo's extra.
+    testWidgets('is not downloadable until it is saved', (t) async {
+      // Free to look at and free to pass on. Keeping it is a deliberate act
+      // either way — paid for with money on a priced photo, with the bookmark
+      // on a free one — so an unsaved free photo has no download.
+      expect(await barHasDownload(t, photo()), isFalse);
+      expect(await barHasDownload(t, photo(isPublic: true)), isFalse);
+    });
+
+    testWidgets('the rail is unchanged by any of it', (t) async {
+      // The reactions are the reactions. Only the download reads the save.
       expect(await pumpRail(t, photo()), {share});
       expect(await pumpRail(t, photo(isPublic: true)), {like, comment, share});
     });
@@ -221,7 +245,7 @@ void main() {
         ),
       );
 
-      expect(rail, {like, commentOff, download, share});
+      expect(rail, {like, commentOff, share});
     });
 
     testWidgets('says so on the ungated screens too', (t) async {
@@ -239,7 +263,7 @@ void main() {
       final rail = await pumpRail(t, photo(price: 20, isPurchased: true));
 
       expect(rail, isNot(contains(commentOff)));
-      expect(rail, {download, share});
+      expect(rail, {share});
     });
 
     testWidgets('an unbought photo shows nothing, switch or no switch',
@@ -320,10 +344,11 @@ void main() {
         (t) async {
       final bought = photo(price: 20, isPurchased: true);
 
-      expect(await pumpRail(t, bought, gated: true), contains(download));
-      // Same photo, opened from a screen that shows someone's work.
-      expect(
-          await pumpRail(t, bought, gated: false), isNot(contains(download)));
+      expect(await barHasDownload(t, bought, gated: true), isTrue);
+      // Same photo, opened from a screen that shows someone's work. Nobody has
+      // bought anything there, so the bar has nothing to offer and draws
+      // nothing at all.
+      expect(await barHasDownload(t, bought, gated: false), isFalse);
     });
   });
 }

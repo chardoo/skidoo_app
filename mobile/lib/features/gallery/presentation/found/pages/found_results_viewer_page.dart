@@ -3,9 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
 import 'package:jperg_app/features/gallery/presentation/found/bloc/found_album_bloc.dart';
-import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
-import 'package:jperg_app/features/gallery/presentation/found/pages/found_album_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
@@ -146,32 +144,6 @@ class _ResultsViewerState extends State<_ResultsViewer> {
         .add(const FoundAlbumPhotosRequested(loadMore: true));
   }
 
-  /// "View album" for whichever photo is on screen.
-  ///
-  /// Per photo rather than fixed, because the viewer now crosses events: a
-  /// single callback bound to the tapped photo's album would take the person
-  /// to the wrong one as soon as they swiped past its last picture.
-  ///
-  /// The album page fetches its own contents from the id, so the event's name
-  /// and id off the photo are all it needs — nothing here has to have loaded
-  /// that album to be able to open it.
-  void _openAlbum(Photo photo) {
-    if (photo.eventId.isEmpty) return;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => FoundAlbumPage(
-          album: FoundAlbum(
-            id: photo.eventId,
-            title: photo.eventName,
-            photos: const [],
-            photoCount: 0,
-            moreCount: 0,
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocListener<FoundAlbumBloc, FoundAlbumState>(
@@ -182,7 +154,6 @@ class _ResultsViewerState extends State<_ResultsViewer> {
         initialIndex: _index,
         purchaseGated: true,
         onIndexChanged: _onIndexChanged,
-        onViewAlbum: _openAlbum,
       ),
     );
   }

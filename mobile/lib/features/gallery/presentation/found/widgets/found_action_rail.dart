@@ -2,15 +2,16 @@ import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
-import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
 import 'package:jperg_app/components/media/share_target_sheet.dart';
+import 'package:jperg_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/gallery/data/saved_photos.dart';
 import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_photo_actions.dart';
-import 'package:jperg_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:jperg_app/features/photo_comments/data/picture_like_service.dart';
 import 'package:jperg_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
@@ -22,14 +23,15 @@ import 'package:jperg_app/models/photos/Photo.dart';
 /// from there. This widget only decides *which* reactions the Found viewer
 /// offers and what each one does.
 ///
-/// Three actions past like and comment: bookmark adds the photo to the user's
-/// saved items, share passes it on — to someone in the app or out of it, chosen
-/// in [ShareTargetSheet] — and download writes the file to the device.
+/// Two actions past like and comment: bookmark adds the photo to the user's
+/// saved items, and share passes it on — to someone in the app or out of it,
+/// chosen in [ShareTargetSheet].
 ///
-/// Two of those used to be four. Bookmark and download were the same button,
-/// so tapping what read as Save wrote a file instead and nothing was ever
-/// saved; send and share were two buttons for one intention, told apart only
-/// by two similar glyphs.
+/// The download used to be a third and is not any more: it moved to the bar
+/// across the bottom of the photo, beside the photographer's name. Everything
+/// left here is something you do with a photo *on* the platform; the download
+/// is the one action that takes the file off it, so it sits with the name of
+/// whoever took it.
 ///
 /// *Which* of them a given photo gets is [FoundPhotoActions]' business.
 class FoundActionRail extends StatefulWidget {
@@ -37,6 +39,7 @@ class FoundActionRail extends StatefulWidget {
     super.key,
     required this.photo,
     this.purchaseGated = false,
+    this.axis = Axis.vertical,
   });
 
   final Photo photo;
@@ -46,13 +49,32 @@ class FoundActionRail extends StatefulWidget {
   /// theirs yet. See [FoundPhotoActions].
   final bool purchaseGated;
 
-  /// What [photo] would be offered here. The stage asks before building a rail
-  /// so a photo with nothing on offer gets no rail rather than an empty one.
-  static FoundPhotoActions actionsFor(Photo photo, {required bool gated}) =>
+  /// Which way the actions run. Vertical down the right edge of the photo, or
+  /// horizontal along the bottom bar — see
+  /// [FoundPhotoActions.engagementsAtBottom] for which photos get which.
+  ///
+  /// The same widget either way on purpose: every handler here — the optimistic
+  /// like, the share sheet, the bookmark and its rollback — is the same work
+  /// wherever the glyphs are drawn, and a second widget would be that logic
+  /// twice.
+  final Axis axis;
+
+  /// What [photo] would be offered. The stage asks before building a rail so a
+  /// photo with nothing on offer gets no rail rather than an empty one.
+  ///
+  /// Covers the bottom bar's two actions as well as this rail's — one photo has
+  /// one set of permissions, and splitting the question in two is how the two
+  /// surfaces would start disagreeing about the same photo.
+  static FoundPhotoActions actionsFor(
+    Photo photo, {
+    required bool gated,
+    bool saved = false,
+  }) =>
       gated
-          ? FoundPhotoActions.forFoundPhoto(photo)
+          ? FoundPhotoActions.forFoundPhoto(photo, saved: saved)
           : FoundPhotoActions.unrestricted(
-              commentsEnabled: photo.commentsEnabled);
+              commentsEnabled: photo.commentsEnabled,
+              isPublic: photo.isPublic);
 
   @override
   State<FoundActionRail> createState() => _FoundActionRailState();
@@ -61,12 +83,9 @@ class FoundActionRail extends StatefulWidget {
 class _FoundActionRailState extends State<FoundActionRail> {
   late bool _liked = widget.photo.isLikedByUser;
   late int _likeCount = widget.photo.likeCount;
-  bool _downloading = false;
   bool _sharing = false;
 
   final SavedPhotos? _saved = savedPhotosOrNull();
-
-  final _downloadKey = GlobalKey();
 
   /// The share sheet is anchored to this button on iPad/macOS, where a popover
   /// has to originate from something.
@@ -146,28 +165,6 @@ class _FoundActionRailState extends State<FoundActionRail> {
     }
   }
 
-  /// Writes the file to the device via the branded-overlay pipeline every
-  /// other download in the app uses.
-  Future<void> _download() async {
-    if (_downloading) return;
-    setState(() => _downloading = true);
-
-    final box = _downloadKey.currentContext?.findRenderObject() as RenderBox?;
-    final origin = (box != null && box.hasSize)
-        ? box.localToGlobal(Offset.zero) & box.size
-        : null;
-
-    await shareOverlayPhotoExternally(
-      context,
-      imageId: widget.photo.id,
-      photographerName: widget.photo.photographerName,
-      eventName: widget.photo.eventName,
-      isDownload: true,
-      shareOrigin: origin,
-    );
-    if (mounted) setState(() => _downloading = false);
-  }
-
   /// Asks where the photo is going, then goes there.
   ///
   /// The rail carries one share button; [ShareTargetSheet] is where in-app and
@@ -180,11 +177,9 @@ class _FoundActionRailState extends State<FoundActionRail> {
 
   /// Hands the photo to the OS share sheet — other apps, Messages, AirDrop.
   ///
-  /// Not the same action as either neighbour: [_download] writes the file to
-  /// the device and [_send] opens the in-app DM picker. All three go through
-  /// the branded-overlay pipeline, so a photo leaving the app is watermarked
-  /// however it leaves. [_toggleSave] is not in that family at all — a
-  /// bookmark moves no pixels anywhere.
+  /// Goes through the branded-overlay pipeline, so a photo leaving the app is
+  /// watermarked however it leaves. [_toggleSave] is not in that family at all
+  /// — a bookmark moves no pixels anywhere.
   Future<void> _shareExternally() async {
     if (_sharing) return;
     setState(() => _sharing = true);
@@ -221,6 +216,7 @@ class _FoundActionRailState extends State<FoundActionRail> {
     final offered = FoundActionRail.actionsFor(
       widget.photo,
       gated: widget.purchaseGated,
+      saved: _saved?.isSaved(widget.photo.id) ?? false,
     );
 
     // Rebuilt whenever the saved set changes, including from another rail
@@ -235,6 +231,11 @@ class _FoundActionRailState extends State<FoundActionRail> {
     final photoId = widget.photo.id;
 
     return MediaReactionRail(
+      axis: widget.axis,
+      // Tighter along the bottom, where the row shares its line with the
+      // photographer's name and the download. The vertical rail has the whole
+      // edge to itself and keeps its own spacing.
+      gap: widget.axis == Axis.horizontal ? AppSpacing.md : null,
       actions: [
         // The heart does not follow the comment switch. Closing the thread is
         // the owner declining a conversation, not declining reactions — see
@@ -273,17 +274,10 @@ class _FoundActionRailState extends State<FoundActionRail> {
             busy: _sharing,
             onTap: () => _requireAccount(_openShareTargets),
           ),
-        // Last, at the foot of the rail. Everything above it is something you
-        // do *in* the app — react, bookmark, pass the photo to someone. The
-        // download is the one that takes the photo out of it, and it is the
-        // action a bought photo exists for, so it sits on its own at the end
-        // rather than in the middle of the reactions.
-        if (offered.download)
-          MediaReaction.download(
-            anchorKey: _downloadKey,
-            busy: _downloading,
-            onTap: () => _requireAccount(_download),
-          ),
+        // The download is not here. It is drawn by [FoundPhotoQuickActions] in
+        // the bar across the bottom of the photo: everything on this rail is
+        // something you do with a photo *on* the platform, and the download is
+        // the one action that takes the file off it.
       ],
     );
   }
