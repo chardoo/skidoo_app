@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/comments/comment_input_bar_widget.dart';
 import 'package:jperg_app/components/comments/comment_row_data.dart';
+import 'package:jperg_app/features/photo_comments/data/comment_like_service.dart';
 import 'package:jperg_app/components/comments/comment_sheet_shell.dart';
 import 'package:jperg_app/components/comments/threaded_comment_widget.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
@@ -66,6 +67,38 @@ class _FeedCommentSheetContent extends StatefulWidget {
 }
 
 class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
+  final CommentLikeService _likeService = CommentLikeService();
+
+  /// Same arrangement as the chat-backed sheets, over a different model: the
+  /// list is rebuilt from the bloc on every frame, so what this reader has
+  /// pressed is held beside it rather than written into the comment. See
+  /// [CommentLikeState], which does this for the ChatMessage surfaces — the
+  /// two cannot share a mixin because they hold different row types.
+  final Map<String, ({bool liked, int likes})> _likes = {};
+  final Set<String> _inFlight = {};
+
+  ({bool liked, int likes}) _likeFor(PhotoComment c) =>
+      _likes[c.id] ?? (liked: c.viewerLiked, likes: c.likeCount);
+
+  Future<void> _toggleLike(PhotoComment c) async {
+    if (_inFlight.contains(c.id)) return;
+    final current = _likeFor(c);
+    setState(() {
+      _likes[c.id] = (
+        liked: !current.liked,
+        likes: (current.likes + (current.liked ? -1 : 1)).clamp(0, 1 << 30),
+      );
+      _inFlight.add(c.id);
+    });
+
+    final settled = await _likeService.toggle(c.id);
+    if (!mounted) return;
+    setState(() {
+      _inFlight.remove(c.id);
+      _likes[c.id] = settled ?? current;
+    });
+  }
+
   final _inputCtrl = TextEditingController();
   final _focusNode = FocusNode();
   final _scrollCtrl = ScrollController();
@@ -132,6 +165,9 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
       timeLabel: TimeFormatter.relative(c.createdAt),
       isMe: c.userId == myId,
       replyCount: replies?.length ?? c.replyCount,
+      likeCount: _likeFor(c).likes,
+      viewerLiked: _likeFor(c).liked,
+      onLike: () => _toggleLike(c),
       onReply: onReply,
     );
   }

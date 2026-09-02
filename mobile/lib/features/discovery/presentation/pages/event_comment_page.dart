@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/comments/comment_input_bar_widget.dart';
 import 'package:jperg_app/core/widgets/emoji_panel.dart';
+import 'package:jperg_app/components/comments/comment_like_state.dart';
 import 'package:jperg_app/components/comments/comment_row_data.dart';
 import 'package:jperg_app/components/comments/comment_sheet_shell.dart';
 import 'package:jperg_app/components/comments/threaded_comment_widget.dart';
@@ -49,7 +50,8 @@ class _EventCommentSheet extends StatefulWidget {
   State<_EventCommentSheet> createState() => _EventCommentSheetState();
 }
 
-class _EventCommentSheetState extends State<_EventCommentSheet> {
+class _EventCommentSheetState extends State<_EventCommentSheet>
+    with CommentLikeState<_EventCommentSheet> {
   bool _loading = true;
   String? _error;
   String _myId = '';
@@ -197,6 +199,9 @@ class _EventCommentSheetState extends State<_EventCommentSheet> {
       isMe: msg.senderId == _myId,
       isPending: msg.isLocal,
       replyCount: replies?.length ?? 0,
+      likeCount: likeFor(msg).likes,
+      viewerLiked: likeFor(msg).liked,
+      onLike: likeHandler(msg),
       onReply: () => onReply(msg),
       onUserTap: (msg.senderId == _myId ||
               msg.senderRole != ChatConfig.rolePhotographer)
@@ -384,7 +389,8 @@ class _InlineCommentContent extends StatefulWidget {
   State<_InlineCommentContent> createState() => _InlineCommentContentState();
 }
 
-class _InlineCommentContentState extends State<_InlineCommentContent> {
+class _InlineCommentContentState extends State<_InlineCommentContent>
+    with CommentLikeState<_InlineCommentContent> {
   bool _loading = true;
   String? _error;
   String _myId = '';
@@ -523,6 +529,9 @@ class _InlineCommentContentState extends State<_InlineCommentContent> {
       isMe: msg.senderId == _myId,
       isPending: msg.isLocal,
       replyCount: replies?.length ?? 0,
+      likeCount: likeFor(msg).likes,
+      viewerLiked: likeFor(msg).liked,
+      onLike: likeHandler(msg),
       onReply: () => onReply(msg),
       onUserTap: (msg.senderId == _myId ||
               msg.senderRole != ChatConfig.rolePhotographer)

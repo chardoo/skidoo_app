@@ -16,6 +16,12 @@ class PhotoComment {
   /// leave the displayed number alone rather than guess at a new one.
   final int? targetCommentCount;
 
+  /// The heart on the row, and whether this reader is one of them. The count
+  /// is the comment's own; `viewerLiked` is a fact about the pair and is filled
+  /// in per request.
+  final int likeCount;
+  final bool viewerLiked;
+
   const PhotoComment({
     required this.id,
     required this.pictureId,
@@ -27,6 +33,8 @@ class PhotoComment {
     required this.replyCount,
     required this.createdAt,
     this.targetCommentCount,
+    this.likeCount = 0,
+    this.viewerLiked = false,
   });
 
   factory PhotoComment.fromJson(Map<String, dynamic> json) {
@@ -40,6 +48,8 @@ class PhotoComment {
       parentId: json['parent_id']?.toString(),
       replyCount: (json['reply_count'] as num?)?.toInt() ?? 0,
       targetCommentCount: (json['target_comment_count'] as num?)?.toInt(),
+      likeCount: (json['like_count'] as num?)?.toInt() ?? 0,
+      viewerLiked: (json['viewer_liked'] as bool?) ?? false,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
@@ -57,6 +67,8 @@ class PhotoComment {
     int? replyCount,
     DateTime? createdAt,
     int? targetCommentCount,
+    int? likeCount,
+    bool? viewerLiked,
   }) {
     return PhotoComment(
       id: id ?? this.id,
@@ -69,6 +81,8 @@ class PhotoComment {
       replyCount: replyCount ?? this.replyCount,
       createdAt: createdAt ?? this.createdAt,
       targetCommentCount: targetCommentCount ?? this.targetCommentCount,
+      likeCount: likeCount ?? this.likeCount,
+      viewerLiked: viewerLiked ?? this.viewerLiked,
     );
   }
 }

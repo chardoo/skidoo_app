@@ -202,17 +202,38 @@ class MediaReaction {
 /// when active, the gap between actions, and where counts appear. A screen
 /// supplies only which reactions it offers and what they do.
 class MediaReactionRail extends StatelessWidget {
-  const MediaReactionRail({super.key, required this.actions, this.gap});
+  const MediaReactionRail({
+    super.key,
+    required this.actions,
+    this.gap,
+    this.axis = Axis.vertical,
+  });
 
   final List<MediaReaction> actions;
 
   /// Unscaled gap between actions. Defaults to [AppSpacing.lg].
   final double? gap;
 
+  /// Which way the actions run.
+  ///
+  /// Vertical is the rail this was built for — a column down the right edge of
+  /// full-bleed media, which is where nearly every caller wants it. Horizontal
+  /// is for the surfaces that lay the same actions along the bottom of a photo
+  /// instead; see [FoundPhotoActions.engagementsAtBottom], which is the only
+  /// thing that asks for it today.
+  ///
+  /// The actions themselves are identical either way — same glyphs, same
+  /// counts under them, same active tints. Only the direction changes, which
+  /// is the whole reason this is a parameter rather than a second widget.
+  final Axis axis;
+
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final spacing = SizedBox(height: (gap ?? AppSpacing.lg).h);
+    final horizontal = axis == Axis.horizontal;
+    final spacing = horizontal
+        ? SizedBox(width: (gap ?? AppSpacing.lg).w)
+        : SizedBox(height: (gap ?? AppSpacing.lg).h);
 
     final children = <Widget>[];
     for (final action in actions) {
@@ -228,7 +249,13 @@ class MediaReactionRail extends StatelessWidget {
     // tinted panel went nearly opaque, so it looked like a black slab rather
     // than glass. Instagram and every feed like it leave these bare over the
     // media; the glyph's own outline plus its shadow is what carries it.
-    return Column(mainAxisSize: MainAxisSize.min, children: children);
+    return horizontal
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: children,
+          )
+        : Column(mainAxisSize: MainAxisSize.min, children: children);
   }
 
   Widget _build(MediaReaction r, AppThemeExtension ext) => MediaRailAction(

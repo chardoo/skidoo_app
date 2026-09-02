@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/comments/comment_input_bar_widget.dart';
 import 'package:jperg_app/components/comments/comment_row_data.dart';
+import 'package:jperg_app/components/comments/comment_like_state.dart';
 import 'package:jperg_app/components/comments/comment_sheet_shell.dart';
 import 'package:jperg_app/components/comments/threaded_comment_widget.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
@@ -50,7 +51,8 @@ class _PhotoCommentSheetContent extends StatefulWidget {
 }
 
 class _PhotoCommentSheetContentState
-    extends State<_PhotoCommentSheetContent> {
+    extends State<_PhotoCommentSheetContent>
+    with CommentLikeState<_PhotoCommentSheetContent> {
   bool _loading = true;
   String? _error;
 
@@ -168,6 +170,7 @@ class _PhotoCommentSheetContentState
   }
 
   CommentRowData _toRowData(ChatMessage msg, {List<ChatMessage>? replies}) {
+    final like = likeFor(msg);
     return CommentRowData(
       id: msg.id,
       label: _label(msg),
@@ -176,6 +179,11 @@ class _PhotoCommentSheetContentState
       isMe: false,
       isPending: msg.isLocal,
       replyCount: replies?.length ?? 0,
+      likeCount: like.likes,
+      viewerLiked: like.liked,
+      // Not offered on a comment still on its way to the server: it has no id
+      // yet that a like could be filed against.
+      onLike: likeHandler(msg),
       onReply: () => _startReply(msg),
     );
   }

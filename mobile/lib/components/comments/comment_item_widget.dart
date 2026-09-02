@@ -143,25 +143,84 @@ class CommentItemWidget extends StatelessWidget {
                         color: ext.greetingColor, fontSize: 13.sp, height: 1.3),
                   ),
 
-                  // Reply button
-                  if (data.onReply != null)
-                    Semantics(
-                        button: true,
-                        label: 'Reply',
-                        child: GestureDetector(
-                          onTap: data.onReply,
-                          child: Padding(
-                            padding: EdgeInsets.only(top: 3.h),
-                            child: Text(
-                              'Reply',
-                              style: TextStyle(
-                                color: ext.searchHintColor,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
+                  // ── Heart, count, Reply ──────────────────────────────
+                  //
+                  // One row, as the design draws it. The heart is left of
+                  // Reply and carries its own number; both are drawn only
+                  // where the surface actually offers them, so a sheet that
+                  // has not wired liking up shows no dead control.
+                  if (data.onLike != null || data.onReply != null)
+                    Padding(
+                      padding: EdgeInsets.only(top: 5.h),
+                      child: Row(
+                        children: [
+                          if (data.onLike != null) ...[
+                            Semantics(
+                              button: true,
+                              selected: data.viewerLiked,
+                              label: data.viewerLiked
+                                  ? 'Unlike, ${data.likeCount} likes'
+                                  : 'Like, ${data.likeCount} likes',
+                              child: GestureDetector(
+                                onTap: data.onLike,
+                                // The tap target is the icon plus its count,
+                                // and a transparent box behind both — a 14sp
+                                // heart on its own is a smaller target than a
+                                // thumb can reliably hit.
+                                behavior: HitTestBehavior.opaque,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      data.viewerLiked
+                                          ? Icons.favorite_rounded
+                                          : Icons.favorite_border_rounded,
+                                      size: 15.sp,
+                                      color: data.viewerLiked
+                                          ? ext.likeRed
+                                          : ext.searchHintColor,
+                                    ),
+                                    // The number goes when it is zero rather
+                                    // than sitting there as a 0 — an unliked
+                                    // comment reads as unliked, not as one
+                                    // that scored nothing.
+                                    if (data.likeCount > 0) ...[
+                                      SizedBox(width: 5.w),
+                                      Text(
+                                        '${data.likeCount}',
+                                        style: TextStyle(
+                                          color: ext.searchHintColor,
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        )),
+                            SizedBox(width: 18.w),
+                          ],
+                          if (data.onReply != null)
+                            Semantics(
+                              button: true,
+                              label: 'Reply',
+                              child: GestureDetector(
+                                onTap: data.onReply,
+                                behavior: HitTestBehavior.opaque,
+                                child: Text(
+                                  'Reply',
+                                  style: TextStyle(
+                                    color: ext.searchHintColor,
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
