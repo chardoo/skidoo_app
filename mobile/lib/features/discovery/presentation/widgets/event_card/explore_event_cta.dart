@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/common/widgets/glass_surface.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
 /// "Explore event photos →" — the way from a feed post into the event's
@@ -38,18 +39,34 @@ class ExploreEventCta extends StatelessWidget {
       label: label,
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
+        // Real glass, the same treatment as the rest of the chrome that floats
+        // over media — see [GlassSurface], which frosts on iOS and falls back
+        // to a tonal surface where a blur is not what the platform wants.
+        //
+        // It used to be a flat 62 % black pill that only *called* itself glass.
+        // Over a photo that is a grey slab: there is nothing being blurred
+        // behind it, so the picture stops at its edge instead of carrying
+        // through it. This sits in the middle of the frame, which is the worst
+        // place for a widget to punch a hole in the image it is inviting you
+        // into.
+        //
+        // `onDark` is forced rather than read from the theme. The feed wraps
+        // itself in [DarkMediaSurface] so the answer is the same today either
+        // way, but the ground under this pill is a photograph whatever the app
+        // is set to — the decision belongs to what is behind it, not to a theme
+        // a future caller might mount it under.
+        child: GlassSurface(
+          borderRadius: BorderRadius.circular(999),
+          onDark: true,
+          // Where the platform does not frost, the fallback is a scrim rather
+          // than the opaque tonal surface the nav bar wears. The photo has to
+          // come through — dimmed, not hidden — because this pill stands in the
+          // middle of it. 62 % is what the hand-rolled version used and it
+          // reads white text over anything; see [GlassSurface.tonalOpacity].
+          tonalOpacity: 0.62,
           padding: EdgeInsets.symmetric(
             horizontal: AppSpacing.lg.w,
             vertical: AppSpacing.sm.h,
-          ),
-          decoration: BoxDecoration(
-            // Dark glass rather than the app's accent: it sits in the middle of
-            // an arbitrary photo, and a coloured pill fights whatever is
-            // underneath it. White on near-black reads over anything.
-            color: Colors.black.withValues(alpha: 0.62),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

@@ -31,6 +31,7 @@ class GlassSurface extends StatelessWidget {
     this.bordered = true,
     this.padding,
     this.onDark,
+    this.tonalOpacity = 1,
   });
 
   final Widget child;
@@ -51,6 +52,24 @@ class GlassSurface extends StatelessWidget {
   final bool bordered;
 
   final EdgeInsetsGeometry? padding;
+
+  /// How solid the tonal fallback is, where this build does not frost.
+  ///
+  /// Opaque by default, and that default is right for chrome that has to stay
+  /// legible over anything: a translucent fill with nothing blurred behind it
+  /// is a washed-out box with the content showing through, which is worse than
+  /// either treatment done properly. The nav bar is the case that argument was
+  /// written for.
+  ///
+  /// It is wrong for a surface whose whole job is to sit *on* a picture. A pill
+  /// in the middle of a photo has to let the photo through — an opaque one
+  /// punches a hole in the image it is drawn over — and there, a plain dark
+  /// scrim is the honest fallback when a blur is not on offer. Set it low
+  /// enough to read the text against and no lower.
+  ///
+  /// Ignored on the frosted path, where the tint is deliberately barely there
+  /// and the blur is doing the work.
+  final double tonalOpacity;
 
   /// Force the dark treatment regardless of the app's theme.
   ///
@@ -97,13 +116,13 @@ class GlassSurface extends StatelessWidget {
         : null;
 
     if (!isFrosted) {
-      // Material 3's own nav surface: opaque, lifted by tone rather than by
-      // transparency. Opaque on purpose — a translucent fill with nothing
-      // blurred behind it is just a washed-out box showing the content
-      // through it, which is worse than either treatment done properly.
+      // Material 3's own nav surface: opaque by default, lifted by tone rather
+      // than by transparency — see [tonalOpacity] for when that default is
+      // wrong and why it is not simply flipped for everyone.
       return Container(
         decoration: BoxDecoration(
-          color: dark ? const Color(0xFF1B1B1A) : ext.cardSurface,
+          color: (dark ? const Color(0xFF1B1B1A) : ext.cardSurface)
+              .withValues(alpha: tonalOpacity),
           borderRadius: borderRadius,
           border: border,
           boxShadow: [

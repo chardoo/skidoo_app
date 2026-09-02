@@ -9,7 +9,8 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 /// it, Material 3 gives it an opaque tonal surface. This is the one place that
 /// branch lives, so it is the one place worth pinning.
 void main() {
-  Widget host(AppThemeExtension ext, {bool? onDark}) => MaterialApp(
+  Widget host(AppThemeExtension ext, {bool? onDark, double tonalOpacity = 1}) =>
+      MaterialApp(
         theme: ThemeData(
           brightness: ext == AppThemeExtension.light
               ? Brightness.light
@@ -20,6 +21,7 @@ void main() {
           body: GlassSurface(
             borderRadius: BorderRadius.circular(20),
             onDark: onDark,
+            tonalOpacity: tonalOpacity,
             child: const SizedBox(width: 100, height: 40),
           ),
         ),
@@ -86,6 +88,18 @@ void main() {
       final container = t.widgetList<Container>(find.byType(Container)).first;
       final color = (container.decoration as BoxDecoration).color!;
       expect(color.a, 1.0);
+    });
+
+    testWidgets('can be asked to let the ground through', (t) async {
+      // The exception the default exists to make rare: a surface that sits on
+      // a photograph rather than over the app. Opaque there punches a hole in
+      // the picture it is drawn on, so it takes a scrim instead — see
+      // [GlassSurface.tonalOpacity].
+      await t.pumpWidget(host(AppThemeExtension.dark, tonalOpacity: 0.62));
+
+      final container = t.widgetList<Container>(find.byType(Container)).first;
+      final color = (container.decoration as BoxDecoration).color!;
+      expect(color.a, closeTo(0.62, 0.01));
     });
 
     testWidgets('earns an edge from a shadow instead', (t) async {
