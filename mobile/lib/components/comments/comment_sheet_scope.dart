@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 /// screen, leaving the media 37.3 %. It was 0.72, which left the media 28 % —
 /// a third short, and enough that a landscape photo read as a letterbox strip
 /// rather than as the thing being discussed.
-const double kCommentSheetFraction = 0.63;
+const double kCommentSheetFraction = 0.70;
 
 /// Whether a comment sheet is open, and the page-scaling that answers it.
 ///

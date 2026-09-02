@@ -128,6 +128,7 @@ class AppTextField extends StatefulWidget {
   final bool filled;
   final bool autofocus;
   final FocusNode? focusNode;
+
   /// Override the fill's corner radius — e.g. 22.r for a fully-rounded
   /// "pill" message/comment input vs. the default 14.r form-field look.
   final double? borderRadius;
@@ -193,9 +194,8 @@ class _AppTextFieldState extends State<AppTextField> {
         final hasError = state.hasError;
         // The label and border follow the error, so a field that is being
         // complained about looks like one even before the message is read.
-        final accent = hasError
-            ? ext.errorRed
-            : (_isFocused ? focusedColor : idleLabel);
+        final accent =
+            hasError ? ext.errorRed : (_isFocused ? focusedColor : idleLabel);
 
         final field = TextField(
           controller: widget.controller,
@@ -211,11 +211,21 @@ class _AppTextFieldState extends State<AppTextField> {
           textCapitalization: widget.textCapitalization,
           readOnly: widget.readOnly,
           onTap: widget.onTap,
+          // onChanged: (value) {
+          //   state.didChange(value);
+          //   widget.onChanged?.call(value);
+          // },
           onChanged: (value) {
             state.didChange(value);
             widget.onChanged?.call(value);
           },
-          onSubmitted: widget.onFieldSubmitted,
+          onSubmitted: (value) {
+            if (value.trim().isEmpty) {
+              FocusScope.of(context).unfocus();
+            }
+            widget.onFieldSubmitted?.call(value);
+          },
+          // onSubmitted: widget.onFieldSubmitted,
           inputFormatters: widget.inputFormatters,
           autofocus: widget.autofocus,
           textAlign: widget.textAlign,

@@ -238,4 +238,49 @@ void main() {
               'block, and the bar frosts whatever is behind it');
     });
   });
+
+  group('the width of the bottom block', () {
+    // The whole block used to stop 72 short of the right edge to clear the
+    // rail. The rail is centred at 0.15 and ends well above the button, so
+    // under it that inset bought nothing and cost the button a fifth of the
+    // screen — a stripe of dead space down the right of every ad.
+
+    testWidgets('the button runs the width of the card', (t) async {
+      await t.pumpWidget(host(FeedItemData.fromAd(_ad(), onCtaTap: () {})));
+      await t.pump();
+
+      // The button's own box, not its centred label — the label is centred in
+      // it, so its rect says nothing about how wide the button is.
+      final button = t.getRect(
+        find
+            .ancestor(
+              of: find.text('Book Now'),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      final screen = t.getRect(find.byType(FeedItemCard));
+
+      final leftGap = button.left - screen.left;
+      final rightGap = screen.right - button.right;
+      expect(rightGap, closeTo(leftGap, 2),
+          reason: 'the right margin should match the left, not the rail');
+      expect(rightGap, lessThan(40),
+          reason: 'a small margin, not a reserved column');
+    });
+
+    testWidgets('the words still keep out of the rail', (t) async {
+      // The other half of the same change: text can grow tall enough to reach
+      // the rail even though the button never does, so the clearance moved on
+      // to the lines that need it rather than disappearing.
+      await t.pumpWidget(host(FeedItemData.fromAd(_ad(), onCtaTap: () {})));
+      await t.pump();
+
+      final copy = t.getRect(find.text('Kwame Studios'));
+      final rail = t.getRect(find.byType(MediaReactionRail));
+
+      expect(copy.right, lessThanOrEqualTo(rail.left),
+          reason: 'the advertiser name must not run under the icons');
+    });
+  });
 }
