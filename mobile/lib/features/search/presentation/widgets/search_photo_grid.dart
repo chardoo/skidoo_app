@@ -8,8 +8,12 @@ import 'package:jperg_app/core/purchase/photo_price_badge.dart';
 import 'package:jperg_app/core/purchase/photo_selection.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
-/// The photo grid behind both "You may like" and an event's photos, as a
-/// sliver so either can sit in a page that scrolls other things above it.
+/// The photo grid behind an event's photos, as a sliver so it can sit in a
+/// page that scrolls other things above it.
+///
+/// It served the idle screen's "You may like" too until that started
+/// suggesting events rather than loose photographs — see
+/// [SearchEventGridSliver].
 ///
 /// Thin wrapper over [MediaGridSliver] that knows how to draw a [Photo]. An
 /// event's photos used to fall into a ragged masonry wall at their real aspect

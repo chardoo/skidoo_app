@@ -54,7 +54,7 @@ class FakeSearchRepository implements SearchRepository {
   Completer<void>? gate;
 
   YouMayLikePage youMayLikeResult =
-      const YouMayLikePage(photos: [], nextCursor: null);
+      const YouMayLikePage(events: [], nextCursor: null);
 
   final calls = <String>[];
 
@@ -270,7 +270,7 @@ void main() {
 
     test('clearing returns to the idle screen but keeps the grid', () async {
       repo.youMayLikeResult =
-          YouMayLikePage(photos: [photo(1)], nextCursor: 30);
+          YouMayLikePage(events: [event(1)], nextCursor: 30);
       bloc.add(const SearchYouMayLikeRequested());
       await settle();
 
@@ -454,7 +454,7 @@ void main() {
   group('you may like', () {
     test('loads once and is not refetched on a revisit', () async {
       repo.youMayLikeResult =
-          YouMayLikePage(photos: [photo(1), photo(2)], nextCursor: 30);
+          YouMayLikePage(events: [event(1), event(2)], nextCursor: 30);
 
       bloc.add(const SearchYouMayLikeRequested());
       await settle();
@@ -466,25 +466,25 @@ void main() {
     });
 
     test('the refresh button asks for a new snapshot', () async {
-      repo.youMayLikeResult = YouMayLikePage(photos: [photo(1)], nextCursor: 30);
+      repo.youMayLikeResult = YouMayLikePage(events: [event(1)], nextCursor: 30);
       bloc.add(const SearchYouMayLikeRequested());
       await settle();
 
-      repo.youMayLikeResult = YouMayLikePage(photos: [photo(9)], nextCursor: 30);
+      repo.youMayLikeResult = YouMayLikePage(events: [event(9)], nextCursor: 30);
       bloc.add(const SearchYouMayLikeRequested(refresh: true));
       await settle();
 
       expect(repo.calls, ['yml:0:false', 'yml:0:true']);
-      expect(bloc.state.youMayLike.single.id, 'pic-9');
+      expect(bloc.state.youMayLike.single.id, 'evt-9');
     });
 
     test('paging appends by cursor and stops when the set runs out', () async {
-      repo.youMayLikeResult = YouMayLikePage(photos: [photo(1)], nextCursor: 30);
+      repo.youMayLikeResult = YouMayLikePage(events: [event(1)], nextCursor: 30);
       bloc.add(const SearchYouMayLikeRequested());
       await settle();
 
       repo.youMayLikeResult =
-          YouMayLikePage(photos: [photo(2)], nextCursor: null);
+          YouMayLikePage(events: [event(2)], nextCursor: null);
       bloc.add(const SearchYouMayLikeMoreRequested());
       await settle();
 

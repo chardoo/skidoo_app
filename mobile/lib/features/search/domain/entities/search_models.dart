@@ -546,16 +546,25 @@ class TagEventsPage extends Equatable {
 
 /// `GET /client/search/you-may-like` — one slice of the shuffled snapshot.
 class YouMayLikePage extends Equatable {
-  const YouMayLikePage({required this.photos, required this.nextCursor});
+  const YouMayLikePage({required this.events, required this.nextCursor});
 
-  final List<Photo> photos;
+  /// Events, not photographs.
+  ///
+  /// Everything this product is about is an event — a shoot, a wedding, a
+  /// festival — and a loose photo is a page out of one. Suggesting a single
+  /// image asks somebody to want a thing with no occasion attached, and leaves
+  /// them nowhere to go; suggesting the event opens the whole set.
+  ///
+  /// The same [SearchEventRow] the results list uses, so a suggested event and
+  /// a searched one are the same thing arriving by two routes.
+  final List<SearchEventRow> events;
 
   /// Null at the end of the set — not an error, just the end. Refreshing
   /// builds a new snapshot and starts over.
   final int? nextCursor;
 
   @override
-  List<Object?> get props => [photos, nextCursor];
+  List<Object?> get props => [events, nextCursor];
 }
 
 /// `GET /client/events/{eventId}/photos` — the grid behind an event row.

@@ -37,7 +37,8 @@ abstract class SearchRemoteDataSource {
   /// The events behind a tag row. Accepts the tag with or without `#`.
   Future<TagEventsPage> eventsForTag(String tag, {int page, int limit});
 
-  /// The "You may like" grid. [refresh] (the ↻ button) rebuilds the snapshot.
+  /// The "You may like" grid — suggested *events*. [refresh] (the ↻ button)
+  /// rebuilds the snapshot.
   Future<YouMayLikePage> youMayLike({int limit, int cursor, bool refresh});
 
   /// An event's photos. Accepts the event id **or** its access code.
@@ -175,7 +176,7 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
     });
     final body = _envelope(raw);
     return YouMayLikePage(
-      photos: _photos(_dataList(raw)),
+      events: _rows(raw, SearchEventRow.fromJson),
       // Null is the end of the set, so it must survive as null rather than
       // collapsing to 0 — 0 is a valid cursor meaning "start over".
       nextCursor: SearchJson.intOrNull(body['nextCursor']),

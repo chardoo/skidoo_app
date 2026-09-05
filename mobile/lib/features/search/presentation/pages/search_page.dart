@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 import 'package:jperg_app/features/search/presentation/bloc/search_bloc.dart';
@@ -18,7 +16,6 @@ import 'package:jperg_app/features/search/presentation/widgets/search_idle_view.
 import 'package:jperg_app/features/search/presentation/widgets/search_results_list.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_top_bar.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_type_chips.dart';
-import 'package:jperg_app/models/photos/Photo.dart';
 
 /// One text box over three result types, with the photo grid that fills the
 /// idle state behind it.
@@ -168,16 +165,6 @@ class _SearchViewState extends State<_SearchView> {
     );
   }
 
-  void _openPhoto(List<Photo> photos, int index) {
-    _focusNode.unfocus();
-    Navigator.of(context).push(
-      NoSwipeBackPageRoute<void>(
-        builder: (_) =>
-            FoundPhotoViewerPage(photos: photos, initialIndex: index),
-      ),
-    );
-  }
-
   // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
@@ -237,7 +224,9 @@ class _SearchViewState extends State<_SearchView> {
         onRecentRemove: (query) => _bloc.add(SearchRecentRemoved(query)),
         onRefresh: () =>
             _bloc.add(const SearchYouMayLikeRequested(refresh: true)),
-        onPhotoTap: _openPhoto,
+        // The same destination a searched event goes to — one screen for
+        // "open this event's photos", however the person arrived at it.
+        onEventTap: _openEvent,
       );
     }
 

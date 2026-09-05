@@ -5,7 +5,6 @@ import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/features/search/data/services/recent_searches_store.dart';
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 import 'package:jperg_app/features/search/domain/usecases/search_usecase.dart';
-import 'package:jperg_app/models/photos/Photo.dart';
 
 part 'search_event.dart';
 part 'search_state.dart';
@@ -252,7 +251,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       if (emit.isDone) return;
       emit(state.copyWith(
         isLoadingYouMayLike: false,
-        youMayLike: page.photos,
+        youMayLike: page.events,
         youMayLikeCursor: page.nextCursor,
         clearYouMayLikeCursor: page.nextCursor == null,
       ));
@@ -288,7 +287,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       }
       emit(state.copyWith(
         isLoadingMoreYouMayLike: false,
-        youMayLike: [...state.youMayLike, ...page.photos],
+        youMayLike: [...state.youMayLike, ...page.events],
         youMayLikeCursor: page.nextCursor,
         clearYouMayLikeCursor: page.nextCursor == null,
       ));

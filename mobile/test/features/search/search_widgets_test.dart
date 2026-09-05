@@ -34,6 +34,14 @@ Color colourOf(WidgetTester t, String text) =>
 
 /// No cover URL on purpose: the tile's fallback renders without reaching for
 /// the network, which a widget test has no business doing.
+/// One suggestion per grid cell, each distinguishable from the next.
+SearchEventRow suggestedEvent(int i) => SearchEventRow.fromJson({
+      'id': 'evt-$i',
+      'eventName': 'Suggested $i',
+      'coverUrl': 'https://cdn/cover-$i.jpg',
+      'photoCount': 12 + i,
+    });
+
 SearchEventRow eventRow({int photoCount = 108}) => SearchEventRow.fromJson({
       'id': 'evt-1',
       'eventName': 'Praise Reloaded 2026',
@@ -152,26 +160,51 @@ void main() {
   });
 
   group('composed views lay out', () {
-    testWidgets('the idle screen stacks recents over the suggestion grid',
+    testWidgets('the idle screen stacks recents over the suggested events',
         (t) async {
       await t.pumpWidget(host(
         AppThemeExtension.dark,
         SearchIdleView(
           state: SearchState(
             recents: const ['Praise Reloaded'],
-            youMayLike: [for (var i = 0; i < 9; i++) gridPhoto(i)],
+            youMayLike: [for (var i = 0; i < 9; i++) suggestedEvent(i)],
             youMayLikeCursor: 30,
           ),
           onRecentTap: (_) {},
           onRecentRemove: (_) {},
           onRefresh: () {},
-          onPhotoTap: (_, __) {},
+          onEventTap: (_) {},
         ),
       ));
 
       expect(find.text('Praise Reloaded'), findsOneWidget);
       expect(find.text('You may like'), findsOneWidget);
-      expect(find.byType(SearchPhotoTile), findsWidgets);
+      // Events, named. A grid of bare covers would pass a "something rendered"
+      // check while telling the reader nothing about what they are choosing
+      // between — the name is why this is events and not photographs.
+      expect(find.text('Suggested 0'), findsOneWidget);
+      expect(find.text('12 photos'), findsOneWidget);
+    });
+
+    testWidgets('tapping a suggestion hands back the event', (t) async {
+      // Which is what lets the page open that event's photos — the set the
+      // card was offering.
+      SearchEventRow? tapped;
+      await t.pumpWidget(host(
+        AppThemeExtension.dark,
+        SearchIdleView(
+          state: SearchState(
+            youMayLike: [for (var i = 0; i < 4; i++) suggestedEvent(i)],
+          ),
+          onRecentTap: (_) {},
+          onRecentRemove: (_) {},
+          onRefresh: () {},
+          onEventTap: (e) => tapped = e,
+        ),
+      ));
+
+      await t.tap(find.text('Suggested 1'));
+      expect(tapped?.id, 'evt-1');
     });
 
     testWidgets('the results list renders the active chip\'s rows', (t) async {

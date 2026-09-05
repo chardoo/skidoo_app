@@ -94,7 +94,9 @@ class SearchState extends Equatable {
   // ── Idle screen ────────────────────────────────────────────────────────────
 
   final List<String> recents;
-  final List<Photo> youMayLike;
+
+  /// Suggested *events*, not photographs — see [YouMayLikePage.events].
+  final List<SearchEventRow> youMayLike;
 
   /// Null once the snapshot is exhausted — that is the end, not an error.
   final int? youMayLikeCursor;
@@ -147,7 +149,7 @@ class SearchState extends Equatable {
     String? errorMessage,
     bool clearError = false,
     List<String>? recents,
-    List<Photo>? youMayLike,
+    List<SearchEventRow>? youMayLike,
     int? youMayLikeCursor,
     bool clearYouMayLikeCursor = false,
     bool? isLoadingYouMayLike,
