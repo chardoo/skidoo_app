@@ -53,6 +53,18 @@ class HomeNavigationPage extends StatefulWidget {
   /// lands new photos in the Found tab. Cleared after being handled.
   static final pillTabRequest = ValueNotifier<int?>(null);
 
+  /// Bumped when Home is tapped while Home is already the tab you are on.
+  ///
+  /// The feed showing at that moment goes back to its first card and refetches
+  /// — see [EventsFeedState.resetAndRefresh]. A counter rather than a flag
+  /// because the same request can arrive twice in a row and a `ValueNotifier`
+  /// only notifies when the value changes; two taps are two resets.
+  ///
+  /// Only [HomePage] writes here, and only for a genuine tap. Arriving on Home
+  /// from another tab is not one: the feed is left exactly where it was, which
+  /// is what makes stepping into a chat and back cost nothing.
+  static final feedResetRequest = ValueNotifier<int>(0);
+
   @override
   State<HomeNavigationPage> createState() => _HomeNavigationPageState();
 }
@@ -87,11 +99,21 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   final _headerKey = GlobalKey();
   double _headerHeight = 0;
 
+  /// Handles on the two feeds, so a Home tap can reach whichever is showing.
+  ///
+  /// The same shape the Profile tab already uses to refresh itself on open
+  /// (`_profileKey` in HomePage). A notifier would not do: the answer is not a
+  /// value either feed can watch for, it is an instruction to exactly one of
+  /// them, chosen by which pill is up.
+  final _feedKey = GlobalKey<EventsFeedState>();
+  final _followingKey = GlobalKey<FollowingFeedState>();
+
   @override
   void initState() {
     super.initState();
     _resolveGuest();
     HomeNavigationPage.pillTabRequest.addListener(_onPillTabRequest);
+    HomeNavigationPage.feedResetRequest.addListener(_onFeedReset);
     // A request can be posted *before* this page mounts — the guest shell sets
     // it as it hands off after sign-up. A ValueNotifier only notifies on
     // change, so the listener above would never see it; consume it here.
@@ -134,9 +156,29 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     }
   }
 
+  /// Home was tapped while already on Home: start the feed that is showing
+  /// over again.
+  ///
+  /// Found is deliberately not one of them. It is not a feed of what is new —
+  /// it is the photos somebody has been recognised in, which arrive when a
+  /// photographer uploads rather than when you ask, and which the person is
+  /// usually working through rather than browsing. Sending them back to the
+  /// first one would lose their place in a list they were reading.
+  void _onFeedReset() {
+    if (!mounted) return;
+    switch (_selectedTab) {
+      case 1:
+        // Feed for a member, Explore for a guest — same slot, same feed.
+        _feedKey.currentState?.resetAndRefresh();
+      case 2:
+        _followingKey.currentState?.resetAndRefresh();
+    }
+  }
+
   @override
   void dispose() {
     HomeNavigationPage.pillTabRequest.removeListener(_onPillTabRequest);
+    HomeNavigationPage.feedResetRequest.removeListener(_onFeedReset);
     if (kIsWeb) {
       HomeNavigationPage._webSearchHandler = null;
       HomeNavigationPage._webEventTapHandler = null;
@@ -598,7 +640,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         TickerMode(
           enabled: _selectedTab == 2,
           child: DarkMediaSurface(
-            child: FollowingFeed(chromeTopPadding: _headerClearance),
+            child: FollowingFeed(
+              key: _followingKey,
+              chromeTopPadding: _headerClearance,
+            ),
           ),
         ),
       ],
@@ -615,6 +660,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     return Stack(
       children: [
         EventsFeed(
+          key: _feedKey,
           discoveryState: discoveryState,
           topPadding: _feedTopPadding,
           // Keyboard only — see [EventsFeed.onCardTap]. A tap on a card belongs

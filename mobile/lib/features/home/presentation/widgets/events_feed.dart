@@ -103,10 +103,10 @@ class EventsFeed extends StatefulWidget {
   final double topPadding;
 
   @override
-  State<EventsFeed> createState() => _EventsFeedState();
+  State<EventsFeed> createState() => EventsFeedState();
 }
 
-class _EventsFeedState extends State<EventsFeed> {
+class EventsFeedState extends State<EventsFeed> {
   final _activeCardIndex = ValueNotifier<int>(0);
   final _pageCtrl = PageController();
   final _feedFocusNode = FocusNode();
@@ -124,6 +124,30 @@ class _EventsFeedState extends State<EventsFeed> {
     },
   );
 
+  /// Back to the first card, and ask the server what is new.
+  ///
+  /// What tapping Home does when Home is already the tab you are on. Both
+  /// halves matter and neither substitutes for the other: returning to the top
+  /// of a feed loaded an hour ago shows an hour-old first card, and refetching
+  /// without moving leaves somebody forty cards down looking at nothing that
+  /// changed.
+  ///
+  /// The jump is instant rather than animated. Scrolling back through forty
+  /// cards is a long, meaningless journey, and every card it passes would
+  /// start playing on the way; [PageController.jumpToPage] shows the
+  /// destination and nothing in between.
+  ///
+  /// The refetch keeps the current cards up while it runs —
+  /// [DiscoveryLoadRequested] paints from cache first — so this reads as the
+  /// feed going back to the top, not as the feed emptying and refilling.
+  void resetAndRefresh() {
+    if (_pageCtrl.hasClients && _pageCtrl.page != null && _pageCtrl.page! > 0) {
+      _pageCtrl.jumpToPage(0);
+    }
+    _activeCardIndex.value = 0;
+    context.read<DiscoveryBloc>().add(const DiscoveryLoadRequested());
+  }
+
   @override
   void initState() {
     super.initState();
@@ -138,10 +162,10 @@ class _EventsFeedState extends State<EventsFeed> {
   }
 
   @override
-  void didUpdateWidget(EventsFeed old) {
-    super.didUpdateWidget(old);
+  void didUpdateWidget(EventsFeed oldWidget) {
+    super.didUpdateWidget(oldWidget);
     final newEvents = widget.discoveryState.events;
-    final oldEvents = old.discoveryState.events;
+    final oldEvents = oldWidget.discoveryState.events;
 
     if (newEvents.length == oldEvents.length) return;
     // initState already called _fetchInitial for the very first population.

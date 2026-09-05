@@ -63,10 +63,10 @@ class FollowingFeed extends StatefulWidget {
       int page, int limit)? loadFeed;
 
   @override
-  State<FollowingFeed> createState() => _FollowingFeedState();
+  State<FollowingFeed> createState() => FollowingFeedState();
 }
 
-class _FollowingFeedState extends State<FollowingFeed> {
+class FollowingFeedState extends State<FollowingFeed> {
   final _repo = FollowRepository();
   final _activeCardIndex = ValueNotifier<int>(0);
   final _pageCtrl = PageController();
@@ -97,6 +97,26 @@ class _FollowingFeedState extends State<FollowingFeed> {
   /// How many suggestions to ask for at a time. Four cards' worth, so the
   /// user has to scroll a long way before another fetch is needed.
   static const _suggestionPageSize = 20;
+
+  /// Back to the first post, and ask the server what is new.
+  ///
+  /// The Following half of what tapping Home does when Home is already the tab
+  /// you are on — see [EventsFeedState.resetAndRefresh], which this matches on
+  /// purpose. Two feeds that behave differently under the same button would be
+  /// two things to learn.
+  ///
+  /// The jump is instant: scrolling back through a long feed is a journey
+  /// nobody asked for, and every post on the way would start playing.
+  ///
+  /// [_load] keeps whatever is on screen while it runs and only shows a
+  /// spinner when there is nothing to keep, so this reads as going back to the
+  /// top rather than as the feed emptying.
+  void resetAndRefresh() {
+    if (_pageCtrl.hasClients && _pageCtrl.page != null && _pageCtrl.page! > 0) {
+      _pageCtrl.jumpToPage(0);
+    }
+    _load();
+  }
 
   @override
   void initState() {

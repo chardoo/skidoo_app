@@ -45,10 +45,6 @@ class HomePage extends StatelessWidget {
   static bool get isLive => _liveCount > 0;
   static int _liveCount = 0;
 
-  /// Fires (incremented) by `HomeNavigationPage` on every deliberate tap so
-  /// `_HomeViewState` can show the bottom nav and start its auto-hide timer.
-  static final homeTapSignal = ValueNotifier<int>(0);
-
   /// Tracks the active tab index on web so the [WebSidebar] can highlight
   /// the correct item without being coupled to [_HomeViewState].
   static final webSelectedTab = ValueNotifier<int>(0);
@@ -110,7 +106,6 @@ class _HomeViewState extends State<_HomeView> {
     super.initState();
     HomePage._liveCount++;
     HomePage.tabRequest.addListener(_onTabRequest);
-    HomePage.homeTapSignal.addListener(_onHomeTap);
     // On web: restore the tab the user was viewing before the last refresh.
     // Deferred to post-frame so Navigator/BLoC providers are fully ready.
     if (kIsWeb) {
@@ -333,7 +328,6 @@ class _HomeViewState extends State<_HomeView> {
   void dispose() {
     HomePage._liveCount--;
     HomePage.tabRequest.removeListener(_onTabRequest);
-    HomePage.homeTapSignal.removeListener(_onHomeTap);
     super.dispose();
   }
 
@@ -345,15 +339,29 @@ class _HomeViewState extends State<_HomeView> {
     }
   }
 
-  // No longer used — nav visibility is driven by scroll direction only.
-  void _onHomeTap() {}
+  /// The Home tab's index — the feeds live under it.
+  static const _feedTab = 0;
 
   /// The Profile tab's index, and a handle on its state so it can be told to
   /// reload when the tab is opened.
   static const _profileTab = 3;
   final _profileKey = GlobalKey<UserProfilePageState>();
 
-  void _changeTab(int index) {
+  void _changeTab(int index, {bool fromTap = false}) {
+    // Tapping Home while already on Home means "take me back to the top" —
+    // the feed showing goes to its first card and refetches, so what greets
+    // somebody who has scrolled a long way is new rather than an hour old.
+    // See [HomeNavigationPage.feedResetRequest].
+    //
+    // Only on a real tap, and only when Home is already the tab. Arriving here
+    // from Chat or Profile leaves the feed where it was: stepping out of a
+    // feed to answer a message and stepping back should cost nothing, and a
+    // programmatic request (a purchase landing photos in Found, say) is not
+    // somebody asking to start over.
+    if (fromTap && index == _feedTab && _selectedTab == _feedTab) {
+      HomeNavigationPage.feedResetRequest.value++;
+    }
+
     // Home / Alerts / Chats / Profile are different screens, and only some of
     // them scroll. A bar left narrowed on a short one has no gesture that
     // could open it again — see [ChromeVisibility.reset].
@@ -396,6 +404,14 @@ class _HomeViewState extends State<_HomeView> {
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
+    // Reading is vertical; sideways movement is navigation, not reading.
+    // Every notification inside this Scaffold bubbles up here, and a TabBarView
+    // is a horizontal PageView underneath — so moving from Liked to Bookmarked
+    // on Profile arrived as a page-width "scroll down" and slid the bar away,
+    // while moving back to Liked read as "scroll up" and brought it back. That
+    // is why the first tab looked like the only one that kept its nav.
+    if (notification.metrics.axis != Axis.vertical) return false;
+
     if (notification is ScrollUpdateNotification) {
       final delta = notification.scrollDelta ?? 0;
 
@@ -479,7 +495,7 @@ class _HomeViewState extends State<_HomeView> {
                       state.unreadCounts.values.fold(0, (sum, c) => sum + c),
                   builder: (context, totalUnread) => AppNavbar(
                     selectedIndex: _selectedTab,
-                    onchange: _changeTab,
+                    onchange: (i) => _changeTab(i, fromTap: true),
                     messageUnreadCount: totalUnread,
                   ),
                 ),
@@ -501,7 +517,7 @@ class _HomeViewState extends State<_HomeView> {
             builder: (context, totalUnread) => NavigationRail(
               backgroundColor: ext.cardSurface,
               selectedIndex: _selectedTab,
-              onDestinationSelected: _changeTab,
+              onDestinationSelected: (i) => _changeTab(i, fromTap: true),
               extended: MediaQuery.of(context).size.width >= 900,
               selectedIconTheme: IconThemeData(color: ext.accentGold),
               unselectedIconTheme: IconThemeData(color: ext.searchHintColor),
