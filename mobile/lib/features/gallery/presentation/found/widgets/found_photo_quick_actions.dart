@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
+import 'package:jperg_app/components/media/media_rail_action.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/features/gallery/data/saved_photos.dart';
 import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_photo_actions.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
-/// The download, as a round glass button at the right-hand end of the photo's
-/// bottom bar.
+/// The download, at the right-hand end of the photo's bottom bar.
 ///
 /// It used to sit at the foot of the vertical rail with the reactions. The
 /// design moves it here, beside the photographer's name, and that is where it
@@ -17,9 +17,26 @@ import 'package:jperg_app/models/photos/Photo.dart';
 /// The download is the one action that takes the file off it, so it stands
 /// apart, next to the name of whoever took it.
 ///
-/// Sharing stayed on the rail. It is an engagement like the rest of them, and
-/// pulling it down here would have split the reactions across two surfaces for
-/// no reason.
+/// Sharing stays on the rail on a public photo — it is an engagement like the
+/// rest of them, and splitting the reactions across two surfaces would be for
+/// nothing. On a private photo it comes down here with them, because there is
+/// no rail left worth drawing; see [FoundPhotoActions.engagementsAtBottom].
+///
+/// Drawn as a bare glyph, the same [MediaRailAction] the reactions are — no
+/// disc behind it, no outline. It used to be a white-at-18% circle with a
+/// border, which was a way of separating a white icon from a bright photo
+/// before the glyphs learned to do that themselves; they carry their own drop
+/// shadow now, and the circle was left behind doing nothing but drawing
+/// attention to one action over every other.
+///
+/// It matters more since a private photo's engagements moved down here beside
+/// it — see [FoundPhotoActions.engagementsAtBottom]. A disc around the
+/// download and nothing around the share sitting next to it reads as two
+/// different kinds of control, which they are not.
+///
+/// The tap target is kept at the size the circle used to imply: the glyph is
+/// 24 points and a finger is not, so [MediaRailAction.tapTargetSize] pads it
+/// back out to 40 rather than shrinking what can be pressed.
 ///
 /// Whether the button appears at all is [FoundPhotoActions]' business. It is
 /// only ever offered on a photo the viewer owns — bought if it had a price,
@@ -116,67 +133,19 @@ class _FoundPhotoQuickActionsState extends State<FoundPhotoQuickActions> {
         return Padding(
           // The gap belongs to the button, so it disappears with it.
           padding: EdgeInsets.only(left: AppSpacing.sm.w),
-          child: _GlassAction(
+          child: MediaRailAction(
             key: _downloadKey,
             icon: Icons.download_rounded,
-            label: 'Download photo',
+            // No count under it — the download has no number behind it, and a
+            // hardcoded zero is worse than nothing. `semanticLabel` carries
+            // what the missing text would have said.
+            semanticLabel: 'Download photo',
             busy: _downloading,
+            tapTargetSize: 40.r,
             onTap: () => _require(_download),
           ),
         );
       },
-    );
-  }
-}
-
-/// One round translucent button, per the design: a white glyph on a dark
-/// circle, legible over whatever the photo happens to be behind it.
-class _GlassAction extends StatelessWidget {
-  const _GlassAction({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.busy,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool busy;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: GestureDetector(
-        // Ignored while the file is being prepared, rather than removed: a
-        // button that vanishes mid-tap moves the one beside it under the
-        // finger.
-        onTap: busy ? null : onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          width: 40.r,
-          height: 40.r,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.18),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-          ),
-          alignment: Alignment.center,
-          child: busy
-              ? SizedBox(
-                  width: 16.r,
-                  height: 16.r,
-                  child: const CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Icon(icon, color: Colors.white, size: 19.sp),
-        ),
-      ),
     );
   }
 }

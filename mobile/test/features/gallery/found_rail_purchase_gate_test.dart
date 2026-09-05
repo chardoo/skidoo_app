@@ -204,12 +204,20 @@ void main() {
   });
 
   group('a free photo', () {
-    testWidgets('is not downloadable until it is saved', (t) async {
-      // Free to look at and free to pass on. Keeping it is a deliberate act
-      // either way — paid for with money on a priced photo, with the bookmark
-      // on a free one — so an unsaved free photo has no download.
-      expect(await barHasDownload(t, photo()), isFalse);
+    testWidgets('private is downloadable on its own', (t) async {
+      // A private photo is reachable only by the person recognition found in
+      // it, so a free one here is already the viewer's — no price to pay and
+      // nobody else it could be withheld from.
+      expect(await barHasDownload(t, photo()), isTrue);
+    });
+
+    testWidgets('public needs a claim first', (t) async {
+      // On show to everyone. Taking the file is what claiming is for.
       expect(await barHasDownload(t, photo(isPublic: true)), isFalse);
+      expect(
+        await barHasDownload(t, photo(isPublic: true, isPurchased: true)),
+        isTrue,
+      );
     });
 
     testWidgets('the rail is unchanged by any of it', (t) async {

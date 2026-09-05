@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:jperg_app/components/media/media_rail_action.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/gallery/data/saved_photos.dart';
@@ -107,6 +108,54 @@ void main() {
 
     expect(find.byType(MediaReactionRail), findsNothing);
     expect(find.byIcon(Icons.download_rounded), findsNothing);
+  });
+
+  testWidgets('the download is a bare glyph, like the actions beside it',
+      (t) async {
+    // It used to be a white-at-18% disc with a border. Next to a share glyph
+    // with nothing behind it, that reads as two different kinds of control —
+    // and the disc was only ever standing in for the drop shadow the glyphs
+    // now carry themselves.
+    await t.pumpWidget(host(
+      FoundPhotoMetaBar(
+        photo: photo(isPublic: true, price: 20, isPurchased: true),
+        purchaseGated: true,
+      ),
+    ));
+
+    final download = find.ancestor(
+      of: find.byIcon(Icons.download_rounded),
+      matching: find.byType(MediaRailAction),
+    );
+    expect(download, findsOneWidget);
+
+    // Nothing painted behind it: no disc, no outline.
+    final decorated = find.descendant(
+      of: download,
+      matching: find.byWidgetPredicate((w) =>
+          w is DecoratedBox &&
+          (w.decoration as BoxDecoration?)?.shape == BoxShape.circle),
+    );
+    expect(decorated, findsNothing);
+  });
+
+  testWidgets('and keeps a finger-sized target despite the smaller glyph',
+      (t) async {
+    // The disc was 40 points across. Losing it must not shrink what can be
+    // pressed to the 24-point icon.
+    await t.pumpWidget(host(
+      FoundPhotoMetaBar(
+        photo: photo(isPublic: true, price: 20, isPurchased: true),
+        purchaseGated: true,
+      ),
+    ));
+
+    final action = t.widget<MediaRailAction>(find.ancestor(
+      of: find.byIcon(Icons.download_rounded),
+      matching: find.byType(MediaRailAction),
+    ));
+    expect(action.tapTargetSize, isNotNull);
+    expect(action.tapTargetSize, greaterThanOrEqualTo(40));
   });
 
   testWidgets('the photographer still gets the room they had', (t) async {

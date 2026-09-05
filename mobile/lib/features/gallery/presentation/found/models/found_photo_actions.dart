@@ -10,8 +10,8 @@ import 'package:jperg_app/models/photos/Photo.dart';
 ///
 /// | | share | send | like + comment | download |
 /// |---|---|---|---|---|
-/// | free · private     | yes | yes | —   | once saved |
-/// | free · public      | yes | yes | yes | once saved |
+/// | free · private     | yes | yes | —   | **yes** |
+/// | free · public      | yes | yes | yes | once claimed |
 /// | paid · unbought    | —   | —   | —   | —     |
 /// | paid · bought · private | yes | yes | —   | yes |
 /// | paid · bought · public  | yes | yes | yes | yes |
@@ -31,9 +31,11 @@ import 'package:jperg_app/models/photos/Photo.dart';
 ///   react in front of — the thread would be the viewer talking to themselves.
 ///   The owner's comment switch is a narrower thing and closes the thread
 ///   alone: people may still like a photo nobody is allowed to discuss.
-/// * **Download needs the photo to be the viewer's to keep** — bought if it
-///   has a price, bookmarked if it does not. Found you is the only surface in
-///   the app that draws it at all: see [FoundPhotoActions.unrestricted].
+/// * **Download needs the photo to be the viewer's to keep** — which a private
+///   photo simply is, since recognition is the only thing that can reach one.
+///   Otherwise it is bought, claimed or bookmarked. Found you is the only
+///   surface in the app that draws it at all: see
+///   [FoundPhotoActions.unrestricted].
 ///
 /// The bookmark is deliberately absent from every row. Saving a photo is
 /// offered on the screens that show someone's *work* — discovery, search, a
@@ -102,12 +104,36 @@ class FoundPhotoActions {
       // Found you — see the class doc.
       save: false,
       share: true,
-      // Unlocked and priced means bought — the free case was unlocked by the
-      // other half of the test above. A free photo earns its download by being
-      // saved: keeping it is a deliberate act either way, paid for with money
-      // or with the bookmark, and "free to look at but never to keep" left a
-      // photo of the viewer that they could see and never take away.
-      download: photo.price > 0 || saved,
+      // Is this photo the viewer's to keep?
+      //
+      // Three ways it can be, and the first two are the ones that were missing:
+      //
+      // * **Private.** A private photo is reachable only by the people
+      //   recognition found in it — see the app's picture-visibility rule. So a
+      //   private photo on this screen is a photo of the viewer that nobody
+      //   else can even see. Free and private together leaves nothing to
+      //   transact: no price to pay and no audience to withhold it from.
+      //   Requiring a save first was a step that granted nothing, and Found you
+      //   does not offer the bookmark that would have completed it (see [save])
+      //   — so the button could not be earned from the screen it was missing
+      //   from.
+      //
+      // * **Acquired.** [Photo.isPurchased] is a `PaidImage` row, and a *free*
+      //   photo added to the gallery writes one too, at a price of zero — the
+      //   endpoint's own words are "free is still a claim on the photo". This
+      //   rule used to ask `price > 0` instead, which is true only of paid
+      //   photos, so a free photo the viewer had explicitly claimed came out
+      //   the same as one they had never touched.
+      //
+      // * **Bookmarked**, which is the [SavedItem] collection and a different
+      //   thing again. Kept because it is a real claim, though after the two
+      //   above it only ever decides a free *public* photo.
+      //
+      // What is still refused: a free public photo nobody has claimed. It is
+      // there to be looked at, and taking the file is the thing a claim is for.
+      // A priced photo cannot reach here unbought at all — the gate above
+      // turned it away.
+      download: !photo.isPublic || photo.isPurchased || saved,
       isPublic: photo.isPublic,
     );
   }

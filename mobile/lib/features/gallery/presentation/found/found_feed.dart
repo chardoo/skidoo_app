@@ -17,7 +17,6 @@ import 'package:jperg_app/features/gallery/presentation/found/models/found_empty
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/event_scan_result_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_album_page.dart';
-import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_album_section.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_filter_button.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_filter_sheet.dart';
@@ -159,8 +158,7 @@ class _FoundFeedState extends State<FoundFeed> {
     }
   }
 
-  void _reload() =>
-      context.read<FoundBloc>().add(const FoundPhotosRequested());
+  void _reload() => context.read<FoundBloc>().add(const FoundPhotosRequested());
 
   /// Scan a photographer's code, then run the same live search the unlock
   /// sheet runs.
@@ -217,12 +215,22 @@ class _FoundFeedState extends State<FoundFeed> {
     );
   }
 
-  /// Open a photo into the whole result set, not the section it came from.
+  /// Open a photo, into as much as the grid was actually showing.
   ///
-  /// The grid groups by event, but what the person filtered for is everything
-  /// on the screen — so the viewer takes the flat read of the same query and
-  /// swipes across events. [FoundResultsViewerPage] fetches that; the photos
-  /// already loaded go with it so the picture is there immediately.
+  /// Which is not the same question in the two states this screen has:
+  ///
+  /// * **Filtering.** The grid is a set of matches, grouped by event only
+  ///   incidentally — what the person asked for is everything on the screen.
+  ///   The viewer swipes all of it, across events, or the results they just
+  ///   filtered for would be unreachable from the one they opened.
+  /// * **Not filtering.** The sections are the structure, and a photo tapped
+  ///   under an event belongs to that event. The viewer stays in it.
+  ///
+  /// The seed is what is already loaded so the picture is under the finger
+  /// that tapped it rather than after a round trip; [FoundResultsViewerPage]
+  /// swaps in the server's own list when it lands. Unfiltered that seed is
+  /// only the section's preview slice — six tiles of a forty-photo event —
+  /// which is exactly why the viewer fetches rather than trusting it.
   void _openPhoto(
     List<FoundAlbum> albums,
     FoundAlbum album,
@@ -231,12 +239,17 @@ class _FoundFeedState extends State<FoundFeed> {
   ) {
     if (index < 0 || index >= album.photos.length) return;
 
+    final acrossEvents = filters.isActive;
+
     Navigator.of(context).push(
       NoSwipeBackPageRoute<void>(
         builder: (_) => FoundResultsViewerPage(
-          seed: [for (final a in albums) ...a.photos],
+          seed: acrossEvents
+              ? [for (final a in albums) ...a.photos]
+              : album.photos,
           initialPhotoId: album.photos[index].id,
           filters: filters,
+          eventId: acrossEvents ? null : album.id,
         ),
       ),
     );
@@ -346,7 +359,9 @@ class _FoundFeedState extends State<FoundFeed> {
                         // a review banner announcing new photos a "0 found"
                         // reads as a contradiction.
                         FoundHeader(
-                          count: (state.totalPhotos ?? 0) > 0 ? state.totalPhotos : null,
+                          count: (state.totalPhotos ?? 0) > 0
+                              ? state.totalPhotos
+                              : null,
                         ),
                         if (!_pending.isEmpty) ...[
                           SizedBox(height: AppSpacing.md.h),
@@ -378,9 +393,8 @@ class _FoundFeedState extends State<FoundFeed> {
                       // out, and pointing at a setting that is already off
                       // sends the reader nowhere.
                       filtered: empty == FoundEmptyState.filteredOut,
-                      onClear: () => context
-                          .read<FoundBloc>()
-                          .add(const FoundPhotosRequested(
+                      onClear: () => context.read<FoundBloc>().add(
+                          const FoundPhotosRequested(
                               filters: FoundFilters.none)),
                     ),
                   )
@@ -400,8 +414,8 @@ class _FoundFeedState extends State<FoundFeed> {
                           // FilterActive screen in the design.
                           expanded: state.filters.isActive,
                           onOpenAlbum: () => _openAlbum(album, state.filters),
-                          onPhotoTap: (index) =>
-                              _openPhoto(state.albums, album, index, state.filters),
+                          onPhotoTap: (index) => _openPhoto(
+                              state.albums, album, index, state.filters),
                         );
                       },
                     ),

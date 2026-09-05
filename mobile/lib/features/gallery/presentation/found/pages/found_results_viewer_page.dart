@@ -7,18 +7,26 @@ import 'package:jperg_app/features/gallery/presentation/found/models/found_filte
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
-/// The Found feed's photo viewer: every photo matching the current filters,
-/// not just the ones from the section that was tapped.
+/// The Found feed's photo viewer.
 ///
-/// The feed is grouped by event, so a tap used to hand the viewer one album's
-/// slice — six photos, or eighteen when filtered. Filter down to twelve
-/// results, see all twelve in the grid, open one, and you could swipe through
-/// only the handful that shared its event. The rest of what you had just
-/// filtered for was unreachable without going back.
+/// What it swipes through depends on what the grid was showing, and the two
+/// cases genuinely differ:
 ///
-/// So this fetches the flat, ungrouped read of the same query the grid is
-/// showing (`groupBy=none`, the whole result set, paged) and swipes through
-/// that instead.
+/// * **Filtering.** The grid is a set of matches that happens to be grouped by
+///   event, and the grouping is incidental — what the person asked for is
+///   everything on the screen. Scoping the viewer to one event would strand
+///   the rest: filter to twelve results across four events, open one, and ten
+///   of them would be unreachable without going back. So [eventId] is left
+///   null and this swipes the whole filtered set.
+/// * **Not filtering.** The sections *are* the structure — the only structure
+///   there is — and a photo tapped under an event belongs to that event. Pass
+///   its [eventId] and the viewer stays inside it.
+///
+/// Either way it is the same flat, ungrouped read (`groupBy=none`, paged),
+/// narrowed by one more filter in the second case. The feed's albums cannot
+/// answer it themselves: unfiltered they carry only a preview slice, so a
+/// viewer handed `album.photos` would swipe six photos of a forty-photo
+/// event.
 ///
 /// It opens on [seed] — the photos already on screen — so the picture appears
 /// under the finger that tapped it rather than after a round trip, and swaps in
@@ -30,6 +38,7 @@ class FoundResultsViewerPage extends StatelessWidget {
     required this.seed,
     required this.initialPhotoId,
     this.filters = FoundFilters.none,
+    this.eventId,
   });
 
   /// What the grid had loaded, flattened in the order it is displayed in.
@@ -42,6 +51,10 @@ class FoundResultsViewerPage extends StatelessWidget {
   /// The grid's filters, passed through unchanged — the viewer shows the
   /// result set the person is actually looking at, not everything they own.
   final FoundFilters filters;
+
+  /// The event to stay inside, or null to swipe the whole result set. See the
+  /// class doc for which the feed passes when.
+  final String? eventId;
 
   /// First page big enough to hold the tapped photo in the ordinary case.
   ///
@@ -57,6 +70,10 @@ class FoundResultsViewerPage extends StatelessWidget {
     return BlocProvider(
       create: (_) => FoundAlbumBloc(
         getFoundPhotosUseCase: sl<GetFoundPhotosUseCase>(),
+        // Narrows the same query to one event when there is one — the bloc
+        // folds it into the filters itself, so the album drill-down and this
+        // viewer ask the server the same question.
+        eventId: eventId,
         filters: filters,
         pageSize: pageSize,
       )..add(const FoundAlbumPhotosRequested()),

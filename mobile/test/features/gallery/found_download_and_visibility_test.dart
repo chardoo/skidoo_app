@@ -57,13 +57,40 @@ void main() {
       );
     });
 
-    test('a free photo has to have been saved', () {
-      // The rule this replaced was "free photos are never downloadable", which
-      // left a photo of the viewer that they could look at and never keep.
-      // Bookmarking it is the free equivalent of paying for it.
-      expect(FoundPhotoActions.forFoundPhoto(photo()).download, isFalse);
+    test('a free private photo is already the viewer\'s', () {
+      // Nothing left to transact. A private photo is reachable only by the
+      // people recognition found in it, so one on this screen is a photo of the
+      // viewer that nobody else can see — and free means there is no price
+      // either. Asking for a save first was a step that granted nothing, on a
+      // screen that does not offer the bookmark to complete it.
+      expect(FoundPhotoActions.forFoundPhoto(photo()).download, isTrue);
+    });
+
+    test('a free photo that was claimed is downloadable, public or not', () {
+      // `isPurchased` is a PaidImage row, and adding a *free* photo to the
+      // gallery writes one at a price of zero. The rule used to ask
+      // `price > 0`, which is true only of paid photos — so a free photo the
+      // viewer had explicitly claimed read the same as one they had never
+      // touched. This is the case the Eastern Germany photos were in.
       expect(
-        FoundPhotoActions.forFoundPhoto(photo(), saved: true).download,
+        FoundPhotoActions.forFoundPhoto(
+          photo(isPublic: true, isPurchased: true),
+        ).download,
+        isTrue,
+      );
+    });
+
+    test('a free public photo nobody has claimed is not downloadable', () {
+      // The one free case still refused, and the reason the private test above
+      // is about privacy rather than about price. This photo is on show to
+      // everyone; taking the file is what a claim is for.
+      expect(
+        FoundPhotoActions.forFoundPhoto(photo(isPublic: true)).download,
+        isFalse,
+      );
+      expect(
+        FoundPhotoActions.forFoundPhoto(photo(isPublic: true), saved: true)
+            .download,
         isTrue,
       );
     });
