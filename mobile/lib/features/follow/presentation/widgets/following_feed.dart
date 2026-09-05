@@ -1,5 +1,6 @@
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/cache/disk_cache.dart';
+import 'package:jperg_app/core/session/view_reporter.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -71,6 +72,11 @@ class FollowingFeedState extends State<FollowingFeed> {
   final _activeCardIndex = ValueNotifier<int>(0);
   final _pageCtrl = PageController();
 
+  /// The post being watched, reported when the reader moves on. This feed is
+  /// ranked with the same re-view penalty the discover feed uses — see
+  /// [ViewWatch], and `EventsFeedState`, which does exactly this.
+  final _watch = ViewWatch();
+
   /// The slots the last build laid out, so the page callback can reason about
   /// what it landed on without rebuilding them.
   List<FeedSlot> _slots = const [];
@@ -115,7 +121,21 @@ class FollowingFeedState extends State<FollowingFeed> {
     if (_pageCtrl.hasClients && _pageCtrl.page != null && _pageCtrl.page! > 0) {
       _pageCtrl.jumpToPage(0);
     }
+    // They have left the post they were on, whatever the refresh brings back.
+    // The index itself is left to the page callback, which fires for the jump
+    // above and carries the rest of the bookkeeping with it.
+    _watch.hidden();
     _load();
+  }
+
+  /// Tell the watch which post is on screen — null for a suggestions card,
+  /// which is not one. Called from everywhere the answer can change, including
+  /// after a load, since the page callback never fires for the post the feed
+  /// opens on.
+  void _syncWatch() {
+    final index = _activeCardIndex.value;
+    final slot = index >= 0 && index < _slots.length ? _slots[index] : null;
+    _watch.showing(slot?.event?.id);
   }
 
   @override
@@ -169,6 +189,9 @@ class FollowingFeedState extends State<FollowingFeed> {
 
   @override
   void dispose() {
+    // Leaving the tab ends the look in progress; the last post of a session
+    // would otherwise never be reported.
+    _watch.hidden();
     FollowRepository.followedRevision.removeListener(_onFollowedChanged);
     _pageCtrl.dispose();
     _activeCardIndex.dispose();
@@ -309,6 +332,7 @@ class FollowingFeedState extends State<FollowingFeed> {
   }
 
   void _onActiveSlotChanged(int slotIndex) {
+    _syncWatch();
     if (slotIndex >= _slots.length - 2 && !_loadingMore) _loadMore();
 
     // Top the pool up before the last slice is reached, so the next card is
@@ -352,6 +376,13 @@ class FollowingFeedState extends State<FollowingFeed> {
       events: _events,
       suggestions: _suggestions,
     );
+
+    // The slots are only known here, so this is the first moment the watch can
+    // be told what a fresh list put under the reader. Idempotent for an
+    // unchanged post, which is what makes it safe to say on every build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncWatch();
+    });
 
     return RefreshIndicator(
       onRefresh: _load,

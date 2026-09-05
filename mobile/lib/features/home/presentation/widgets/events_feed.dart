@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/session/view_reporter.dart';
 import 'package:jperg_app/core/utils/focus_utils.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/ads/presentation/feed_promos.dart';
@@ -111,6 +112,10 @@ class EventsFeedState extends State<EventsFeed> {
   final _pageCtrl = PageController();
   final _feedFocusNode = FocusNode();
 
+  /// Reports the card being watched, and for how long — the signal the ranking
+  /// uses to stop offering the same album twice. See [ViewWatch].
+  final _watch = ViewWatch();
+
   /// So the feed can tell your own request apart from everyone else's — you
   /// cannot answer your own.
   String _myUserId = '';
@@ -145,7 +150,21 @@ class EventsFeedState extends State<EventsFeed> {
       _pageCtrl.jumpToPage(0);
     }
     _activeCardIndex.value = 0;
+    // They have left the card they were on, whatever the refetch brings back.
+    _syncWatch();
     context.read<DiscoveryBloc>().add(const DiscoveryLoadRequested());
+  }
+
+  /// Tell the watch what is being looked at now.
+  ///
+  /// Called from everywhere the answer can change rather than only from the
+  /// page callback, which never fires for the card the feed opens on — and
+  /// that first card is the one this is most about.
+  void _syncWatch() {
+    final events = widget.discoveryState.events;
+    final index = _activeCardIndex.value;
+    _watch.showing(
+        index >= 0 && index < events.length ? events[index].id : null);
   }
 
   @override
@@ -154,6 +173,11 @@ class EventsFeedState extends State<EventsFeed> {
     _resolveSwipeHint();
     _loadMyUserId();
     _fetchInitial();
+    // After the first frame: cached events can already be in state here, and
+    // that is a card on screen being watched.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncWatch();
+    });
     // NOTE: deliberately NOT auto-focusing the feed on web. Grabbing focus on
     // load captured the browser's keyboard/input focus, which then blocked the
     // sidebar search field (it lives above the Navigator in its own overlay)
@@ -166,6 +190,11 @@ class EventsFeedState extends State<EventsFeed> {
     super.didUpdateWidget(oldWidget);
     final newEvents = widget.discoveryState.events;
     final oldEvents = oldWidget.discoveryState.events;
+
+    // Before the early returns below: a refresh can replace the list without
+    // changing its length, and the card under the reader is then a different
+    // event. That is a new view, and the end of the previous one.
+    _syncWatch();
 
     if (newEvents.length == oldEvents.length) return;
     // initState already called _fetchInitial for the very first population.
@@ -202,6 +231,9 @@ class EventsFeedState extends State<EventsFeed> {
 
   @override
   void dispose() {
+    // Leaving the feed ends the look that was in progress; without this the
+    // last card of every session goes unreported.
+    _watch.hidden();
     _activeCardIndex.dispose();
     _pageCtrl.dispose();
     _feedFocusNode.dispose();
@@ -243,6 +275,9 @@ class EventsFeedState extends State<EventsFeed> {
     final item =
         pageIndex < virtualItems.length ? virtualItems[pageIndex] : null;
     _activeCardIndex.value = item is _EventItem ? item.eventIndex : -1;
+    // An ad or a request slot is not an event being watched, and the index
+    // above says so — the watch closes the previous card out either way.
+    _syncWatch();
 
     if (item is _AdItem) _promos.fireImpression(item.adIndex);
 
