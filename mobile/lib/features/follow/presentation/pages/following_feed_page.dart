@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/ads/presentation/feed_promos.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/feed_item_card.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/event_comment_page.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/event_discovery_card.dart';
@@ -13,6 +17,32 @@ import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/services/auth_service.dart';
+
+// ── What a row of this feed can be ────────────────────────────────────────────
+
+sealed class _Row {
+  const _Row();
+}
+
+final class _EventRow extends _Row {
+  const _EventRow(this.event, this.index);
+  final EventDiscovery event;
+
+  /// The event's own position, which is what the active-card tracking counts —
+  /// promos are not cards anyone is "on".
+  final int index;
+}
+
+final class _AdRow extends _Row {
+  const _AdRow(this.slot);
+  final int slot;
+}
+
+final class _RequestRow extends _Row {
+  const _RequestRow(this.slot);
+  final int slot;
+}
 
 class FollowingFeedPage extends StatefulWidget {
   const FollowingFeedPage({super.key});
@@ -36,18 +66,69 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
   String? _pendingHideEventId;
   static const _limit = 20;
 
+  /// So a request you posted yourself shows its count without an answer button.
+  String _myUserId = '';
+
+  /// Campaigns and requests, dealt in at half the rate Explore uses.
+  ///
+  /// This feed is the people you chose, so the bar for interrupting it is
+  /// higher — but a request board nobody browses and a campaign nobody is
+  /// shown are worth nothing to the people paying for them, and this is where
+  /// the readers are. See [FeedPromos] for the boost rota.
+  late final _promos = FeedPromos(
+    onChanged: () {
+      if (mounted) setState(() {});
+    },
+    intervalScale: 2,
+  );
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _scheduleActiveCardUpdate());
     _load();
+    _loadMyUserId();
   }
 
   @override
   void dispose() {
     _activeCardIndex.dispose();
+    _promos.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadMyUserId() async {
+    final id = await sl<AuthService>().getUserId();
+    if (mounted) setState(() => _myUserId = id);
+  }
+
+  /// Events with the promo slots folded in, in the order they are scrolled
+  /// through. Same arithmetic as Explore, at [FeedPromos.intervalScale] twice
+  /// the interval — and a slot with nothing in it is left out rather than
+  /// rendered as a gap.
+  List<_Row> get _rows {
+    final adsInterval = _promos.adsInterval;
+    final requestsInterval = _promos.requestsInterval;
+
+    final rows = <_Row>[];
+    var adSlot = 0;
+    var requestSlot = 0;
+
+    for (var i = 0; i < _events.length; i++) {
+      rows.add(_EventRow(_events[i], i));
+      final count = i + 1;
+      // Requests take priority when both intervals coincide — the same rule
+      // the Explore feed follows.
+      if (_promos.requestsEnabled && count % requestsInterval == 0) {
+        final slot = requestSlot++;
+        if (_promos.requestForSlot(slot) != null) rows.add(_RequestRow(slot));
+      } else if (_promos.adsEnabled && count % adsInterval == 0) {
+        final slot = adSlot++;
+        if (_promos.adForSlot(slot) != null) rows.add(_AdRow(slot));
+      }
+    }
+    return rows;
   }
 
   GlobalKey _keyFor(String eventId) =>
@@ -109,6 +190,10 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
         _loading = false;
         _hasMore = result.hasMore;
       });
+      _promos.reset();
+      _promos.loadInitial(
+        contextEventId: result.events.isNotEmpty ? result.events.first.id : null,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -145,6 +230,10 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
         _loadingMore = false;
         _hasMore = result.hasMore;
       });
+      // A page more of events is a page more of slots to fill.
+      _promos.loadMore(
+        contextEventId: _events.isNotEmpty ? _events.last.id : null,
+      );
     } catch (e) {
       debugPrint('[FollowingFeed] load-more ERROR: $e');
       if (!mounted) return;
@@ -172,6 +261,64 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
         });
       }
     });
+  }
+
+  // ── Promo rows ────────────────────────────────────────────────────────────
+
+  /// A campaign or a request as a tile in this list, not a page of a pager:
+  /// this feed scrolls, and a full-viewport poster in the middle of it would
+  /// read as the end of the list. Boxed to the height the request board gives
+  /// the same card. See [FeedItemCard.fullBleed].
+  Widget _promoTile(Widget? card) {
+    if (card == null) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md.w,
+        AppSpacing.sm.h,
+        AppSpacing.md.w,
+        AppSpacing.sm.h,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.lg.r),
+        child: SizedBox(height: 520.h, child: card),
+      ),
+    );
+  }
+
+  Widget? _adCard(int slot) {
+    final ad = _promos.adForSlot(slot);
+    if (ad == null) return null;
+    // Counted as seen when it is built, which in a scrolling list is the
+    // nearest thing to "it came round": the pager can wait for a page change
+    // because a page is the whole screen, and a tile is not.
+    _promos.fireImpression(slot);
+    return FeedItemCard(
+      key: ValueKey('following_ad_${ad.adId}'),
+      fullBleed: false,
+      data: FeedItemData.fromAd(
+        ad,
+        onCtaTap: () => _promos.trackClick(ad, slot),
+      ),
+      onHide: () => _promos.hideAd(slot),
+    );
+  }
+
+  Widget? _requestCard(int slot) {
+    final req = _promos.requestForSlot(slot);
+    if (req == null) return null;
+    return FeedItemCard(
+      // Slotted as well as identified: a boosted request comes round more than
+      // once, and two rows of one list cannot share a key.
+      key: ValueKey('following_req_${slot}_${req.id}'),
+      fullBleed: false,
+      data: FeedItemData.fromRequest(
+        req,
+        onAnswerTap: req.requesterId == _myUserId
+            ? null
+            : () => _promos.answer(context, req),
+      ),
+      onHide: () => _promos.hideRequest(req.id),
+    );
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -245,54 +392,63 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
                           alignment: Alignment.topCenter,
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 720),
-                            child: ListView.builder(
-                              physics: const BouncingScrollPhysics(
-                                decelerationRate: ScrollDecelerationRate.fast,
-                              ),
-                              cacheExtent: 1500,
-                              padding: EdgeInsets.zero,
-                              itemCount:
-                                  _events.length + (_loadingMore ? 1 : 0),
-                              itemBuilder: (_, i) {
-                                if (i == _events.length) {
-                                  return Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: AppSpacing.xl.h),
-                                    child: const AppLoadingIndicator(),
-                                  );
-                                }
-                                final event = _events[i];
-                                final isPending =
-                                    _pendingHideEventId == event.id;
-                                return ClipRect(
-                                  child: AnimatedAlign(
-                                    duration:
-                                        const Duration(milliseconds: 380),
-                                    curve: Curves.easeInOut,
-                                    alignment: Alignment.topCenter,
-                                    heightFactor: isPending ? 0.0 : 1.0,
-                                    child: IgnorePointer(
-                                      ignoring: isPending,
-                                      child: EventDiscoveryCard(
-                                        key: _keyFor(event.id),
-                                        event: event,
-                                        cardIndex: i,
-                                        activeCardIndex: _activeCardIndex,
-                                        isAuthenticated: true,
-                                        isOwner: currentUserId != null &&
-                                            currentUserId ==
-                                                event.photographerId,
-                                        onTap: () {},
-                                        onCommentTap: () =>
-                                            EventCommentPage.show(
-                                                context, event),
-                                        onHide: () => _onHide(event.id),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
+                            child: Builder(builder: (context) {
+                              final rows = _rows;
+                              return ListView.builder(
+                                physics: const BouncingScrollPhysics(
+                                  decelerationRate: ScrollDecelerationRate.fast,
+                                ),
+                                cacheExtent: 1500,
+                                padding: EdgeInsets.zero,
+                                itemCount: rows.length + (_loadingMore ? 1 : 0),
+                                itemBuilder: (_, i) {
+                                  if (i == rows.length) {
+                                    return Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          vertical: AppSpacing.xl.h),
+                                      child: const AppLoadingIndicator(),
+                                    );
+                                  }
+
+                                  switch (rows[i]) {
+                                    case _AdRow(:final slot):
+                                      return _promoTile(_adCard(slot));
+                                    case _RequestRow(:final slot):
+                                      return _promoTile(_requestCard(slot));
+                                    case _EventRow(:final event, :final index):
+                                      final isPending =
+                                          _pendingHideEventId == event.id;
+                                      return ClipRect(
+                                        child: AnimatedAlign(
+                                          duration:
+                                              const Duration(milliseconds: 380),
+                                          curve: Curves.easeInOut,
+                                          alignment: Alignment.topCenter,
+                                          heightFactor: isPending ? 0.0 : 1.0,
+                                          child: IgnorePointer(
+                                            ignoring: isPending,
+                                            child: EventDiscoveryCard(
+                                              key: _keyFor(event.id),
+                                              event: event,
+                                              cardIndex: index,
+                                              activeCardIndex: _activeCardIndex,
+                                              isAuthenticated: true,
+                                              isOwner: currentUserId != null &&
+                                                  currentUserId ==
+                                                      event.photographerId,
+                                              onTap: () {},
+                                              onCommentTap: () =>
+                                                  EventCommentPage.show(
+                                                      context, event),
+                                              onHide: () => _onHide(event.id),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                  }
+                                },
+                              );
+                            }),
                           ),
                         ),
                       ),

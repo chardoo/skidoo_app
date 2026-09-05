@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/ads/data/models/ad_model.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/features/ads/presentation/feed_promos.dart';
+import 'package:jperg_app/features/ads/request_board_access.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/feed_item_card.dart';
-import 'package:jperg_app/features/ads/presentation/widgets/invitation_sheet.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -26,14 +26,18 @@ const _eventTypes = [
 ];
 
 class RequestBoardPage extends StatefulWidget {
-  const RequestBoardPage({super.key});
+  const RequestBoardPage({super.key, this.repository});
+
+  /// Injectable so the board can be pumped without an HTTP client behind it —
+  /// the same reason [SharedEventFeedPage] takes its data source.
+  final AdsRepository? repository;
 
   @override
   State<RequestBoardPage> createState() => _RequestBoardPageState();
 }
 
 class _RequestBoardPageState extends State<RequestBoardPage> {
-  final _repo = AdsRepository();
+  late final _repo = widget.repository ?? AdsRepository();
   final _locationCtrl = TextEditingController();
 
   List<FeedRequestModel> _requests = [];
@@ -55,11 +59,27 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
 
   static const _limit = 20;
 
+  /// Whether this viewer is an audience for the board at all.
+  ///
+  /// The tile that opens this is already hidden from clients, but a push tap
+  /// and a `request_board` deep link both land here without passing it — so the
+  /// rule lives on the screen too, where every route in has to meet it. See
+  /// [canBrowseRequestBoard].
+  bool get _mayBrowse => canBrowseRequestBoard(AuthService.role.value);
+
   @override
   void initState() {
     super.initState();
     _loadMyUserId();
-    _load();
+    // No request for a board the server will answer with an empty list. The
+    // spinner would resolve to "No open requests found", which reads as a
+    // temporary emptiness — come back later and there will be some — and that
+    // is not what is happening.
+    if (_mayBrowse) {
+      _load();
+    } else {
+      _loading = false;
+    }
   }
 
   Future<void> _loadMyUserId() async {
@@ -147,47 +167,18 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
   /// Not a conversation. The photographer puts themselves in front of the
   /// requester, who reads through everyone who answered and starts the DM with
   /// whoever they like — so this posts an interest and stops there.
+  ///
+  /// The sheet and the call are [answerFeedRequest], which is what the feeds
+  /// deal this card with too: answering from the board and answering from a
+  /// feed cannot come to mean different things.
   Future<void> _answer(FeedRequestModel req) async {
-    final result = await InvitationSheet.show(
-      context,
-      requestTitle: req.title,
-      requesterName:
-          req.requesterName.isNotEmpty ? req.requesterName : 'The requester',
-      existingMessage: req.viewerInterested ? (req.viewerMessage ?? '') : null,
-    );
-    if (result == null || !mounted) return;
-
-    final sending = result.action == InvitationAction.send;
-    try {
-      final count = sending
-          ? await _repo.expressInterest(req.id, message: result.message)
-          : await _repo.withdrawInterest(req.id);
-      if (!mounted) return;
-      setState(() {
-        _requests = [
-          for (final r in _requests)
-            if (r.id == req.id)
-              r.copyWith(
-                interestedCount: count,
-                viewerInterested: sending,
-                viewerMessage: sending ? result.message : '',
-              )
-            else
-              r,
-        ];
-      });
-      AppSnackBar.success(
-        context,
-        sending ? 'Invitation sent' : 'Invitation withdrawn',
-      );
-    } catch (e) {
-      debugPrint('[RequestBoardPage] _answer ERROR: $e');
-      if (!mounted) return;
-      AppSnackBar.error(
-        context,
-        sending ? 'Could not send that.' : 'Could not withdraw that.',
-      );
-    }
+    final updated = await answerFeedRequest(context, req, repo: _repo);
+    if (updated == null || !mounted) return;
+    setState(() {
+      _requests = [
+        for (final r in _requests) r.id == updated.id ? updated : r,
+      ];
+    });
   }
 
   void _showFilterSheet() {
@@ -231,18 +222,31 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
         ),
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: Badge(
-              isLabelVisible: hasFilters,
-              backgroundColor: ext.accentGold,
-              child: Icon(Icons.tune_rounded,
-                  color: ext.greetingColor, size: 22.sp),
+          // Nothing to filter when there is no board — the control would open
+          // a sheet of event types over an explanation.
+          if (_mayBrowse)
+            IconButton(
+              icon: Badge(
+                isLabelVisible: hasFilters,
+                backgroundColor: ext.accentGold,
+                child: Icon(Icons.tune_rounded,
+                    color: ext.greetingColor, size: 22.sp),
+              ),
+              onPressed: _showFilterSheet,
             ),
-            onPressed: _showFilterSheet,
-          ),
         ],
       ),
-      body: _loading
+      body: !_mayBrowse
+          // Said plainly, rather than as an empty board. A request is a job
+          // going begging; it means nothing to somebody who cannot take it,
+          // and nothing here is broken or pending.
+          ? const AppEmptyState(
+              icon: Icons.photo_camera_outlined,
+              message: 'The request board is for photographers.\n\n'
+                  'You can still post a request of your own — tap Create, '
+                  'and track it under My Requests.',
+            )
+          : _loading
           ? const AppLoadingIndicator()
           : _errorMessage != null
               ? AppErrorView(

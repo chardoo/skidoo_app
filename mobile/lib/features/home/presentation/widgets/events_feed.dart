@@ -5,11 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/focus_utils.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
-import 'package:jperg_app/features/ads/data/models/ad_model.dart';
-import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
-import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
-import 'package:jperg_app/features/ads/presentation/widgets/invitation_sheet.dart';
+import 'package:jperg_app/features/ads/presentation/feed_promos.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/feed_item_card.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
@@ -50,10 +46,10 @@ final class _LoadingItem extends _FeedItem {
 List<_FeedItem> _buildVirtualList(
   List<EventDiscovery> events,
   bool isLoadingMore,
+  FeedPromos promos,
 ) {
-  final cfg = AppConfigRepository.current;
-  final adsInterval = cfg.adsEveryNEvents.clamp(1, 9999);
-  final requestsInterval = cfg.requestsEveryNEvents.clamp(1, 9999);
+  final adsInterval = promos.adsInterval;
+  final requestsInterval = promos.requestsInterval;
 
   final items = <_FeedItem>[];
   var requestSlot = 0;
@@ -64,17 +60,17 @@ List<_FeedItem> _buildVirtualList(
     final count = i + 1;
     // Requests take priority when both intervals coincide.
     if (count % requestsInterval == 0) {
-      if (cfg.requestsEnabled) items.add(_RequestItem(requestSlot++));
+      if (promos.requestsEnabled) items.add(_RequestItem(requestSlot++));
     } else if (count % adsInterval == 0) {
-      if (cfg.adsEnabled) items.add(_AdItem(adSlot++));
+      if (promos.adsEnabled) items.add(_AdItem(adSlot++));
     }
   }
 
   // When the feed is shorter than both intervals, append one slot of each
   // so they always appear. The builder collapses them when data is absent.
   if (events.isNotEmpty) {
-    if (adSlot == 0 && cfg.adsEnabled) items.add(const _AdItem(0));
-    if (requestSlot == 0 && cfg.requestsEnabled) {
+    if (adSlot == 0 && promos.adsEnabled) items.add(const _AdItem(0));
+    if (requestSlot == 0 && promos.requestsEnabled) {
       items.add(const _RequestItem(0));
     }
   }
@@ -114,28 +110,19 @@ class _EventsFeedState extends State<EventsFeed> {
   final _activeCardIndex = ValueNotifier<int>(0);
   final _pageCtrl = PageController();
   final _feedFocusNode = FocusNode();
-  final _repo = AdsRepository();
 
   /// So the feed can tell your own request apart from everyone else's — you
   /// cannot answer your own.
   String _myUserId = '';
 
-  // One ad per slot — fetched fresh from the server for each slot.
-  final List<AdModel?> _ads = [];
-  // Per-slot impression IDs, saved after trackImpression responds.
-  final List<String?> _impressionIds = [];
-  // Context event IDs passed to serveAd, forwarded to trackImpression.
-  final List<String?> _adContextEventIds = [];
-  // Ad slot indices that have already fired an impression (never re-fire).
-  final _firedAdImpressions = <int>{};
-
-  // All requests fetched so far (paginated on load-more).
-  List<FeedRequestModel> _requests = [];
-  int _requestPage = 1;
-  final _hiddenRequestIds = <String>{};
-
-  // Guards against overlapping fetch-more calls.
-  bool _fetchingMore = false;
+  /// The campaigns and requests dealt in between the events, and everything
+  /// about how often they come round. Shared with the Following feed — see
+  /// [FeedPromos].
+  late final _promos = FeedPromos(
+    onChanged: () {
+      if (mounted) setState(() {});
+    },
+  );
 
   @override
   void initState() {
@@ -165,14 +152,7 @@ class _EventsFeedState extends State<EventsFeed> {
 
     if (firstChanged) {
       // Full refresh: discard stale ad/request state and fetch fresh.
-      setState(() {
-        _ads.clear();
-        _impressionIds.clear();
-        _adContextEventIds.clear();
-        _requests = [];
-        _requestPage = 1;
-        _firedAdImpressions.clear();
-      });
+      setState(_promos.reset);
       _fetchInitial();
     } else if (newEvents.length > oldEvents.length) {
       // Load-more: events were appended, fetch next ad + request page.
@@ -182,92 +162,17 @@ class _EventsFeedState extends State<EventsFeed> {
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
-  Future<void> _fetchInitial() async {
-    debugPrint('[EventsFeed] _fetchInitial');
-    try {
-      final contextEventId = widget.discoveryState.events.isNotEmpty
-          ? widget.discoveryState.events.first.id
-          : null;
+  Future<void> _fetchInitial() => _promos.loadInitial(
+        contextEventId: widget.discoveryState.events.isNotEmpty
+            ? widget.discoveryState.events.first.id
+            : null,
+      );
 
-      final cfg = AppConfigRepository.current;
-      final results = await Future.wait([
-        if (cfg.adsEnabled)
-          _repo.serveAd(placement: 'event_feed', contextEventId: contextEventId)
-        else
-          Future<AdModel?>.value(null),
-        if (cfg.requestsEnabled)
-          _repo.getRequests(page: 1)
-        else
-          Future<List<FeedRequestModel>>.value([]),
-      ]);
-
-      if (!mounted) return;
-      final ad = results[0] as AdModel?;
-      final requests = results[1] as List<FeedRequestModel>;
-
-      setState(() {
-        _ads
-          ..clear()
-          ..add(ad);
-        _impressionIds
-          ..clear()
-          ..add(null);
-        _adContextEventIds
-          ..clear()
-          ..add(contextEventId);
-        _requests = requests;
-        _requestPage = 1;
-      });
-    } catch (e, st) {
-      debugPrint('[EventsFeed] _fetchInitial ERROR: $e\n$st');
-    }
-  }
-
-  Future<void> _fetchMore() async {
-    if (_fetchingMore) return;
-    _fetchingMore = true;
-    try {
-      final cfg = AppConfigRepository.current;
-      final nextRequestPage = _requestPage + 1;
-      final contextEventId = widget.discoveryState.events.isNotEmpty
-          ? widget.discoveryState.events.last.id
-          : null;
-      final results = await Future.wait([
-        if (cfg.adsEnabled)
-          _repo.serveAd(placement: 'event_feed', contextEventId: contextEventId)
-        else
-          Future<AdModel?>.value(null),
-        if (cfg.requestsEnabled)
-          _repo.getRequests(page: nextRequestPage)
-        else
-          Future<List<FeedRequestModel>>.value([]),
-      ]);
-      if (!mounted) return;
-      AdModel? ad = results[0] as AdModel?;
-      final moreRequests = results[1] as List<FeedRequestModel>;
-
-      // Drop the ad if its ID was already shown in a previous slot.
-      if (ad != null) {
-        final seenAdIds = _ads.whereType<AdModel>().map((a) => a.adId).toSet();
-        if (seenAdIds.contains(ad.adId)) ad = null;
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _ads.add(ad);
-        _impressionIds.add(null);
-        _adContextEventIds.add(contextEventId);
-        if (moreRequests.isNotEmpty) {
-          _requests = [..._requests, ...moreRequests];
-          _requestPage = nextRequestPage;
-        }
-      });
-    } catch (e, st) {
-      debugPrint('[EventsFeed] _fetchMore ERROR: $e\n$st');
-    } finally {
-      _fetchingMore = false;
-    }
-  }
+  Future<void> _fetchMore() => _promos.loadMore(
+        contextEventId: widget.discoveryState.events.isNotEmpty
+            ? widget.discoveryState.events.last.id
+            : null,
+      );
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -276,6 +181,7 @@ class _EventsFeedState extends State<EventsFeed> {
     _activeCardIndex.dispose();
     _pageCtrl.dispose();
     _feedFocusNode.dispose();
+    _promos.dispose();
     super.dispose();
   }
 
@@ -314,32 +220,11 @@ class _EventsFeedState extends State<EventsFeed> {
         pageIndex < virtualItems.length ? virtualItems[pageIndex] : null;
     _activeCardIndex.value = item is _EventItem ? item.eventIndex : -1;
 
-    if (item is _AdItem && !_firedAdImpressions.contains(item.adIndex)) {
-      _firedAdImpressions.add(item.adIndex);
-      _fireAdImpression(item.adIndex);
-    }
+    if (item is _AdItem) _promos.fireImpression(item.adIndex);
 
     if (pageIndex >= virtualItems.length - 2 &&
         !widget.discoveryState.isLoadingMore) {
       widget.onLoadMore();
-    }
-  }
-
-  Future<void> _fireAdImpression(int adIdx) async {
-    final ad = adIdx < _ads.length ? _ads[adIdx] : null;
-    if (ad == null) return;
-    final contextEventId =
-        adIdx < _adContextEventIds.length ? _adContextEventIds[adIdx] : null;
-    final id = await _repo.trackImpression(
-      adId: ad.adId,
-      adsetId: ad.adsetId,
-      campaignId: ad.campaignId,
-      placement: ad.placement,
-      impressionToken: ad.impressionToken,
-      contextEventId: contextEventId,
-    );
-    if (mounted && adIdx < _impressionIds.length) {
-      _impressionIds[adIdx] = id;
     }
   }
 
@@ -399,50 +284,9 @@ class _EventsFeedState extends State<EventsFeed> {
 
   // ── Requests ──────────────────────────────────────────────────────────────
 
-  /// Answering a request that turned up in the feed. Same rule as the board:
-  /// this is an invitation, not a conversation — the requester starts those.
   Future<void> _loadMyUserId() async {
     final id = await sl<AuthService>().getUserId();
     if (mounted) setState(() => _myUserId = id);
-  }
-
-  Future<void> _answerRequest(FeedRequestModel req) async {
-    final result = await InvitationSheet.show(
-      context,
-      requestTitle: req.title,
-      requesterName:
-          req.requesterName.isNotEmpty ? req.requesterName : 'The requester',
-      existingMessage: req.viewerInterested ? (req.viewerMessage ?? '') : null,
-    );
-    if (result == null || !mounted) return;
-
-    final sending = result.action == InvitationAction.send;
-    try {
-      final count = sending
-          ? await _repo.expressInterest(req.id, message: result.message)
-          : await _repo.withdrawInterest(req.id);
-      if (!mounted) return;
-      setState(() {
-        _requests = [
-          for (final r in _requests)
-            if (r.id == req.id)
-              r.copyWith(
-                interestedCount: count,
-                viewerInterested: sending,
-                viewerMessage: sending ? result.message : '',
-              )
-            else
-              r,
-        ];
-      });
-      AppSnackBar.success(
-        context, sending ? 'Invitation sent' : 'Invitation withdrawn');
-    } catch (e) {
-      debugPrint('[EventsFeed] _answerRequest ERROR: $e');
-      if (!mounted) return;
-      AppSnackBar.error(context,
-          sending ? 'Could not send that.' : 'Could not withdraw that.');
-    }
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -450,21 +294,20 @@ class _EventsFeedState extends State<EventsFeed> {
   @override
   Widget build(BuildContext context) {
     final state = widget.discoveryState;
-    final visibleRequests =
-        _requests.where((r) => !_hiddenRequestIds.contains(r.id)).toList();
     // Drop ad/request slots with no confirmed content — _buildVirtualList
     // reserves a slot as soon as an interval is reached (or the batch is
     // shorter than the interval), before the async ad/request fetch for
     // that slot has resolved or is known to be empty. Rendering those as a
     // PageView page produces a swipeable blank screen; skipping them here
     // means the feed only ever shows a page once there's something on it.
-    final virtualItems =
-        _buildVirtualList(state.events, state.isLoadingMore).where((item) {
-      if (item is _AdItem) {
-        return item.adIndex < _ads.length && _ads[item.adIndex] != null;
-      }
+    final virtualItems = _buildVirtualList(
+      state.events,
+      state.isLoadingMore,
+      _promos,
+    ).where((item) {
+      if (item is _AdItem) return _promos.adForSlot(item.adIndex) != null;
       if (item is _RequestItem) {
-        return item.requestIndex < visibleRequests.length;
+        return _promos.requestForSlot(item.requestIndex) != null;
       }
       return true;
     }).toList();
@@ -494,7 +337,7 @@ class _EventsFeedState extends State<EventsFeed> {
                 // ── Injected ad ───────────────────────────────────────────────
                 if (item is _AdItem) {
                   final adIdx = item.adIndex;
-                  final ad = adIdx < _ads.length ? _ads[adIdx] : null;
+                  final ad = _promos.adForSlot(adIdx);
                   if (ad == null) return const SizedBox.shrink();
 
                   // Not scaled into a card any more: a campaign is a page of
@@ -503,36 +346,28 @@ class _EventsFeedState extends State<EventsFeed> {
                     key: ValueKey('ad_$adIdx'),
                     data: FeedItemData.fromAd(
                       ad,
-                      onCtaTap: () => _repo.trackClick(
-                        adId: ad.adId,
-                        campaignId: ad.campaignId,
-                        impressionId: adIdx < _impressionIds.length
-                            ? _impressionIds[adIdx]
-                            : null,
-                      ),
+                      onCtaTap: () => _promos.trackClick(ad, adIdx),
                     ),
-                    onHide: () => setState(() {
-                      if (adIdx < _ads.length) _ads[adIdx] = null;
-                    }),
+                    onHide: () => _promos.hideAd(adIdx),
                   );
                 }
 
                 // ── Injected request ──────────────────────────────────────────
                 if (item is _RequestItem) {
-                  if (item.requestIndex >= visibleRequests.length) {
-                    return const SizedBox.shrink();
-                  }
-                  final req = visibleRequests[item.requestIndex];
+                  final req = _promos.requestForSlot(item.requestIndex);
+                  if (req == null) return const SizedBox.shrink();
                   return FeedItemCard(
-                    key: ValueKey('req_${req.id}'),
+                    // The slot is in the key as well as the request: a boosted
+                    // one holds more than one slot, and two pages of the same
+                    // pager cannot share a key.
+                    key: ValueKey('req_${item.requestIndex}_${req.id}'),
                     data: FeedItemData.fromRequest(
                       req,
                       onAnswerTap: req.requesterId == _myUserId
                           ? null
-                          : () => _answerRequest(req),
+                          : () => _promos.answer(context, req),
                     ),
-                    onHide: () =>
-                        setState(() => _hiddenRequestIds.add(req.id)),
+                    onHide: () => _promos.hideRequest(req.id),
                   );
                 }
 

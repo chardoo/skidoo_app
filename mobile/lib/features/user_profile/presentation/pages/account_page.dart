@@ -17,6 +17,7 @@ import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.da
 import 'package:jperg_app/features/admin/data/models/app_config.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/admin/presentation/pages/admin_settings_page.dart';
+import 'package:jperg_app/features/ads/request_board_access.dart';
 import 'package:jperg_app/features/ads/presentation/pages/my_campaigns_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/my_requests_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/request_board_page.dart';
@@ -1266,7 +1267,43 @@ class _AdsCard extends StatelessWidget {
           future: sl<AuthService>().isSuperAdmin(),
           builder: (context, adminSnap) {
             final isAdmin = adminSnap.data == true;
+            // Watched, not read once: upgrading to a creator changes the role
+            // mid-session and this card is already built and sitting behind
+            // the wizard that does it.
+            return ValueListenableBuilder<String>(
+              valueListenable: AuthService.role,
+              builder: (context, role, __) {
+                return _buildTiles(
+                  context,
+                  cfg: cfg,
+                  isAdmin: isAdmin,
+                  role: role,
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTiles(
+    BuildContext context, {
+    required AppConfig cfg,
+    required bool isAdmin,
+    required String role,
+  }) {
+            // Posting a request, and managing what you posted, are for
+            // everyone — most requests come from clients. Only *browsing* the
+            // board is a creator's screen, because a job going begging means
+            // nothing to somebody who cannot take it. See
+            // [canBrowseRequestBoard].
             final showRequests = cfg.requestsEnabled;
+            final showBoard =
+                showRequests && (isAdmin || canBrowseRequestBoard(role));
+            // Campaigns are for everyone, deliberately: anyone can buy an ad,
+            // and everyone already sees them running in the feed. This must
+            // never pick up a role test.
             final showAds = cfg.adsEnabled;
 
             // "Creators" used to seed this list — it has moved elsewhere. Every
@@ -1288,7 +1325,10 @@ class _AdsCard extends StatelessWidget {
               ));
             }
 
-            if (showRequests) {
+            // Browsing other people's open requests — creators and admins.
+            // Offering this to a client sent them to a board the server will
+            // only ever answer with an empty list.
+            if (showBoard) {
               if (tiles.isNotEmpty) {
                 tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
               }
@@ -1302,7 +1342,13 @@ class _AdsCard extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const RequestBoardPage()),
                 ),
               ));
-              tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+            }
+
+            // What *you* posted, whoever you are.
+            if (showRequests) {
+              if (tiles.isNotEmpty) {
+                tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+              }
               tiles.add(_AdsListTile(
                 icon: Icons.edit_note_rounded,
                 iconColor: const Color(0xFF10B981),
@@ -1381,10 +1427,6 @@ class _AdsCard extends StatelessWidget {
                 ],
               ),
             );
-          },
-        );
-      },
-    );
   }
 }
 
