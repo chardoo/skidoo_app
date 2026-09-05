@@ -29,6 +29,11 @@ class ChromeVisibility {
   /// Feed a scroll notification in. Returns false so it keeps bubbling — this
   /// observes, it does not consume.
   static bool handle(ScrollNotification notification) {
+    // Only reading down a list collapses the chrome. A sideways swipe — a photo
+    // carousel, a page of tabs — is navigation, and its page-width delta would
+    // otherwise read as one enormous downward scroll.
+    if (notification.metrics.axis != Axis.vertical) return false;
+
     if (notification is ScrollUpdateNotification) {
       final delta = notification.scrollDelta ?? 0;
       final atTop = notification.metrics.pixels <= 0;

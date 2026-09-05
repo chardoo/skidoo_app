@@ -252,16 +252,24 @@ class _BecomeCreator extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.star_border_rounded,
-                  size: 20.sp, color: ext.accentGold),
+              Padding(
+                // The icon is centred on the first line of the title rather
+                // than on the block, so it stays put if the title wraps.
+                padding: EdgeInsets.only(top: 2.h),
+                child: Icon(Icons.star_border_rounded,
+                    size: 20.sp, color: ext.accentGold),
+              ),
               SizedBox(width: AppSpacing.sm.w),
-              Text(
-                'Become a Creator',
-                style: TextStyle(
-                  color: ext.greetingColor,
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  'Become a Creator',
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -294,11 +302,20 @@ class _BecomeCreator extends StatelessWidget {
             ),
           SizedBox(height: AppSpacing.md.h),
           Center(
-            child: AppButton(
-              label: 'Get started',
-              variant: AppButtonVariant.secondary,
-              borderRadius: AppRadius.pill,
-              onPressed: onStart,
+            // Fills the card on a phone and stops widening once it has enough
+            // room, rather than sizing to the two words in the label: at 540
+            // (the page's own cap, on a tablet or the web build) a pill as wide
+            // as the card reads as a banner, and one as narrow as its text
+            // reads as an afterthought.
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 280.w),
+              child: AppButton(
+                fullWidth: true,
+                label: 'Get started',
+                variant: AppButtonVariant.secondary,
+                borderRadius: AppRadius.pill,
+                onPressed: onStart,
+              ),
             ),
           ),
         ],

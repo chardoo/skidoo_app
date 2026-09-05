@@ -99,9 +99,17 @@ class AppButton extends StatelessWidget {
           // compact button (the 40 the group-name Save and the confirm dialog
           // ask for) clipped its own label in half. With an explicit height the
           // SizedBox sets the size and the button centres the label inside it.
-          padding: height != null
-              ? EdgeInsets.zero
-              : EdgeInsets.symmetric(vertical: 14.h),
+          //
+          // Horizontal is the other way round: a button with no width of its
+          // own is exactly as wide as its label, so with no padding the text
+          // ran to the very edge — and under a pill radius the corner curve
+          // cut straight through the first and last glyph. A button that was
+          // given a width has already had its room measured, so it keeps the
+          // tight fit it was sized for.
+          padding: EdgeInsets.symmetric(
+            horizontal: effectiveWidth == null ? 20.w : 0,
+            vertical: height != null ? 0 : 14.h,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular((borderRadius ?? 14).r),
             side: side,
@@ -120,20 +128,31 @@ class AppButton extends StatelessWidget {
         child: CircularProgressIndicator(strokeWidth: 2, color: foreground),
       );
     }
+    final text = Text(
+      label,
+      maxLines: 1,
+      textAlign: TextAlign.center,
+      style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700),
+    );
+
+    // Shrinks the label rather than letting it spill. The height is fixed and
+    // the width is often somebody else's (a full-width CTA, a 84.w Save), so a
+    // long label or a large system text size has nowhere to grow — and a
+    // button is the one place where a clipped word costs you the tap. Scales
+    // down only when it has to; at ordinary sizes nothing moves.
     if (icon == null) {
-      return Text(
-        label,
-        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700),
-      );
+      return FittedBox(fit: BoxFit.scaleDown, child: text);
     }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16.sp),
-        SizedBox(width: 6.w),
-        Text(label,
-            style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700)),
-      ],
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16.sp),
+          SizedBox(width: 6.w),
+          text,
+        ],
+      ),
     );
   }
 }
