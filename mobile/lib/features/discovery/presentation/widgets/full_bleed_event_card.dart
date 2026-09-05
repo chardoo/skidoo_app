@@ -384,6 +384,27 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     return FeedChrome.visible.value ? base + _navBand : base;
   }
 
+  /// The description with its hashtags running on from the end of it.
+  ///
+  /// One string, so they flow as a single paragraph and wrap together: the tags
+  /// pick up on whatever line the description finished on instead of opening a
+  /// new one. They also come *before* the music pill now — the tags belong to
+  /// the words, and the pill is a control that sits under the post rather than
+  /// in the middle of it.
+  ///
+  /// Empty when there is neither, which is what hides the block entirely.
+  String get _caption {
+    final description = widget.event.description.trim();
+    final tags = widget.event.contentTags
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .map((t) => '#$t')
+        .join(' ');
+    if (description.isEmpty) return tags;
+    if (tags.isEmpty) return description;
+    return '$description $tags';
+  }
+
   bool _sharingExternal = false;
 
   @override
@@ -687,85 +708,188 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
             right: 88.w,
             bottom: _captionBottom,
             child: CommentSheetHide(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    event.eventName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  if (event.description.isNotEmpty) ...[
-                    SizedBox(height: AppSpacing.xs.h),
-                    ExpandableCaption(
-                      text: event.description,
-                      collapsedMaxLines: 2,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 13.sp,
-                        height: 1.3,
-                      ),
-                      linkStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                  // ── Now playing ─────────────────────────────────────────────
-                  // Lit only while this card actually holds the feed's one
-                  // player, so exactly one pill can be visible at a time. A
-                  // scored event whose turn has not come shows nothing, which is
-                  // the honest answer — the pill is a statement about sound, not
-                  // a badge saying music exists.
-                  if (_music != null)
-                    ValueListenableBuilder<FeedMusicNowPlaying?>(
-                      valueListenable: _music!.nowPlaying,
-                      builder: (context, playing, _) {
-                        if (playing == null || playing.eventId != event.id) {
-                          return const SizedBox.shrink();
-                        }
-                        return Padding(
-                          padding: EdgeInsets.only(top: AppSpacing.xs.h),
-                          child: ValueListenableBuilder<bool>(
-                            valueListenable: _music!.muted,
-                            builder: (context, muted, __) => FeedMusicPill(
-                              track: playing.track,
-                              muted: muted,
-                              onToggleMute: _music!.toggleMute,
-                              onOpenTrack: () => MusicTrackSheet.show(
-                                context,
-                                playing.track,
-                              ),
+              // The block's height eases on the same curve and duration as its
+              // position above, so the two stop disagreeing.
+              //
+              // [AnimatedPositioned] animates where the bottom edge sits — for
+              // the navigation bar arriving, and for the taller band a video
+              // slide needs. The column's *height* was not animated at all, so
+              // whenever both moved at once the edge glided while the content
+              // jumped. Expanding the caption or the hashtags had the same
+              // problem on its own: a bare setState, snapping to full height in
+              // one frame.
+              //
+              // Bottom-aligned because that is the edge being held: growing
+              // upward is what this column does, and animating from any other
+              // anchor would move the wrong end of it.
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                alignment: Alignment.bottomLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // The title and who shot it, read as one sentence —
+                    // "Sunset at Labadi by Kwame Mensah".
+                    //
+                    // A [Wrap] rather than a [Row], because the two names are
+                    // arbitrary lengths and together they routinely do not fit.
+                    // In a Row the only outcomes are an overflow or two
+                    // half-ellipsised names, and a truncated event name next to
+                    // a truncated person reads as neither. Wrapping keeps both
+                    // whole: the creator drops to a second line when the pair
+                    // is too wide, and comes back up when it is not.
+                    //
+                    // Wrap measures each child against the full available
+                    // width, so an event name too long even on a line of its
+                    // own still ellipsizes rather than overflowing.
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6.w,
+                      runSpacing: 2.h,
+                      children: [
+                        Text(
+                          event.eventName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        // "by" and the name are one unit: breaking between them
+                        // would strand a "by" at the end of the first line.
+                        // Empty when the event carries no photographer name,
+                        // rather than a "by" with nothing after it.
+                        if (event.photographerName.isNotEmpty)
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            // The same destination the avatar below opens. It
+                            // was a placeholder `() => null` — a name that
+                            // looked tappable and was not.
+                            onTap: _openPhotographerProfile,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'by',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(width: 4.w),
+                                // Flexible directly under the Row — it applies
+                                // FlexParentData, which only a Flex can accept.
+                                // Nested inside the GestureDetector it threw on
+                                // every build and left the name unable to
+                                // shrink, which is what overflowed the row.
+                                Flexible(
+                                  child: Text(
+                                    event.photographerName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15.sp,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      },
+                      ],
                     ),
-                  if (event.contentTags.isNotEmpty) ...[
-                    SizedBox(height: AppSpacing.xs.h),
-                    ExpandableCaption(
-                      text: event.contentTags.map((t) => '#$t').join(' '),
-                      collapsedMaxLines: 2,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 13.sp,
-                        height: 1.3,
+                   
+                    // The description and the hashtags are one caption, in that
+                    // order — the tags run on from the last sentence rather
+                    // than starting a block under it, the way a caption is
+                    // written everywhere else. Two [ExpandableCaption]s meant
+                    // two separate "more" links and two things to expand for
+                    // what reads as one paragraph.
+                    if (_caption.isNotEmpty) ...[
+                      SizedBox(height: AppSpacing.xs.h),
+                      ExpandableCaption(
+                        text: _caption,
+                        collapsedMaxLines: 2,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 13.sp,
+                          height: 1.3,
+                        ),
+                        linkStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      linkStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
+                    ],
+                    // ── Now playing ─────────────────────────────────────────────
+                    // Lit only while this card actually holds the feed's one
+                    // player, so exactly one pill can be visible at a time. A
+                    // scored event whose turn has not come shows nothing, which is
+                    // the honest answer — the pill is a statement about sound, not
+                    // a badge saying music exists.
+                    //
+                    // But its *space* is held from the first frame, on any card
+                    // with a track to play. The pill cannot arrive with the card:
+                    // claiming publishes null immediately, then waits out the
+                    // controller's settle delay, then loads the source over the
+                    // network — so it lands half a second or more after you have
+                    // started reading. This column is pinned by its bottom edge
+                    // and grows upward, so inserting the pill then shoved the
+                    // title and description up in a single frame, once per card,
+                    // every time the feed was scrolled.
+                    //
+                    // Holding the row costs the silent cards nothing, because a
+                    // card without music never renders it at all.
+                    if (_music != null && event.music.isNotEmpty)
+                      ValueListenableBuilder<FeedMusicNowPlaying?>(
+                        valueListenable: _music!.nowPlaying,
+                        builder: (context, playing, _) {
+                          final live =
+                              playing != null && playing.eventId == event.id;
+                          // The event's first track stands in until the real one
+                          // is known. Only its *height* is ever seen — the pill is
+                          // fully transparent until `live` — and every pill is one
+                          // line tall whatever it names, so the space held is the
+                          // space eventually filled.
+                          final track =
+                              live ? playing.track : event.music.first;
+                          return Padding(
+                            padding: EdgeInsets.only(top: AppSpacing.xs.h),
+                            child: IgnorePointer(
+                              // An invisible pill must not take taps that belong
+                              // to the photograph behind it.
+                              ignoring: !live,
+                              child: AnimatedOpacity(
+                                opacity: live ? 1 : 0,
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOut,
+                                child: ValueListenableBuilder<bool>(
+                                  valueListenable: _music!.muted,
+                                  builder: (context, muted, __) =>
+                                      FeedMusicPill(
+                                    track: track,
+                                    muted: muted,
+                                    onToggleMute: _music!.toggleMute,
+                                    onOpenTrack: () => MusicTrackSheet.show(
+                                      context,
+                                      track,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    ),
                   ],
-                ],
+                ),
               ),
             ),
           ),
