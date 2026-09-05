@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
-import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
-import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 
 /// A run of suggested creators, each with its own Follow button.
@@ -84,31 +81,13 @@ class _SuggestedCreatorsListState extends State<SuggestedCreatorsList> {
     }
   }
 
-  /// The feed has a [HomeBloc] above it, but suggestions also render in places
-  /// that don't, so the bloc is read defensively and only re-provided when it
-  /// exists — same pattern as the discovery card.
+  /// Through the one helper every creator tap goes through.
   void _openProfile(SuggestedPhotographer suggestion) {
-    final photographer = PhotographerModel(
-      suggestion.id,
-      suggestion.email,
-      suggestion.name,
-      suggestion.contact,
-      imageUrl: suggestion.profileUrl,
-    );
-    HomeBloc? homeBloc;
-    try {
-      homeBloc = context.read<HomeBloc>();
-    } catch (_) {}
-
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => homeBloc != null
-            ? BlocProvider.value(
-                value: homeBloc,
-                child: PhotographerProfilePage(photographer: photographer),
-              )
-            : PhotographerProfilePage(photographer: photographer),
-      ),
+    openPhotographerProfile(
+      context,
+      photographerId: suggestion.id,
+      photographerName: suggestion.name,
+      photographerProfileUrl: suggestion.profileUrl,
     );
   }
 

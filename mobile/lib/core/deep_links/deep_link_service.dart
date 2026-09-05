@@ -13,16 +13,16 @@ import 'package:jperg_app/features/ads/presentation/pages/my_campaigns_page.dart
 import 'package:jperg_app/features/ads/presentation/pages/request_board_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/photographer_booking_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/review_photographers_page.dart';
+import 'package:jperg_app/features/discovery/presentation/pages/shared_event_feed_page.dart';
 import 'package:jperg_app/features/cart/presentation/pages/cart_page.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
-import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/creator_profile_page.dart';
 import 'package:jperg_app/features/search/domain/usecases/search_usecase.dart';
 import 'package:jperg_app/features/search/presentation/pages/search_event_photos_page.dart';
-import 'package:jperg_app/models/photographer/photographerModel.dart';
 
 const _tag = '[DeepLinks]';
 
@@ -244,8 +244,8 @@ class DeepLinkService {
       case DeepLinkKind.photographer:
         await navigator.push(
           MaterialPageRoute<void>(
-            builder: (_) => PhotographerProfilePage(
-              photographer: PhotographerModel(link.id!, '', '', ''),
+            builder: (_) => CreatorProfilePage(
+              profile: CreatorProfile.seed(id: link.id!, name: ''),
             ),
           ),
         );
@@ -471,19 +471,29 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
           );
           return;
 
-        // The album page takes an id and fetches the rest itself, so a link
-        // needs nothing but what it already carries.
+        // A shared event opens as the feed draws it, not as its album.
+        //
+        // It used to push [SearchEventPhotosPage] — a grid of crops, with the
+        // photographer, the caption, the reactions and the soundtrack all one
+        // level away. That is the right screen for browsing a shoot you already
+        // know about and the wrong one for arriving at a post somebody sent
+        // you: the card is what they were looking at when they decided to share
+        // it, and it is how the post reads everywhere else in the app.
+        //
+        // The page fetches the event itself, so a link still needs nothing but
+        // the id, and the album is one tap away on the card's own "Explore
+        // event photos".
         case DeepLinkKind.event:
           if (!mounted) {
-            debugPrint('$_tag resolver unmounted before opening the album — '
+            debugPrint('$_tag resolver unmounted before opening the event — '
                 'something replaced it');
             return;
           }
-          debugPrint('$_tag opening album ${link.id}');
+          debugPrint('$_tag opening event ${link.id} as a feed card');
           _swapSelfFor(
             MaterialPageRoute<void>(
-              settings: const RouteSettings(name: 'deeplink/album'),
-              builder: (_) => SearchEventPhotosPage(eventId: link.id!),
+              settings: const RouteSettings(name: 'deeplink/event'),
+              builder: (_) => SharedEventFeedPage(eventId: link.id!),
             ),
           );
           return;

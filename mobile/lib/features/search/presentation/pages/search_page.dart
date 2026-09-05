@@ -8,7 +8,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
-import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 import 'package:jperg_app/features/search/presentation/bloc/search_bloc.dart';
 import 'package:jperg_app/features/search/presentation/pages/search_event_photos_page.dart';
@@ -18,7 +18,6 @@ import 'package:jperg_app/features/search/presentation/widgets/search_idle_view.
 import 'package:jperg_app/features/search/presentation/widgets/search_results_list.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_top_bar.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_type_chips.dart';
-import 'package:jperg_app/models/photographer/photographerModel.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
 /// One text box over three result types, with the photo grid that fills the
@@ -150,22 +149,14 @@ class _SearchViewState extends State<_SearchView> {
   void _openPhotographer(SearchPhotographerRow photographer) {
     _rememberQuery();
     _focusNode.unfocus();
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => PhotographerProfilePage(
-          // The profile page refetches everything it needs from the id; the
-          // rest of the model is what it renders while that is in flight.
-          photographer: PhotographerModel(
-            photographer.id,
-            '',
-            photographer.name,
-            '',
-            imageUrl: photographer.profileUrl.isEmpty
-                ? null
-                : photographer.profileUrl,
-          ),
-        ),
-      ),
+    // The profile refetches everything it needs from the id; the name and
+    // face here are what it shows while that is in flight.
+    openPhotographerProfile(
+      context,
+      photographerId: photographer.id,
+      photographerName: photographer.name,
+      photographerProfileUrl:
+          photographer.profileUrl.isEmpty ? null : photographer.profileUrl,
     );
   }
 

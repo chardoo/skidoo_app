@@ -1,14 +1,11 @@
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/features/auth/presentation/pages/onboarding_complete_page.dart';
-import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
-import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
 /// Final onboarding step — "Creators to follow" (4/4), the same for every
@@ -83,32 +80,13 @@ class _FollowSuggestionsPageState extends State<FollowSuggestionsPage> {
     );
   }
 
-  // Onboarding has no HomeBloc in its ancestor tree, so it's read
-  // defensively and only re-provided to the pushed page when present —
-  // same pattern used to open a photographer's profile from the Discovery
-  // feed (event_discovery_card.dart).
+  /// Through the one helper every creator tap goes through.
   void _openProfile(SuggestedPhotographer s) {
-    final photographer = PhotographerModel(
-      s.id,
-      s.email,
-      s.name,
-      s.contact,
-      imageUrl: s.profileUrl,
-    );
-    HomeBloc? homeBloc;
-    try {
-      homeBloc = context.read<HomeBloc>();
-    } catch (_) {}
-
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => homeBloc != null
-            ? BlocProvider.value(
-                value: homeBloc,
-                child: PhotographerProfilePage(photographer: photographer),
-              )
-            : PhotographerProfilePage(photographer: photographer),
-      ),
+    openPhotographerProfile(
+      context,
+      photographerId: s.id,
+      photographerName: s.name,
+      photographerProfileUrl: s.profileUrl,
     );
   }
 

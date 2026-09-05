@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/celebration/comment_milestone_watcher.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -18,10 +19,9 @@ import 'package:jperg_app/core/config/chat_config.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart'
     show GetEventRoomUseCase;
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
-import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
-import 'package:jperg_app/models/photographer/photographerModel.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
@@ -142,12 +142,10 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
 
   void _openProfile(ChatMessage msg) {
     final name = msg.senderName.isNotEmpty ? msg.senderName : 'Creator';
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PhotographerProfilePage(
-          photographer: PhotographerModel(msg.senderId, '', name, ''),
-        ),
-      ),
+    openPhotographerProfile(
+      context,
+      photographerId: msg.senderId,
+      photographerName: name,
     );
   }
 
@@ -364,11 +362,16 @@ class EventCommentInlinePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<ChatRoomBloc>(),
-      child: _InlineCommentContent(
-          event: event,
-          onClose: onClose,
-          isExternalPanel: isExternalPanel,
-          onCommentSent: onCommentSent),
+      // Comment UI by any reading — same bloc, same input bar, same thread —
+      // so it gets the same celebration. It had none, because the watcher used
+      // to live inside [CommentSheetShell] and this panel is not a sheet.
+      child: CommentMilestoneWatcher(
+        child: _InlineCommentContent(
+            event: event,
+            onClose: onClose,
+            isExternalPanel: isExternalPanel,
+            onCommentSent: onCommentSent),
+      ),
     );
   }
 }
@@ -478,12 +481,10 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
 
   void _openProfile(ChatMessage msg) {
     final name = msg.senderName.isNotEmpty ? msg.senderName : 'Creator';
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PhotographerProfilePage(
-          photographer: PhotographerModel(msg.senderId, '', name, ''),
-        ),
-      ),
+    openPhotographerProfile(
+      context,
+      photographerId: msg.senderId,
+      photographerName: name,
     );
   }
 

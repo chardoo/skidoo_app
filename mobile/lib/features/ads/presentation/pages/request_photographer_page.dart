@@ -1,28 +1,25 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:jperg_app/core/navigation/app_page_routes.dart';
-import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+
+import 'package:jperg_app/core/common/widgets/app_section_label.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
-import 'package:jperg_app/features/ads/models/ad_media.dart';
-import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
-import 'package:jperg_app/features/photographers/data/repositories/reviews_repository.dart';
-import 'package:jperg_app/features/photographers/presentation/pages/reviews_pages.dart';
-import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
-import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/creator_profile_page.dart';
 
 /// One photographer who answered a request: who they are, what they have shot,
 /// and what people say about them.
 ///
-/// The button is the point of the screen. Choosing here closes the request to
-/// everyone else, so the confirmation says so in as many words before it
+/// The profile itself is [CreatorProfilePage] — the same screen a tap on this
+/// person anywhere else opens. It used to be a second, better-looking copy of
+/// that page that only this flow could reach, which is how the app came to
+/// have two profiles for one person.
+///
+/// What belongs to *this* flow is the button. Choosing here closes the request
+/// to everyone else, so the confirmation says so in as many words before it
 /// happens.
-class RequestPhotographerPage extends StatefulWidget {
+class RequestPhotographerPage extends StatelessWidget {
   const RequestPhotographerPage({
     super.key,
     required this.photographer,
@@ -38,299 +35,52 @@ class RequestPhotographerPage extends StatefulWidget {
   final Future<bool> Function() onSelect;
   final bool alreadySelected;
 
-  @override
-  State<RequestPhotographerPage> createState() =>
-      _RequestPhotographerPageState();
-}
-
-class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
-  final _reviewsRepo = ReviewsRepository();
-
-  int _tab = 0;
-  ReviewPage? _reviews;
-  bool _loadingReviews = false;
-
-  /// The photographer's own total. Known from the interest row before the
-  /// reviews are fetched, so the tab does not count up from nothing.
-  int get _reviewCount => _reviews?.count ?? _p.ratingCount;
-
-  RequestInterest get _p => widget.photographer;
-
-  String get _displayName => (_p.name?.trim().isNotEmpty ?? false)
-      ? _p.name!.trim()
+  String get _displayName => (photographer.name?.trim().isNotEmpty ?? false)
+      ? photographer.name!.trim()
       : 'Photographer';
 
-  /// Only fetched when the Reviews tab is first opened — most requesters look
-  /// at the pictures and decide.
-  Future<void> _loadReviews() async {
-    if (_reviews != null || _loadingReviews) return;
-    setState(() => _loadingReviews = true);
-    try {
-      final page = await _reviewsRepo.list(_p.id, limit: 2);
-      if (mounted) setState(() => _reviews = page);
-    } catch (e) {
-      debugPrint('[RequestPhotographer] reviews ERROR: $e');
-      if (mounted) setState(() => _reviews = ReviewPage.empty);
-    } finally {
-      if (mounted) setState(() => _loadingReviews = false);
-    }
-  }
-
-  Future<void> _confirm(AppThemeExtension ext) async {
+  Future<void> _confirm(BuildContext context, AppThemeExtension ext) async {
     final agreed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => _ConfirmSheet(
         name: _displayName,
-        requestTitle: widget.requestTitle,
+        requestTitle: requestTitle,
         ext: ext,
       ),
     );
     if (agreed != true) return;
-    final ok = await widget.onSelect();
-    if (ok && mounted) Navigator.of(context).pop(true);
-  }
-
-  void _openPortfolio(int index) {
-    if (_p.portfolio.isEmpty) return;
-    Navigator.of(context).push(NoSwipeBackPageRoute<void>(
-      builder: (_) => FoundPhotoViewerPage(
-        photos: [
-          for (final media in _p.portfolio)
-            Photo(media.id, _displayName, '', media.url, _p.id, 0, '', null,
-                true,
-                width: media.width,
-                height: media.height,
-                photographerName: _displayName,
-                photographerAvatarUrl: _p.profileUrl ?? ''),
-        ],
-        initialIndex: index,
-        // A portfolio is the photographer's work on show while you decide
-        // whether to book them — there is nothing here to like, comment on or
-        // save, and the rail would be acting on sample ids the picture
-        // endpoints have never heard of.
-        showSocialActions: false,
-      ),
-    ));
-  }
-
-  void _openAllReviews() {
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => PhotographerReviewsPage(
-        photographerId: _p.id,
-        initialCount: _reviewCount,
-      ),
-    ));
+    final ok = await onSelect();
+    if (ok && context.mounted) Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    final page = Scaffold(
-      backgroundColor: ext.homeBackground,
-      appBar: AppBar(
-        elevation: 0,
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
-        title: Text(
-          _displayName,
-          style: TextStyle(
-            color: ext.greetingColor,
-            fontWeight: FontWeight.w700,
-            fontSize: 16.sp,
-          ),
-        ),
+    return CreatorProfilePage(
+      // The interest row already carries the whole header — it was fetched
+      // with the rest of the page — so this opens on the person rather than
+      // on a spinner, and asks the server for nothing.
+      profile: CreatorProfile(
+        id: photographer.id,
+        name: _displayName,
+        photoUrl: photographer.profileUrl,
+        bannerUrl: photographer.studioImageUrl,
+        bio: photographer.bio,
+        location: photographer.location,
+        specialties: photographer.specialties,
+        rating: photographer.rating,
+        ratingCount: photographer.ratingCount,
+        followerCount: photographer.followerCount,
+        verified: photographer.verified,
       ),
-      body: ListView(
-        physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.only(bottom: AppSpacing.xxl.h),
+      fetchProfile: false,
+      note: (photographer.message?.isNotEmpty ?? false)
+          ? _Note(message: photographer.message!, ext: ext)
+          : null,
+      footer: Column(
         children: [
-          // Banner, then the identity row beneath it — avatar on the left,
-          // name and location beside it, rating in its own pill on the right.
-          _Banner(photographer: _p, ext: ext),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.lg.w, AppSpacing.md.h, AppSpacing.lg.w, 0,
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 26.r,
-                  backgroundColor: ext.avatarBackground,
-                  backgroundImage: (_p.profileUrl?.isNotEmpty ?? false)
-                      ? boundedNetworkImage(context, _p.profileUrl!,
-                          diameter: 52.r)
-                      : null,
-                  child: (_p.profileUrl?.isNotEmpty ?? false)
-                      ? null
-                      : Text(
-                          _displayName[0].toUpperCase(),
-                          style: TextStyle(
-                            color: ext.avatarForeground, fontSize: 18.sp,
-                          ),
-                        ),
-                ),
-                SizedBox(width: AppSpacing.md.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              _displayName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: ext.greetingColor,
-                                fontSize: 17.sp,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ),
-                          if (_p.verified) ...[
-                            SizedBox(width: 4.w),
-                            Icon(Icons.verified_rounded,
-                                size: 15.r, color: ext.infoBlue),
-                          ],
-                        ],
-                      ),
-                      SizedBox(height: 3.h),
-                      PhotographerMeta(
-                        ext: ext,
-                        location: _p.location,
-                        followerCount: _p.followerCount,
-                        variant: PhotographerMetaVariant.header,
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.only(left: AppSpacing.sm.w),
-                  child: RatingPill(ext: ext, rating: _p.rating),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: AppSpacing.md.h),
-          Divider(
-            height: 1,
-            thickness: 0.7,
-            color: ext.searchHintColor.withValues(alpha: 0.15),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: AppSpacing.lg.h),
-                if (_p.specialties.isNotEmpty ||
-                    (_p.bio?.isNotEmpty ?? false)) ...[
-                  SizedBox(height: AppSpacing.xl.h),
-                  const AppSectionLabel('Specialties & bio'),
-                  SizedBox(height: AppSpacing.sm.h),
-                  if (_p.specialties.isNotEmpty)
-                    Wrap(
-                      spacing: AppSpacing.sm.w,
-                      runSpacing: AppSpacing.xs.h,
-                      children: [
-                        for (final specialty in _p.specialties)
-                          _Chip(label: specialty, ext: ext),
-                      ],
-                    ),
-                  if (_p.bio?.isNotEmpty ?? false) ...[
-                    SizedBox(height: AppSpacing.sm.h),
-                    Text(
-                      _p.bio!,
-                      style: TextStyle(
-                        color: ext.searchHintColor, fontSize: 13.sp, height: 1.45,
-                      ),
-                    ),
-                  ],
-                ],
-
-                SizedBox(height: AppSpacing.xl.h),
-                _Tabs(
-                  ext: ext,
-                  index: _tab,
-                  labels: [
-                    'Portfolio',
-                    // The count is in the tab label, so the weight of the
-                    // reviews is visible before anyone opens them.
-                    'Reviews ($_reviewCount)',
-                  ],
-                  onChanged: (i) {
-                    setState(() => _tab = i);
-                    if (i == 1) _loadReviews();
-                  },
-                ),
-                SizedBox(height: AppSpacing.md.h),
-              ],
-            ),
-          ),
-
-          if (_tab == 0)
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-              child: _p.portfolio.isEmpty
-                  ? _Empty(text: 'No portfolio yet.', ext: ext)
-                  : _Portfolio(
-                      media: _p.portfolio,
-                      ext: ext,
-                      onTap: _openPortfolio,
-                    ),
-            )
-          else
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-              child: _ReviewsPreview(
-                page: _reviews,
-                loading: _loadingReviews,
-                ext: ext,
-                onViewAll: _openAllReviews,
-              ),
-            ),
-
-          if (_p.message?.isNotEmpty ?? false) ...[
-            SizedBox(height: AppSpacing.xl.h),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const AppSectionLabel('Additional message'),
-                  SizedBox(height: AppSpacing.sm.h),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(AppSpacing.md.w),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppRadius.md.r),
-                      border: Border.all(
-                        color: ext.searchHintColor.withValues(alpha: 0.25),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Text(
-                      _p.message!,
-                      style: TextStyle(
-                        color: ext.searchHintColor,
-                        fontSize: 13.sp,
-                        height: 1.45,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-          SizedBox(height: AppSpacing.xxl.h),
           // Centred and only as wide as it needs to be, the way the design
           // draws it — a full-bleed bar would read as the end of the page
           // rather than one choice on it.
@@ -339,17 +89,18 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
               height: 46.h,
               child: ElevatedButton(
                 onPressed:
-                    widget.alreadySelected ? null : () => _confirm(ext),
+                    alreadySelected ? null : () => _confirm(context, ext),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: ext.accentGold,
-                  disabledBackgroundColor: ext.accentGold.withValues(alpha: 0.5),
+                  disabledBackgroundColor:
+                      ext.accentGold.withValues(alpha: 0.5),
                   padding: EdgeInsets.symmetric(horizontal: 30.w),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(999.r),
                   ),
                 ),
                 child: Text(
-                  widget.alreadySelected ? 'Selected' : 'Select photographer',
+                  alreadySelected ? 'Selected' : 'Select photographer',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15.sp,
@@ -372,343 +123,42 @@ class _RequestPhotographerPageState extends State<RequestPhotographerPage> {
         ],
       ),
     );
-
-    return webWrap(page, backgroundColor: ext.homeBackground);
   }
 }
 
-/// The studio shot across the top. Falls back to a tinted band rather than a
-/// broken image when there is no banner — the identity row sits below it
-/// either way, so nothing depends on this having loaded.
-class _Banner extends StatelessWidget {
-  const _Banner({required this.photographer, required this.ext});
+/// The note they sent with their answer.
+class _Note extends StatelessWidget {
+  const _Note({required this.message, required this.ext});
 
-  final RequestInterest photographer;
+  final String message;
   final AppThemeExtension ext;
 
   @override
   Widget build(BuildContext context) {
-    final banner = photographer.studioImageUrl;
-    return SizedBox(
-      height: 140.h,
-      width: double.infinity,
-      child: (banner?.isNotEmpty ?? false)
-          ? JpergImage(
-              imageUrl: banner!,
-              fit: BoxFit.cover,
-              errorWidget: (_, __, ___) =>
-                  ColoredBox(color: ext.avatarBackground),
-            )
-          : ColoredBox(color: ext.accentGold.withValues(alpha: 0.15)),
-    );
-  }
-}
-
-/// Portfolio | Reviews (142).
-///
-/// Left-aligned and only as wide as their labels, with the rule under the
-/// active word rather than a bar spanning half the screen — two tabs stretched
-/// across the width read as buttons.
-class _Tabs extends StatelessWidget {
-  const _Tabs({
-    required this.ext,
-    required this.index,
-    required this.labels,
-    required this.onChanged,
-  });
-
-  final AppThemeExtension ext;
-  final int index;
-  final List<String> labels;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (var i = 0; i < labels.length; i++)
-          Padding(
-            padding: EdgeInsets.only(right: AppSpacing.xl.w),
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => onChanged(i),
-              // IntrinsicWidth so the rule is exactly as wide as the word:
-              // inside a Row the column would otherwise be handed the whole
-              // remaining width to stretch into.
-              child: IntrinsicWidth(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      labels[i],
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: i == index
-                            ? ext.greetingColor
-                            : ext.searchHintColor,
-                        fontSize: 14.sp,
-                        fontWeight:
-                            i == index ? FontWeight.w700 : FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(height: 6.h),
-                    Container(
-                      height: 2.h,
-                      color: i == index ? ext.accentGold : Colors.transparent,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.ext});
-
-  final String label;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: EdgeInsets.symmetric(horizontal: 11.w, vertical: 5.h),
-        decoration: BoxDecoration(
-          color: ext.accentGold.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(999.r),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: ext.accentGold,
-            fontSize: 11.sp,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
-}
-
-class _Empty extends StatelessWidget {
-  const _Empty({required this.text, required this.ext});
-
-  final String text;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.xl.h),
-        child: Center(
-          child: Text(
-            text,
-            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
-          ),
-        ),
-      );
-}
-
-/// The first couple of reviews with a way through to the rest — the profile is
-/// for deciding, the reviews page is for reading.
-class _ReviewsPreview extends StatelessWidget {
-  const _ReviewsPreview({
-    required this.page,
-    required this.loading,
-    required this.ext,
-    required this.onViewAll,
-  });
-
-  final ReviewPage? page;
-  final bool loading;
-  final AppThemeExtension ext;
-  final VoidCallback onViewAll;
-
-  @override
-  Widget build(BuildContext context) {
-    if (loading && page == null) {
-      return Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.xl.h),
-        child: Center(
-          child: SizedBox(
-            width: 22.r,
-            height: 22.r,
-            child: CircularProgressIndicator(
-              strokeWidth: 2, color: ext.accentGold,
-            ),
-          ),
-        ),
-      );
-    }
-    final data = page;
-    if (data == null || data.reviews.isEmpty) {
-      return _Empty(text: 'No reviews yet.', ext: ext);
-    }
-
-    final preview = data.reviews.take(2).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // One bordered box holding both reviews and the way through to the
-        // rest, as the design groups them — separate cards would read as two
-        // unrelated things above a link.
+        const AppSectionLabel('Additional message'),
+        SizedBox(height: AppSpacing.sm.h),
         Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(AppSpacing.md.w),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.md.r),
             border: Border.all(
-              color: ext.searchHintColor.withValues(alpha: 0.16),
+              color: ext.searchHintColor.withValues(alpha: 0.25),
               width: 0.8,
             ),
           ),
-          child: Column(
-            children: [
-              for (var i = 0; i < preview.length; i++) ...[
-                if (i > 0)
-                  Divider(
-                    height: 1,
-                    thickness: 0.7,
-                    indent: AppSpacing.md.w,
-                    endIndent: AppSpacing.md.w,
-                    color: ext.searchHintColor.withValues(alpha: 0.16),
-                  ),
-                Padding(
-                  padding: EdgeInsets.all(AppSpacing.md.w),
-                  child: ReviewCard(
-                    review: preview[i], ext: ext, bordered: false,
-                  ),
-                ),
-              ],
-              Divider(
-                height: 1,
-                thickness: 0.7,
-                color: ext.searchHintColor.withValues(alpha: 0.16),
-              ),
-              InkWell(
-                onTap: onViewAll,
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(AppRadius.md.r),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
-                  child: Center(
-                    child: Text(
-                      'View all ${data.count} reviews  →',
-                      style: TextStyle(
-                        color: ext.accentGold,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          child: Text(
+            message,
+            style: TextStyle(
+              color: ext.searchHintColor,
+              fontSize: 13.sp,
+              height: 1.45,
+            ),
           ),
         ),
-      ],
-    );
-  }
-}
-
-/// The portfolio as a swipeable card with a counter, the way the design shows
-/// it — one big photo at a time rather than a grid of thumbnails.
-class _Portfolio extends StatefulWidget {
-  const _Portfolio({
-    required this.media,
-    required this.ext,
-    required this.onTap,
-  });
-
-  final List<AdMedia> media;
-  final AppThemeExtension ext;
-  final void Function(int) onTap;
-
-  @override
-  State<_Portfolio> createState() => _PortfolioState();
-}
-
-class _PortfolioState extends State<_Portfolio> {
-  final _controller = PageController();
-  int _page = 0;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 260.h,
-          child: Stack(
-            children: [
-              PageView.builder(
-                controller: _controller,
-                onPageChanged: (i) => setState(() => _page = i),
-                itemCount: widget.media.length,
-                itemBuilder: (_, i) => GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => widget.onTap(i),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.md.r),
-                    child: ColoredBox(
-                      color: widget.ext.avatarBackground,
-                      child: JpergImage(
-                        imageUrl: widget.media[i].url,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        errorWidget: (_, __, ___) => Icon(
-                          Icons.broken_image_outlined,
-                          color: widget.ext.searchHintColor,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              // "1 of 16" — how much more there is to swipe through, which the
-              // dots stop telling you past a handful.
-              Positioned(
-                left: AppSpacing.sm.w,
-                bottom: AppSpacing.sm.h,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 4.h),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(999.r),
-                  ),
-                  child: Text(
-                    '${_page + 1} of ${widget.media.length}',
-                    style: TextStyle(color: Colors.white, fontSize: 11.sp),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (widget.media.length > 1) ...[
-          SizedBox(height: AppSpacing.sm.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < widget.media.length && i < 8; i++)
-                Container(
-                  width: 6.r,
-                  height: 6.r,
-                  margin: EdgeInsets.symmetric(horizontal: 3.w),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: i == _page
-                        ? widget.ext.accentGold
-                        : widget.ext.searchHintColor.withValues(alpha: 0.35),
-                  ),
-                ),
-            ],
-          ),
-        ],
       ],
     );
   }
@@ -764,7 +214,9 @@ class _ConfirmSheet extends StatelessWidget {
                 "Others won't be able to apply after this.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: ext.searchHintColor, fontSize: 13.sp, height: 1.4,
+                  color: ext.searchHintColor,
+                  fontSize: 13.sp,
+                  height: 1.4,
                 ),
               ),
               SizedBox(height: AppSpacing.xl.h),

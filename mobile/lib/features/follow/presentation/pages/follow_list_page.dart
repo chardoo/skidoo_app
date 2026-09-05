@@ -6,8 +6,7 @@ import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 import 'package:jperg_app/core/utils/web_panel_route.dart';
 import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
-import 'package:jperg_app/features/photographers/presentation/pages/photographer_profile_page.dart';
-import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/creator_profile_page.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/common/widgets/app_error_view.dart';
 
@@ -290,14 +289,13 @@ class _FollowListViewState extends State<_FollowListView>
   }
 
   void _openProfile(FollowEntry entry) {
-    final model = PhotographerModel(
-      entry.id,
-      '',
-      entry.name,
-      '',
-      imageUrl: entry.profileUrl,
+    final page = CreatorProfilePage(
+      profile: CreatorProfile.seed(
+        id: entry.id,
+        name: entry.name,
+        photoUrl: entry.profileUrl,
+      ),
     );
-    final page = PhotographerProfilePage(photographer: model);
     final isDesktopWeb =
         kIsWeb && MediaQuery.of(context).size.width >= _kDesktopWebMinWidth;
     if (isDesktopWeb) {
