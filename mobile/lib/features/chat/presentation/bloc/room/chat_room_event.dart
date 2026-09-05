@@ -336,6 +336,22 @@ class _ReadReceiptReceived extends ChatRoomEvent {
   });
 }
 
+/// WS broadcast: the message reached somebody's device.
+///
+/// The middle tick state, and the one nothing used to raise. Carries lists
+/// because one frame can name several recipients or several messages — see
+/// [WsDeliveryReceiptEvent].
+class _DeliveryReceiptReceived extends ChatRoomEvent {
+  final List<String> userIds;
+  final List<String> messageIds;
+  final String? upToMessageId;
+  const _DeliveryReceiptReceived({
+    required this.userIds,
+    required this.messageIds,
+    this.upToMessageId,
+  });
+}
+
 /// The user typed (or stopped typing) in the composer.
 ///
 /// The bloc rate-limits the outgoing frames, so the UI is free to raise this on

@@ -8,6 +8,8 @@ import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_background_service.dart';
+import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.dart'
+    show WsRoomHolder;
 import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.dart'
     show EventReaction;
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
@@ -430,7 +432,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       if (room == null || isClosed) return;
 
       // Subscribe on the single shared connection — no new WS opened.
-      _bgService.sharedWs.subscribeRoom(room.id);
+      _bgService.sharedWs.subscribeRoom(room.id, holder: WsRoomHolder.feed);
       _subscribedRoomIds.add(id);
     } on ServerException catch (e) {
       // 504 / upstream timeout — server is slow, not a client bug. Skip silently.
@@ -444,7 +446,21 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
   void _onEventHidden(
       DiscoveryEventHidden event, Emitter<DiscoveryState> emit) {
-    // Unified WS — no per-room connections to tear down.
+    // Scrolled off screen: stop the room's events. There is no connection to
+    // tear down — the WS is shared and stays open — but the subscription on it
+    // is per room, and a card the user has scrolled past is not one they are
+    // reading. Left alone, a session's worth of scrolling ends up holding a
+    // channel for every event that ever crossed the viewport, which is the
+    // accumulation the server side of this stopped doing on connect.
+    //
+    // Cheap to undo: scrolling back re-subscribes from [_onEventVisible], and
+    // the counts on a card are rendered from the feed response, not from
+    // whatever arrived over the socket while it was out of sight.
+    if (kIsWeb) return;
+    final id = event.eventId;
+    if (!_subscribedRoomIds.remove(id)) return;
+    final room = _roomCache[id];
+    if (room != null) _bgService.sharedWs.unsubscribeRoom(room.id, holder: WsRoomHolder.feed);
   }
 
   // ── Real-time like_update from another device ─────────────────────────────

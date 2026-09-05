@@ -9,8 +9,8 @@ import 'package:jperg_app/core/config/chat_config.dart';
 import 'package:jperg_app/core/error/exceptions.dart' show ServerException;
 import 'package:jperg_app/features/chat/data/datasources/chat_background_service.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.dart'
-    show ChatWebSocketService, WsAdminGrantedEvent, WsAdminRevokedEvent,
-        WsChatErrorEvent,
+    show ChatWebSocketService, WsRoomHolder, WsAdminGrantedEvent, WsAdminRevokedEvent,
+        WsChatErrorEvent, WsDeliveryReceiptEvent,
         WsKeyBundlesEvent, WsKeyRotationEvent, WsMessageDeletedEvent,
         WsMessageEditedEvent, WsParticipantKeyAvailable,
         WsMessagePinnedEvent,
@@ -23,6 +23,7 @@ import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.d
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/features/chat/presentation/typing_announcer.dart';
+import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:jperg_app/core/celebration/comment_milestone.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
@@ -72,6 +73,13 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   // E2EE state
   bool _isDirectRoom = false;
   bool _isGroupRoom = false;
+
+  /// This room is a comment thread — see [RoomType.isCommentThread].
+  ///
+  /// Remembered because the type is needed on the way out, after the state's
+  /// room may already be gone: a thread is unsubscribed when the screen closes,
+  /// and a conversation is not.
+  bool _isCommentThread = false;
   String? _recipientId;          // other party's userId in a DM room
   // Proactive X3DH session held in memory only — never written to secure
   // storage until the first outgoing message actually uses it.
@@ -104,6 +112,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   StreamSubscription<WsSenderKeyDistributionEvent>? _wsSenderKeyDistSub;
   StreamSubscription? _wsParticipantLeftSub;
   StreamSubscription<WsReadReceiptEvent>? _wsReadReceiptSub;
+  StreamSubscription<WsDeliveryReceiptEvent>? _wsDeliveryReceiptSub;
   StreamSubscription<WsTypingEvent>? _wsTypingSub;
   StreamSubscription<WsPresenceEvent>? _wsPresenceSub;
   StreamSubscription<WsChatErrorEvent>? _wsErrorSub;
@@ -211,6 +220,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_GroupSenderKeyReceived>(_onGroupSenderKeyReceived);
     on<_ParticipantLeft>(_onParticipantLeft);
     on<_ReadReceiptReceived>(_onReadReceiptReceived);
+    on<_DeliveryReceiptReceived>(_onDeliveryReceiptReceived);
     on<ChatRoomTypingChanged>(_onTypingChanged);
     on<_TypingReceived>(_onTypingReceived);
     on<_PresenceReceived>(_onPresenceReceived);
@@ -336,6 +346,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
 
     _isGroupRoom = roomType == RoomType.group;
+    _isCommentThread = roomType?.isCommentThread ?? false;
 
     // Where the other people in this room stand right now. The pushed frames
     // only report *changes*, so without this a conversation opened after they
@@ -459,7 +470,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       // Explicitly subscribe so the server delivers messages for this room
       // even if the background service hasn't subscribed it yet (e.g. photo
       // rooms opened before connectAll runs, or rooms paused before subscription).
-      _ws.subscribeRoom(roomId);
+      _ws.subscribeRoom(roomId, holder: WsRoomHolder.room);
       _setupWsListeners(roomId);
       if (!isClosed) add(const _WsConnected());
       return;
@@ -469,7 +480,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       if (!connected || isClosed) return;
       _wsConnectionSub?.cancel();
       _wsConnectionSub = null;
-      _ws.subscribeRoom(roomId);
+      _ws.subscribeRoom(roomId, holder: WsRoomHolder.room);
       _setupWsListeners(roomId);
       if (!isClosed) add(const _WsConnected());
     });
@@ -494,6 +505,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsSenderKeyDistSub?.cancel();
     _wsParticipantLeftSub?.cancel();
     _wsReadReceiptSub?.cancel();
+    _wsDeliveryReceiptSub?.cancel();
     _wsTypingSub?.cancel();
     _wsPresenceSub?.cancel();
     _wsErrorSub?.cancel();
@@ -515,6 +527,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _wsSenderKeyDistSub = null;
     _wsParticipantLeftSub = null;
     _wsReadReceiptSub = null;
+    _wsDeliveryReceiptSub = null;
     _wsTypingSub = null;
     _wsPresenceSub = null;
     _wsErrorSub = null;
@@ -675,6 +688,22 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             readerId: event.readerId,
             upToMessageId: event.upToMessageId,
             messageId: event.messageId,
+          ));
+        }
+      },
+    );
+
+    // No `!= _myUserId` filter here, unlike the read receipts above: this
+    // frame names the *recipients*, not the sender, and the server already
+    // excludes them from the broadcast. Filtering on it would drop the only
+    // frame that matters — the one saying somebody else received what I sent.
+    _wsDeliveryReceiptSub = _ws.deliveryReceiptEvents.listen(
+      (event) {
+        if (!isClosed && event.roomId == roomId) {
+          add(_DeliveryReceiptReceived(
+            userIds: event.userIds,
+            messageIds: event.messageIds,
+            upToMessageId: event.upToMessageId,
           ));
         }
       },
@@ -1250,14 +1279,37 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     //
     // A photo's and an event's comments are messages in its room, so this is
     // the only path a count arrives on — the server reads it back off the row
-    // it just incremented and puts it on the frame, which reaches the author as
-    // an echo. Only the author is congratulated: everybody else in the room is
-    // reading somebody else's milestone, which is not an achievement.
+    // it just incremented and puts it on the frame, which comes back to
+    // everybody in the room, the author included.
     //
     // Null on every message that is not a top-level comment, which is most of
-    // them, and [CommentMilestones] is silent for all of those.
-    if (msg.senderId == _myUserId && msg.targetCommentCount != null) {
-      CommentMilestones.instance.report(msg.targetCommentCount);
+    // them, and both readers below are silent for those.
+    final landedAt = msg.targetCommentCount;
+    if (landedAt != null) {
+      // The badge, for everyone. It is a fact about the photo, not about who
+      // typed — a reader watching a thread should see the count move as
+      // comments arrive, the same as the person who posted one.
+      //
+      // This was missing entirely, and it is why the Found tab's count never
+      // moved. Both comment sheets that matter here run on this bloc: the photo
+      // sheet and the event sheet are rooms, not HTTP endpoints. The blocs that
+      // *did* report a count — PhotoCommentBloc, and FeedCommentBloc for ads —
+      // are a different path, and PhotoCommentBloc is not wired to any screen
+      // at all.
+      //
+      // Keyed by the room's target: `ChatRoom.eventId` carries the picture id
+      // on a photo room and the event id on an event room, which is exactly
+      // what every badge is keyed by.
+      final targetId = state.room?.eventId;
+      if (targetId != null && targetId.isNotEmpty) {
+        CommentCounts.instance.report(targetId, landedAt);
+      }
+
+      // The confetti, for the author alone: everybody else in the room is
+      // reading somebody else's milestone, which is not an achievement.
+      if (msg.senderId == _myUserId) {
+        CommentMilestones.instance.report(landedAt);
+      }
     }
 
     debugPrint('[ChatRoomBloc] _onReceived: msgId=${msg.id}'
@@ -2492,9 +2544,62 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       final shouldMark = upToMsg != null
           ? !msg.createdAt.isAfter(upToMsg.createdAt)
           : singleId != null && msg.id == singleId;
-      return shouldMark ? msg.copyWith(readBy: [...msg.readBy, readerId]) : msg;
+      if (!shouldMark) return msg;
+
+      // A read implies delivery. The server writes both rows for exactly this
+      // reason — a client that was offline can ack straight from history
+      // without ever having sent a delivery frame — so mark both here too, or
+      // that message would show blue on a device that never saw the grey.
+      return msg.copyWith(
+        readBy: [...msg.readBy, readerId],
+        deliveredTo: msg.deliveredTo.contains(readerId)
+            ? msg.deliveredTo
+            : [...msg.deliveredTo, readerId],
+      );
     }).toList();
 
+    emit(state.copyWith(messages: updated));
+  }
+
+  /// Apply a delivery frame to the messages it names.
+  ///
+  /// Mirrors [_onReadReceiptReceived], with one difference that matters: a
+  /// delivery frame carries a *list* of recipients, because one message going
+  /// out to a live group is delivered to several people at once.
+  ///
+  /// [upToMessageId] covers the whole range below it, which is what makes a
+  /// reconnect one frame rather than one per missed message. When it is absent
+  /// only the named ids are marked.
+  void _onDeliveryReceiptReceived(
+    _DeliveryReceiptReceived event,
+    Emitter<ChatRoomState> emit,
+  ) {
+    final upToMsg = event.upToMessageId != null
+        ? state.messages.where((m) => m.id == event.upToMessageId).firstOrNull
+        : null;
+    final named = event.messageIds.toSet();
+
+    var changed = false;
+    final updated = state.messages.map((msg) {
+      // Only my own messages carry ticks, so nobody else's needs the work.
+      if (msg.senderId != _myUserId) return msg;
+
+      final inRange = upToMsg != null
+          ? !msg.createdAt.isAfter(upToMsg.createdAt)
+          : named.contains(msg.id);
+      if (!inRange) return msg;
+
+      final missing =
+          event.userIds.where((id) => !msg.deliveredTo.contains(id)).toList();
+      if (missing.isEmpty) return msg;
+
+      changed = true;
+      return msg.copyWith(deliveredTo: [...msg.deliveredTo, ...missing]);
+    }).toList();
+
+    // A repeat frame — the reconnect backfill overlapping what is already
+    // known — must not emit, or every reconnect rebuilds the whole list.
+    if (!changed) return;
     emit(state.copyWith(messages: updated));
   }
 
@@ -2956,6 +3061,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
     _typingExpiryTimers.clear();
     _cancelWsSubscriptions();
+    _releaseCommentThread();
     // Drop who we thought was typing too — otherwise re-entering the room
     // renders a stale indicator from before we left, with no frame coming to
     // clear it because the sender stopped long ago.
@@ -2987,6 +3093,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // much still lit on the other screen.
     _stopTyping();
     _cancelWsSubscriptions();
+    // Both hooks release the thread, because only one of them is guaranteed to
+    // run: the page dispatches ChatRoomLeft from its dispose, but the bloc can
+    // be closed without the page ever having been popped. Saying it twice costs
+    // one ignored frame; saying it neither time leaves the socket live on a
+    // thread nobody is reading.
+    _releaseCommentThread();
     // Leaving the room: we are no longer reading it, so messages arriving from
     // here on should notify. The socket stays open (owned by
     // ChatBackgroundService), which is exactly why this has to be said out loud
@@ -2998,6 +3110,19 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+
+  /// Stop this socket receiving a comment thread we are no longer showing.
+  ///
+  /// A live comment is only worth delivering to somebody with the thread open,
+  /// so it is subscribed on the way in and released here on the way out. Only
+  /// threads: a DM has to keep arriving whether or not this screen exists, which
+  /// is what raises its notification. See [RoomType.isCommentThread].
+  void _releaseCommentThread() {
+    if (!_isCommentThread) return;
+    final roomId = _currentRoomId;
+    if (roomId == null || !_ws.isConnected) return;
+    _ws.unsubscribeRoom(roomId, holder: WsRoomHolder.room);
+  }
 
   List<ChatMessage> _sorted(List<ChatMessage> messages) {
     final seen = <String>{};

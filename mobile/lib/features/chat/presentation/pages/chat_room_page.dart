@@ -765,6 +765,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
           isGroup: _isGroup,
           senderImageUrl: participant?.userImage,
           readCount: msg.readBy.length,
+          deliveredToCount: msg.deliveredTo.length,
           totalOthers: totalOthers,
           mentionHandles: _mentionHandles(state),
           mentionNames: _mentionNames(state),

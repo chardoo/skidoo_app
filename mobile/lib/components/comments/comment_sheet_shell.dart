@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
-import 'package:jperg_app/core/celebration/celebration_overlay.dart';
-import 'package:jperg_app/core/celebration/comment_milestone.dart';
+import 'package:jperg_app/core/celebration/comment_milestone_watcher.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 /// Shared bottom-sheet container for every comment surface — the photo sheet,
@@ -67,7 +66,7 @@ class CommentSheetShell extends StatelessWidget {
     // Every comment surface in the app is inside this shell, so watching for a
     // milestone here covers all of them at once — and covers only the ones
     // where somebody is actually looking at a comment thread.
-    return _MilestoneWatcher(
+    return CommentMilestoneWatcher(
       child: AnimatedPadding(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
@@ -172,55 +171,6 @@ class CommentSheetShell extends StatelessWidget {
 }
 
 // ── Milestones ───────────────────────────────────────────────────────────────
-
-/// Watches for "you are the 100th comment" and throws the confetti.
-///
-/// Mounted once, around every comment sheet, rather than at each of the three
-/// call sites — and deliberately *not* at the app root: a celebration should
-/// arrive while somebody is looking at the thread they just posted into, not
-/// over whatever screen they had moved on to.
-///
-/// The overlay is opened from a post-frame callback. The notifier fires inside
-/// a bloc's event handler, which can land mid-build, and inserting an
-/// [OverlayEntry] during build throws.
-class _MilestoneWatcher extends StatefulWidget {
-  const _MilestoneWatcher({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_MilestoneWatcher> createState() => _MilestoneWatcherState();
-}
-
-class _MilestoneWatcherState extends State<_MilestoneWatcher> {
-  @override
-  void initState() {
-    super.initState();
-    CommentMilestones.instance.pending.addListener(_onMilestone);
-  }
-
-  @override
-  void dispose() {
-    CommentMilestones.instance.pending.removeListener(_onMilestone);
-    super.dispose();
-  }
-
-  void _onMilestone() {
-    final message = CommentMilestones.instance.pending.value;
-    if (message == null) return;
-    // Consumed straight away, before the frame it will be drawn in: two sheets
-    // can be mounted at once during a transition, and both would otherwise
-    // celebrate the same comment.
-    CommentMilestones.instance.consume();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) CelebrationOverlay.show(context, message);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
-}
 
 // ── Sheet surface ─────────────────────────────────────────────────────────────
 

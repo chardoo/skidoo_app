@@ -63,6 +63,22 @@ enum RoomType {
       this == RoomType.direct ||
       this == RoomType.eventPrivate ||
       this == RoomType.group;
+
+  /// A comment thread rather than a conversation: opened, read, and left.
+  ///
+  /// These are subscribed while they are on screen and dropped on the way out,
+  /// because a live comment is only worth delivering to somebody looking at the
+  /// thread. The server takes the same view — it stops subscribing these on
+  /// connect, so a socket that wants one has to ask.
+  ///
+  /// The reason is that a membership row is written the first time anybody
+  /// opens a thread and never removed, so "rooms I am in" grows with every
+  /// photo a person has ever glanced at — one account reached 144. Subscribing
+  /// that set meant one socket carrying every comment on all of them, forever.
+  bool get isCommentThread =>
+      this == RoomType.event ||
+      this == RoomType.photo ||
+      this == RoomType.sample;
 }
 
 class ChatParticipant {

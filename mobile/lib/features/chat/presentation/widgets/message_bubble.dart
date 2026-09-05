@@ -28,6 +28,7 @@ class MessageBubble extends StatefulWidget {
     this.onLongPress,
     this.onReplyTap,
     this.readCount = 0,
+    this.deliveredToCount = 0,
     this.totalOthers = 0,
     this.mentionHandles = const {},
     this.mentionNames = const {},
@@ -57,6 +58,10 @@ class MessageBubble extends StatefulWidget {
 
   /// How many non-sender participants have read this message.
   final int readCount;
+
+  /// How many other participants the message has reached. Feeds the grey
+  /// double tick — see the tick block in [_MessageMeta].
+  final int deliveredToCount;
 
   /// Total non-sender participants in the room (1 for DM, N-1 for group).
   final int totalOthers;
@@ -101,6 +106,7 @@ class _MessageBubbleState extends State<MessageBubble> {
     final message = widget.message;
     final isMe = widget.isMe;
     final readCount = widget.readCount;
+    final deliveredToCount = widget.deliveredToCount;
     final totalOthers = widget.totalOthers;
     final onLongPress = widget.onLongPress;
 
@@ -310,6 +316,18 @@ class _MessageBubbleState extends State<MessageBubble> {
                                             : ext.accentGold,
                                         fontWeight: FontWeight.w700,
                                       ),
+                                      // Underlined in the bubble's own text
+                                      // colour rather than a link blue: the
+                                      // two bubble fills are very different
+                                      // and one colour cannot read on both,
+                                      // where an underline reads on either.
+                                      linkStyle: TextStyle(
+                                        color: textColor,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor:
+                                            textColor.withValues(alpha: 0.6),
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                       handles: widget.mentionHandles,
                                       displayNames: widget.mentionNames,
                                       myUserId: widget.myUserId,
@@ -324,6 +342,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                                     ext: ext,
                                     color: mutedTextColor,
                                     readCount: readCount,
+                                    deliveredToCount: deliveredToCount,
                                     totalOthers: totalOthers,
                                   ),
                                 )
@@ -334,6 +353,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                                   ext: ext,
                                   color: mutedTextColor,
                                   readCount: readCount,
+                                  deliveredToCount: deliveredToCount,
                                   totalOthers: totalOthers,
                                 ),
                             ],
@@ -360,6 +380,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                   isMe: isMe,
                   ext: ext,
                   readCount: readCount,
+                  deliveredToCount: deliveredToCount,
                   totalOthers: totalOthers,
                 ),
               ),
@@ -744,6 +765,7 @@ class _Timestamp extends StatelessWidget {
     required this.ext,
     this.color,
     this.readCount = 0,
+    this.deliveredToCount = 0,
     this.totalOthers = 0,
   });
   final ChatMessage message;
@@ -756,6 +778,10 @@ class _Timestamp extends StatelessWidget {
   final Color? color;
 
   final int readCount;
+
+  /// How many other participants the message has reached. Feeds the grey
+  /// double tick — see the tick block in [_MessageMeta].
+  final int deliveredToCount;
   final int totalOthers;
 
   @override
@@ -764,46 +790,54 @@ class _Timestamp extends StatelessWidget {
     final timeStr = ChatTime.bubbleClock(message.createdAt);
     final tint = color ?? ext.searchHintColor;
 
-    // Read-status logic (only for my sent messages with known participant count).
+    // ── Ticks ────────────────────────────────────────────────────────────────
+    //
+    // Three states, and the app used to be able to draw only two of them:
+    //
+    //   ✓        sent       the server has it
+    //   ✓✓ grey  delivered  it reached every other participant's device
+    //   ✓✓ blue  read       every one of them has opened it
+    //
+    // The middle state needs `delivered_to`, which the server has always sent
+    // and the client never parsed — so anything not actively read sat on a
+    // single tick forever. That is the "always one tick" report: not a bug in
+    // this widget's logic so much as a state it had no data to reach.
+    //
+    // Delivery is counted as max(delivered, read) rather than from
+    // `deliveredTo` alone. A read implies delivery and the bloc now writes
+    // both, but history fetched from REST can carry a read with no matching
+    // delivery row, and without the max a blue message would fall back to one
+    // grey tick on reload — a tick going *backwards*, which reads as the
+    // message having been un-delivered.
     Widget? readIndicator;
     if (isMe && totalOthers > 0 && !message.isLocal) {
       final allRead = readCount >= totalOthers;
-      final someRead = readCount > 0;
-      if (totalOthers == 1) {
-        // DM: single/double tick, coloured when read.
-        readIndicator = Icon(
-          allRead ? Icons.done_all_rounded : Icons.done_rounded,
-          size: 11.sp,
-          color: allRead ? ext.infoBlue : tint,
+      final deliveredCount =
+          deliveredToCount > readCount ? deliveredToCount : readCount;
+      final allDelivered = deliveredCount >= totalOthers;
+
+      if (allRead) {
+        readIndicator =
+            Icon(Icons.done_all_rounded, size: 11.sp, color: ext.infoBlue);
+      } else if (totalOthers > 1 && readCount > 0) {
+        // Partial in a group: the number is more use than a tick, because "some
+        // of the nine" is not a state two ticks can express.
+        readIndicator = Text(
+          'Read by $readCount',
+          style: TextStyle(color: tint, fontSize: 9.sp),
         );
+      } else if (allDelivered) {
+        readIndicator = Icon(Icons.done_all_rounded, size: 11.sp, color: tint);
       } else {
-        // Group: double tick when all read; "Read by N" when partial; single tick when none.
-        if (allRead) {
-          readIndicator = Icon(
-            Icons.done_all_rounded,
-            size: 11.sp,
-            color: ext.infoBlue,
-          );
-        } else if (someRead) {
-          readIndicator = Text(
-            'Read by $readCount',
-            style: TextStyle(
-              color: tint,
-              fontSize: 9.sp,
-            ),
-          );
-        } else {
-          readIndicator = Icon(
-            Icons.done_rounded,
-            size: 11.sp,
-            color: tint,
-          );
-        }
+        readIndicator = Icon(Icons.done_rounded, size: 11.sp, color: tint);
       }
     } else if (isMe) {
-      // Fallback when participant count is unknown or message is local (pending).
+      // Local means still in flight — a clock, not a tick. Otherwise the
+      // participant count is unknown (a room whose roster has not loaded), and
+      // one tick is the honest answer there: the server has it, and nothing is
+      // known about anyone else. It used to draw a confident double tick.
       readIndicator = Icon(
-        message.isLocal ? Icons.access_time_rounded : Icons.done_all_rounded,
+        message.isLocal ? Icons.access_time_rounded : Icons.done_rounded,
         size: 11.sp,
         color: tint,
       );

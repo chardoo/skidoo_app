@@ -7,9 +7,9 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 /// The confetti, from the sheet's point of view.
 ///
-/// The watcher lives in [CommentSheetShell] rather than at each of the three
-/// comment surfaces, so this is the one place the wiring can be checked — and
-/// the one place it can break for all of them at once.
+/// The watcher is [CommentMilestoneWatcher], which the shell wraps around every
+/// comment sheet — so this is the one place the wiring can be checked, and the
+/// one place it can break for all of them at once.
 void main() {
   Widget host() => ScreenUtilInit(
         designSize: const Size(390, 844),
@@ -76,5 +76,38 @@ void main() {
     await t.pump(const Duration(seconds: 3));
     expect(find.textContaining('🎉'), findsNothing);
     expect(CommentMilestones.instance.pending.value, isNull);
+  });
+
+  testWidgets('the banner is not drawn in the unstyled fallback', (t) async {
+    // The banner is inserted into an Overlay, which has no Material ancestor of
+    // its own. Text with nothing Material above it falls back to Flutter's
+    // unstyled default, and that default is drawn with a double yellow
+    // underline on purpose — to make exactly this mistake visible. It was doing
+    // its job: the banner shipped with a yellow line struck under the message.
+    await t.pumpWidget(host());
+
+    CommentMilestones.instance.report(1);
+    await t.pump();
+    await t.pump();
+
+    final text = t.widget<Text>(find.text("You're the first to comment 🎉"));
+    final style = text.style!;
+
+    expect(style.decoration, TextDecoration.none,
+        reason: 'a yellow underline under the message means no Material above');
+    // The fallback is also the wrong colour and the wrong size. Asserting the
+    // real values pins that the banner is styled by its own code and not by
+    // whatever Flutter fell back to.
+    expect(style.color, const Color(0xFF14171A));
+    expect(style.fontWeight, FontWeight.w700);
+
+    // And a Material really is above it, which is what makes the ink, the
+    // shadow and the default text style work at all.
+    expect(
+      find.ancestor(of: find.byType(Text), matching: find.byType(Material)),
+      findsWidgets,
+    );
+
+    await t.pump(const Duration(seconds: 3));
   });
 }

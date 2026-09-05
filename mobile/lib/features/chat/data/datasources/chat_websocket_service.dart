@@ -10,6 +10,23 @@ import 'package:jperg_app/models/chat/like_update.dart' show LikeUpdate, Picture
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+/// The parts of the app that ask the shared socket for a room.
+///
+/// Named so that one letting go does not speak for the others — see
+/// [ChatWebSocketService.unsubscribeRoom]. A feed card and the comment sheet
+/// opened on top of it are the same room wanted by two different screens, and
+/// closing the sheet should not stop the card updating.
+abstract final class WsRoomHolder {
+  /// Conversations kept live for notifications, whatever is on screen.
+  static const background = 'background';
+
+  /// A room open on screen — a chat, or a comment thread.
+  static const room = 'room';
+
+  /// An event card currently visible in the discovery feed.
+  static const feed = 'feed';
+}
+
 // ── Server-push events ────────────────────────────────────────────────────────
 
 /// First frame the server sends after the handshake completes.
@@ -186,6 +203,31 @@ class WsReadReceiptEvent {
   });
 }
 
+/// The message reached somebody's device — the middle tick state.
+///
+/// Sent by the server as `delivery_receipt` whenever a recipient's socket takes
+/// delivery, and again on their next connect for anything they missed while
+/// offline. The app ignored these frames entirely, which is why a sent message
+/// stayed on one tick until the other person actually opened the conversation.
+///
+/// Both `user_ids` and `message_ids` are lists: one frame can carry a message
+/// fanned out to several live group members, or a batch of messages catching up
+/// to one person who just came back. [upToMessageId] is the newest of the
+/// batch — everything older in the room from the same sender is delivered too,
+/// which is what makes a reconnect cheap to apply.
+class WsDeliveryReceiptEvent {
+  final String roomId;
+  final List<String> userIds;
+  final List<String> messageIds;
+  final String? upToMessageId;
+  const WsDeliveryReceiptEvent({
+    required this.roomId,
+    required this.userIds,
+    required this.messageIds,
+    this.upToMessageId,
+  });
+}
+
 /// Another participant started or stopped typing.
 ///
 /// Nothing about this is persisted — it is broadcast and forgotten, so a frame
@@ -308,6 +350,7 @@ class ChatWebSocketService {
   StreamController<WsRoomDeletedEvent>? _roomDeletedController;
   StreamController<WsSenderKeyDistributionEvent>? _senderKeyDistController;
   StreamController<WsReadReceiptEvent>? _readReceiptController;
+  StreamController<WsDeliveryReceiptEvent>? _deliveryReceiptController;
   StreamController<WsTypingEvent>? _typingController;
   StreamController<WsPresenceEvent>? _presenceController;
   StreamSubscription? _sub;
@@ -399,6 +442,9 @@ class ChatWebSocketService {
 
   Stream<WsReadReceiptEvent> get readReceiptEvents =>
       _readReceiptController?.stream ?? const Stream.empty();
+
+  Stream<WsDeliveryReceiptEvent> get deliveryReceiptEvents =>
+      _deliveryReceiptController?.stream ?? const Stream.empty();
 
   /// Emits when somebody this user shares a conversation with comes online or
   /// goes offline. Lazily created like [typingEvents], because a listener can
@@ -494,6 +540,8 @@ class ChatWebSocketService {
     _roomDeletedController = StreamController<WsRoomDeletedEvent>.broadcast();
     _senderKeyDistController = StreamController<WsSenderKeyDistributionEvent>.broadcast();
     _readReceiptController = StreamController<WsReadReceiptEvent>.broadcast();
+    _deliveryReceiptController =
+        StreamController<WsDeliveryReceiptEvent>.broadcast();
 
     try {
       _channel = WebSocketChannel.connect(uri);
@@ -732,6 +780,25 @@ class ChatWebSocketService {
                 messageId: json['message_id'] as String?,
               ));
             }
+          } else if (type == 'delivery_receipt') {
+            // Lists on purpose — see [WsDeliveryReceiptEvent]. A frame with
+            // neither list is not an error, just nothing to apply.
+            if (json['room_id'] is String) {
+              final userIds = (json['user_ids'] as List<dynamic>? ?? [])
+                  .whereType<String>()
+                  .toList();
+              final messageIds = (json['message_ids'] as List<dynamic>? ?? [])
+                  .whereType<String>()
+                  .toList();
+              if (userIds.isNotEmpty && messageIds.isNotEmpty) {
+                _deliveryReceiptController?.add(WsDeliveryReceiptEvent(
+                  roomId: json['room_id'] as String,
+                  userIds: userIds,
+                  messageIds: messageIds,
+                  upToMessageId: json['up_to_message_id'] as String?,
+                ));
+              }
+            }
           } else if (type == 'message' ||
               (type == null && json['id'] is String && json['created_at'] is String)) {
             // New message / comment. On web, sender_role may be absent —
@@ -765,12 +832,56 @@ class ChatWebSocketService {
     );
   }
 
+  /// Who has asked for each room, by [WsRoomHolder].
+  ///
+  /// One socket serves several screens at once, and more than one of them can
+  /// want the same room: an event card visible in the feed and the comment
+  /// sheet opened from it are the same room, watched by two different things.
+  /// A set rather than a count, because the callers subscribe idempotently —
+  /// every rooms refresh re-subscribes what it already had, which a count would
+  /// read as a stack of holders that never unwinds.
+  final Map<String, Set<String>> _roomHolders = {};
+
   /// Subscribe to a new room on the existing connection without reconnecting.
   /// Use this after joining a room via REST so the server starts delivering
   /// its events immediately.
-  void subscribeRoom(String roomId) {
+  ///
+  /// The frame goes out even when [holder] already had this room: subscribing
+  /// is idempotent server-side, and a reconnect needs saying again anyway.
+  void subscribeRoom(String roomId, {String holder = WsRoomHolder.background}) {
     _roomId = roomId;
+    _roomHolders.putIfAbsent(roomId, () => <String>{}).add(holder);
     _sendRaw({'type': 'subscribe_room', 'room_id': roomId});
+  }
+
+  /// Stop receiving a room's events without reconnecting.
+  ///
+  /// For comment threads — an event's or a photo's room — which are opened,
+  /// read and left. The server no longer subscribes to those on connect for
+  /// exactly this reason: a membership row is written the first time somebody
+  /// looks, and subscribing to all of them meant one socket carrying every
+  /// comment on every photo its owner had ever opened. Saying so on the way
+  /// out is the other half of that.
+  ///
+  /// Only [holder] lets go. The frame is sent when the last one does, so
+  /// closing a comment sheet does not cut the live counts on the feed card
+  /// still showing behind it.
+  ///
+  /// Safe to call for any room: the server only honours it for those on-demand
+  /// types, and ignores it for a DM or a group, where delivery has to work
+  /// whether or not the app is looking.
+  ///
+  /// Returns whether the room was actually let go — false while somebody else
+  /// still holds it.
+  bool unsubscribeRoom(String roomId,
+      {String holder = WsRoomHolder.background}) {
+    final holders = _roomHolders[roomId];
+    if (holders == null) return false;
+    holders.remove(holder);
+    if (holders.isNotEmpty) return false;
+    _roomHolders.remove(roomId);
+    _sendRaw({'type': 'unsubscribe_room', 'room_id': roomId});
+    return true;
   }
 
   /// The room currently on screen, or null for "looking at nothing".
@@ -983,6 +1094,7 @@ class ChatWebSocketService {
     _roomDeletedController?.close();
     _senderKeyDistController?.close();
     _readReceiptController?.close();
+    _deliveryReceiptController?.close();
     _typingController?.close();
     _presenceController?.close();
     _connectedController = null;
@@ -1006,6 +1118,7 @@ class ChatWebSocketService {
     _roomDeletedController = null;
     _senderKeyDistController = null;
     _readReceiptController = null;
+    _deliveryReceiptController = null;
     _typingController = null;
     _presenceController = null;
   }

@@ -31,6 +31,34 @@ void main() {
       );
     });
 
+    test('silent when we do not know who we are', () {
+      // getUserId() answers '' when the keychain read fails, and `senderId ==
+      // myId` is false against '' for every sender alive — so an empty id
+      // turned the "don't chime at yourself" guard off entirely and the app
+      // played a tone at the user's own outgoing messages.
+      //
+      // A missed chime is a missed chime. A chime at your own message is a bug
+      // somebody hears every time they type.
+      expect(
+        ChatBackgroundService.shouldPlayDmSound(
+          muted: false,
+          senderId: me,
+          myId: '',
+          roomType: RoomType.direct,
+        ),
+        isFalse,
+      );
+      expect(
+        ChatBackgroundService.shouldPlayDmSound(
+          muted: false,
+          senderId: them,
+          myId: '',
+          roomType: RoomType.direct,
+        ),
+        isFalse,
+      );
+    });
+
     test('silent for the user\'s own echoed message', () {
       expect(
         ChatBackgroundService.shouldPlayDmSound(

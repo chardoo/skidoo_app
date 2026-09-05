@@ -196,6 +196,21 @@ class ChatBackgroundService {
   /// Emits true on connect, false on drop. Never closed while the service lives.
   Stream<bool> get connectionEvents => _connectionController.stream;
 
+  /// Rooms this service subscribes on its own initiative.
+  ///
+  /// Conversations, and not the comment threads that make up most of the list.
+  /// A thread's messages are only wanted while somebody is reading it, so it is
+  /// subscribed by the screen that shows it and released when that screen goes
+  /// away — see [RoomType.isCommentThread]. A DM is the opposite: it has to
+  /// arrive with the app nowhere near the room, because that is what raises the
+  /// notification.
+  ///
+  /// Without this the fix on the server is undone from here. It stopped
+  /// subscribing threads on connect, and this would subscribe every one of them
+  /// a moment later — one account's list held 144, each its own Redis channel.
+  Iterable<ChatRoom> _backgroundRooms(Iterable<ChatRoom> rooms) =>
+      rooms.where((r) => !r.type.isCommentThread && !_paused.contains(r.id));
+
   /// Registers [rooms] and opens (or reuses) the single global WS connection.
   Future<void> connectAll(List<ChatRoom> rooms) async {
     for (final room in rooms) {
@@ -204,10 +219,8 @@ class ChatBackgroundService {
 
     if (_connected) {
       // Already up — just subscribe any newly discovered rooms.
-      for (final room in rooms) {
-        if (!_paused.contains(room.id)) {
-          _sharedWs.subscribeRoom(room.id);
-        }
+      for (final room in _backgroundRooms(rooms)) {
+        _sharedWs.subscribeRoom(room.id);
       }
       return;
     }
@@ -231,8 +244,19 @@ class ChatBackgroundService {
 
   /// Called when [ChatRoomBloc] is done with [roomId]. Re-subscribes so the
   /// global connection resumes delivering background messages for this room.
+  ///
+  /// Except for a comment thread, which the bloc has just asked the server to
+  /// stop sending — re-subscribing it here would take that straight back, and
+  /// nobody is reading it any more. An unknown room is assumed to be a
+  /// conversation: this runs for DMs opened before the next [connectAll], and
+  /// silence there loses messages, where a missed thread costs a badge.
   void resume(String roomId) {
     _paused.remove(roomId);
+    final known = _rooms[roomId];
+    if (known != null && known.type.isCommentThread) {
+      debugPrint('[BgChat] released thread $roomId');
+      return;
+    }
     // Always re-subscribe, even for rooms not yet in _rooms (e.g. a brand-new
     // DM opened before the next connectAll call). Without this the server stops
     // delivering messages for that room after the user leaves it.
@@ -279,10 +303,15 @@ class ChatBackgroundService {
       _connecting = false;
       _reconnectAttempts = 0;
 
-      // Subscribe ALL non-paused rooms known at this point, including any
-      // rooms registered via connectAll() while the handshake was in flight.
-      final allRooms = _rooms.keys.where((id) => !_paused.contains(id)).toList();
-      debugPrint('[BgChat] connected — subscribing ${allRooms.length} room(s)');
+      // Subscribe every conversation known at this point, including any rooms
+      // registered via connectAll() while the handshake was in flight. Comment
+      // threads are left to the screens that show them — see
+      // [_backgroundRooms]. A reconnect therefore does not restore a thread the
+      // user has walked away from, which is the point.
+      final allRooms =
+          _backgroundRooms(_rooms.values).map((r) => r.id).toList();
+      debugPrint('[BgChat] connected — subscribing ${allRooms.length}'
+          ' of ${_rooms.length} known room(s)');
       for (final roomId in allRooms) {
         _sharedWs.subscribeRoom(roomId);
       }
@@ -521,7 +550,17 @@ class ChatBackgroundService {
   }) {
     if (muted) return false;
     if (isSystem) return false;
+
+    // Not knowing who I am is not evidence that this came from somebody else.
+    // [AuthService.getUserId] answers '' when the read fails, and `senderId ==
+    // myId` is false against '' for every sender alive — so an empty id turned
+    // the "don't chime at yourself" guard off completely and the app played a
+    // tone at the user's own outgoing messages. Silence is the safe answer: a
+    // missed chime is a missed chime, a chime at your own message is a bug
+    // somebody hears every time they type.
+    if (myId.isEmpty) return false;
     if (senderId == myId) return false;
+
     return roomType == null || roomType == RoomType.direct;
   }
 
@@ -600,8 +639,19 @@ class ChatBackgroundService {
     return null;
   }
 
+  /// My user id, read once and kept.
+  ///
+  /// An empty answer is *not* cached. `getUserId` returns '' when the read
+  /// fails rather than throwing, and `??=` treats that as a perfectly good
+  /// value — so one unlucky read during startup pinned the id to '' for the
+  /// whole session, and every guard that compares against it silently stopped
+  /// working. Retrying costs a keychain read on a path that only runs per
+  /// incoming message.
   Future<String> _myUserIdCached() async {
-    _cachedMyUserId ??= await _authService.getUserId();
-    return _cachedMyUserId!;
+    final cached = _cachedMyUserId;
+    if (cached != null && cached.isNotEmpty) return cached;
+    final id = await _authService.getUserId();
+    if (id.isNotEmpty) _cachedMyUserId = id;
+    return id;
   }
 }

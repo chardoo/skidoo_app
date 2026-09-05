@@ -64,6 +64,20 @@ class ChatMessage {
   /// Populated from REST `read_by` array and updated live via `read_receipt` WS events.
   final List<String> readBy;
 
+  /// IDs of participants the message has reached on at least one device.
+  ///
+  /// The middle of the three tick states, and the one the app used to have no
+  /// data for at all — the server has sent `delivered_to` and broadcast
+  /// `delivery_receipt` frames all along, and the client parsed neither. With
+  /// only [readBy] to go on there was nothing between "sent" and "read", so
+  /// every message anyone had not actively opened sat on a single tick, which
+  /// is what "it is always one tick" was.
+  ///
+  /// Kept apart from [readBy] rather than merged: a read implies delivery, but
+  /// the reverse is not true, and collapsing them would make the grey double
+  /// tick unreachable again.
+  final List<String> deliveredTo;
+
   /// True for messages added optimistically before server confirms.
   final bool isLocal;
 
@@ -161,6 +175,7 @@ class ChatMessage {
     required this.createdAt,
     this.isRead = false,
     this.readBy = const [],
+    this.deliveredTo = const [],
     this.isLocal = false,
     this.isEncrypted = false,
     this.iv,
@@ -212,6 +227,9 @@ class ChatMessage {
       createdAt: parseServerTime(json['created_at'] as String),
       isRead: (json['is_read'] as bool?) ?? false,
       readBy: (json['read_by'] as List<dynamic>? ?? [])
+          .whereType<String>()
+          .toList(),
+      deliveredTo: (json['delivered_to'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
       isEncrypted: (json['is_encrypted'] as bool?) ?? false,
@@ -270,6 +288,7 @@ class ChatMessage {
     String? senderName,
     bool? isRead,
     List<String>? readBy,
+    List<String>? deliveredTo,
     bool? isLocal,
     String? imageUrl,
     bool? isVideo,
@@ -294,6 +313,7 @@ class ChatMessage {
       createdAt: createdAt,
       isRead: isRead ?? this.isRead,
       readBy: readBy ?? this.readBy,
+      deliveredTo: deliveredTo ?? this.deliveredTo,
       isLocal: isLocal ?? this.isLocal,
       isEncrypted: isEncrypted ?? this.isEncrypted,
       iv: iv,

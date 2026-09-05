@@ -135,45 +135,76 @@ class _Banner extends StatelessWidget {
   Widget build(BuildContext context) {
     // Up quickly, hold, then away. The hold is the part that matters: a banner
     // that fades the moment it arrives is a flicker, not a message.
-    const inEnd = 0.12;
-    const outStart = 0.78;
+    const inEnd = 0.16;
+    const outStart = 0.80;
     final double opacity;
     if (progress < inEnd) {
       opacity = Curves.easeOut.transform(progress / inEnd);
     } else if (progress > outStart) {
-      opacity = 1 - Curves.easeIn.transform((progress - outStart) / (1 - outStart));
+      opacity =
+          1 - Curves.easeIn.transform((progress - outStart) / (1 - outStart));
     } else {
       opacity = 1;
     }
 
-    final slide = (1 - Curves.easeOutCubic.transform(math.min(1, progress / inEnd))) * -16;
+    // Drops in past its resting place and settles back, rather than sliding to
+    // a stop. [Curves.easeOutBack] overshoots by design, which is what gives it
+    // weight — a banner that decelerates smoothly to zero reads as a panel
+    // being positioned, not as something arriving.
+    final entry = Curves.easeOutBack.transform(
+      math.min(1.0, progress / inEnd).clamp(0.0, 1.0),
+    );
+    final slide = (1 - entry) * -28;
+    // The same curve on the scale, so it grows into place as it falls. Starting
+    // at 0.94 rather than something smaller keeps the text legible throughout —
+    // the message has to be readable for every frame it is on screen.
+    final scale = 0.94 + 0.06 * entry;
+
+    // On its way out it lifts slightly, the reverse of how it came in.
+    final exit = progress > outStart
+        ? Curves.easeIn.transform((progress - outStart) / (1 - outStart))
+        : 0.0;
 
     return Opacity(
       opacity: opacity.clamp(0, 1),
       child: Transform.translate(
-        offset: Offset(0, slide),
-        child: Semantics(
-          liveRegion: true,
-          label: message,
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-            decoration: BoxDecoration(
+        offset: Offset(0, slide - exit * 10),
+        child: Transform.scale(
+          scale: scale,
+          child: Semantics(
+            liveRegion: true,
+            label: message,
+            // A [Material], not a decorated [Container].
+            //
+            // This is inserted into an Overlay, which has no Material ancestor
+            // of its own. Text with no Material above it falls back to
+            // Flutter's unstyled default — and that default is drawn with a
+            // double yellow underline, on purpose, to make exactly this mistake
+            // visible. It was doing its job: the banner shipped with a yellow
+            // line struck under the message.
+            child: Material(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(14.r),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 24,
-                  offset: const Offset(0, 6),
+              elevation: 10,
+              shadowColor: Colors.black.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(16.r),
+              child: Padding(
+                padding:
+                    EdgeInsets.symmetric(horizontal: 20.w, vertical: 15.h),
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: const Color(0xFF14171A),
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                    // Belt and braces. The Material above already supplies a
+                    // sane default; saying it here means the banner cannot
+                    // regress into that yellow underline if it is ever moved
+                    // somewhere without one.
+                    decoration: TextDecoration.none,
+                  ),
                 ),
-              ],
-            ),
-            child: Text(
-              message,
-              style: TextStyle(
-                color: const Color(0xFF14171A),
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -192,6 +223,7 @@ class _Fleck {
     required this.delay,
     required this.fall,
     required this.spin,
+    required this.tumble,
     required this.width,
     required this.height,
     required this.color,
@@ -210,6 +242,14 @@ class _Fleck {
   /// Fraction of the height it covers, past 1 so it leaves the screen.
   final double fall;
   final double spin;
+
+  /// How fast it turns edge-on and back — the flip that makes a falling
+  /// rectangle read as a piece of paper rather than a sliding tile. Separate
+  /// from [spin], which turns it in the plane of the screen; this one turns it
+  /// *through* the screen, and the two together are what stops forty rectangles
+  /// looking like forty rectangles.
+  final double tumble;
+
   final double width;
   final double height;
   final Color color;
@@ -225,14 +265,18 @@ class _Fleck {
     Color(0xFFFFFFFF),
   ];
 
-  static List<_Fleck> scatter(math.Random random, {int count = 44}) {
+  static List<_Fleck> scatter(math.Random random, {int count = 56}) {
     return List.generate(count, (i) {
       return _Fleck(
         x: random.nextDouble(),
-        drift: (random.nextDouble() - 0.5) * 0.35,
-        delay: random.nextDouble() * 0.35,
-        fall: 1.1 + random.nextDouble() * 0.35,
-        spin: (random.nextDouble() - 0.5) * 12,
+        // Wider wander than a straight drop. Paper does not fall in a line.
+        drift: (random.nextDouble() - 0.5) * 0.5,
+        // A longer stagger, so the fall keeps arriving instead of coming as
+        // one wave and leaving the rest of the animation empty.
+        delay: random.nextDouble() * 0.45,
+        fall: 1.1 + random.nextDouble() * 0.4,
+        spin: (random.nextDouble() - 0.5) * 10,
+        tumble: 5 + random.nextDouble() * 9,
         width: 5 + random.nextDouble() * 7,
         height: 8 + random.nextDouble() * 10,
         color: _colors[i % _colors.length],
@@ -262,7 +306,10 @@ class _ConfettiPainter extends CustomPainter {
       // Gravity, roughly: falls slowly at first and gathers pace.
       final fallen = t * t * 0.6 + t * 0.4;
 
-      final dx = (fleck.x + fleck.drift * math.sin(t * math.pi)) * size.width;
+      // Two sine waves rather than one, at different rates, so the sideways
+      // wander does not settle into a single visible arc repeated forty times.
+      final sway = math.sin(t * math.pi) * 0.7 + math.sin(t * math.pi * 2.7) * 0.3;
+      final dx = (fleck.x + fleck.drift * sway) * size.width;
       final dy = fallen * fleck.fall * size.height - fleck.height;
 
       // Fades over the last third rather than vanishing at the bottom edge,
@@ -271,6 +318,13 @@ class _ConfettiPainter extends CustomPainter {
         alpha: t > 0.66 ? (1 - (t - 0.66) / 0.34).clamp(0.0, 1.0) : 1.0,
       );
 
+      // The flip. Scaling the width by a cosine turns the rectangle edge-on and
+      // back as it falls, which is what a scrap of paper actually does — and it
+      // costs one multiply, where a real 3D transform would cost a matrix per
+      // fleck per frame. `abs` because a negative width would mirror it rather
+      // than continue the turn, and at these sizes the difference is invisible.
+      final flip = math.cos(fleck.tumble * t).abs().clamp(0.12, 1.0);
+
       canvas
         ..save()
         ..translate(dx, dy)
@@ -278,7 +332,7 @@ class _ConfettiPainter extends CustomPainter {
         ..drawRect(
           Rect.fromCenter(
             center: Offset.zero,
-            width: fleck.width,
+            width: fleck.width * flip,
             height: fleck.height,
           ),
           paint,

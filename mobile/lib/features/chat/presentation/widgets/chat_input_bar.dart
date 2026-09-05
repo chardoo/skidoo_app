@@ -391,6 +391,15 @@ class _ChatInputBarState extends State<ChatInputBar> {
               // Send button
               // Send doubles as the edit's confirm, and says so: a check, not a
               // paper plane, since nothing new is being sent.
+              //
+              // The plane is [Icons.near_me_outlined] — an outlined dart angled
+              // up and to the right. Not [Icons.send_rounded], which is filled
+              // and lies flat: solid white on the accent circle reads as a
+              // block at this size, where the outline keeps the circle's colour
+              // showing through and stays a shape. Not `send_outlined` rotated
+              // either — that glyph carries the paper plane's tail creases, and
+              // rotating a horizontal icon to fake an angle leaves it visibly
+              // off-axis inside a circle.
               Semantics(
                   button: true,
                   label: isEditing ? 'Save edit' : 'Send',
@@ -417,7 +426,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                           : Icon(
                               isEditing
                                   ? Icons.check_rounded
-                                  : Icons.send_rounded,
+                                  : Icons.near_me_outlined,
                               color: Colors.white,
                               size: 20.sp),
                     ),
