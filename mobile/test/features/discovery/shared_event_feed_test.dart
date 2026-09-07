@@ -80,6 +80,38 @@ void main() {
     expect(find.byType(AppErrorView), findsOneWidget);
   });
 
+  testWidgets('the surround stays dark even when the app is in light mode',
+      (t) async {
+    // The card is letterboxed — a photo keeps its own shape, so the blurred
+    // surround is most of the screen — and [MediaBackdrop] veils that surround
+    // with a themed colour. Opened from the notifications list this page was
+    // outside the feed's [DarkMediaSurface], so in light mode the veil came out
+    // a pale wash and the same card that is black in the feed arrived in bands
+    // of grey. The Scaffold's own black could not save it: the backdrop covers
+    // it entirely.
+    //
+    // Asserted on the theme the page actually resolves rather than on the
+    // wrapper being present, because the wrapper is only the current way of
+    // getting there.
+    await t.pumpWidget(ScreenUtilInit(
+      designSize: const Size(390, 844),
+      builder: (_, __) => MaterialApp(
+        theme: ThemeData.light()
+            .copyWith(extensions: const [AppThemeExtension.light]),
+        home: SharedEventFeedPage(eventId: 'evt-1', dataSource: _FakeSource()),
+      ),
+    ));
+    await t.pump();
+
+    final inside = Theme.of(t.element(find.byType(Scaffold)))
+        .extension<AppThemeExtension>()!;
+    expect(
+      inside.mediaBackdropVeil,
+      AppThemeExtension.dark.mediaBackdropVeil,
+      reason: 'the media surround is black whatever theme the app is in',
+    );
+  });
+
   test('an event already in hand is not fetched again', () {
     // Sharing from a card the app is already showing should not go back to the
     // server for something it is holding. Read from source rather than pumped:
@@ -111,7 +143,8 @@ void main() {
     expect(
       body,
       isNot(contains('SearchEventPhotosPage')),
-      reason: 'an event link opens the feed card; the album is a tap away on it',
+      reason:
+          'an event link opens the feed card; the album is a tap away on it',
     );
   });
 

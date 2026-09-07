@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/dark_media_surface.dart';
 import 'package:jperg_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
@@ -95,52 +96,64 @@ class _SharedEventFeedPageState extends State<SharedEventFeedPage> {
   Widget build(BuildContext context) {
     final event = _event;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          if (event != null)
-            // The card reads the feed's DiscoveryBloc for reaction state. This
-            // page is not the feed, so it brings its own — the card falls back
-            // to the counts it was built with for anything the bloc has never
-            // fetched, which is exactly this case.
-            BlocProvider<DiscoveryBloc>(
-              create: (_) => sl<DiscoveryBloc>(),
-              child: FullBleedEventCard(
-                event: event,
-                cardIndex: 0,
-                activeCardIndex: _activeCardIndex,
-                onTap: () {},
-                onHide: () => Navigator.of(context).maybePop(),
+    // The same wrapper the feed puts around this card, and for the same
+    // reason. Without it the card renders under the app's own theme, and in
+    // light mode [MediaBackdrop] veils the blurred surround with a pale wash
+    // instead of black — so an event opened from the notifications list came
+    // up in bands of grey while the identical card in the feed was black. The
+    // Scaffold's own colour could not fix that: the backdrop covers it.
+    //
+    // It also carries the light status-bar style, which is the other half of
+    // what was wrong — dark clock and battery on a dark card.
+    return DarkMediaSurface(
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            if (event != null)
+              // The card reads the feed's DiscoveryBloc for reaction state.
+              // This page is not the feed, so it brings its own — the card
+              // falls back to the counts it was built with for anything the
+              // bloc has never fetched, which is exactly this case.
+              BlocProvider<DiscoveryBloc>(
+                create: (_) => sl<DiscoveryBloc>(),
+                child: FullBleedEventCard(
+                  event: event,
+                  cardIndex: 0,
+                  activeCardIndex: _activeCardIndex,
+                  onTap: () {},
+                  onHide: () => Navigator.of(context).maybePop(),
+                ),
+              )
+            else if (_loading)
+              const Center(child: AppLoadingIndicator())
+            else if (_error != null)
+              Center(
+                child: AppErrorView(
+                  message: 'Could not open that event.',
+                  icon: Icons.wifi_off_outlined,
+                  onRetry: _load,
+                ),
               ),
-            )
-          else if (_loading)
-            const Center(child: AppLoadingIndicator())
-          else if (_error != null)
-            Center(
-              child: AppErrorView(
-                message: 'Could not open that event.',
-                icon: Icons.wifi_off_outlined,
-                onRetry: _load,
-              ),
-            ),
 
-          // A way back, over the media. The feed has the navigation bar for
-          // this; a pushed page has nothing, and a full-bleed card leaves no
-          // chrome to put a back button in.
-          Positioned(
-            top: MediaQuery.paddingOf(context).top + 4,
-            left: 4,
-            child: Material(
-              color: Colors.transparent,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                onPressed: () => Navigator.of(context).maybePop(),
-                tooltip: 'Back',
+            // A way back, over the media. The feed has the navigation bar for
+            // this; a pushed page has nothing, and a full-bleed card leaves no
+            // chrome to put a back button in.
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 4,
+              left: 4,
+              child: Material(
+                color: Colors.transparent,
+                child: IconButton(
+                  icon:
+                      const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  tooltip: 'Back',
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
