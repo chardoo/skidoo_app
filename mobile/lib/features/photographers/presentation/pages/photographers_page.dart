@@ -8,7 +8,6 @@ import 'package:jperg_app/features/photographers/presentation/bloc/photographer_
 import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/photographer_card.dart';
 import 'package:jperg_app/models/photographer/photographerModel.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -122,57 +121,57 @@ class _PhotographersPageState extends State<PhotographersPage> {
               }
               if (_isGrid) {
                 return RefreshIndicator(
+                    color: ext.accentGold,
+                    onRefresh: () async => context
+                        .read<PhotographerBloc>()
+                        .add(const PhotographersLoadRequested()),
+                    child: MediaGrid(
+                      density: MediaGridDensity.cards,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: MediaGrid.pagePadding,
+                      itemCount: state.photographers.length,
+                      itemBuilder: (context, index) {
+                        final p = state.photographers[index];
+                        return Reveal(
+                          delay: AppMotion.stagger * (index < 8 ? index : 0),
+                          offset: const Offset(0, 20),
+                          child: PhotographerGridCard(
+                            photographer: p,
+                            onTap: () => _openProfile(context, p),
+                          ),
+                        );
+                      },
+                    ));
+              }
+              return RefreshIndicator(
                   color: ext.accentGold,
                   onRefresh: () async => context
                       .read<PhotographerBloc>()
                       .add(const PhotographersLoadRequested()),
-                  child: MediaGrid(
-                  density: MediaGridDensity.cards,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: MediaGrid.pagePadding,
-                  itemCount: state.photographers.length,
-                  itemBuilder: (context, index) {
-                    final p = state.photographers[index];
-                    return Reveal(
-                      delay: AppMotion.stagger * (index < 8 ? index : 0),
-                      offset: const Offset(0, 20),
-                      child: PhotographerGridCard(
-                        photographer: p,
-                        onTap: () => _openProfile(context, p),
-                      ),
-                    );
-                  },
-                ));
-              }
-              return RefreshIndicator(
-                color: ext.accentGold,
-                onRefresh: () async => context
-                    .read<PhotographerBloc>()
-                    .add(const PhotographersLoadRequested()),
-                child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(top: AppSpacing.xs.h, bottom: AppSpacing.xxl.h),
-                itemCount: state.photographers.length,
-                itemBuilder: (context, index) {
-                  final p = state.photographers[index];
-                  return Reveal(
-                    delay: AppMotion.stagger * (index < 8 ? index : 0),
-                    offset: const Offset(0, 16),
-                    child: PhotographerCard(
-                      photographer: p,
-                      onTap: () => _openProfile(context, p),
-                    ),
-                  );
-                },
-              ));
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.only(
+                        top: AppSpacing.xs.h, bottom: AppSpacing.xxl.h),
+                    itemCount: state.photographers.length,
+                    itemBuilder: (context, index) {
+                      final p = state.photographers[index];
+                      return Reveal(
+                        delay: AppMotion.stagger * (index < 8 ? index : 0),
+                        offset: const Offset(0, 16),
+                        child: PhotographerCard(
+                          photographer: p,
+                          onTap: () => _openProfile(context, p),
+                        ),
+                      );
+                    },
+                  ));
             },
           ),
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
-
 }
 
 /// Compact segmented control letting the user switch the creators list between
@@ -223,24 +222,28 @@ class _ViewToggle extends StatelessWidget {
     required String label,
     required VoidCallback onTap,
   }) {
-    return Semantics(button: true, selected: selected, label: label, child: GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-        decoration: BoxDecoration(
-          color: selected
-              ? ext.accentGold.withValues(alpha: 0.18)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.sm.r),
-        ),
-        child: Icon(
-          icon,
-          size: 18.sp,
-          color: selected ? ext.accentGold : ext.searchHintColor,
-        ),
-      ),
-    ));
+    return Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+            decoration: BoxDecoration(
+              color: selected
+                  ? ext.accentGold.withValues(alpha: 0.18)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.sm.r),
+            ),
+            child: Icon(
+              icon,
+              size: 18.sp,
+              color: selected ? ext.accentGold : ext.searchHintColor,
+            ),
+          ),
+        ));
   }
 }

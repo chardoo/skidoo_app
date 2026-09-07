@@ -1,11 +1,9 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/common/widgets/app_drag_handle.dart';
 
 /// "Unlock private photos" — the entry point for an event code a photographer
@@ -27,21 +25,6 @@ class UnlockPhotosSheet extends StatefulWidget {
   const UnlockPhotosSheet({super.key});
 
   static Future<String?> show(BuildContext context) {
-    if (kIsWeb) {
-      return showDialog<String>(
-        context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.55),
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(24),
-          child: webWrap(
-            const UnlockPhotosSheet(),
-            backgroundColor: Colors.transparent,
-            width: kWebColumnWidth,
-          ),
-        ),
-      );
-    }
     return showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -116,7 +99,8 @@ class _UnlockPhotosSheetState extends State<UnlockPhotosSheet> {
     return Container(
       decoration: BoxDecoration(
         color: ext.homeBackground,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl.r)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.xxl.r)),
       ),
       // Lifts the sheet above the keyboard so the field and CTA stay visible
       // while typing a code.
@@ -405,8 +389,7 @@ class _ScannerPane extends StatelessWidget {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           border: Border.all(color: ext.accentGold, width: 2),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.md.r),
+                          borderRadius: BorderRadius.circular(AppRadius.md.r),
                         ),
                       ),
                     ),
@@ -417,4 +400,3 @@ class _ScannerPane extends StatelessWidget {
     );
   }
 }
-

@@ -6,7 +6,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// "You're all set, Kwame!" — the end of becoming a creator.
@@ -164,6 +163,6 @@ class CreatorReadyPage extends StatelessWidget {
       ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }

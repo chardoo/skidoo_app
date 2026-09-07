@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -23,53 +22,58 @@ class PhotographerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Semantics(button: true, label: photographer.name, child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 11.h),
-        child: Row(
-          children: [
-            _PhotographerAvatar(photographer: photographer, ext: ext),
-            SizedBox(width: AppSpacing.md.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    photographer.name,
-                    style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15.sp,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 3.h),
-                  if (photographer.rating != null && photographer.rating! > 0)
-                    _RatingRow(rating: photographer.rating!, ext: ext)
-                  else if (photographer.contact.isNotEmpty)
-                    Text(
-                      photographer.contact,
-                      style: TextStyle(
-                        color: ext.searchHintColor,
-                        fontSize: 13.sp,
+    return Semantics(
+        button: true,
+        label: photographer.name,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg.w, vertical: 11.h),
+            child: Row(
+              children: [
+                _PhotographerAvatar(photographer: photographer, ext: ext),
+                SizedBox(width: AppSpacing.md.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        photographer.name,
+                        style: TextStyle(
+                          color: ext.greetingColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15.sp,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
+                      SizedBox(height: 3.h),
+                      if (photographer.rating != null &&
+                          photographer.rating! > 0)
+                        _RatingRow(rating: photographer.rating!, ext: ext)
+                      else if (photographer.contact.isNotEmpty)
+                        Text(
+                          photographer.contact,
+                          style: TextStyle(
+                            color: ext.searchHintColor,
+                            fontSize: 13.sp,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: ext.searchHintColor,
+                  size: 20.sp,
+                ),
+              ],
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: ext.searchHintColor,
-              size: 20.sp,
-            ),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 }
 
@@ -93,82 +97,86 @@ class PhotographerGridCard extends StatelessWidget {
     final initial =
         photographer.name.isNotEmpty ? photographer.name[0].toUpperCase() : '?';
 
-    return Semantics(button: true, label: photographer.name, child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.lg.r),
-      child: Container(
-        decoration: BoxDecoration(
-          color: ext.cardSurface,
+    return Semantics(
+        button: true,
+        label: photographer.name,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadius.lg.r),
-          border: Border.all(color: ext.glassBorder),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+          child: Container(
+            decoration: BoxDecoration(
+              color: ext.cardSurface,
+              borderRadius: BorderRadius.circular(AppRadius.lg.r),
+              border: Border.all(color: ext.glassBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Cover image fills the flexible top area; text takes its natural
-            // height below so the tile never overflows its grid cell.
-            Expanded(
-              child: SizedBox(
-                width: double.infinity,
-                child: hasImage
-                    ? JpergImage(
-                        imageUrl: photographer.imageUrl!,
-                        fit: BoxFit.cover,
-                        semanticLabel: 'Photo by ${photographer.name}',
-                        placeholder: (_, __) =>
-                            ColoredBox(color: ext.searchFieldFill),
-                        errorWidget: (_, __, ___) =>
-                            _GridImageFallback(initial: initial, ext: ext),
-                      )
-                    : _GridImageFallback(initial: initial, ext: ext),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(10.w, 8.h, 10.w, 10.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    photographer.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13.sp,
-                    ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Cover image fills the flexible top area; text takes its natural
+                // height below so the tile never overflows its grid cell.
+                Expanded(
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: hasImage
+                        ? JpergImage(
+                            imageUrl: photographer.imageUrl!,
+                            fit: BoxFit.cover,
+                            semanticLabel: 'Photo by ${photographer.name}',
+                            placeholder: (_, __) =>
+                                ColoredBox(color: ext.searchFieldFill),
+                            errorWidget: (_, __, ___) =>
+                                _GridImageFallback(initial: initial, ext: ext),
+                          )
+                        : _GridImageFallback(initial: initial, ext: ext),
                   ),
-                  SizedBox(height: AppSpacing.xs.h),
-                  if (photographer.rating != null && photographer.rating! > 0)
-                    _RatingRow(rating: photographer.rating!, ext: ext)
-                  else
-                    Text(
-                      photographer.contact.isNotEmpty
-                          ? photographer.contact
-                          : 'No rating yet',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: ext.searchHintColor,
-                        fontSize: 11.sp,
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(10.w, 8.h, 10.w, 10.h),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        photographer.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: ext.greetingColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.sp,
+                        ),
                       ),
-                    ),
-                ],
-              ),
+                      SizedBox(height: AppSpacing.xs.h),
+                      if (photographer.rating != null &&
+                          photographer.rating! > 0)
+                        _RatingRow(rating: photographer.rating!, ext: ext)
+                      else
+                        Text(
+                          photographer.contact.isNotEmpty
+                              ? photographer.contact
+                              : 'No rating yet',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ext.searchHintColor,
+                            fontSize: 11.sp,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 }
 
@@ -221,7 +229,7 @@ class _PhotographerAvatar extends StatelessWidget {
         radius: 24.r,
         backgroundImage: CachedNetworkImageProvider(
           photographer.imageUrl!,
-          cacheManager: kIsWeb ? null : JpergImageCache.instance,
+          cacheManager: JpergImageCache.instance,
         ),
         backgroundColor: ext.searchFieldFill,
       );

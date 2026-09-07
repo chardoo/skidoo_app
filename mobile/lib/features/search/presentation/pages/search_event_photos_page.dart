@@ -7,7 +7,6 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 import 'package:jperg_app/features/search/domain/usecases/search_usecase.dart';
@@ -167,7 +166,7 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
           )),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _buildBody(

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart' as dio_pkg;
 import 'package:flutter/foundation.dart';
 import 'package:jperg_app/core/config/chat_config.dart';
@@ -11,6 +10,7 @@ import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/shared_media.dart';
 import 'package:http_parser/http_parser.dart';
+
 /// Whether somebody is online, and when they were last seen.
 ///
 /// `lastSeen` is null for an account that has never connected since presence
@@ -22,12 +22,15 @@ class PresenceSnapshot {
 
   const PresenceSnapshot({required this.online, this.lastSeen});
 
-  const PresenceSnapshot.unknown() : online = false, lastSeen = null;
+  const PresenceSnapshot.unknown()
+      : online = false,
+        lastSeen = null;
 
   factory PresenceSnapshot.fromJson(Map<String, dynamic> json) =>
       PresenceSnapshot(
         online: json['online'] as bool? ?? false,
-        lastSeen: DateTime.tryParse(json['last_seen'] as String? ?? '')?.toUtc(),
+        lastSeen:
+            DateTime.tryParse(json['last_seen'] as String? ?? '')?.toUtc(),
       );
 }
 
@@ -43,8 +46,7 @@ class EventReaction {
     required this.dislikes,
   });
 
-  factory EventReaction.empty() =>
-      const EventReaction(likes: 0, dislikes: 0);
+  factory EventReaction.empty() => const EventReaction(likes: 0, dislikes: 0);
 
   factory EventReaction.fromJson(Map<String, dynamic> json) {
     final reaction = json['reaction'] as String?;
@@ -68,7 +70,8 @@ class PictureReaction {
 
   factory PictureReaction.fromJson(Map<String, dynamic> json) {
     // Supports { liked: bool, likes: N } and { reaction: 'like'|'none', likes: N }
-    final reaction = json['reaction'] as String? ?? json['userReaction'] as String?;
+    final reaction =
+        json['reaction'] as String? ?? json['userReaction'] as String?;
     final liked = json['liked'] as bool? ?? (reaction == 'like');
     return PictureReaction(
       isLiked: liked,
@@ -582,7 +585,8 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   }
 
   @override
-  Future<Map<String, PresenceSnapshot>> getPresence(List<String> userIds) async {
+  Future<Map<String, PresenceSnapshot>> getPresence(
+      List<String> userIds) async {
     if (userIds.isEmpty) return const {};
     final res = await _wrap(() => _client.dio.get(
           '/chat/presence',
@@ -606,7 +610,8 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
     Map<String, String>? inviteeNames,
     Map<String, String>? inviteeImages,
   }) async {
-    debugPrint('[ChatREST] POST /chat/rooms/group name="$name" invitees=$inviteeIds');
+    debugPrint(
+        '[ChatREST] POST /chat/rooms/group name="$name" invitees=$inviteeIds');
     return _wrap(() async {
       final res = await _client.dio.post(
         '/chat/rooms/group',
@@ -624,7 +629,8 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         }),
       );
       final room = ChatRoom.fromJson(res.data as Map<String, dynamic>);
-      debugPrint('[ChatREST] group created — id=${room.id} participants=${room.participants.length}');
+      debugPrint(
+          '[ChatREST] group created — id=${room.id} participants=${room.participants.length}');
       return room;
     });
   }
@@ -703,13 +709,15 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   @override
   Future<void> kickParticipant(String roomId, String userId) async {
     debugPrint('[ChatREST] DELETE /chat/rooms/$roomId/participants/$userId');
-    await _wrap(() => _client.dio.delete('/chat/rooms/$roomId/participants/$userId'));
+    await _wrap(
+        () => _client.dio.delete('/chat/rooms/$roomId/participants/$userId'));
   }
 
   @override
   Future<bool> leaveRoom(String roomId) async {
     debugPrint('[ChatREST] DELETE /chat/rooms/$roomId/leave');
-    final res = await _wrap(() => _client.dio.delete('/chat/rooms/$roomId/leave'));
+    final res =
+        await _wrap(() => _client.dio.delete('/chat/rooms/$roomId/leave'));
     final deleted = res.data?['deleted'] == true;
     debugPrint('[ChatREST] left room — roomId=$roomId deleted=$deleted');
     return deleted;
@@ -785,44 +793,27 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
             contentType = 'video/webm';
             break;
           default:
-            // Web blob URLs reach here when mimeType was null — default to jpeg.
-            contentType = kIsWeb ? 'image/jpeg' : throw Exception('Unsupported file type: $extension');
+            throw Exception('Unsupported file type: $extension');
         }
       }
 
       // ── Filename for the multipart upload ────────────────────────────────
-      // On web, the path is a blob URL (no useful name) — synthesise one.
-      final filename = kIsWeb
-          ? 'upload.${_extFromMime(contentType)}'
-          : file.uri.pathSegments.last;
+      final filename = file.uri.pathSegments.last;
 
       // ── Multipart file ───────────────────────────────────────────────────
-      // MultipartFile.fromFile throws UnsupportedError on web (Dio 5.x browser
-      // stub explicitly forbids it). On web, read bytes via XFile first then
-      // use fromBytes. On native, fromFile streams the file without buffering.
-      final dio_pkg.MultipartFile multipartFile;
-      if (kIsWeb) {
-        final bytes = await XFile(file.path).readAsBytes();
-        multipartFile = dio_pkg.MultipartFile.fromBytes(
-          bytes,
-          filename: filename,
-          contentType: MediaType.parse(contentType),
-        );
-      } else {
-        multipartFile = await dio_pkg.MultipartFile.fromFile(
-          file.path,
-          filename: filename,
-          contentType: MediaType.parse(contentType),
-        );
-      }
+      // fromFile streams the file rather than buffering it.
+      final multipartFile = await dio_pkg.MultipartFile.fromFile(
+        file.path,
+        filename: filename,
+        contentType: MediaType.parse(contentType),
+      );
 
       final formData = dio_pkg.FormData.fromMap({
         'file': multipartFile,
       });
 
       final isVideo = contentType.startsWith('video/');
-      final uploadTimeout =
-          Duration(minutes: isVideo ? 3 : 1);
+      final uploadTimeout = Duration(minutes: isVideo ? 3 : 1);
       final res = await _client.dio.post(
         '/chat/upload-image',
         data: formData,
@@ -836,6 +827,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
       return data['url'] as String; // Changed from 'image_url' to 'url'
     });
   }
+
   @override
   Future<EventReaction> getEventReaction(String eventId, String userId) async {
     return _wrap(() async {
@@ -851,7 +843,8 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   Future<Map<String, EventReaction>> getEventReactionsBatch(
       List<String> eventIds, String userId) async {
     return _wrap(() async {
-      debugPrint('[ChatRest] reactionsBatch → ${eventIds.length} ids userId=$userId');
+      debugPrint(
+          '[ChatRest] reactionsBatch → ${eventIds.length} ids userId=$userId');
       final res = await _client.dio.get(
         '/chat/events/reactions/batch',
         queryParameters: {
@@ -859,7 +852,8 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
           'userId': userId,
         },
       );
-      debugPrint('[ChatRest] reactionsBatch ← ${res.statusCode} type=${res.data.runtimeType}');
+      debugPrint(
+          '[ChatRest] reactionsBatch ← ${res.statusCode} type=${res.data.runtimeType}');
 
       // Server may return { "data": { id: reaction } } or the flat map directly.
       Map<String, dynamic> raw;
@@ -868,23 +862,27 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         final inner = body['data'];
         raw = (inner is Map<String, dynamic>) ? inner : body;
       } else {
-        debugPrint('[ChatRest] reactionsBatch — unexpected body type, returning empty');
+        debugPrint(
+            '[ChatRest] reactionsBatch — unexpected body type, returning empty');
         return {};
       }
 
-      debugPrint('[ChatRest] reactionsBatch — ${raw.length} entries: ${raw.keys.take(3).join(', ')}…');
+      debugPrint(
+          '[ChatRest] reactionsBatch — ${raw.length} entries: ${raw.keys.take(3).join(', ')}…');
 
       final result = <String, EventReaction>{};
       for (final e in raw.entries) {
         try {
           if (e.value is Map<String, dynamic>) {
-            result[e.key] = EventReaction.fromJson(e.value as Map<String, dynamic>);
+            result[e.key] =
+                EventReaction.fromJson(e.value as Map<String, dynamic>);
           }
         } catch (ex) {
           debugPrint('[ChatRest] reactionsBatch parse error key=${e.key}: $ex');
         }
       }
-      debugPrint('[ChatRest] reactionsBatch — parsed ${result.length} reactions');
+      debugPrint(
+          '[ChatRest] reactionsBatch — parsed ${result.length} reactions');
       return result;
     });
   }
@@ -981,23 +979,5 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
       if (e is NetworkException || e is ServerException) rethrow;
       throw ServerException('Unexpected chat error: $e');
     }
-  }
-}
-
-/// Returns a simple file extension for a given MIME type.
-/// Used to synthesise a filename when uploading from a web blob URL.
-String _extFromMime(String mime) {
-  switch (mime) {
-    case 'image/jpeg': return 'jpg';
-    case 'image/png':  return 'png';
-    case 'image/webp': return 'webp';
-    case 'image/gif':  return 'gif';
-    case 'video/mp4':  return 'mp4';
-    case 'video/webm': return 'webm';
-    case 'video/quicktime': return 'mov';
-    default:
-      // e.g. 'image/jpeg' → 'jpeg', or fallback to raw type.
-      final sub = mime.split('/').last;
-      return sub == 'jpeg' ? 'jpg' : sub;
   }
 }

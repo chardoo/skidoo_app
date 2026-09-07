@@ -10,7 +10,6 @@ import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/auth/domain/usecases/request_password_reset_usecase.dart';
 import 'package:jperg_app/features/auth/domain/usecases/verify_reset_code_usecase.dart';
 import 'package:jperg_app/features/auth/presentation/pages/set_new_password_page.dart';
@@ -132,7 +131,8 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
     } on ServerException catch (e) {
       setState(() => _error = e.message);
     } catch (_) {
-      setState(() => _error = 'That code doesn\'t look right. Please try again.');
+      setState(
+          () => _error = 'That code doesn\'t look right. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -220,7 +220,8 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
                   SizedBox(height: AppSpacing.sm.h),
                   Text(
                     'We sent a $_kCodeLength-digit code to ${widget.email}',
-                    style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
+                    style:
+                        TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
                   ),
                   SizedBox(height: AppSpacing.xxxl.h),
 
@@ -320,11 +321,14 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
                     width: double.infinity,
                     height: 52.h,
                     child: ElevatedButton(
-                      onPressed: (_isLoading || _code.length != _kCodeLength) ? null : _verify,
+                      onPressed: (_isLoading || _code.length != _kCodeLength)
+                          ? null
+                          : _verify,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: ext.accentGold,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor: ext.accentGold.withValues(alpha: 0.5),
+                        disabledBackgroundColor:
+                            ext.accentGold.withValues(alpha: 0.5),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.lg.r),
@@ -338,7 +342,9 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
                                   color: Colors.white, strokeWidth: 2.5),
                             )
                           : Text('Verify',
-                              style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700)),
+                              style: TextStyle(
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w700)),
                     ),
                   ),
                   SizedBox(height: AppSpacing.xl.h),
@@ -383,6 +389,6 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }

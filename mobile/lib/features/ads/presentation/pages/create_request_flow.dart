@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,7 +7,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/location/data/models/place.dart';
@@ -583,7 +581,7 @@ class _NewRequestStepState extends State<_NewRequestStep> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Future<void> _pickType() async {
@@ -767,7 +765,7 @@ class _ReviewStepState extends State<_ReviewStep> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 
@@ -844,7 +842,7 @@ class _PublishedStep extends StatelessWidget {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 
@@ -870,7 +868,7 @@ PreferredSizeWidget _stepBar(
       elevation: 0,
       centerTitle: true,
       backgroundColor: Colors.transparent,
-      leading: kIsWeb ? null : const AppBackButton(),
+      leading: const AppBackButton(),
       title: Text(
         title,
         style: TextStyle(

@@ -341,7 +341,8 @@ class ChatBackgroundService {
           );
           _roomCanEncrypt[roomId] = !hasWeb;
           if (hasWeb) {
-            debugPrint('[BgChat] room $roomId has web participant — E2EE disabled');
+            debugPrint(
+                '[BgChat] room $roomId has web participant — E2EE disabled');
           }
         }
       });
@@ -350,7 +351,8 @@ class ChatBackgroundService {
       _msgSub = _sharedWs.messages.listen(
         (msg) {
           if (_paused.contains(msg.roomId)) {
-            debugPrint('[BgChat] msg dropped (paused) roomId=${msg.roomId} id=${msg.id}');
+            debugPrint(
+                '[BgChat] msg dropped (paused) roomId=${msg.roomId} id=${msg.id}');
           } else {
             _onMessage(msg);
           }
@@ -367,7 +369,8 @@ class ChatBackgroundService {
 
       _groupInviteSub?.cancel();
       _groupInviteSub = _sharedWs.groupInviteEvents.listen((event) {
-        debugPrint('[BgChat] group_invite via sharedWs — roomId=${event.room.id}');
+        debugPrint(
+            '[BgChat] group_invite via sharedWs — roomId=${event.room.id}');
         // Cache the invited room so the pending invite survives a restart /
         // shows offline (it's split out by hasPendingInvite on load).
         _db.upsertRoom(event.room).catchError((_) {});
@@ -379,7 +382,8 @@ class ChatBackgroundService {
       _userJoinedSub = _sharedWs.userJoinedEvents.listen((event) {
         if (event.clientType == 'web') {
           _roomCanEncrypt[event.roomId] = false;
-          debugPrint('[BgChat] web client joined room ${event.roomId} — E2EE disabled');
+          debugPrint(
+              '[BgChat] web client joined room ${event.roomId} — E2EE disabled');
         }
         // Note: a member joining is surfaced as an in-conversation system
         // message by ChatRoomBloc; we deliberately don't reload the whole
@@ -478,7 +482,8 @@ class ChatBackgroundService {
 
   void _scheduleReconnect() {
     if (_reconnectAttempts >= _maxReconnectAttempts) {
-      debugPrint('[BgChat] gave up reconnecting after $_maxReconnectAttempts attempts');
+      debugPrint(
+          '[BgChat] gave up reconnecting after $_maxReconnectAttempts attempts');
       return;
     }
     _reconnectTimer?.cancel();
@@ -491,13 +496,15 @@ class ChatBackgroundService {
 
   Future<void> _onMessage(ChatMessage msg) async {
     if (msg.id.isEmpty || msg.roomId.isEmpty) return;
-    debugPrint('[BgChat] _onMessage roomId=${msg.roomId} id=${msg.id} isEncrypted=${msg.isEncrypted} callbackNull=${onUnreadUpdate == null}');
+    debugPrint(
+        '[BgChat] _onMessage roomId=${msg.roomId} id=${msg.id} isEncrypted=${msg.isEncrypted} callbackNull=${onUnreadUpdate == null}');
     try {
       if (msg.isEncrypted && msg.iv != null && msg.content.isNotEmpty) {
         msg = await _tryDecrypt(msg);
       }
       await _db.upsertMessages([msg]);
-      debugPrint('[BgChat] upserted msg ${msg.id} — firing backgroundMessages + onUnreadUpdate');
+      debugPrint(
+          '[BgChat] upserted msg ${msg.id} — firing backgroundMessages + onUnreadUpdate');
       if (!_bgMsgController.isClosed) _bgMsgController.add(msg);
       onUnreadUpdate?.call();
       await _maybePlayDmSound(msg);
@@ -592,7 +599,8 @@ class ChatBackgroundService {
           debugPrint('[BgChat] X3DH session key stored for room ${msg.roomId}');
           return msg.copyWith(content: result.$2, isEncrypted: false);
         }
-        debugPrint('[BgChat] X3DH failed for msgId=${msg.id} — storing ciphertext');
+        debugPrint(
+            '[BgChat] X3DH failed for msgId=${msg.id} — storing ciphertext');
         return msg;
       }
 
@@ -607,7 +615,8 @@ class ChatBackgroundService {
           debugPrint('[BgChat] group decrypted msgId=${msg.id}');
           return msg.copyWith(content: plaintext, isEncrypted: false);
         }
-        debugPrint('[BgChat] no key for room ${msg.roomId} — storing ciphertext');
+        debugPrint(
+            '[BgChat] no key for room ${msg.roomId} — storing ciphertext');
         return msg;
       }
       final plaintext = await _e2ee.decrypt(sessionKey, msg.content, msg.iv!);
@@ -619,8 +628,8 @@ class ChatBackgroundService {
     }
   }
 
-  Future<(Uint8List, String)?> _deriveX3DH(
-      ChatMessage msg, {required bool tryPrevFirst}) async {
+  Future<(Uint8List, String)?> _deriveX3DH(ChatMessage msg,
+      {required bool tryPrevFirst}) async {
     final otpkId = msg.otpkId;
     for (final tryPrev in tryPrevFirst ? [true, false] : [false, true]) {
       try {

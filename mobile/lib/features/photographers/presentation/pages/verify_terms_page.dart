@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -7,7 +6,6 @@ import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/photographer_profile_usecases.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/creator_ready_page.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/creator_steps.dart';
@@ -109,9 +107,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Text(
           widget.isCreatorSetup
               ? 'Become a Creator'
@@ -256,7 +252,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 

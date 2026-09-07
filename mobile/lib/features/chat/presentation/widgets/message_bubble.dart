@@ -1,6 +1,4 @@
-
 import 'package:jperg_app/core/widgets/jperg_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -186,7 +184,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                     // bubble nearly fills (or overflows) it — keep media moderate
                     // there with a tighter cap.
                     maxWidth: (MediaQuery.of(context).size.width * 0.72)
-                        .clamp(0.0, kIsWeb ? 300.0 : 420.0),
+                        .clamp(0.0, 420.0),
                   ),
                   decoration: BoxDecoration(
                     color: bubbleColor,
@@ -470,7 +468,9 @@ class _ReplyPreviewStrip extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        (preview.isVideo || (preview.imageUrl != null && _isVideoUrl(preview.imageUrl!)))
+                        (preview.isVideo ||
+                                (preview.imageUrl != null &&
+                                    _isVideoUrl(preview.imageUrl!)))
                             ? Icons.videocam_rounded
                             : Icons.image_rounded,
                         size: 12.sp,
@@ -489,7 +489,8 @@ class _ReplyPreviewStrip extends StatelessWidget {
               ],
             ),
           ),
-          if (preview.imageUrl != null && !(preview.isVideo || _isVideoUrl(preview.imageUrl!)))
+          if (preview.imageUrl != null &&
+              !(preview.isVideo || _isVideoUrl(preview.imageUrl!)))
             ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.xs.r),
               child: JpergImage(
@@ -501,7 +502,8 @@ class _ReplyPreviewStrip extends StatelessWidget {
                 semanticLabel: 'Shared photo',
               ),
             )
-          else if (preview.imageUrl != null && (preview.isVideo || _isVideoUrl(preview.imageUrl!)))
+          else if (preview.imageUrl != null &&
+              (preview.isVideo || _isVideoUrl(preview.imageUrl!)))
             ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.xs.r),
               child: Container(
@@ -697,7 +699,8 @@ class _ZoomableImageViewState extends State<_ZoomableImageView>
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                       errorWidget: (_, __, ___) => const Icon(
-                          Icons.broken_image_rounded, color: Colors.white54),
+                          Icons.broken_image_rounded,
+                          color: Colors.white54),
                     ),
                   ),
                 ),
@@ -874,4 +877,3 @@ class _Timestamp extends StatelessWidget {
 }
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
-

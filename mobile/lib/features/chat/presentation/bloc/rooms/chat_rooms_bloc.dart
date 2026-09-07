@@ -72,7 +72,8 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     on<ChatRoomsRefreshUnread>(_onRefreshUnread, transformer: concurrent());
     on<ChatRoomsAcceptInvite>(_onAcceptInvite, transformer: concurrent());
     on<ChatRoomsDeclineInvite>(_onDeclineInvite, transformer: concurrent());
-    on<ChatRoomsGroupInviteReceived>(_onGroupInviteReceived, transformer: concurrent());
+    on<ChatRoomsGroupInviteReceived>(_onGroupInviteReceived,
+        transformer: concurrent());
     on<_ChatRoomsMessageArrived>(_onMessageArrived, transformer: concurrent());
     on<_ChatRoomsRoomRead>(_onRoomRead, transformer: concurrent());
     on<_ChatRoomsRoomRemoved>(_onRoomRemoved, transformer: concurrent());
@@ -117,7 +118,8 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     // management needed. All WS instances (shared + DiscoveryBloc per-event
     // sessions) funnel invites through this relay.
     _groupInviteSub = _bgService.groupInviteStream.listen((room) {
-      debugPrint('[ChatRoomsBloc] groupInviteStream: roomId=${room.id} isClosed=$isClosed');
+      debugPrint(
+          '[ChatRoomsBloc] groupInviteStream: roomId=${room.id} isClosed=$isClosed');
       if (!isClosed) add(ChatRoomsGroupInviteReceived(room));
     });
 
@@ -224,7 +226,8 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
               isLoading: true, isSyncing: true, clearError: true));
         }
       } catch (_) {
-        emit(state.copyWith(isLoading: true, isSyncing: true, clearError: true));
+        emit(
+            state.copyWith(isLoading: true, isSyncing: true, clearError: true));
       }
     } else {
       // isLoading stays false — it means "nothing to show yet", and there is
@@ -242,16 +245,7 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
       final counts = results[0] as Map<String, int>;
       final lastTimes = results[1] as Map<String, DateTime>;
       final split = _splitRooms(fresh, myUserId);
-      // Web has no local DB, so getUnreadCounts() is empty and the badge would
-      // vanish on every page refresh. Seed it from the server's per-room
-      // unread_count instead, so it persists until the room is opened (which
-      // sends `ack`, clearing it server-side). Native keeps the DB-derived count.
-      final effectiveCounts = kIsWeb
-          ? <String, int>{
-              for (final r in fresh)
-                if (r.unreadCount > 0) r.id: r.unreadCount,
-            }
-          : counts;
+      final effectiveCounts = counts;
       // Rooms the server has now omitted often enough to be gone. Purged from
       // the cache too, or getCachedRooms() would put them straight back on the
       // next cold start.
@@ -361,11 +355,10 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     Set<String> stale,
   ) {
     final freshIds = fresh.map((r) => r.id).toSet();
-    final onlyLocal = known
-        .where((r) => !freshIds.contains(r.id) && !stale.contains(r.id));
+    final onlyLocal =
+        known.where((r) => !freshIds.contains(r.id) && !stale.contains(r.id));
     return [...fresh, ...onlyLocal];
   }
-
 
   /// Splits all rooms into (activeRooms, pendingInvites) for [myUserId].
   (List<ChatRoom>, List<ChatRoom>) _splitRooms(
@@ -389,13 +382,15 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
   Future<void> _syncMessagesInBackground(List<ChatRoom> rooms) async {
     const maxRooms = 5;
     final toSync = rooms.take(maxRooms).toList();
-    debugPrint('[ChatRoomsBloc] _syncMessagesInBackground — syncing ${toSync.length} of ${rooms.length} rooms');
+    debugPrint(
+        '[ChatRoomsBloc] _syncMessagesInBackground — syncing ${toSync.length} of ${rooms.length} rooms');
     for (final room in toSync) {
       if (isClosed) return;
       try {
         await _getRoomMessages(room.id);
       } catch (e) {
-        debugPrint('[ChatRoomsBloc] _syncMessagesInBackground error room=${room.id}: $e');
+        debugPrint(
+            '[ChatRoomsBloc] _syncMessagesInBackground error room=${room.id}: $e');
       }
     }
     if (!isClosed) add(const ChatRoomsRefreshUnread());
@@ -408,7 +403,6 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     // On web, SQLite is not available: getUnreadCounts/getLastMessageTimes always
     // return empty maps, which would wipe the in-memory state maintained by
     // _onMessageArrived. Skip the DB round-trip entirely on web.
-    if (kIsWeb) return;
     try {
       final results = await Future.wait([
         _getUnreadCounts(),
@@ -577,14 +571,17 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     ChatRoomsGroupInviteReceived event,
     Emitter<ChatRoomsState> emit,
   ) {
-    final alreadyKnown = state.pendingInvites.any((r) => r.id == event.room.id) ||
-        state.rooms.any((r) => r.id == event.room.id);
-    debugPrint('[ChatRoomsBloc] _onGroupInviteReceived roomId=${event.room.id} alreadyKnown=$alreadyKnown pendingCount=${state.pendingInvites.length}');
+    final alreadyKnown =
+        state.pendingInvites.any((r) => r.id == event.room.id) ||
+            state.rooms.any((r) => r.id == event.room.id);
+    debugPrint(
+        '[ChatRoomsBloc] _onGroupInviteReceived roomId=${event.room.id} alreadyKnown=$alreadyKnown pendingCount=${state.pendingInvites.length}');
     if (alreadyKnown) return;
     emit(state.copyWith(
       pendingInvites: [...state.pendingInvites, event.room],
     ));
-    debugPrint('[ChatRoomsBloc] pending invites updated — now ${state.pendingInvites.length + 1}');
+    debugPrint(
+        '[ChatRoomsBloc] pending invites updated — now ${state.pendingInvites.length + 1}');
   }
 
   Future<void> _onDeclineInvite(

@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
@@ -37,7 +36,7 @@ class ChatDatabase {
     // Adopt the old file rather than move it: renaming needs dart:io, which
     // cannot be imported here without breaking the web build. New installs get
     // the new name; upgrades keep reading the file they already have.
-    if (!kIsWeb && !await databaseExists(dbPath)) {
+    if (!await databaseExists(dbPath)) {
       final legacyPath = join(dir, _legacyDbName);
       if (await databaseExists(legacyPath)) dbPath = legacyPath;
     }
@@ -100,7 +99,8 @@ class ChatDatabase {
           "ALTER TABLE chat_messages ADD COLUMN sender_name TEXT NOT NULL DEFAULT ''");
       await db.execute('ALTER TABLE chat_messages ADD COLUMN image_url TEXT');
       await db.execute('ALTER TABLE chat_messages ADD COLUMN reply_to_id TEXT');
-      await db.execute('ALTER TABLE chat_messages ADD COLUMN reply_preview TEXT');
+      await db
+          .execute('ALTER TABLE chat_messages ADD COLUMN reply_preview TEXT');
     }
     if (oldVersion < 3) {
       final cols = await db.rawQuery('PRAGMA table_info(chat_messages)');
@@ -114,8 +114,10 @@ class ChatDatabase {
       await db.execute(
           'ALTER TABLE chat_messages ADD COLUMN is_encrypted INTEGER NOT NULL DEFAULT 0');
       await db.execute('ALTER TABLE chat_messages ADD COLUMN iv TEXT');
-      await db.execute('ALTER TABLE chat_messages ADD COLUMN ephemeral_key TEXT');
-      await db.execute('ALTER TABLE chat_messages ADD COLUMN sender_identity_key TEXT');
+      await db
+          .execute('ALTER TABLE chat_messages ADD COLUMN ephemeral_key TEXT');
+      await db.execute(
+          'ALTER TABLE chat_messages ADD COLUMN sender_identity_key TEXT');
       await db.execute('ALTER TABLE chat_messages ADD COLUMN otpk_id INTEGER');
       await db.execute('ALTER TABLE chat_messages ADD COLUMN spk_id INTEGER');
     }
@@ -135,7 +137,6 @@ class ChatDatabase {
   // ── Rooms ──────────────────────────────────────────────────────────────────
 
   Future<void> upsertRoom(ChatRoom room) async {
-    if (kIsWeb) return;
     final db = await _database;
     await db.insert(
       'chat_rooms',
@@ -145,7 +146,6 @@ class ChatDatabase {
   }
 
   Future<void> upsertRooms(List<ChatRoom> rooms) async {
-    if (kIsWeb) return;
     final db = await _database;
     final batch = db.batch();
     for (final room in rooms) {
@@ -159,17 +159,14 @@ class ChatDatabase {
   }
 
   Future<List<ChatRoom>> getAllRooms() async {
-    if (kIsWeb) return [];
     final db = await _database;
     final rows = await db.query('chat_rooms', orderBy: 'created_at DESC');
     return rows.map(_rowToRoom).toList();
   }
 
   Future<ChatRoom?> getRoom(String id) async {
-    if (kIsWeb) return null;
     final db = await _database;
-    final rows =
-        await db.query('chat_rooms', where: 'id = ?', whereArgs: [id]);
+    final rows = await db.query('chat_rooms', where: 'id = ?', whereArgs: [id]);
     if (rows.isEmpty) return null;
     return _rowToRoom(rows.first);
   }
@@ -186,7 +183,6 @@ class ChatDatabase {
   /// Returns false when the room is not cached or the participant is not in it
   /// — nothing to correct, and the sync will bring the room down anyway.
   Future<bool> markParticipantActive(String roomId, String userId) async {
-    if (kIsWeb) return false;
     final room = await getRoom(roomId);
     final accepted = room?.withInviteAccepted(userId);
     if (accepted == null) return false;
@@ -197,7 +193,6 @@ class ChatDatabase {
   /// Returns a cached direct room that includes [recipientId] as a participant,
   /// or null if none is found. Used to avoid duplicate room creation.
   Future<ChatRoom?> getDirectRoomWithUser(String recipientId) async {
-    if (kIsWeb) return null;
     final db = await _database;
     final rows = await db.query(
       'chat_rooms',
@@ -213,7 +208,7 @@ class ChatDatabase {
   // ── Messages ───────────────────────────────────────────────────────────────
 
   Future<void> upsertMessages(List<ChatMessage> messages) async {
-    if (kIsWeb || messages.isEmpty) return;
+    if (messages.isEmpty) return;
     final db = await _database;
     await db.transaction((txn) async {
       for (final msg in messages) {
@@ -224,7 +219,8 @@ class ChatDatabase {
         final (imageClause, imageArgs) = _imageUrlIsClause(msg.imageUrl);
         await txn.delete(
           'chat_messages',
-          where: 'room_id = ? AND is_local = 1 AND content = ? AND $imageClause',
+          where:
+              'room_id = ? AND is_local = 1 AND content = ? AND $imageClause',
           whereArgs: [msg.roomId, msg.content, ...imageArgs],
         );
 
@@ -293,7 +289,6 @@ class ChatDatabase {
   /// Inserts a confirmed (server) message and removes any optimistic placeholder
   /// with matching content so duplicates never appear in the cache.
   Future<void> insertMessage(ChatMessage message) async {
-    if (kIsWeb) return;
     final db = await _database;
     await db.transaction((txn) async {
       // Delete the matching optimistic placeholder if present.
@@ -318,7 +313,6 @@ class ChatDatabase {
     int limit = 50,
     String? beforeId,
   }) async {
-    if (kIsWeb) return [];
     final db = await _database;
 
     if (beforeId != null) {
@@ -353,14 +347,12 @@ class ChatDatabase {
   }
 
   Future<void> deleteMessage(String id) async {
-    if (kIsWeb) return;
     final db = await _database;
     await db.delete('chat_messages', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<void> updateMessageContent(
       String id, String content, DateTime updatedAt) async {
-    if (kIsWeb) return;
     final db = await _database;
     await db.update(
       'chat_messages',
@@ -371,7 +363,6 @@ class ChatDatabase {
   }
 
   Future<void> deleteRoom(String roomId) async {
-    if (kIsWeb) return;
     final db = await _database;
     await db.transaction((txn) async {
       await txn.delete('chat_rooms', where: 'id = ?', whereArgs: [roomId]);
@@ -383,7 +374,6 @@ class ChatDatabase {
   /// Returns the timestamp of the most recent confirmed (non-local) message
   /// for every room that has at least one message in the cache.
   Future<Map<String, DateTime>> getLastMessageTimes() async {
-    if (kIsWeb) return {};
     final db = await _database;
     final rows = await db.rawQuery(
       'SELECT room_id, MAX(created_at) AS last_at FROM chat_messages WHERE is_local = 0 GROUP BY room_id',
@@ -397,7 +387,6 @@ class ChatDatabase {
   /// Returns unread message counts per room, excluding the given user's own
   /// messages, already-read ones, and public event discussion rooms.
   Future<Map<String, int>> getUnreadCounts(String currentUserId) async {
-    if (kIsWeb) return {};
     final db = await _database;
     final rows = await db.rawQuery(
       '''
@@ -419,7 +408,6 @@ class ChatDatabase {
 
   /// Marks all messages in [roomId] as read.
   Future<void> markAllAsRead(String roomId) async {
-    if (kIsWeb) return;
     final db = await _database;
     await db.update(
       'chat_messages',
@@ -430,7 +418,6 @@ class ChatDatabase {
   }
 
   Future<void> deleteLocalMessages(String roomId) async {
-    if (kIsWeb) return;
     final db = await _database;
     await db.delete(
       'chat_messages',
@@ -442,7 +429,6 @@ class ChatDatabase {
   /// Wipes all cached rooms and messages. Called when a different user logs in
   /// so that one account's chat history never leaks into another's.
   Future<void> clearAll() async {
-    if (kIsWeb) return;
     final db = await _database;
     await db.transaction((txn) async {
       await txn.delete('chat_messages');

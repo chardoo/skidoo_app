@@ -234,7 +234,7 @@ Future<void> setupServiceLocator() async {
 
   // ── Search feature ────────────────────────────────────────────────────────
   // The Search screen (`/client/search/*`) — separate from the Home feature's
-  // legacy event search above, which is the web sidebar's typeahead.
+  // legacy event search above.
   sl.registerSingleton<SearchRemoteDataSource>(
       SearchRemoteDataSourceImpl(sl<Api>()));
   sl.registerSingleton<SearchRepository>(
@@ -450,9 +450,7 @@ Future<void> setupServiceLocator() async {
       // to somebody else.
       FoundFeed.pendingCount.value = 0;
       HomePage.tabRequest.value = null;
-      HomePage.webSelectedTab.value = 0;
       HomeNavigationPage.pillTabRequest.value = null;
-      HomeNavigationPage.webEventResults.value = const [];
     },
   );
 

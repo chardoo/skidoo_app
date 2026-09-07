@@ -7,7 +7,6 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
 import 'package:jperg_app/features/gallery/presentation/found/bloc/found_album_bloc.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
@@ -250,6 +249,6 @@ class _FoundAlbumViewState extends State<_FoundAlbumView> {
       ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }

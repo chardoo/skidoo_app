@@ -10,7 +10,6 @@ import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/widgets/zoomable_photo.dart';
 import 'package:jperg_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
@@ -112,7 +111,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                         horizontal: AppSpacing.sm.w, vertical: AppSpacing.xs.h),
                     child: Row(
                       children: [
-                        if (!kIsWeb) const AppBackButton(color: Colors.white),
+                        const AppBackButton(color: Colors.white),
                         const Spacer(),
                         Flexible(
                           child: Column(
@@ -207,7 +206,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
     // Scales up out of the way when a comment sheet opens — see
     // [CommentPushArea].
     return CommentPushArea(
-      child: webWrap(page, backgroundColor: Colors.black),
+      child: page,
     );
   }
 }

@@ -9,8 +9,6 @@ import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/features/ads/models/ad_set.dart';
 import 'package:jperg_app/core/common/widgets/xfile_image.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
@@ -218,9 +216,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Text(
           'Edit Campaign',
           style: TextStyle(
@@ -449,7 +445,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:jperg_app/features/onboarding/presentation/models/onboarding_slide.dart';
 import 'package:jperg_app/features/onboarding/presentation/widgets/onboarding_actions_section.dart';
@@ -89,6 +88,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: _kBg);
+    return page;
   }
 }

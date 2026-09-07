@@ -2,47 +2,25 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import 'package:jperg_app/app.dart';
-import 'package:jperg_app/core/app_readiness.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 // Temporarily disabled for presentation screenshots — re-enable with the call below.
 // import 'package:jperg_app/core/security/screenshot_guard.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/services/auth_service.dart';
-import 'package:jperg_app/services/notification_prefs_service.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Flutter Web ships with the semantic tree disabled until a screen reader is
-  // detected. Force-enabling it (ensureSemantics) makes our Semantics labels
-  // reach the DOM for role/label-based e2e tests — BUT it also switches web to
-  // the semantics-based text-input path, which stops the left sidebar search
-  // field (hosted in a bare Overlay above the Navigator) from receiving typed
-  // characters: it focuses and shows a caret but no input arrives.
-  //
-  // So we only force it on when explicitly requested via the URL (?a11y=1).
-  // Normal users get on-demand semantics and fully working text input; e2e
-  // runs append ?a11y=1 to opt into the always-on accessibility tree.
-  if (kIsWeb) {
-    final params = Uri.base.queryParameters;
-    if (params['a11y'] == '1' || params['semantics'] == '1') {
-      SemanticsBinding.instance.ensureSemantics();
-    }
-  }
-
   // Cap Flutter's decoded-image cache to prevent OOM crashes on photo feeds.
   // The default (1000 images / unbounded bytes) is dangerously high for an app
   // that renders full-res photos — each decoded image can be 10–30 MB.
   // 50 images × ~2 MB avg decoded ≈ 100 MB; well under iOS's 2 GB hard limit.
-  if (!kIsWeb) {
-    PaintingBinding.instance.imageCache.maximumSize = 50;
-    PaintingBinding.instance.imageCache.maximumSizeBytes = 100 * 1024 * 1024;
-  }
+  PaintingBinding.instance.imageCache.maximumSize = 50;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 100 * 1024 * 1024;
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
@@ -104,16 +82,13 @@ void main() async {
   // one rather than the sum of all four.
   final results = await Future.wait([
     // [0] Jailbreak / root detection (skip on web — plugin not supported)
-    if (kIsWeb)
-      Future<bool>.value(false)
-    else
-      Future<bool>(() async {
-        try {
-          return await FlutterJailbreakDetection.jailbroken;
-        } catch (_) {
-          return false; // simulator or plugin unavailable — treat as safe
-        }
-      }),
+    Future<bool>(() async {
+      try {
+        return await FlutterJailbreakDetection.jailbroken;
+      } catch (_) {
+        return false; // simulator or plugin unavailable — treat as safe
+      }
+    }),
     // [1] Auth token (one Keychain read)
     authService.getToken(),
     // [2] Token expiration string (one Keychain read — avoids isTokenExpired()
@@ -127,10 +102,10 @@ void main() async {
   ]);
 
   final isDeviceCompromised = results[0] as bool;
-  final token              = results[1] as String;
-  final expiration         = results[2] as String;
-  final hasSeenOnboarding  = results[3] as bool;
-  final hasFaces           = results[4] as bool;
+  final token = results[1] as String;
+  final expiration = results[2] as String;
+  final hasSeenOnboarding = results[3] as bool;
+  final hasFaces = results[4] as bool;
 
   // Whether the stored expiry has passed. Logged only — deliberately NOT used
   // to decide anything.
@@ -162,9 +137,9 @@ void main() async {
       '(token=${token.isNotEmpty} storedExpiryPassed=$storedExpiryPassed '
       'compromised=$isDeviceCompromised)');
 
-  // Seed the synchronous auth state before the first frame so the web
-  // sidebar immediately renders the correct nav without an async round-trip.
-  // Presence of a token, matching _AuthGuard and the interceptor.
+  // Seed the synchronous auth state before the first frame, so the first
+  // screen is chosen without an async round-trip. Presence of a token,
+  // matching _AuthGuard and the interceptor.
   AuthService.isAuthenticated.value = token.isNotEmpty;
   AuthService.hasAddedFaces.value = hasFaces;
   // Role decides which tools the app offers, so a returning creator must not
@@ -179,48 +154,40 @@ void main() async {
   // the re-registration below a returning user would only be reachable by push
   // again after an explicit sign-in. OneSignal.login is idempotent, so calling
   // it on every launch costs nothing.
-  if (!kIsWeb) {
-    unawaited(() async {
-      await PushNotificationService.instance.init();
+  unawaited(() async {
+    await PushNotificationService.instance.init();
 
-      // Make the device's subscription match the master switch. Until
-      // recently that switch only wrote a local `notifications_muted` flag —
-      // a flag nothing outside the chat code read — so every device that
-      // turned push off is still opted in at OneSignal and still receiving.
-      // Re-asserted on every launch rather than only when the settings screen
-      // is opened, because the people affected are precisely the ones who
-      // already went there once and believe it is dealt with.
-      //
-      // Safe for a signed-out launch: setSubscribed never asks for permission,
-      // so this cannot put a dialog in front of a guest. See its doc comment.
-      await PushNotificationService.instance
-          .setSubscribed(!sl<NotificationPrefsService>().isMuted);
+    // Signed in only. A guest is never asked — the prompt is a one-shot on
+    // iOS, and spending it on someone with no account is spending it on
+    // someone with nothing to be notified about yet and every reason to
+    // decline. Sign-up reaches this through LoginUseCase.establishSession,
+    // which VerifyCodeUseCase also calls, so a new account is asked at the
+    // point it is created rather than waiting for a second launch.
+    final signedIn = AuthService.isAuthenticated.value;
 
-      // Signed in only. A guest is never asked — the prompt is a one-shot on
-      // iOS, and spending it on someone with no account is spending it on
-      // someone with nothing to be notified about yet and every reason to
-      // decline. Sign-up reaches this through LoginUseCase.establishSession,
-      // which VerifyCodeUseCase also calls, so a new account is asked at the
-      // point it is created rather than waiting for a second launch.
-      if (!AuthService.isAuthenticated.value) return;
+    // Everything a push needs, asserted together: attached to this account,
+    // opted in unless the master switch says otherwise, and not left opted
+    // out behind a permission granted since. Re-asserted on every launch
+    // rather than only when the settings screen is opened, because the people
+    // affected are precisely the ones who went there once and believe it is
+    // dealt with.
+    //
+    // Safe for a signed-out launch: with no account it only makes the
+    // subscription match the switch, and nothing in it can raise a dialog.
+    await PushNotificationService.instance.reconcile(
+      userId: signedIn ? await authService.getUserId() : null,
+    );
 
-      final userId = await authService.getUserId();
-      await PushNotificationService.instance.login(userId);
+    if (!signedIn) return;
 
-      // Only where there is still a question to ask. It used to call
-      // requestPermission outright on the belief that a recorded decision
-      // makes it a no-op — it does not: with fallbackToSettings it opens the
-      // system settings page, so anyone who had declined was sent there ten
-      // seconds after opening the app, every single time.
-      await Future.delayed(PushNotificationService.permissionPromptDelay);
-      await PushNotificationService.instance.promptIfUndecided();
-    }());
-  }
-
-  // Web has no splash — it starts on Discovery — so nothing else will ever
-  // report readiness there. Marked here so anything waiting on it is not
-  // waiting forever.
-  if (kIsWeb) AppReadiness.markReady();
+    // Only where there is still a question to ask. It used to call
+    // requestPermission outright on the belief that a recorded decision
+    // makes it a no-op — it does not: with fallbackToSettings it opens the
+    // system settings page, so anyone who had declined was sent there ten
+    // seconds after opening the app, every single time.
+    await Future.delayed(PushNotificationService.permissionPromptDelay);
+    await PushNotificationService.instance.promptIfUndecided();
+  }());
 
   runApp(MyApp(
     // The real token, not a blanked one. This picks the first screen, and

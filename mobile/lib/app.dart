@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -12,9 +11,7 @@ import 'package:jperg_app/core/theme/theme_cubit.dart';
 import 'package:jperg_app/core/deep_links/deep_link_host.dart';
 import 'package:jperg_app/core/navigation/app_navigator.dart';
 import 'package:jperg_app/core/navigation/route_trace_observer.dart';
-import 'package:jperg_app/core/navigation/web_route_observer.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
-import 'package:jperg_app/core/common/widgets/web_sidebar.dart';
 import 'package:jperg_app/features/auth/presentation/pages/interests_page.dart';
 import 'package:jperg_app/features/auth/presentation/pages/login_page.dart';
 import 'package:jperg_app/features/auth/presentation/pages/signup_page.dart';
@@ -24,17 +21,7 @@ import 'package:jperg_app/features/discovery/presentation/pages/discovery_page.d
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/features/onboarding/presentation/pages/onboarding_page.dart';
 import 'package:jperg_app/features/splash/presentation/pages/splash_page.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
-
-// ── Web layout constants ──────────────────────────────────────────────────────
-
-/// Width of the main content column on web (≈ iPhone 15 Pro Max).
-const double _kWebColumnWidth = 480;
-
-/// Below this viewport width the left sidebar won't fit — switch to top nav.
-const double _kWebMobileBreakpoint =
-    240 + _kWebColumnWidth; // sidebar + content
 
 // ── Root application widget ───────────────────────────────────────────────────
 
@@ -72,18 +59,12 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
-        builder: (context, themeMode) => kIsWeb
-            ? _WebApp(
-                token: token,
-                isDeviceCompromised: isDeviceCompromised,
-                themeMode: themeMode,
-              )
-            : _MobileApp(
-                token: token,
-                isDeviceCompromised: isDeviceCompromised,
-                hasSeenOnboarding: hasSeenOnboarding,
-                themeMode: themeMode,
-              ),
+        builder: (context, themeMode) => _MobileApp(
+          token: token,
+          isDeviceCompromised: isDeviceCompromised,
+          hasSeenOnboarding: hasSeenOnboarding,
+          themeMode: themeMode,
+        ),
       ),
     );
   }
@@ -116,82 +97,6 @@ class _MobileApp extends StatelessWidget {
         hasSeenOnboarding: hasSeenOnboarding,
         themeMode: themeMode,
       ),
-    );
-  }
-}
-
-// ── Web branch ────────────────────────────────────────────────────────────────
-
-/// Web root: configures ScreenUtil synchronously in [initState] so that the
-/// [ScreenUtil] singleton is ready before the first [build] frame — preventing
-/// the [LateInitializationError] that [ScreenUtilInit]'s [LayoutBuilder]
-/// approach causes on web.
-class _WebApp extends StatefulWidget {
-  const _WebApp({
-    required this.token,
-    required this.isDeviceCompromised,
-    required this.themeMode,
-  });
-
-  final String token;
-  final bool isDeviceCompromised;
-  final ThemeMode themeMode;
-
-  @override
-  State<_WebApp> createState() => _WebAppState();
-}
-
-class _WebAppState extends State<_WebApp> with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _configureScreenUtil();
-    // Seed the route observer so the sidebar renders the correct nav on the
-    // very first frame — before any postFrameCallback redirect fires.
-    // Authenticated users are heading to /home; guests start on /discovery.
-    WebRouteObserver.currentRouteName.value = AuthService.isAuthenticated.value
-        ? HomePage.routeName
-        : DiscoveryPage.routeName;
-  }
-
-  @override
-  void didChangeMetrics() => _configureScreenUtil();
-
-  /// Initialise ScreenUtil with [_kWebColumnWidth] as the logical width so
-  /// that all `.w` / `.h` / `.sp` extensions scale against the 480 dp column
-  /// rather than the full browser viewport.
-  void _configureScreenUtil() {
-    final view = WidgetsBinding.instance.platformDispatcher.implicitView;
-    final dpr = view?.devicePixelRatio ?? 1.0;
-    final logicalH = view != null ? view.physicalSize.height / dpr : 844.0;
-
-    ScreenUtil.configure(
-      data: MediaQueryData(
-        size: Size(_kWebColumnWidth, logicalH),
-        devicePixelRatio: dpr,
-      ),
-      designSize: const Size(390, 844),
-      minTextAdapt: true,
-      splitScreenMode: false,
-    );
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _AppMaterial(
-      token: widget.token,
-      isDeviceCompromised: widget.isDeviceCompromised,
-      // Web never shows the mobile-only onboarding carousel (see the
-      // initialRoute comment below) — the value is irrelevant here.
-      hasSeenOnboarding: true,
-      themeMode: widget.themeMode,
     );
   }
 }
@@ -234,32 +139,25 @@ class _AppMaterial extends StatelessWidget {
           Locale('en'),
           Locale('de'),
         ],
-        scrollBehavior: kIsWeb ? const _WebScrollBehavior() : null,
-        // On web: sidebar + centred 480 dp column (its builder wraps content in
-        // a SelectionArea — standard click-drag copy on desktop). On mobile,
-        // no ambient SelectionArea: it fought with double-tap-to-like,
+        // No ambient SelectionArea: it fought with double-tap-to-like,
         // long-press-for-options, and swipe gestures on feed cards/chat
         // bubbles, popping the native "Select All" menu unpredictably, and
         // could crash on nested Scrollables (flutter/flutter#111690).
         builder: _appBuilder,
         navigatorObservers: [
-          if (kIsWeb) WebRouteObserver.instance,
           // Debug-only route trace. Every deep-link report so far has been
           // "it opened and then I was somewhere else", with no record of what
           // arrived or in what order.
           if (kDebugMode) RouteTraceObserver.instance,
         ],
-        // Web: always start at Discovery so a hard-refresh (⇧⌘R) gives a clean
-        // slate. _GuestGuard redirects authenticated users to /home immediately.
-        //
-        // Native iOS/Android: every cold start plays the branded splash first
-        // (including already-logged-in users, who previously had no splash
-        // moment at all), then hands off to the real destination: returning
-        // users (valid token) go to /home; first-ever launch (no token,
-        // onboarding never shown) goes to the 3-screen intro carousel; every
-        // other logged-out cold start (including after "Continue as guest")
-        // goes straight to Discovery.
-        initialRoute: kIsWeb ? DiscoveryPage.routeName : SplashPage.routeName,
+        // Every cold start plays the branded splash first (including
+        // already-logged-in users, who previously had no splash moment at
+        // all), then hands off to the real destination: returning users (valid
+        // token) go to /home; first-ever launch (no token, onboarding never
+        // shown) goes to the 3-screen intro carousel; every other logged-out
+        // cold start (including after "Continue as guest") goes straight to
+        // Discovery.
+        initialRoute: SplashPage.routeName,
         routes: {
           SplashPage.routeName: (_) => SplashPage(
                 nextRoute: token.isNotEmpty
@@ -270,8 +168,6 @@ class _AppMaterial extends StatelessWidget {
               ),
           OnboardingPage.routeName: (_) =>
               const _GuestGuard(child: OnboardingPage()),
-          // On web, guest-only pages redirect authenticated users to /home so
-          // that pressing browser Back never lands on the unauthenticated UI.
           DiscoveryPage.routeName: (_) => _GuestGuard(
                 child: isDeviceCompromised
                     ? const _SecurityWarningPage()
@@ -312,8 +208,7 @@ class _AppMaterial extends StatelessWidget {
     );
   }
 
-  /// Root builder: clamps the OS font-scale setting, then applies the web
-  /// layout chrome (sidebar + centred column) when running on web.
+  /// Root builder: clamps the OS font-scale setting.
   ///
   /// Every text size in the app is a `.sp` value scaled by flutter_screenutil
   /// against a 390 dp design width. The OS accessibility font-scale multiplies
@@ -327,261 +222,8 @@ class _AppMaterial extends StatelessWidget {
       maxScaleFactor: 1.3,
       child: child ?? const SizedBox.shrink(),
     );
-    return kIsWeb ? _webLayoutBuilder(ctx, scaled) : scaled;
+    return scaled;
   }
-
-  /// Web layout — adapts to viewport width:
-  ///   ≥ 720 px (desktop): left sidebar + centred column (480→760 px) + download button
-  ///   <  720 px (mobile):  horizontally-scrollable top nav bar + full-width content
-  ///
-  /// The content column grows dynamically from 480 px → 760 px as the viewport
-  /// expands beyond the sidebar + card width. The card's own LayoutBuilder
-  /// switches to the external panel layout once it has ≥ 60 px of spare room
-  /// (viewport ≈ 780 px — any laptop at a normal, non-tiny window size).
-  /// Desktop layout: sidebar (240 px) + full remaining width for content.
-  /// The card inside fixes itself to 480 px; reactions and comments fill the
-  /// rest — identical to TikTok's web layout.
-  /// Mobile web (< 720 px): top nav + full-width content (no sidebar).
-  static Widget _webLayoutBuilder(BuildContext ctx, Widget? child) {
-    final bg = Theme.of(ctx).scaffoldBackgroundColor;
-    final viewportW = MediaQuery.of(ctx).size.width;
-    final isMobileWeb = viewportW < _kWebMobileBreakpoint;
-    // Built once and reused across auth rebuilds so the Navigator (and the
-    // pages inside it) is never torn down. The edge scrollbar overlays a single
-    // scroll indicator at the far right of the screen for every page (centred
-    // "column" pages included), instead of a per-component bar mid-layout.
-    //
-    // SelectionArea makes every Text inside the page content selectable and
-    // copyable on web (click-drag to select, Cmd/Ctrl+C to copy) without having
-    // to convert each Text to SelectableText. TextFields and buttons keep their
-    // own behaviour; only static text becomes selectable.
-    //
-    // It is wrapped in [_SelectionOverlay] because SelectionArea requires an
-    // Overlay ancestor (for the selection handles / copy toolbar). Here the
-    // builder sits ABOVE the app's Navigator — whose Overlay is a descendant —
-    // so we supply a local Overlay instead.
-    final content = _SelectionOverlay(
-      child: _WebEdgeScrollbar(child: ClipRect(child: child!)),
-    );
-
-    return DefaultTextStyle(
-      style: DefaultTextStyle.of(ctx)
-          .style
-          .copyWith(decoration: TextDecoration.none),
-      child: ColoredBox(
-        color: bg,
-        child: Column(
-          children: [
-            Expanded(
-              // Rebuild the nav chrome the instant auth flips so login/logout
-              // is reflected immediately — no manual page refresh needed. The
-              // nav widgets are intentionally non-const here so this rebuild
-              // actually re-runs their builders.
-              child: ValueListenableBuilder<bool>(
-                valueListenable: AuthService.isAuthenticated,
-                builder: (context, isLoggedIn, _) {
-                  // Keying the nav widgets off the auth state forces them to
-                  // rebuild from scratch on login/logout (a const widget would
-                  // be skipped), guaranteeing the correct items show/hide.
-                  final authKey = ValueKey(isLoggedIn);
-                  // ── Mobile web: top nav + full-width content ──────────────
-                  if (isMobileWeb) {
-                    return Column(
-                      children: [
-                        WebTopNav(key: authKey),
-                        Expanded(child: content),
-                      ],
-                    );
-                  }
-                  // ── Desktop web: sidebar + content, with a permanent
-                  //    top-right action cluster floating over every screen. ──
-                  return Stack(
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          WebSidebar(key: authKey),
-                          Expanded(child: content),
-                        ],
-                      ),
-                      Positioned(
-                        top: 10,
-                        right: 16,
-                        child: WebTopActions(key: authKey),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Web edge scrollbar ────────────────────────────────────────────────────────
-
-/// A single overlay scroll indicator pinned to the far-right edge of the
-/// screen. It listens to scroll notifications bubbling up from whichever page
-/// is active and renders a thin thumb at the screen edge — so the scrollbar is
-/// always at the far right, even for pages whose content is a centred column
-/// (which would otherwise paint a per-component bar mid-layout).
-class _WebEdgeScrollbar extends StatefulWidget {
-  const _WebEdgeScrollbar({required this.child});
-  final Widget child;
-
-  @override
-  State<_WebEdgeScrollbar> createState() => _WebEdgeScrollbarState();
-}
-
-class _WebEdgeScrollbarState extends State<_WebEdgeScrollbar> {
-  double _pixels = 0;
-  double _max = 0;
-  double _viewport = 0;
-
-  void _update(ScrollMetrics m) {
-    if (m.axis != Axis.vertical) return;
-    if (m.pixels == _pixels &&
-        m.maxScrollExtent == _max &&
-        m.viewportDimension == _viewport) {
-      return;
-    }
-    setState(() {
-      _pixels = m.pixels;
-      _max = m.maxScrollExtent;
-      _viewport = m.viewportDimension;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final thumbColor =
-        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.30);
-    return NotificationListener<ScrollMetricsNotification>(
-      onNotification: (n) {
-        if (n.depth == 0) _update(n.metrics);
-        return false;
-      },
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (n) {
-          if (n.depth == 0) _update(n.metrics);
-          return false;
-        },
-        child: Stack(
-          children: [
-            widget.child,
-            if (_max > 1)
-              Positioned(
-                top: 0,
-                bottom: 0,
-                right: 0,
-                width: 8,
-                child: IgnorePointer(
-                  child: LayoutBuilder(
-                    builder: (ctx, c) {
-                      final track = c.maxHeight;
-                      final ratio = _viewport / (_viewport + _max);
-                      final thumb = (track * ratio).clamp(36.0, track);
-                      final top = _max <= 0
-                          ? 0.0
-                          : (_pixels.clamp(0.0, _max) / _max) * (track - thumb);
-                      return Stack(
-                        children: [
-                          Positioned(
-                            top: top,
-                            right: 2,
-                            width: 5,
-                            height: thumb,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: thumbColor,
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Selectable-text wrapper ───────────────────────────────────────────────────
-
-/// Wraps [child] in a [SelectionArea] backed by a local [Overlay].
-///
-/// [SelectionArea] needs an [Overlay] ancestor (it hosts the selection handles
-/// and the copy toolbar). When used inside [MaterialApp.builder] the wrapper
-/// sits ABOVE the app's [Navigator], whose Overlay is therefore a descendant —
-/// so we provide our own Overlay here. The Overlay also lets the copy menu
-/// float above all page content.
-class _SelectionOverlay extends StatelessWidget {
-  const _SelectionOverlay({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Overlay(
-      initialEntries: [
-        OverlayEntry(
-          maintainState: true,
-          builder: (_) => SelectionArea(child: child),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Web scroll behaviour ──────────────────────────────────────────────────────
-
-/// Enables trackpad / touch dragging (Flutter web only enables touch by
-/// default) and removes the Android overscroll glow that looks wrong in a
-/// browser. Physics are left to each scroll view — see [kWebScrollPhysics].
-///
-/// NOTE: [PointerDeviceKind.mouse] is intentionally NOT a drag device. With it,
-/// a mouse click-drag is consumed as scrolling and wins over the app's
-/// SelectionArea, so text can never be selected/copied. Excluding it makes
-/// mouse-drag select text (standard web behaviour) while the wheel, trackpad
-/// and scrollbar still scroll, and web carousels use their hover arrows.
-class _WebScrollBehavior extends MaterialScrollBehavior {
-  const _WebScrollBehavior();
-
-  @override
-  Set<PointerDeviceKind> get dragDevices => const {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.trackpad,
-        PointerDeviceKind.stylus,
-      };
-
-  @override
-  Widget buildOverscrollIndicator(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) =>
-      child; // No glow / stretch on web.
-
-  // Flutter's MaterialScrollBehavior auto-adds a Material Scrollbar to every
-  // scroll view on web/desktop. With the centred column + sidebar layout that
-  // bar lands in the middle of the screen, right against the cards/reactions.
-  // Suppress it everywhere — the feed scrolls via wheel/trackpad/drag without
-  // a bar overlapping the content.
-  @override
-  Widget buildScrollbar(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) =>
-      child;
 }
 
 // ── Auth route guard ─────────────────────────────────────────────────────────
@@ -589,8 +231,8 @@ class _WebScrollBehavior extends MaterialScrollBehavior {
 /// Checks whether a valid session exists before rendering [child].
 /// If the token is missing or empty the user is redirected to [LoginPage].
 ///
-/// Used to protect named routes on web where someone can navigate directly to
-/// a URL like `/home` without being authenticated.
+/// Used to protect named routes that can be reached directly — a deep link to
+/// `/home`, say — without being authenticated.
 class _AuthGuard extends StatefulWidget {
   const _AuthGuard({required this.child});
   final Widget child;
@@ -614,7 +256,7 @@ class _AuthGuardState extends State<_AuthGuard> {
       future: _authorized,
       builder: (context, snap) {
         if (!snap.hasData) {
-          // Token check in flight — show neutral background (< 5 ms on web).
+          // Token check in flight — show a neutral background.
           return const Scaffold(backgroundColor: Color(0xFF0D0D0D));
         }
         if (!snap.data!) {
@@ -639,13 +281,10 @@ class _AuthGuardState extends State<_AuthGuard> {
 /// Inverse of [_AuthGuard]: protects pages that must only be visible to
 /// **unauthenticated** users (Discovery, Login, Sign-up).
 ///
-/// On web, if [AuthService.isAuthenticated] is already true (seeded
-/// synchronously at startup before the first frame), the user is immediately
-/// redirected to [HomePage] — preventing them from landing on the guest UI
-/// when they press the browser Back button from an authenticated session.
-///
-/// On mobile the guard is a no-op; the native back-stack never surfaces the
-/// guest pages once the user is inside the authenticated area.
+/// If [AuthService.isAuthenticated] is already true (seeded synchronously at
+/// startup before the first frame), the user is redirected to [HomePage]
+/// rather than landing on the guest UI — which a deep link into one of these
+/// routes would otherwise do.
 class _GuestGuard extends StatefulWidget {
   const _GuestGuard({required this.child});
   final Widget child;
@@ -747,7 +386,6 @@ class _SecurityWarningPage extends StatelessWidget {
         ),
       ),
     );
-    return webWrap(page,
-        backgroundColor: const Color(0xFF0D0D0D), width: kWebColumnWidth);
+    return page;
   }
 }

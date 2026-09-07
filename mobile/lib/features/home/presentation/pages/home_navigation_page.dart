@@ -9,9 +9,7 @@ import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.da
 import 'package:jperg_app/features/discovery/presentation/pages/event_comment_page.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_event_photos.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
-import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
 import 'package:jperg_app/features/search/presentation/pages/search_page.dart';
-import 'package:jperg_app/features/home/presentation/widgets/web_search_photos_panel.dart';
 import 'package:jperg_app/features/home/presentation/widgets/events_feed.dart';
 import 'package:jperg_app/features/home/presentation/widgets/home_empty_state.dart';
 import 'package:jperg_app/features/home/presentation/widgets/feed_top_bar.dart';
@@ -30,23 +28,6 @@ import 'package:jperg_app/features/location/presentation/location_mismatch_promp
 
 class HomeNavigationPage extends StatefulWidget {
   const HomeNavigationPage({super.key});
-
-  /// Web-only: sidebar calls [dispatchSearch] to dispatch a BLoC event search.
-  /// Using a callback instead of ValueNotifier avoids the "same value silently
-  /// dropped" edge case that broke debounced keystrokes.
-  static void Function(String query)? _webSearchHandler;
-  static void dispatchSearch(String query) => _webSearchHandler?.call(query);
-
-  /// Web-only: mirrors the live event search results so the sidebar typeahead
-  /// dropdown can display them without needing BLoC access.
-  static final webEventResults = ValueNotifier<List<dynamic>>([]);
-
-  /// Web-only: called by the sidebar when the user picks an event from the
-  /// typeahead dropdown. Opens the inline photo-results panel in the content
-  /// area and fetches the event's photos.
-  static void Function(String eventId, String eventName)? _webEventTapHandler;
-  static void dispatchEventTap(String eventId, String eventName) =>
-      _webEventTapHandler?.call(eventId, eventName);
 
   /// Any caller can write a pill index here (0 = Found, 1 = Feed,
   /// 2 = Following) to request a pill switch, e.g. after a purchase that
@@ -128,32 +109,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       }
       HomeNavigationPage.pillTabRequest.value = null;
     }
-    if (kIsWeb) {
-      // Typeahead: only dispatch the BLoC event search — don't open the content
-      // overlay. The sidebar dropdown shows suggestions; the inline photos panel
-      // only opens after the user taps an event (via _webEventTapHandler).
-      HomeNavigationPage._webSearchHandler = (q) {
-        if (!mounted || q.isEmpty) return;
-        context.read<HomeBloc>().add(HomeEventSearched(q));
-      };
-      HomeNavigationPage._webEventTapHandler = (eventId, eventName) {
-        if (!mounted) return;
-        final homeBloc = context.read<HomeBloc>();
-        homeBloc
-            .add(HomeImagesSearched(eventId: eventId, eventName: eventName));
-        // Route to the search-event page on the ROOT navigator so it opens on
-        // top of whatever page/tab the user is currently on (Gallery, a
-        // profile, chat, …) — the inline panel only showed on the Home tab.
-        Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute<void>(
-            builder: (_) => BlocProvider.value(
-              value: homeBloc,
-              child: WebSearchPhotosPage(eventName: eventName),
-            ),
-          ),
-        );
-      };
-    }
   }
 
   /// Home was tapped while already on Home: start the feed that is showing
@@ -179,10 +134,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   void dispose() {
     HomeNavigationPage.pillTabRequest.removeListener(_onPillTabRequest);
     HomeNavigationPage.feedResetRequest.removeListener(_onFeedReset);
-    if (kIsWeb) {
-      HomeNavigationPage._webSearchHandler = null;
-      HomeNavigationPage._webEventTapHandler = null;
-    }
     super.dispose();
   }
 
@@ -330,9 +281,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
-    // On web the header is always visible (Column layout) — skip hide logic.
-    if (kIsWeb) return false;
-
     // The bottom bar collapses on every tab, Found included: it floats over
     // the content everywhere and narrowing it gives the grid its width back.
     // Fed before the Found guard below, which is only about the *header*.
@@ -384,7 +332,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   ///
   /// Falls back to a sensible estimate until the header has been measured.
   double get _headerClearance {
-    if (kIsWeb) return 0;
     if (_headerHeight > 0) return _headerHeight;
     return MediaQuery.of(context).padding.top + 48;
   }
@@ -393,99 +340,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final discoveryState = context.watch<DiscoveryBloc>().state;
-
-    // ── Web: compact top bar (tabs + avatar) + Column layout ─────────────────
-    if (kIsWeb) {
-      // Keep webEventResults in sync with BLoC state so the sidebar typeahead
-      // dropdown can display results without direct BLoC access. Watched here
-      // and not above: the feed itself no longer reads HomeBloc — search moved
-      // to its own screen — so on mobile this would only cost rebuilds.
-      final homeState = context.watch<HomeBloc>().state;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          HomeNavigationPage.webEventResults.value = homeState.events;
-        }
-      });
-
-      return Stack(
-        children: [
-          Scaffold(
-            backgroundColor: ext.homeBackground,
-            body: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Compact top bar: tabs + search ──────────────────────────────
-                SizedBox(
-                  height: 54,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                    child: Row(
-                      children: [
-                        _PillTab(
-                          label: 'Found',
-                          active: _selectedTab == 0,
-                          ext: ext,
-                          onTap: () {
-                            VideoPauseNotifier.pauseAll();
-                            setState(() => _selectedTab = 0);
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _PillTab(
-                          label: 'Feed',
-                          active: _selectedTab == 1,
-                          ext: ext,
-                          onTap: () {
-                            VideoPauseNotifier.pauseAll();
-                            setState(() => _selectedTab = 1);
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _PillTab(
-                          label: 'Following',
-                          active: _selectedTab == 2,
-                          ext: ext,
-                          onTap: () {
-                            VideoPauseNotifier.pauseAll();
-                            setState(() => _selectedTab = 2);
-                          },
-                        ),
-                        const SizedBox(width: 12),
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: Semantics(
-                            button: true,
-                            label: 'Open search',
-                            child: GestureDetector(
-                              onTap: _openSearch,
-                              child: Icon(Icons.search_rounded,
-                                  color: ext.glassIcon, size: 20),
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        // Get-the-app / Messages / Profile now live in the
-                        // global WebTopActions cluster (app shell) so they
-                        // appear on every screen at the same position. Leave
-                        // room here so the tabs don't sit under it.
-                        const SizedBox(width: 240),
-                      ],
-                    ),
-                  ),
-                ),
-                // ── Feed content ────────────────────────────────────────────────
-                Expanded(
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: _onScrollNotification,
-                    child: _buildBody(context, ext, discoveryState),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
 
     // ── Mobile: floating overlay header that slides in/out on scroll ──────────
     final topPadding = MediaQuery.of(context).padding.top;
@@ -700,53 +554,5 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
           ),
       ],
     );
-  }
-}
-
-class _PillTab extends StatelessWidget {
-  final String label;
-  final bool active;
-  final AppThemeExtension ext;
-  final VoidCallback onTap;
-
-  const _PillTab({
-    required this.label,
-    required this.active,
-    required this.ext,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-        button: true,
-        label: label,
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-            decoration: BoxDecoration(
-              color: active
-                  ? ext.accentGold.withValues(alpha: 0.92)
-                  : ext.glassFill,
-              border: Border.all(
-                color: active ? ext.accentGold : ext.glassBorder,
-                width: 1.0,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: active ? Colors.black : ext.glassIcon,
-                fontSize: 12,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ),
-        ));
   }
 }

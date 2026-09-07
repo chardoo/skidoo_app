@@ -12,7 +12,6 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/services/auth_service.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
@@ -93,9 +92,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Text(
           'Face Recognition',
           style: TextStyle(
@@ -220,7 +217,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 

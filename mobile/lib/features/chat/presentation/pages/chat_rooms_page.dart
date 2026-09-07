@@ -5,7 +5,6 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
@@ -78,8 +77,7 @@ class _ChatRoomsView extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'New chat',
-            icon: Icon(Icons.edit_square,
-                color: ext.accentGold, size: 20.sp),
+            icon: Icon(Icons.edit_square, color: ext.accentGold, size: 20.sp),
             onPressed: () => _openNewChat(context),
           ),
           SizedBox(width: AppSpacing.xs.w),
@@ -192,7 +190,7 @@ class _ChatRoomsView extends StatelessWidget {
         },
       ),
     );
-    return webWrap(page, backgroundColor: Colors.transparent);
+    return page;
   }
 
   /// Runs a sync and completes when it settles, so the pull-to-refresh spinner
@@ -275,9 +273,10 @@ class _PendingInvitesCard extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return Container(
-      margin: EdgeInsets.fromLTRB(AppSpacing.md.w, AppSpacing.sm.h,
-          AppSpacing.md.w, AppSpacing.sm.h),
-      padding: EdgeInsets.fromLTRB(AppSpacing.md.w, 12.h, AppSpacing.md.w, 12.h),
+      margin: EdgeInsets.fromLTRB(
+          AppSpacing.md.w, AppSpacing.sm.h, AppSpacing.md.w, AppSpacing.sm.h),
+      padding:
+          EdgeInsets.fromLTRB(AppSpacing.md.w, 12.h, AppSpacing.md.w, 12.h),
       decoration: BoxDecoration(
         color: ext.accentGold.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppRadius.lg.r),
@@ -406,8 +405,7 @@ class _InviteButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.sm.r),
             border: filled
                 ? null
-                : Border.all(
-                    color: ext.searchHintColor.withValues(alpha: 0.4)),
+                : Border.all(color: ext.searchHintColor.withValues(alpha: 0.4)),
           ),
           child: Text(
             label,

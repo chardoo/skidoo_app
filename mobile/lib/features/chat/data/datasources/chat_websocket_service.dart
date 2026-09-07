@@ -6,7 +6,8 @@ import 'package:jperg_app/core/config/chat_config.dart';
 import 'package:jperg_app/core/utils/server_time.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
-import 'package:jperg_app/models/chat/like_update.dart' show LikeUpdate, PictureLikeUpdate;
+import 'package:jperg_app/models/chat/like_update.dart'
+    show LikeUpdate, PictureLikeUpdate;
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -49,7 +50,8 @@ class WsParticipantKeyAvailable {
   final String userId;
   final String identityKey;
   final Map<String, dynamic> signedPreKey;
-  const WsParticipantKeyAvailable(this.userId, this.identityKey, this.signedPreKey);
+  const WsParticipantKeyAvailable(
+      this.userId, this.identityKey, this.signedPreKey);
 }
 
 /// Broadcast when any participant rotates their key bundle.
@@ -58,8 +60,8 @@ class WsKeyRotationEvent {
   final int? registrationId;
   final String identityKey;
   final Map<String, dynamic> signedPreKey;
-  const WsKeyRotationEvent(
-      this.userId, this.identityKey, this.signedPreKey, {this.registrationId});
+  const WsKeyRotationEvent(this.userId, this.identityKey, this.signedPreKey,
+      {this.registrationId});
 }
 
 /// Broadcast when a message is edited by its sender.
@@ -191,8 +193,10 @@ class WsRoomDeletedEvent {
 class WsReadReceiptEvent {
   final String roomId;
   final String readerId;
+
   /// Set for bulk acks — all messages up to and including this ID are read.
   final String? upToMessageId;
+
   /// Set for single-message acks.
   final String? messageId;
   const WsReadReceiptEvent({
@@ -272,7 +276,8 @@ class WsPresenceEvent {
 class WsSenderKeyDistributionEvent {
   final String roomId;
   final String senderId;
-  final String encryptedKey; // 'message' field from server — encrypted sender key
+  final String
+      encryptedKey; // 'message' field from server — encrypted sender key
   const WsSenderKeyDistributionEvent({
     required this.roomId,
     required this.senderId,
@@ -287,6 +292,7 @@ class WsUserJoinedEvent {
   final String userId;
   final String userName;
   final String userRole;
+
   /// 'mobile', 'web', or '' when the server didn't include the field.
   final String clientType;
   const WsUserJoinedEvent({
@@ -505,7 +511,7 @@ class ChatWebSocketService {
     final uri = Uri.parse('$wsBase/chat/ws/me').replace(
       queryParameters: {
         if (token.isNotEmpty) 'token': token,
-        'client_type': kIsWeb ? 'web' : 'mobile',
+        'client_type': 'mobile',
       },
     );
 
@@ -514,7 +520,8 @@ class ChatWebSocketService {
       debugPrint('[WS#$_instanceId] Connected — subscribing to room $roomId');
       _sendRaw({'type': 'subscribe_room', 'room_id': roomId});
     } else {
-      debugPrint('[WS#$_instanceId] Connected (no initial room subscription) — shared/user WS');
+      debugPrint(
+          '[WS#$_instanceId] Connected (no initial room subscription) — shared/user WS');
     }
   }
 
@@ -525,7 +532,8 @@ class ChatWebSocketService {
     _likeController = StreamController<LikeUpdate>.broadcast();
     _picLikeController = StreamController<PictureLikeUpdate>.broadcast();
     _keyBundlesController = StreamController<WsKeyBundlesEvent>.broadcast();
-    _participantKeyController = StreamController<WsParticipantKeyAvailable>.broadcast();
+    _participantKeyController =
+        StreamController<WsParticipantKeyAvailable>.broadcast();
     _keyRotationController = StreamController<WsKeyRotationEvent>.broadcast();
     _msgEditedController = StreamController<WsMessageEditedEvent>.broadcast();
     _msgDeletedController = StreamController<WsMessageDeletedEvent>.broadcast();
@@ -534,11 +542,15 @@ class ChatWebSocketService {
     _userJoinedController = StreamController<WsUserJoinedEvent>.broadcast();
     _adminGrantedController = StreamController<WsAdminGrantedEvent>.broadcast();
     _adminRevokedController = StreamController<WsAdminRevokedEvent>.broadcast();
-    _roomSettingsController = StreamController<WsRoomSettingsUpdatedEvent>.broadcast();
-    _participantRemovedController = StreamController<WsParticipantRemovedEvent>.broadcast();
-    _participantLeftController = StreamController<WsParticipantLeftEvent>.broadcast();
+    _roomSettingsController =
+        StreamController<WsRoomSettingsUpdatedEvent>.broadcast();
+    _participantRemovedController =
+        StreamController<WsParticipantRemovedEvent>.broadcast();
+    _participantLeftController =
+        StreamController<WsParticipantLeftEvent>.broadcast();
     _roomDeletedController = StreamController<WsRoomDeletedEvent>.broadcast();
-    _senderKeyDistController = StreamController<WsSenderKeyDistributionEvent>.broadcast();
+    _senderKeyDistController =
+        StreamController<WsSenderKeyDistributionEvent>.broadcast();
     _readReceiptController = StreamController<WsReadReceiptEvent>.broadcast();
     _deliveryReceiptController =
         StreamController<WsDeliveryReceiptEvent>.broadcast();
@@ -547,7 +559,8 @@ class ChatWebSocketService {
       _channel = WebSocketChannel.connect(uri);
       await _channel!.ready.timeout(
         const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('WebSocket handshake timed out'),
+        onTimeout: () =>
+            throw TimeoutException('WebSocket handshake timed out'),
       );
     } catch (e) {
       debugPrint('[WS] Connection failed: ${e.runtimeType}');
@@ -565,7 +578,8 @@ class ChatWebSocketService {
         try {
           final json = jsonDecode(raw as String) as Map<String, dynamic>;
           final type = json['type'] as String?;
-          debugPrint('[WS#$_instanceId] frame received: type=$type roomId=${json['room_id']} id=${json['id']}');
+          debugPrint(
+              '[WS#$_instanceId] frame received: type=$type roomId=${json['room_id']} id=${json['id']}');
 
           // Rule 1 — error frames have NO type field (bare `{"error": "..."}`),
           // plus the typed setup error `{"type":"error","message":"..."}`.
@@ -576,7 +590,8 @@ class ChatWebSocketService {
             // `detail` is the server's diagnostic (e.g. "<ExcType>: <msg>")
             // for the "Internal error processing message" catch-all.
             final detail = json['detail'];
-            debugPrint('[WS#$_instanceId] error frame: "$msg" roomId=${json['room_id']}'
+            debugPrint(
+                '[WS#$_instanceId] error frame: "$msg" roomId=${json['room_id']}'
                 '${detail != null ? ' detail=$detail' : ''}');
             _errorController?.add(WsChatErrorEvent(
               message: msg,
@@ -674,16 +689,19 @@ class ChatWebSocketService {
             }
           } else if (type == 'group_invite') {
             final roomData = json['room'];
-            debugPrint('[WS#$_instanceId] group_invite received — roomData is ${roomData?.runtimeType} controllerNull=${_groupInviteController == null} hasListener=${_groupInviteController?.hasListener}');
+            debugPrint(
+                '[WS#$_instanceId] group_invite received — roomData is ${roomData?.runtimeType} controllerNull=${_groupInviteController == null} hasListener=${_groupInviteController?.hasListener}');
             if (roomData is Map<String, dynamic>) {
               _groupInviteController?.add(WsGroupInviteEvent(
                 room: ChatRoom.fromJson(roomData),
                 invitedBy: json['invited_by'] as String? ?? '',
                 invitedByName: json['invited_by_name'] as String? ?? '',
               ));
-              debugPrint('[WS#$_instanceId] group_invite dispatched to controller — hasListener=${_groupInviteController?.hasListener}');
+              debugPrint(
+                  '[WS#$_instanceId] group_invite dispatched to controller — hasListener=${_groupInviteController?.hasListener}');
             } else {
-              debugPrint('[WS] group_invite DROPPED — roomData is not a Map (got ${roomData?.runtimeType})');
+              debugPrint(
+                  '[WS] group_invite DROPPED — roomData is not a Map (got ${roomData?.runtimeType})');
             }
           } else if (type == 'user_joined') {
             if (json['room_id'] is String && json['user_id'] is String) {
@@ -800,17 +818,21 @@ class ChatWebSocketService {
               }
             }
           } else if (type == 'message' ||
-              (type == null && json['id'] is String && json['created_at'] is String)) {
+              (type == null &&
+                  json['id'] is String &&
+                  json['created_at'] is String)) {
             // New message / comment. On web, sender_role may be absent —
             // handled by the nullable cast in ChatMessage.fromJson.
-            debugPrint('[WS] routing as ChatMessage: type=$type id=${json['id']} roomId=${json['room_id']} senderId=${json['sender_id']} role=${json['sender_role']} isEncrypted=${json['is_encrypted']} contentLen=${json['content']?.toString().length}');
+            debugPrint(
+                '[WS] routing as ChatMessage: type=$type id=${json['id']} roomId=${json['room_id']} senderId=${json['sender_id']} role=${json['sender_role']} isEncrypted=${json['is_encrypted']} contentLen=${json['content']?.toString().length}');
             _msgController?.add(ChatMessage.fromJson(json));
           } else {
             debugPrint('[WS#$_instanceId] unhandled chat frame: type=$type');
           }
         } catch (e, st) {
           final rawStr = raw is String ? raw : raw.toString();
-          debugPrint('[WS] frame parse error: $e\n$st\n  raw=${rawStr.length > 300 ? rawStr.substring(0, 300) : rawStr}');
+          debugPrint(
+              '[WS] frame parse error: $e\n$st\n  raw=${rawStr.length > 300 ? rawStr.substring(0, 300) : rawStr}');
         }
       },
       onError: (e) {
@@ -930,7 +952,11 @@ class ChatWebSocketService {
   void restoreFocus() => announceFocus();
 
   /// Send a plain-text or image/video message.
-  void send(String? content, {String? imageUrl, bool isVideo = false, String? replyToId, String? roomId}) {
+  void send(String? content,
+      {String? imageUrl,
+      bool isVideo = false,
+      String? replyToId,
+      String? roomId}) {
     final payload = <String, dynamic>{'type': 'message'};
     if (content != null && content.isNotEmpty) payload['content'] = content;
     if (imageUrl != null) {
@@ -978,28 +1004,46 @@ class ChatWebSocketService {
   }
 
   /// Send a like for an event.
-  void sendLike(String eventId, {String? roomId}) =>
-      _sendRaw({'type': 'like', 'event_id': eventId, if (roomId != null) 'room_id': roomId});
+  void sendLike(String eventId, {String? roomId}) => _sendRaw({
+        'type': 'like',
+        'event_id': eventId,
+        if (roomId != null) 'room_id': roomId
+      });
 
   /// Remove a like for an event.
-  void sendUnlike(String eventId, {String? roomId}) =>
-      _sendRaw({'type': 'unlike', 'event_id': eventId, if (roomId != null) 'room_id': roomId});
+  void sendUnlike(String eventId, {String? roomId}) => _sendRaw({
+        'type': 'unlike',
+        'event_id': eventId,
+        if (roomId != null) 'room_id': roomId
+      });
 
   /// Send a dislike for an event.
-  void sendDislike(String eventId, {String? roomId}) =>
-      _sendRaw({'type': 'dislike', 'event_id': eventId, if (roomId != null) 'room_id': roomId});
+  void sendDislike(String eventId, {String? roomId}) => _sendRaw({
+        'type': 'dislike',
+        'event_id': eventId,
+        if (roomId != null) 'room_id': roomId
+      });
 
   /// Remove a dislike for an event.
-  void sendUndislike(String eventId, {String? roomId}) =>
-      _sendRaw({'type': 'undislike', 'event_id': eventId, if (roomId != null) 'room_id': roomId});
+  void sendUndislike(String eventId, {String? roomId}) => _sendRaw({
+        'type': 'undislike',
+        'event_id': eventId,
+        if (roomId != null) 'room_id': roomId
+      });
 
   /// Send a like for a picture.
-  void sendPictureLike(String pictureId, {String? roomId}) =>
-      _sendRaw({'type': 'picture_like', 'picture_id': pictureId, if (roomId != null) 'room_id': roomId});
+  void sendPictureLike(String pictureId, {String? roomId}) => _sendRaw({
+        'type': 'picture_like',
+        'picture_id': pictureId,
+        if (roomId != null) 'room_id': roomId
+      });
 
   /// Remove a like for a picture.
-  void sendPictureUnlike(String pictureId, {String? roomId}) =>
-      _sendRaw({'type': 'picture_unlike', 'picture_id': pictureId, if (roomId != null) 'room_id': roomId});
+  void sendPictureUnlike(String pictureId, {String? roomId}) => _sendRaw({
+        'type': 'picture_unlike',
+        'picture_id': pictureId,
+        if (roomId != null) 'room_id': roomId
+      });
 
   /// Acknowledge reading all messages up to [upToMessageId] in [roomId].
   /// The server broadcasts a `read_receipt` event to all other room members.

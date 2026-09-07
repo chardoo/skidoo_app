@@ -1,5 +1,4 @@
 import 'package:jperg_app/core/cache/comment_counts.dart';
-import 'dart:convert' show base64Encode;
 import 'dart:io';
 import 'dart:ui';
 
@@ -9,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:jperg_app/components/media/media_rail_action.dart';
 import 'package:jperg_app/components/media/share_target_sheet.dart';
 import 'package:jperg_app/core/config/app_links_config.dart';
@@ -100,25 +98,6 @@ Future<void> shareOverlayPhotoExternally(
 
     final safeId = imageId.replaceAll('/', '_').replaceAll('\\', '_');
     final filename = 'overlay_$safeId.${result.fileExtension}';
-
-    if (kIsWeb) {
-      // ── Web: use in-memory XFile — no temp file writes ──────────────────
-      final xFile = XFile.fromData(
-        result.bytes,
-        mimeType: result.contentType,
-        name: filename,
-      );
-      try {
-        await Share.shareXFiles([xFile], subject: subject);
-      } catch (_) {
-        // Browser doesn't support Web Share API Level 2 — fall back to
-        // triggering a browser download via a data URI.
-        final dataUri =
-            'data:${result.contentType};base64,${base64Encode(result.bytes)}';
-        await launchUrl(Uri.parse(dataUri), mode: LaunchMode.externalApplication);
-      }
-      return;
-    }
 
     // ── Mobile: write temp file → OS save/share sheet ────────────────────
     // No `text:` here — this is the Save path, and a caption riding along
@@ -375,19 +354,20 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
   }
 
   double get _btnSize =>
-      widget.buttonSize ??
-      (widget.axis == Axis.vertical ? 44.w : 52.w);
+      widget.buttonSize ?? (widget.axis == Axis.vertical ? 44.w : 52.w);
 
   double get _icnSize =>
-      widget.iconSize ??
-      (widget.axis == Axis.vertical ? 20.sp : 22.sp);
+      widget.iconSize ?? (widget.axis == Axis.vertical ? 20.sp : 22.sp);
 
   // ── Core: fetch overlay → share / download ───────────────────────────────
 
   Future<void> _handleAction({required bool isDownload}) async {
     if (_downloading || _sharing) return;
     setState(() {
-      if (isDownload) _downloading = true; else _sharing = true;
+      if (isDownload)
+        _downloading = true;
+      else
+        _sharing = true;
     });
 
     // Capture the button's screen rect BEFORE any await so iOS knows where
@@ -395,7 +375,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
     // On web the share popover is browser-native — no origin needed.
     final key = isDownload ? _downloadKey : _shareKey;
     final box = key.currentContext?.findRenderObject() as RenderBox?;
-    final shareOrigin = (!kIsWeb && box != null && box.hasSize)
+    final shareOrigin = (box != null && box.hasSize)
         ? box.localToGlobal(Offset.zero) & box.size
         : null;
 
@@ -411,7 +391,10 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
     );
 
     if (mounted) {
-      setState(() { _downloading = false; _sharing = false; });
+      setState(() {
+        _downloading = false;
+        _sharing = false;
+      });
     }
   }
 
@@ -490,9 +473,8 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
               : Icons.bookmark_border_rounded,
           color: ext.accentGold,
           busy: _saved!.isBusy(widget.pictureId),
-          semanticLabel: _saved!.isSaved(widget.pictureId)
-              ? 'Remove from saved'
-              : 'Save',
+          semanticLabel:
+              _saved!.isSaved(widget.pictureId) ? 'Remove from saved' : 'Save',
           onTap: _toggleSave,
         ),
       if (widget.showDownload)

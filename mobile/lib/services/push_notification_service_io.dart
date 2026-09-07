@@ -201,43 +201,98 @@ Future<void> setPushSubscribed(bool subscribed) async {
   }
 }
 
+/// Who the SDK currently believes this device belongs to, or null for nobody.
+///
+/// Asked of the SDK rather than remembered here. What this file remembers is
+/// only ever what it *did* — and the whole failure this answers is the gap
+/// between the two: a login that did not take, a logout that moved the
+/// subscription to an anonymous user, a process that restarted with a stale
+/// idea of either. The backend addresses pushes by this id, so if it is wrong
+/// nothing arrives and every send still returns 200.
+Future<String?> pushAttachedUserId() async {
+  if (!_supported) return null;
+  if (!_initialised) await initPush();
+  try {
+    return await OneSignal.User.getExternalId();
+  } catch (e) {
+    debugPrint('$_tag could not read the attached external id: $e');
+    return null;
+  }
+}
+
 Future<void> pushLogin(String userId) async {
   if (!_supported || userId.isEmpty) return;
   if (!_initialised) await initPush();
-  if (_externalId == userId) return;
+
+  // Was: `if (_externalId == userId) return;`, which trusted this process's
+  // memory of a call over the SDK's own state. Anything that detached the
+  // device without going through this file — a logout that raced with a
+  // sign-in, an SDK-side reset — left that flag saying "attached" while the
+  // device was reachable by nobody, and every later login was skipped on the
+  // strength of it. Ask instead, and only skip when the SDK agrees.
+  if (await pushAttachedUserId() == userId) {
+    _externalId = userId;
+    debugPrint('$_tag already attached to $userId');
+    // Still worth doing: the tag and the backend's copy can be missing even
+    // when the alias is right — a reinstall restores one and not the others.
+    unawaited(_ensureTagAndRegistration(userId));
+    return;
+  }
 
   try {
     await OneSignal.login(userId);
     _externalId = userId;
     debugPrint('$_tag registered external id $userId');
 
-    // Belt and braces. login() stores the id as an `external_id` alias, which
-    // is what the backend targets — but alias targeting depends on which
-    // OneSignal user model the app sits on, and when it resolves to nobody the
-    // send still returns 200. A tag is just a key/value on the subscription,
-    // independent of the user model, so the backend can match on it instead by
-    // flipping ONESIGNAL_TARGETING=tags with no deploy and no app release.
-    try {
-      await OneSignal.User.addTagWithKey('userId', userId);
-      debugPrint('$_tag tagged userId=$userId');
-    } catch (e) {
-      debugPrint('$_tag tagging FAILED: $e');
+    // Check it took, and say so once if it did not.
+    //
+    // login() hands the SDK an operation to run against its own queue; it does
+    // not promise the alias is attached by the time it returns. A sign-in
+    // arriving on the heels of a sign-out — the same phone, seconds apart, the
+    // exact case people report as "I logged out and back in and stopped getting
+    // notifications" — is where that queue is busiest and where the attach can
+    // be lost. One retry costs a read and covers it; anything still wrong after
+    // that is fixed by the next reconcile, which runs every time the app comes
+    // back to the foreground.
+    if (await pushAttachedUserId() != userId) {
+      debugPrint('$_tag external id did not take — retrying');
+      await OneSignal.login(userId);
     }
   } catch (e) {
     debugPrint('$_tag login FAILED for $userId: $e');
     return;
   }
 
+  await _ensureTagAndRegistration(userId);
+}
+
+/// The two things that ride alongside the alias, neither of which is worth
+/// failing a sign-in over.
+Future<void> _ensureTagAndRegistration(String userId) async {
+  // Belt and braces. login() stores the id as an `external_id` alias, which is
+  // what the backend targets — but alias targeting depends on which OneSignal
+  // user model the app sits on, and when it resolves to nobody the send still
+  // returns 200. A tag is just a key/value on the subscription, independent of
+  // the user model, so the backend can match on it instead by flipping
+  // ONESIGNAL_TARGETING=tags with no deploy and no app release.
+  try {
+    await OneSignal.User.addTagWithKey('userId', userId);
+    debugPrint('$_tag tagged userId=$userId');
+  } catch (e) {
+    debugPrint('$_tag tagging FAILED: $e');
+  }
+
   // Secondary registration path: hand the subscription id to the backend so it
   // can also target this device directly via send_push_to_players.
   // Best-effort — external-id targeting works without it.
-  unawaited(_registerDeviceWithBackend());
+  await _registerDeviceWithBackend();
 }
 
 Future<void> pushLogout() async {
   if (!_supported || !_initialised || _loggingOut) return;
   _loggingOut = true;
 
+  final leaving = _externalId;
   try {
     // Drop the backend's copy first, while the auth token still exists —
     // AuthService.removeToken() deletes it immediately after this returns, and
@@ -250,11 +305,23 @@ Future<void> pushLogout() async {
       await OneSignal.User.removeTag('userId');
     } catch (_) {}
 
+    // Cleared *before* OneSignal.logout(), not after it in the finally.
+    // logout() changes the subscription, which fires the observer in
+    // initPush() — and that observer re-registers the device with the backend
+    // whenever an external id is set. Read a moment too early it saw the
+    // account being signed out and put its player id straight back, under a
+    // token that was about to be deleted. The account that just left ended up
+    // registered to a phone somebody else was about to sign in on.
+    _externalId = null;
+    _registeredPlayerId = null;
+
     await OneSignal.logout();
-    debugPrint('$_tag unregistered external id $_externalId');
+    debugPrint('$_tag unregistered external id $leaving');
   } catch (e) {
     debugPrint('$_tag logout FAILED: $e');
   } finally {
+    // Belt and braces for the failure paths above, which can throw before the
+    // clear inside the try.
     _externalId = null;
     _registeredPlayerId = null;
     _loggingOut = false;

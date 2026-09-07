@@ -7,7 +7,6 @@ import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/auth/domain/usecases/resend_verification_usecase.dart';
 import 'package:jperg_app/features/auth/domain/usecases/verify_code_usecase.dart';
 import 'package:jperg_app/features/auth/presentation/pages/face_capture_step_page.dart';
@@ -248,7 +247,8 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                   SizedBox(height: AppSpacing.sm.h),
                   Text(
                     'We sent a $_kCodeLength-digit code to ${widget.email}',
-                    style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
+                    style:
+                        TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
                   ),
                   SizedBox(height: AppSpacing.xxxl.h),
 
@@ -356,11 +356,14 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                     width: double.infinity,
                     height: 52.h,
                     child: ElevatedButton(
-                      onPressed: (_isLoading || _code.length != _kCodeLength) ? null : _verify,
+                      onPressed: (_isLoading || _code.length != _kCodeLength)
+                          ? null
+                          : _verify,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: ext.accentGold,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor: ext.accentGold.withValues(alpha: 0.5),
+                        disabledBackgroundColor:
+                            ext.accentGold.withValues(alpha: 0.5),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14.r),
@@ -374,7 +377,9 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                                   color: Colors.white, strokeWidth: 2.5),
                             )
                           : Text('Verify',
-                              style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700)),
+                              style: TextStyle(
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w700)),
                     ),
                   ),
                   SizedBox(height: AppSpacing.xl.h),
@@ -419,6 +424,6 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }

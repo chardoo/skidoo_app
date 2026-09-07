@@ -38,13 +38,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
   final _scroll = ScrollController();
   final _inbox = NotificationInbox.instance;
 
-  /// The tabs, in the order they read. Money rather than "Purchases" because
-  /// the tab holds both ends of it — what you paid and what you were paid.
+  /// The tabs, in the order they read. "Payments" rather than "Purchases"
+  /// because the tab holds both ends of it — what you paid and what you were
+  /// paid. The category behind it is still `money`, which is what the endpoint
+  /// takes; only the word on the chip changed.
   static const _filters = <_Filter>[
     (category: null, label: 'All'),
     (category: 'photos', label: 'Photos'),
     (category: 'bookings', label: 'Bookings'),
-    (category: 'money', label: 'Money'),
+    (category: 'money', label: 'Payments'),
     (category: 'social', label: 'Social'),
   ];
 
@@ -664,32 +666,41 @@ _Look _lookFor(String type) {
     'image_recognised' => (icon: Icons.photo_camera_rounded, color: photos),
     'new_event' => (icon: Icons.photo_library_rounded, color: photos),
     'likes_digest' => (icon: Icons.favorite_rounded, color: social),
-
     'payment_success' => (icon: Icons.receipt_long_rounded, color: money),
     'payment_failed' => (icon: Icons.error_outline_rounded, color: alert),
     'photographer_sale' => (icon: Icons.sell_rounded, color: money),
-    'cashout_requested' ||
-    'cashout_approved' ||
-    'cashout_paid' =>
-      (icon: Icons.account_balance_wallet_rounded, color: money),
-    'cashout_failed' => (icon: Icons.account_balance_wallet_rounded, color: alert),
-
+    'cashout_requested' || 'cashout_approved' || 'cashout_paid' => (
+        icon: Icons.account_balance_wallet_rounded,
+        color: money
+      ),
+    'cashout_failed' => (
+        icon: Icons.account_balance_wallet_rounded,
+        color: alert
+      ),
     'request_interest' => (icon: Icons.waving_hand_rounded, color: bookings),
     'request_updated' => (icon: Icons.edit_calendar_rounded, color: bookings),
     'request_selected' => (icon: Icons.how_to_reg_rounded, color: bookings),
     'request_cancelled' => (icon: Icons.event_busy_rounded, color: alert),
-    'request_expiring' => (icon: Icons.hourglass_bottom_rounded, color: bookings),
+    'request_expiring' => (
+        icon: Icons.hourglass_bottom_rounded,
+        color: bookings
+      ),
     'ad_request_approved' => (icon: Icons.task_alt_rounded, color: bookings),
     'ad_request_rejected' => (icon: Icons.cancel_outlined, color: alert),
-
     'campaign_approved' => (icon: Icons.campaign_rounded, color: campaigns),
-    'campaign_awaiting_payment' => (icon: Icons.payments_rounded, color: campaigns),
-    'campaign_paused' => (icon: Icons.pause_circle_outline_rounded, color: campaigns),
-    'campaign_rejected' ||
-    'campaign_payment_expired' =>
-      (icon: Icons.campaign_rounded, color: alert),
+    'campaign_awaiting_payment' => (
+        icon: Icons.payments_rounded,
+        color: campaigns
+      ),
+    'campaign_paused' => (
+        icon: Icons.pause_circle_outline_rounded,
+        color: campaigns
+      ),
+    'campaign_rejected' || 'campaign_payment_expired' => (
+        icon: Icons.campaign_rounded,
+        color: alert
+      ),
     'budget_low' => (icon: Icons.trending_down_rounded, color: alert),
-
     'new_follower' => (icon: Icons.person_add_alt_1_rounded, color: social),
     'new_review' => (icon: Icons.star_rounded, color: social),
     'new_comment' ||
@@ -697,17 +708,18 @@ _Look _lookFor(String type) {
     'new_event_comment' ||
     'event_comment_reply' =>
       (icon: Icons.chat_bubble_rounded, color: social),
-
     'welcome' => (icon: Icons.celebration_rounded, color: photos),
-    'password_reset_success' => (icon: Icons.lock_reset_rounded, color: account),
+    'password_reset_success' => (
+        icon: Icons.lock_reset_rounded,
+        color: account
+      ),
     'verification_approved' => (icon: Icons.verified_rounded, color: photos),
     'verification_rejected' => (icon: Icons.gpp_maybe_rounded, color: alert),
     'content_removed' || 'account_suspended' => (
-      icon: Icons.report_gmailerrorred_rounded,
-      color: alert,
-    ),
+        icon: Icons.report_gmailerrorred_rounded,
+        color: alert,
+      ),
     'broadcast' => (icon: Icons.campaign_rounded, color: account),
-
     _ => (icon: Icons.notifications_rounded, color: account),
   };
 }

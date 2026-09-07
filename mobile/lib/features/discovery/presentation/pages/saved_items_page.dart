@@ -11,8 +11,6 @@ import 'package:jperg_app/features/discovery/data/datasources/discovery_remote_d
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -258,9 +256,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
             fontSize: 18.sp,
           ),
         ),
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
+        leading: const AppBackButton(),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Divider(
@@ -272,7 +268,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
       ),
       body: _buildBody(ext),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _buildBody(AppThemeExtension ext) {

@@ -1,13 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/admin/data/models/exchange_rates.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
 class AdsCheckoutPage extends StatefulWidget {
@@ -52,11 +49,6 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) {
-      // Launch payment URL in a new browser tab immediately.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _launchWebPayment());
-      return;
-    }
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
@@ -89,105 +81,22 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
       ..loadRequest(Uri.parse(widget.authorizationUrl));
   }
 
-  Future<void> _launchWebPayment() async {
-    await launchUrl(
-      Uri.parse(widget.authorizationUrl),
-      mode: LaunchMode.externalApplication,
-    );
-    if (mounted) setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    // ── Web: browser-tab payment flow ─────────────────────────────────────────
-    if (kIsWeb) {
-      final page = Scaffold(
-        backgroundColor: ext.homeBackground,
-        appBar: AppBar(
-          backgroundColor: ext.homeBackground,
-          elevation: 0,
-          leading: kIsWeb
-              ? null
-              : IconButton(
-                  tooltip: 'Close',
-                  icon: Icon(Icons.close_rounded,
-                      color: ext.greetingColor, size: 22.sp),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-          title: Text(
-            'Complete Payment',
-            style: TextStyle(
-                color: ext.greetingColor,
-                fontSize: 17.sp,
-                fontWeight: FontWeight.w700),
-          ),
-        ),
-        body: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 28.w),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.open_in_new_rounded,
-                    size: 52.sp, color: ext.accentGold),
-                SizedBox(height: AppSpacing.xl.h),
-                Text(
-                  'Payment opened in a new tab',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: ext.greetingColor,
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w700),
-                ),
-                SizedBox(height: 10.h),
-                Text(
-                  'Complete your payment in the browser tab that just opened, then tap the button below.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 14.sp, height: 1.5),
-                ),
-                SizedBox(height: AppSpacing.xxxl.h),
-                AppButton(
-                  fullWidth: true,
-                  label: 'Payment complete',
-                  onPressed: () {
-                    widget.onSuccess();
-                    Navigator.of(context).pop();
-                  },
-                ),
-                SizedBox(height: AppSpacing.md.h),
-                TextButton(
-                  onPressed: _launchWebPayment,
-                  child: Text(
-                    'Reopen payment page',
-                    style:
-                        TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-      return webWrap(page, backgroundColor: ext.homeBackground);
-    }
-
-    // ── Mobile: in-app WebView ────────────────────────────────────────────────
+    // In-app WebView payment flow.
     final mobilePage = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb
-            ? null
-            : IconButton(
-                tooltip: 'Close',
-                icon: Icon(Icons.close_rounded,
-                    color: ext.greetingColor, size: 22.sp),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+        leading: IconButton(
+          tooltip: 'Close',
+          icon:
+              Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
           'Complete Payment',
           style: TextStyle(
@@ -221,7 +130,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         ],
       ),
     );
-    return webWrap(mobilePage, backgroundColor: ext.homeBackground);
+    return mobilePage;
   }
 }
 

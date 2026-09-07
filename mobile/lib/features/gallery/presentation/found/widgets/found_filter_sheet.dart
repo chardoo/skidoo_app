@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
@@ -9,7 +8,6 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filter_options.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
@@ -45,21 +43,6 @@ class FoundFilterSheet extends StatefulWidget {
     BuildContext context, {
     required FoundFilters initial,
   }) {
-    if (kIsWeb) {
-      return showDialog<FoundFilters>(
-        context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.55),
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(24),
-          child: webWrap(
-            FoundFilterSheet(initial: initial, isWeb: true),
-            backgroundColor: Colors.transparent,
-            width: kWebColumnWidth,
-          ),
-        ),
-      );
-    }
     return showModalBottomSheet<FoundFilters>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -119,7 +102,8 @@ class _FoundFilterSheetState extends State<FoundFilterSheet> {
       _error = null;
     });
     try {
-      final options = await sl<GetFoundPhotosUseCase>().filterOptions(requested);
+      final options =
+          await sl<GetFoundPhotosUseCase>().filterOptions(requested);
       if (!mounted || id != _requestId) return;
       setState(() {
         _options = options;
@@ -217,8 +201,8 @@ class _FoundFilterSheetState extends State<FoundFilterSheet> {
       initialDateRange: _draft.customRange,
     );
     if (picked == null || !mounted) return;
-    _update(_draft.copyWith(
-        dateRange: FoundDateRange.custom, customRange: picked));
+    _update(
+        _draft.copyWith(dateRange: FoundDateRange.custom, customRange: picked));
   }
 
   void _onDateTap(FoundDateRange range) {
@@ -429,4 +413,3 @@ class _FilterGroup extends StatelessWidget {
     );
   }
 }
-

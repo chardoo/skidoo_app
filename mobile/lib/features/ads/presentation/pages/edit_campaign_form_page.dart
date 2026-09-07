@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/common/widgets/xfile_image.dart';
@@ -10,7 +9,6 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/image_pick.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/features/admin/data/models/app_config.dart';
@@ -56,9 +54,8 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
   late CampaignObjective _objective = _c.objective;
   late CampaignFormat _format = _c.format;
   late BudgetMode _budgetMode = _c.budgetMode;
-  late final _placements = _c.placements.isEmpty
-      ? <String>{'event_feed'}
-      : _c.placements.toSet();
+  late final _placements =
+      _c.placements.isEmpty ? <String>{'event_feed'} : _c.placements.toSet();
   // Prefilled from the campaign. Opening on empty chips and then saving would
   // write the emptiness back over whatever the wizard chose.
   late final _targetLocations = [..._c.targetLocations];
@@ -189,8 +186,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
         // Sent even when empty, like the tags below: emptying the field is how
         // a venue gets removed, and omitting it would keep the old one.
         location: _location.text.trim(),
-        targetLocations:
-            _targetLocations.map((p) => p.toJson()).toList(),
+        targetLocations: _targetLocations.map((p) => p.toJson()).toList(),
         // Sent even when empty — clearing every interest tag is a real edit,
         // and omitting the field would silently keep the old ones.
         interests: _interests.toList(),
@@ -232,9 +228,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(result: false),
+        leading: const AppBackButton(result: false),
         title: Text(
           'Edit Campaign',
           style: TextStyle(
@@ -247,7 +241,10 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg.w, AppSpacing.md.h, AppSpacing.lg.w, AppSpacing.xxl.h,
+          AppSpacing.lg.w,
+          AppSpacing.md.h,
+          AppSpacing.lg.w,
+          AppSpacing.xxl.h,
         ),
         children: [
           _Section('1. Type', ext: ext),
@@ -271,23 +268,38 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
 
           _Section('2. Campaign Creative', ext: ext),
           _FieldLabel('Campaign headline', ext: ext, required: true),
-          _Text(controller: _headline, ext: ext, maxLength: 60,
+          _Text(
+              controller: _headline,
+              ext: ext,
+              maxLength: 60,
               onChanged: (_) => setState(() {})),
           _FieldLabel('Campaign copy', ext: ext, required: true),
-          _Text(controller: _copy, ext: ext, maxLines: 4,
+          _Text(
+              controller: _copy,
+              ext: ext,
+              maxLines: 4,
               onChanged: (_) => setState(() {})),
           _FieldLabel('Call to action', ext: ext, required: true),
-          _Text(controller: _ctaText, ext: ext, maxLength: 50,
+          _Text(
+              controller: _ctaText,
+              ext: ext,
+              maxLength: 50,
               onChanged: (_) => setState(() {})),
           _FieldLabel('Destination URL', ext: ext, required: true),
-          _Text(controller: _ctaUrl, ext: ext, keyboardType: TextInputType.url,
+          _Text(
+              controller: _ctaUrl,
+              ext: ext,
+              keyboardType: TextInputType.url,
               onChanged: (_) => setState(() {})),
 
           // Where the event happens — copy, so it sits with the creative. The
           // target areas below decide who is shown it, which is a different
           // question and used to be the only one the form asked.
           _FieldLabel('Location', ext: ext),
-          _Text(controller: _location, ext: ext, maxLength: 255,
+          _Text(
+              controller: _location,
+              ext: ext,
+              maxLength: 255,
               onChanged: (_) => setState(() {})),
           Padding(
             padding: EdgeInsets.only(bottom: AppSpacing.sm.h),
@@ -383,8 +395,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
                 setState(() => _targetLocations.add(place));
               }
             },
-            onRemove: (place) =>
-                setState(() => _targetLocations.remove(place)),
+            onRemove: (place) => setState(() => _targetLocations.remove(place)),
           ),
           _FieldLabel('Interest tags', ext: ext),
           Wrap(
@@ -425,7 +436,8 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
                             option.$2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: ext.greetingColor, fontSize: 13.sp,
+                              color: ext.greetingColor,
+                              fontSize: 13.sp,
                             ),
                           ),
                         ),
@@ -452,7 +464,8 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
             activeColor: ext.accentGold,
             inactiveColor: ext.searchHintColor.withValues(alpha: 0.25),
             labels: RangeLabels(
-              '${_ages.start.round()}', '${_ages.end.round()}',
+              '${_ages.start.round()}',
+              '${_ages.end.round()}',
             ),
             onChanged: (v) {
               if (v.end - v.start < 1) return;
@@ -487,8 +500,8 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
             ext: ext,
             labels: const ['Daily budget', 'Total budget'],
             index: _budgetMode == BudgetMode.daily ? 0 : 1,
-            onChanged: (i) => setState(
-                () => _budgetMode = i == 0 ? BudgetMode.daily : BudgetMode.total),
+            onChanged: (i) => setState(() =>
+                _budgetMode = i == 0 ? BudgetMode.daily : BudgetMode.total),
           ),
           _FieldLabel(
             _budgetMode == BudgetMode.daily
@@ -546,9 +559,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      _startDate == null
-                          ? 'Select a date'
-                          : _fmt(_startDate!),
+                      _startDate == null ? 'Select a date' : _fmt(_startDate!),
                       style: TextStyle(
                         color: _startDate == null
                             ? ext.searchHintColor
@@ -592,7 +603,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
                         width: 18.r,
                         height: 18.r,
                         child: const CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : Text(
                         'Submit for review',
@@ -608,13 +619,23 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 
 const _kMonths = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 String _fmt(DateTime d) => '${_kMonths[d.month - 1]} ${d.day}, ${d.year}';
@@ -695,7 +716,8 @@ class _Text extends StatelessWidget {
           filled: true,
           fillColor: ext.cardSurface,
           contentPadding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.md.w, vertical: AppSpacing.md.h,
+            horizontal: AppSpacing.md.w,
+            vertical: AppSpacing.md.h,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.md.r),
@@ -942,7 +964,8 @@ class _Thumb extends StatelessWidget {
                 child: Container(
                   padding: EdgeInsets.all(3.r),
                   decoration: const BoxDecoration(
-                    color: Colors.black54, shape: BoxShape.circle,
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
                   ),
                   child: Icon(Icons.close_rounded,
                       size: 13.r, color: Colors.white),
@@ -1030,7 +1053,8 @@ class _Radio extends StatelessWidget {
                 width: 9.r,
                 height: 9.r,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle, color: ext.accentGold,
+                  shape: BoxShape.circle,
+                  color: ext.accentGold,
                 ),
               )
             : null,

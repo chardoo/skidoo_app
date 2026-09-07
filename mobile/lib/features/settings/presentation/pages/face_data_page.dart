@@ -9,7 +9,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/settings/data/account_settings_api.dart';
 import 'package:jperg_app/features/user_profile/presentation/pages/face_recognition_page.dart';
 import 'package:jperg_app/services/auth_service.dart';
@@ -193,7 +192,7 @@ class _FaceDataPageState extends State<FaceDataPage> {
             ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 

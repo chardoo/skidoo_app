@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -10,7 +9,6 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/image_pick.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/location/data/models/place.dart';
 import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
@@ -59,6 +57,7 @@ class CampaignDraft {
   /// The card gives the tag line one row.
   static const maxContentTags = 5;
   String audience = 'all';
+
   /// Who to show it to, by age. Defaults to the widest the picker offers
   /// rather than a guess — narrowing is a decision, and it should be one the
   /// advertiser makes rather than one they inherit.
@@ -95,8 +94,7 @@ class CampaignDraft {
         photos.length <= high;
   }
 
-  bool get audienceDone =>
-      targetLocations.isNotEmpty && placements.isNotEmpty;
+  bool get audienceDone => targetLocations.isNotEmpty && placements.isNotEmpty;
 
   bool get budgetDone =>
       budgetValue > 0 &&
@@ -118,8 +116,15 @@ class CampaignDraft {
 
 /// Shared with the edit form, so the two cannot offer different sets.
 const kCampaignInterests = [
-  'Weddings', 'Portraits', 'Events', 'Fashion', 'Real Estate', 'Food',
-  'Corporate', 'Nature', 'Product',
+  'Weddings',
+  'Portraits',
+  'Events',
+  'Fashion',
+  'Real Estate',
+  'Food',
+  'Corporate',
+  'Nature',
+  'Product',
 ];
 
 /// The seven cities this used to offer, kept only for reading campaigns that
@@ -127,7 +132,13 @@ const kCampaignInterests = [
 /// [LocationPickerSheet] — because a name cannot be gated on or measured from,
 /// and seven cities is not a country.
 const kLegacyCampaignLocations = [
-  'Accra', 'Kumasi', 'Takoradi', 'Tamale', 'Cape Coast', 'Ho', 'Sunyani',
+  'Accra',
+  'Kumasi',
+  'Takoradi',
+  'Tamale',
+  'Cape Coast',
+  'Ho',
+  'Sunyani',
 ];
 
 /// Create Campaign — Type, Creative, Audience, Budget, Review.
@@ -200,8 +211,7 @@ class _CampaignWizardPageState extends State<CampaignWizardPage> {
         ctaText: _draft.ctaText.text.trim(),
         ctaUrl: _draft.ctaUrl.text.trim(),
         location: _draft.location.text.trim(),
-        targetLocations:
-            _draft.targetLocations.map((p) => p.toJson()).toList(),
+        targetLocations: _draft.targetLocations.map((p) => p.toJson()).toList(),
         interests: _draft.interests.toList(),
         contentTags: _draft.contentTags.toList(),
         audience: _draft.audience,
@@ -245,13 +255,11 @@ class _CampaignWizardPageState extends State<CampaignWizardPage> {
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        leading: kIsWeb
-            ? null
-            : AppBackButton(
-                onPressed: () => _step == 0
-                    ? Navigator.of(context).pop()
-                    : setState(() => _step--),
-              ),
+        leading: AppBackButton(
+          onPressed: () => _step == 0
+              ? Navigator.of(context).pop()
+              : setState(() => _step--),
+        ),
         title: Text(
           'Create Campaign',
           style: TextStyle(
@@ -265,7 +273,8 @@ class _CampaignWizardPageState extends State<CampaignWizardPage> {
         children: [
           Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg.w, vertical: AppSpacing.md.h,
+              horizontal: AppSpacing.lg.w,
+              vertical: AppSpacing.md.h,
             ),
             child: _StepBar(step: _step, labels: _labels, ext: ext),
           ),
@@ -273,7 +282,9 @@ class _CampaignWizardPageState extends State<CampaignWizardPage> {
             child: ListView(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
-                AppSpacing.lg.w, AppSpacing.sm.h, AppSpacing.lg.w,
+                AppSpacing.lg.w,
+                AppSpacing.sm.h,
+                AppSpacing.lg.w,
                 AppSpacing.xxl.h,
               ),
               children: [_body(ext)],
@@ -290,11 +301,12 @@ class _CampaignWizardPageState extends State<CampaignWizardPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _body(AppThemeExtension ext) => switch (_step) {
-        0 => _TypeStep(draft: _draft, ext: ext, onChanged: () => setState(() {})),
+        0 =>
+          _TypeStep(draft: _draft, ext: ext, onChanged: () => setState(() {})),
         1 => _CreativeStep(
             draft: _draft,
             ext: ext,
@@ -335,7 +347,8 @@ class _CampaignWizardPageState extends State<CampaignWizardPage> {
       limit: high - _draft.photos.length,
     );
     if (picked.isEmpty) return;
-    setState(() => _draft.photos.addAll(picked.take(high - _draft.photos.length)));
+    setState(
+        () => _draft.photos.addAll(picked.take(high - _draft.photos.length)));
   }
 
   Future<void> _pickStartDate() async {
@@ -441,7 +454,10 @@ class _Footer extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       minimum: EdgeInsets.fromLTRB(
-        AppSpacing.lg.w, AppSpacing.sm.h, AppSpacing.lg.w, AppSpacing.md.h,
+        AppSpacing.lg.w,
+        AppSpacing.sm.h,
+        AppSpacing.lg.w,
+        AppSpacing.md.h,
       ),
       child: Row(
         children: [
@@ -487,7 +503,7 @@ class _Footer extends StatelessWidget {
                         width: 18.r,
                         height: 18.r,
                         child: const CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : Text(
                         step == 4 ? 'Submit for review' : 'Next',
@@ -528,7 +544,8 @@ class _Heading extends StatelessWidget {
 }
 
 class _Label extends StatelessWidget {
-  const _Label(this.text, {required this.ext, this.required = false, this.hint});
+  const _Label(this.text,
+      {required this.ext, this.required = false, this.hint});
 
   final String text;
   final AppThemeExtension ext;
@@ -603,7 +620,8 @@ class _Input extends StatelessWidget {
           filled: true,
           fillColor: ext.cardSurface,
           contentPadding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.md.w, vertical: AppSpacing.md.h,
+            horizontal: AppSpacing.md.w,
+            vertical: AppSpacing.md.h,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.md.r),
@@ -763,7 +781,8 @@ class _TypeStep extends StatelessWidget {
                         Text(
                           objective.blurb,
                           style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 12.sp,
+                            color: ext.searchHintColor,
+                            fontSize: 12.sp,
                           ),
                         ),
                       ],
@@ -1005,7 +1024,8 @@ class _PhotoStrip extends StatelessWidget {
                   Text(
                     'PNG, JPG up to 5MB',
                     style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 11.sp,
+                      color: ext.searchHintColor,
+                      fontSize: 11.sp,
                     ),
                   ),
                 ],
@@ -1032,13 +1052,15 @@ class _PhotoStrip extends StatelessWidget {
                               width: 96.w, height: 96.h, fit: BoxFit.cover),
                         ),
                         Positioned(
-                          top: 2, right: 2,
+                          top: 2,
+                          right: 2,
                           child: GestureDetector(
                             onTap: () => onRemove(photo),
                             child: Container(
                               padding: EdgeInsets.all(3.r),
                               decoration: const BoxDecoration(
-                                color: Colors.black54, shape: BoxShape.circle,
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
                               ),
                               child: Icon(Icons.close_rounded,
                                   size: 13.r, color: Colors.white),
@@ -1186,7 +1208,8 @@ class _AudienceStep extends StatelessWidget {
                           option.$2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: ext.greetingColor, fontSize: 13.sp,
+                            color: ext.greetingColor,
+                            fontSize: 13.sp,
                           ),
                         ),
                       ),
@@ -1268,7 +1291,8 @@ class _Dot extends StatelessWidget {
                 width: 9.r,
                 height: 9.r,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle, color: ext.accentGold,
+                  shape: BoxShape.circle,
+                  color: ext.accentGold,
                 ),
               )
             : null,
@@ -1522,7 +1546,8 @@ class _BudgetStepState extends State<_BudgetStep> {
                       ? Text(
                           'Estimating reach…',
                           style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 12.sp,
+                            color: ext.searchHintColor,
+                            fontSize: 12.sp,
                           ),
                         )
                       : Text.rich(
@@ -1543,8 +1568,9 @@ class _BudgetStepState extends State<_BudgetStep> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const TextSpan(text: ' over the run. An estimate, '
-                                'not a guarantee.'),
+                            const TextSpan(
+                                text: ' over the run. An estimate, '
+                                    'not a guarantee.'),
                           ]),
                           style: TextStyle(
                             color: ext.greetingColor,
@@ -1606,11 +1632,22 @@ class _BudgetStepState extends State<_BudgetStep> {
 }
 
 const _kMonths = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
-String _formatDate(DateTime d) => '${_kMonths[d.month - 1]} ${d.day}, ${d.year}';
+String _formatDate(DateTime d) =>
+    '${_kMonths[d.month - 1]} ${d.day}, ${d.year}';
 
 // ── 5. Review ────────────────────────────────────────────────────────────────
 
@@ -1678,12 +1715,16 @@ class _ReviewStep extends StatelessWidget {
               'Target areas',
               draft.targetLocations.map((p) => p.label).join(', '),
             ),
-            ('Target Age',
-                '${draft.ages.start.round()} – ${draft.ages.end.round()} years'),
+            (
+              'Target Age',
+              '${draft.ages.start.round()} – ${draft.ages.end.round()} years'
+            ),
             if (draft.interests.isNotEmpty)
               ('Interests', draft.interests.join(', ')),
-            ('Audience', draft.audience[0].toUpperCase() +
-                draft.audience.substring(1)),
+            (
+              'Audience',
+              draft.audience[0].toUpperCase() + draft.audience.substring(1)
+            ),
           ],
         ),
         _ReviewCard(
@@ -1695,8 +1736,10 @@ class _ReviewStep extends StatelessWidget {
             ('Duration', '${draft.durationValue} days'),
             ('Total', 'GHS ${total.toStringAsFixed(2)}'),
             if (draft.startDate != null && draft.endDate != null)
-              ('Schedule',
-                  '${_formatDate(draft.startDate!)} – ${_formatDate(draft.endDate!)}'),
+              (
+                'Schedule',
+                '${_formatDate(draft.startDate!)} – ${_formatDate(draft.endDate!)}'
+              ),
           ],
         ),
         SizedBox(height: AppSpacing.md.h),
@@ -1719,7 +1762,9 @@ class _ReviewStep extends StatelessWidget {
                   child: Text(
                     'I agree to the Advertising Terms & Content Guidelines',
                     style: TextStyle(
-                      color: ext.greetingColor, fontSize: 13.sp, height: 1.35,
+                      color: ext.greetingColor,
+                      fontSize: 13.sp,
+                      height: 1.35,
                     ),
                   ),
                 ),
@@ -1819,7 +1864,8 @@ class _ReviewCard extends StatelessWidget {
                         Text(
                           bodySub!,
                           style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 12.sp,
+                            color: ext.searchHintColor,
+                            fontSize: 12.sp,
                           ),
                         ),
                     ],
@@ -1893,7 +1939,9 @@ class CampaignSubmittedPage extends StatelessWidget {
                   'Reviews are typically completed within 24 hours.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: ext.searchHintColor, fontSize: 13.sp, height: 1.5,
+                    color: ext.searchHintColor,
+                    fontSize: 13.sp,
+                    height: 1.5,
                   ),
                 ),
                 SizedBox(height: AppSpacing.lg.h),
@@ -1958,6 +2006,6 @@ class CampaignSubmittedPage extends StatelessWidget {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }

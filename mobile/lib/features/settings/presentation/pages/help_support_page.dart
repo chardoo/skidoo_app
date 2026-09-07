@@ -4,7 +4,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -170,7 +169,7 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
       ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 

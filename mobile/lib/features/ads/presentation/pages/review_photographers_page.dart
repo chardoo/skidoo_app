@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,7 +10,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/models/booking_model.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/presentation/pages/ads_checkout_page.dart';
@@ -131,11 +129,15 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     return null;
   }
 
-  List<RequestInterest> get _pending =>
-      [for (final p in _people) if (!p.viewed && !p.selected) p];
+  List<RequestInterest> get _pending => [
+        for (final p in _people)
+          if (!p.viewed && !p.selected) p
+      ];
 
-  List<RequestInterest> get _viewed =>
-      [for (final p in _people) if (p.viewed && !p.selected) p];
+  List<RequestInterest> get _viewed => [
+        for (final p in _people)
+          if (p.viewed && !p.selected) p
+      ];
 
   Future<void> _open(RequestInterest person) async {
     // Marked as looked at before the profile opens, so coming straight back
@@ -159,7 +161,8 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
       // chosen slot and everyone else's actions change with it. Worth a refetch.
       await _load(showSpinner: false);
       if (!mounted) return;
-      AppSnackBar.success(context, '${person.name ?? 'Photographer'} selected.');
+      AppSnackBar.success(
+          context, '${person.name ?? 'Photographer'} selected.');
       return;
     }
 
@@ -251,7 +254,8 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     if (!mounted || changed != true) return;
     _changed = true;
     await _load(showSpinner: false);
-    if (mounted) AppSnackBar.success(context, 'Photographer changed successfully');
+    if (mounted)
+      AppSnackBar.success(context, 'Photographer changed successfully');
   }
 
   // ── The money ───────────────────────────────────────────────────────────
@@ -295,7 +299,8 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
         if (!mounted) return;
 
         final verified = await _repo.verifyBookingPayment(
-          _request.id, reference: started.reference,
+          _request.id,
+          reference: started.reference,
         );
         if (!mounted) return;
         final paid = verified.booking?.amountPaid ?? 0;
@@ -325,7 +330,8 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     } catch (e) {
       debugPrint('[ReviewPhotographers] pay ERROR: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, _bookingError(e, 'Could not take the payment.'));
+      AppSnackBar.error(
+          context, _bookingError(e, 'Could not take the payment.'));
       // Reload before inviting a retry. A failure here does not mean nothing
       // happened — a payment can be confirmed server-side and still come back
       // as an error, and a stale panel would then offer to charge for it twice.
@@ -422,7 +428,8 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     } catch (e) {
       debugPrint('[ReviewPhotographers] confirm ERROR: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, _bookingError(e, 'Could not confirm the job.'));
+      AppSnackBar.error(
+          context, _bookingError(e, 'Could not confirm the job.'));
       await _load(showSpinner: false);
     } finally {
       if (mounted) setState(() => _bookingBusy = false);
@@ -451,7 +458,8 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     } catch (e) {
       debugPrint('[ReviewPhotographers] dispute ERROR: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, _bookingError(e, 'Could not send the report.'));
+      AppSnackBar.error(
+          context, _bookingError(e, 'Could not send the report.'));
     } finally {
       if (mounted) setState(() => _bookingBusy = false);
     }
@@ -517,7 +525,8 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
               // rather than failing on the server with a validation message.
               onPressed: required && controller.text.trim().length < 5
                   ? null
-                  : () => Navigator.of(dialogContext).pop(controller.text.trim()),
+                  : () =>
+                      Navigator.of(dialogContext).pop(controller.text.trim()),
               child: Text(confirmLabel),
             ),
           ],
@@ -679,9 +688,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        leading: kIsWeb
-            ? null
-            : AppBackButton(onPressed: _leave),
+        leading: AppBackButton(onPressed: _leave),
         title: Text(
           'Request Details',
           style: TextStyle(
@@ -712,24 +719,29 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
             itemBuilder: (_) => [
               if (!closed && !booked)
                 const PopupMenuItem(
-                  value: 'edit', child: Text('Edit request'),
+                  value: 'edit',
+                  child: Text('Edit request'),
                 ),
               if (!closed && !booked)
                 const PopupMenuItem(
-                  value: 'close', child: Text('Close request'),
+                  value: 'close',
+                  child: Text('Close request'),
                 ),
               // Only where the server would accept it — see canRepublish.
               if (_request.canRepublish && selected == null)
                 const PopupMenuItem(
-                  value: 'republish', child: Text('Republish request'),
+                  value: 'republish',
+                  child: Text('Republish request'),
                 ),
               if (selected != null && !booked)
                 const PopupMenuItem(
-                  value: 'unselect', child: Text('Undo selection'),
+                  value: 'unselect',
+                  child: Text('Undo selection'),
                 ),
               if (!booked)
                 const PopupMenuItem(
-                  value: 'delete', child: Text('Delete request'),
+                  value: 'delete',
+                  child: Text('Delete request'),
                 ),
             ],
           ),
@@ -745,7 +757,10 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                   parent: BouncingScrollPhysics(),
                 ),
                 padding: EdgeInsets.fromLTRB(
-                  AppSpacing.md.w, 0, AppSpacing.md.w, AppSpacing.xxl.h,
+                  AppSpacing.md.w,
+                  0,
+                  AppSpacing.md.w,
+                  AppSpacing.xxl.h,
                 ),
                 children: [
                   _RequestCard(request: _request, ext: ext),
@@ -854,7 +869,8 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                       child: Text(
                         'No one has answered this request yet.',
                         style: TextStyle(
-                          color: ext.searchHintColor, fontSize: 14.sp,
+                          color: ext.searchHintColor,
+                          fontSize: 14.sp,
                         ),
                       ),
                     ),
@@ -880,7 +896,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
           if (mounted) _leave();
         });
       },
-      child: webWrap(page, backgroundColor: ext.homeBackground),
+      child: page,
     );
   }
 }
@@ -923,7 +939,9 @@ class _ReviewPrompt extends StatelessWidget {
             'Share your feedback on $name to help others in the community '
             'find great photographers.',
             style: TextStyle(
-              color: ext.searchHintColor, fontSize: 13.sp, height: 1.4,
+              color: ext.searchHintColor,
+              fontSize: 13.sp,
+              height: 1.4,
             ),
           ),
           SizedBox(height: AppSpacing.md.h),
@@ -1005,7 +1023,8 @@ class _RequestCard extends StatelessWidget {
                     Text(
                       _meta,
                       style: TextStyle(
-                        color: ext.searchHintColor, fontSize: 12.sp,
+                        color: ext.searchHintColor,
+                        fontSize: 12.sp,
                       ),
                     ),
                   ],
@@ -1057,7 +1076,10 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: EdgeInsets.fromLTRB(
-          AppSpacing.xs.w, AppSpacing.md.h, 0, AppSpacing.sm.h,
+          AppSpacing.xs.w,
+          AppSpacing.md.h,
+          0,
+          AppSpacing.sm.h,
         ),
         child: Text(
           text,
@@ -1069,4 +1091,3 @@ class _SectionHeader extends StatelessWidget {
         ),
       );
 }
-

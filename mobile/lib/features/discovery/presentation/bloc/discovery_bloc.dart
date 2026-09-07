@@ -85,17 +85,13 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     on<DiscoveryEventHidden>(_onEventHidden);
     on<DiscoveryEventHideRequested>(_onHideRequested);
 
-    // Chat/WS features are not supported on web (CORS + no WS access).
-    if (!kIsWeb) {
-      _setupLikeListener();
-      _wsConnectionSub = _bgService.connectionEvents.listen((connected) {
-        if (connected && !isClosed) {
-          _subscribedRoomIds
-              .clear(); // server resets subscriptions on reconnect
-          _setupLikeListener();
-        }
-      });
-    }
+    _setupLikeListener();
+    _wsConnectionSub = _bgService.connectionEvents.listen((connected) {
+      if (connected && !isClosed) {
+        _subscribedRoomIds.clear(); // server resets subscriptions on reconnect
+        _setupLikeListener();
+      }
+    });
     on<DiscoveryEventHideCommitted>(_onHideCommitted);
     on<DiscoveryEventHideUndone>(_onHideUndone);
     on<_DiscoveryLikeUpdateReceived>(_onReactionUpdated);
@@ -125,7 +121,6 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   static const _hiddenIdsKey = 'discovery_hidden_event_ids';
 
   void _setupLikeListener() {
-    if (kIsWeb) return;
     _likeUpdateSub?.cancel();
     _likeUpdateSub = _bgService.sharedWs.likeUpdates.listen((update) {
       if (!isClosed) add(_DiscoveryLikeUpdateReceived(update));
@@ -215,7 +210,6 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   /// Chunks are sent sequentially (not all in parallel) so we don't flood
   /// the server with simultaneous requests on large feed pages.
   void _prefetchRooms(List<EventDiscovery> events) {
-    if (kIsWeb) return; // chat API not supported on web
     if (events.isEmpty) return;
     if (_currentUserId == null) return; // unauthenticated — skip
     final ids = events.map((e) => e.id).toList();
@@ -407,7 +401,6 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
   Future<void> _onEventVisible(
       DiscoveryEventVisible event, Emitter<DiscoveryState> emit) async {
-    if (kIsWeb) return; // chat API not supported on web
     if (_currentUserId == null) return; // unauthenticated — skip
     final id = event.eventId;
 
@@ -456,11 +449,11 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     // Cheap to undo: scrolling back re-subscribes from [_onEventVisible], and
     // the counts on a card are rendered from the feed response, not from
     // whatever arrived over the socket while it was out of sight.
-    if (kIsWeb) return;
     final id = event.eventId;
     if (!_subscribedRoomIds.remove(id)) return;
     final room = _roomCache[id];
-    if (room != null) _bgService.sharedWs.unsubscribeRoom(room.id, holder: WsRoomHolder.feed);
+    if (room != null)
+      _bgService.sharedWs.unsubscribeRoom(room.id, holder: WsRoomHolder.feed);
   }
 
   // ── Real-time like_update from another device ─────────────────────────────
@@ -533,7 +526,6 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     AppCacheSignals.likes.bump();
 
     // On web, WS reactions are not supported — keep the optimistic update only.
-    if (kIsWeb) return;
 
     // Resolve the room (needed for room_id in the WS payload).
     ChatRoom? room = _roomCache[event.eventId];

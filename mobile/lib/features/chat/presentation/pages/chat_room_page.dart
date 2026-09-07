@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData, HapticFeedback;
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, HapticFeedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_confirm_dialog.dart';
@@ -30,7 +30,6 @@ import 'package:jperg_app/features/chat/presentation/widgets/typing_indicator.da
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/services/notification_prefs_service.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
@@ -132,10 +131,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   /// gives them. The wording itself lives in [presenceLabel].
   String? _presenceSubtitle(ChatRoom room, ChatRoomState state) {
     if (room.type != RoomType.direct) return null;
-    final peer = room
-        .othersFor(state.myUserId)
-        .where((p) => !p.isPending)
-        .firstOrNull;
+    final peer =
+        room.othersFor(state.myUserId).where((p) => !p.isPending).firstOrNull;
     if (peer == null) return null;
     return presenceLabel(state.presence[peer.userId]);
   }
@@ -177,7 +174,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
   void initState() {
     super.initState();
     _bloc = context.read<ChatRoomBloc>();
-    _bloc.add(ChatRoomJoined(widget.room.id, shareUrl: widget.shareUrl, room: widget.room));
+    _bloc.add(ChatRoomJoined(widget.room.id,
+        shareUrl: widget.shareUrl, room: widget.room));
     _scrollCtrl.addListener(_onScroll);
     if (_isDirect) _loadBlockStatus();
   }
@@ -247,8 +245,11 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       // unblocked-looking room over a blocked conversation, and put the app
       // right back in the state this was meant to fix. The block list is
       // served by every version, so it settles whose block it is.
-      if (permission.reason == 'USER_BLOCKED' && !blockedByMe && !blockedByThem) {
-        blockedByMe = (await sl<GetBlockedUsersUseCase>().call()).contains(peerId);
+      if (permission.reason == 'USER_BLOCKED' &&
+          !blockedByMe &&
+          !blockedByThem) {
+        blockedByMe =
+            (await sl<GetBlockedUsersUseCase>().call()).contains(peerId);
         blockedByThem = !blockedByMe;
       }
 
@@ -273,12 +274,11 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       // Resolved here, not read from a field primed at mount — see
       // [_resolvePeerId]. By now the room has had time to load, so the short
       // wait is enough on the paths where mount-time resolution lost the race.
-      final peerId =
-          await _resolvePeerId(waitFor: const Duration(seconds: 3));
+      final peerId = await _resolvePeerId(waitFor: const Duration(seconds: 3));
       if (peerId == null) {
         if (mounted) {
-          AppSnackBar.error(
-              context, 'Could not identify this contact — try reopening the chat.');
+          AppSnackBar.error(context,
+              'Could not identify this contact — try reopening the chat.');
         }
         return;
       }
@@ -342,8 +342,10 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     _bloc.add(const ChatRoomTypingChanged(false));
   }
 
-  void _onImagePicked(String filePath, {String? mimeType, bool isVideo = false}) {
-    _bloc.add(ChatRoomImagePicked(filePath, isVideo: isVideo, mimeType: mimeType));
+  void _onImagePicked(String filePath,
+      {String? mimeType, bool isVideo = false}) {
+    _bloc.add(
+        ChatRoomImagePicked(filePath, isVideo: isVideo, mimeType: mimeType));
   }
 
   void _onReply(ChatMessage msg) {
@@ -361,8 +363,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      constraints: BoxConstraints(
-          maxWidth: screenW > 600 ? 480 : double.infinity),
+      constraints:
+          BoxConstraints(maxWidth: screenW > 600 ? 480 : double.infinity),
       builder: (_) => MessageActionSheet(
         isPinned: isPinned,
         onReply: () {
@@ -565,8 +567,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      constraints: BoxConstraints(
-          maxWidth: screenW > 600 ? 480 : double.infinity),
+      constraints:
+          BoxConstraints(maxWidth: screenW > 600 ? 480 : double.infinity),
       builder: (_) => _UserOptionsSheet(
         senderId: msg.senderId,
         senderRole: msg.senderRole,
@@ -582,7 +584,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       ),
     );
     if (!context.mounted || count == null) return;
-    AppSnackBar.success(context, AppLocalizations.of(context)!.chatRoomInvitedCount(count));
+    AppSnackBar.success(
+        context, AppLocalizations.of(context)!.chatRoomInvitedCount(count));
   }
 
   /// Group info for a group, contact info for a DM. Both are reached the same
@@ -611,7 +614,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       final room = await sl<GetOrCreateDirectRoomUseCase>().call(
         recipientId: msg.senderId,
         recipientRole: msg.senderRole,
-        localDisplayName: msg.senderName.isNotEmpty ? msg.senderName : msg.senderRole,
+        localDisplayName:
+            msg.senderName.isNotEmpty ? msg.senderName : msg.senderRole,
       );
       if (!context.mounted) return;
       await Navigator.of(context).push(
@@ -711,7 +715,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
 
       // The next entry is older, so a change of day means this message opens
       // its day and the separator belongs after it in reversed order.
-      final older = i + 1 < state.messages.length ? state.messages[i + 1] : null;
+      final older =
+          i + 1 < state.messages.length ? state.messages[i + 1] : null;
       if (older == null ||
           DaySeparator.needsSeparator(older.createdAt, msg.createdAt)) {
         rows.add(_Row.day(msg.createdAt));
@@ -755,8 +760,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
             .length;
 
         final replyToId = msg.replyPreview?.id;
-        final canJumpToReply = replyToId != null &&
-            state.messages.any((m) => m.id == replyToId);
+        final canJumpToReply =
+            replyToId != null && state.messages.any((m) => m.id == replyToId);
 
         Widget bubble = MessageBubble(
           key: ValueKey(msg.id),
@@ -836,7 +841,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : const AppBackButton(),
+        leading: const AppBackButton(),
         titleSpacing: 0,
         title: BlocBuilder<ChatRoomBloc, ChatRoomState>(
           buildWhen: (p, c) => p.room != c.room || p.myUserId != c.myUserId,
@@ -844,9 +849,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
             final room = state.room ?? widget.room;
             // A group lists its members; a one-to-one says where the other
             // person is. Never both — they occupy the same line.
-            final subtitle =
-                _headerSubtitle(room, state.myUserId) ??
-                    _presenceSubtitle(room, state);
+            final subtitle = _headerSubtitle(room, state.myUserId) ??
+                _presenceSubtitle(room, state);
             final isOnline = subtitle == 'Online';
             return Semantics(
               // Event and photo rooms have no details screen, so the header is
@@ -960,8 +964,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                   value: 'details',
                   child: Text(
                     _isGroup ? 'Group info' : 'Contact info',
-                    style: TextStyle(
-                        color: ext.greetingColor, fontSize: 14.sp),
+                    style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                   ),
                 ),
                 if (_isGroup)
@@ -969,8 +972,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                     value: 'invite',
                     child: Text(
                       AppLocalizations.of(context)!.chatRoomAddPeople,
-                      style: TextStyle(
-                          color: ext.greetingColor, fontSize: 14.sp),
+                      style:
+                          TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                     ),
                   ),
               ],
@@ -1004,7 +1007,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                   // ── Pinned message banner ─────────────────────────────
                   BlocBuilder<ChatRoomBloc, ChatRoomState>(
                     buildWhen: (p, c) =>
-                        p.room?.pinnedMessage?.id != c.room?.pinnedMessage?.id ||
+                        p.room?.pinnedMessage?.id !=
+                            c.room?.pinnedMessage?.id ||
                         p.messages != c.messages ||
                         p.amIAdmin != c.amIAdmin,
                     builder: (context, state) {
@@ -1028,7 +1032,8 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                           p.errorMessage != c.errorMessage ||
                           p.messages != c.messages ||
                           p.isDeleted != c.isDeleted ||
-                          (c.systemNotice != null && p.systemNotice != c.systemNotice),
+                          (c.systemNotice != null &&
+                              p.systemNotice != c.systemNotice),
                       listener: (context, state) {
                         if (state.isDeleted) {
                           // First close any sub-pages (e.g. GroupInfoPage), then
@@ -1126,15 +1131,14 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                         // offering whoever was in the room when it was opened.
                         p.room?.participants != c.room?.participants,
                     builder: (context, adminState) {
-                      final isAdminOnly =
-                          adminState.room?.adminOnly == true;
-                      final canSend =
-                          adminState.amIAdmin || !isAdminOnly;
+                      final isAdminOnly = adminState.room?.adminOnly == true;
+                      final canSend = adminState.amIAdmin || !isAdminOnly;
 
                       if (!canSend) {
                         return Container(
                           padding: EdgeInsets.symmetric(
-                              vertical: AppSpacing.lg.h, horizontal: AppSpacing.xl.w),
+                              vertical: AppSpacing.lg.h,
+                              horizontal: AppSpacing.xl.w),
                           decoration: BoxDecoration(
                             color: ext.cardSurface,
                             border: Border(
@@ -1144,15 +1148,14 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                             ),
                           ),
                           child: Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.lock_rounded,
-                                  size: 14.sp,
-                                  color: ext.searchHintColor),
+                                  size: 14.sp, color: ext.searchHintColor),
                               SizedBox(width: AppSpacing.sm.w),
                               Text(
-                                AppLocalizations.of(context)!.chatRoomOnlyAdminsCanSend,
+                                AppLocalizations.of(context)!
+                                    .chatRoomOnlyAdminsCanSend,
                                 style: TextStyle(
                                   color: ext.searchHintColor,
                                   fontSize: 13.sp,
@@ -1217,7 +1220,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _cancelEdit();
       },
-      child: webWrap(page, backgroundColor: ext.homeBackground),
+      child: page,
     );
   }
 }
@@ -1257,34 +1260,40 @@ class _LikeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: 'Like', child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.xl.r),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-              color: isLiked ? Colors.redAccent : ext.searchHintColor,
-              size: 20.sp,
-            ),
-            if (likes != null) ...[
-              SizedBox(width: AppSpacing.xs.w),
-              Text(
-                '$likes',
-                style: TextStyle(
+    return Semantics(
+        button: true,
+        label: 'Like',
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.xl.r),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isLiked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
                   color: isLiked ? Colors.redAccent : ext.searchHintColor,
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
+                  size: 20.sp,
                 ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    ));
+                if (likes != null) ...[
+                  SizedBox(width: AppSpacing.xs.w),
+                  Text(
+                    '$likes',
+                    style: TextStyle(
+                      color: isLiked ? Colors.redAccent : ext.searchHintColor,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ));
   }
 }
 
@@ -1365,8 +1374,8 @@ class _UserOptionsSheetState extends State<_UserOptionsSheet> {
                   ),
                   Text(
                     widget.senderRole,
-                    style: TextStyle(
-                        color: ext.searchHintColor, fontSize: 12.sp),
+                    style:
+                        TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
                   ),
                 ],
               ),
@@ -1409,43 +1418,47 @@ class _SheetOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return Semantics(button: true, label: label, child: InkWell(
-      onTap: loading ? null : onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md.r),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h, horizontal: AppSpacing.xs.w),
-        child: Row(
-          children: [
-            Container(
-              width: 40.w,
-              height: 40.w,
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-              alignment: Alignment.center,
-              child: loading
-                  ? SizedBox(
-                      width: 18.w,
-                      height: 18.w,
-                      child: CircularProgressIndicator(
-                          color: accentColor, strokeWidth: 2),
-                    )
-                  : Icon(icon, color: accentColor, size: 20.sp),
+    return Semantics(
+        button: true,
+        label: label,
+        child: InkWell(
+          onTap: loading ? null : onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+                vertical: AppSpacing.md.h, horizontal: AppSpacing.xs.w),
+            child: Row(
+              children: [
+                Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  alignment: Alignment.center,
+                  child: loading
+                      ? SizedBox(
+                          width: 18.w,
+                          height: 18.w,
+                          child: CircularProgressIndicator(
+                              color: accentColor, strokeWidth: 2),
+                        )
+                      : Icon(icon, color: accentColor, size: 20.sp),
+                ),
+                SizedBox(width: 14.w),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: ext.greetingColor,
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(width: 14.w),
-            Text(
-              label,
-              style: TextStyle(
-                color: ext.greetingColor,
-                fontSize: 15.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 }
 
@@ -1471,7 +1484,8 @@ class _BlockedBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w, vertical: 14.h),
+      padding:
+          EdgeInsets.symmetric(horizontal: AppSpacing.xl.w, vertical: 14.h),
       decoration: BoxDecoration(
         color: ext.cardSurface,
         border: Border(

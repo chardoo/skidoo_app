@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -141,7 +140,7 @@ class JpergImage extends StatelessWidget {
       // so leaving it unset meant photos were re-downloaded on the way back to
       // a screen the user had just been on. Not on web: there is no filesystem
       // to cache into, and the browser's own HTTP cache does this job.
-      cacheManager: kIsWeb ? null : JpergImageCache.instance,
+      cacheManager: JpergImageCache.instance,
       fit: fit,
       width: width,
       height: height,
@@ -156,7 +155,8 @@ class JpergImage extends StatelessWidget {
       fadeOutDuration: swapDuration,
       fadeOutCurve: Curves.easeOut,
       fadeInCurve: Curves.easeIn,
-      placeholder: placeholder ?? (isBlurBackground ? null : _defaultPlaceholder),
+      placeholder:
+          placeholder ?? (isBlurBackground ? null : _defaultPlaceholder),
       errorWidget: errorWidget,
     );
     if (colorFilter != null) {
@@ -172,8 +172,8 @@ class JpergImage extends StatelessWidget {
       result = _image(context, logicalWidth!);
     } else {
       result = LayoutBuilder(
-        builder: (context, constraints) =>
-            _image(context, constraints.maxWidth.isFinite ? constraints.maxWidth : 1080),
+        builder: (context, constraints) => _image(context,
+            constraints.maxWidth.isFinite ? constraints.maxWidth : 1080),
       );
     }
     if (semanticLabel == null) return result;

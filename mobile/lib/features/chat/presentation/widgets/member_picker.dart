@@ -9,7 +9,6 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/chat/data/datasources/user_search_data_source.dart';
 import 'package:jperg_app/models/chat/shareable_user.dart';
 
@@ -203,7 +202,7 @@ class _MemberPickerState extends State<MemberPicker> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _buildResults(AppThemeExtension ext) {

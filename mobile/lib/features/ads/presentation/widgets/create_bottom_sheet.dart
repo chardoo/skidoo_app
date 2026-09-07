@@ -1,8 +1,6 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/create_request_flow.dart';
@@ -17,25 +15,6 @@ class CreateBottomSheet extends StatelessWidget {
   final bool isWeb;
 
   static void show(BuildContext context) {
-    // On web (laptop/desktop) a full-width bottom sheet stretches across the
-    // whole viewport and looks broken — present it as a centred card,
-    // constrained to the standard web column via [webWrap].
-    if (kIsWeb) {
-      showDialog<void>(
-        context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.55),
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(24),
-          child: webWrap(
-            const CreateBottomSheet(isWeb: true),
-            backgroundColor: Colors.transparent,
-            width: kWebColumnWidth,
-          ),
-        ),
-      );
-      return;
-    }
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -143,8 +122,7 @@ class CreateBottomSheet extends StatelessWidget {
                   iconBgColor: ext.accentGold.withValues(alpha: 0.12),
                   title: 'Start a campaign',
                   subtitle: 'Paid  ·  More reach  ·  5 steps',
-                  description:
-                      'Run a targeted ad to reach the right audience.',
+                  description: 'Run a targeted ad to reach the right audience.',
                   badgeLabel: 'Boosted',
                   badgeColor: ext.accentGold,
                   ext: ext,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
@@ -8,7 +7,6 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/validators/validators.dart';
 import 'package:jperg_app/features/auth/domain/usecases/request_password_reset_usecase.dart';
 import 'package:jperg_app/features/auth/presentation/pages/verify_reset_code_page.dart';
@@ -79,15 +77,14 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(height: kIsWeb ? 48.h : 12.h),
-                    if (!kIsWeb)
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        alignment: Alignment.centerLeft,
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: Icon(AppBackButton.icon,
-                            color: ext.greetingColor, size: 20.sp),
-                      ),
+                    SizedBox(height: 12.h),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      alignment: Alignment.centerLeft,
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(AppBackButton.icon,
+                          color: ext.greetingColor, size: 20.sp),
+                    ),
                     SizedBox(height: AppSpacing.lg.h),
                     Text(
                       'Reset your password',
@@ -100,7 +97,8 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                     SizedBox(height: AppSpacing.sm.h),
                     Text(
                       "Enter your account email and we'll send a code to reset it",
-                      style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
+                      style: TextStyle(
+                          color: ext.searchHintColor, fontSize: 14.sp),
                     ),
                     SizedBox(height: AppSpacing.xxxl.h),
                     AppTextField(
@@ -154,6 +152,6 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }

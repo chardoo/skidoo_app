@@ -18,8 +18,6 @@ import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/core/purchase/photo_price_badge.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/services/auth_service.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
@@ -132,7 +130,8 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
             authorizationUrl: authUrl,
             reference: reference,
             amountGhs: amount,
-            onSuccess: () => _completePayment(reference, paidPhotos, freePhotos),
+            onSuccess: () =>
+                _completePayment(reference, paidPhotos, freePhotos),
           ),
         ),
       );
@@ -208,7 +207,9 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
           prev.savedFreeCount != curr.savedFreeCount ||
           prev.errorMessage != curr.errorMessage ||
           // Fire once when loading finishes and images arrive.
-          (prev.isLoadingImages && !curr.isLoadingImages && curr.searchImages.isNotEmpty),
+          (prev.isLoadingImages &&
+              !curr.isLoadingImages &&
+              curr.searchImages.isNotEmpty),
       listener: (context, state) {
         if (state.savedFreeCount != null) {
           _showSnack(
@@ -233,15 +234,15 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
             );
           }
           final total = photos.fold(0.0, (s, p) => s + p.price);
-          debugPrint('[SearchResults] total price of all ${photos.length} photos = ${total.toStringAsFixed(2)}');
+          debugPrint(
+              '[SearchResults] total price of all ${photos.length} photos = ${total.toStringAsFixed(2)}');
         }
       },
       child: Scaffold(
         backgroundColor: ext.homeBackground,
         appBar: _buildAppBar(ext, context),
         body: LayoutBuilder(
-          builder: (context, constraints) =>
-              BlocBuilder<HomeBloc, HomeState>(
+          builder: (context, constraints) => BlocBuilder<HomeBloc, HomeState>(
             builder: (context, state) {
               if (state.isLoadingImages && state.searchImages.isEmpty) {
                 return _buildInitialLoader(context, ext);
@@ -266,56 +267,55 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                       }
                     },
                     child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    cacheExtent: 800,
-                    slivers: [
-                      if (state.isSavingFree || _paymentLoading)
-                        SliverToBoxAdapter(
-                          child: LinearProgressIndicator(
-                            color: ext.accentGold,
-                            backgroundColor:
-                                ext.accentGold.withValues(alpha: 0.15),
-                            minHeight: 3,
-                          ),
-                        ),
-
-                      SliverPadding(
-                        padding: EdgeInsets.fromLTRB(
-                            10.w, 12.h, 10.w, _selectionMode ? 140.h : 120.h),
-                        sliver: MediaGridSliver(
-                          itemCount: photos.length,
-                          itemBuilder: (context, index) =>
-                              _buildCard(photos[index], ext),
-                        ),
-                      ),
-
-                      if (state.isLoadingImages)
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: AppSpacing.xl.h),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 16.w,
-                                  height: 16.w,
-                                  child: CircularProgressIndicator(
-                                      color: ext.accentGold, strokeWidth: 2),
-                                ),
-                                SizedBox(width: 10.w),
-                                Text(
-                                  AppLocalizations.of(context)!
-                                      .searchResultsFindingMore,
-                                  style: TextStyle(
-                                      color: ext.searchHintColor,
-                                      fontSize: 13.sp),
-                                ),
-                              ],
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      cacheExtent: 800,
+                      slivers: [
+                        if (state.isSavingFree || _paymentLoading)
+                          SliverToBoxAdapter(
+                            child: LinearProgressIndicator(
+                              color: ext.accentGold,
+                              backgroundColor:
+                                  ext.accentGold.withValues(alpha: 0.15),
+                              minHeight: 3,
                             ),
                           ),
+                        SliverPadding(
+                          padding: EdgeInsets.fromLTRB(
+                              10.w, 12.h, 10.w, _selectionMode ? 140.h : 120.h),
+                          sliver: MediaGridSliver(
+                            itemCount: photos.length,
+                            itemBuilder: (context, index) =>
+                                _buildCard(photos[index], ext),
+                          ),
                         ),
-                    ],
-                  ),
+                        if (state.isLoadingImages)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                  vertical: AppSpacing.xl.h),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 16.w,
+                                    height: 16.w,
+                                    child: CircularProgressIndicator(
+                                        color: ext.accentGold, strokeWidth: 2),
+                                  ),
+                                  SizedBox(width: 10.w),
+                                  Text(
+                                    AppLocalizations.of(context)!
+                                        .searchResultsFindingMore,
+                                    style: TextStyle(
+                                        color: ext.searchHintColor,
+                                        fontSize: 13.sp),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
 
                   // ── Bottom action bar ───────────────────────────────────────
@@ -334,7 +334,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   /// On web desktop, centre the page in a 480 dp column so it matches the
@@ -347,14 +347,13 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       return AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: kIsWeb ? null : IconButton(
+        leading: IconButton(
           tooltip: 'Close',
           icon: Icon(Icons.close_rounded, color: ext.greetingColor),
           onPressed: _exitSelectionMode,
         ),
         title: Text(
-          AppLocalizations.of(ctx)!
-              .searchResultsSelected(_selectedIds.length),
+          AppLocalizations.of(ctx)!.searchResultsSelected(_selectedIds.length),
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
@@ -391,8 +390,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
-      leading:
-          kIsWeb ? null : const AppBackButton(),
+      leading: const AppBackButton(),
       title: Text(
         AppLocalizations.of(ctx)!.searchResultsTitle,
         style: TextStyle(
@@ -431,162 +429,165 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     // quoting them the amount — it only means anything as a thing to pay.
     final isPaid = photo.price > 0 && !photo.isPurchased;
 
-    return Semantics(button: true, label: 'Photo', child: GestureDetector(
-      onTap: _selectionMode ? () => _toggleSelection(photo) : null,
-      onLongPress: _selectionMode ? null : () => _enterSelectionMode(photo),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.md.r),
-          border: isSelected
-              ? Border.all(color: ext.accentGold, width: 2.5)
-              : Border.all(color: Colors.transparent, width: 2.5),
-          boxShadow: [
-            BoxShadow(
-              color: isSelected
-                  ? ext.accentGold.withValues(alpha: 0.3)
-                  : Colors.black.withValues(alpha: 0.2),
-              blurRadius: isSelected ? 10 : 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10.r),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // The grid cell is a fixed square, so the media fills and crops
-              // to it rather than being sized from the photo's own dimensions.
-              if (photo.mediaType == 'video')
-                _VideoThumbCard(url: photo.url, ext: ext)
-              else
-                JpergImage(
-                  imageUrl: photo.url,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  semanticLabel: 'Photo',
-                  placeholder: (_, __) => ColoredBox(
-                    color: ext.searchFieldFill,
-                    child: Center(
-                      child: SizedBox(
-                        width: 18.w,
-                        height: 18.h,
-                        child: CircularProgressIndicator(
-                            color: ext.accentGold, strokeWidth: 2),
-                      ),
-                    ),
-                  ),
-                  errorWidget: (_, __, ___) => ColoredBox(
-                    color: ext.searchFieldFill,
-                    child: Icon(Icons.broken_image_outlined,
-                        color: ext.searchHintColor, size: 28.sp),
-                  ),
+    return Semantics(
+        button: true,
+        label: 'Photo',
+        child: GestureDetector(
+          onTap: _selectionMode ? () => _toggleSelection(photo) : null,
+          onLongPress: _selectionMode ? null : () => _enterSelectionMode(photo),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
+              border: isSelected
+                  ? Border.all(color: ext.accentGold, width: 2.5)
+                  : Border.all(color: Colors.transparent, width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: isSelected
+                      ? ext.accentGold.withValues(alpha: 0.3)
+                      : Colors.black.withValues(alpha: 0.2),
+                  blurRadius: isSelected ? 10 : 6,
+                  offset: const Offset(0, 3),
                 ),
-
-              // ── Price badge (bottom-left) ─────────────────────────────────
-              Positioned(
-                left: 8.w,
-                bottom: 8.h,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30.r),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 9.w, vertical: AppSpacing.xs.h),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.30),
-                        borderRadius: BorderRadius.circular(30.r),
-                        border: Border.all(
-                          color: isPaid
-                              ? ext.accentGold.withValues(alpha: 0.60)
-                              : Colors.white.withValues(alpha: 0.22),
-                          width: 0.8,
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10.r),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // The grid cell is a fixed square, so the media fills and crops
+                  // to it rather than being sized from the photo's own dimensions.
+                  if (photo.mediaType == 'video')
+                    _VideoThumbCard(url: photo.url, ext: ext)
+                  else
+                    JpergImage(
+                      imageUrl: photo.url,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      semanticLabel: 'Photo',
+                      placeholder: (_, __) => ColoredBox(
+                        color: ext.searchFieldFill,
+                        child: Center(
+                          child: SizedBox(
+                            width: 18.w,
+                            height: 18.h,
+                            child: CircularProgressIndicator(
+                                color: ext.accentGold, strokeWidth: 2),
+                          ),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isPaid
-                                ? Icons.sell_rounded
-                                : Icons.check_circle_outline_rounded,
-                            color: isPaid
-                                ? ext.accentGold
-                                : Colors.white.withValues(alpha: 0.90),
-                            size: 9.sp,
-                          ),
-                          SizedBox(width: 3.w),
-                          Text(
-                            isPaid
-                                ? PhotoPriceBadge.format(photo.price)
-                                : 'Free',
-                            style: TextStyle(
+                      errorWidget: (_, __, ___) => ColoredBox(
+                        color: ext.searchFieldFill,
+                        child: Icon(Icons.broken_image_outlined,
+                            color: ext.searchHintColor, size: 28.sp),
+                      ),
+                    ),
+
+                  // ── Price badge (bottom-left) ─────────────────────────────────
+                  Positioned(
+                    left: 8.w,
+                    bottom: 8.h,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(30.r),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 9.w, vertical: AppSpacing.xs.h),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.30),
+                            borderRadius: BorderRadius.circular(30.r),
+                            border: Border.all(
                               color: isPaid
-                                  ? ext.accentGold
-                                  : Colors.white.withValues(alpha: 0.92),
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.4,
-                              height: 1.0,
+                                  ? ext.accentGold.withValues(alpha: 0.60)
+                                  : Colors.white.withValues(alpha: 0.22),
+                              width: 0.8,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // ── Selection overlay + checkmark ─────────────────────────────
-              if (_selectionMode)
-                Positioned.fill(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    color: isSelected
-                        ? Colors.black.withValues(alpha: 0.25)
-                        : Colors.transparent,
-                    child: Align(
-                      alignment: Alignment.topRight,
-                      child: Padding(
-                        padding: EdgeInsets.all(AppSpacing.sm.w),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
-                          child: isSelected
-                              ? Container(
-                                  key: const ValueKey('checked'),
-                                  width: 24.w,
-                                  height: 24.w,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: ext.accentGold,
-                                  ),
-                                  child: Icon(Icons.check_rounded,
-                                      color: Colors.black, size: 14.sp),
-                                )
-                              : Container(
-                                  key: const ValueKey('unchecked'),
-                                  width: 24.w,
-                                  height: 24.w,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color:
-                                        Colors.black.withValues(alpha: 0.35),
-                                    border: Border.all(
-                                        color: Colors.white60, width: 1.5),
-                                  ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isPaid
+                                    ? Icons.sell_rounded
+                                    : Icons.check_circle_outline_rounded,
+                                color: isPaid
+                                    ? ext.accentGold
+                                    : Colors.white.withValues(alpha: 0.90),
+                                size: 9.sp,
+                              ),
+                              SizedBox(width: 3.w),
+                              Text(
+                                isPaid
+                                    ? PhotoPriceBadge.format(photo.price)
+                                    : 'Free',
+                                style: TextStyle(
+                                  color: isPaid
+                                      ? ext.accentGold
+                                      : Colors.white.withValues(alpha: 0.92),
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.4,
+                                  height: 1.0,
                                 ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-            ],
+
+                  // ── Selection overlay + checkmark ─────────────────────────────
+                  if (_selectionMode)
+                    Positioned.fill(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        color: isSelected
+                            ? Colors.black.withValues(alpha: 0.25)
+                            : Colors.transparent,
+                        child: Align(
+                          alignment: Alignment.topRight,
+                          child: Padding(
+                            padding: EdgeInsets.all(AppSpacing.sm.w),
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              child: isSelected
+                                  ? Container(
+                                      key: const ValueKey('checked'),
+                                      width: 24.w,
+                                      height: 24.w,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: ext.accentGold,
+                                      ),
+                                      child: Icon(Icons.check_rounded,
+                                          color: Colors.black, size: 14.sp),
+                                    )
+                                  : Container(
+                                      key: const ValueKey('unchecked'),
+                                      width: 24.w,
+                                      height: 24.w,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.black
+                                            .withValues(alpha: 0.35),
+                                        border: Border.all(
+                                            color: Colors.white60, width: 1.5),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
-    ));
+        ));
   }
 
   // ── Bottom bar ─────────────────────────────────────────────────────────────
@@ -736,8 +737,8 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
       // Selection is free but paid photos exist elsewhere — save selection only,
       // no "Save All" (would imply paid items are included for free).
       return _ActionButton(
-        label: AppLocalizations.of(context)!
-            .searchResultsSaveSelected(nSelected),
+        label:
+            AppLocalizations.of(context)!.searchResultsSaveSelected(nSelected),
         icon: Icons.save_alt_rounded,
         color: ext.accentGold,
         textColor: Colors.black,
@@ -834,7 +835,8 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   }
 
   void _showSnack(BuildContext context, String msg, {required bool isError}) {
-    final margin = EdgeInsets.only(bottom: 80.h, left: AppSpacing.lg.w, right: AppSpacing.lg.w);
+    final margin = EdgeInsets.only(
+        bottom: 80.h, left: AppSpacing.lg.w, right: AppSpacing.lg.w);
     if (isError) {
       AppSnackBar.error(context, msg, margin: margin);
     } else {
@@ -882,8 +884,8 @@ class _VideoThumbCard extends StatelessWidget {
               border: Border.all(
                   color: Colors.white.withValues(alpha: 0.35), width: 1.2),
             ),
-            child:
-                Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20.sp),
+            child: Icon(Icons.play_arrow_rounded,
+                color: Colors.white, size: 20.sp),
           ),
         ),
       ],
@@ -900,7 +902,8 @@ class _PayNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
+      padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
       decoration: BoxDecoration(
         color: ext.accentGold.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(10.r),
@@ -952,48 +955,51 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: label, child: GestureDetector(
-      onTap: disabled ? null : onTap,
-      child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 150),
-        opacity: disabled ? 0.5 : 1.0,
-        child: Container(
-          height: 46.h,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(AppRadius.md.r),
-            border: borderColor != null
-                ? Border.all(color: borderColor!, width: 1)
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: loading
-              ? SizedBox(
-                  width: 18.w,
-                  height: 18.w,
-                  child: CircularProgressIndicator(
-                      color: textColor, strokeWidth: 2),
-                )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, color: textColor, size: 18.sp),
-                    SizedBox(width: 6.w),
-                    Flexible(
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w700,
+    return Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          onTap: disabled ? null : onTap,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 150),
+            opacity: disabled ? 0.5 : 1.0,
+            child: Container(
+              height: 46.h,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(AppRadius.md.r),
+                border: borderColor != null
+                    ? Border.all(color: borderColor!, width: 1)
+                    : null,
+              ),
+              alignment: Alignment.center,
+              child: loading
+                  ? SizedBox(
+                      width: 18.w,
+                      height: 18.w,
+                      child: CircularProgressIndicator(
+                          color: textColor, strokeWidth: 2),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(icon, color: textColor, size: 18.sp),
+                        SizedBox(width: 6.w),
+                        Flexible(
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-        ),
-      ),
-    ));
+            ),
+          ),
+        ));
   }
 }

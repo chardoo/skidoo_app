@@ -8,7 +8,6 @@ import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/validators/validators.dart';
 import 'package:jperg_app/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'package:jperg_app/features/auth/presentation/pages/login_page.dart';
@@ -18,7 +17,8 @@ import 'package:jperg_app/features/auth/presentation/pages/login_page.dart';
 /// server-side (one-time use), so the user logs in fresh with the new
 /// password rather than being signed in automatically here.
 class SetNewPasswordPage extends StatefulWidget {
-  const SetNewPasswordPage({super.key, required this.email, required this.code});
+  const SetNewPasswordPage(
+      {super.key, required this.email, required this.code});
 
   final String email;
   final String code;
@@ -64,13 +64,15 @@ class _SetNewPasswordPageState extends State<SetNewPasswordPage> {
         LoginPage.routeName,
         (route) => false,
       );
-      AppSnackBar.success(context, 'Your password has been reset. Please sign in.');
+      AppSnackBar.success(
+          context, 'Your password has been reset. Please sign in.');
     } on NetworkException catch (e) {
       setState(() => _error = e.message);
     } on ServerException catch (e) {
       setState(() => _error = e.message);
     } catch (_) {
-      setState(() => _error = 'Could not reset your password. Please try again.');
+      setState(
+          () => _error = 'Could not reset your password. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -107,7 +109,8 @@ class _SetNewPasswordPageState extends State<SetNewPasswordPage> {
                     SizedBox(height: AppSpacing.sm.h),
                     Text(
                       'Choose a strong new password for ${widget.email}',
-                      style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
+                      style: TextStyle(
+                          color: ext.searchHintColor, fontSize: 14.sp),
                     ),
                     SizedBox(height: AppSpacing.xxxl.h),
                     AppPasswordField(
@@ -150,6 +153,6 @@ class _SetNewPasswordPageState extends State<SetNewPasswordPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }

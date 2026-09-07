@@ -13,7 +13,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/settings/data/profile_options.dart';
 import 'package:jperg_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 
@@ -299,7 +298,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 

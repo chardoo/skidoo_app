@@ -110,15 +110,6 @@ class _KeepFor implements FileServiceResponse {
   }
 }
 
-/// Whether this device can hold audio at all.
-///
-/// flutter_cache_manager stores through path_provider, which has no web
-/// implementation, so every call there would throw and be logged once per
-/// play. The browser has its own HTTP cache and the response carries a
-/// fortnight of Cache-Control, so the saving is not lost on web — it simply
-/// happens a layer down, where we cannot see it.
-bool get _cacheUsable => !kIsWeb;
-
 /// URLs being fetched right now, so a card revisited mid-download does not
 /// start a second fetch of the same track.
 final Set<String> _warming = <String>{};
@@ -130,7 +121,7 @@ final Set<String> _warming = <String>{};
 /// a miss would make that decision by doing the very thing it is deciding
 /// about.
 Future<File?> cachedAudioFileIfPresent(String streamUrl) async {
-  if (streamUrl.isEmpty || !_cacheUsable) return null;
+  if (streamUrl.isEmpty) return null;
   try {
     final info = await JpergMusicCache.instance.getFileFromCache(streamUrl);
     return info?.file;
@@ -149,7 +140,7 @@ Future<File?> cachedAudioFileIfPresent(String streamUrl) async {
 /// while this runs, and every later encounter with the track comes off the
 /// disk.
 Future<void> warmAudioCache(String streamUrl) async {
-  if (streamUrl.isEmpty || !_cacheUsable) return;
+  if (streamUrl.isEmpty) return;
   if (!_warming.add(streamUrl)) return;
   try {
     await JpergMusicCache.instance.downloadFile(streamUrl);

@@ -9,7 +9,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/chat/data/datasources/user_search_data_source.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
@@ -117,9 +116,7 @@ class _NewChatPageState extends State<NewChatPage> {
                   onChanged: _onChanged,
                   onCancel: () => Navigator.of(context).pop(),
                 ),
-
                 _CreateGroupCard(onTap: _createGroup),
-
                 Expanded(child: _buildResults(ext)),
               ],
             ),
@@ -127,7 +124,7 @@ class _NewChatPageState extends State<NewChatPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _buildResults(AppThemeExtension ext) {
@@ -138,8 +135,8 @@ class _NewChatPageState extends State<NewChatPage> {
         child: SizedBox(
           width: 22.w,
           height: 22.w,
-          child: CircularProgressIndicator(
-              color: ext.accentGold, strokeWidth: 2),
+          child:
+              CircularProgressIndicator(color: ext.accentGold, strokeWidth: 2),
         ),
       );
     }
@@ -266,8 +263,8 @@ class _UserRow extends StatelessWidget {
     return InkWell(
       onTap: isOpening ? null : onTap,
       child: Padding(
-        padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg.w, vertical: 10.h),
+        padding:
+            EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 10.h),
         child: Row(
           children: [
             UserAvatar(

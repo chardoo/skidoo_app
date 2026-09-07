@@ -18,8 +18,6 @@ import 'package:jperg_app/features/ads/presentation/widgets/boost_request_sheet.
 import 'package:jperg_app/features/ads/presentation/widgets/interested_row.dart';
 import 'package:jperg_app/features/location/data/models/place.dart';
 import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
@@ -375,23 +373,23 @@ class _MyRequestsPageState extends State<MyRequestsPage>
 
     final page = Scaffold(
       backgroundColor: ext.homeBackground,
-      appBar: widget.embedded ? null : AppBar(
-        backgroundColor: ext.homeBackground,
-        elevation: 0,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
-        title: Text(
-          'My Requests',
-          style: TextStyle(
-            color: ext.greetingColor,
-            fontSize: 17.sp,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
-          ),
-        ),
-        centerTitle: false,
-      ),
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              backgroundColor: ext.homeBackground,
+              elevation: 0,
+              leading: const AppBackButton(),
+              title: Text(
+                'My Requests',
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontSize: 17.sp,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              centerTitle: false,
+            ),
       body: _loading
           ? const AppLoadingIndicator()
           : _errorMessage != null
@@ -428,9 +426,7 @@ class _MyRequestsPageState extends State<MyRequestsPage>
                       ),
                     ),
     );
-    return widget.embedded
-        ? page
-        : webWrap(page, backgroundColor: ext.homeBackground);
+    return widget.embedded ? page : page;
   }
 }
 
@@ -469,101 +465,102 @@ class _MyRequestTile extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onOpen,
       child: Container(
-      margin: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 0),
-      padding: EdgeInsets.all(AppSpacing.lg.w),
-      decoration: BoxDecoration(
-        color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(AppRadius.lg.r),
-        border: Border.all(
-          color: ext.searchHintColor.withValues(alpha: 0.1),
-          width: 0.8,
+        margin: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 0),
+        padding: EdgeInsets.all(AppSpacing.lg.w),
+        decoration: BoxDecoration(
+          color: ext.cardSurface,
+          borderRadius: BorderRadius.circular(AppRadius.lg.r),
+          border: Border.all(
+            color: ext.searchHintColor.withValues(alpha: 0.1),
+            width: 0.8,
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  r.title,
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              SizedBox(width: 10.w),
-              _StatusBadge(
-                // Expiry is not a status the server writes, so the card has to
-                // work it out: a request whose window has closed is off the
-                // board however "open" it still says it is.
-                status: r.isExpired && r.status == 'open' ? 'expired' : r.status,
-                color: r.isExpired && r.status == 'open'
-                    ? ext.searchHintColor
-                    : statusColor,
-                ext: ext,
-                isBoosted: r.isBoosted,
-              ),
-            ],
-          ),
-          SizedBox(height: AppSpacing.xs.h),
-          Text(
-            _dateAndPlace(r),
-            style: TextStyle(
-              color: ext.searchHintColor,
-              fontSize: 12.sp,
-            ),
-          ),
-          // The answers and the Boost button share a row: the designs put
-          // them on the same line, and on a card with no answers yet the
-          // button still sits where it always does, at the right.
-          if (r.interestedCount > 0 || onBoost != null) ...[
-            SizedBox(height: AppSpacing.md.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Row(
               children: [
-                if (r.interestedCount > 0)
-                  Flexible(
-                    child: InterestedRow(
-                      interested: r.interested,
-                      count: r.interestedCount,
-                      ext: ext,
-                      onTap: onInterestedTap,
+                Expanded(
+                  child: Text(
+                    r.title,
+                    style: TextStyle(
+                      color: ext.greetingColor,
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                if (onBoost != null) ...[
-                  const Spacer(),
-                  _BoostButton(onTap: onBoost!, ext: ext),
-                ],
+                ),
+                SizedBox(width: 10.w),
+                _StatusBadge(
+                  // Expiry is not a status the server writes, so the card has to
+                  // work it out: a request whose window has closed is off the
+                  // board however "open" it still says it is.
+                  status:
+                      r.isExpired && r.status == 'open' ? 'expired' : r.status,
+                  color: r.isExpired && r.status == 'open'
+                      ? ext.searchHintColor
+                      : statusColor,
+                  ext: ext,
+                  isBoosted: r.isBoosted,
+                ),
               ],
             ),
-          ],
-          // A closed request keeps its answers, so republishing is offered
-          // right on the card rather than buried in the actions sheet.
-          if (r.canRepublish && onRepublish != null) ...[
-            SizedBox(height: AppSpacing.md.h),
-            Semantics(
-              button: true,
-              label: 'Republish request',
-              child: GestureDetector(
-                onTap: onRepublish,
-                child: Text(
-                  'Republish',
-                  style: TextStyle(
-                    color: ext.accentGold,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w700,
+            SizedBox(height: AppSpacing.xs.h),
+            Text(
+              _dateAndPlace(r),
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12.sp,
+              ),
+            ),
+            // The answers and the Boost button share a row: the designs put
+            // them on the same line, and on a card with no answers yet the
+            // button still sits where it always does, at the right.
+            if (r.interestedCount > 0 || onBoost != null) ...[
+              SizedBox(height: AppSpacing.md.h),
+              Row(
+                children: [
+                  if (r.interestedCount > 0)
+                    Flexible(
+                      child: InterestedRow(
+                        interested: r.interested,
+                        count: r.interestedCount,
+                        ext: ext,
+                        onTap: onInterestedTap,
+                      ),
+                    ),
+                  if (onBoost != null) ...[
+                    const Spacer(),
+                    _BoostButton(onTap: onBoost!, ext: ext),
+                  ],
+                ],
+              ),
+            ],
+            // A closed request keeps its answers, so republishing is offered
+            // right on the card rather than buried in the actions sheet.
+            if (r.canRepublish && onRepublish != null) ...[
+              SizedBox(height: AppSpacing.md.h),
+              Semantics(
+                button: true,
+                label: 'Republish request',
+                child: GestureDetector(
+                  onTap: onRepublish,
+                  child: Text(
+                    'Republish',
+                    style: TextStyle(
+                      color: ext.accentGold,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ],
-        ],
-      ),
+        ),
       ),
     );
   }
@@ -625,7 +622,8 @@ class _BoostButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.trending_up_rounded, size: 15.sp, color: ext.accentGold),
+              Icon(Icons.trending_up_rounded,
+                  size: 15.sp, color: ext.accentGold),
               SizedBox(width: AppSpacing.xs.w),
               Text(
                 'Boost Request',
@@ -642,7 +640,6 @@ class _BoostButton extends StatelessWidget {
     );
   }
 }
-
 
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge(
@@ -776,7 +773,8 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
   /// edit if one upload failed, and no way to tell which half.
   Future<void> _addPhoto() async {
     final file = await _picker.pickImage(
-      source: ImageSource.gallery, imageQuality: 85,
+      source: ImageSource.gallery,
+      imageQuality: 85,
     );
     if (file == null) return;
     final error = await MediaValidator.validate(file, isVideo: false);
@@ -906,8 +904,7 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
                 SizedBox(height: AppSpacing.xs.h),
                 Text(
                   'Where the shoot happens.',
-                  style:
-                      TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
+                  style: TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
                 ),
                 SizedBox(height: AppSpacing.md.h),
                 // The other half of what used to be one field. Separate here as
@@ -1282,7 +1279,8 @@ class _EditPhotos extends StatelessWidget {
                         width: 16.r,
                         height: 16.r,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2, color: ext.accentGold,
+                          strokeWidth: 2,
+                          color: ext.accentGold,
                         ),
                       ),
                     )

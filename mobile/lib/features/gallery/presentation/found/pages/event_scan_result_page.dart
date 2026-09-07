@@ -7,7 +7,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/gallery/data/event_scan.dart';
 import 'package:jperg_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
@@ -210,7 +209,7 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
       ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _buildState(AppThemeExtension ext) {

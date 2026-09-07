@@ -3,7 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/widgets/zoomable_photo.dart';
 import 'package:jperg_app/models/photographer/photographer_sample.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
@@ -97,25 +96,28 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
             right: 0,
             child: Row(
               children: [
-                Semantics(button: true, label: 'Close', child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    margin: EdgeInsets.only(left: AppSpacing.lg.w),
-                    width: 36.w,
-                    height: 36.h,
-                    decoration: const BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.close_rounded,
-                        color: Colors.white, size: 20),
-                  ),
-                )),
+                Semantics(
+                    button: true,
+                    label: 'Close',
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        margin: EdgeInsets.only(left: AppSpacing.lg.w),
+                        width: 36.w,
+                        height: 36.h,
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close_rounded,
+                            color: Colors.white, size: 20),
+                      ),
+                    )),
                 const Spacer(),
                 Container(
                   margin: EdgeInsets.only(right: AppSpacing.lg.w),
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 10.w, vertical: AppSpacing.xs.h),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 10.w, vertical: AppSpacing.xs.h),
                   decoration: BoxDecoration(
                     color: Colors.black54,
                     borderRadius: BorderRadius.circular(AppRadius.md.r),
@@ -134,7 +136,6 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: Colors.black);
+    return page;
   }
-
 }

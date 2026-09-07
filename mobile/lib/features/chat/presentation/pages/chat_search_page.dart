@@ -9,7 +9,6 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/chat/data/datasources/user_search_data_source.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
@@ -85,8 +84,10 @@ class _ChatSearchPageState extends State<ChatSearchPage> {
     final needle = query.toLowerCase();
     return state.rooms
         .where((r) => r.type.isConversation)
-        .where((r) =>
-            r.displayNameFor(state.currentUserId).toLowerCase().contains(needle))
+        .where((r) => r
+            .displayNameFor(state.currentUserId)
+            .toLowerCase()
+            .contains(needle))
         .toList();
   }
 
@@ -157,7 +158,7 @@ class _ChatSearchPageState extends State<ChatSearchPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _buildBody(AppThemeExtension ext) {
@@ -251,8 +252,7 @@ class _ResultRow extends StatelessWidget {
                 Expanded(
                   child: Text(
                     label,
-                    style:
-                        TextStyle(color: ext.greetingColor, fontSize: 15.sp),
+                    style: TextStyle(color: ext.greetingColor, fontSize: 15.sp),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

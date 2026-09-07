@@ -9,7 +9,6 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:jperg_app/features/cart/presentation/pages/checkout_page.dart';
 import 'package:jperg_app/features/cart/presentation/widgets/cart_item_widget.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 
 class CartPage extends StatelessWidget {
   static const routeName = '/cart';
@@ -45,8 +44,7 @@ class _CartView extends StatelessWidget {
         if (state.status == CartStatus.paymentSuccess) {
           AppSnackBar.success(
               context, state.successMessage ?? 'Payment successful!');
-          Navigator.of(context)
-              .pushNamedAndRemoveUntil('/home', (_) => false);
+          Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
         }
         if (state.status == CartStatus.paymentFailure &&
             state.errorMessage != null) {
@@ -114,9 +112,8 @@ class _CartView extends StatelessWidget {
                 )
               : null,
         );
-        return webWrap(page, backgroundColor: ext.homeBackground);
+        return page;
       },
     );
   }
-
 }

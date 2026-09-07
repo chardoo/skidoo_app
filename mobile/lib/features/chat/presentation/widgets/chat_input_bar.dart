@@ -1,5 +1,4 @@
 import 'package:jperg_app/core/widgets/jperg_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:flutter/services.dart' show MaxLengthEnforcement;
@@ -280,9 +279,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
         // Never both: loading a message in for editing clears any staged reply.
         if (widget.editing != null)
           _EditBar(
-              message: widget.editing!,
-              ext: ext,
-              onCancel: widget.onCancelEdit)
+              message: widget.editing!, ext: ext, onCancel: widget.onCancelEdit)
         else if (widget.replyingTo != null)
           _ReplyBar(
               message: widget.replyingTo!,
@@ -533,24 +530,12 @@ class _StagedImagePreview extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // On web, filePath is a blob URL — Image.network handles it.
-                    // On mobile, filePath is a local file path.
-                    kIsWeb
-                        ? Semantics(
-                            image: true,
-                            label: 'Selected image',
-                            child: XFileImage(
-                              XFile(filePath),
-                              width: 64.w,
-                              height: 64.w,
-                              fit: BoxFit.cover,
-                            ))
-                        : XFileImage(
-                            XFile(filePath),
-                            width: 64.w,
-                            height: 64.w,
-                            fit: BoxFit.cover,
-                          ),
+                    XFileImage(
+                      XFile(filePath),
+                      width: 64.w,
+                      height: 64.w,
+                      fit: BoxFit.cover,
+                    ),
                     if (isUploading)
                       Container(
                         width: 64.w,
@@ -690,7 +675,7 @@ class _StagedVideoPreviewState extends State<_StagedVideoPreview> {
                   JpergVideoPlayer(
                     // On web, filePath is a blob URL (no file:// prefix needed).
                     // On mobile, add file:// so the video player resolves it.
-                    url: kIsWeb ? widget.filePath : 'file://${widget.filePath}',
+                    url: 'file://${widget.filePath}',
                     autoPlay: false,
                     showControls: false,
                     fit: BoxFit.cover,

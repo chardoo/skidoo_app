@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 
 /// "Is there a face in this photo?", answered by the OS.
@@ -21,12 +20,11 @@ class FaceCheck {
 
   /// True when the image at [imagePath] contains at least one face.
   ///
-  /// Also true when no answer is available — on web, where there is no native
-  /// detector; on a device whose detector failed or is still downloading its
-  /// model; or if the platform side isn't registered. A detector that can't
-  /// run must never be the reason a real user can't submit their selfie.
+  /// Also true when no answer is available — a device whose detector failed
+  /// or is still downloading its model, or a platform side that isn't
+  /// registered. A detector that can't run must never be the reason a real
+  /// user can't submit their selfie.
   static Future<bool> hasFace(String imagePath) async {
-    if (kIsWeb) return true;
     try {
       final result =
           await _channel.invokeMethod<bool>('hasFace', {'path': imagePath});

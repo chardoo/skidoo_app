@@ -8,8 +8,6 @@ import 'package:jperg_app/core/validators/validators.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/core/common/widgets/xfile_image.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/theme/app_input.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -133,9 +131,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Text(
           'Post a Request',
           style: TextStyle(
@@ -284,7 +280,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 

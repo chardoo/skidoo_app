@@ -41,28 +41,26 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
     // sign in on that phone.
     final previousUserId = await _authService.getLastAccountId();
 
-    if (!kIsWeb) {
-      // Different user on the same device — wipe all user-scoped local data
-      // so that chat history and E2EE keys from the previous account can never
-      // bleed into the new session.
-      //
-      // A clean sign-out now clears the chat database on its way out (see
-      // SessionReset), so on that path this finds nothing left to do. It stays
-      // for the sessions that never got a sign-out at all — a crash, a token
-      // the server stopped accepting, an install over the top of another
-      // account's — where the only moment anybody notices the account changed
-      // is this one.
-      //
-      // E2EE keys are still only cleared here, and deliberately: they are the
-      // account's identity, and dropping them on a sign-out would cost the
-      // same user any message sent to them while they were away. Changing
-      // account is the point at which they are certainly no longer wanted.
-      if (previousUserId.isNotEmpty && previousUserId != user.id) {
-        await Future.wait([
-          _chatDb.clearAll().catchError((_) {}),
-          _e2ee.clearAllKeys(),
-        ]);
-      }
+    // Different user on the same device — wipe all user-scoped local data
+    // so that chat history and E2EE keys from the previous account can never
+    // bleed into the new session.
+    //
+    // A clean sign-out now clears the chat database on its way out (see
+    // SessionReset), so on that path this finds nothing left to do. It stays
+    // for the sessions that never got a sign-out at all — a crash, a token
+    // the server stopped accepting, an install over the top of another
+    // account's — where the only moment anybody notices the account changed
+    // is this one.
+    //
+    // E2EE keys are still only cleared here, and deliberately: they are the
+    // account's identity, and dropping them on a sign-out would cost the
+    // same user any message sent to them while they were away. Changing
+    // account is the point at which they are certainly no longer wanted.
+    if (previousUserId.isNotEmpty && previousUserId != user.id) {
+      await Future.wait([
+        _chatDb.clearAll().catchError((_) {}),
+        _e2ee.clearAllKeys(),
+      ]);
     }
 
     // Recorded before the session is saved so a crash mid-bring-up still
@@ -77,39 +75,32 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
     // id must be `user.id`, which is what the server targets as
     // external_user_id for clients and photographers alike. Fire-and-forget:
     // a push registration failure must never block signing in.
-    if (!kIsWeb) {
-      unawaited(() async {
-        await PushNotificationService.instance.login(user.id);
+    unawaited(() async {
+      // Attaches the device to this account *and* subscribes it.
+      //
+      // Both halves, because the opt-out is the *device's* and survives
+      // OneSignal.logout(): one person turning push off left the next person
+      // to sign in on the same phone silently unsubscribed — their switch
+      // read on, the OS permission was granted, and nothing arrived. Sign-out
+      // clears the stored preference; this is what puts the subscription
+      // back. It cannot prompt — opting in happens only where permission
+      // already exists — so it does not pre-empt the deliberate ask below.
+      await PushNotificationService.instance.login(user.id);
 
-        // Subscribe this device for the account that just signed in.
-        //
-        // The opt-out is the *device's* and survives OneSignal.logout(), so
-        // one person turning push off left the next person to sign in on the
-        // same phone silently unsubscribed — their switch read on, the OS
-        // permission was granted, and nothing arrived. Sign-out clears the
-        // stored preference; this is what puts the subscription back.
-        //
-        // Cannot prompt: it opts in only where permission already exists, so
-        // it does not pre-empt the deliberate ask below.
-        await PushNotificationService.instance.setSubscribed(true);
+      // Prompted here rather than at first launch: asking someone who has
+      // just signed in converts far better than asking a stranger on the
+      // splash screen, and iOS only ever lets you ask once.
+      //
+      // The pause lets the home screen finish rendering first — a system
+      // dialog thrown up over a half-built screen reads as a glitch, and
+      // gets dismissed reflexively.
+      await Future.delayed(PushNotificationService.permissionPromptDelay);
+      // Undecided only — signing in again after declining should not reopen
+      // the system settings page, which is what requestPermission does once
+      // the OS will no longer show its own dialog.
+      await PushNotificationService.instance.promptIfUndecided();
+    }());
 
-        // Prompted here rather than at first launch: asking someone who has
-        // just signed in converts far better than asking a stranger on the
-        // splash screen, and iOS only ever lets you ask once.
-        //
-        // The pause lets the home screen finish rendering first — a system
-        // dialog thrown up over a half-built screen reads as a glitch, and
-        // gets dismissed reflexively.
-        await Future.delayed(PushNotificationService.permissionPromptDelay);
-        // Undecided only — signing in again after declining should not reopen
-        // the system settings page, which is what requestPermission does once
-        // the OS will no longer show its own dialog.
-        await PushNotificationService.instance.promptIfUndecided();
-      }());
-    }
-
-    // E2EE key management is mobile-only — chat/messaging is not used on web.
-    //
     // Started here and deliberately not awaited. Signing in is not waiting on
     // chat crypto: on a device with no keys this generates an identity key, a
     // signed prekey and 100 one-time prekeys — each written to the keystore on
@@ -117,9 +108,7 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
     // work still begins the moment the session exists, which is what "publish
     // immediately" was asking for, and a DM opened before it lands republishes
     // on open, which is the path that already covers a failure here.
-    if (!kIsWeb) {
-      unawaited(_bringUpKeys(user));
-    }
+    unawaited(_bringUpKeys(user));
   }
 
   /// Publishes this account's key bundle if the server hasn't got one, then
@@ -171,7 +160,8 @@ class LoginUseCase implements UseCase<LoginResponseObject, LoginParams> {
         final needed = 100 - count;
         final otpks = await _e2ee.generateOtpks(needed);
         await _keyDs.topUpPrekeys(otpks);
-        debugPrint('[E2EE] Topped up $needed OTPKs on login (server had $count)');
+        debugPrint(
+            '[E2EE] Topped up $needed OTPKs on login (server had $count)');
       }
     } catch (e) {
       debugPrint('[E2EE] OTPK check on login failed: $e');

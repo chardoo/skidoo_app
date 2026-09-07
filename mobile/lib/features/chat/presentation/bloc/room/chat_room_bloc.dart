@@ -9,15 +9,27 @@ import 'package:jperg_app/core/config/chat_config.dart';
 import 'package:jperg_app/core/error/exceptions.dart' show ServerException;
 import 'package:jperg_app/features/chat/data/datasources/chat_background_service.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.dart'
-    show ChatWebSocketService, WsRoomHolder, WsAdminGrantedEvent, WsAdminRevokedEvent,
-        WsChatErrorEvent, WsDeliveryReceiptEvent,
-        WsKeyBundlesEvent, WsKeyRotationEvent, WsMessageDeletedEvent,
-        WsMessageEditedEvent, WsParticipantKeyAvailable,
+    show
+        ChatWebSocketService,
+        WsRoomHolder,
+        WsAdminGrantedEvent,
+        WsAdminRevokedEvent,
+        WsChatErrorEvent,
+        WsDeliveryReceiptEvent,
+        WsKeyBundlesEvent,
+        WsKeyRotationEvent,
+        WsMessageDeletedEvent,
+        WsMessageEditedEvent,
+        WsParticipantKeyAvailable,
         WsMessagePinnedEvent,
-        WsParticipantRemovedEvent, WsPresenceEvent, WsReadReceiptEvent,
+        WsParticipantRemovedEvent,
+        WsPresenceEvent,
+        WsReadReceiptEvent,
         WsRoomDeletedEvent,
-        WsRoomSettingsUpdatedEvent, WsSenderKeyDistributionEvent,
-        WsTypingEvent, WsUserJoinedEvent;
+        WsRoomSettingsUpdatedEvent,
+        WsSenderKeyDistributionEvent,
+        WsTypingEvent,
+        WsUserJoinedEvent;
 import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.dart'
     show PresenceSnapshot;
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
@@ -80,7 +92,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   /// room may already be gone: a thread is unsubscribed when the screen closes,
   /// and a conversation is not.
   bool _isCommentThread = false;
-  String? _recipientId;          // other party's userId in a DM room
+  String? _recipientId; // other party's userId in a DM room
   // Proactive X3DH session held in memory only — never written to secure
   // storage until the first outgoing message actually uses it.
   // Writing it to storage would cause incoming messages (encrypted by the
@@ -215,8 +227,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<ChatRoomLeaveGroupRequested>(_onLeaveGroupRequested);
     on<ChatRoomDeleteRequested>(_onDeleteRequested);
     on<_RoomDeleted>(_onRoomDeleted);
-    on<_WsServerError>((event, emit) =>
-        emit(state.copyWith(errorMessage: event.message)));
+    on<_WsServerError>(
+        (event, emit) => emit(state.copyWith(errorMessage: event.message)));
     on<_GroupSenderKeyReceived>(_onGroupSenderKeyReceived);
     on<_ParticipantLeft>(_onParticipantLeft);
     on<_ReadReceiptReceived>(_onReadReceiptReceived);
@@ -236,7 +248,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     Emitter<ChatRoomState> emit,
   ) async {
     _currentRoomId = event.roomId;
-    _didInitialConnect = false; // first connect for this room loads history here
+    _didInitialConnect =
+        false; // first connect for this room loads history here
 
     final roomType = event.room?.type;
     final isDm = roomType == RoomType.direct;
@@ -248,15 +261,10 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // during the network round-trips are queued in the BLoC event queue and
     // processed after _onJoined completes — nothing is dropped.
     //
-    // DM rooms on mobile must wait until after _deriveKeyFromHistory establishes
-    // the session key; otherwise messages received before E2EE is ready are
+    // DM rooms must wait until after _deriveKeyFromHistory establishes the
+    // session key; otherwise messages received before E2EE is ready are
     // decrypted with a null key → blank content → permanent loss.
-    //
-    // DM rooms on web: E2EE is never used (kIsWeb guard below skips the whole
-    // E2EE setup block), so we attach listeners early — same as non-DM rooms.
-    // Without this, WS messages that arrive during the REST fetch are dropped
-    // by the paused background service and permanently lost (no SQLite on web).
-    if (!isDm || kIsWeb) {
+    if (!isDm) {
       _connectWsInBackground(event.roomId);
     }
 
@@ -268,11 +276,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // proactive key" to be stored by _setupE2EESession, breaking decryption.
     // The echo-overwrite bug that originally motivated the wipe is now fixed by
     // the `msg.senderId != _myUserId` guard in _onReceived.
-    final userId = _myUserId.isNotEmpty
-        ? _myUserId
-        : await _authService.getUserId();
+    final userId =
+        _myUserId.isNotEmpty ? _myUserId : await _authService.getUserId();
 
-    final cached = await _getCachedMessages(event.roomId).catchError((_) => <ChatMessage>[]);
+    final cached = await _getCachedMessages(event.roomId)
+        .catchError((_) => <ChatMessage>[]);
 
     _myUserId = userId;
 
@@ -318,28 +326,23 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           .firstOrNull;
       debugPrint('[E2EE] DM — recipientId: $_recipientId');
 
-      // E2EE (key exchange + encryption) is not supported on web — messages are
-      // sent and received as plaintext in the browser.
-      //
       // None of this is gated on ChatConfig.e2eeEnabled. Publishing our bundle
       // and keeping one-time prekeys stocked is what lets *other* people encrypt
       // to *us* — so it has to keep working while clients on older builds, which
       // still encrypt, are out there. Turning it off would mean their messages
       // arrived undecryptable. Only our own outgoing encryption is switched off.
-      if (!kIsWeb) {
-        // Publish bundle in the background only if login hasn't already done so.
-        // _e2ee.bundlePublished is a singleton flag set by LoginUseCase, so it
-        // persists across all ChatRoomBloc factory instances in the same session.
-        if (!_e2ee.bundlePublished) {
-          _publishBundleInBackground();
-        }
-
-        _otpkPollTimer?.cancel();
-        _otpkPollTimer = Timer.periodic(
-          const Duration(seconds: 60),
-          (_) => _replenishOtpksIfNeeded(),
-        );
+      // Publish bundle in the background only if login hasn't already done so.
+      // _e2ee.bundlePublished is a singleton flag set by LoginUseCase, so it
+      // persists across all ChatRoomBloc factory instances in the same session.
+      if (!_e2ee.bundlePublished) {
+        _publishBundleInBackground();
       }
+
+      _otpkPollTimer?.cancel();
+      _otpkPollTimer = Timer.periodic(
+        const Duration(seconds: 60),
+        (_) => _replenishOtpksIfNeeded(),
+      );
     } else {
       _isDirectRoom = false;
       _recipientId = null;
@@ -370,8 +373,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       // participants) in parallel — both are network calls, so running them
       // concurrently saves one full round-trip.
       final msgFuture = _getMessages(event.roomId);
-      final roomFuture =
-          _getRoom(event.roomId).then<ChatRoom?>((r) => r).catchError((_) => null);
+      final roomFuture = _getRoom(event.roomId)
+          .then<ChatRoom?>((r) => r)
+          .catchError((_) => null);
       final fresh = await msgFuture;
       final freshRoom = await roomFuture;
 
@@ -422,23 +426,21 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             .catchError((_) {});
       }
 
-      if (!kIsWeb) {
-        // Scan REST history for X3DH headers BEFORE the WS connects.
-        // REST messages still carry is_encrypted=true and the full X3DH header.
-        // Processing them here stores the correct session key so that the guard
-        // in _onKeyBundlesReceived (loadSessionKey != null) skips
-        // _setupE2EESession — which would otherwise store a wrong proactive key.
-        // Previously-processed messages are cached as is_encrypted=false and are
-        // filtered out by knownIds, so their already-deleted OTPKs are never
-        // re-used for a second (wrong) derivation.
-        if (_isDirectRoom && _currentRoomId != null) {
-          await _deriveKeyFromHistory(emit);
-        }
+      // Scan REST history for X3DH headers BEFORE the WS connects.
+      // REST messages still carry is_encrypted=true and the full X3DH header.
+      // Processing them here stores the correct session key so that the guard
+      // in _onKeyBundlesReceived (loadSessionKey != null) skips
+      // _setupE2EESession — which would otherwise store a wrong proactive key.
+      // Previously-processed messages are cached as is_encrypted=false and are
+      // filtered out by knownIds, so their already-deleted OTPKs are never
+      // re-used for a second (wrong) derivation.
+      if (_isDirectRoom && _currentRoomId != null) {
+        await _deriveKeyFromHistory(emit);
+      }
 
-        // Group rooms: fetch peer sender keys and distribute our own.
-        if (_isGroupRoom && _currentRoomId != null) {
-          await _setupGroupE2EE(_currentRoomId!, emit);
-        }
+      // Group rooms: fetch peer sender keys and distribute our own.
+      if (_isGroupRoom && _currentRoomId != null) {
+        await _setupGroupE2EE(_currentRoomId!, emit);
       }
     } catch (e) {
       emit(state.copyWith(
@@ -453,7 +455,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       // with a wrong proactive key. Non-DM rooms (and web DMs, which skip E2EE
       // entirely) already called _connectWsInBackground above; re-calling here
       // would cancel valid subscriptions and briefly leave no active listener.
-      if (_isDirectRoom && !kIsWeb) {
+      if (_isDirectRoom) {
         _connectWsInBackground(event.roomId);
       }
     }
@@ -538,12 +540,15 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     _wsMsgSub = _ws.messages.listen(
       (msg) {
-        debugPrint('[ChatBloc] _wsMsgSub RAW: id=${msg.id} roomId=${msg.roomId} senderId=${msg.senderId} isEncrypted=${msg.isEncrypted} contentLen=${msg.content.length}');
+        debugPrint(
+            '[ChatBloc] _wsMsgSub RAW: id=${msg.id} roomId=${msg.roomId} senderId=${msg.senderId} isEncrypted=${msg.isEncrypted} contentLen=${msg.content.length}');
         if (!isClosed && msg.roomId == roomId) {
-          debugPrint('[ChatBloc] _wsMsgSub ACCEPTED for room=$roomId — dispatching ChatRoomMessageReceived');
+          debugPrint(
+              '[ChatBloc] _wsMsgSub ACCEPTED for room=$roomId — dispatching ChatRoomMessageReceived');
           add(ChatRoomMessageReceived(msg));
         } else if (!isClosed) {
-          debugPrint('[ChatBloc] _wsMsgSub FILTERED: msgRoomId=${msg.roomId} currentRoom=$roomId id=${msg.id}');
+          debugPrint(
+              '[ChatBloc] _wsMsgSub FILTERED: msgRoomId=${msg.roomId} currentRoom=$roomId id=${msg.id}');
         }
       },
       onDone: () {
@@ -683,7 +688,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     _wsReadReceiptSub = _ws.readReceiptEvents.listen(
       (event) {
-        if (!isClosed && event.roomId == roomId && event.readerId != _myUserId) {
+        if (!isClosed &&
+            event.roomId == roomId &&
+            event.readerId != _myUserId) {
           add(_ReadReceiptReceived(
             readerId: event.readerId,
             upToMessageId: event.upToMessageId,
@@ -817,8 +824,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       final knownIds = state.messages.map((m) => m.id).toSet();
       final incoming = fresh.where((m) => !knownIds.contains(m.id)).toList();
       if (incoming.isEmpty) return;
-      emit(state.copyWith(
-          messages: _sorted([...state.messages, ...incoming])));
+      emit(state.copyWith(messages: _sorted([...state.messages, ...incoming])));
 
       // Mark the backfilled messages read + ack the latest peer message.
       await _markAsRead(roomId);
@@ -879,7 +885,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       return;
     }
 
-    debugPrint('[ChatBloc] WS dropped — waiting for background service to reconnect');
+    debugPrint(
+        '[ChatBloc] WS dropped — waiting for background service to reconnect');
     emit(state.copyWith(isConnected: false, isConnecting: true));
     if (_currentRoomId != null) _connectWsInBackground(_currentRoomId!);
   }
@@ -963,7 +970,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       ));
 
       try {
-        final imageUrl = await _uploadImage(File(pendingPath), mimeType: pendingMimeType);
+        final imageUrl =
+            await _uploadImage(File(pendingPath), mimeType: pendingMimeType);
         final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
 
         final optimistic = ChatMessage(
@@ -1071,16 +1079,21 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // several reasons, and everything below is the encrypted path.
     final roomId = _currentRoomId;
     final hasWebParticipant =
-        !kIsWeb && roomId != null && !_bgService.canEncryptRoom(roomId);
-    if (!ChatConfig.e2eeEnabled || kIsWeb || hasWebParticipant) {
-      debugPrint('[E2EE] send plaintext — e2eeEnabled=${ChatConfig.e2eeEnabled} '
-          'kIsWeb=$kIsWeb hasWebParticipant=$hasWebParticipant');
-      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo,
-          replyToId: replyToId, roomId: roomId);
+        roomId != null && !_bgService.canEncryptRoom(roomId);
+    if (!ChatConfig.e2eeEnabled || hasWebParticipant) {
+      debugPrint(
+          '[E2EE] send plaintext — e2eeEnabled=${ChatConfig.e2eeEnabled} '
+          'hasWebParticipant=$hasWebParticipant');
+      _ws.send(content,
+          imageUrl: imageUrl,
+          isVideo: isVideo,
+          replyToId: replyToId,
+          roomId: roomId);
       return;
     }
 
-    debugPrint('[E2EE] send — isDirectRoom: $_isDirectRoom, recipientId: $_recipientId, needsRekey: $_needsRekey');
+    debugPrint(
+        '[E2EE] send — isDirectRoom: $_isDirectRoom, recipientId: $_recipientId, needsRekey: $_needsRekey');
 
     if (_isGroupRoom) {
       await _encryptAndSendGroup(
@@ -1093,8 +1106,13 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
 
     if (!_isDirectRoom || _recipientId == null || !hasText) {
-      debugPrint('[E2EE] Not a DM, no recipient, or no text — sending plaintext');
-      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo, replyToId: replyToId, roomId: _currentRoomId);
+      debugPrint(
+          '[E2EE] Not a DM, no recipient, or no text — sending plaintext');
+      _ws.send(content,
+          imageUrl: imageUrl,
+          isVideo: isVideo,
+          replyToId: replyToId,
+          roomId: _currentRoomId);
       return;
     }
 
@@ -1129,10 +1147,15 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           debugPrint('[E2EE] Re-key complete (otpkId: $otpkId)');
         } else if (sessionKey == null) {
           debugPrint('[E2EE] Re-key: no bundle and no key — sending plaintext');
-          _ws.send(content, imageUrl: imageUrl, isVideo: isVideo, replyToId: replyToId, roomId: _currentRoomId);
+          _ws.send(content,
+              imageUrl: imageUrl,
+              isVideo: isVideo,
+              replyToId: replyToId,
+              roomId: _currentRoomId);
           return;
         } else {
-          debugPrint('[E2EE] Re-key: no bundle — reusing existing key (degraded)');
+          debugPrint(
+              '[E2EE] Re-key: no bundle — reusing existing key (degraded)');
         }
       } else if (_pendingEphemeralKey != null) {
         sessionKey = _proactiveSessionKey!;
@@ -1148,11 +1171,16 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         debugPrint('[E2EE] Using pre-established session (proactive X3DH)');
         await _redecryptEncryptedMessages(emit, sessionKey);
       } else if (sessionKey == null) {
-        debugPrint('[E2EE] No session key — fetching recipient bundle for $_recipientId');
+        debugPrint(
+            '[E2EE] No session key — fetching recipient bundle for $_recipientId');
         final recipientBundle = await _keyDs.fetchBundle(_recipientId!);
         if (recipientBundle == null) {
           debugPrint('[E2EE] Recipient has no bundle — sending plaintext');
-          _ws.send(content, imageUrl: imageUrl, isVideo: isVideo, replyToId: replyToId, roomId: _currentRoomId);
+          _ws.send(content,
+              imageUrl: imageUrl,
+              isVideo: isVideo,
+              replyToId: replyToId,
+              roomId: _currentRoomId);
           return;
         }
         debugPrint('[E2EE] Got recipient bundle — running X3DH');
@@ -1173,9 +1201,13 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         debugPrint('[E2EE] Reusing cached session key');
       }
 
-      final keyHex = sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      final keyHex = sessionKey
+          .sublist(0, 4)
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
       final encrypted = await _e2ee.encrypt(sessionKey, content);
-      debugPrint('[E2EE] Encrypted OK (session: ${ephemeralKey != null ? "new X3DH" : "cached"}, keyPrefix=$keyHex) — sending over WS');
+      debugPrint(
+          '[E2EE] Encrypted OK (session: ${ephemeralKey != null ? "new X3DH" : "cached"}, keyPrefix=$keyHex) — sending over WS');
       _ws.sendEncrypted(
         ciphertext: encrypted.ciphertext,
         iv: encrypted.iv,
@@ -1190,7 +1222,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       );
     } catch (e) {
       debugPrint('[E2EE] Encrypt failed, sending plaintext: $e');
-      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo, replyToId: replyToId, roomId: _currentRoomId);
+      _ws.send(content,
+          imageUrl: imageUrl,
+          isVideo: isVideo,
+          replyToId: replyToId,
+          roomId: _currentRoomId);
     }
   }
 
@@ -1329,20 +1365,14 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           ' myUserId=$_myUserId');
     }
 
-    // On web: encrypted messages from mobile clients cannot be decrypted.
-    // Replace ciphertext with a human-readable notice so the UI stays clean.
-    if (kIsWeb && msg.isEncrypted) {
-      msg = msg.copyWith(
-        content: '🔒 Encrypted message — open in the app to read',
-        isEncrypted: false,
-      );
-    }
-
     // Decrypt group E2EE messages using the sender's SenderKey.
     // Own echoes (senderId == _myUserId) are decrypted with our own sender key
     // so the plaintext matches the optimistic placeholder and replaces it.
-    if (!kIsWeb && _isGroupRoom && msg.isEncrypted && msg.content.isNotEmpty &&
-        msg.iv != null && _currentRoomId != null) {
+    if (_isGroupRoom &&
+        msg.isEncrypted &&
+        msg.content.isNotEmpty &&
+        msg.iv != null &&
+        _currentRoomId != null) {
       final isOwnEcho = msg.senderId == _myUserId;
       final senderKey = isOwnEcho
           ? await _e2ee.loadGroupSenderKey(_currentRoomId!)
@@ -1362,7 +1392,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           msg = msg.copyWith(content: '', isEncrypted: false);
         }
       } else {
-        debugPrint('[GroupE2EE] No sender key for ${msg.senderId} — will retry when key arrives');
+        debugPrint(
+            '[GroupE2EE] No sender key for ${msg.senderId} — will retry when key arrives');
         // Keep isEncrypted=true so _redecryptGroupMessages can decrypt when key arrives.
         if (!isOwnEcho) {
           _distributeSenderKeyToMember(msg.senderId).catchError((_) {});
@@ -1372,7 +1403,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     // Decrypt E2EE messages — only in direct rooms, never in global/event/photo rooms,
     // and never on web (no E2EE key material available in the browser).
-    final shouldDecrypt = !kIsWeb && _isDirectRoom && msg.isEncrypted && msg.content.isNotEmpty && msg.iv != null && _currentRoomId != null;
+    final shouldDecrypt = _isDirectRoom &&
+        msg.isEncrypted &&
+        msg.content.isNotEmpty &&
+        msg.iv != null &&
+        _currentRoomId != null;
     debugPrint('[ChatRoomBloc] _onReceived decrypt-gate:'
         ' isDirectRoom=$_isDirectRoom'
         ' isEncrypted=${msg.isEncrypted}'
@@ -1387,119 +1422,128 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       if (msg.stale == true) {
         await _e2ee.deleteSessionKey(_currentRoomId!);
         _needsRekey = true;
-        debugPrint('[E2EE] stale flag set for msg ${msg.id} — session cleared, rekey on next send');
+        debugPrint(
+            '[E2EE] stale flag set for msg ${msg.id} — session cleared, rekey on next send');
         msg = msg.copyWith(content: '', isEncrypted: false);
       } else {
-      try {
-        Uint8List? sessionKey;
-        bool alreadyDecrypted = false;
+        try {
+          Uint8List? sessionKey;
+          bool alreadyDecrypted = false;
 
-        // First message after X3DH carries the sender's ephemeral key and
-        // identity key — use them to derive the shared session key.
-        // IMPORTANT: skip X3DH for echoes of our own messages. The server
-        // relays our encrypted message back to us with the same ephemeral_key
-        // header. Running deriveReceivingKey against our own keys produces a
-        // garbage key that overwrites the correct session key and breaks all
-        // subsequent decryption in both directions.
-        if (msg.ephemeralKey != null &&
-            msg.ephemeralKey!.isNotEmpty &&
-            msg.senderIdentityKey != null &&
-            msg.senderIdentityKey!.isNotEmpty &&
-            msg.senderId != _myUserId) {
-          // First message of a new X3DH session from the other party.
-          // senderSpkId tells us which of our SPKs the sender used; if it
-          // differs from our current SPK, try the prev SPK first.
-          await _e2ee.storeIdentityKey(msg.senderId, msg.senderIdentityKey!);
-          final mySpkId = await _e2ee.currentSpkId();
-          final tryPrevFirst = msg.senderSpkId != null &&
-              mySpkId != null &&
-              msg.senderSpkId != mySpkId;
-          final x3dhResult = await _deriveAndDecryptX3DH(
-            senderIdentityKey: msg.senderIdentityKey!,
-            senderEphemeralKey: msg.ephemeralKey!,
-            otpkId: msg.otpkId,
-            ciphertext: msg.content,
-            iv: msg.iv!,
-            tryPrevSpkFirst: tryPrevFirst,
-          );
-          if (x3dhResult != null) {
-            sessionKey = x3dhResult.$1;
-            await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
-            // CRITICAL: clear any pending proactive X3DH state.
-            // If we had run proactive setup, _pendingEphemeralKey was set to an
-            // ephemeral key that is associated with _our_ proactive session key
-            // (K_proactive_ours), NOT with the session key we just derived from
-            // the other side (K_derived). If we sent a message with
-            // _pendingEphemeralKey as the header while encrypting with K_derived,
-            // the receiver would derive K_proactive_ours from that header and
-            // fail to decrypt. Clearing here ensures the first send after this
-            // uses no header and just re-uses K_derived.
-            _pendingEphemeralKey = null;
-            _pendingOtpkId = null;
-            _proactiveSessionKey = null;
-            debugPrint('[E2EE] Receiver: session key derived via X3DH (otpkId: ${msg.otpkId}), proactive state cleared');
-            msg = msg.copyWith(content: x3dhResult.$2, isEncrypted: false);
-            alreadyDecrypted = true;
-            // Re-decrypt any encrypted messages already in state (from REST
-            // history) that arrived before the session key was established.
-            await _redecryptEncryptedMessages(emit, sessionKey);
+          // First message after X3DH carries the sender's ephemeral key and
+          // identity key — use them to derive the shared session key.
+          // IMPORTANT: skip X3DH for echoes of our own messages. The server
+          // relays our encrypted message back to us with the same ephemeral_key
+          // header. Running deriveReceivingKey against our own keys produces a
+          // garbage key that overwrites the correct session key and breaks all
+          // subsequent decryption in both directions.
+          if (msg.ephemeralKey != null &&
+              msg.ephemeralKey!.isNotEmpty &&
+              msg.senderIdentityKey != null &&
+              msg.senderIdentityKey!.isNotEmpty &&
+              msg.senderId != _myUserId) {
+            // First message of a new X3DH session from the other party.
+            // senderSpkId tells us which of our SPKs the sender used; if it
+            // differs from our current SPK, try the prev SPK first.
+            await _e2ee.storeIdentityKey(msg.senderId, msg.senderIdentityKey!);
+            final mySpkId = await _e2ee.currentSpkId();
+            final tryPrevFirst = msg.senderSpkId != null &&
+                mySpkId != null &&
+                msg.senderSpkId != mySpkId;
+            final x3dhResult = await _deriveAndDecryptX3DH(
+              senderIdentityKey: msg.senderIdentityKey!,
+              senderEphemeralKey: msg.ephemeralKey!,
+              otpkId: msg.otpkId,
+              ciphertext: msg.content,
+              iv: msg.iv!,
+              tryPrevSpkFirst: tryPrevFirst,
+            );
+            if (x3dhResult != null) {
+              sessionKey = x3dhResult.$1;
+              await _e2ee.storeSessionKey(_currentRoomId!, sessionKey);
+              // CRITICAL: clear any pending proactive X3DH state.
+              // If we had run proactive setup, _pendingEphemeralKey was set to an
+              // ephemeral key that is associated with _our_ proactive session key
+              // (K_proactive_ours), NOT with the session key we just derived from
+              // the other side (K_derived). If we sent a message with
+              // _pendingEphemeralKey as the header while encrypting with K_derived,
+              // the receiver would derive K_proactive_ours from that header and
+              // fail to decrypt. Clearing here ensures the first send after this
+              // uses no header and just re-uses K_derived.
+              _pendingEphemeralKey = null;
+              _pendingOtpkId = null;
+              _proactiveSessionKey = null;
+              debugPrint(
+                  '[E2EE] Receiver: session key derived via X3DH (otpkId: ${msg.otpkId}), proactive state cleared');
+              msg = msg.copyWith(content: x3dhResult.$2, isEncrypted: false);
+              alreadyDecrypted = true;
+              // Re-decrypt any encrypted messages already in state (from REST
+              // history) that arrived before the session key was established.
+              await _redecryptEncryptedMessages(emit, sessionKey);
+            } else {
+              debugPrint(
+                  '[E2EE] X3DH receive failed (both SPKs) for msg ${msg.id}');
+              msg = msg.copyWith(content: '', isEncrypted: false);
+              alreadyDecrypted = true;
+            }
           } else {
-            debugPrint('[E2EE] X3DH receive failed (both SPKs) for msg ${msg.id}');
-            msg = msg.copyWith(content: '', isEncrypted: false);
-            alreadyDecrypted = true;
+            // Own echo or subsequent message — reuse the stored session key.
+            sessionKey = await _e2ee.loadSessionKey(_currentRoomId!);
+            final isOwnEcho = msg.senderId == _myUserId;
+            final hasEphKey =
+                msg.ephemeralKey != null && msg.ephemeralKey!.isNotEmpty;
+            debugPrint('[E2EE] Receiver: reusing stored session key'
+                ' | isOwnEcho=$isOwnEcho'
+                ' | hasEphKey=$hasEphKey'
+                ' | keyLoaded=${sessionKey != null}'
+                ' | keyBytes=${sessionKey != null ? sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, "0")).join() : "null"}'
+                ' | msgId=${msg.id}');
           }
-        } else {
-          // Own echo or subsequent message — reuse the stored session key.
-          sessionKey = await _e2ee.loadSessionKey(_currentRoomId!);
-          final isOwnEcho = msg.senderId == _myUserId;
-          final hasEphKey = msg.ephemeralKey != null && msg.ephemeralKey!.isNotEmpty;
-          debugPrint('[E2EE] Receiver: reusing stored session key'
-              ' | isOwnEcho=$isOwnEcho'
-              ' | hasEphKey=$hasEphKey'
-              ' | keyLoaded=${sessionKey != null}'
-              ' | keyBytes=${sessionKey != null ? sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, "0")).join() : "null"}'
-              ' | msgId=${msg.id}');
-        }
 
-        if (!alreadyDecrypted) {
-          if (sessionKey != null) {
-            final plaintext = await _e2ee.decrypt(sessionKey, msg.content, msg.iv!);
-            debugPrint('[E2EE] Decrypted OK: "${plaintext.length > 30 ? plaintext.substring(0, 30) : plaintext}..."');
-            msg = msg.copyWith(content: plaintext, isEncrypted: false);
-          } else {
-            debugPrint('[E2EE] No session key yet — cannot decrypt msg ${msg.id}');
-            msg = msg.copyWith(content: '', isEncrypted: false);
+          if (!alreadyDecrypted) {
+            if (sessionKey != null) {
+              final plaintext =
+                  await _e2ee.decrypt(sessionKey, msg.content, msg.iv!);
+              debugPrint(
+                  '[E2EE] Decrypted OK: "${plaintext.length > 30 ? plaintext.substring(0, 30) : plaintext}..."');
+              msg = msg.copyWith(content: plaintext, isEncrypted: false);
+            } else {
+              debugPrint(
+                  '[E2EE] No session key yet — cannot decrypt msg ${msg.id}');
+              msg = msg.copyWith(content: '', isEncrypted: false);
+            }
           }
+        } catch (e) {
+          debugPrint('[E2EE] Decrypt failed for msg ${msg.id}: $e');
+          // MAC error on an ongoing message most likely means the sender used
+          // a key from a previous session that arrived in-flight while we were
+          // establishing a new one. Deleting the stored key here triggers
+          // proactive X3DH → which stores another mismatched key → more MAC
+          // errors → endless loop.
+          //
+          // Instead: keep the stored key (so subsequent messages from the other
+          // side that DO use the correct key can still decrypt), but set
+          // _needsRekey so the NEXT outbound message carries a fresh X3DH
+          // header. That forces both sides to converge on a new shared key
+          // without destroying the one that may still be valid.
+          final isOngoing =
+              msg.ephemeralKey == null || msg.ephemeralKey!.isEmpty;
+          final isFromOther = msg.senderId != _myUserId;
+          if (isOngoing && isFromOther) {
+            _needsRekey = true;
+            debugPrint(
+                '[E2EE] MAC error on ongoing message — scheduling rekey on next send (key kept)');
+          }
+          msg = msg.copyWith(content: '', isEncrypted: false);
         }
-      } catch (e) {
-        debugPrint('[E2EE] Decrypt failed for msg ${msg.id}: $e');
-        // MAC error on an ongoing message most likely means the sender used
-        // a key from a previous session that arrived in-flight while we were
-        // establishing a new one. Deleting the stored key here triggers
-        // proactive X3DH → which stores another mismatched key → more MAC
-        // errors → endless loop.
-        //
-        // Instead: keep the stored key (so subsequent messages from the other
-        // side that DO use the correct key can still decrypt), but set
-        // _needsRekey so the NEXT outbound message carries a fresh X3DH
-        // header. That forces both sides to converge on a new shared key
-        // without destroying the one that may still be valid.
-        final isOngoing = msg.ephemeralKey == null || msg.ephemeralKey!.isEmpty;
-        final isFromOther = msg.senderId != _myUserId;
-        if (isOngoing && isFromOther) {
-          _needsRekey = true;
-          debugPrint('[E2EE] MAC error on ongoing message — scheduling rekey on next send (key kept)');
-        }
-        msg = msg.copyWith(content: '', isEncrypted: false);
-      }
       } // end else (not stale)
     }
 
     // Find the optimistic placeholder this message is confirming (if any).
-    final optimistic = state.messages.where((m) =>
-        m.isLocal &&
-        m.content == msg.content &&
-        m.imageUrl == msg.imageUrl).firstOrNull;
+    final optimistic = state.messages
+        .where((m) =>
+            m.isLocal && m.content == msg.content && m.imageUrl == msg.imageUrl)
+        .firstOrNull;
 
     // If the server didn't echo is_video, inherit the flag from the optimistic
     // message so the cached version stays correct across sessions.
@@ -1521,11 +1565,13 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         ' afterRemoveSize=${updated.length}');
 
     if (updated.any((m) => m.id == msg.id)) {
-      debugPrint('[ChatRoomBloc] _onReceived: DUPLICATE — msgId=${msg.id} already in state, skipping insert+badge');
+      debugPrint(
+          '[ChatRoomBloc] _onReceived: DUPLICATE — msgId=${msg.id} already in state, skipping insert+badge');
       return;
     }
 
-    debugPrint('[ChatRoomBloc] _onReceived: emitting with msgId=${msg.id} hasOptimisticPlaceholder=$hasOptimistic finalListSize=${updated.length + 1}');
+    debugPrint(
+        '[ChatRoomBloc] _onReceived: emitting with msgId=${msg.id} hasOptimisticPlaceholder=$hasOptimistic finalListSize=${updated.length + 1}');
     emit(state.copyWith(messages: _sorted([msg, ...updated])));
 
     // Await the DB write so the sequence is: insert → mark-read → badge.
@@ -1602,7 +1648,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       );
       final plain = await _e2ee.decrypt(key, ciphertext, iv);
       if (otpkId != null) await _e2ee.deleteOtpk(otpkId);
-      debugPrint('[E2EE] Decrypted using previous SPK (rotation window fallback)');
+      debugPrint(
+          '[E2EE] Decrypted using previous SPK (rotation window fallback)');
       return (key, plain);
     } catch (_) {}
 
@@ -1619,7 +1666,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         if (otpkId != null) await _e2ee.deleteOtpk(otpkId);
         return (key, plain);
       } catch (e) {
-        debugPrint('[E2EE] _deriveAndDecryptX3DH: all SPK attempts failed — $e');
+        debugPrint(
+            '[E2EE] _deriveAndDecryptX3DH: all SPK attempts failed — $e');
         return null;
       }
     }
@@ -1639,7 +1687,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         .where((m) => m.isEncrypted && m.content.isNotEmpty && m.iv != null)
         .toList();
     if (toDecrypt.isEmpty) return;
-    debugPrint('[E2EE] Re-decrypting ${toDecrypt.length} historical message(s)');
+    debugPrint(
+        '[E2EE] Re-decrypting ${toDecrypt.length} historical message(s)');
 
     final decryptedMap = <String, ChatMessage>{};
     for (final m in toDecrypt) {
@@ -1654,9 +1703,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       }
     }
 
-    final updatedMessages = state.messages
-        .map((m) => decryptedMap[m.id] ?? m)
-        .toList();
+    final updatedMessages =
+        state.messages.map((m) => decryptedMap[m.id] ?? m).toList();
     emit(state.copyWith(messages: _sorted(updatedMessages)));
   }
 
@@ -1672,16 +1720,22 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // just arrived from the REST history load and aren't yet in plaintext
     // (e.g. messages received while the app was closed and not yet cached).
     final existingKey = await _e2ee.loadSessionKey(_currentRoomId!);
-    final encryptedInHistory = state.messages.where((m) => m.isEncrypted).length;
+    final encryptedInHistory =
+        state.messages.where((m) => m.isEncrypted).length;
     final totalInHistory = state.messages.length;
     if (existingKey != null) {
-      final kHex = existingKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-      debugPrint('[E2EE] _deriveKeyFromHistory: stored key found (keyPrefix=$kHex) — re-decrypting $encryptedInHistory/$totalInHistory encrypted msg(s)');
+      final kHex = existingKey
+          .sublist(0, 4)
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      debugPrint(
+          '[E2EE] _deriveKeyFromHistory: stored key found (keyPrefix=$kHex) — re-decrypting $encryptedInHistory/$totalInHistory encrypted msg(s)');
       await _redecryptEncryptedMessages(emit, existingKey);
       return;
     }
 
-    debugPrint('[E2EE] _deriveKeyFromHistory: no stored key — scanning $totalInHistory history msg(s), $encryptedInHistory encrypted');
+    debugPrint(
+        '[E2EE] _deriveKeyFromHistory: no stored key — scanning $totalInHistory history msg(s), $encryptedInHistory encrypted');
 
     // Messages are sorted newest-first; the first match is the most recent
     // X3DH opener, which establishes the current session.
@@ -1696,17 +1750,20 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         .firstOrNull;
     if (opener == null) {
       // Log whether we skipped any openers from ourselves (we can't re-derive from those).
-      final ownOpeners = state.messages.where((m) =>
-          m.isEncrypted &&
-          m.ephemeralKey != null &&
-          m.ephemeralKey!.isNotEmpty &&
-          m.senderId == _myUserId).length;
+      final ownOpeners = state.messages
+          .where((m) =>
+              m.isEncrypted &&
+              m.ephemeralKey != null &&
+              m.ephemeralKey!.isNotEmpty &&
+              m.senderId == _myUserId)
+          .length;
       debugPrint('[E2EE] _deriveKeyFromHistory: no opener from recipient found'
           ' (own openers in history: $ownOpeners) — proactive X3DH will run');
       return;
     }
 
-    debugPrint('[E2EE] _deriveKeyFromHistory: found X3DH opener ${opener.id} (otpkId: ${opener.otpkId})');
+    debugPrint(
+        '[E2EE] _deriveKeyFromHistory: found X3DH opener ${opener.id} (otpkId: ${opener.otpkId})');
     try {
       await _e2ee.storeIdentityKey(opener.senderId, opener.senderIdentityKey!);
       final x3dhResult = await _deriveAndDecryptX3DH(
@@ -1717,7 +1774,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         iv: opener.iv!,
       );
       if (x3dhResult == null) {
-        debugPrint('[E2EE] _deriveKeyFromHistory: X3DH failed for opener ${opener.id}');
+        debugPrint(
+            '[E2EE] _deriveKeyFromHistory: X3DH failed for opener ${opener.id}');
         return;
       }
       final sessionKey = x3dhResult.$1;
@@ -1725,8 +1783,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _pendingEphemeralKey = null;
       _pendingOtpkId = null;
       _proactiveSessionKey = null;
-      final kHex = sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-      debugPrint('[E2EE] _deriveKeyFromHistory: session key stored (keyPrefix=$kHex), proactive state cleared');
+      final kHex = sessionKey
+          .sublist(0, 4)
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      debugPrint(
+          '[E2EE] _deriveKeyFromHistory: session key stored (keyPrefix=$kHex), proactive state cleared');
       await _redecryptEncryptedMessages(emit, sessionKey);
     } catch (e) {
       debugPrint('[E2EE] _deriveKeyFromHistory failed: $e');
@@ -1774,11 +1836,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _KeyBundlesReceived event,
     Emitter<ChatRoomState> emit,
   ) async {
-    if (!_isDirectRoom || _recipientId == null || _currentRoomId == null) return;
+    if (!_isDirectRoom || _recipientId == null || _currentRoomId == null)
+      return;
 
-    final recipientData = event.bundles
-        .where((b) => b['userId'] == _recipientId)
-        .firstOrNull;
+    final recipientData =
+        event.bundles.where((b) => b['userId'] == _recipientId).firstOrNull;
     if (recipientData == null) return;
 
     final bundle = _bundleFromWsData(recipientData);
@@ -1798,7 +1860,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         identityKey: bundle.identityKey,
         signedPreKeyId: bundle.signedPreKeyId,
       );
-      debugPrint('[E2EE] key_bundles: keys changed for $_recipientId — session invalidated, fresh X3DH on next send');
+      debugPrint(
+          '[E2EE] key_bundles: keys changed for $_recipientId — session invalidated, fresh X3DH on next send');
       // _needsRekey remains true from _onJoined; fresh X3DH runs on first send.
       return;
     }
@@ -1808,11 +1871,16 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     final storedKey = await _e2ee.loadSessionKey(_currentRoomId!);
     if (storedKey == null) {
-      debugPrint('[E2EE] key_bundles: keys unchanged, no session — proactive X3DH');
+      debugPrint(
+          '[E2EE] key_bundles: keys unchanged, no session — proactive X3DH');
       await _setupE2EESession(emit, bundle: bundle);
     } else {
-      final kHex = storedKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-      debugPrint('[E2EE] key_bundles: keys unchanged, existing session reused (keyPrefix=$kHex)');
+      final kHex = storedKey
+          .sublist(0, 4)
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      debugPrint(
+          '[E2EE] key_bundles: keys unchanged, existing session reused (keyPrefix=$kHex)');
       emit(state.copyWith(isE2EEReady: true));
     }
   }
@@ -1854,7 +1922,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         signedPreKeyId: bundle.signedPreKeyId,
       );
       _needsRekey = true;
-      debugPrint('[E2EE] participant_key_available: keys changed for ${event.userId} — session invalidated, fresh X3DH on next send');
+      debugPrint(
+          '[E2EE] participant_key_available: keys changed for ${event.userId} — session invalidated, fresh X3DH on next send');
       return;
     }
 
@@ -1868,7 +1937,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       return;
     }
 
-    debugPrint('[E2EE] participant_key_available: building proactive session (no OTPK)');
+    debugPrint(
+        '[E2EE] participant_key_available: building proactive session (no OTPK)');
     await _setupE2EESession(emit, bundle: bundle);
   }
 
@@ -1904,7 +1974,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         signedPreKeyId: bundle.signedPreKeyId,
       );
       _needsRekey = true;
-      debugPrint('[E2EE] key_rotation: keys changed for ${event.userId} — session invalidated, fresh X3DH on next send');
+      debugPrint(
+          '[E2EE] key_rotation: keys changed for ${event.userId} — session invalidated, fresh X3DH on next send');
       return;
     }
 
@@ -1966,8 +2037,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _pendingEphemeralKey = session.ephemeralPublicKey;
       _pendingOtpkId = session.otpkId;
       _pendingBundleSpkId = resolvedBundle.signedPreKeyId;
-      final kHex = session.sessionKey.sublist(0, 4).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-      debugPrint('[E2EE] Proactive session ready in memory (otpkId: ${session.otpkId}, keyPrefix=$kHex)');
+      final kHex = session.sessionKey
+          .sublist(0, 4)
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      debugPrint(
+          '[E2EE] Proactive session ready in memory (otpkId: ${session.otpkId}, keyPrefix=$kHex)');
       emit(state.copyWith(isE2EEReady: true));
     } catch (e) {
       debugPrint('[E2EE] Proactive session setup failed: $e');
@@ -1987,7 +2062,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         }
         await _keyDs.publishBundle(bundle);
         _e2ee.markBundlePublished();
-        debugPrint('[E2EE] Bundle published OK (${bundle.oneTimePreKeys.length} OTPKs)');
+        debugPrint(
+            '[E2EE] Bundle published OK (${bundle.oneTimePreKeys.length} OTPKs)');
         _replenishOtpksIfNeeded().catchError((_) {});
 
         // SPK rotation — check while already in the background.
@@ -2046,7 +2122,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       // Revert to original content on failure.
       final reverted = state.messages
           .map((m) => m.id == event.messageId
-              ? m.copyWith(clearUpdatedAt: true,
+              ? m.copyWith(
+                  clearUpdatedAt: true,
                   content: state.messages
                       .firstWhere((x) => x.id == event.messageId,
                           orElse: () => m)
@@ -2103,7 +2180,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       return;
     }
     if (!_ws.isConnected) {
-      emit(state.copyWith(errorMessage: 'Not connected — try again in a moment.'));
+      emit(state.copyWith(
+          errorMessage: 'Not connected — try again in a moment.'));
       return;
     }
 
@@ -2130,8 +2208,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // message is only claimed once the frame has actually gone out. Emitted and
     // immediately cleared so forwarding twice to the same room confirms twice
     // — a notice that is already on the state would not read as a change.
-    final where =
-        event.targetName.isNotEmpty ? ' to ${event.targetName}' : '';
+    final where = event.targetName.isNotEmpty ? ' to ${event.targetName}' : '';
     emit(state.copyWith(systemNotice: 'Forwarded$where'));
     emit(state.copyWith(clearSystemNotice: true));
   }
@@ -2248,7 +2325,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
   void _onWsUserJoined(_WsUserJoined event, Emitter<ChatRoomState> emit) {
     final name = event.userName.isNotEmpty ? event.userName : event.userId;
-    debugPrint('[ChatBloc] user_joined room=$_currentRoomId userId=${event.userId}'
+    debugPrint(
+        '[ChatBloc] user_joined room=$_currentRoomId userId=${event.userId}'
         ' name="${event.userName}" role="${event.userRole}"');
 
     // Add the new member to the local participant list so _rekeyGroup can
@@ -2258,7 +2336,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         !updatedRoom.participants.any((p) => p.userId == event.userId)) {
       final newParticipant = ChatParticipant(
         userId: event.userId,
-        userRole: event.userRole.isNotEmpty ? event.userRole : ChatConfig.roleClient,
+        userRole:
+            event.userRole.isNotEmpty ? event.userRole : ChatConfig.roleClient,
         joinedAt: DateTime.now().toUtc(),
         userName: event.userName.isNotEmpty ? event.userName : null,
       );
@@ -2266,7 +2345,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           participants: [...updatedRoom.participants, newParticipant]);
     }
 
-    emit(state.copyWith(room: updatedRoom, systemNotice: '$name joined the group'));
+    emit(state.copyWith(
+        room: updatedRoom, systemNotice: '$name joined the group'));
 
     // The join frame may omit the user's name/role, and broadcast-stream frames
     // can be missed entirely while WS listeners are (re)attaching — so always
@@ -2304,7 +2384,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       if (isClosed || _currentRoomId != roomId) return;
       final amIAdmin =
           fresh.participants.any((p) => p.userId == _myUserId && p.isAdmin);
-      debugPrint('[ChatBloc] room reconciled — participants=${fresh.participants.length}');
+      debugPrint(
+          '[ChatBloc] room reconciled — participants=${fresh.participants.length}');
       emit(state.copyWith(room: fresh, amIAdmin: amIAdmin));
     } catch (e) {
       debugPrint('[ChatBloc] room reconcile failed: $e');
@@ -2415,7 +2496,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       await _leaveRoom(roomId);
       emit(state.copyWith(isLeaving: false, isDeleted: true));
     } catch (_) {
-      emit(state.copyWith(isLeaving: false, errorMessage: 'Could not leave the group.'));
+      emit(state.copyWith(
+          isLeaving: false, errorMessage: 'Could not leave the group.'));
     }
   }
 
@@ -2444,7 +2526,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   }
 
   void _onRoomDeleted(_RoomDeleted event, Emitter<ChatRoomState> emit) {
-    if (_currentRoomId != null) _clearRoomCache(_currentRoomId!).catchError((_) {});
+    if (_currentRoomId != null)
+      _clearRoomCache(_currentRoomId!).catchError((_) {});
     emit(state.copyWith(isDeleted: true));
   }
 
@@ -2462,14 +2545,16 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       if (senderIk == null) {
         final bundle = await _keyDs.fetchBundle(event.senderId);
         if (bundle == null) {
-          debugPrint('[GroupE2EE] Cannot get IK for ${event.senderId} — skipping');
+          debugPrint(
+              '[GroupE2EE] Cannot get IK for ${event.senderId} — skipping');
           return;
         }
         senderIk = bundle.identityKey;
         await _e2ee.storeIdentityKey(event.senderId, senderIk);
       }
 
-      final key = await _e2ee.decryptSenderKeyFromSender(event.encryptedKey, senderIk);
+      final key =
+          await _e2ee.decryptSenderKeyFromSender(event.encryptedKey, senderIk);
       if (key != null) {
         // Check before storing so we can detect first-time receives.
         final isFirstReceive =
@@ -2486,19 +2571,24 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           final myKey = await _e2ee.loadGroupSenderKey(roomId);
           if (myKey != null) {
             try {
-              final encKey = await _e2ee.encryptSenderKeyForRecipient(myKey, senderIk);
+              final encKey =
+                  await _e2ee.encryptSenderKeyForRecipient(myKey, senderIk);
               await _keyDs.distributeGroupSenderKey(roomId, [
-                GroupSenderKeyRecipient(userId: event.senderId, encryptedKey: encKey),
+                GroupSenderKeyRecipient(
+                    userId: event.senderId, encryptedKey: encKey),
               ]);
-              debugPrint('[GroupE2EE] Bootstrap: distributed our key to ${event.senderId}');
+              debugPrint(
+                  '[GroupE2EE] Bootstrap: distributed our key to ${event.senderId}');
             } catch (_) {}
           }
         }
       } else {
-        debugPrint('[GroupE2EE] decryptSenderKeyFromSender returned null for ${event.senderId}');
+        debugPrint(
+            '[GroupE2EE] decryptSenderKeyFromSender returned null for ${event.senderId}');
       }
     } catch (e) {
-      debugPrint('[GroupE2EE] Failed to store sender key from ${event.senderId}: $e');
+      debugPrint(
+          '[GroupE2EE] Failed to store sender key from ${event.senderId}: $e');
     }
   }
 
@@ -2624,7 +2714,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
   final Map<String, Timer> _typingExpiryTimers = {};
 
-  void _onTypingChanged(ChatRoomTypingChanged event, Emitter<ChatRoomState> emit) {
+  void _onTypingChanged(
+      ChatRoomTypingChanged event, Emitter<ChatRoomState> emit) {
     if (event.isTyping) {
       _typing.markTyping();
     } else {
@@ -2637,7 +2728,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   /// leaving the room) can all just call it.
   void _stopTyping() => _typing.markStopped();
 
-  void _onPresenceReceived(_PresenceReceived event, Emitter<ChatRoomState> emit) {
+  void _onPresenceReceived(
+      _PresenceReceived event, Emitter<ChatRoomState> emit) {
     emit(state.copyWith(presence: {
       ...state.presence,
       event.userId: PresenceSnapshot(
@@ -2725,7 +2817,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   // ── Group E2EE helpers ────────────────────────────────────────────────────
 
   /// On group room join: fetch all members' sender keys, then distribute ours.
-  Future<void> _setupGroupE2EE(String roomId, Emitter<ChatRoomState> emit) async {
+  Future<void> _setupGroupE2EE(
+      String roomId, Emitter<ChatRoomState> emit) async {
     try {
       final entries = await _keyDs.fetchGroupSenderKeys(roomId);
       for (final entry in entries) {
@@ -2738,7 +2831,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           senderIk = bundle.identityKey;
           await _e2ee.storeIdentityKey(entry.userId, senderIk);
         }
-        final key = await _e2ee.decryptSenderKeyFromSender(entry.encryptedKey, senderIk);
+        final key = await _e2ee.decryptSenderKeyFromSender(
+            entry.encryptedKey, senderIk);
         if (key != null) {
           await _e2ee.storePeerGroupSenderKey(roomId, entry.userId, key);
           debugPrint('[GroupE2EE] Stored peer sender key for ${entry.userId}');
@@ -2806,7 +2900,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
       if (recipients.isNotEmpty) {
         await _keyDs.distributeGroupSenderKey(roomId, recipients);
-        debugPrint('[GroupE2EE] Distributed sender key to ${recipients.length} member(s)');
+        debugPrint(
+            '[GroupE2EE] Distributed sender key to ${recipients.length} member(s)');
       }
     } catch (e) {
       debugPrint('[GroupE2EE] _setupGroupE2EE failed: $e');
@@ -2822,8 +2917,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       debugPrint('[GroupE2EE] Re-keyed: new sender key generated');
 
       final participants = state.room?.participants
-          .where((p) => p.userId != _myUserId && !p.isPending)
-          .toList() ?? [];
+              .where((p) => p.userId != _myUserId && !p.isPending)
+              .toList() ??
+          [];
 
       if (participants.isEmpty) return;
 
@@ -2841,7 +2937,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
       if (recipients.isNotEmpty) {
         await _keyDs.distributeGroupSenderKey(roomId, recipients);
-        debugPrint('[GroupE2EE] Distributed re-keyed sender key to ${recipients.length} member(s)');
+        debugPrint(
+            '[GroupE2EE] Distributed re-keyed sender key to ${recipients.length} member(s)');
       }
     } catch (e) {
       debugPrint('[GroupE2EE] _rekeyGroup failed: $e');
@@ -2860,16 +2957,22 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     final hasText = content != null && content.isNotEmpty;
 
     if (roomId == null || !hasText) {
-      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo,
-          replyToId: replyToId, roomId: roomId);
+      _ws.send(content,
+          imageUrl: imageUrl,
+          isVideo: isVideo,
+          replyToId: replyToId,
+          roomId: roomId);
       return;
     }
 
     final senderKey = await _e2ee.loadGroupSenderKey(roomId);
     if (senderKey == null) {
       debugPrint('[GroupE2EE] No sender key — sending plaintext');
-      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo,
-          replyToId: replyToId, roomId: roomId);
+      _ws.send(content,
+          imageUrl: imageUrl,
+          isVideo: isVideo,
+          replyToId: replyToId,
+          roomId: roomId);
       return;
     }
 
@@ -2885,8 +2988,11 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       );
     } catch (e) {
       debugPrint('[GroupE2EE] Encrypt failed, sending plaintext: $e');
-      _ws.send(content, imageUrl: imageUrl, isVideo: isVideo,
-          replyToId: replyToId, roomId: roomId);
+      _ws.send(content,
+          imageUrl: imageUrl,
+          isVideo: isVideo,
+          replyToId: replyToId,
+          roomId: roomId);
     }
   }
 
@@ -2910,8 +3016,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     try {
       final encryptedKey =
           await _e2ee.encryptSenderKeyForRecipient(myKey, ikPub);
-      await _keyDs.distributeGroupSenderKey(
-          roomId, [GroupSenderKeyRecipient(userId: userId, encryptedKey: encryptedKey)]);
+      await _keyDs.distributeGroupSenderKey(roomId, [
+        GroupSenderKeyRecipient(userId: userId, encryptedKey: encryptedKey)
+      ]);
       debugPrint('[GroupE2EE] Distributed sender key to $userId');
     } catch (e) {
       debugPrint('[GroupE2EE] Failed to distribute key to $userId: $e');
@@ -2934,7 +3041,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         .toList();
     if (toDecrypt.isEmpty) return;
 
-    debugPrint('[GroupE2EE] Re-decrypting ${toDecrypt.length} message(s) from $senderId');
+    debugPrint(
+        '[GroupE2EE] Re-decrypting ${toDecrypt.length} message(s) from $senderId');
     final decryptedMap = <String, ChatMessage>{};
     for (final m in toDecrypt) {
       try {
@@ -2950,8 +3058,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     if (decryptedMap.isEmpty) return;
     emit(state.copyWith(
-        messages:
-            _sorted(state.messages.map((m) => decryptedMap[m.id] ?? m).toList())));
+        messages: _sorted(
+            state.messages.map((m) => decryptedMap[m.id] ?? m).toList())));
   }
 
   int? _parseStatusCode(String message) {
@@ -3008,7 +3116,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   void _onParticipantRemoved(
       _ParticipantRemoved event, Emitter<ChatRoomState> emit) {
     if (event.userId == _myUserId) {
-      if (_currentRoomId != null) _clearRoomCache(_currentRoomId!).catchError((_) {});
+      if (_currentRoomId != null)
+        _clearRoomCache(_currentRoomId!).catchError((_) {});
       emit(state.copyWith(
         systemNotice: 'You were removed from this group.',
         isConnected: false,
@@ -3038,9 +3147,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   /// Resolves a userId to its best available display name from the current
   /// participant list. Falls back gracefully so UUIDs never surface in notices.
   String _participantName(String userId) {
-    final p = state.room?.participants
-        .where((p) => p.userId == userId)
-        .firstOrNull;
+    final p =
+        state.room?.participants.where((p) => p.userId == userId).firstOrNull;
     return p?.displayName ?? 'A member';
   }
 

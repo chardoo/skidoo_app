@@ -11,8 +11,6 @@ import 'package:jperg_app/features/admin/data/repositories/app_config_repository
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/presentation/pages/ads_checkout_page.dart';
 import 'package:jperg_app/core/common/widgets/xfile_image.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
@@ -371,9 +369,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Text(
           'Create Campaign',
           style: TextStyle(
@@ -407,7 +403,7 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _buildStep(BuildContext context, AppThemeExtension ext) {

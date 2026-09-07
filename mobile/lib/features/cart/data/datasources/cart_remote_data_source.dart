@@ -3,7 +3,6 @@ import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/core/error/exceptions.dart' as app_ex;
 
@@ -103,7 +102,8 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
     try {
       final res = await _api.dio.post(
         '/client/payments/initialize-images',
-        data: jsonEncode({'email': email, 'clientId': clientId, 'pictureIds': pictureIds}),
+        data: jsonEncode(
+            {'email': email, 'clientId': clientId, 'pictureIds': pictureIds}),
       );
       if (res.data == null) {
         throw const app_ex.ServerException('Initialize-images returned null.');
@@ -137,8 +137,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
       if (res.statusCode == 200 && res.data != null) {
         return res.data as Map<String, dynamic>;
       }
-      throw app_ex.ServerException(
-          'Complete-images failed: ${res.statusCode}');
+      throw app_ex.ServerException('Complete-images failed: ${res.statusCode}');
     } on dio.DioException catch (err) {
       if (err.response == null) throw const app_ex.NetworkException();
       throw app_ex.ServerException(
@@ -154,10 +153,6 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
     // On web, open the image URL directly in a new browser tab — the browser
     // handles the download. saver_gallery and permission_handler are not
     // supported on web.
-    if (kIsWeb) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-      return;
-    }
 
     try {
       await [Permission.storage, Permission.photos].request();
@@ -166,8 +161,7 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
         options: dio.Options(responseType: dio.ResponseType.bytes),
       );
       if (response.statusCode != 200) {
-        throw app_ex.ServerException(
-            'Download failed: ${response.statusCode}');
+        throw app_ex.ServerException('Download failed: ${response.statusCode}');
       }
       final bytes = Uint8List.fromList(response.data as List<int>);
       await SaverGallery.saveImage(

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/app_readiness.dart';
 import 'package:jperg_app/core/deep_links/deep_link_service.dart';
@@ -31,7 +30,6 @@ class _DeepLinkHostState extends State<DeepLinkHost> {
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) return;
 
     // "Signed in" here means a token exists — deliberately NOT
     // AuthService.isAuthenticated, which is seeded in main() from the locally

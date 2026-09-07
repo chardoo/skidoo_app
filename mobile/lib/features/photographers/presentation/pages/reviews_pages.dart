@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -7,7 +6,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/photographers/data/repositories/reviews_repository.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
 
@@ -66,7 +64,9 @@ class _PhotographerReviewsPageState extends State<PhotographerReviewsPage> {
     });
     try {
       final page = await _repo.list(
-        widget.photographerId, stars: _stars, sort: _sort,
+        widget.photographerId,
+        stars: _stars,
+        sort: _sort,
       );
       if (mounted) setState(() => _page = page);
     } catch (e) {
@@ -88,9 +88,7 @@ class _PhotographerReviewsPageState extends State<PhotographerReviewsPage> {
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Text(
           'Reviews ($count)',
           style: TextStyle(
@@ -135,7 +133,8 @@ class _PhotographerReviewsPageState extends State<PhotographerReviewsPage> {
           ),
           Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg.w, vertical: AppSpacing.xs.h,
+              horizontal: AppSpacing.lg.w,
+              vertical: AppSpacing.xs.h,
             ),
             child: Row(
               children: [
@@ -187,7 +186,10 @@ class _PhotographerReviewsPageState extends State<PhotographerReviewsPage> {
                             parent: BouncingScrollPhysics(),
                           ),
                           padding: EdgeInsets.fromLTRB(
-                            AppSpacing.md.w, 0, AppSpacing.md.w, AppSpacing.xxl.h,
+                            AppSpacing.md.w,
+                            0,
+                            AppSpacing.md.w,
+                            AppSpacing.xxl.h,
                           ),
                           itemCount: _page.reviews.length,
                           itemBuilder: (_, i) =>
@@ -198,7 +200,7 @@ class _PhotographerReviewsPageState extends State<PhotographerReviewsPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 
@@ -281,7 +283,9 @@ class ReviewCard extends StatelessWidget {
             Text(
               review.comment!,
               style: TextStyle(
-                color: ext.searchHintColor, fontSize: 13.sp, height: 1.45,
+                color: ext.searchHintColor,
+                fontSize: 13.sp,
+                height: 1.45,
               ),
             ),
           ],
@@ -464,9 +468,7 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Text(
           'Write a Review',
           style: TextStyle(
@@ -479,7 +481,10 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg.w, AppSpacing.md.h, AppSpacing.lg.w, AppSpacing.xxl.h,
+          AppSpacing.lg.w,
+          AppSpacing.md.h,
+          AppSpacing.lg.w,
+          AppSpacing.xxl.h,
         ),
         children: [
           Text(
@@ -602,8 +607,9 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
               // Once the server has said this person already reviewed this
               // photographer, the button stays down: every further tap would
               // fetch the same refusal.
-              onPressed:
-                  (_saving || _rating == 0 || _alreadyReviewed) ? null : _submit,
+              onPressed: (_saving || _rating == 0 || _alreadyReviewed)
+                  ? null
+                  : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: ext.accentGold,
                 disabledBackgroundColor: ext.accentGold.withValues(alpha: 0.4),
@@ -616,7 +622,8 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
                       width: 18.r,
                       height: 18.r,
                       child: const CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white,
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
                     )
                   : Text(
@@ -632,7 +639,7 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 
@@ -671,7 +678,8 @@ class ReviewSubmittedPage extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: ext.accentGold.withValues(alpha: 0.12),
               ),
-              child: Icon(Icons.check_rounded, color: ext.accentGold, size: 40.r),
+              child:
+                  Icon(Icons.check_rounded, color: ext.accentGold, size: 40.r),
             ),
             SizedBox(height: AppSpacing.xl.h),
             Text(
@@ -688,7 +696,9 @@ class ReviewSubmittedPage extends StatelessWidget {
               'the community find great photographers.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: ext.searchHintColor, fontSize: 14.sp, height: 1.4,
+                color: ext.searchHintColor,
+                fontSize: 14.sp,
+                height: 1.4,
               ),
             ),
             SizedBox(height: AppSpacing.xxl.h),
@@ -718,6 +728,6 @@ class ReviewSubmittedPage extends StatelessWidget {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }

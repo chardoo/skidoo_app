@@ -1,5 +1,5 @@
 import 'package:cross_file/cross_file.dart';
-import 'package:flutter/foundation.dart' show Uint8List, kIsWeb;
+import 'package:flutter/foundation.dart' show Uint8List;
 import 'package:flutter/material.dart';
 
 /// Renders a locally-picked [XFile] image on every platform.
@@ -49,10 +49,6 @@ class XFileImage extends StatelessWidget {
 
   Widget _image(BuildContext context, double? available) {
     final cacheWidth = _decodeWidth(context, available);
-    if (kIsWeb) {
-      return Image.network(file.path,
-          width: width, height: height, fit: fit, cacheWidth: cacheWidth);
-    }
     return FutureBuilder<Uint8List>(
       future: file.readAsBytes(),
       builder: (_, snap) => snap.hasData

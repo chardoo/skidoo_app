@@ -6,7 +6,6 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/widgets/image_aspect.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/dark_media_surface.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/purchase/photo_checkout.dart';
 import 'package:jperg_app/core/purchase/photo_selection.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_photo_actions.dart';
@@ -267,7 +266,7 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
       ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   /// The pager: centred in the space between the top bar and the filmstrip,
@@ -310,9 +309,8 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
                   child: PageView.builder(
                     controller: _pageCtrl,
                     itemCount: total,
-                    physics: _zoomed
-                        ? const NeverScrollableScrollPhysics()
-                        : null,
+                    physics:
+                        _zoomed ? const NeverScrollableScrollPhysics() : null,
                     onPageChanged: (i) {
                       setState(() => _index = i);
                       widget.onIndexChanged?.call(i);

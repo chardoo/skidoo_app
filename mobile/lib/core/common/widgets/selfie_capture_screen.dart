@@ -13,11 +13,11 @@ import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 /// Usage:
 /// ```dart
 /// final xFile = await SelfieCaptureScreen.push(context);
-/// if (xFile != null) { /* has a validated face (or web bypass) */ }
+/// if (xFile != null) { /* has a validated face */ }
 /// ```
 ///
-/// Returns an [XFile] when a face is confirmed (or on web without ML validation),
-/// or null if the user cancels.
+/// Returns an [XFile] when a face is confirmed (or when no detector is
+/// available to say otherwise), or null if the user cancels.
 class SelfieCaptureScreen extends StatefulWidget {
   const SelfieCaptureScreen({super.key});
 
@@ -65,15 +65,9 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
         (c) => c.lensDirection == CameraLensDirection.front,
         orElse: () => cameras.first,
       );
-      // On web the camera plugin ignores imageFormatGroup; Platform.isAndroid
-      // throws UnsupportedError on web so we must guard it.
-      ImageFormatGroup? fmt;
-      if (!kIsWeb) {
-        // ignore: avoid_dynamic_calls
-        fmt = (defaultTargetPlatform == TargetPlatform.android)
-            ? ImageFormatGroup.nv21
-            : ImageFormatGroup.bgra8888;
-      }
+      final fmt = defaultTargetPlatform == TargetPlatform.android
+          ? ImageFormatGroup.nv21
+          : ImageFormatGroup.bgra8888;
       final ctrl = CameraController(
         cam,
         ResolutionPreset.high,
@@ -109,8 +103,8 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     });
     try {
       final xFile = await _ctrl!.takePicture();
-      // [FaceCheck] answers true where it can't tell — on web, or when the
-      // platform detector is unavailable — so the photo is simply accepted.
+      // [FaceCheck] answers true where it can't tell — when the platform
+      // detector is unavailable — so the photo is simply accepted.
       final hasFace = await FaceCheck.hasFace(xFile.path);
       if (!mounted) return;
       if (!hasFace) {
@@ -162,9 +156,8 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
           if (_cameraReady)
             CustomPaint(
               painter: _OvalGuidePainter(
-                color: _errorHint != null
-                    ? Colors.red.shade400
-                    : ext.accentGold,
+                color:
+                    _errorHint != null ? Colors.red.shade400 : ext.accentGold,
               ),
             ),
 
@@ -172,15 +165,14 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
           SafeArea(
             bottom: false,
             child: Padding(
-              padding:
-                  EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 10.h),
+              padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg.w, vertical: 10.h),
               child: Row(
                 children: [
-                  if (!kIsWeb)
-                    _CircleIconBtn(
-                      icon: AppBackButton.icon,
-                      onTap: () => Navigator.of(context).pop(null),
-                    ),
+                  _CircleIconBtn(
+                    icon: AppBackButton.icon,
+                    onTap: () => Navigator.of(context).pop(null),
+                  ),
                   const Spacer(),
                   Text(
                     'Take a Selfie',
@@ -206,8 +198,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
             left: 0,
             right: 0,
             child: Container(
-              padding: EdgeInsets.fromLTRB(
-                  24.w, 20.h, 24.w, bottomPad + 32.h),
+              padding: EdgeInsets.fromLTRB(24.w, 20.h, 24.w, bottomPad + 32.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
@@ -247,34 +238,37 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                     ),
                     if (_lastCapturedFile != null) ...[
                       SizedBox(height: AppSpacing.sm.h),
-                      Semantics(button: true, label: 'Use anyway', child: GestureDetector(
-                        onTap: _useAnyway,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 14.w, vertical: 9.h),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10.r),
-                            border: Border.all(
-                                color: Colors.white30, width: 0.8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.check_circle_outline_rounded,
-                                  color: Colors.white70, size: 16),
-                              SizedBox(width: 6.w),
-                              Text(
-                                'Use this photo anyway',
-                                style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w600),
+                      Semantics(
+                          button: true,
+                          label: 'Use anyway',
+                          child: GestureDetector(
+                            onTap: _useAnyway,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 14.w, vertical: 9.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10.r),
+                                border: Border.all(
+                                    color: Colors.white30, width: 0.8),
                               ),
-                            ],
-                          ),
-                        ),
-                      )),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.check_circle_outline_rounded,
+                                      color: Colors.white70, size: 16),
+                                  SizedBox(width: 6.w),
+                                  Text(
+                                    'Use this photo anyway',
+                                    style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )),
                     ],
                     SizedBox(height: 14.h),
                   ],
@@ -292,10 +286,13 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                   SizedBox(height: 22.h),
 
                   // Shutter button
-                  Semantics(button: true, label: 'Capture', child: GestureDetector(
-                    onTap: _cameraReady && !_checking ? _capture : null,
-                    child: _ShutterButton(checking: _checking),
-                  )),
+                  Semantics(
+                      button: true,
+                      label: 'Capture',
+                      child: GestureDetector(
+                        onTap: _cameraReady && !_checking ? _capture : null,
+                        child: _ShutterButton(checking: _checking),
+                      )),
                 ],
               ),
             ),
@@ -315,18 +312,21 @@ class _CircleIconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: 'Camera control', child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36.w,
-        height: 36.w,
-        decoration: const BoxDecoration(
-          color: Colors.black45,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: Colors.white, size: 18.sp),
-      ),
-    ));
+    return Semantics(
+        button: true,
+        label: 'Camera control',
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 36.w,
+            height: 36.w,
+            decoration: const BoxDecoration(
+              color: Colors.black45,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: 18.sp),
+          ),
+        ));
   }
 }
 
@@ -380,8 +380,8 @@ class _OvalGuidePainter extends CustomPainter {
     final rx = size.width * 0.36;
     final ry = size.height * 0.27;
 
-    final oval = Rect.fromCenter(
-        center: Offset(cx, cy), width: rx * 2, height: ry * 2);
+    final oval =
+        Rect.fromCenter(center: Offset(cx, cy), width: rx * 2, height: ry * 2);
     final full = Rect.fromLTWH(0, 0, size.width, size.height);
 
     // Dim surround with oval cut-out

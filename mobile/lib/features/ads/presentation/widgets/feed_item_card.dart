@@ -9,7 +9,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
 import 'package:jperg_app/core/cache/comment_counts.dart';
-import 'package:jperg_app/core/common/widgets/get_app_sheet.dart';
 import 'package:jperg_app/core/navigation/feed_chrome.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -457,11 +456,6 @@ class _FeedItemCardState extends State<FeedItemCard> {
   Future<void> _handleShare() async {
     if (_requireAuth()) return;
     if (_sharing) return;
-    if (kIsWeb) {
-      final ext = Theme.of(context).extension<AppThemeExtension>()!;
-      GetAppSheet.show(context, ext: ext);
-      return;
-    }
     setState(() => _sharing = true);
     try {
       final text =

@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart' as dio;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
@@ -114,15 +113,14 @@ class _ReportSheetState extends State<ReportSheet> {
                 padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 12.h),
                 child: Row(
                   children: [
-                    if (!kIsWeb)
-                      Semantics(
-                          button: true,
-                          label: 'Close',
-                          child: GestureDetector(
-                            onTap: () => Navigator.of(context).pop(),
-                            child: Icon(AppBackButton.icon,
-                                color: ext.greetingColor, size: 18.sp),
-                          )),
+                    Semantics(
+                        button: true,
+                        label: 'Close',
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Icon(AppBackButton.icon,
+                              color: ext.greetingColor, size: 18.sp),
+                        )),
                     SizedBox(width: AppSpacing.md.w),
                     Text(
                       'Why are you reporting this?',

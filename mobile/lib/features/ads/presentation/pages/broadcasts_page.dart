@@ -1,10 +1,8 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/presentation/pages/my_campaigns_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/my_requests_page.dart';
@@ -67,9 +65,7 @@ class _BroadcastsPageState extends State<BroadcastsPage>
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Text(
           'Broadcasts',
           style: TextStyle(
@@ -136,6 +132,6 @@ class _BroadcastsPageState extends State<BroadcastsPage>
       ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }

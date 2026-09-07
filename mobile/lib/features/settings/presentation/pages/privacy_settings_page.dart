@@ -5,7 +5,6 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/settings/data/account_settings_api.dart';
 import 'package:jperg_app/features/settings/presentation/pages/face_data_page.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
@@ -128,7 +127,7 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
       body: _buildBody(),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _buildBody() {

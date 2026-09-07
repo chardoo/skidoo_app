@@ -1,7 +1,6 @@
 import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
@@ -10,7 +9,6 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
@@ -109,9 +107,8 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
 
     final page = Scaffold(
       // The page paints its own background rather than leaving the Scaffold
-      // transparent. `webWrap` below only fills the gutters, and only on web —
-      // on a phone it returns the child untouched, so a transparent Scaffold
-      // had nothing behind it and the screen came out black in both themes.
+      // transparent — with nothing behind it the screen came out black in
+      // both themes.
       backgroundColor: ext.homeBackground,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(
@@ -127,9 +124,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
             backgroundColor: ext.homeBackground,
             surfaceTintColor: Colors.transparent,
             elevation: 0,
-            leading: kIsWeb
-                ? null
-                : const AppBackButton(),
+            leading: const AppBackButton(),
             // Just the event's name. The photographer is credited on each
             // photo in the viewer, and a count pill only restates what the
             // grid underneath already shows.
@@ -192,7 +187,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 

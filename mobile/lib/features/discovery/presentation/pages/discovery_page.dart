@@ -6,7 +6,6 @@ import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
-import 'package:jperg_app/core/utils/focus_utils.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/dark_media_surface.dart';
@@ -50,7 +49,6 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   final _pageCtrl = PageController();
   final _activeCardIndex = ValueNotifier<int>(0);
   final _feedFocusNode = FocusNode();
-  int _currentPage = 0;
 
   /// 0 = Found, 1 = Explore. Guests land on Explore — Found has nothing to
   /// show until they have an account and a face on file, so opening there
@@ -71,9 +69,8 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   ///
   /// This page is guest-only: its Found tab always renders the *signed-out*
   /// gate, sign-in link and all. Simply rebuilding after sign-up would leave a
-  /// now-authenticated user staring at "Already have an account? Sign in" —
-  /// the `_GuestGuard` redirect that would otherwise catch this is web-only,
-  /// so on mobile nothing moves them off the page.
+  /// now-authenticated user staring at "Already have an account? Sign in",
+  /// because nothing else moves them off the page.
   ///
   /// Handing them to /home also puts them on the real Found tab, which asks
   /// for a face (and only a face) if they still have none.
@@ -120,7 +117,6 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
   }
 
   void _onPageChanged(List<EventDiscovery> events, int index) {
-    _currentPage = index;
     _activeCardIndex.value = index;
     // They've found the gesture — the hint has done its job.
     _dismissSwipeHint();
@@ -130,48 +126,6 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
         bloc.add(const DiscoveryLoadMoreRequested());
       }
     }
-  }
-
-  // ── Keyboard navigation (web desktop/laptop only) ────────────────────────
-
-  void _goToPage(int index) {
-    _pageCtrl.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
-  }
-
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    // Don't hijack keys while the user is typing in a text field (e.g. the
-    // comment box): space, j and k must reach the field, not scroll the feed
-    // or open the event.
-    if (isTextInputFocused()) {
-      return KeyEventResult.ignored;
-    }
-    final events = context.read<DiscoveryBloc>().state.events;
-    if (events.isEmpty) return KeyEventResult.ignored;
-    final current = _currentPage;
-
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
-        event.logicalKey == LogicalKeyboardKey.keyJ) {
-      final next = (current + 1).clamp(0, events.length - 1);
-      if (next != current) _goToPage(next);
-      return KeyEventResult.handled;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
-        event.logicalKey == LogicalKeyboardKey.keyK) {
-      final prev = (current - 1).clamp(0, events.length - 1);
-      if (prev != current) _goToPage(prev);
-      return KeyEventResult.handled;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.enter ||
-        event.logicalKey == LogicalKeyboardKey.space) {
-      if (current < events.length) _onCardTap(context, events[current]);
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
   }
 
   void _onCardTap(BuildContext context, EventDiscovery event) {
@@ -216,7 +170,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
           onFeed ? AppThemeExtension.dark.homeBackground : ext.homeBackground,
       body: Focus(
         focusNode: _feedFocusNode,
-        onKeyEvent: kIsWeb ? _handleKeyEvent : null,
+        onKeyEvent: null,
         child: Stack(
           children: [
             // ── Found — the face gate. Guests have no account and therefore
@@ -259,59 +213,59 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
               Positioned.fill(
                 child: DarkMediaSurface(
                   child: BlocBuilder<DiscoveryBloc, DiscoveryState>(
-                  // Exclude savedEventIds/savedItemRecordIds/hiddenEventIds —
-                  // they're handled by inner BlocBuilders inside each card,
-                  // so they must not trigger a full ListView rebuild mid-scroll.
-                  buildWhen: (prev, next) =>
-                      prev.events != next.events ||
-                      prev.isLoading != next.isLoading ||
-                      prev.isLoadingMore != next.isLoadingMore ||
-                      prev.errorMessage != next.errorMessage ||
-                      prev.hasMore != next.hasMore ||
-                      prev.currentUserId != next.currentUserId,
-                  builder: (context, state) {
-                    if (state.isLoading) return const AppLoadingIndicator();
+                    // Exclude savedEventIds/savedItemRecordIds/hiddenEventIds —
+                    // they're handled by inner BlocBuilders inside each card,
+                    // so they must not trigger a full ListView rebuild mid-scroll.
+                    buildWhen: (prev, next) =>
+                        prev.events != next.events ||
+                        prev.isLoading != next.isLoading ||
+                        prev.isLoadingMore != next.isLoadingMore ||
+                        prev.errorMessage != next.errorMessage ||
+                        prev.hasMore != next.hasMore ||
+                        prev.currentUserId != next.currentUserId,
+                    builder: (context, state) {
+                      if (state.isLoading) return const AppLoadingIndicator();
 
-                    if (state.errorMessage != null && state.events.isEmpty) {
-                      return AppErrorView(
-                        message: state.errorMessage!,
-                        icon: Icons.cloud_off_outlined,
-                        onRetry: () => context
-                            .read<DiscoveryBloc>()
-                            .add(const DiscoveryLoadRequested()),
-                      );
-                    }
-
-                    if (state.events.isEmpty) {
-                      return const AppEmptyState(
-                        icon: Icons.photo_library_outlined,
-                        message: 'No events yet',
-                      );
-                    }
-
-                    // Same full-bleed TikTok-style vertical PageView the
-                    // logged-in Home feed uses — FullBleedEventCard runs in
-                    // guest mode here (isAuthenticated: false), so every
-                    // reaction prompts login via onTap instead of acting.
-                    return PageView.builder(
-                      controller: _pageCtrl,
-                      scrollDirection: Axis.vertical,
-                      itemCount: state.events.length,
-                      onPageChanged: (i) => _onPageChanged(state.events, i),
-                      itemBuilder: (context, index) {
-                        final ev = state.events[index];
-                        return FullBleedEventCard(
-                          key: ValueKey('discovery_${ev.id}'),
-                          event: ev,
-                          cardIndex: index,
-                          activeCardIndex: _activeCardIndex,
-                          onTap: () => _onCardTap(context, ev),
-                          onHide: () => _onHide(ev.id),
-                          isAuthenticated: false,
+                      if (state.errorMessage != null && state.events.isEmpty) {
+                        return AppErrorView(
+                          message: state.errorMessage!,
+                          icon: Icons.cloud_off_outlined,
+                          onRetry: () => context
+                              .read<DiscoveryBloc>()
+                              .add(const DiscoveryLoadRequested()),
                         );
-                      },
-                    );
-                  },
+                      }
+
+                      if (state.events.isEmpty) {
+                        return const AppEmptyState(
+                          icon: Icons.photo_library_outlined,
+                          message: 'No events yet',
+                        );
+                      }
+
+                      // Same full-bleed TikTok-style vertical PageView the
+                      // logged-in Home feed uses — FullBleedEventCard runs in
+                      // guest mode here (isAuthenticated: false), so every
+                      // reaction prompts login via onTap instead of acting.
+                      return PageView.builder(
+                        controller: _pageCtrl,
+                        scrollDirection: Axis.vertical,
+                        itemCount: state.events.length,
+                        onPageChanged: (i) => _onPageChanged(state.events, i),
+                        itemBuilder: (context, index) {
+                          final ev = state.events[index];
+                          return FullBleedEventCard(
+                            key: ValueKey('discovery_${ev.id}'),
+                            event: ev,
+                            cardIndex: index,
+                            activeCardIndex: _activeCardIndex,
+                            onTap: () => _onCardTap(context, ev),
+                            onHide: () => _onHide(ev.id),
+                            isAuthenticated: false,
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
               ),
@@ -329,27 +283,25 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                 child: const Center(child: SwipeUpHint(label: '')),
               ),
 
-            // ── Tab bar — floats on top; hidden on web (sidebar handles
-            // logo + auth) ──────────────────────────────────────────────
-            if (!kIsWeb)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  bottom: false,
-                  child: _GuestTabBar(
-                    ext: ext,
-                    tabs: _tabs,
-                    selected: _selectedTab,
-                    onTabChanged: _selectTab,
-                    // Found sits on the page background rather than over the
-                    // feed's media, so its labels need the theme's colours —
-                    // white would vanish in light mode.
-                    onSolid: _selectedTab == 0,
-                  ),
+            // ── Tab bar — floats on top ─────────────────────────────────
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: _GuestTabBar(
+                  ext: ext,
+                  tabs: _tabs,
+                  selected: _selectedTab,
+                  onTabChanged: _selectTab,
+                  // Found sits on the page background rather than over the
+                  // feed's media, so its labels need the theme's colours —
+                  // white would vanish in light mode.
+                  onSolid: _selectedTab == 0,
                 ),
               ),
+            ),
           ],
         ),
       ),

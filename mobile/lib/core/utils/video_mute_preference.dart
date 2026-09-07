@@ -10,8 +10,7 @@ class VideoMutePreference {
   VideoMutePreference._();
 
   /// The current global mute state. `true` = muted.
-  static final ValueNotifier<bool> _notifier =
-      ValueNotifier<bool>(kIsWeb); // muted on web, unmuted on native
+  static final ValueNotifier<bool> _notifier = ValueNotifier<bool>(false);
 
   /// Read the current mute preference.
   static bool get muted => _notifier.value;

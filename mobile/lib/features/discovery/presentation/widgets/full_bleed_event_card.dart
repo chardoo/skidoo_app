@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
@@ -804,7 +803,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                           ),
                       ],
                     ),
-                   
+
                     // The description and the hashtags are one caption, in that
                     // order — the tags run on from the last sentence rather
                     // than starting a block under it, the way a caption is
@@ -917,15 +916,13 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                             child: CircleAvatar(
                               radius: 20.r,
                               backgroundColor: Colors.white24,
-                              backgroundImage:
-                                  event.photographerProfileUrl != null
-                                      ? CachedNetworkImageProvider(
-                                          event.photographerProfileUrl!,
-                                          cacheManager: kIsWeb
-                                              ? null
-                                              : JpergImageCache.instance,
-                                        )
-                                      : null,
+                              backgroundImage: event.photographerProfileUrl !=
+                                      null
+                                  ? CachedNetworkImageProvider(
+                                      event.photographerProfileUrl!,
+                                      cacheManager: JpergImageCache.instance,
+                                    )
+                                  : null,
                               child: event.photographerProfileUrl == null
                                   ? Text(
                                       event.photographerName.isNotEmpty

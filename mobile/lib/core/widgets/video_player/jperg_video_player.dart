@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io' show File;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -127,7 +126,7 @@ class JpergVideoPlayer extends StatefulWidget {
 /// Builds the controller for [url], picking the network or file constructor.
 /// `file://` paths are what the chat's staged-media preview passes.
 VideoPlayerController _controllerFor(String url) {
-  if (!kIsWeb && url.startsWith('file://')) {
+  if (url.startsWith('file://')) {
     return VideoPlayerController.file(File(Uri.parse(url).toFilePath()));
   }
   return VideoPlayerController.networkUrl(Uri.parse(url));
@@ -507,23 +506,6 @@ class _JpergVideoPlayerState extends State<JpergVideoPlayer>
           ClipRRect(borderRadius: widget.borderRadius!, child: playerWidget);
     }
 
-    // ── Web: reveal the controls (mute, scrubber, fullscreen…) as soon as the
-    //    pointer enters the video, and hide again on exit while playing. ──────
-    if (kIsWeb && widget.showControls && ctrl != null) {
-      playerWidget = MouseRegion(
-        onEnter: (_) {
-          _hideTimer?.cancel();
-          if (!_controlsVisible) setState(() => _controlsVisible = true);
-        },
-        onExit: (_) {
-          if (_ctrl?.value.isPlaying == true && _controlsVisible) {
-            setState(() => _controlsVisible = false);
-          }
-        },
-        child: playerWidget,
-      );
-    }
-
     return playerWidget;
   }
 }
@@ -614,7 +596,8 @@ class _ControlsOverlay extends StatelessWidget {
             left: 0,
             right: 0,
             bottom: 0,
-            child: _BottomBar(controller: controller, onFullscreen: onFullscreen),
+            child:
+                _BottomBar(controller: controller, onFullscreen: onFullscreen),
           ),
         ],
       ),

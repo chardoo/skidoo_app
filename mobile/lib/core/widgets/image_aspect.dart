@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:jperg_app/core/utils/cloudinary_transform.dart';
@@ -57,7 +56,7 @@ class ImageAspectCache {
     // fetch it a second time into a different store.
     final stream = CachedNetworkImageProvider(
       measurable,
-      cacheManager: kIsWeb ? null : JpergImageCache.instance,
+      cacheManager: JpergImageCache.instance,
     ).resolve(ImageConfiguration.empty);
 
     late final ImageStreamListener listener;

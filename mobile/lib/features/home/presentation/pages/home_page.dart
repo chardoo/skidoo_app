@@ -4,7 +4,6 @@ import 'package:jperg_app/core/navigation/chrome_visibility.dart';
 import 'package:jperg_app/core/navigation/feed_chrome.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -45,15 +44,12 @@ class HomePage extends StatelessWidget {
   static bool get isLive => _liveCount > 0;
   static int _liveCount = 0;
 
-  /// Tracks the active tab index on web so the [WebSidebar] can highlight
-  /// the correct item without being coupled to [_HomeViewState].
-  static final webSelectedTab = ValueNotifier<int>(0);
-
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => sl<HomeBloc>()..add(const HomeInitialized())),
+        BlocProvider(
+            create: (_) => sl<HomeBloc>()..add(const HomeInitialized())),
         BlocProvider(
             create: (_) =>
                 sl<DiscoveryBloc>()..add(const DiscoveryLoadRequested())),
@@ -61,8 +57,8 @@ class HomePage extends StatelessWidget {
         BlocProvider(create: (_) => sl<FoundBloc>()),
         BlocProvider(create: (_) => sl<PhotographerBloc>()),
         BlocProvider(
-            create: (_) => sl<UserProfileBloc>()
-              ..add(const UserProfileLoadRequested())),
+            create: (_) =>
+                sl<UserProfileBloc>()..add(const UserProfileLoadRequested())),
         BlocProvider.value(value: sl<CartBloc>()),
         // ChatRoomsBloc is provided at the root level (app.dart) so that
         // the unread-count badge works even when the user is on DiscoveryPage.
@@ -81,10 +77,6 @@ class _HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<_HomeView> {
-  // SharedPreferences key used to persist the active tab on web so that a
-  // page refresh restores the user to the same section they were viewing.
-  static const _kWebTabKey = 'home.selected_tab';
-
   int _selectedTab = 0;
 
   // Tab 0 starts with chrome hidden — a tap on a feed card is what summons it.
@@ -106,11 +98,6 @@ class _HomeViewState extends State<_HomeView> {
     super.initState();
     HomePage._liveCount++;
     HomePage.tabRequest.addListener(_onTabRequest);
-    // On web: restore the tab the user was viewing before the last refresh.
-    // Deferred to post-frame so Navigator/BLoC providers are fully ready.
-    if (kIsWeb) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _restoreWebTab());
-    }
     // Nudge the user to add their reference photos (first login + every 4 days)
     // until they've done so. Deferred so the home tree is laid out first.
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybePromptAddFaces());
@@ -309,21 +296,6 @@ class _HomeViewState extends State<_HomeView> {
     );
   }
 
-  /// Reads the last-used tab from SharedPreferences and switches to it.
-  /// Called once on first frame (web only). No-ops silently on any error.
-  Future<void> _restoreWebTab() async {
-    if (!mounted) return;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getInt(_kWebTabKey) ?? 0;
-      if (mounted && saved != _selectedTab) {
-        _changeTab(saved);
-      }
-    } catch (_) {
-      // SharedPreferences unavailable — stay on tab 0.
-    }
-  }
-
   @override
   void dispose() {
     HomePage._liveCount--;
@@ -366,19 +338,6 @@ class _HomeViewState extends State<_HomeView> {
     // them scroll. A bar left narrowed on a short one has no gesture that
     // could open it again — see [ChromeVisibility.reset].
     ChromeVisibility.reset();
-    if (kIsWeb) {
-      // Pop any sub-pages (SearchResults, EventPictures, AccountPage, etc.)
-      // that were pushed on top of HomePage before switching tabs.
-      Navigator.of(context).popUntil(
-        (route) =>
-            route.settings.name == HomePage.routeName || route.isFirst,
-      );
-      HomePage.webSelectedTab.value = index;
-      // Persist for page-refresh recovery (fire-and-forget).
-      SharedPreferences.getInstance()
-          .then((p) => p.setInt(_kWebTabKey, index))
-          .ignore();
-    }
     VideoPauseNotifier.pauseAll();
     _downAccum = 0;
 
@@ -435,7 +394,7 @@ class _HomeViewState extends State<_HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    if (!kIsWeb && isTablet(context)) {
+    if (isTablet(context)) {
       return _buildTabletLayout(context);
     }
     return _buildPhoneLayout(context);
@@ -480,26 +439,24 @@ class _HomeViewState extends State<_HomeView> {
         // Listens rather than reading this build's value: a tap on a feed card
         // flips [FeedChrome] from outside this widget entirely, and nothing
         // here would know to rebuild.
-        bottomNavigationBar: kIsWeb
-            ? null
-            : ValueListenableBuilder<bool>(
-                valueListenable: FeedChrome.visible,
-                builder: (context, navVisible, child) => AnimatedSlide(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  offset: navVisible ? Offset.zero : const Offset(0, 1),
-                  child: IgnorePointer(ignoring: !navVisible, child: child),
-                ),
-                child: BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
-                  selector: (state) =>
-                      state.unreadCounts.values.fold(0, (sum, c) => sum + c),
-                  builder: (context, totalUnread) => AppNavbar(
-                    selectedIndex: _selectedTab,
-                    onchange: (i) => _changeTab(i, fromTap: true),
-                    messageUnreadCount: totalUnread,
-                  ),
-                ),
-              ),
+        bottomNavigationBar: ValueListenableBuilder<bool>(
+          valueListenable: FeedChrome.visible,
+          builder: (context, navVisible, child) => AnimatedSlide(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            offset: navVisible ? Offset.zero : const Offset(0, 1),
+            child: IgnorePointer(ignoring: !navVisible, child: child),
+          ),
+          child: BlocSelector<ChatRoomsBloc, ChatRoomsState, int>(
+            selector: (state) =>
+                state.unreadCounts.values.fold(0, (sum, c) => sum + c),
+            builder: (context, totalUnread) => AppNavbar(
+              selectedIndex: _selectedTab,
+              onchange: (i) => _changeTab(i, fromTap: true),
+              messageUnreadCount: totalUnread,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -585,4 +542,3 @@ class _HomeViewState extends State<_HomeView> {
     );
   }
 }
-

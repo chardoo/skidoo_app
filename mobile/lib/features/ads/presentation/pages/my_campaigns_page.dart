@@ -7,8 +7,6 @@ import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/features/ads/presentation/pages/campaign_details_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/campaign_row.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
 class MyCampaignsPage extends StatefulWidget {
@@ -71,9 +69,6 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
     }
   }
 
-
-
-
   Future<void> _showEditSheet(AdCampaign campaign) async {
     // Straight through on what the list already has. The details screen
     // refetches on init for the ad sets and the performance figures, so
@@ -94,23 +89,23 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
 
     final page = Scaffold(
       backgroundColor: ext.homeBackground,
-      appBar: widget.embedded ? null : AppBar(
-        backgroundColor: ext.homeBackground,
-        elevation: 0,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
-        title: Text(
-          'My Campaigns',
-          style: TextStyle(
-            color: ext.greetingColor,
-            fontSize: 17.sp,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
-          ),
-        ),
-        centerTitle: false,
-      ),
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              backgroundColor: ext.homeBackground,
+              elevation: 0,
+              leading: const AppBackButton(),
+              title: Text(
+                'My Campaigns',
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontSize: 17.sp,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              centerTitle: false,
+            ),
       body: _loading
           ? const AppLoadingIndicator()
           : _errorMessage != null
@@ -127,11 +122,13 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
                       // sentence to read — so it is the action, and it opens
                       // the wizard.
                       action: TextButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const CampaignWizardPage(),
-                          ),
-                        ).then((_) => _load()),
+                        onPressed: () => Navigator.of(context)
+                            .push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const CampaignWizardPage(),
+                              ),
+                            )
+                            .then((_) => _load()),
                         child: Text(
                           'Create a campaign to get started.',
                           style: TextStyle(
@@ -158,10 +155,6 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
                       ),
                     ),
     );
-    return widget.embedded
-        ? page
-        : webWrap(page, backgroundColor: ext.homeBackground);
+    return widget.embedded ? page : page;
   }
 }
-
-

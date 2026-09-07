@@ -14,8 +14,6 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_panel_route.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_media_limits.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
@@ -37,11 +35,11 @@ class CreateGroupPage extends StatefulWidget {
 
 class _CreateGroupPageState extends State<CreateGroupPage> {
   Future<void> _next(List<ShareableUser> members) async {
-    // Panel-shaped on web so step two stays inside the messages column instead
-    // of covering the app; a plain full-screen push on every other platform.
-    final room = await showWebPanelPage<ChatRoom>(
-      context,
-      _GroupNamePage(members: members),
+    final room =
+        await Navigator.of(context, rootNavigator: true).push<ChatRoom>(
+      MaterialPageRoute<ChatRoom>(
+        builder: (_) => _GroupNamePage(members: members),
+      ),
     );
     if (room != null && mounted) Navigator.of(context).pop(room);
   }
@@ -107,7 +105,8 @@ class _GroupNamePageState extends State<_GroupNamePage> {
     // the user is still typing the name, and so a failure is reported here
     // where it can be retried — not as part of creating the group.
     try {
-      final url = await _uploadImage(File(picked.path), mimeType: picked.mimeType);
+      final url =
+          await _uploadImage(File(picked.path), mimeType: picked.mimeType);
       if (!mounted) return;
       setState(() {
         _uploadedPhotoUrl = url;
@@ -227,7 +226,6 @@ class _GroupNamePageState extends State<_GroupNamePage> {
                 ),
               ),
               SizedBox(height: AppSpacing.xxl.h),
-
               const AppSectionLabel('Group name'),
               SizedBox(height: AppSpacing.sm.h),
               TextField(
@@ -258,7 +256,6 @@ class _GroupNamePageState extends State<_GroupNamePage> {
                   ),
                 ),
               ),
-
               if (_error != null) ...[
                 SizedBox(height: AppSpacing.md.h),
                 AppInlineBanner(
@@ -266,7 +263,6 @@ class _GroupNamePageState extends State<_GroupNamePage> {
                   onDismiss: () => setState(() => _error = null),
                 ),
               ],
-
               SizedBox(height: AppSpacing.xl.h),
               AppSectionLabel(
                   'Pending group members (${widget.members.length})'),
@@ -277,7 +273,7 @@ class _GroupNamePageState extends State<_GroupNamePage> {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 
@@ -418,8 +414,7 @@ class _MembersSummary extends StatelessWidget {
       padding: EdgeInsets.all(AppSpacing.md.w),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.md.r),
-        border:
-            Border.all(color: ext.searchHintColor.withValues(alpha: 0.3)),
+        border: Border.all(color: ext.searchHintColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

@@ -7,7 +7,6 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/admin/data/models/app_config.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
 class AdminSettingsPage extends StatefulWidget {
@@ -50,12 +49,23 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final config = await _repo.fetch();
-      if (mounted) setState(() { _applyConfig(config); _loading = false; });
+      if (mounted)
+        setState(() {
+          _applyConfig(config);
+          _loading = false;
+        });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted)
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
     }
   }
 
@@ -126,7 +136,8 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
           : _error != null
               ? AppErrorView(message: _error!, onRetry: _load)
               : ListView(
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.lg.h),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg.w, vertical: AppSpacing.lg.h),
                   children: [
                     _SectionHeader('Feed Visibility', ext),
                     _ConfigCard(ext: ext, children: [
@@ -140,13 +151,13 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                       _Divider(ext),
                       _Toggle(
                         label: 'Show requests in feed',
-                        subtitle: 'Display community request cards between events',
+                        subtitle:
+                            'Display community request cards between events',
                         value: _requestsEnabled,
                         onChanged: (v) => setState(() => _requestsEnabled = v),
                         ext: ext,
                       ),
                     ]),
-
                     SizedBox(height: AppSpacing.xl.h),
                     _SectionHeader('Feed Frequency', ext),
                     _ConfigCard(ext: ext, children: [
@@ -184,19 +195,18 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                         ext: ext,
                       ),
                     ]),
-
                     SizedBox(height: AppSpacing.xl.h),
                     _SectionHeader('Comments', ext),
                     _ConfigCard(ext: ext, children: [
                       _Toggle(
                         label: 'Comments enabled globally',
-                        subtitle: 'Kill switch — hides all comment sections when off',
+                        subtitle:
+                            'Kill switch — hides all comment sections when off',
                         value: _commentsEnabled,
                         onChanged: (v) => setState(() => _commentsEnabled = v),
                         ext: ext,
                       ),
                     ]),
-
                     SizedBox(height: AppSpacing.xl.h),
                     _SectionHeader('Campaign Limits', ext),
                     _ConfigCard(ext: ext, children: [
@@ -208,14 +218,12 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                         ext: ext,
                       ),
                     ]),
-
                     SizedBox(height: AppSpacing.xxxl.h),
                   ],
                 ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
-
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
@@ -327,7 +335,8 @@ class _StepperRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.md.h),
+      padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg.w, vertical: AppSpacing.md.h),
       child: Row(
         children: [
           Expanded(
@@ -335,12 +344,12 @@ class _StepperRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: TextStyle(
-                        color: ext.greetingColor, fontSize: 14.sp)),
+                    style:
+                        TextStyle(color: ext.greetingColor, fontSize: 14.sp)),
                 SizedBox(height: 2.h),
                 Text(subtitle,
-                    style: TextStyle(
-                        color: ext.searchHintColor, fontSize: 12.sp)),
+                    style:
+                        TextStyle(color: ext.searchHintColor, fontSize: 12.sp)),
               ],
             ),
           ),
@@ -387,25 +396,28 @@ class _StepBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(button: true, label: 'Step', child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 30.w,
-        height: 30.w,
-        decoration: BoxDecoration(
-          color: onTap != null
-              ? ext.accentGold.withValues(alpha: 0.12)
-              : ext.searchFieldFill,
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: Icon(
-          icon,
-          size: 16.sp,
-          color: onTap != null ? ext.accentGold : ext.searchHintColor,
-        ),
-      ),
-    ));
+    return Semantics(
+        button: true,
+        label: 'Step',
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 30.w,
+            height: 30.w,
+            decoration: BoxDecoration(
+              color: onTap != null
+                  ? ext.accentGold.withValues(alpha: 0.12)
+                  : ext.searchFieldFill,
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              size: 16.sp,
+              color: onTap != null ? ext.accentGold : ext.searchHintColor,
+            ),
+          ),
+        ));
   }
 }
 
@@ -446,7 +458,8 @@ class _BudgetRowState extends State<_BudgetRow> {
   Widget build(BuildContext context) {
     final ext = widget.ext;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: AppSpacing.md.h),
+      padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg.w, vertical: AppSpacing.md.h),
       child: Row(
         children: [
           Expanded(
@@ -454,7 +467,8 @@ class _BudgetRowState extends State<_BudgetRow> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(widget.label,
-                    style: TextStyle(color: ext.greetingColor, fontSize: 14.sp)),
+                    style:
+                        TextStyle(color: ext.greetingColor, fontSize: 14.sp)),
                 SizedBox(height: 2.h),
                 Text(widget.subtitle,
                     style:

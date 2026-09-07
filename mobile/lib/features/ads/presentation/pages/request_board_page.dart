@@ -9,8 +9,6 @@ import 'package:jperg_app/features/ads/presentation/feed_promos.dart';
 import 'package:jperg_app/features/ads/request_board_access.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/feed_item_card.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
@@ -210,7 +208,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb ? null : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Text(
           'Request Board',
           style: TextStyle(
@@ -247,111 +245,112 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                   'and track it under My Requests.',
             )
           : _loading
-          ? const AppLoadingIndicator()
-          : _errorMessage != null
-              ? AppErrorView(
-                  message: _errorMessage!,
-                  icon: Icons.cloud_off_outlined,
-                  onRetry: _load,
-                )
-              : Builder(builder: (context) {
-                  final visible = _requests
-                      .where((r) => !_hiddenIds.contains(r.id))
-                      .toList();
-                  final hasAd = _sponsoredAd != null;
-                  final adOffset = hasAd ? 1 : 0;
-                  final itemCount =
-                      adOffset + visible.length + (_loadingMore ? 1 : 0);
+              ? const AppLoadingIndicator()
+              : _errorMessage != null
+                  ? AppErrorView(
+                      message: _errorMessage!,
+                      icon: Icons.cloud_off_outlined,
+                      onRetry: _load,
+                    )
+                  : Builder(builder: (context) {
+                      final visible = _requests
+                          .where((r) => !_hiddenIds.contains(r.id))
+                          .toList();
+                      final hasAd = _sponsoredAd != null;
+                      final adOffset = hasAd ? 1 : 0;
+                      final itemCount =
+                          adOffset + visible.length + (_loadingMore ? 1 : 0);
 
-                  if (!hasAd && visible.isEmpty) {
-                    return const AppEmptyState(
-                      icon: Icons.inbox_outlined,
-                      message: 'No open requests found',
-                    );
-                  }
-                  return NotificationListener<ScrollNotification>(
-                    onNotification: (n) {
-                      if (n is ScrollUpdateNotification &&
-                          n.metrics.pixels >= n.metrics.maxScrollExtent - 800) {
-                        _loadMore();
+                      if (!hasAd && visible.isEmpty) {
+                        return const AppEmptyState(
+                          icon: Icons.inbox_outlined,
+                          message: 'No open requests found',
+                        );
                       }
-                      return false;
-                    },
-                    child: RefreshIndicator(
-                      onRefresh: _load,
-                      color: ext.accentGold,
-                      child: ListView.builder(
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: itemCount,
-                        itemBuilder: (_, i) {
-                          // Loading spinner at the very end
-                          if (i == adOffset + visible.length) {
-                            return Padding(
-                              padding: EdgeInsets.symmetric(
-                                  vertical: AppSpacing.xl.h),
-                              child: const AppLoadingIndicator(),
-                            );
+                      return NotificationListener<ScrollNotification>(
+                        onNotification: (n) {
+                          if (n is ScrollUpdateNotification &&
+                              n.metrics.pixels >=
+                                  n.metrics.maxScrollExtent - 800) {
+                            _loadMore();
                           }
-
-                          // Sponsored ad at position 0
-                          if (hasAd && i == 0) {
-                            final ad = _sponsoredAd!;
-                            // Boxed: the same poster the feed shows, as a tile
-                            // in a list. See [FeedItemCard.fullBleed].
-                            return _BoardTile(
-                              child: FeedItemCard(
-                                fullBleed: false,
-                                key: ValueKey('sponsored_${ad.adId}'),
-                                data: FeedItemData.fromAd(
-                                  ad,
-                                  onCtaTap: () => _repo.trackClick(
-                                    adId: ad.adId,
-                                    campaignId: ad.campaignId,
-                                    impressionId: _sponsoredImpressionId,
-                                  ),
-                                  onInit: () async {
-                                    final id = await _repo.trackImpression(
-                                      adId: ad.adId,
-                                      adsetId: ad.adsetId,
-                                      campaignId: ad.campaignId,
-                                      placement: 'request_board',
-                                      impressionToken: ad.impressionToken,
-                                    );
-                                    if (mounted) {
-                                      setState(
-                                          () => _sponsoredImpressionId = id);
-                                    }
-                                  },
-                                ),
-                                onHide: () =>
-                                    setState(() => _sponsoredAd = null),
-                              ),
-                            );
-                          }
-
-                          final req = visible[i - adOffset];
-                          return _BoardTile(
-                            child: FeedItemCard(
-                              fullBleed: false,
-                              data: FeedItemData.fromRequest(
-                                req,
-                                // Your own request is one you cannot answer, so
-                                // the card shows its count without the button.
-                                onAnswerTap: req.requesterId == _myUserId
-                                    ? null
-                                    : () => _answer(req),
-                              ),
-                              onHide: () =>
-                                  setState(() => _hiddenIds.add(req.id)),
-                            ),
-                          );
+                          return false;
                         },
-                      ),
-                    ),
-                  );
-                }),
+                        child: RefreshIndicator(
+                          onRefresh: _load,
+                          color: ext.accentGold,
+                          child: ListView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: itemCount,
+                            itemBuilder: (_, i) {
+                              // Loading spinner at the very end
+                              if (i == adOffset + visible.length) {
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: AppSpacing.xl.h),
+                                  child: const AppLoadingIndicator(),
+                                );
+                              }
+
+                              // Sponsored ad at position 0
+                              if (hasAd && i == 0) {
+                                final ad = _sponsoredAd!;
+                                // Boxed: the same poster the feed shows, as a tile
+                                // in a list. See [FeedItemCard.fullBleed].
+                                return _BoardTile(
+                                  child: FeedItemCard(
+                                    fullBleed: false,
+                                    key: ValueKey('sponsored_${ad.adId}'),
+                                    data: FeedItemData.fromAd(
+                                      ad,
+                                      onCtaTap: () => _repo.trackClick(
+                                        adId: ad.adId,
+                                        campaignId: ad.campaignId,
+                                        impressionId: _sponsoredImpressionId,
+                                      ),
+                                      onInit: () async {
+                                        final id = await _repo.trackImpression(
+                                          adId: ad.adId,
+                                          adsetId: ad.adsetId,
+                                          campaignId: ad.campaignId,
+                                          placement: 'request_board',
+                                          impressionToken: ad.impressionToken,
+                                        );
+                                        if (mounted) {
+                                          setState(() =>
+                                              _sponsoredImpressionId = id);
+                                        }
+                                      },
+                                    ),
+                                    onHide: () =>
+                                        setState(() => _sponsoredAd = null),
+                                  ),
+                                );
+                              }
+
+                              final req = visible[i - adOffset];
+                              return _BoardTile(
+                                child: FeedItemCard(
+                                  fullBleed: false,
+                                  data: FeedItemData.fromRequest(
+                                    req,
+                                    // Your own request is one you cannot answer, so
+                                    // the card shows its count without the button.
+                                    onAnswerTap: req.requesterId == _myUserId
+                                        ? null
+                                        : () => _answer(req),
+                                  ),
+                                  onHide: () =>
+                                      setState(() => _hiddenIds.add(req.id)),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    }),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 

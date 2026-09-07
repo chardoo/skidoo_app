@@ -29,7 +29,6 @@ import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/saved_items_page.dart';
 import 'package:jperg_app/features/follow/presentation/pages/follow_list_page.dart';
 import 'package:jperg_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -97,18 +96,16 @@ class _AccountView extends StatelessWidget {
       },
       builder: (context, state) {
         final page = Scaffold(
-          // AccountPage is pushed as its own standalone route (avatar tap /
-          // web sidebar), not nested in HomePage's IndexedStack like the
-          // bottom-nav tabs — so unlike those, it has no themed ancestor
-          // Scaffold behind it to fall back to. Transparent here left mobile
-          // showing the raw black canvas; webWrap() only paints a background
-          // on web (kIsWeb), so mobile needs its own explicit color.
+          // AccountPage is pushed as its own standalone route (avatar tap),
+          // not nested in HomePage's IndexedStack like the bottom-nav tabs —
+          // so unlike those, it has no themed ancestor Scaffold behind it to
+          // fall back to. Transparent here left it showing the raw black
+          // canvas, so it needs its own explicit color.
           backgroundColor: ext.homeBackground,
           appBar: AppBar(
             elevation: 0,
             centerTitle: true,
             backgroundColor: Colors.transparent,
-            automaticallyImplyLeading: !kIsWeb,
             title: Text(
               AppLocalizations.of(context)!.accountTitle,
               style: TextStyle(
@@ -238,7 +235,7 @@ class _AccountView extends StatelessWidget {
                   ),
                 ),
         );
-        return webWrap(page, backgroundColor: ext.homeBackground);
+        return page;
       },
     );
   }
@@ -446,8 +443,8 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   SizedBox(height: AppSpacing.xl.h),
 
                   // ── Interests section ──────────────────────────────────
-                  AppSectionLabel(
-                      AppLocalizations.of(context)!.accountPhotographyInterests),
+                  AppSectionLabel(AppLocalizations.of(context)!
+                      .accountPhotographyInterests),
                   SizedBox(height: 10.h),
                   StatefulBuilder(
                     builder: (context, setChipState) => Wrap(
@@ -513,7 +510,6 @@ class _EditProfileCardState extends State<_EditProfileCard> {
   }
 }
 
-
 class _ProfileField extends StatelessWidget {
   const _ProfileField({
     required this.controller,
@@ -542,7 +538,6 @@ class _ProfileField extends StatelessWidget {
 // Values use the standard formats the API expects (ISO-3166 country, IETF
 // language, `xx_XX` locale, IANA timezone). Any previously-saved value that
 // isn't in a list is preserved as a selectable fallback by [_ProfileDropdown].
-
 
 /// Dropdown styled to match [_ProfileField], writing the selected value back to
 /// [controller] so the existing save path is unchanged.
@@ -1293,140 +1288,139 @@ class _AdsCard extends StatelessWidget {
     required bool isAdmin,
     required String role,
   }) {
-            // Posting a request, and managing what you posted, are for
-            // everyone — most requests come from clients. Only *browsing* the
-            // board is a creator's screen, because a job going begging means
-            // nothing to somebody who cannot take it. See
-            // [canBrowseRequestBoard].
-            final showRequests = cfg.requestsEnabled;
-            final showBoard =
-                showRequests && (isAdmin || canBrowseRequestBoard(role));
-            // Campaigns are for everyone, deliberately: anyone can buy an ad,
-            // and everyone already sees them running in the feed. This must
-            // never pick up a role test.
-            final showAds = cfg.adsEnabled;
+    // Posting a request, and managing what you posted, are for
+    // everyone — most requests come from clients. Only *browsing* the
+    // board is a creator's screen, because a job going begging means
+    // nothing to somebody who cannot take it. See
+    // [canBrowseRequestBoard].
+    final showRequests = cfg.requestsEnabled;
+    final showBoard = showRequests && (isAdmin || canBrowseRequestBoard(role));
+    // Campaigns are for everyone, deliberately: anyone can buy an ad,
+    // and everyone already sees them running in the feed. This must
+    // never pick up a role test.
+    final showAds = cfg.adsEnabled;
 
-            // "Creators" used to seed this list — it has moved elsewhere. Every
-            // block below guards its own leading divider, so the list starting
-            // empty is fine.
-            final tiles = <Widget>[];
+    // "Creators" used to seed this list — it has moved elsewhere. Every
+    // block below guards its own leading divider, so the list starting
+    // empty is fine.
+    final tiles = <Widget>[];
 
-            if (showRequests || showAds) {
-              if (tiles.isNotEmpty) {
-                tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
-              }
-              tiles.add(_AdsListTile(
-                icon: Icons.add_circle_outline_rounded,
-                iconColor: const Color(0xFF10B981),
-                title: 'Create',
-                subtitle: 'Post a request or start an ad campaign',
-                ext: ext,
-                onTap: () => CreateBottomSheet.show(context),
-              ));
-            }
+    if (showRequests || showAds) {
+      if (tiles.isNotEmpty) {
+        tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+      }
+      tiles.add(_AdsListTile(
+        icon: Icons.add_circle_outline_rounded,
+        iconColor: const Color(0xFF10B981),
+        title: 'Create',
+        subtitle: 'Post a request or start an ad campaign',
+        ext: ext,
+        onTap: () => CreateBottomSheet.show(context),
+      ));
+    }
 
-            // Browsing other people's open requests — creators and admins.
-            // Offering this to a client sent them to a board the server will
-            // only ever answer with an empty list.
-            if (showBoard) {
-              if (tiles.isNotEmpty) {
-                tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
-              }
-              tiles.add(_AdsListTile(
-                icon: Icons.inbox_outlined,
-                iconColor: ext.infoBlue,
-                title: 'Request Board',
-                subtitle: 'Browse open requests from others',
-                ext: ext,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const RequestBoardPage()),
-                ),
-              ));
-            }
+    // Browsing other people's open requests — creators and admins.
+    // Offering this to a client sent them to a board the server will
+    // only ever answer with an empty list.
+    if (showBoard) {
+      if (tiles.isNotEmpty) {
+        tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+      }
+      tiles.add(_AdsListTile(
+        icon: Icons.inbox_outlined,
+        iconColor: ext.infoBlue,
+        title: 'Request Board',
+        subtitle: 'Browse open requests from others',
+        ext: ext,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const RequestBoardPage()),
+        ),
+      ));
+    }
 
-            // What *you* posted, whoever you are.
-            if (showRequests) {
-              if (tiles.isNotEmpty) {
-                tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
-              }
-              tiles.add(_AdsListTile(
-                icon: Icons.edit_note_rounded,
-                iconColor: const Color(0xFF10B981),
-                title: 'My Requests',
-                subtitle: 'Manage the requests you posted',
-                ext: ext,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const MyRequestsPage()),
-                ),
-              ));
-            }
+    // What *you* posted, whoever you are.
+    if (showRequests) {
+      if (tiles.isNotEmpty) {
+        tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+      }
+      tiles.add(_AdsListTile(
+        icon: Icons.edit_note_rounded,
+        iconColor: const Color(0xFF10B981),
+        title: 'My Requests',
+        subtitle: 'Manage the requests you posted',
+        ext: ext,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const MyRequestsPage()),
+        ),
+      ));
+    }
 
-            if (showAds) {
-              if (tiles.isNotEmpty) {
-                tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
-              }
-              tiles.add(_AdsListTile(
-                icon: Icons.rocket_launch_rounded,
-                iconColor: Colors.deepOrange,
-                title: 'My Campaigns',
-                subtitle: 'Track and top up your ad campaigns',
-                ext: ext,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const MyCampaignsPage()),
-                ),
-              ));
-            }
+    if (showAds) {
+      if (tiles.isNotEmpty) {
+        tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+      }
+      tiles.add(_AdsListTile(
+        icon: Icons.rocket_launch_rounded,
+        iconColor: Colors.deepOrange,
+        title: 'My Campaigns',
+        subtitle: 'Track and top up your ad campaigns',
+        ext: ext,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const MyCampaignsPage()),
+        ),
+      ));
+    }
 
-            if (isAdmin) {
-              if (tiles.isNotEmpty) {
-                tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
-              }
-              tiles.add(_AdsListTile(
-                icon: Icons.admin_panel_settings_rounded,
-                iconColor: const Color(0xFFEF4444),
-                title: 'Admin Settings',
-                subtitle: 'Configure feed, ads, and app-wide settings',
-                ext: ext,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AdminSettingsPage()),
-                ),
-              ));
-            }
+    if (isAdmin) {
+      if (tiles.isNotEmpty) {
+        tiles.add(const Divider(height: 1, indent: 16, endIndent: 16));
+      }
+      tiles.add(_AdsListTile(
+        icon: Icons.admin_panel_settings_rounded,
+        iconColor: const Color(0xFFEF4444),
+        title: 'Admin Settings',
+        subtitle: 'Configure feed, ads, and app-wide settings',
+        ext: ext,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AdminSettingsPage()),
+        ),
+      ));
+    }
 
-            // Nothing to promote: requests and ads both switched off for a
-            // non-admin. Reachable now that "Creators" no longer holds the list
-            // open — a card with a heading and no rows under it would read as
-            // something that failed to load.
-            if (tiles.isEmpty) return const SizedBox.shrink();
+    // Nothing to promote: requests and ads both switched off for a
+    // non-admin. Reachable now that "Creators" no longer holds the list
+    // open — a card with a heading and no rows under it would read as
+    // something that failed to load.
+    if (tiles.isEmpty) return const SizedBox.shrink();
 
-            return Material(
-              // Material, not a decorated Container: ListTile paints its
-              // highlight and ink splash onto the nearest Material ancestor,
-              // so a DecoratedBox between the two swallows them (and trips an
-              // assertion in debug). Same treatment as every sibling card.
-              color: ext.cardSurface,
-              borderRadius: BorderRadius.circular(AppRadius.md.r),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
-                    child: Text(
-                      'ADS & PROMOTIONS',
-                      style: TextStyle(
-                        color: ext.searchHintColor,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ),
-                  ...tiles,
-                  SizedBox(height: AppSpacing.xs.h),
-                ],
+    return Material(
+      // Material, not a decorated Container: ListTile paints its
+      // highlight and ink splash onto the nearest Material ancestor,
+      // so a DecoratedBox between the two swallows them (and trips an
+      // assertion in debug). Same treatment as every sibling card.
+      color: ext.cardSurface,
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 6.h),
+            child: Text(
+              'ADS & PROMOTIONS',
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.8,
               ),
-            );
+            ),
+          ),
+          ...tiles,
+          SizedBox(height: AppSpacing.xs.h),
+        ],
+      ),
+    );
   }
 }
 
@@ -1531,13 +1525,6 @@ class _FaceRecognitionCardState extends State<_FaceRecognitionCard> {
             subtitle: 'Train model to find you in event photos',
             ext: ext,
             onTap: () {
-              if (kIsWeb) {
-                AppSnackBar.info(
-                  context,
-                  'Face recognition is only available on the mobile app.',
-                );
-                return;
-              }
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const FaceRecognitionPage()),
               );

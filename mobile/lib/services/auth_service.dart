@@ -60,70 +60,46 @@ class AuthService {
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 
-  // ── Web backend cache ────────────────────────────────────────────────────────
-  SharedPreferences? _prefs;
-  Future<SharedPreferences> get _webPrefs async =>
-      _prefs ??= await SharedPreferences.getInstance();
-
   // ── Storage keys ─────────────────────────────────────────────────────────────
-  static const _kToken             = 'auth.access_token';
-  static const _kExpiration        = 'auth.token_expiration';
-  static const _kUniqueName        = 'auth.unique_name';
-  static const _kEmail             = 'auth.email';
-  static const _kId                = 'auth.user_id';
-  static const _kName              = 'auth.user_name';
-  static const _kPendingInterests  = 'auth.pending_interests';
-  static const _kContact           = 'auth.contact';
+  static const _kToken = 'auth.access_token';
+  static const _kExpiration = 'auth.token_expiration';
+  static const _kUniqueName = 'auth.unique_name';
+  static const _kEmail = 'auth.email';
+  static const _kId = 'auth.user_id';
+  static const _kName = 'auth.user_name';
+  static const _kPendingInterests = 'auth.pending_interests';
+  static const _kContact = 'auth.contact';
   // The avatar the account is wearing. Kept here because the profile state
   // does not carry one and the settings screens need something to draw
   // between opening and the next login.
-  static const _kProfileUrl        = 'auth.profile_url';
-  static const _kCountryCode       = 'auth.country_code';
-  static const _kLocale            = 'auth.locale';
+  static const _kProfileUrl = 'auth.profile_url';
+  static const _kCountryCode = 'auth.country_code';
+  static const _kLocale = 'auth.locale';
   static const _kPreferredLanguage = 'auth.preferred_language';
-  static const _kTimezone          = 'auth.timezone';
-  static const _kInterestTags      = 'auth.interest_tags';
-  static const _kRole              = 'auth.role';
-  static const _kHasAddedFaces     = 'auth.has_added_faces';
-  static const _kLastFacePrompt    = 'auth.last_face_prompt';
+  static const _kTimezone = 'auth.timezone';
+  static const _kInterestTags = 'auth.interest_tags';
+  static const _kRole = 'auth.role';
+  static const _kHasAddedFaces = 'auth.has_added_faces';
+  static const _kLastFacePrompt = 'auth.last_face_prompt';
   static const _kHasSeenOnboarding = 'auth.has_seen_onboarding';
-  static const _kHasSeenSwipeHint  = 'auth.has_seen_swipe_hint';
-  static const _kFeedMusicMuted    = 'auth.feed_music_muted';
+  static const _kHasSeenSwipeHint = 'auth.has_seen_swipe_hint';
+  static const _kFeedMusicMuted = 'auth.feed_music_muted';
   static const _kAudiencePreference = 'auth.audience_preference';
-  static const _kInstallMarker     = 'auth.install_marker';
-  static const _kLastAccountId     = 'auth.last_account_id';
+  static const _kInstallMarker = 'auth.install_marker';
+  static const _kLastAccountId = 'auth.last_account_id';
 
-  // ── Adaptive helpers ─────────────────────────────────────────────────────────
+  // ── Storage helpers ──────────────────────────────────────────────────────────
 
   Future<void> _write(String key, String? value) async {
-    if (kIsWeb) {
-      final p = await _webPrefs;
-      if (value == null) {
-        await p.remove(key);
-      } else {
-        await p.setString(key, value);
-      }
-    } else {
-      await _secure.write(key: key, value: value);
-    }
+    await _secure.write(key: key, value: value);
   }
 
   Future<String?> _read(String key) async {
-    if (kIsWeb) {
-      final p = await _webPrefs;
-      return p.getString(key);
-    } else {
-      return _secure.read(key: key);
-    }
+    return _secure.read(key: key);
   }
 
   Future<void> _delete(String key) async {
-    if (kIsWeb) {
-      final p = await _webPrefs;
-      await p.remove(key);
-    } else {
-      await _secure.delete(key: key);
-    }
+    await _secure.delete(key: key);
   }
 
   // ── Token ────────────────────────────────────────────────────────────────────
@@ -172,6 +148,7 @@ class AuthService {
     hasAddedFaces.value = v;
     return _write(_kHasAddedFaces, v.toString());
   }
+
   Future<bool> getHasAddedFaces() async =>
       (await _read(_kHasAddedFaces)) == 'true';
 
@@ -259,8 +236,7 @@ class AuthService {
   /// keeps the same person's data, while a fresh sign-up (always a new id)
   /// wipes.
   Future<void> setLastAccountId(String id) => _write(_kLastAccountId, id);
-  Future<String> getLastAccountId() async =>
-      await _read(_kLastAccountId) ?? '';
+  Future<String> getLastAccountId() async => await _read(_kLastAccountId) ?? '';
 
   /// Device-level flag for the feed's swipe-up hint, shown once ever.
   ///

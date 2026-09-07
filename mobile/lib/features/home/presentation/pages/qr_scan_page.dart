@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -32,7 +31,9 @@ class _QrScanPageState extends State<QrScanPage> {
   Future<void> _handleCode(String code) async {
     if (_processing) return;
     setState(() => _processing = true);
-    try { await _controller.stop(); } catch (_) {}
+    try {
+      await _controller.stop();
+    } catch (_) {}
     if (!mounted) return;
     // Return the event ID to the caller (HomeNavigationPage) which will
     // fire HomeImagesSearched and push SearchResultsPage.
@@ -61,7 +62,7 @@ class _QrScanPageState extends State<QrScanPage> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
-        leading: kIsWeb ? null : const AppBackButton(color: Colors.white),
+        leading: const AppBackButton(color: Colors.white),
         title: Text(
           'Scan Event QR',
           style: TextStyle(
@@ -88,7 +89,9 @@ class _QrScanPageState extends State<QrScanPage> {
                   size: 22.sp,
                 ),
                 onPressed: () {
-                  try { _controller.toggleTorch(); } catch (_) {}
+                  try {
+                    _controller.toggleTorch();
+                  } catch (_) {}
                 },
               );
             },
@@ -169,36 +172,39 @@ class _QrScanPageState extends State<QrScanPage> {
                       ),
                     ),
                     SizedBox(height: AppSpacing.lg.h),
-                    Semantics(button: true, label: 'Pick from gallery', child: GestureDetector(
-                      onTap: _pickFromGallery,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xxl.w, vertical: 13.h),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(30.r),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              width: 1.0),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.photo_library_outlined,
-                                color: Colors.white, size: 18.sp),
-                            SizedBox(width: AppSpacing.sm.w),
-                            Text(
-                              'Choose from Gallery',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
+                    Semantics(
+                        button: true,
+                        label: 'Pick from gallery',
+                        child: GestureDetector(
+                          onTap: _pickFromGallery,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: AppSpacing.xxl.w, vertical: 13.h),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(30.r),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.25),
+                                  width: 1.0),
                             ),
-                          ],
-                        ),
-                      ),
-                    )),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.photo_library_outlined,
+                                    color: Colors.white, size: 18.sp),
+                                SizedBox(width: AppSpacing.sm.w),
+                                Text(
+                                  'Choose from Gallery',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )),
                   ],
                 ),
               ),
@@ -261,8 +267,7 @@ class _DimPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = Colors.black.withValues(alpha: 0.55);
     final frameLeft = centerX - frameSize / 2;
-    final frameRect =
-        Rect.fromLTWH(frameLeft, frameTop, frameSize, frameSize);
+    final frameRect = Rect.fromLTWH(frameLeft, frameTop, frameSize, frameSize);
     final full = Rect.fromLTWH(0, 0, size.width, size.height);
 
     final path = Path()
@@ -304,10 +309,10 @@ class _CornerPainter extends CustomPainter {
       );
     }
 
-    drawCorner(0, 0, 1, 1);                          // top-left
-    drawCorner(size.width, 0, -1, 1);                // top-right
-    drawCorner(0, size.height, 1, -1);               // bottom-left
-    drawCorner(size.width, size.height, -1, -1);     // bottom-right
+    drawCorner(0, 0, 1, 1); // top-left
+    drawCorner(size.width, 0, -1, 1); // top-right
+    drawCorner(0, size.height, 1, -1); // bottom-left
+    drawCorner(size.width, size.height, -1, -1); // bottom-right
   }
 
   @override

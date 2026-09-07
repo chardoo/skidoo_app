@@ -12,7 +12,6 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/presentation/pages/broadcasts_page.dart';
 import 'package:jperg_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart'
@@ -164,7 +163,8 @@ class UserProfilePageState extends State<UserProfilePage>
   }
 
   Future<void> _loadBookmarks() async {
-    if (_bookmarked.isEmpty && mounted) setState(() => _loadingBookmarks = true);
+    if (_bookmarked.isEmpty && mounted)
+      setState(() => _loadingBookmarks = true);
     final at = AppCacheSignals.saves.value;
     try {
       // The bookmarks endpoint is addressed by client id and only ever serves
@@ -178,7 +178,8 @@ class UserProfilePageState extends State<UserProfilePage>
     } catch (e) {
       debugPrint('[UserProfilePage] bookmarks ERROR: $e');
     } finally {
-      if (mounted && _loadingBookmarks) setState(() => _loadingBookmarks = false);
+      if (mounted && _loadingBookmarks)
+        setState(() => _loadingBookmarks = false);
     }
   }
 
@@ -267,7 +268,9 @@ class UserProfilePageState extends State<UserProfilePage>
       // beginning of its album.
       final index = photo.isEvent
           ? 0
-          : photos.indexWhere((p) => p.id == photo.id).clamp(0, photos.length - 1);
+          : photos
+              .indexWhere((p) => p.id == photo.id)
+              .clamp(0, photos.length - 1);
 
       await Navigator.of(context).push(NoSwipeBackPageRoute<void>(
         builder: (viewerContext) => FoundPhotoViewerPage(
@@ -408,34 +411,34 @@ class UserProfilePageState extends State<UserProfilePage>
       // NestedScrollView: the tab's own list owns the drag, so an outer one
       // never sees the gesture.
       body: NestedScrollView(
-          headerSliverBuilder: (context, _) => [
-            SliverToBoxAdapter(
-              child: _Header(
-                overview: _overview,
-                loading: _loadingHeader,
-                ext: ext,
-                onCampaignsTap: _openBroadcasts,
+        headerSliverBuilder: (context, _) => [
+          SliverToBoxAdapter(
+            child: _Header(
+              overview: _overview,
+              loading: _loadingHeader,
+              ext: ext,
+              onCampaignsTap: _openBroadcasts,
+            ),
+          ),
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _TabBarDelegate(
+              background: ext.homeBackground,
+              tabBar: TabBar(
+                controller: _tabs,
+                indicatorColor: ext.accentGold,
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelColor: ext.accentGold,
+                unselectedLabelColor: ext.searchHintColor,
+                tabs: const [
+                  Tab(icon: Icon(Icons.favorite_rounded), text: null),
+                  Tab(icon: Icon(Icons.bookmark_rounded)),
+                  Tab(icon: Icon(Icons.campaign_rounded)),
+                ],
               ),
             ),
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _TabBarDelegate(
-                background: ext.homeBackground,
-                tabBar: TabBar(
-                  controller: _tabs,
-                  indicatorColor: ext.accentGold,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  labelColor: ext.accentGold,
-                  unselectedLabelColor: ext.searchHintColor,
-                  tabs: const [
-                    Tab(icon: Icon(Icons.favorite_rounded), text: null),
-                    Tab(icon: Icon(Icons.bookmark_rounded)),
-                    Tab(icon: Icon(Icons.campaign_rounded)),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ),
+        ],
         body: TabBarView(
           controller: _tabs,
           children: [
@@ -484,7 +487,7 @@ class UserProfilePageState extends State<UserProfilePage>
       ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 
@@ -549,16 +552,16 @@ class _Header extends StatelessWidget {
         : '?';
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(20.w, AppSpacing.md.h, 20.w, AppSpacing.lg.h),
+      padding:
+          EdgeInsets.fromLTRB(20.w, AppSpacing.md.h, 20.w, AppSpacing.lg.h),
       child: Row(
         children: [
           CircleAvatar(
             radius: 36.r,
             backgroundColor: ext.avatarBackground,
-            backgroundImage:
-                photo != null && photo.isNotEmpty
-                    ? boundedNetworkImage(context, photo, diameter: 72.r)
-                    : null,
+            backgroundImage: photo != null && photo.isNotEmpty
+                ? boundedNetworkImage(context, photo, diameter: 72.r)
+                : null,
             child: photo != null && photo.isNotEmpty
                 ? null
                 : Text(

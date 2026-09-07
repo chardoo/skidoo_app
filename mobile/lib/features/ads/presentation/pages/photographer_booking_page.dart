@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -9,7 +8,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/models/booking_model.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
@@ -77,8 +75,8 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
     final state = _state;
     if (state == null || _busy) return;
 
-    final result = await showModalBottomSheet<
-        ({List<QuoteLineItem> items, String notes})>(
+    final result =
+        await showModalBottomSheet<({List<QuoteLineItem> items, String notes})>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -109,7 +107,8 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
     } catch (e) {
       debugPrint('[PhotographerBooking] sendQuote ERROR: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, _serverMessage(e, 'Could not send the quote.'));
+      AppSnackBar.error(
+          context, _serverMessage(e, 'Could not send the quote.'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -162,7 +161,7 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        leading: kIsWeb ? null : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Text(
           'Booking',
           style: TextStyle(
@@ -190,7 +189,10 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
                   parent: BouncingScrollPhysics(),
                 ),
                 padding: EdgeInsets.fromLTRB(
-                  AppSpacing.md.w, 0, AppSpacing.md.w, AppSpacing.xxl.h,
+                  AppSpacing.md.w,
+                  0,
+                  AppSpacing.md.w,
+                  AppSpacing.xxl.h,
                 ),
                 children: [
                   _jobCard(ext),
@@ -212,7 +214,7 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
             ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   // ── The job ─────────────────────────────────────────────────────────────
@@ -253,7 +255,9 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
             Text(
               request.description,
               style: TextStyle(
-                color: ext.searchHintColor, fontSize: 13.sp, height: 1.4,
+                color: ext.searchHintColor,
+                fontSize: 13.sp,
+                height: 1.4,
               ),
             ),
           ],
@@ -331,7 +335,9 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
           Text(
             _quoteBlurb(quote, booking, state.terms),
             style: TextStyle(
-              color: ext.searchHintColor, fontSize: 12.sp, height: 1.4,
+              color: ext.searchHintColor,
+              fontSize: 12.sp,
+              height: 1.4,
             ),
           ),
           if (quote != null) ...[
@@ -345,7 +351,8 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
                       child: Text(
                         item.label,
                         style: TextStyle(
-                          color: ext.searchHintColor, fontSize: 13.sp,
+                          color: ext.searchHintColor,
+                          fontSize: 13.sp,
                         ),
                       ),
                     ),
@@ -410,7 +417,8 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
                         height: 18.h,
                         width: 18.h,
                         child: const CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white,
+                          strokeWidth: 2,
+                          color: Colors.white,
                         ),
                       )
                     : Text(
@@ -435,7 +443,9 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
   /// booking to describe it, and it is the state the photographer most needs
   /// to see, because it is the one they can act on.
   Widget _statusChip(
-    RequestQuote quote, RequestBooking? booking, AppThemeExtension ext,
+    RequestQuote quote,
+    RequestBooking? booking,
+    AppThemeExtension ext,
   ) {
     late final String label;
     late final Color colour;
@@ -481,14 +491,18 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
       child: Text(
         label,
         style: TextStyle(
-          color: colour, fontSize: 11.sp, fontWeight: FontWeight.w700,
+          color: colour,
+          fontSize: 11.sp,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 
   String _quoteBlurb(
-    RequestQuote? quote, RequestBooking? booking, BookingTerms terms,
+    RequestQuote? quote,
+    RequestBooking? booking,
+    BookingTerms terms,
   ) {
     if (quote == null) {
       return 'You were chosen for this job. Price it up and send it over — '
@@ -543,8 +557,8 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
           SizedBox(height: AppSpacing.md.h),
           _row('Client has paid', _money(booking.amountPaid, currency), ext),
           if (booking.outstanding > 0)
-            _row('Still owed by client',
-                _money(booking.outstanding, currency), ext),
+            _row('Still owed by client', _money(booking.outstanding, currency),
+                ext),
           if (booking.heldAmount > 0)
             _row('Held until they confirm',
                 _money(booking.heldAmount, currency), ext),
@@ -565,7 +579,9 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
           Text(
             _moneyBlurb(booking),
             style: TextStyle(
-              color: ext.searchHintColor, fontSize: 11.sp, height: 1.4,
+              color: ext.searchHintColor,
+              fontSize: 11.sp,
+              height: 1.4,
             ),
           ),
         ],
@@ -611,7 +627,8 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
               child: Text(
                 label,
                 style: TextStyle(
-                  color: ext.searchHintColor, fontSize: 13.sp,
+                  color: ext.searchHintColor,
+                  fontSize: 13.sp,
                 ),
               ),
             ),

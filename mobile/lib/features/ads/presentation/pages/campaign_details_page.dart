@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:dio/dio.dart' show DioException;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -12,7 +11,6 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/features/ads/presentation/pages/ads_checkout_page.dart';
@@ -181,7 +179,6 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
     }
   }
 
-
   Future<void> _pause() async {
     setState(() => _busy = true);
     try {
@@ -191,7 +188,8 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
         _campaign = updated;
         _changed = true;
       });
-      AppSnackBar.success(context, 'Campaign paused. Your budget is preserved.');
+      AppSnackBar.success(
+          context, 'Campaign paused. Your budget is preserved.');
     } catch (e) {
       debugPrint('[CampaignDetails] pause ERROR: $e');
       if (mounted) AppSnackBar.error(context, 'Could not pause the campaign.');
@@ -235,7 +233,8 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
       setState(() => _busy = false);
       // The server refuses a resume onto a spent budget or a finished
       // schedule, and its reason is worth more than a generic failure.
-      AppSnackBar.error(context, _reason(e) ?? 'Could not resume the campaign.');
+      AppSnackBar.error(
+          context, _reason(e) ?? 'Could not resume the campaign.');
     }
   }
 
@@ -303,9 +302,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        leading: kIsWeb
-            ? null
-            : AppBackButton(result: _changed),
+        leading: AppBackButton(result: _changed),
         title: Text(
           'Campaign Details',
           style: TextStyle(
@@ -374,11 +371,13 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
           // see what the other four looked like. Taller than the old cover
           // strip because `contain` needs the room: letterboxing a portrait
           // shot into 162h leaves a sliver.
-          if (c.media.isNotEmpty)
-            MediaCarousel(media: c.media, height: 240.h),
+          if (c.media.isNotEmpty) MediaCarousel(media: c.media, height: 240.h),
           Padding(
             padding: EdgeInsets.fromLTRB(
-              AppSpacing.xl.w, AppSpacing.md.h, AppSpacing.xl.w, 0,
+              AppSpacing.xl.w,
+              AppSpacing.md.h,
+              AppSpacing.xl.w,
+              0,
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,8 +511,10 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
                     if (c.interests.isNotEmpty)
                       ('Interests', c.interests.join(', ')),
                     if (c.placements.isNotEmpty)
-                      ('Placements',
-                          c.placements.map(_placementLabel).join(', ')),
+                      (
+                        'Placements',
+                        c.placements.map(_placementLabel).join(', ')
+                      ),
                   ],
                 ),
                 _Card(
@@ -521,15 +522,21 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
                   ext: ext,
                   rows: [
                     if (c.dailyBudget != null)
-                      ('Daily Budget',
-                          '${c.currency} ${c.dailyBudget!.toStringAsFixed(2)}'),
+                      (
+                        'Daily Budget',
+                        '${c.currency} ${c.dailyBudget!.toStringAsFixed(2)}'
+                      ),
                     if (c.durationDays != null)
                       ('Duration', '${c.durationDays} days'),
-                    ('Total',
-                        '${c.currency} ${c.budgetAmount.toStringAsFixed(2)}'),
+                    (
+                      'Total',
+                      '${c.currency} ${c.budgetAmount.toStringAsFixed(2)}'
+                    ),
                     if (c.startAt != null && c.endAt != null)
-                      ('Schedule',
-                          '${_short(c.startAt!)} – ${_short(c.endAt!)}'),
+                      (
+                        'Schedule',
+                        '${_short(c.startAt!)} – ${_short(c.endAt!)}'
+                      ),
                   ],
                 ),
               ],
@@ -546,7 +553,9 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
                   'usually takes 24 hours.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: ext.searchHintColor, fontSize: 12.5.sp, height: 1.45,
+                    color: ext.searchHintColor,
+                    fontSize: 12.5.sp,
+                    height: 1.45,
                   ),
                 ),
               ),
@@ -565,7 +574,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 
@@ -577,8 +586,18 @@ String _placementLabel(String p) => switch (p) {
     };
 
 const _kMonths = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 String _short(DateTime d) => '${_kMonths[d.month - 1]} ${d.day}, ${d.year}';
@@ -621,7 +640,9 @@ class _PaymentWindow extends StatelessWidget {
               Text(
                 'Payment Window Closing',
                 style: TextStyle(
-                  color: amber, fontSize: 13.sp, fontWeight: FontWeight.w700,
+                  color: amber,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -643,7 +664,9 @@ class _PaymentWindow extends StatelessWidget {
             'Your campaign is approved! Complete payment within 48 hours to '
             'publish your campaign.',
             style: TextStyle(
-              color: ext.greetingColor, fontSize: 12.sp, height: 1.4,
+              color: ext.greetingColor,
+              fontSize: 12.sp,
+              height: 1.4,
             ),
           ),
         ],
@@ -688,14 +711,18 @@ class _Notice extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: tone, fontSize: 13.sp, fontWeight: FontWeight.w700,
+                      color: tone,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   SizedBox(height: 2.h),
                   Text(
                     body,
                     style: TextStyle(
-                      color: ext.greetingColor, fontSize: 12.sp, height: 1.4,
+                      color: ext.greetingColor,
+                      fontSize: 12.sp,
+                      height: 1.4,
                     ),
                   ),
                 ],
@@ -737,7 +764,8 @@ class _Card extends StatelessWidget {
         // read as a raised panel against a background it was meant to sit in.
         borderRadius: BorderRadius.circular(AppRadius.md.r),
         border: Border.all(
-          color: ext.searchHintColor.withValues(alpha: 0.18), width: 1,
+          color: ext.searchHintColor.withValues(alpha: 0.18),
+          width: 1,
         ),
       ),
       child: Column(
@@ -760,10 +788,13 @@ class _Card extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AppRadius.sm.r),
                     child: JpergImage(
                       imageUrl: leading!,
-                      width: 48.w, height: 48.w, logicalWidth: 48.w,
+                      width: 48.w,
+                      height: 48.w,
+                      logicalWidth: 48.w,
                       fit: BoxFit.cover,
                       errorWidget: (_, __, ___) => SizedBox(
-                        width: 48.w, height: 48.w,
+                        width: 48.w,
+                        height: 48.w,
                       ),
                     ),
                   ),
@@ -785,7 +816,8 @@ class _Card extends StatelessWidget {
                         Text(
                           bodySub!,
                           style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 12.sp,
+                            color: ext.searchHintColor,
+                            fontSize: 12.sp,
                           ),
                         ),
                     ],
@@ -801,7 +833,8 @@ class _Card extends StatelessWidget {
                   TextSpan(
                     text: '$label: ',
                     style: TextStyle(
-                      color: ext.greetingColor, fontWeight: FontWeight.w700,
+                      color: ext.greetingColor,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   TextSpan(text: value),
@@ -848,15 +881,14 @@ class _PayButton extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: 8.w),
-                Icon(Icons.arrow_forward_rounded, size: 18.r,
-                    color: Colors.white),
+                Icon(Icons.arrow_forward_rounded,
+                    size: 18.r, color: Colors.white),
               ],
             ),
           ),
         ),
       );
 }
-
 
 /// Whether there is anything worth summarising. A campaign nobody has seen
 /// shows four zeros, which looks like a bug rather than a new campaign.
@@ -868,12 +900,21 @@ bool _hasRun(AdCampaign c) =>
     c.status == CampaignStatus.paused ||
     c.status == CampaignStatus.completed;
 
-String _long(DateTime d) =>
-    '${_kLongMonths[d.month - 1]} ${d.day}, ${d.year}';
+String _long(DateTime d) => '${_kLongMonths[d.month - 1]} ${d.day}, ${d.year}';
 
 const _kLongMonths = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 /// Impressions, clicks, spend and conversions — the four the design shows,
@@ -904,7 +945,8 @@ class _PerformanceSummary extends StatelessWidget {
         ),
         Row(
           children: [
-            Expanded(child: _Stat(
+            Expanded(
+                child: _Stat(
               ext: ext,
               label: 'Impressions',
               value: compactCount(c.impressions),
@@ -918,7 +960,8 @@ class _PerformanceSummary extends StatelessWidget {
                   : (trend >= 0 ? ext.accentGold : ext.errorRed),
             )),
             SizedBox(width: AppSpacing.sm.w),
-            Expanded(child: _Stat(
+            Expanded(
+                child: _Stat(
               ext: ext,
               label: 'Clicks',
               value: compactCount(c.clicks),
@@ -929,14 +972,17 @@ class _PerformanceSummary extends StatelessWidget {
         SizedBox(height: AppSpacing.sm.h),
         Row(
           children: [
-            Expanded(child: _Stat(
+            Expanded(
+                child: _Stat(
               ext: ext,
               label: 'Amount Spent',
               value: '${c.currency} ${c.spent.toStringAsFixed(2)}',
-              foot: 'of ${c.currency} ${c.budgetAmount.toStringAsFixed(2)} total',
+              foot:
+                  'of ${c.currency} ${c.budgetAmount.toStringAsFixed(2)} total',
             )),
             SizedBox(width: AppSpacing.sm.w),
-            Expanded(child: _Stat(
+            Expanded(
+                child: _Stat(
               ext: ext,
               label: 'Conversions',
               value: compactCount(c.conversions),
@@ -974,7 +1020,8 @@ class _Stat extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.md.r),
           border: Border.all(
-            color: ext.searchHintColor.withValues(alpha: 0.18), width: 1,
+            color: ext.searchHintColor.withValues(alpha: 0.18),
+            width: 1,
           ),
         ),
         child: Column(
@@ -1066,7 +1113,9 @@ class _ConfirmSheet extends StatelessWidget {
                 Text(
                   body,
                   style: TextStyle(
-                    color: ext.searchHintColor, fontSize: 13.sp, height: 1.45,
+                    color: ext.searchHintColor,
+                    fontSize: 13.sp,
+                    height: 1.45,
                   ),
                 ),
                 SizedBox(height: AppSpacing.xl.h),
@@ -1088,7 +1137,8 @@ class _ConfirmSheet extends StatelessWidget {
                           child: Text(
                             'Cancel',
                             style: TextStyle(
-                              color: ext.greetingColor, fontSize: 14.sp,
+                              color: ext.greetingColor,
+                              fontSize: 14.sp,
                             ),
                           ),
                         ),
@@ -1242,7 +1292,9 @@ class CampaignResumedPage extends StatelessWidget {
                           'running until ${_long(campaign.endAt!)}.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: ext.searchHintColor, fontSize: 13.sp, height: 1.5,
+                    color: ext.searchHintColor,
+                    fontSize: 13.sp,
+                    height: 1.5,
                   ),
                 ),
                 SizedBox(height: AppSpacing.lg.h),
@@ -1316,7 +1368,7 @@ class CampaignResumedPage extends StatelessWidget {
         ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 

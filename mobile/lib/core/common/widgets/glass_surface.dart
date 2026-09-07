@@ -1,7 +1,6 @@
 import 'dart:io' show Platform;
 import 'dart:ui';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
@@ -98,7 +97,6 @@ class GlassSurface extends StatelessWidget {
   /// takes the same path as the test host it usually is.
   static bool get isFrosted {
     if (debugFrostedOverride != null) return debugFrostedOverride!;
-    if (kIsWeb) return false;
     return Platform.isIOS;
   }
 
@@ -107,13 +105,11 @@ class GlassSurface extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final dark = onDark ?? Theme.of(context).brightness == Brightness.dark;
 
-    final content = padding == null
-        ? child
-        : Padding(padding: padding!, child: child);
+    final content =
+        padding == null ? child : Padding(padding: padding!, child: child);
 
-    final border = bordered
-        ? Border.all(color: ext.glassBorder, width: 0.5)
-        : null;
+    final border =
+        bordered ? Border.all(color: ext.glassBorder, width: 0.5) : null;
 
     if (!isFrosted) {
       // Material 3's own nav surface: opaque by default, lifted by tone rather
@@ -167,8 +163,7 @@ class GlassSurface extends StatelessWidget {
   /// Paired with a short [blurSigma]: a light tint over a wide blur still
   /// looks flat, because the blur has already thrown away everything that
   /// would tell you there is content back there.
-  static Color _frostedFill(AppThemeExtension ext, {required bool dark}) =>
-      dark
-          ? const Color(0x14121211) // near-black, 8 %
-          : const Color(0x33FFFFFF); // white, 20 %
+  static Color _frostedFill(AppThemeExtension ext, {required bool dark}) => dark
+      ? const Color(0x14121211) // near-black, 8 %
+      : const Color(0x33FFFFFF); // white, 20 %
 }

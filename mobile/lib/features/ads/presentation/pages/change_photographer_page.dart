@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -7,7 +6,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
@@ -93,9 +91,7 @@ class _ChangePhotographerPageState extends State<ChangePhotographerPage> {
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(result: false),
+        leading: const AppBackButton(result: false),
         title: Text(
           'Select New Photographer',
           style: TextStyle(
@@ -111,13 +107,19 @@ class _ChangePhotographerPageState extends State<ChangePhotographerPage> {
             child: ListView(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
-                AppSpacing.md.w, AppSpacing.md.h, AppSpacing.md.w, 0,
+                AppSpacing.md.w,
+                AppSpacing.md.h,
+                AppSpacing.md.w,
+                0,
               ),
               children: [
                 _RequestHeader(request: widget.request, ext: ext),
                 Padding(
                   padding: EdgeInsets.fromLTRB(
-                    AppSpacing.xs.w, AppSpacing.md.h, 0, AppSpacing.sm.h,
+                    AppSpacing.xs.w,
+                    AppSpacing.md.h,
+                    0,
+                    AppSpacing.sm.h,
                   ),
                   child: Text(
                     'All Requests',
@@ -142,7 +144,10 @@ class _ChangePhotographerPageState extends State<ChangePhotographerPage> {
           ),
           SafeArea(
             minimum: EdgeInsets.fromLTRB(
-              AppSpacing.xl.w, AppSpacing.md.h, AppSpacing.xl.w, AppSpacing.lg.h,
+              AppSpacing.xl.w,
+              AppSpacing.md.h,
+              AppSpacing.xl.w,
+              AppSpacing.lg.h,
             ),
             child: SizedBox(
               width: double.infinity,
@@ -150,11 +155,10 @@ class _ChangePhotographerPageState extends State<ChangePhotographerPage> {
               child: ElevatedButton(
                 // Nothing to do until they pick someone other than the person
                 // already chosen.
-                onPressed: (_saving ||
-                        _picked == null ||
-                        _picked == widget.currentId)
-                    ? null
-                    : _confirm,
+                onPressed:
+                    (_saving || _picked == null || _picked == widget.currentId)
+                        ? null
+                        : _confirm,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: ext.accentGold,
                   disabledBackgroundColor:
@@ -168,7 +172,8 @@ class _ChangePhotographerPageState extends State<ChangePhotographerPage> {
                         width: 18.r,
                         height: 18.r,
                         child: const CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white,
+                          strokeWidth: 2,
+                          color: Colors.white,
                         ),
                       )
                     : Text(
@@ -185,7 +190,7 @@ class _ChangePhotographerPageState extends State<ChangePhotographerPage> {
         ],
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 
@@ -380,7 +385,9 @@ class _ConfirmSheet extends StatelessWidget {
               Text(
                 message,
                 style: TextStyle(
-                  color: ext.searchHintColor, fontSize: 13.sp, height: 1.45,
+                  color: ext.searchHintColor,
+                  fontSize: 13.sp,
+                  height: 1.45,
                 ),
               ),
               SizedBox(height: AppSpacing.xl.h),
@@ -402,7 +409,8 @@ class _ConfirmSheet extends StatelessWidget {
                         child: Text(
                           'Cancel',
                           style: TextStyle(
-                            color: ext.greetingColor, fontSize: 14.sp,
+                            color: ext.greetingColor,
+                            fontSize: 14.sp,
                           ),
                         ),
                       ),

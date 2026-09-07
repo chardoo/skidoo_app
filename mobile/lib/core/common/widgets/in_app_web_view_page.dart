@@ -1,13 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:jperg_app/core/theme/app_spacing.dart';
 
 /// A lightweight in-app browser used to show remote, always-up-to-date content
 /// (privacy policy, terms, etc.) without bundling it in the app.
@@ -55,11 +50,6 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) {
-      // No in-app WebView on web — open in a new browser tab instead.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _launchExternally());
-      return;
-    }
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
@@ -80,16 +70,6 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
       ..loadRequest(Uri.parse(widget.url));
   }
 
-  Future<void> _launchExternally() async {
-    final ok = await launchUrl(
-      Uri.parse(widget.url),
-      mode: LaunchMode.externalApplication,
-    );
-    if (!ok && mounted) {
-      AppSnackBar.error(context, 'Could not open ${widget.url}');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
@@ -105,53 +85,14 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
       title: Text(
         widget.title,
         style: TextStyle(
-            color: ext.greetingColor, fontSize: 17.sp, fontWeight: FontWeight.w700),
+            color: ext.greetingColor,
+            fontSize: 17.sp,
+            fontWeight: FontWeight.w700),
       ),
       centerTitle: false,
     );
 
     // ── Web: the content opened in a browser tab ──────────────────────────────
-    if (kIsWeb) {
-      final page = Scaffold(
-        backgroundColor: ext.homeBackground,
-        appBar: appBar,
-        body: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 28.w),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.open_in_new_rounded,
-                    size: 52.sp, color: ext.accentGold),
-                SizedBox(height: AppSpacing.xl.h),
-                Text(
-                  '${widget.title} opened in a new tab',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: ext.greetingColor,
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w700),
-                ),
-                SizedBox(height: 10.h),
-                Text(
-                  'If it didn\'t open, tap the button below.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 14.sp, height: 1.5),
-                ),
-                SizedBox(height: 28.h),
-                AppButton(
-                  fullWidth: true,
-                  label: 'Open ${widget.title}',
-                  onPressed: _launchExternally,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-      return webWrap(page, backgroundColor: ext.homeBackground);
-    }
 
     // ── Mobile: in-app WebView ────────────────────────────────────────────────
     return Scaffold(

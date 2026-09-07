@@ -10,8 +10,8 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 /// Every reaction in the app is a bare icon over the media. [MediaActionButtons]
 /// was the odd one out — each action sat on a filled dark disc with a green
-/// border and two shadows, while the viewer rail, the feed card and the web
-/// column all drew the icon straight onto the photo.
+/// border and two shadows, while the viewer rail and the feed card both drew
+/// the icon straight onto the photo.
 Widget host(Widget child) => ScreenUtilInit(
       designSize: const Size(390, 844),
       builder: (_, __) => MaterialApp(
@@ -143,7 +143,6 @@ void main() {
       'lib/components/media/media_reaction_rail.dart',
       'lib/features/gallery/presentation/found/widgets/found_action_rail.dart',
       'lib/features/discovery/presentation/widgets/full_bleed_event_card.dart',
-      'lib/features/discovery/presentation/widgets/event_card/web_reactions_column.dart',
       'lib/features/discovery/presentation/widgets/card_interaction_bar.dart',
       'lib/components/media/media_action_buttons.dart',
     ];

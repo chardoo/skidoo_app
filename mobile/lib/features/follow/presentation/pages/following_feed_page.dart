@@ -14,8 +14,6 @@ import 'package:jperg_app/features/discovery/presentation/widgets/event_discover
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
@@ -192,7 +190,8 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
       });
       _promos.reset();
       _promos.loadInitial(
-        contextEventId: result.events.isNotEmpty ? result.events.first.id : null,
+        contextEventId:
+            result.events.isNotEmpty ? result.events.first.id : null,
       );
     } catch (e) {
       if (!mounted) return;
@@ -338,7 +337,7 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        leading: kIsWeb ? null : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Text(
           'Following',
           style: TextStyle(
@@ -454,7 +453,6 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
                       ),
                     ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
-
 }

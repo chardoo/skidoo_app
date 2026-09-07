@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/home/presentation/widgets/creator_mode_menu.dart';
 
 /// Feed top bar — the QR glyph, the plain-text Found/Feed/Following tabs
@@ -118,10 +117,9 @@ class FeedTopBar extends StatelessWidget {
   /// Widest the row is allowed to get before it stops spreading and centres.
   ///
   /// Sharing the slack out is right on a phone, where there is barely any. On a
-  /// desktop-width page it would fling the tabs to opposite ends of the window,
-  /// so past the width the rest of the app lays its content out in, the bar
-  /// stops growing and centres what it has.
-  static const double _maxWidth = kWebColumnWidth;
+  /// tablet it would fling the tabs to opposite ends of the screen, so past
+  /// this width the bar stops growing and centres what it has.
+  static const double _maxWidth = 530;
 
   @override
   Widget build(BuildContext context) {

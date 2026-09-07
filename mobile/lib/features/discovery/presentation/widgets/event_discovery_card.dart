@@ -9,9 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
-import 'package:jperg_app/core/common/widgets/get_app_sheet.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
@@ -21,19 +19,13 @@ import 'package:jperg_app/features/discovery/presentation/widgets/card_interacti
 import 'package:jperg_app/features/discovery/presentation/widgets/card_description_text.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/card_photo_preview.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/event_comment_page.dart';
-import 'package:jperg_app/features/discovery/presentation/widgets/event_card/carousel_arrow.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/event_card/heart_burst.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/event_card/image_footer.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/event_card/page_dots.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/event_card/post_header.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/event_card/unauth_cta.dart';
-import 'package:jperg_app/features/discovery/presentation/widgets/event_card/web_reactions_column.dart';
-import 'package:jperg_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
 import 'package:jperg_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
-
-/// Width of the main content column on web — must match app.dart's _kWebColumnWidth.
-const double _kWebColumnWidth = 480.0;
 
 class EventDiscoveryCard extends StatefulWidget {
   const EventDiscoveryCard({
@@ -45,7 +37,6 @@ class EventDiscoveryCard extends StatefulWidget {
     this.onCommentTap,
     this.cardIndex = 0,
     this.activeCardIndex,
-    this.webCommentsOpen,
     this.onHide,
   });
 
@@ -61,12 +52,6 @@ class EventDiscoveryCard extends StatefulWidget {
   /// Shared notifier; its value is the currently active card index.
   /// When null the card is treated as always active (e.g. discovery page).
   final ValueNotifier<int>? activeCardIndex;
-
-  /// Web desktop/laptop only: feed-level "comments open" flag shared by every
-  /// card, so that opening comments stays open as the user scrolls between
-  /// cards (each card then shows its own event's thread). Null on mobile, where
-  /// the per-card local flag is used instead.
-  final ValueNotifier<bool>? webCommentsOpen;
 
   /// Called when the user hides this event from their feed.
   final VoidCallback? onHide;
@@ -84,8 +69,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   final _pageCtrl = PageController();
   int _currentPage = 0;
   int _maxRevealedPage = 0;
-  // Web: true while the pointer is over the media — reveals the prev/next arrows.
-  bool _mediaHovered = false;
   bool _liked = false;
   bool _disliked = false;
   int _likeCount = 0;
@@ -93,29 +76,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   bool _descExpanded = false;
   bool _showHeartBurst = false;
   // Whether the inline comment panel is open (replaces reactions col).
-  // On web desktop/laptop this is driven by the shared feed-level notifier
-  // ([widget.webCommentsOpen]) so the state carries across cards as you scroll;
-  // on mobile it falls back to this local flag.
-  bool _localCommentsOpen = false;
-  bool get _useSharedComments => kIsWeb && widget.webCommentsOpen != null;
-  bool get _webCommentsOpen =>
-      _useSharedComments ? widget.webCommentsOpen!.value : _localCommentsOpen;
-  // Rendering gate: comments only show on the active/focused card, so inactive
-  // cards in the feed stay closed even while the shared flag is open. When the
-  // user scrolls on, the new active card opens its own thread (flag persists).
-  bool get _commentsVisible => _webCommentsOpen && _isFocused;
-  void _setCommentsOpen(bool value) {
-    if (_useSharedComments) {
-      widget.webCommentsOpen!.value = value; // listener rebuilds every card
-    } else {
-      setState(() => _localCommentsOpen = value);
-    }
-  }
-
-  void _onSharedCommentsChanged() {
-    if (mounted) setState(() {});
-  }
-
   late final AnimationController _heartCtrl;
 
   // Stored so we can safely dispatch from dispose() without using context.
@@ -183,9 +143,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     });
     // Restart/stop auto-scroll as feed focus moves between cards.
     widget.activeCardIndex?.addListener(_onActiveCardChanged);
-    // Rebuild when the shared "comments open" flag flips (web desktop/laptop),
-    // so this card opens/closes its own thread in step with the feed.
-    widget.webCommentsOpen?.addListener(_onSharedCommentsChanged);
     // Notify the bloc that this card is now visible.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -217,10 +174,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
       // Don't setState here — didUpdateWidget is already inside a build.
       _applyAutoScrollForActive();
     }
-    if (old.webCommentsOpen != widget.webCommentsOpen) {
-      old.webCommentsOpen?.removeListener(_onSharedCommentsChanged);
-      widget.webCommentsOpen?.addListener(_onSharedCommentsChanged);
-    }
   }
 
   @override
@@ -229,7 +182,6 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     _discoveryBloc?.add(DiscoveryEventHidden(widget.event.id));
     _stopAutoScroll();
     widget.activeCardIndex?.removeListener(_onActiveCardChanged);
-    widget.webCommentsOpen?.removeListener(_onSharedCommentsChanged);
     _heartCtrl.dispose();
     _pageCtrl.dispose();
     super.dispose();
@@ -385,380 +337,86 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     // so the card's gradient, footer and page dots lift clear of it and the
     // controls stay visible and tappable.
     final controlsReserve = onVideo ? 60.h : 0.0;
-    // Web: show prev/next carousel arrows when hovering a multi-photo card.
-    final showArrows = kIsWeb && widget.isAuthenticated && visible.length > 1;
-    return MouseRegion(
-        onEnter:
-            showArrows ? (_) => setState(() => _mediaHovered = true) : null,
-        onExit:
-            showArrows ? (_) => setState(() => _mediaHovered = false) : null,
-        child: GestureDetector(
-          onTap: widget.isAuthenticated ? null : widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            width: width,
-            height: height,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                pics.isEmpty
-                    ? CardGradientPlaceholder(name: widget.event.eventName)
-                    : PostPhotoCarousel(
-                        pics: visible,
-                        pageController: _pageCtrl,
-                        showBlur: !widget.isAuthenticated && pics.length > 3,
-                        onTap: handleTap,
-                        scrollable: widget.isAuthenticated,
-                        // Double-tap-to-like answers to the same switch as the
-                        // like button — otherwise it is a silent way past a
-                        // hidden control.
-                        onDoubleTap: widget.isAuthenticated
-                            ? _handleDoubleTap
-                            : widget.onTap,
-                        cardIndex: widget.cardIndex,
-                        activeCardIndex: widget.activeCardIndex,
-                      ),
-                Positioned(
-                  bottom: controlsReserve,
-                  left: 0,
-                  right: 0,
-                  height: 160.h,
-                  child: const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        stops: [0.0, 0.55, 1.0],
-                        colors: [
-                          Color(
-                              0x99000000), // 60 % — text shadows handle legibility
-                          Color(0x33000000), // 20 %
-                          Color(0x00000000), // 0 %
-                        ],
-                      ),
-                    ),
+    return GestureDetector(
+      onTap: widget.isAuthenticated ? null : widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        width: width,
+        height: height,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            pics.isEmpty
+                ? CardGradientPlaceholder(name: widget.event.eventName)
+                : PostPhotoCarousel(
+                    pics: visible,
+                    pageController: _pageCtrl,
+                    showBlur: !widget.isAuthenticated && pics.length > 3,
+                    onTap: handleTap,
+                    scrollable: widget.isAuthenticated,
+                    // Double-tap-to-like answers to the same switch as the
+                    // like button — otherwise it is a silent way past a
+                    // hidden control.
+                    onDoubleTap: widget.isAuthenticated
+                        ? _handleDoubleTap
+                        : widget.onTap,
+                    cardIndex: widget.cardIndex,
+                    activeCardIndex: widget.activeCardIndex,
+                  ),
+            Positioned(
+              bottom: controlsReserve,
+              left: 0,
+              right: 0,
+              height: 160.h,
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    stops: [0.0, 0.55, 1.0],
+                    colors: [
+                      Color(
+                          0x99000000), // 60 % — text shadows handle legibility
+                      Color(0x33000000), // 20 %
+                      Color(0x00000000), // 0 %
+                    ],
                   ),
                 ),
-                Positioned(
-                  bottom: 16.h + controlsReserve,
-                  left: 14.w,
-                  right: kIsWeb ? 14.w : 82.w,
-                  child: ImageFooter(event: widget.event),
-                ),
-                if (_showHeartBurst)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: Center(child: HeartBurst(ctrl: _heartCtrl)),
-                    ),
-                  ),
-                if (pics.length > 1)
-                  Positioned(
-                    bottom: 10.h + controlsReserve,
-                    left: 0,
-                    right: 0,
-                    child: PageDots(
-                      totalCount: _visibleCount,
-                      controller: _pageCtrl,
-                      maxRevealedPage: _maxRevealedPage,
-                    ),
-                  ),
-                if (!widget.isAuthenticated && pics.isEmpty)
-                  UnauthCta(onTap: widget.onTap),
-
-                // ── Web: prev / next carousel arrows (hover-revealed) ───────────
-                if (showArrows)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      ignoring: !_mediaHovered,
-                      child: AnimatedOpacity(
-                        opacity: _mediaHovered ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 160),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 8, vertical: controlsReserve),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Semantics(
-                                button: true,
-                                label: 'Previous photo',
-                                child: CarouselArrow(
-                                  isLeft: true,
-                                  enabled: curIdx > 0,
-                                  onTap: () => _goToCarouselPage(curIdx - 1),
-                                ),
-                              ),
-                              Semantics(
-                                button: true,
-                                label: 'Next photo',
-                                child: CarouselArrow(
-                                  isLeft: false,
-                                  enabled: curIdx < visible.length - 1,
-                                  onTap: () => _goToCarouselPage(curIdx + 1),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+              ),
             ),
-          ),
-        ));
-  }
-
-  /// Animate the photo carousel to [target], clamped to the visible range.
-  void _goToCarouselPage(int target) {
-    if (!_pageCtrl.hasClients) return;
-    final t = target.clamp(0, _visibleCount - 1);
-    _pageCtrl.animateToPage(
-      t,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOut,
-    );
-  }
-
-  // ── Web layout — image left, reactions/comments panel right ─────────────────
-
-  // ── Shared right-panel builder (reactions + optional inline comments) ────────
-
-  Widget _buildWebRightPanel(
-    BuildContext context,
-    AppThemeExtension ext,
-    bool commentsEnabled, {
-    required bool isExternalPanel,
-    bool reactionsOnly = false,
-    double? mediaH,
-  }) {
-    // Shared reactions column — used standalone or as a narrow strip beside
-    // the inline comment panel.
-    Widget buildReactions(BuildContext ctx) => WebReactionsColumn(
-          liked: _liked,
-          disliked: _disliked,
-          saved: _isSaved(ctx),
-          likeCount: _likeCount,
-          dislikeCount: _dislikeCount,
-          commentCount: widget.event.commentCount,
-          commentTargetId: widget.event.id,
-          commentsEnabled: commentsEnabled,
-          ext: ext,
-          isExternalPanel: isExternalPanel,
-          mediaH: mediaH! * 1.5,
-          photographerName: widget.event.photographerName,
-          photographerId: widget.event.photographerId,
-          photographerProfileUrl: widget.event.photographerProfileUrl,
-          isFollowed: widget.event.isFollowed,
-          isOwner: widget.isOwner,
-          isAuthenticated: widget.isAuthenticated,
-          onPhotographerTap: () => openPhotographerProfile(
-            ctx,
-            photographerId: widget.event.photographerId,
-            photographerName: widget.event.photographerName,
-            photographerProfileUrl: widget.event.photographerProfileUrl,
-          ),
-          onLoginRequired: widget.onTap,
-          onLike: widget.isAuthenticated
-              ? () {
-                  setState(() {
-                    if (!_liked && _disliked) {
-                      _disliked = false;
-                      _dislikeCount = (_dislikeCount - 1).clamp(0, 999999999);
-                    }
-                    _liked = !_liked;
-                    _likeCount += _liked ? 1 : -1;
-                  });
-                  context.read<DiscoveryBloc>().add(
-                      DiscoveryReactionToggled(widget.event.id, isLike: true));
-                }
-              : widget.onTap,
-          onDislike: widget.isAuthenticated
-              ? () {
-                  setState(() {
-                    if (!_disliked && _liked) {
-                      _liked = false;
-                      _likeCount = (_likeCount - 1).clamp(0, 999999999);
-                    }
-                    _disliked = !_disliked;
-                    _dislikeCount += _disliked ? 1 : -1;
-                  });
-                  context.read<DiscoveryBloc>().add(
-                      DiscoveryReactionToggled(widget.event.id, isLike: false));
-                }
-              : widget.onTap,
-          // Toggle: tapping the comment icon closes the panel when it's open.
-          onComment: widget.isAuthenticated && commentsEnabled
-              ? () => _setCommentsOpen(!_webCommentsOpen)
-              : widget.isAuthenticated
-                  ? null
-                  : widget.onTap,
-          onShare: () => GetAppSheet.show(context, ext: ext),
-          onSave: widget.isAuthenticated
-              ? () => context
-                  .read<DiscoveryBloc>()
-                  .add(DiscoveryEventSaveToggled(widget.event.id))
-              : widget.onTap,
-          onMore: widget.isAuthenticated
-              ? () => _showEventMoreOptions(ctx, ext)
-              : null,
-        );
-
-    if (!_commentsVisible || reactionsOnly) {
-      return BlocBuilder<DiscoveryBloc, DiscoveryState>(
-        buildWhen: (prev, next) => prev.savedEventIds != next.savedEventIds,
-        builder: (ctx2, _) => buildReactions(ctx2),
-      );
-    }
-
-    // Slide + fade the panel in from the side each time it appears (when the
-    // card becomes active with comments open, or the user opens them). Reveal
-    // plays once on insertion and honours reduce-motion.
-    final commentsPanel = Reveal(
-      offset: const Offset(40, 0),
-      duration: AppMotion.fast,
-      child: EventCommentInlinePanel(
-        event: widget.event,
-        isExternalPanel: isExternalPanel,
-        onClose: () => _setCommentsOpen(false),
-        onCommentSent: _onCommentSent,
+            Positioned(
+              bottom: 16.h + controlsReserve,
+              left: 14.w,
+              right: 82.w,
+              child: ImageFooter(event: widget.event),
+            ),
+            if (_showHeartBurst)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Center(child: HeartBurst(ctrl: _heartCtrl)),
+                ),
+              ),
+            if (pics.length > 1)
+              Positioned(
+                bottom: 10.h + controlsReserve,
+                left: 0,
+                right: 0,
+                child: PageDots(
+                  totalCount: _visibleCount,
+                  controller: _pageCtrl,
+                  maxRevealedPage: _maxRevealedPage,
+                ),
+              ),
+            if (!widget.isAuthenticated && pics.isEmpty)
+              UnauthCta(onTap: widget.onTap),
+          ],
+        ),
       ),
     );
-
-    // Narrow (inside-card) layout: comments replace reactions.
-    if (!isExternalPanel) return commentsPanel;
-
-    // External (desktop) layout: reactions strip stays visible on the left,
-    // comment thread fills the remaining space to the right.
-    // LayoutBuilder guards against the rare case where the panel hasn't grown
-    // wide enough to fit both (≥ 240 px = 64 reactions + 176 comments).
-    return LayoutBuilder(builder: (ctx, cons) {
-      if (cons.maxWidth >= 240.0) {
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 64.0,
-              child: BlocBuilder<DiscoveryBloc, DiscoveryState>(
-                buildWhen: (prev, next) =>
-                    prev.savedEventIds != next.savedEventIds,
-                builder: (ctx2, _) => buildReactions(ctx2),
-              ),
-            ),
-            Expanded(child: commentsPanel),
-          ],
-        );
-      }
-      return commentsPanel;
-    });
   }
 
-  Widget _buildWebCard(BuildContext context, AppThemeExtension ext,
-      List<EventPicture> pics, double screenH) {
-    // Same split as the native path: comments also answer to the admin
-    // kill-switch, reactions only to the owner's own setting.
-    final commentsEnabled =
-        AppConfigRepository.current.commentsEnabled && _engagementAllowed;
-
-    return LayoutBuilder(builder: (ctx, cons) {
-      // External panel activates when the card has ≥ 60px of room beyond the
-      // 480px content column (viewport ≈ 780px+, any laptop at a normal window
-      // size). Below that threshold the panel stays inside the card (170px).
-      final isWide = cons.maxWidth >= _kWebColumnWidth + 60.0; // ≥ 540px
-      const cardW = _kWebColumnWidth; // 480
-
-      if (isWide) {
-        final mediaH = _computeMediaHeight(cardW, screenH);
-        const reactionsW = 64.0;
-
-        // Card column (image + caption) — identical in both states.
-        final cardColumn = SizedBox(
-          width: cardW,
-          child: Material(
-            color: ext.cardSurface,
-            borderRadius: BorderRadius.circular(14),
-            clipBehavior: Clip.antiAlias,
-            elevation: 6,
-            shadowColor: Colors.black.withValues(alpha: 0.22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  height: mediaH,
-                  child: _buildMediaStack(context, ext, pics, cardW, mediaH),
-                ),
-                CardDescriptionText(
-                  event: widget.event,
-                  ext: ext,
-                  expanded: _descExpanded,
-                  onToggle: () =>
-                      setState(() => _descExpanded = !_descExpanded),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-
-        final reactionsColumn = SizedBox(
-          width: reactionsW,
-          height: mediaH,
-          child: _buildWebRightPanel(context, ext, commentsEnabled,
-              isExternalPanel: true, reactionsOnly: true, mediaH: mediaH),
-        );
-
-        // Reserve the comment column's width on the right in BOTH states, so
-        // the card sits at the exact same x-position whether comments are open
-        // or closed — opening them never shifts ("pushes") the card.
-        const desiredCommentsW = 400.0;
-        final commentsW =
-            (cons.maxWidth - cardW - reactionsW).clamp(0.0, desiredCommentsW);
-
-        // Centred pad if the card were alone; and the largest pad that still
-        // leaves room for the reserved comment column. The card stays centred
-        // when there's space, and is biased left only as much as needed.
-        final basePad = ((cons.maxWidth - cardW - reactionsW) / 2)
-            .clamp(0.0, double.infinity);
-        final maxPadWithComments =
-            (cons.maxWidth - cardW - reactionsW - commentsW)
-                .clamp(0.0, double.infinity);
-        final leftPad = math.min(basePad, maxPadWithComments);
-
-        // Comment thread grows to (almost) the full viewport height when open.
-        final panelH =
-            (screenH - 80.0).clamp(mediaH, double.infinity).toDouble();
-
-        // One identical Row for both states — only the comment child is added
-        // or removed. The card (and its video element) keeps its position and
-        // its state, so toggling comments never tears it down / reloads it.
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(width: leftPad),
-            cardColumn,
-            reactionsColumn,
-            if (_commentsVisible)
-              SizedBox(
-                width: commentsW,
-                height: panelH,
-                child: EventCommentInlinePanel(
-                  event: widget.event,
-                  isExternalPanel: true,
-                  onClose: () => _setCommentsOpen(false),
-                  onCommentSent: _onCommentSent,
-                ),
-              ),
-          ],
-        );
-      }
-
-      // ── Narrow (mobile web): same layout as native — reactions beneath ─────
-      return _buildMobileLayout(context, ext, pics, screenH);
-    });
-  }
-
-  // ── Shared helpers: used by both native and mobile-web layouts ───────────────
+  // ── Shared helpers ────────────────────────────────────────────────────────
 
   bool get _commentsEnabled =>
       AppConfigRepository.current.commentsEnabled && _engagementAllowed;
@@ -945,33 +603,13 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     return CommentPushArea(
       // Column-shaped: header, media, reaction bar. See [fillsBand].
       fillsBand: false,
-      child: kIsWeb
-          ? _buildWebCard(context, ext, pics, screenH)
-          // Native iOS / Android — reactions beneath the image.
-          : _buildMobileLayout(context, ext, pics, screenH),
+      // Reactions beneath the image.
+      child: _buildMobileLayout(context, ext, pics, screenH),
     );
   }
 
   void _showCommentSheet(BuildContext context, AppThemeExtension ext) {
     EventCommentPage.show(context, widget.event, onCommentSent: _onCommentSent);
-  }
-
-  /// Opens the Hide / Report sheet (used by the web card's more-options button;
-  /// mobile uses the post header's menu). Prompts login when unauthenticated.
-  void _showEventMoreOptions(BuildContext context, AppThemeExtension ext) {
-    if (!widget.isAuthenticated) {
-      widget.onTap();
-      return;
-    }
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => EventMoreOptionsSheet(
-        ext: ext,
-        eventId: widget.event.id,
-        onHide: widget.onHide,
-      ),
-    );
   }
 
   /// Optimistically bump the feed card's comment count when the user posts a

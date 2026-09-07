@@ -6,7 +6,6 @@ import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/settings/presentation/pages/account_security_page.dart';
 import 'package:jperg_app/features/settings/presentation/pages/edit_profile_page.dart';
 import 'package:jperg_app/features/settings/presentation/pages/help_support_page.dart';
@@ -191,7 +190,7 @@ class SettingsPage extends StatelessWidget {
       ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   /// Every sub-screen is handed the bloc this page already has loaded, so

@@ -6,7 +6,6 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/notifications/data/notification_service.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
@@ -44,6 +43,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   /// for, and this keeps the row from flicking back before it settles.
   String? _saving;
 
+  /// Turning the switch on when the OS has already been asked once sends the
+  /// person to the system settings app, and coming back is the only signal
+  /// that anything changed there. Without this the switch they left sitting at
+  /// "off" was still off when they returned, having just allowed
+  /// notifications — so the one route out of a declined permission ended
+  /// exactly where it started.
+  AppLifecycleListener? _lifecycle;
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +60,31 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       _loading = false;
     }
     _load();
+    _lifecycle = AppLifecycleListener(onResume: _syncWithSystem);
+  }
+
+  @override
+  void dispose() {
+    _lifecycle?.dispose();
+    super.dispose();
+  }
+
+  /// Re-read what the OS allows and make the switch — and the subscription —
+  /// tell the truth about it.
+  Future<void> _syncWithSystem() async {
+    final allowed = await PushNotificationService.instance.hasPermission();
+    if (!mounted) return;
+
+    final muted = sl<NotificationPrefsService>().isMuted;
+    final on = allowed && !muted;
+    if (on != _pushOn) setState(() => _pushOn = on);
+
+    // Granted while they were away: finish the job they started here. The
+    // subscription is the half that actually stops notifications arriving, and
+    // it could not be turned on while permission was missing.
+    if (allowed && !muted) {
+      await PushNotificationService.instance.setSubscribed(true);
+    }
   }
 
   Future<void> _load() async {
@@ -172,7 +204,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       body: _buildBody(ext),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _buildBody(AppThemeExtension ext) {

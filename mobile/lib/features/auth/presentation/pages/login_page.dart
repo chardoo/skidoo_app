@@ -15,14 +15,13 @@ import 'package:jperg_app/features/discovery/presentation/pages/discovery_page.d
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 // The teal gradient logo/CTA is the auth flow's fixed brand accent — it stays
 // the same in both themes. Background/text below are theme-aware (see `ext`).
-const _kTeal        = Color(0xFF1D9E75);
-const _kTealDark    = Color(0xFF16795B);
+const _kTeal = Color(0xFF1D9E75);
+const _kTealDark = Color(0xFF16795B);
 
 class LoginPage extends StatelessWidget {
   static const routeName = '/login';
@@ -45,11 +44,11 @@ class _LoginView extends StatefulWidget {
 
 class _LoginViewState extends State<_LoginView>
     with SingleTickerProviderStateMixin {
-  final _formKey              = GlobalKey<FormState>();
-  final _emailController      = TextEditingController();
-  final _passwordController   = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   late final AnimationController _fadeCtrl;
-  late final Animation<double>   _fadeAnim;
+  late final Animation<double> _fadeAnim;
 
   @override
   void initState() {
@@ -96,7 +95,8 @@ class _LoginViewState extends State<_LoginView>
       navigator.pop();
     } else {
       navigator.pushNamedAndRemoveUntil(
-        DiscoveryPage.routeName, (route) => false,
+        DiscoveryPage.routeName,
+        (route) => false,
       );
     }
   }
@@ -140,8 +140,11 @@ class _LoginViewState extends State<_LoginView>
           if (state.needsEmailVerification) {
             // Dispatch immediately so a later, unrelated state change can't
             // re-trigger this navigation while LoginPage is still on the stack.
-            context.read<LoginBloc>().add(const LoginEmailVerificationHandled());
-            EmailVerificationPage.push(context, email: _emailController.text.trim());
+            context
+                .read<LoginBloc>()
+                .add(const LoginEmailVerificationHandled());
+            EmailVerificationPage.push(context,
+                email: _emailController.text.trim());
           }
           // Failures are drawn in the form as a banner (see the builder) so the
           // message is still on screen when the user goes back to the field it
@@ -191,186 +194,198 @@ class _LoginViewState extends State<_LoginView>
                       child: SingleChildScrollView(
                         padding: EdgeInsets.symmetric(horizontal: 28.w),
                         child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: 60.h),
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 60.h),
 
-                          // ── Logo ───────────────────────────────────────
-                          //
-                          // The real wordmark, centred. This was a generic
-                          // camera glyph in a gradient tile — a stand-in that
-                          // said "photo app" rather than which one, on the
-                          // first screen anybody sees.
-                          //
-                          // Centred while the copy below stays left-aligned:
-                          // the column is crossAxisAlignment.start, so the
-                          // logo asks for the full width and centres itself
-                          // inside that.
-                          Align(
-                            alignment: Alignment.center,
-                            child: JpergLogo(height: 34.h, color: _kTeal),
-                          ),
-                          SizedBox(height: AppSpacing.xxxl.h),
-
-                          // ── Heading ────────────────────────────────────
-                          Text(
-                            AppLocalizations.of(context)!.loginWelcomeBack,
-                            style: TextStyle(
-                              color: ext.greetingColor,
-                              fontSize: 30.sp,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.5,
-                              height: 1.1,
-                            ),
-                          ),
-                          SizedBox(height: AppSpacing.sm.h),
-                          Text(
-                            AppLocalizations.of(context)!.loginSignInToAccount,
-                            style: TextStyle(
-                              color: ext.searchHintColor,
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w400,
-                              letterSpacing: 0.1,
-                            ),
-                          ),
-                          SizedBox(height: 44.h),
-
-                          // ── Problem banner ─────────────────────────────
-                          // In the form rather than a SnackBar at the foot of
-                          // the screen: "Incorrect password" is only useful
-                          // while you are looking at the password field.
-                          if (state.errorMessage != null) ...[
-                            AppInlineBanner(
-                              message: state.errorMessage!,
-                              onDismiss: () => context
-                                  .read<LoginBloc>()
-                                  .add(const LoginErrorCleared()),
-                            ),
-                            SizedBox(height: AppSpacing.lg.h),
-                          ],
-
-                          // ── Email ──────────────────────────────────────
-                          AppTextField(
-                            controller: _emailController,
-                            label: AppLocalizations.of(context)!.loginEmailAddress,
-                            prefixIcon: Icons.mail_outline_rounded,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            validator: Validators.emailValidator,
-                          ),
-                          SizedBox(height: AppSpacing.lg.h),
-
-                          // ── Password ───────────────────────────────────
-                          AppPasswordField(
-                            controller: _passwordController,
-                            label: AppLocalizations.of(context)!.loginPassword,
-                            textInputAction: TextInputAction.done,
-                            validator: (v) =>
-                                Validators.passwordValidator(v),
-                          ),
-                          SizedBox(height: AppSpacing.md.h),
-
-                          // ── Forgot password ────────────────────────────
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Semantics(button: true, label: 'Forget password page', child: GestureDetector(
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const ForgetPasswordPage()),
+                              // ── Logo ───────────────────────────────────────
+                              //
+                              // The real wordmark, centred. This was a generic
+                              // camera glyph in a gradient tile — a stand-in that
+                              // said "photo app" rather than which one, on the
+                              // first screen anybody sees.
+                              //
+                              // Centred while the copy below stays left-aligned:
+                              // the column is crossAxisAlignment.start, so the
+                              // logo asks for the full width and centres itself
+                              // inside that.
+                              Align(
+                                alignment: Alignment.center,
+                                child: JpergLogo(height: 34.h, color: _kTeal),
                               ),
-                              child: Text(
-                                AppLocalizations.of(context)!.loginForgotPassword,
+                              SizedBox(height: AppSpacing.xxxl.h),
+
+                              // ── Heading ────────────────────────────────────
+                              Text(
+                                AppLocalizations.of(context)!.loginWelcomeBack,
                                 style: TextStyle(
-                                  color: _kTeal,
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w500,
+                                  color: ext.greetingColor,
+                                  fontSize: 30.sp,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.5,
+                                  height: 1.1,
                                 ),
                               ),
-                            )),
-                          ),
-                          SizedBox(height: 36.h),
-
-                          // ── Sign in button ─────────────────────────────
-                          _GradientButton(
-                            label: AppLocalizations.of(context)!.loginSignIn,
-                            isLoading: state.isLoading,
-                            enabled: _fieldsFilled,
-                            onTap: _submit,
-                          ),
-                          SizedBox(height: 28.h),
-
-                          // ── Sign up link ───────────────────────────────
-                          Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  AppLocalizations.of(context)!.loginNoAccount,
-                                  style: TextStyle(
-                                    color: ext.searchHintColor,
-                                    fontSize: 14.sp,
-                                  ),
+                              SizedBox(height: AppSpacing.sm.h),
+                              Text(
+                                AppLocalizations.of(context)!
+                                    .loginSignInToAccount,
+                                style: TextStyle(
+                                  color: ext.searchHintColor,
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w400,
+                                  letterSpacing: 0.1,
                                 ),
-                                Semantics(button: true, label: 'Signup', child: GestureDetector(
-                                  onTap: () => Navigator.of(context)
-                                      .pushReplacementNamed('/signup'),
-                                  child: Text(
-                                    AppLocalizations.of(context)!.loginSignUp,
-                                    style: TextStyle(
-                                      color: _kTeal,
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w600,
+                              ),
+                              SizedBox(height: 44.h),
+
+                              // ── Problem banner ─────────────────────────────
+                              // In the form rather than a SnackBar at the foot of
+                              // the screen: "Incorrect password" is only useful
+                              // while you are looking at the password field.
+                              if (state.errorMessage != null) ...[
+                                AppInlineBanner(
+                                  message: state.errorMessage!,
+                                  onDismiss: () => context
+                                      .read<LoginBloc>()
+                                      .add(const LoginErrorCleared()),
+                                ),
+                                SizedBox(height: AppSpacing.lg.h),
+                              ],
+
+                              // ── Email ──────────────────────────────────────
+                              AppTextField(
+                                controller: _emailController,
+                                label: AppLocalizations.of(context)!
+                                    .loginEmailAddress,
+                                prefixIcon: Icons.mail_outline_rounded,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                validator: Validators.emailValidator,
+                              ),
+                              SizedBox(height: AppSpacing.lg.h),
+
+                              // ── Password ───────────────────────────────────
+                              AppPasswordField(
+                                controller: _passwordController,
+                                label:
+                                    AppLocalizations.of(context)!.loginPassword,
+                                textInputAction: TextInputAction.done,
+                                validator: (v) =>
+                                    Validators.passwordValidator(v),
+                              ),
+                              SizedBox(height: AppSpacing.md.h),
+
+                              // ── Forgot password ────────────────────────────
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Semantics(
+                                    button: true,
+                                    label: 'Forget password page',
+                                    child: GestureDetector(
+                                      onTap: () => Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                            builder: (_) =>
+                                                const ForgetPasswordPage()),
+                                      ),
+                                      child: Text(
+                                        AppLocalizations.of(context)!
+                                            .loginForgotPassword,
+                                        style: TextStyle(
+                                          color: _kTeal,
+                                          fontSize: 13.sp,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    )),
+                              ),
+                              SizedBox(height: 36.h),
+
+                              // ── Sign in button ─────────────────────────────
+                              _GradientButton(
+                                label:
+                                    AppLocalizations.of(context)!.loginSignIn,
+                                isLoading: state.isLoading,
+                                enabled: _fieldsFilled,
+                                onTap: _submit,
+                              ),
+                              SizedBox(height: 28.h),
+
+                              // ── Sign up link ───────────────────────────────
+                              Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      AppLocalizations.of(context)!
+                                          .loginNoAccount,
+                                      style: TextStyle(
+                                        color: ext.searchHintColor,
+                                        fontSize: 14.sp,
+                                      ),
+                                    ),
+                                    Semantics(
+                                        button: true,
+                                        label: 'Signup',
+                                        child: GestureDetector(
+                                          onTap: () => Navigator.of(context)
+                                              .pushReplacementNamed('/signup'),
+                                          child: Text(
+                                            AppLocalizations.of(context)!
+                                                .loginSignUp,
+                                            style: TextStyle(
+                                              color: _kTeal,
+                                              fontSize: 14.sp,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        )),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: AppSpacing.md.h),
+
+                              // ── Continue as guest ───────────────────────────
+                              // The signed-out feed is a real destination, not a
+                              // consolation: someone can browse, search and find
+                              // their photos before ever making an account. Sign-up
+                              // has offered this from the start; login sent people
+                              // looking for a way past it back out through Back.
+                              Center(
+                                child: Semantics(
+                                  button: true,
+                                  label: 'Continue as guest',
+                                  child: TextButton(
+                                    onPressed: _continueAsGuest,
+                                    child: Text(
+                                      'Continue as guest',
+                                      style: TextStyle(
+                                        color: ext.searchHintColor,
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
-                                )),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: AppSpacing.md.h),
-
-                          // ── Continue as guest ───────────────────────────
-                          // The signed-out feed is a real destination, not a
-                          // consolation: someone can browse, search and find
-                          // their photos before ever making an account. Sign-up
-                          // has offered this from the start; login sent people
-                          // looking for a way past it back out through Back.
-                          Center(
-                            child: Semantics(
-                              button: true,
-                              label: 'Continue as guest',
-                              child: TextButton(
-                                onPressed: _continueAsGuest,
-                                child: Text(
-                                  'Continue as guest',
-                                  style: TextStyle(
-                                    color: ext.searchHintColor,
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w500,
-                                  ),
                                 ),
                               ),
-                            ),
+                              SizedBox(height: AppSpacing.xxxl.h),
+                            ],
                           ),
-                          SizedBox(height: AppSpacing.xxxl.h),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
             ],
           );
         },
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
-
 }
 
 // ── Shared gradient CTA button ─────────────────────────────────────────────────
@@ -390,52 +405,59 @@ class _GradientButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dimmed = isLoading || !enabled;
-    return Semantics(button: true, enabled: enabled && !isLoading, label: label, child: GestureDetector(
-      onTap: dimmed ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        height: 56.h,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: dimmed
-                ? [_kTeal.withValues(alpha: 0.5), _kTealDark.withValues(alpha: 0.5)]
-                : [_kTeal, _kTealDark],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+    return Semantics(
+        button: true,
+        enabled: enabled && !isLoading,
+        label: label,
+        child: GestureDetector(
+          onTap: dimmed ? null : onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            height: 56.h,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: dimmed
+                    ? [
+                        _kTeal.withValues(alpha: 0.5),
+                        _kTealDark.withValues(alpha: 0.5)
+                      ]
+                    : [_kTeal, _kTealDark],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(14.r),
+              boxShadow: dimmed
+                  ? []
+                  : [
+                      BoxShadow(
+                        color: _kTeal.withValues(alpha: 0.35),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+            ),
+            child: Center(
+              child: isLoading
+                  ? SizedBox(
+                      width: 24.w,
+                      height: 24.w,
+                      child: const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : Text(
+                      label,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+            ),
           ),
-          borderRadius: BorderRadius.circular(14.r),
-          boxShadow: dimmed
-              ? []
-              : [
-                  BoxShadow(
-                    color: _kTeal.withValues(alpha: 0.35),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-        ),
-        child: Center(
-          child: isLoading
-              ? SizedBox(
-                  width: 24.w,
-                  height: 24.w,
-                  child: const CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
-                  ),
-                )
-              : Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-        ),
-      ),
-    ));
+        ));
   }
 }

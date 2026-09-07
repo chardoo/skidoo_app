@@ -298,6 +298,7 @@ class AdsRepository {
     required String description,
     required String eventType,
     required String location,
+
     /// Where the request is aimed, as resolved places. Empty means everywhere,
     /// which is what every request posted before the picker existed means.
     List<Map<String, dynamic>> targetLocations = const [],
@@ -441,11 +442,6 @@ class AdsRepository {
   Future<MultipartFile> _multipart(
       XFile file, String fileName, String ext, bool isVideo) async {
     final contentType = MediaType.parse(_mimeFor(ext, isVideo));
-    if (kIsWeb) {
-      final bytes = await file.readAsBytes();
-      return MultipartFile.fromBytes(bytes,
-          filename: fileName, contentType: contentType);
-    }
     return MultipartFile.fromFile(file.path,
         filename: fileName, contentType: contentType);
   }
@@ -456,6 +452,7 @@ class AdsRepository {
     String? description,
     String? eventType,
     String? location,
+
     /// Absent leaves targeting alone; an empty list clears it back to
     /// everywhere.
     List<Map<String, dynamic>>? targetLocations,
@@ -623,13 +620,16 @@ class AdsRepository {
 
   /// Note that the requester opened this photographer's profile — what moves
   /// them from Pending to Viewed.
-  Future<void> markInterestViewed(String requestId, String photographerId) async {
-    await _dio.post('/ads/requests/$requestId/interests/$photographerId/viewed');
+  Future<void> markInterestViewed(
+      String requestId, String photographerId) async {
+    await _dio
+        .post('/ads/requests/$requestId/interests/$photographerId/viewed');
   }
 
   /// Choose the photographer. Closes the request to further answers, and
   /// replaces an earlier choice rather than erroring.
-  Future<void> selectPhotographer(String requestId, String photographerId) async {
+  Future<void> selectPhotographer(
+      String requestId, String photographerId) async {
     debugPrint('$_tag selectPhotographer → $requestId / $photographerId');
     await _dio.post(
       '/ads/requests/$requestId/select',
@@ -866,6 +866,7 @@ class AdsRepository {
     /// [interests] below is the targeting; see AdCampaign.contentTags.
     List<String> contentTags = const [],
     List<String> locations = const [],
+
     /// Resolved places from the location search. The one the country gate and
     /// the distance ranking read — `locations` above is the old free-text list,
     /// which the server now derives from these so the two cannot disagree.
@@ -1324,6 +1325,7 @@ class AdsRepository {
     /// closed had to start the campaign again.
     bool? commentsEnabled,
     List<String>? locations,
+
     /// Absent leaves targeting alone; an empty list clears it back to
     /// everywhere. Two different intentions, and a PATCH has to say either.
     List<Map<String, dynamic>>? targetLocations,
@@ -1372,7 +1374,6 @@ class AdsRepository {
     debugPrint('$_tag deleteCampaign ← status=${resp.statusCode}');
   }
 }
-
 
 /// What a budget buys, as the budget step reports it.
 class ReachEstimate {

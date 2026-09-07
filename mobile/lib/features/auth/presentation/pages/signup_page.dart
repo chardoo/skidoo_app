@@ -14,14 +14,13 @@ import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
 import 'package:jperg_app/core/common/widgets/app_phone_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 // The teal gradient logo/CTA is the auth flow's fixed brand accent — it stays
 // the same in both themes. Background/text below are theme-aware (see `ext`).
-const _kTeal        = Color(0xFF1D9E75);
-const _kTealDark    = Color(0xFF16795B);
+const _kTeal = Color(0xFF1D9E75);
+const _kTealDark = Color(0xFF16795B);
 
 // Remote privacy policy — opened in a WebView so it stays up to date without
 // shipping an app update.
@@ -78,14 +77,14 @@ class _SignUpView extends StatefulWidget {
 
 class _SignUpViewState extends State<_SignUpView>
     with SingleTickerProviderStateMixin {
-  final _formKey                  = GlobalKey<FormState>();
-  final _emailController          = TextEditingController();
-  final _usernameController       = TextEditingController();
-  final _contactController        = TextEditingController();
-  final _passwordController       = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _contactController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   late final AnimationController _fadeCtrl;
-  late final Animation<double>   _fadeAnim;
+  late final Animation<double> _fadeAnim;
 
   @override
   void initState() {
@@ -219,264 +218,280 @@ class _SignUpViewState extends State<_SignUpView>
                       child: SingleChildScrollView(
                         padding: EdgeInsets.symmetric(horizontal: 28.w),
                         child: Form(
-                      // Validate as the user types, not only on submit: the
-                      // password rules are strict enough that discovering them
-                      // one failure at a time — after each rejected submit — is
-                      // a guessing game. onUserInteraction keeps a pristine
-                      // form quiet, so nothing is flagged before it is typed.
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: 48.h),
+                          // Validate as the user types, not only on submit: the
+                          // password rules are strict enough that discovering them
+                          // one failure at a time — after each rejected submit — is
+                          // a guessing game. onUserInteraction keeps a pristine
+                          // form quiet, so nothing is flagged before it is typed.
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 48.h),
 
-                          // ── Logo ───────────────────────────────────────
-                          // Centred, matching the login screen — see the note
-                          // there for why the Align is needed inside a
-                          // start-aligned column.
-                          Align(
-                            alignment: Alignment.center,
-                            child: JpergLogo(height: 34.h, color: _kTeal),
-                          ),
-                          SizedBox(height: 28.h),
+                              // ── Logo ───────────────────────────────────────
+                              // Centred, matching the login screen — see the note
+                              // there for why the Align is needed inside a
+                              // start-aligned column.
+                              Align(
+                                alignment: Alignment.center,
+                                child: JpergLogo(height: 34.h, color: _kTeal),
+                              ),
+                              SizedBox(height: 28.h),
 
-                          // ── Heading ────────────────────────────────────
-                          Text(
-                            widget.headline ??
-                                AppLocalizations.of(context)!
-                                    .signupCreateAccount,
-                            style: TextStyle(
-                              color: ext.greetingColor,
-                              fontSize: 30.sp,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.5,
-                              height: 1.1,
-                            ),
-                          ),
-                          SizedBox(height: AppSpacing.sm.h),
-                          Text(
-                            widget.subheadline ??
-                                AppLocalizations.of(context)!.signupSubtitle,
-                            style: TextStyle(
-                              color: ext.searchHintColor,
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w400,
-                              letterSpacing: 0.1,
-                            ),
-                          ),
-                          SizedBox(height: 36.h),
-
-                          // ── Problem banner ─────────────────────────────
-                          // Above the fields, because that is where the eye
-                          // goes back to after a failed submit, and because a
-                          // message below the button is behind the keyboard.
-                          if (state.existingAccountMessage != null) ...[
-                            AppInlineBanner(
-                              message: state.existingAccountMessage!,
-                              kind: AppBannerKind.info,
-                              actionLabel: 'Log in instead',
-                              onAction: () => Navigator.of(context)
-                                  .pushReplacementNamed(LoginPage.routeName),
-                              onDismiss: () => context
-                                  .read<SignUpBloc>()
-                                  .add(const SignUpErrorCleared()),
-                            ),
-                            SizedBox(height: AppSpacing.lg.h),
-                          ] else if (state.errorMessage != null) ...[
-                            AppInlineBanner(
-                              message: state.errorMessage!,
-                              onDismiss: () => context
-                                  .read<SignUpBloc>()
-                                  .add(const SignUpErrorCleared()),
-                            ),
-                            SizedBox(height: AppSpacing.lg.h),
-                          ],
-
-                          // ── Email ──────────────────────────────────────
-                          AppTextField(
-                            controller: _emailController,
-                            label: AppLocalizations.of(context)!.signupEmailAddress,
-                            hint: 'e.g. jane@example.com',
-                            prefixIcon: Icons.mail_outline_rounded,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            validator: Validators.emailValidator,
-                          ),
-                          SizedBox(height: 14.h),
-
-                          // ── Username ───────────────────────────────────
-                          AppTextField(
-                            controller: _usernameController,
-                            label: AppLocalizations.of(context)!.signupUsername,
-                            hint: 'e.g. jane_doe',
-                            prefixIcon: Icons.person_outline_rounded,
-                            textInputAction: TextInputAction.next,
-                            validator: Validators.nameValidator,
-                          ),
-                          SizedBox(height: 14.h),
-
-                          // ── Contact (with country dial-code dropdown) ──
-                          AppPhoneField(
-                            controller: _contactController,
-                            label: AppLocalizations.of(context)!.signupPhoneNumber,
-                            hint: 'e.g. 241234567',
-                            validator: Validators.nationalPhoneValidator,
-                          ),
-                          SizedBox(height: 14.h),
-
-                          // ── Password ───────────────────────────────────
-                          AppPasswordField(
-                            controller: _passwordController,
-                            label: AppLocalizations.of(context)!.signupPassword,
-                            textInputAction: TextInputAction.next,
-                            validator: Validators.signupPasswordValidator,
-                          ),
-                          SizedBox(height: 14.h),
-
-                          // ── Confirm password ───────────────────────────
-                          AppPasswordField(
-                            controller: _confirmPasswordController,
-                            label: AppLocalizations.of(context)!.signupConfirmPassword,
-                            textInputAction: TextInputAction.done,
-                            validator: (v) {
-                              if (v != _passwordController.text) {
-                                return AppLocalizations.of(context)!.signupPasswordsDoNotMatch;
-                              }
-                              return Validators.signupPasswordValidator(v);
-                            },
-                          ),
-                          SizedBox(height: AppSpacing.xxxl.h),
-
-                          // ── Sign up button ─────────────────────────────
-                          _GradientButton(
-                            label: AppLocalizations.of(context)!.signupCreateAccountButton,
-                            isLoading: state.isLoading,
-                            enabled: _requiredTextFilled,
-                            onTap: _submit,
-                          ),
-                          SizedBox(height: AppSpacing.lg.h),
-
-                          // ── Privacy policy consent ─────────────────────
-                          Center(
-                            child: Wrap(
-                              alignment: WrapAlignment.center,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                Text(
-                                  'By creating an account, you agree to our ',
-                                  style: TextStyle(
-                                      color: ext.searchHintColor, fontSize: 12.5.sp),
+                              // ── Heading ────────────────────────────────────
+                              Text(
+                                widget.headline ??
+                                    AppLocalizations.of(context)!
+                                        .signupCreateAccount,
+                                style: TextStyle(
+                                  color: ext.greetingColor,
+                                  fontSize: 30.sp,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.5,
+                                  height: 1.1,
                                 ),
-                                Semantics(
-                                  button: true,
-                                  label: 'Privacy Policy',
-                                  child: GestureDetector(
-                                    onTap: () => InAppWebViewPage.open(
-                                      context,
-                                      url: _kPrivacyPolicyUrl,
-                                      title: 'Privacy Policy',
-                                    ),
-                                    child: Text(
-                                      'Privacy Policy',
-                                      style: TextStyle(
-                                        color: _kTeal,
-                                        fontSize: 12.5.sp,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
+                              ),
+                              SizedBox(height: AppSpacing.sm.h),
+                              Text(
+                                widget.subheadline ??
+                                    AppLocalizations.of(context)!
+                                        .signupSubtitle,
+                                style: TextStyle(
+                                  color: ext.searchHintColor,
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w400,
+                                  letterSpacing: 0.1,
                                 ),
+                              ),
+                              SizedBox(height: 36.h),
+
+                              // ── Problem banner ─────────────────────────────
+                              // Above the fields, because that is where the eye
+                              // goes back to after a failed submit, and because a
+                              // message below the button is behind the keyboard.
+                              if (state.existingAccountMessage != null) ...[
+                                AppInlineBanner(
+                                  message: state.existingAccountMessage!,
+                                  kind: AppBannerKind.info,
+                                  actionLabel: 'Log in instead',
+                                  onAction: () => Navigator.of(context)
+                                      .pushReplacementNamed(
+                                          LoginPage.routeName),
+                                  onDismiss: () => context
+                                      .read<SignUpBloc>()
+                                      .add(const SignUpErrorCleared()),
+                                ),
+                                SizedBox(height: AppSpacing.lg.h),
+                              ] else if (state.errorMessage != null) ...[
+                                AppInlineBanner(
+                                  message: state.errorMessage!,
+                                  onDismiss: () => context
+                                      .read<SignUpBloc>()
+                                      .add(const SignUpErrorCleared()),
+                                ),
+                                SizedBox(height: AppSpacing.lg.h),
                               ],
-                            ),
-                          ),
-                          SizedBox(height: AppSpacing.xl.h),
 
-                          // ── Sign in link ───────────────────────────────
-                          Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  AppLocalizations.of(context)!.signupAlreadyHaveAccount,
-                                  style: TextStyle(
-                                    color: ext.searchHintColor,
-                                    fontSize: 14.sp,
-                                  ),
-                                ),
-                                Semantics(button: true, label: 'Log in', child: GestureDetector(
-                                  onTap: () => Navigator.of(context)
-                                      .pushReplacementNamed(LoginPage.routeName),
-                                  child: Text(
-                                    AppLocalizations.of(context)!.signupSignIn,
-                                    style: TextStyle(
-                                      color: _kTeal,
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                )),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: AppSpacing.md.h),
+                              // ── Email ──────────────────────────────────────
+                              AppTextField(
+                                controller: _emailController,
+                                label: AppLocalizations.of(context)!
+                                    .signupEmailAddress,
+                                hint: 'e.g. jane@example.com',
+                                prefixIcon: Icons.mail_outline_rounded,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                validator: Validators.emailValidator,
+                              ),
+                              SizedBox(height: 14.h),
 
-                          // ── Continue as guest / browsing ────────────────
-                          // A prompted sign-up (guest tapped a gated action)
-                          // returns to the feed they came from; the standalone
-                          // page resets to Discovery as before.
-                          Center(
-                            child: Semantics(
-                              button: true,
-                              label: widget.onContinueBrowsing != null
-                                  ? 'Continue browsing'
-                                  : 'Continue as guest',
-                              child: TextButton(
-                                onPressed: widget.onContinueBrowsing ??
-                                    _continueAsGuest,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                              // ── Username ───────────────────────────────────
+                              AppTextField(
+                                controller: _usernameController,
+                                label: AppLocalizations.of(context)!
+                                    .signupUsername,
+                                hint: 'e.g. jane_doe',
+                                prefixIcon: Icons.person_outline_rounded,
+                                textInputAction: TextInputAction.next,
+                                validator: Validators.nameValidator,
+                              ),
+                              SizedBox(height: 14.h),
+
+                              // ── Contact (with country dial-code dropdown) ──
+                              AppPhoneField(
+                                controller: _contactController,
+                                label: AppLocalizations.of(context)!
+                                    .signupPhoneNumber,
+                                hint: 'e.g. 241234567',
+                                validator: Validators.nationalPhoneValidator,
+                              ),
+                              SizedBox(height: 14.h),
+
+                              // ── Password ───────────────────────────────────
+                              AppPasswordField(
+                                controller: _passwordController,
+                                label: AppLocalizations.of(context)!
+                                    .signupPassword,
+                                textInputAction: TextInputAction.next,
+                                validator: Validators.signupPasswordValidator,
+                              ),
+                              SizedBox(height: 14.h),
+
+                              // ── Confirm password ───────────────────────────
+                              AppPasswordField(
+                                controller: _confirmPasswordController,
+                                label: AppLocalizations.of(context)!
+                                    .signupConfirmPassword,
+                                textInputAction: TextInputAction.done,
+                                validator: (v) {
+                                  if (v != _passwordController.text) {
+                                    return AppLocalizations.of(context)!
+                                        .signupPasswordsDoNotMatch;
+                                  }
+                                  return Validators.signupPasswordValidator(v);
+                                },
+                              ),
+                              SizedBox(height: AppSpacing.xxxl.h),
+
+                              // ── Sign up button ─────────────────────────────
+                              _GradientButton(
+                                label: AppLocalizations.of(context)!
+                                    .signupCreateAccountButton,
+                                isLoading: state.isLoading,
+                                enabled: _requiredTextFilled,
+                                onTap: _submit,
+                              ),
+                              SizedBox(height: AppSpacing.lg.h),
+
+                              // ── Privacy policy consent ─────────────────────
+                              Center(
+                                child: Wrap(
+                                  alignment: WrapAlignment.center,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
                                     Text(
-                                      widget.onContinueBrowsing != null
-                                          ? 'Continue browsing'
-                                          : 'Continue as guest',
+                                      'By creating an account, you agree to our ',
                                       style: TextStyle(
-                                        color: ext.searchHintColor,
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w500,
+                                          color: ext.searchHintColor,
+                                          fontSize: 12.5.sp),
+                                    ),
+                                    Semantics(
+                                      button: true,
+                                      label: 'Privacy Policy',
+                                      child: GestureDetector(
+                                        onTap: () => InAppWebViewPage.open(
+                                          context,
+                                          url: _kPrivacyPolicyUrl,
+                                          title: 'Privacy Policy',
+                                        ),
+                                        child: Text(
+                                          'Privacy Policy',
+                                          style: TextStyle(
+                                            color: _kTeal,
+                                            fontSize: 12.5.sp,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                    if (widget.onContinueBrowsing != null) ...[
-                                      SizedBox(width: AppSpacing.xs.w),
-                                      Icon(
-                                        Icons.arrow_forward_rounded,
-                                        size: 14.sp,
-                                        color: ext.searchHintColor,
-                                      ),
-                                    ],
                                   ],
                                 ),
                               ),
-                            ),
+                              SizedBox(height: AppSpacing.xl.h),
+
+                              // ── Sign in link ───────────────────────────────
+                              Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      AppLocalizations.of(context)!
+                                          .signupAlreadyHaveAccount,
+                                      style: TextStyle(
+                                        color: ext.searchHintColor,
+                                        fontSize: 14.sp,
+                                      ),
+                                    ),
+                                    Semantics(
+                                        button: true,
+                                        label: 'Log in',
+                                        child: GestureDetector(
+                                          onTap: () => Navigator.of(context)
+                                              .pushReplacementNamed(
+                                                  LoginPage.routeName),
+                                          child: Text(
+                                            AppLocalizations.of(context)!
+                                                .signupSignIn,
+                                            style: TextStyle(
+                                              color: _kTeal,
+                                              fontSize: 14.sp,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        )),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: AppSpacing.md.h),
+
+                              // ── Continue as guest / browsing ────────────────
+                              // A prompted sign-up (guest tapped a gated action)
+                              // returns to the feed they came from; the standalone
+                              // page resets to Discovery as before.
+                              Center(
+                                child: Semantics(
+                                  button: true,
+                                  label: widget.onContinueBrowsing != null
+                                      ? 'Continue browsing'
+                                      : 'Continue as guest',
+                                  child: TextButton(
+                                    onPressed: widget.onContinueBrowsing ??
+                                        _continueAsGuest,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          widget.onContinueBrowsing != null
+                                              ? 'Continue browsing'
+                                              : 'Continue as guest',
+                                          style: TextStyle(
+                                            color: ext.searchHintColor,
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        if (widget.onContinueBrowsing !=
+                                            null) ...[
+                                          SizedBox(width: AppSpacing.xs.w),
+                                          Icon(
+                                            Icons.arrow_forward_rounded,
+                                            size: 14.sp,
+                                            color: ext.searchHintColor,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: AppSpacing.huge.h),
+                            ],
                           ),
-                          SizedBox(height: AppSpacing.huge.h),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
             ],
           );
         },
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
-
 }
 
 // ── Gradient CTA button ────────────────────────────────────────────────────────
@@ -496,52 +511,59 @@ class _GradientButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dimmed = isLoading || !enabled;
-    return Semantics(button: true, enabled: enabled && !isLoading, label: label, child: GestureDetector(
-      onTap: dimmed ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        height: 56.h,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: dimmed
-                ? [_kTeal.withValues(alpha: 0.5), _kTealDark.withValues(alpha: 0.5)]
-                : [_kTeal, _kTealDark],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+    return Semantics(
+        button: true,
+        enabled: enabled && !isLoading,
+        label: label,
+        child: GestureDetector(
+          onTap: dimmed ? null : onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            height: 56.h,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: dimmed
+                    ? [
+                        _kTeal.withValues(alpha: 0.5),
+                        _kTealDark.withValues(alpha: 0.5)
+                      ]
+                    : [_kTeal, _kTealDark],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(14.r),
+              boxShadow: dimmed
+                  ? []
+                  : [
+                      BoxShadow(
+                        color: _kTeal.withValues(alpha: 0.35),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+            ),
+            child: Center(
+              child: isLoading
+                  ? SizedBox(
+                      width: 24.w,
+                      height: 24.w,
+                      child: const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : Text(
+                      label,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+            ),
           ),
-          borderRadius: BorderRadius.circular(14.r),
-          boxShadow: dimmed
-              ? []
-              : [
-                  BoxShadow(
-                    color: _kTeal.withValues(alpha: 0.35),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-        ),
-        child: Center(
-          child: isLoading
-              ? SizedBox(
-                  width: 24.w,
-                  height: 24.w,
-                  child: const CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.5,
-                  ),
-                )
-              : Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-        ),
-      ),
-    ));
+        ));
   }
 }

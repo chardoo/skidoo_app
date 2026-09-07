@@ -15,8 +15,6 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
-import 'package:jperg_app/core/utils/web_panel_route.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_media_limits.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
@@ -109,9 +107,11 @@ class GroupInfoPage extends StatelessWidget {
                         label: 'Shared Media',
                         trailing: Icon(Icons.chevron_right_rounded,
                             color: ext.searchHintColor, size: 22.sp),
-                        onTap: () => showWebPanelPage<void>(
-                          context,
-                          SharedMediaPage(roomId: room.id),
+                        onTap: () => Navigator.of(context, rootNavigator: true)
+                            .push<void>(
+                          MaterialPageRoute<void>(
+                            builder: (_) => SharedMediaPage(roomId: room.id),
+                          ),
                         ),
                       ),
                       ChatSettingsTile(
@@ -178,23 +178,24 @@ class GroupInfoPage extends StatelessWidget {
                     _MemberRow(
                       participant: members[i],
                       amIAdmin: state.amIAdmin,
-                      onGrantAdmin: () => context.read<ChatRoomBloc>().add(
-                          ChatRoomGrantAdminRequested(members[i].userId)),
-                      onRevokeAdmin: () => context.read<ChatRoomBloc>().add(
-                          ChatRoomRevokeAdminRequested(members[i].userId)),
+                      onGrantAdmin: () => context
+                          .read<ChatRoomBloc>()
+                          .add(ChatRoomGrantAdminRequested(members[i].userId)),
+                      onRevokeAdmin: () => context
+                          .read<ChatRoomBloc>()
+                          .add(ChatRoomRevokeAdminRequested(members[i].userId)),
                       onKick: () => context
                           .read<ChatRoomBloc>()
                           .add(ChatRoomKickRequested(members[i].userId)),
                     ),
                     if (i < members.length - 1)
                       Padding(
-                        padding: EdgeInsets.only(
-                            left: 68.w, right: AppSpacing.lg.w),
+                        padding:
+                            EdgeInsets.only(left: 68.w, right: AppSpacing.lg.w),
                         child: Divider(
                           height: 1,
                           thickness: 1,
-                          color:
-                              ext.searchHintColor.withValues(alpha: 0.14),
+                          color: ext.searchHintColor.withValues(alpha: 0.14),
                         ),
                       ),
                   ],
@@ -219,13 +220,12 @@ class GroupInfoPage extends StatelessWidget {
         },
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Future<void> _addMembers(BuildContext context, ChatRoom room) async {
-    final count = await showWebPanelPage<int>(
-      context,
-      InviteToGroupPage(room: room),
+    final count = await Navigator.of(context, rootNavigator: true).push<int>(
+      MaterialPageRoute<int>(builder: (_) => InviteToGroupPage(room: room)),
     );
     if (!context.mounted || count == null) return;
     AppSnackBar.success(
@@ -374,8 +374,7 @@ class _GroupHeaderState extends State<_GroupHeader> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: ext.accentGold,
-                        border:
-                            Border.all(color: ext.homeBackground, width: 2),
+                        border: Border.all(color: ext.homeBackground, width: 2),
                       ),
                       child: Icon(Icons.camera_alt_rounded,
                           color: Colors.white, size: 14.sp),
@@ -577,8 +576,8 @@ class _MemberRow extends StatelessWidget {
       child: InkWell(
         onTap: amIAdmin ? () => _showOptions(context) : null,
         child: Padding(
-          padding: EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg.w, vertical: 10.h),
+          padding:
+              EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 10.h),
           child: Row(
             children: [
               UserAvatar(
@@ -590,8 +589,7 @@ class _MemberRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   participant.displayName,
-                  style:
-                      TextStyle(color: ext.greetingColor, fontSize: 15.sp),
+                  style: TextStyle(color: ext.greetingColor, fontSize: 15.sp),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -607,8 +605,8 @@ class _MemberRow extends StatelessWidget {
                 )
               else if (participant.isAdmin)
                 Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: 10.w, vertical: 3.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),
                   decoration: BoxDecoration(
                     color: ext.accentGold.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(AppRadius.xl.r),
@@ -800,8 +798,8 @@ class _DestructiveRow extends StatelessWidget {
     return InkWell(
       onTap: busy ? null : onTap,
       child: Padding(
-        padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg.w, vertical: 14.h),
+        padding:
+            EdgeInsets.symmetric(horizontal: AppSpacing.lg.w, vertical: 14.h),
         child: Row(
           children: [
             Text(

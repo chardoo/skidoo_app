@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
 /// Bottom sheet (mobile) / dialog (web) shown when the user taps a feature
@@ -18,8 +17,7 @@ class GetAppSheet extends StatelessWidget {
   // TODO: replace placeholder IDs with real store listings once published.
   static const _kAndroidUrl =
       'https://play.google.com/store/apps/details?id=com.skidoo.app';
-  static const _kIosUrl =
-      'https://apps.apple.com/app/jperg/id000000000';
+  static const _kIosUrl = 'https://apps.apple.com/app/jperg/id000000000';
   static const _kFallbackUrl = 'https://jperg.com';
 
   static String get _storeUrl {
@@ -55,88 +53,38 @@ class GetAppSheet extends StatelessWidget {
     required AppThemeExtension ext,
     String featureLabel = 'Sharing',
   }) {
-    if (kIsWeb) {
-      showDialog<void>(
-        context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.55),
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.symmetric(horizontal: 28.w, vertical: AppSpacing.huge.h),
-          elevation: 0,
-          child: GetAppSheet._(ext: ext, featureLabel: featureLabel),
-        ),
-      );
-    } else {
-      showModalBottomSheet<void>(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (_) => GetAppSheet._(ext: ext, featureLabel: featureLabel),
-      );
-    }
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => GetAppSheet._(ext: ext, featureLabel: featureLabel),
+    );
   }
 
   // ── Build ───────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    const isWeb = kIsWeb;
-
     return Container(
-      padding: EdgeInsets.fromLTRB(24.w, isWeb ? 28.h : 20.h, 24.w, isWeb ? 28.h : 32.h),
+      padding: EdgeInsets.fromLTRB(24.w, 20.h, 24.w, 32.h),
       decoration: BoxDecoration(
         color: ext.homeBackground,
-        borderRadius: isWeb
-            ? BorderRadius.circular(AppRadius.xxl.r)
-            : BorderRadius.vertical(top: Radius.circular(24.r)),
-        boxShadow: isWeb
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.30),
-                  blurRadius: 40,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 8),
-                ),
-              ]
-            : null,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Drag handle (mobile only)
-            if (!isWeb)
-              Container(
-                width: 36.w,
-                height: 4.h,
-                margin: EdgeInsets.only(bottom: AppSpacing.xl.h),
-                decoration: BoxDecoration(
-                  color: ext.searchHintColor.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
+            // Drag handle
+            Container(
+              width: 36.w,
+              height: 4.h,
+              margin: EdgeInsets.only(bottom: AppSpacing.xl.h),
+              decoration: BoxDecoration(
+                color: ext.searchHintColor.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(2.r),
               ),
-
-            // Close button (web only — top-right)
-            if (isWeb)
-              Align(
-                alignment: Alignment.topRight,
-                child: Semantics(button: true, label: 'Close', child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    margin: EdgeInsets.only(bottom: AppSpacing.lg.h),
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: ext.searchFieldFill,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.close_rounded,
-                      color: ext.searchHintColor,
-                      size: 16.sp,
-                    ),
-                  ),
-                )),
-              ),
+            ),
 
             // Icon
             Container(
@@ -205,7 +153,8 @@ class GetAppSheet extends StatelessWidget {
                 icon: Icon(_storeIcon, size: 18),
                 label: Text(
                   _storeLabel,
-                  style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700),
+                  style:
+                      TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700),
                 ),
               ),
             ),

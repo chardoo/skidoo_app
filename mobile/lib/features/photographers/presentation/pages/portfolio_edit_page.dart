@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/cache/session_cache.dart';
@@ -6,7 +5,6 @@ import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/photographer_profile_usecases.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/verify_terms_page.dart';
@@ -209,9 +207,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
       appBar: AppBar(
         backgroundColor: ext.homeBackground,
         elevation: 0,
-        leading: kIsWeb
-            ? null
-            : const AppBackButton(),
+        leading: const AppBackButton(),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -283,6 +279,6 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
               ),
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }

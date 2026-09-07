@@ -1,18 +1,11 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/time_formatter.dart';
 import 'package:jperg_app/core/widgets/animations/app_animations.dart';
-import 'package:jperg_app/core/utils/web_panel_route.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/creator_profile_page.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/common/widgets/app_error_view.dart';
-
-/// Viewport width at/above which web shows the sidebar + content layout, so the
-/// follow list opens as the right-side floating panel (matches app.dart).
-const double _kDesktopWebMinWidth = 720.0;
 
 /// Which list to show first when the page opens.
 enum FollowListTab { followers, following }
@@ -36,9 +29,7 @@ class FollowListPage extends StatefulWidget {
   final int? followersCount;
   final int? followingCount;
 
-  /// Opens the list. On desktop/laptop web it slides in as the right-side
-  /// floating panel (the shared web "panel" util); on mobile (native or narrow
-  /// web) it pushes full-screen.
+  /// Opens the list full-screen.
   static Future<void> open(
     BuildContext context, {
     FollowListTab initialTab = FollowListTab.followers,
@@ -50,11 +41,6 @@ class FollowListPage extends StatefulWidget {
       followersCount: followersCount,
       followingCount: followingCount,
     );
-    final isDesktopWeb =
-        kIsWeb && MediaQuery.of(context).size.width >= _kDesktopWebMinWidth;
-    if (isDesktopWeb) {
-      return showWebPanelPage<void>(context, page);
-    }
     return Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => page),
     );
@@ -116,16 +102,12 @@ class _FollowListPageState extends State<FollowListPage>
           ],
         ),
       ),
-      body: webWrap(
-        TabBarView(
-          controller: _tab,
-          children: const [
-            _FollowListView(kind: FollowListTab.followers),
-            _FollowListView(kind: FollowListTab.following),
-          ],
-        ),
-        backgroundColor: ext.homeBackground,
-        width: kWebColumnWidth,
+      body: TabBarView(
+        controller: _tab,
+        children: const [
+          _FollowListView(kind: FollowListTab.followers),
+          _FollowListView(kind: FollowListTab.following),
+        ],
       ),
     );
   }
@@ -170,8 +152,7 @@ class _FollowListViewState extends State<_FollowListView>
   bool get _hasMore => _page < _totalPages;
 
   void _onScroll() {
-    if (_scroll.position.pixels >=
-            _scroll.position.maxScrollExtent - 320 &&
+    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 320 &&
         !_loading &&
         _hasMore) {
       _loadNext();
@@ -296,15 +277,9 @@ class _FollowListViewState extends State<_FollowListView>
         photoUrl: entry.profileUrl,
       ),
     );
-    final isDesktopWeb =
-        kIsWeb && MediaQuery.of(context).size.width >= _kDesktopWebMinWidth;
-    if (isDesktopWeb) {
-      showWebPanelPage<void>(context, page);
-    } else {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => page),
-      );
-    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => page),
+    );
   }
 
   Future<void> _setNotify(int index, bool value) async {
@@ -416,7 +391,6 @@ class _FollowTile extends StatelessWidget {
   }
 }
 
-
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.ext, required this.kind});
   final AppThemeExtension ext;
@@ -431,9 +405,7 @@ class _EmptyState extends StatelessWidget {
       children: [
         const SizedBox(height: 120),
         Icon(
-          isFollowers
-              ? Icons.group_outlined
-              : Icons.person_search_outlined,
+          isFollowers ? Icons.group_outlined : Icons.person_search_outlined,
           size: 56,
           color: ext.searchHintColor.withValues(alpha: 0.5),
         ),
@@ -461,7 +433,6 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-
 
 class _PaginationError extends StatelessWidget {
   const _PaginationError({required this.ext, required this.onRetry});

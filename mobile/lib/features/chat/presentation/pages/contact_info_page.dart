@@ -6,8 +6,6 @@ import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_panel_route.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:jperg_app/features/chat/presentation/pages/shared_media_page.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/chat_settings_tile.dart';
@@ -58,7 +56,9 @@ class ContactInfoPage extends StatelessWidget {
       ),
       body: BlocBuilder<ChatRoomBloc, ChatRoomState>(
         buildWhen: (p, c) =>
-            p.room != c.room || p.isMuted != c.isMuted || p.myUserId != c.myUserId,
+            p.room != c.room ||
+            p.isMuted != c.isMuted ||
+            p.myUserId != c.myUserId,
         builder: (context, state) {
           final room = state.room;
           if (room == null) {
@@ -85,7 +85,6 @@ class ContactInfoPage extends StatelessWidget {
                     subtitle: _roleLabel(peer),
                   ),
                   SizedBox(height: AppSpacing.xxl.h),
-
                   const ChatSettingsLabel(label: 'CHAT SETTINGS'),
                   SizedBox(height: AppSpacing.sm.h),
                   ChatSettingsCard(
@@ -125,11 +124,15 @@ class ContactInfoPage extends StatelessWidget {
         },
       ),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   void _openSharedMedia(BuildContext context, ChatRoom room) {
-    showWebPanelPage<void>(context, SharedMediaPage(roomId: room.id));
+    Navigator.of(context, rootNavigator: true).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => SharedMediaPage(roomId: room.id),
+      ),
+    );
   }
 
   /// The designs show a location here. The chat service has no profile data, so

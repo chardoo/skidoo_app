@@ -5,7 +5,6 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 import 'package:jperg_app/features/search/presentation/bloc/search_bloc.dart';
@@ -65,8 +64,7 @@ class _SearchViewState extends State<_SearchView> {
       // Post-frame: the bloc is provided by the widget above this one, so it
       // isn't reachable from `context` until the first build has run.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted)
-          context.read<SearchBloc>().add(SearchRequested.now(seed));
+        if (mounted) context.read<SearchBloc>().add(SearchRequested.now(seed));
       });
     }
   }
@@ -209,7 +207,7 @@ class _SearchViewState extends State<_SearchView> {
       ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _buildBody(

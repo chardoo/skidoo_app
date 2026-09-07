@@ -4,7 +4,6 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/widgets/zoomable_photo.dart';
@@ -127,7 +126,7 @@ class _SharedMediaPageState extends State<SharedMediaPage> {
       ),
       body: _buildBody(ext),
     );
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 
   Widget _buildBody(AppThemeExtension ext) {

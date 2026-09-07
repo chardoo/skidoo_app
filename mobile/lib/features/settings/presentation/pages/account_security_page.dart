@@ -10,7 +10,6 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/portfolio_edit_page.dart';
-import 'package:jperg_app/core/utils/web_wrap.dart';
 import 'package:jperg_app/features/settings/data/account_settings_api.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
 import 'package:jperg_app/services/auth_service.dart';
@@ -204,13 +203,12 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
                         // invitation was still sitting there afterwards.
                         ValueListenableBuilder<String>(
                           valueListenable: AuthService.role,
-                          builder: (context, role, _) =>
-                              role == 'photographer'
-                                  ? const SizedBox.shrink()
-                                  : _BecomeCreator(
-                                      ext: ext,
-                                      onStart: _becomeCreator,
-                                    ),
+                          builder: (context, role, _) => role == 'photographer'
+                              ? const SizedBox.shrink()
+                              : _BecomeCreator(
+                                  ext: ext,
+                                  onStart: _becomeCreator,
+                                ),
                         ),
                         SettingsSection(
                           children: [
@@ -229,7 +227,7 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
             ),
     );
 
-    return webWrap(page, backgroundColor: ext.homeBackground);
+    return page;
   }
 }
 
