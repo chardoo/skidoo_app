@@ -179,6 +179,49 @@ class DiskCache {
       await _prefs.remove(key);
     } catch (_) {}
   }
+
+  /// Drops the rows [test] matches, keeping the rest and the paging state.
+  ///
+  /// For content that stopped existing rather than went stale: an album the
+  /// photographer deleted is not going to come back on the next fetch, and
+  /// [clear] would throw away three good screens to get rid of one dead row —
+  /// which on a cold, offline launch is the difference between a populated feed
+  /// and an empty one.
+  ///
+  /// `page` and `hasMore` are kept as they were. They describe how far the
+  /// reader had paged, which removing a row does not change; recomputing `page`
+  /// from the new length would make the next "load more" refetch pages that are
+  /// already on screen.
+  ///
+  /// Returns how many rows went, so a caller can skip a write when nothing
+  /// matched. Never throws — same reasoning as [save].
+  Future<int> removeWhere(bool Function(Map<String, dynamic> row) test) async {
+    try {
+      final current = restore();
+      if (current.isEmpty) return 0;
+
+      final kept = current.rows.where((row) => !test(row)).toList();
+      final removed = current.rows.length - kept.length;
+      if (removed == 0) return 0;
+
+      if (kept.isEmpty) {
+        await _prefs.remove(key);
+        return removed;
+      }
+      await _prefs.setString(
+        key,
+        jsonEncode({
+          'page': current.page,
+          'hasMore': current.hasMore,
+          'rows': kept,
+        }),
+      );
+      return removed;
+    } catch (e) {
+      if (kDebugMode) debugPrint('[DiskCache] $key removeWhere failed: $e');
+      return 0;
+    }
+  }
 }
 
 /// Named instances in the service locator. Constants rather than bare strings

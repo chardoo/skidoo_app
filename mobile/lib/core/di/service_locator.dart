@@ -19,6 +19,7 @@ import 'package:jperg_app/features/photo_comments/data/picture_like_service.dart
 import 'package:jperg_app/features/photo_comments/presentation/bloc/photo_comment_bloc.dart';
 import 'package:jperg_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
 import 'package:jperg_app/features/discovery/data/repositories/discovery_repository_impl.dart';
+import 'package:jperg_app/core/cache/deleted_content.dart';
 import 'package:jperg_app/core/cache/disk_cache.dart';
 import 'package:jperg_app/features/discovery/data/services/feed_cache_service.dart';
 import 'package:jperg_app/features/discovery/domain/repositories/discovery_repository.dart';
@@ -397,6 +398,14 @@ Future<void> setupServiceLocator() async {
     kFoundAlbumsCache,
     'DiskCache(found)',
     () => sl<DiskCache>(instanceName: kFoundAlbumsCache).clear(),
+  );
+  // The set of albums already found to be gone. Cleared with the caches it
+  // prunes: the next account has never seen these ids, and one that 404'd for a
+  // permission reason under this account deserves to be asked about again.
+  SessionReset.register(
+    DeletedContent,
+    'DeletedContent.forgotten',
+    () => DeletedContent.reset(),
   );
   SessionReset.register(
     FollowRepository,

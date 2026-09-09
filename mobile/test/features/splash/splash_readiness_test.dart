@@ -49,6 +49,13 @@ class _FakeCache implements FeedCacheService {
 
   @override
   Future<void> clear() async => stored = [];
+
+  @override
+  Future<bool> removeEvent(String eventId) async {
+    final before = stored.length;
+    stored = stored.where((e) => e.id != eventId).toList();
+    return stored.length != before;
+  }
 }
 
 /// Stands in for the first-page fetch. [completer] left unresolved simulates a

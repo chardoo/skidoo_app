@@ -101,6 +101,16 @@ class AppCacheSignals {
   /// The photographer's portfolio or samples changed.
   static final portfolio = CacheSignal('portfolio');
 
+  /// Content stopped existing — an album its photographer deleted.
+  ///
+  /// Different in kind from the signals around it, which say a value moved and
+  /// should be fetched again. This one says there is nothing to fetch, and the
+  /// durable half of acting on it is `DeletedContent.forgetEvent`, which drops
+  /// the rows from disk. This is the other half: it tells the lists currently
+  /// built in memory to drop it too, which no amount of pruning on disk will
+  /// do for a screen that is already on.
+  static final content = CacheSignal('content');
+
   /// A face scan found more photos of the signed-in person.
   ///
   /// Bumped while `POST /client/search-images` is still streaming — see

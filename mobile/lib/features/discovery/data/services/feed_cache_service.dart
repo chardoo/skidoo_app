@@ -48,4 +48,29 @@ class FeedCacheService {
       await _prefs.setString(_key, data);
     } catch (_) {}
   }
+
+  /// Drops one event from the cached feed, keeping the rest.
+  ///
+  /// The restore above is synchronous and lands before the first request comes
+  /// back, so a deleted album stays on the first screen of every cold launch
+  /// until a fetch replaces the whole cache. That is a card that opens on
+  /// nothing. Removing just the one row leaves the other seven to draw.
+  ///
+  /// Returns whether anything was removed, so a caller can tell a real
+  /// deletion from a 404 for some other reason.
+  Future<bool> removeEvent(String eventId) async {
+    try {
+      final current = restore();
+      final kept = current.where((e) => e.id != eventId).toList();
+      if (kept.length == current.length) return false;
+      if (kept.isEmpty) {
+        await _prefs.remove(_key);
+      } else {
+        await save(kept);
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 }
