@@ -118,6 +118,39 @@ void main() {
     expect(find.textContaining('New follower', findRichText: true), findsNothing);
   });
 
+  testWidgets('the selected chip is the accent in dark mode, not a white pill',
+      (t) async {
+    // `host` builds on ThemeData.dark, which is the mode this went wrong in.
+    //
+    // The chip used to fill with `colorScheme.primary`, and this app defines
+    // that as the ink colour — literally `Colors.white` under dark
+    // (customThemeData.dart). So the selected filter came out as a white pill
+    // with grey text, `onPrimary` being grey there too.
+    seed([row(id: '1')]);
+
+    await t.pumpWidget(host(const NotificationsPage()));
+    await t.pump();
+
+    BoxDecoration decorationBehind(String label) {
+      final container = t.widget<Container>(
+        find
+            .ancestor(of: find.text(label), matching: find.byType(Container))
+            .first,
+      );
+      return container.decoration! as BoxDecoration;
+    }
+
+    // "All" is selected on open.
+    expect(decorationBehind('All').color, AppThemeExtension.dark.accentGold);
+    expect(decorationBehind('All').color, isNot(Colors.white));
+
+    final selectedLabel = t.widget<Text>(find.text('All'));
+    expect(selectedLabel.style?.color, Colors.white);
+
+    // An unselected chip stays an outline — the bug was only ever the fill.
+    expect(decorationBehind('Photos').color, Colors.transparent);
+  });
+
   testWidgets('a kind with no picture of its own still gets an icon',
       (t) async {
     seed([row(id: '1', type: 'campaign_paused', title: 'Campaign Paused')]);

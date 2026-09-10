@@ -381,7 +381,18 @@ class _FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final primary = Theme.of(context).colorScheme.primary;
+    // The brand accent, not `colorScheme.primary`.
+    //
+    // `primary` is this app's ink colour and inverts with the theme — it is
+    // literally `Colors.white` in dark mode (customThemeData.dart), so the
+    // selected chip came out as a white pill, and `onPrimary` being grey there
+    // put grey text on it. It is the right token for text and the wrong one for
+    // a fill.
+    //
+    // `accentGold` is 0xFF1D9E75 in both themes, so the selected chip is the
+    // same green either way — and it is what every other filter chip in the app
+    // already uses (see FoundFilterChip, the request board).
+    final accent = ext.accentGold;
 
     return SizedBox(
       height: 52.h,
@@ -403,11 +414,11 @@ class _FilterBar extends StatelessWidget {
                 alignment: Alignment.center,
                 padding: EdgeInsets.symmetric(horizontal: 16.w),
                 decoration: BoxDecoration(
-                  color: isSelected ? primary : Colors.transparent,
+                  color: isSelected ? accent : Colors.transparent,
                   borderRadius: BorderRadius.circular(999.r),
                   border: Border.all(
                     color: isSelected
-                        ? primary
+                        ? accent
                         : ext.searchHintColor.withValues(alpha: 0.35),
                   ),
                 ),
@@ -416,9 +427,10 @@ class _FilterBar extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13.sp,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : ext.greetingColor,
+                    // White on the accent in both themes, for the same reason
+                    // the fill is not `primary`: `onPrimary` is grey in dark
+                    // mode, which is what put grey text on the white pill.
+                    color: isSelected ? Colors.white : ext.greetingColor,
                   ),
                 ),
               ),
