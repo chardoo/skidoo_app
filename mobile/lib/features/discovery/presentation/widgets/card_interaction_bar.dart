@@ -471,15 +471,38 @@ class _FollowButtonState extends State<FollowButton>
           onTap: _toggle,
           child: ScaleTransition(
             scale: _ctrl,
+            // Sized so the fill is visible as a fill.
+            //
+            // This was a 20dp disc with a 1.5dp white ring and a 14sp glyph:
+            // subtract the ring and the plus, and the green survived only as a
+            // hairline between the two. What people saw was a white outline
+            // with a plus in it, which reads as decoration on the avatar rather
+            // than as a button — so nobody knew tapping it followed the
+            // creator. Wider disc, smaller glyph, and the accent is now the
+            // largest thing in it.
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOut,
-              width: 20.w,
-              height: 20.w,
+              width: 24.w,
+              height: 24.w,
               decoration: BoxDecoration(
                 color: _following ? Colors.white24 : ext.accentGold,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 1.5),
+                // Lifts it off the photo. Without this the white ring competes
+                // with whatever is behind the card — on a bright or busy shot
+                // the whole badge washes out, which is the other half of why it
+                // was hard to spot. Only under the unfollowed state: the
+                // check is deliberately quiet.
+                boxShadow: _following
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.28),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
               ),
               alignment: Alignment.center,
               child: _loading
@@ -491,10 +514,15 @@ class _FollowButtonState extends State<FollowButton>
                         color: Colors.white,
                       ),
                     )
+                  // 13 against a 24dp disc, where it used to be 14 against 20.
+                  // The glyph is what it always was — MaterialIcons is not a
+                  // variable font here, so there is no heavier plus to ask for
+                  // — but it now sits on enough green to read as being *on*
+                  // something.
                   : Icon(
                       _following ? Icons.check_rounded : Icons.add_rounded,
                       color: Colors.white,
-                      size: 14.sp,
+                      size: 13.sp,
                     ),
             ),
           ),
