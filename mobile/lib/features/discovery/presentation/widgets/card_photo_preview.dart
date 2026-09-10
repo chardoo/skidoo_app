@@ -22,6 +22,7 @@ class PostPhotoCarousel extends StatefulWidget {
     this.cardIndex = 0,
     this.activeCardIndex,
     this.onMediaChanged,
+    this.videoControlsBottomInset = 0,
   });
 
   final List<EventPicture> pics;
@@ -41,6 +42,12 @@ class PostPhotoCarousel extends StatefulWidget {
 
   /// Feed-level notifier for which card should be playing. Null = always play.
   final ValueNotifier<int>? activeCardIndex;
+
+  /// How far to lift a video's scrubber off the bottom edge, so the navigation
+  /// bar does not sit on top of it — see
+  /// [JpergVideoPlayer.controlsBottomInset]. The card works this out, because
+  /// the card is what knows whether the bar is up.
+  final double videoControlsBottomInset;
 
   @override
   State<PostPhotoCarousel> createState() => _PostPhotoCarouselState();
@@ -95,6 +102,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                   cardIndex: widget.cardIndex,
                   activeCardIndex: widget.activeCardIndex,
                   fit: BoxFit.contain,
+                  controlsBottomInset: widget.videoControlsBottomInset,
                 ),
               ),
               if (isLastLocked)
@@ -153,6 +161,7 @@ class _SliderVideoItem extends StatefulWidget {
     required this.index,
     required this.activeIndex,
     required this.onTap,
+    this.controlsBottomInset = 0,
     this.cardIndex = 0,
     this.activeCardIndex,
     this.fit = BoxFit.contain,
@@ -165,6 +174,10 @@ class _SliderVideoItem extends StatefulWidget {
   final int cardIndex;
   final ValueNotifier<int>? activeCardIndex;
   final BoxFit fit;
+
+  /// Passed straight through to the player. See
+  /// [JpergVideoPlayer.controlsBottomInset].
+  final double controlsBottomInset;
 
   @override
   State<_SliderVideoItem> createState() => _SliderVideoItemState();
@@ -206,6 +219,10 @@ class _SliderVideoItemState extends State<_SliderVideoItem> {
         loop: true,
         fit: widget.fit,
         showControls: true,
+        controlsBottomInset: widget.controlsBottomInset,
+        // The feed's sound switch lives in the navigation band, where a
+        // soundtrack's does — one control, one place. See [FeedVolumeButton].
+        showMuteButton: false,
         // Transparent so the [MediaBackdrop] behind this slide shows through
         // the letterbox bands. The player paints this colour across its whole
         // box, so any opaque value here — themed or not — would cover the

@@ -64,6 +64,8 @@ class JpergVideoPlayer extends StatefulWidget {
     // ── Controls ───────────────────────────────────────────────────────────
     this.showControls = true,
     this.allowFullscreen = true,
+    this.controlsBottomInset = 0,
+    this.showMuteButton = true,
     this.borderRadius,
     this.backgroundColor = Colors.black,
     // ── Coordination ──────────────────────────────────────────────────────
@@ -96,6 +98,28 @@ class JpergVideoPlayer extends StatefulWidget {
 
   /// Show the tap-to-reveal controls overlay. Defaults to true.
   final bool showControls;
+
+  /// Space to keep clear along the bottom edge, under the scrubber.
+  ///
+  /// The controls sit on the player's own bottom edge, which in the feed is the
+  /// bottom of the screen — directly under the floating navigation bar. The
+  /// progress bar was therefore behind the glass: not just hidden, but
+  /// unreachable, since the bar takes the drags that would have seeked. The
+  /// caption already steps over that band (`_captionBottom` in
+  /// [FullBleedEventCard]); this is the same allowance for the player's own
+  /// furniture.
+  ///
+  /// 0 for a player that owns its whole box — the album viewer, fullscreen.
+  final double controlsBottomInset;
+
+  /// Whether the overlay draws its own mute button in the top-right.
+  ///
+  /// The feed sets this false and puts the control in the navigation band
+  /// instead, next to where a soundtrack's sound switch appears — one sound
+  /// switch, one place, whichever kind of sound the card is making. Keeping
+  /// both would be two mute buttons for one video, in two corners, one of them
+  /// vanishing on a timer.
+  final bool showMuteButton;
 
   /// Include a full-screen button in the controls bar. Defaults to true.
   final bool allowFullscreen;
@@ -488,6 +512,8 @@ class _JpergVideoPlayerState extends State<JpergVideoPlayer>
                     child: _ControlsOverlay(
                       controller: ctrl,
                       muted: _muted,
+                      bottomInset: widget.controlsBottomInset,
+                      showMute: widget.showMuteButton,
                       onPlayPause: _togglePlayback,
                       onMute: _toggleMute,
                       onSeekBack: () => _seekBy(const Duration(seconds: -10)),
@@ -521,10 +547,19 @@ class _ControlsOverlay extends StatelessWidget {
     required this.onSeekBack,
     required this.onSeekForward,
     this.onFullscreen,
+    this.bottomInset = 0,
+    this.showMute = true,
   });
 
   final VideoPlayerController controller;
   final bool muted;
+
+  /// Space kept clear beneath the scrubber — see
+  /// [JpergVideoPlayer.controlsBottomInset].
+  final double bottomInset;
+
+  /// Whether to draw the top-right mute button.
+  final bool showMute;
   final VoidCallback onPlayPause;
   final VoidCallback onMute;
   final VoidCallback onSeekBack;
@@ -550,14 +585,17 @@ class _ControlsOverlay extends StatelessWidget {
       child: Stack(
         children: [
           // ── Mute — top-right ─────────────────────────────────────────────
-          Positioned(
-            top: 10.h,
-            right: 12.w,
-            child: _CircleButton(
-              icon: muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-              onTap: onMute,
+          // Absent in the feed, which offers this in the navigation band where
+          // a soundtrack's sound switch also lives. See [showMute].
+          if (showMute)
+            Positioned(
+              top: 10.h,
+              right: 12.w,
+              child: _CircleButton(
+                icon: muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                onTap: onMute,
+              ),
             ),
-          ),
 
           // ── Center: seek-back | play/pause | seek-forward ────────────────
           Center(
@@ -595,7 +633,7 @@ class _ControlsOverlay extends StatelessWidget {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: bottomInset,
             child:
                 _BottomBar(controller: controller, onFullscreen: onFullscreen),
           ),

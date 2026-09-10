@@ -13,6 +13,7 @@ import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/common/widgets/expandable_caption.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/video_mute_preference.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_event_photos.dart';
@@ -590,6 +591,11 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
             onTap: _onCardTapped,
             cardIndex: widget.cardIndex,
             activeCardIndex: widget.activeCardIndex,
+            // The scrubber has to clear the navigation bar the same way the
+            // caption does. Only while the bar is actually up: with it hidden
+            // the player owns the bottom edge and the controls belong on it.
+            videoControlsBottomInset:
+                FeedChrome.visible.value ? _navBand : 0,
             onMediaChanged: (i) {
               if (i == _mediaIndex) return;
 
@@ -694,6 +700,38 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                   ),
                 );
               },
+            ),
+
+          // ── Sound switch — video ─────────────────────────────────────────
+          //
+          // The same widget, in the same place, as the soundtrack's. A video's
+          // mute lived in the player's own overlay, top-right, behind the
+          // tap-to-reveal controls that fade out on a timer — so on the feed it
+          // was invisible nearly all the time, and in a different corner from
+          // the sound switch people had already learnt.
+          //
+          // The two can never collide: a soundtrack is released the moment a
+          // card reaches a video slide (see [FeedMusicController]), so the
+          // block above renders nothing whenever this one does.
+          //
+          // [VideoMutePreference] is the state, not a flag of this card's: it
+          // is what every player reads and what the one on screen listens to,
+          // so setting it here reaches the player without this card having to
+          // hold a reference to it.
+          if (_activeMediaIsVideo && FeedChrome.visible.value)
+            Positioned(
+              right: 16.w,
+              bottom: _navBand + 8,
+              child: CommentSheetHide(
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: VideoMutePreference.notifier,
+                  builder: (context, muted, __) => FeedVolumeButton(
+                    muted: muted,
+                    sourceName: 'video',
+                    onTap: () => VideoMutePreference.muted = !muted,
+                  ),
+                ),
+              ),
             ),
 
           // ── Bottom-left caption ──────────────────────────────────────────
