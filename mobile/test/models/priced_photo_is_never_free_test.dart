@@ -40,9 +40,14 @@ void main() {
   });
 
   group('the paid/free split follows the price, not the visibility', () {
+    // A face match either way: `isPublic` is who may look at the photo, and
+    // `isMine` is whether recognition put the viewer in it. This group is
+    // about what a review screen charges for, so every photo here is one of
+    // the viewer's own matches.
     Photo photo(String id, double price, {required bool isPublic}) =>
         Photo(id, 'Event', 'img-$id', 'https://x/$id.jpg', 'owner', price, '',
-            null, isPublic);
+            null, isPublic,
+            isMine: true);
 
     test('a private priced photo is charged for, not saved free', () {
       final selection = PhotoSelection(reviewMode: true)

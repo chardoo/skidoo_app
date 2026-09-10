@@ -29,12 +29,18 @@ import 'package:jperg_app/models/photos/Photo.dart';
 /// log worth keeping, just a set of ids and three totals derived from it.
 class PhotoSelection extends ChangeNotifier {
   PhotoSelection({List<Photo> photos = const [], this.reviewMode = false})
-      : _photos = List.of(photos);
+      : _photos = List.of(photos) {
+    _indexMine();
+  }
 
   /// Whether a photo nobody has touched counts as selected.
   final bool reviewMode;
 
   List<Photo> _photos;
+
+  /// Ids of the photos recognition actually matched to this person — see
+  /// [Photo.isMine]. The only ones review mode may preselect.
+  final Set<String> _mine = <String>{};
 
   /// Ids whose state differs from [reviewMode]'s default.
   final Set<String> _toggled = <String>{};
@@ -44,8 +50,16 @@ class PhotoSelection extends ChangeNotifier {
   /// the CTA is about to charge for them again.
   bool _isSelectable(Photo p) => !p.isPurchased;
 
+  /// What a photo nobody has touched counts as.
+  ///
+  /// Selected while reviewing — but only for a photo of *this person*. The same
+  /// album carries the event's public photos, and an untouched one of those is
+  /// not an unanswered "is this you?": nobody ever claimed it was. Ticking them
+  /// told someone who was in none of the photos that all 200 were theirs.
+  bool _defaultFor(String id) => reviewMode && _mine.contains(id);
+
   bool isSelected(String id) =>
-      _toggled.contains(id) ? !reviewMode : reviewMode;
+      _toggled.contains(id) ? !_defaultFor(id) : _defaultFor(id);
 
   /// The photos this selection is drawn from. Replaced wholesale as more pages
   /// load; the deselected set survives, because the person's "not me" decisions
@@ -53,7 +67,14 @@ class PhotoSelection extends ChangeNotifier {
   void updatePhotos(List<Photo> photos) {
     if (listEquals(_photos, photos)) return;
     _photos = List.of(photos);
+    _indexMine();
     notifyListeners();
+  }
+
+  void _indexMine() {
+    _mine
+      ..clear()
+      ..addAll(_photos.where((p) => p.isMine).map((p) => p.id));
   }
 
   void toggle(String id) {

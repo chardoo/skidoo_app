@@ -78,6 +78,21 @@ class Photo {
   /// undo an answer they were never asked to revisit.
   bool get isPendingReview => reviewStatus == 'pending';
 
+  /// Server's answer, where it sends one — `my-photos` `isMine`.
+  final bool? _isMine;
+
+  /// Whether recognition put this photo in front of the viewer, as opposed to
+  /// it being here because the event is public.
+  ///
+  /// `my-photos` returns both kinds in one list, and only these may be claimed
+  /// as "you": preselecting a stranger's public photo in the review album asks
+  /// someone to buy a picture nobody said they were in.
+  ///
+  /// Falls back to the review state when the server sends no flag, which says
+  /// the same thing — an identification row exists for this person, or it does
+  /// not, and only the rows carry a status.
+  bool get isMine => _isMine ?? reviewStatus.isNotEmpty;
+
   /// When the face-match that surfaced this photo was recorded. Null outside
   /// the recognition endpoints.
   final DateTime? identifiedAt;
@@ -118,7 +133,9 @@ class Photo {
       this.location = '',
       this.isPurchased = false,
       this.reviewStatus = '',
-      this.identifiedAt});
+      bool? isMine,
+      this.identifiedAt})
+      : _isMine = isMine;
 
   /// Narrows [value] to a string map, or null when it's absent/another type.
   static Map<String, dynamic>? _map(dynamic value) =>
@@ -212,6 +229,9 @@ class Photo {
           (json['isPurchased'] ?? json['is_purchased'] ?? false) as bool,
       reviewStatus:
           (json['reviewStatus'] ?? json['review_status'] ?? '').toString(),
+      // Null on a server that doesn't send it, which [isMine] then reads off
+      // the review state instead.
+      isMine: (json['isMine'] ?? json['is_mine']) as bool?,
       identifiedAt: identified.isEmpty ? null : DateTime.tryParse(identified),
     );
   }

@@ -96,6 +96,9 @@ void main() {
       await _run(scan);
 
       expect(scan.mineCount.value, 1);
+      // Kept, not discarded: the screen says both numbers, because an event
+      // the person is in none of is still an event with photos in it.
+      expect(scan.publicCount.value, 2);
     });
 
     test('counts batched matches too', () async {
@@ -130,6 +133,8 @@ void main() {
       await _run(scan);
 
       expect(scan.mineCount.value, 0);
+      expect(scan.publicCount.value, 1,
+          reason: 'there is something here to show, and the screen must say so');
       expect(scan.error.value, isNull);
       expect(scan.isRunning.value, isFalse);
     });

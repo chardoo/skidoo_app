@@ -38,6 +38,13 @@ class EventScan {
   /// be a lie about someone else's wedding.
   final ValueNotifier<int> mineCount = ValueNotifier<int>(0);
 
+  /// The rest of what the scan returned — the event's public photos, which the
+  /// person may see and buy whether or not they are in any of them. Counted
+  /// separately rather than ignored: an event nobody recognised them in is
+  /// still an event with photos in it, and a screen that only ever counts
+  /// matches reads as "nothing here" when there is plenty.
+  final ValueNotifier<int> publicCount = ValueNotifier<int>(0);
+
   /// False once the stream closes, however it closed.
   final ValueNotifier<bool> isRunning = ValueNotifier<bool>(true);
 
@@ -145,8 +152,12 @@ class EventScan {
     eventName.value ??= _eventNameOf(image);
 
     // 'public' is the event's own photos, which an owner gets in full. Only
-    // 'myImages' is this person.
-    if (category != 'myImages') return;
+    // 'myImages' is this person — the two are never added together, because
+    // "247 photos of you" about someone else's wedding is a lie.
+    if (category != 'myImages') {
+      if (category == 'public') publicCount.value++;
+      return;
+    }
 
     mineCount.value++;
     _unsignalled++;
@@ -200,6 +211,7 @@ class EventScan {
     cancel();
     _http.close();
     mineCount.dispose();
+    publicCount.dispose();
     isRunning.dispose();
     error.dispose();
     eventName.dispose();

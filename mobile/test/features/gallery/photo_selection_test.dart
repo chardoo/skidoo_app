@@ -13,10 +13,13 @@ import 'package:jperg_app/models/photos/Photo.dart';
 /// The other rule worth pinning: an already-owned photo is never in the total,
 /// in either mode. Re-charging for a photo someone has bought is the failure
 /// that costs real money and real trust.
+/// A photo of this person — a face match, which is what a review screen is
+/// reviewing. See [_publicPhoto] for the other kind the same album carries.
 Photo _photo(
   String id, {
   double price = 0,
   bool purchased = false,
+  bool mine = true,
 }) {
   return Photo(
     id,
@@ -30,8 +33,15 @@ Photo _photo(
     false,
     eventId: 'event-1',
     isPurchased: purchased,
+    isMine: mine,
+    reviewStatus: mine ? 'pending' : '',
   );
 }
+
+/// A photo of the event, not of the viewer. Included because the event is
+/// public, never because recognition matched anyone.
+Photo _publicPhoto(String id, {double price = 0}) =>
+    _photo(id, price: price, mine: false);
 
 void main() {
   group('PhotoSelection — review screen (after a scan)', () {
@@ -48,6 +58,78 @@ void main() {
       expect(s.paidCount, 2);
       expect(s.freeCount, 1);
       expect(s.total, 40);
+    });
+
+    test('the event\'s public photos are not preselected as you', () {
+      // The bug this pins: a scan that matched nothing still opened the album
+      // with every public photo ticked, telling someone who is in none of them
+      // that all of them are theirs — and quoting a price for the lot.
+      final s = PhotoSelection(reviewMode: true, photos: [
+        _photo('mine', price: 20),
+        _publicPhoto('theirs1', price: 20),
+        _publicPhoto('theirs2', price: 20),
+      ]);
+
+      expect(s.isSelected('mine'), isTrue);
+      expect(s.isSelected('theirs1'), isFalse);
+      expect(s.isSelected('theirs2'), isFalse);
+      expect(s.paidCount, 1);
+      expect(s.total, 20);
+    });
+
+    test('an album with no matches at all starts empty', () {
+      final s = PhotoSelection(reviewMode: true, photos: [
+        _publicPhoto('a', price: 20),
+        _publicPhoto('b'),
+      ]);
+
+      expect(s.hasAnything, isFalse,
+          reason: 'nobody claimed these are photos of this person');
+      expect(s.total, 0);
+    });
+
+    test('a public photo can still be chosen by tapping it', () {
+      // Not selected by default is not the same as not for sale.
+      final s = PhotoSelection(reviewMode: true, photos: [
+        _publicPhoto('a', price: 20),
+      ]);
+
+      s.toggle('a');
+
+      expect(s.isSelected('a'), isTrue);
+      expect(s.total, 20);
+
+      s.toggle('a');
+      expect(s.isSelected('a'), isFalse);
+    });
+
+    test('clear leaves the public photos out', () {
+      final s = PhotoSelection(reviewMode: true, photos: [
+        _photo('mine', price: 20),
+        _publicPhoto('theirs', price: 20),
+      ]);
+
+      s.toggle('mine');
+      s.toggle('theirs');
+      expect(s.paidCount, 1);
+
+      // "Undo what I did here" restores the matches, not everything on screen.
+      s.clear();
+      expect(s.isSelected('mine'), isTrue);
+      expect(s.isSelected('theirs'), isFalse);
+      expect(s.total, 20);
+    });
+
+    test('public photos paging in are not swept into the selection', () {
+      final s = PhotoSelection(reviewMode: true, photos: [_photo('mine', price: 20)]);
+
+      s.updatePhotos([
+        _photo('mine', price: 20),
+        _publicPhoto('theirs', price: 20),
+      ]);
+
+      expect(s.isSelected('theirs'), isFalse);
+      expect(s.total, 20);
     });
 
     test('toggling removes a photo and its price from the total', () {

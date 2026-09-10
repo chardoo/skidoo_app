@@ -217,10 +217,12 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
       return _Scanning(
         ext: ext,
         // Live, so a long scan shows progress rather than a spinner that could
-        // be stuck. Counts photos of *this person* — an owner scanning their
-        // own event receives the whole album, and "247 photos of you" would be
-        // a lie about someone else's wedding.
+        // be stuck. The two counts stay apart — an owner scanning their own
+        // event receives the whole album, and "247 photos of you" would be a
+        // lie about someone else's wedding — but both are shown, so an event
+        // this person is in none of still reads as an event with photos.
         found: _scan.mineCount,
+        publicFound: _scan.publicCount,
         // Offered the moment there is something to look at: waiting out a
         // large event to see photos already found is a wait for nothing. The
         // scan keeps running behind the album.
@@ -251,10 +253,14 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
   }
 }
 
+/// "photo"/"photos" — said often enough on this screen to be worth one place.
+String _photos(int count) => count == 1 ? 'photo' : 'photos';
+
 class _Scanning extends StatelessWidget {
   const _Scanning({
     required this.ext,
     required this.found,
+    required this.publicFound,
     required this.onViewNow,
   });
 
@@ -262,6 +268,9 @@ class _Scanning extends StatelessWidget {
 
   /// Photos of this person found so far.
   final ValueListenable<int> found;
+
+  /// The event's public photos seen so far — not photos of this person.
+  final ValueListenable<int> publicFound;
 
   final VoidCallback onViewNow;
 
@@ -283,22 +292,37 @@ class _Scanning extends StatelessWidget {
           textAlign: TextAlign.center,
           style: AppTypography.caption.copyWith(color: ext.searchHintColor),
         ),
-        ValueListenableBuilder<int>(
-          valueListenable: found,
-          builder: (context, count, __) {
-            // Nothing at all until the first match. "0 photos of you so far"
-            // is a worse thing to read than the line above it, and it is what
-            // the screen would say for the whole of an event they are not in.
-            if (count == 0) return const SizedBox.shrink();
-            final photoWord = count == 1 ? 'photo' : 'photos';
+        ListenableBuilder(
+          listenable: Listenable.merge([found, publicFound]),
+          builder: (context, __) {
+            final count = found.value;
+            final publicCount = publicFound.value;
+            // Nothing until the scan has actually turned something up — an
+            // empty running total says less than the line above it.
+            if (count == 0 && publicCount == 0) return const SizedBox.shrink();
             return Column(
               children: [
                 SizedBox(height: AppSpacing.xxl.h),
                 Text(
-                  '$count $photoWord of you so far',
+                  // Both counts, always, and never added together. Reporting
+                  // only the matches left someone in none of the photos
+                  // watching a screen that counted nothing while the scan
+                  // walked through a full event.
+                  count > 0
+                      ? '$count ${_photos(count)} of you so far'
+                      : 'No photos of you yet',
                   textAlign: TextAlign.center,
                   style: AppTypography.body.copyWith(color: ext.accentGold),
                 ),
+                if (publicCount > 0) ...[
+                  SizedBox(height: AppSpacing.xs.h),
+                  Text(
+                    '$publicCount public ${_photos(publicCount)} in this event',
+                    textAlign: TextAlign.center,
+                    style:
+                        AppTypography.caption.copyWith(color: ext.searchHintColor),
+                  ),
+                ],
                 SizedBox(height: AppSpacing.sm.h),
                 AppButton(
                   label: 'View photos',
@@ -331,7 +355,11 @@ class _FoundCard extends StatelessWidget {
     // now also carries the event's public photos, and "24 photos of you
     // found!" must not be counting other people's.
     final count = album.mineCount;
-    final photoWord = count == 1 ? 'photo' : 'photos';
+    // Which leaves the rest, and the rest is worth saying out loud. Reported
+    // as nothing at all, an event this person is in none of looked like a
+    // failed scan — and then the album opened onto hundreds of photos.
+    final publicCount = (album.photoCount - count).clamp(0, album.photoCount);
+    final foundAny = count > 0;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -353,8 +381,13 @@ class _FoundCard extends StatelessWidget {
               color: ext.accentGold.withValues(alpha: 0.18),
             ),
             alignment: Alignment.center,
-            child:
-                Icon(Icons.check_rounded, size: 28.sp, color: ext.accentGold),
+            // A tick over "0 photos of you found" congratulates someone on
+            // nothing. The scan still worked; it just did not find them.
+            child: Icon(
+              foundAny ? Icons.check_rounded : Icons.person_search_rounded,
+              size: 28.sp,
+              color: ext.accentGold,
+            ),
           ),
           SizedBox(height: AppSpacing.lg.h),
           Text(
@@ -376,7 +409,9 @@ class _FoundCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.pill.r),
             ),
             child: Text(
-              '$count $photoWord of you found!',
+              foundAny
+                  ? '$count ${_photos(count)} of you found!'
+                  : '0 photos of you found',
               style: TextStyle(
                 color: ext.publicAmber,
                 fontSize: 14.sp,
@@ -384,6 +419,14 @@ class _FoundCard extends StatelessWidget {
               ),
             ),
           ),
+          if (publicCount > 0) ...[
+            SizedBox(height: AppSpacing.md.h),
+            Text(
+              '$publicCount public ${_photos(publicCount)} from this event',
+              textAlign: TextAlign.center,
+              style: AppTypography.caption.copyWith(color: ext.searchHintColor),
+            ),
+          ],
           SizedBox(height: AppSpacing.xxl.h),
           Semantics(
             button: true,

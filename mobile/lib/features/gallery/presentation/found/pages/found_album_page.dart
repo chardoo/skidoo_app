@@ -67,7 +67,14 @@ class _FoundAlbumView extends StatefulWidget {
 
 class _FoundAlbumViewState extends State<_FoundAlbumView> {
   /// Scoped to this page and discarded with it — see [PhotoSelection].
-  late final _selection = PhotoSelection(reviewMode: widget.reviewMode);
+  ///
+  /// Seeded with the preview photos the album arrived with, which are what the
+  /// first frame draws: the selection has to know which of them are matches
+  /// before it is asked, or review mode paints its ticks a frame late.
+  late final _selection = PhotoSelection(
+    reviewMode: widget.reviewMode,
+    photos: widget.album.photos,
+  );
 
   bool _checkingOut = false;
 
@@ -197,13 +204,22 @@ class _FoundAlbumViewState extends State<_FoundAlbumView> {
                         // Review only. On the browsing screen nothing is
                         // selected, so an instruction to deselect would be
                         // describing something that is not on screen.
+                        //
+                        // And it only describes what is on screen when some of
+                        // these photos are actually matches: an album that is
+                        // all public photos has nothing ticked, so "deselect
+                        // the ones that aren't you" would be pointing at a
+                        // selection nobody made.
                         if (widget.reviewMode)
                           SliverToBoxAdapter(
                             child: Padding(
                               padding: EdgeInsets.fromLTRB(AppSpacing.md.w, 0,
                                   AppSpacing.md.w, AppSpacing.md.h),
                               child: Text(
-                                "Tap to deselect photos that aren't you",
+                                photos.any((p) => p.isMine)
+                                    ? "Tap to deselect photos that aren't you"
+                                    : 'None of these matched your face — these '
+                                        'are the public photos from this event',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: ext.searchHintColor,

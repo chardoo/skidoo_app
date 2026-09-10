@@ -36,6 +36,24 @@ Photo _photo(
       reviewStatus: review,
     );
 
+/// One of the event's public photos, which the same album carries alongside
+/// the viewer's matches — nobody said this one is them.
+Photo _publicPhoto(String id, {double price = 0}) =>
+    Photo(
+      id,
+      'Praise Reloaded 2026',
+      'img_$id',
+      'https://example.com/$id.jpg',
+      'photographer-1',
+      price,
+      '',
+      null,
+      true,
+      eventId: 'event-1',
+      isMine: false,
+      reviewStatus: '',
+    );
+
 Widget _wrap(Widget child) => ScreenUtilInit(
       designSize: const Size(412, 917),
       builder: (_, __) => MaterialApp(
@@ -61,6 +79,39 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Get 3 photos – GHS 60.00'), findsOneWidget);
+    });
+
+    testWidgets('never quotes for the event\'s public photos', (tester) async {
+      // A scan that matched one photo used to open the album with the whole
+      // event ticked, and the bar quoted the whole event's price.
+      final selection = PhotoSelection(reviewMode: true, photos: [
+        _photo('mine', price: 20),
+        _publicPhoto('theirs1', price: 20),
+        _publicPhoto('theirs2', price: 20),
+      ]);
+
+      await tester.pumpWidget(_wrap(PhotoPurchaseBar(
+        selection: selection,
+        onCheckout: () {},
+      )));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Get 1 photo – GHS 20.00'), findsOneWidget);
+    });
+
+    testWidgets('stays away when the scan matched nothing', (tester) async {
+      final selection = PhotoSelection(reviewMode: true, photos: [
+        _publicPhoto('a', price: 20),
+        _publicPhoto('b', price: 20),
+      ]);
+
+      await tester.pumpWidget(_wrap(PhotoPurchaseBar(
+        selection: selection,
+        onCheckout: () {},
+      )));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Get'), findsNothing);
     });
 
     testWidgets('says how many free photos ride along', (tester) async {
