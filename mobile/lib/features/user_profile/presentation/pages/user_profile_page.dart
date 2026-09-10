@@ -12,6 +12,8 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
+import 'package:jperg_app/features/ads/campaigns_enabled.dart';
 import 'package:jperg_app/features/ads/presentation/pages/broadcasts_page.dart';
 import 'package:jperg_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart'
@@ -371,6 +373,13 @@ class UserProfilePageState extends State<UserProfilePage>
 
   @override
   Widget build(BuildContext context) {
+    // The campaign switch reaches three things on this page — the "+" sheet,
+    // the third stat and the Broadcasts tab — and it moves while the page is
+    // open, so the page is built under it rather than reading it once.
+    return CampaignsSwitch(builder: _buildPage);
+  }
+
+  Widget _buildPage(BuildContext context, bool campaigns) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     final page = Scaffold(
@@ -380,11 +389,19 @@ class UserProfilePageState extends State<UserProfilePage>
         centerTitle: true,
         backgroundColor: Colors.transparent,
         automaticallyImplyLeading: false,
-        leading: IconButton(
-          tooltip: 'Post a request or start a campaign',
-          icon: Icon(Icons.add_rounded, color: ext.greetingColor, size: 26.r),
-          onPressed: () => CreateBottomSheet.show(context),
-        ),
+        // With campaigns off the sheet offers requests alone, so the tooltip
+        // stops promising a campaign. With both off there is nothing to post
+        // and the button goes — it opened an empty sheet.
+        leading: !campaigns && !AppConfigRepository.current.requestsEnabled
+            ? null
+            : IconButton(
+                tooltip: campaigns
+                    ? 'Post a request or start a campaign'
+                    : 'Post a request',
+                icon: Icon(Icons.add_rounded,
+                    color: ext.greetingColor, size: 26.r),
+                onPressed: () => CreateBottomSheet.show(context),
+              ),
         // The name, not the username: uiqueName doubles as the face-recognition
         // person id and is an email on most accounts.
         title: Text(
@@ -417,6 +434,7 @@ class UserProfilePageState extends State<UserProfilePage>
               overview: _overview,
               loading: _loadingHeader,
               ext: ext,
+              campaignsEnabled: campaigns,
               onCampaignsTap: _openBroadcasts,
             ),
           ),
@@ -478,6 +496,7 @@ class UserProfilePageState extends State<UserProfilePage>
               child: _BroadcastsTab(
                 requests: _overview.requests,
                 campaigns: _overview.campaigns,
+                campaignsEnabled: campaigns,
                 ext: ext,
                 onOpen: _openBroadcasts,
               ),
@@ -536,12 +555,19 @@ class _Header extends StatelessWidget {
     required this.overview,
     required this.loading,
     required this.ext,
+    required this.campaignsEnabled,
     required this.onCampaignsTap,
   });
 
   final ProfileOverview overview;
   final bool loading;
   final AppThemeExtension ext;
+
+  /// See [CampaignsSwitch]. With campaigns off, the third stat counts the
+  /// requests instead — the tab it opens holds nothing else, and a "Campaigns"
+  /// figure for a feature that does not exist reads as a bug.
+  final bool campaignsEnabled;
+
   final VoidCallback onCampaignsTap;
 
   @override
@@ -591,8 +617,9 @@ class _Header extends StatelessWidget {
                   ext: ext,
                 ),
                 _Stat(
-                  value: overview.campaigns,
-                  label: 'Campaigns',
+                  value:
+                      campaignsEnabled ? overview.campaigns : overview.requests,
+                  label: campaignsEnabled ? 'Campaigns' : 'Requests',
                   loading: loading,
                   ext: ext,
                   onTap: onCampaignsTap,
@@ -744,12 +771,20 @@ class _BroadcastsTab extends StatelessWidget {
   const _BroadcastsTab({
     required this.requests,
     required this.campaigns,
+    required this.campaignsEnabled,
     required this.ext,
     required this.onOpen,
   });
 
   final int requests;
   final int campaigns;
+
+  /// With campaigns switched off this tab is requests and nothing else — see
+  /// [CampaignsSwitch]. The tab itself stays: what is under it is still the
+  /// person's own broadcasts, and a tab bar that changes shape underneath
+  /// somebody is worse than one card fewer.
+  final bool campaignsEnabled;
+
   final AppThemeExtension ext;
   final VoidCallback onOpen;
 
@@ -770,15 +805,17 @@ class _BroadcastsTab extends StatelessWidget {
           ext: ext,
           onTap: onOpen,
         ),
-        SizedBox(height: AppSpacing.md.h),
-        _BroadcastCard(
-          icon: Icons.rocket_launch_outlined,
-          title: 'Campaigns',
-          subtitle:
-              campaigns == 0 ? 'Nothing running yet' : '$campaigns running',
-          ext: ext,
-          onTap: onOpen,
-        ),
+        if (campaignsEnabled) ...[
+          SizedBox(height: AppSpacing.md.h),
+          _BroadcastCard(
+            icon: Icons.rocket_launch_outlined,
+            title: 'Campaigns',
+            subtitle:
+                campaigns == 0 ? 'Nothing running yet' : '$campaigns running',
+            ext: ext,
+            onTap: onOpen,
+          ),
+        ],
       ],
     );
   }

@@ -4,6 +4,7 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/ads/data/models/ad_model.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/features/ads/campaigns_enabled.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/invitation_sheet.dart';
 
@@ -22,7 +23,11 @@ class FeedPromos {
     required this.onChanged,
     this.intervalScale = 1,
     this.placement = 'event_feed',
-  });
+  }) {
+    _wasAdsEnabled = adsEnabled;
+    _wasRequestsEnabled = requestsEnabled;
+    AppConfigRepository.notifier.addListener(_onConfigChanged);
+  }
 
   /// Called whenever anything here changes — the feed's `setState`.
   final VoidCallback onChanged;
@@ -51,9 +56,19 @@ class FeedPromos {
   bool _fetchingMore = false;
   bool _disposed = false;
 
+  /// The flags as they stood last time anything looked, so a config arriving
+  /// unchanged (every resume refetches it) is not mistaken for a switch being
+  /// thrown.
+  late bool _wasAdsEnabled;
+  late bool _wasRequestsEnabled;
+
+  /// What [loadInitial] was last given, so the reload after a switch is thrown
+  /// asks for the same feed position rather than a context-free ad.
+  String? _lastContextEventId;
+
   // ── Configuration ─────────────────────────────────────────────────────────
 
-  bool get adsEnabled => AppConfigRepository.current.adsEnabled;
+  bool get adsEnabled => campaignsEnabled;
   bool get requestsEnabled => AppConfigRepository.current.requestsEnabled;
 
   int get adsInterval =>
@@ -66,8 +81,10 @@ class FeedPromos {
 
   // ── What goes in a slot ───────────────────────────────────────────────────
 
-  List<FeedRequestModel> get visibleRequests =>
-      [for (final r in _requests) if (!_hiddenRequestIds.contains(r.id)) r];
+  List<FeedRequestModel> get visibleRequests => [
+        for (final r in _requests)
+          if (!_hiddenRequestIds.contains(r.id)) r
+      ];
 
   AdModel? adForSlot(int slot) =>
       slot >= 0 && slot < _ads.length ? _ads[slot] : null;
@@ -92,11 +109,33 @@ class FeedPromos {
     _requestPage = 1;
   }
 
+  /// The admin threw one of the switches while this feed was on screen.
+  ///
+  /// Both directions matter and they are the same operation: drop everything
+  /// fetched under the old answer and ask again. Off, and [loadInitial] fetches
+  /// nothing, leaving a feed of events alone; on, and the slots fill without
+  /// the reader having to restart the app to see a feature that now exists.
+  void _onConfigChanged() {
+    if (_disposed) return;
+    final ads = adsEnabled;
+    final requests = requestsEnabled;
+    if (ads == _wasAdsEnabled && requests == _wasRequestsEnabled) return;
+    _wasAdsEnabled = ads;
+    _wasRequestsEnabled = requests;
+    reset();
+    // Redraws now with the slots emptied, rather than holding the old campaigns
+    // on screen until the refetch answers.
+    onChanged();
+    loadInitial(contextEventId: _lastContextEventId);
+  }
+
   Future<void> loadInitial({String? contextEventId}) async {
+    _lastContextEventId = contextEventId;
     try {
       final results = await Future.wait([
         adsEnabled
-            ? _repo.serveAd(placement: placement, contextEventId: contextEventId)
+            ? _repo.serveAd(
+                placement: placement, contextEventId: contextEventId)
             : Future<AdModel?>.value(null),
         requestsEnabled
             ? _repo.getRequests(page: 1)
@@ -130,7 +169,8 @@ class FeedPromos {
       final nextPage = _requestPage + 1;
       final results = await Future.wait([
         adsEnabled
-            ? _repo.serveAd(placement: placement, contextEventId: contextEventId)
+            ? _repo.serveAd(
+                placement: placement, contextEventId: contextEventId)
             : Future<AdModel?>.value(null),
         requestsEnabled
             ? _repo.getRequests(page: nextPage)
@@ -220,7 +260,10 @@ class FeedPromos {
     onChanged();
   }
 
-  void dispose() => _disposed = true;
+  void dispose() {
+    _disposed = true;
+    AppConfigRepository.notifier.removeListener(_onConfigChanged);
+  }
 }
 
 /// Which of [requests] belongs in request slot [slot].
@@ -241,11 +284,17 @@ class FeedPromos {
 FeedRequestModel? requestInSlot(List<FeedRequestModel> requests, int slot) {
   if (slot < 0 || requests.isEmpty) return null;
 
-  final boosted = [for (final r in requests) if (r.isBoosted) r];
+  final boosted = [
+    for (final r in requests)
+      if (r.isBoosted) r
+  ];
   if (boosted.isEmpty) {
     return slot < requests.length ? requests[slot] : null;
   }
-  final plain = [for (final r in requests) if (!r.isBoosted) r];
+  final plain = [
+    for (final r in requests)
+      if (!r.isBoosted) r
+  ];
 
   var b = 0;
   var p = 0;

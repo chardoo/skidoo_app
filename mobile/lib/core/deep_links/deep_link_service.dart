@@ -19,6 +19,7 @@ import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
+import 'package:jperg_app/features/ads/campaigns_enabled.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/creator_profile_page.dart';
 import 'package:jperg_app/features/search/domain/usecases/search_usecase.dart';
@@ -282,7 +283,16 @@ class DeepLinkService {
         HomePage.tabRequest.value = 3; // Profile
         return;
 
+      // Campaigns can be switched off app-wide, and a link is the one way into
+      // a screen the rest of the app has stopped offering — an old push
+      // notification about a campaign is enough. Home instead, rather than a
+      // screen for a feature that is not running. See [campaignsEnabled].
       case DeepLinkKind.adsDashboard:
+        if (!campaignsEnabled) {
+          debugPrint('$_tag campaigns are switched off — sending to home');
+          await _toHome(navigator);
+          return;
+        }
         await navigator.push(
           MaterialPageRoute<void>(
             settings: const RouteSettings(name: 'deeplink/campaigns'),
@@ -461,6 +471,18 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
         // or belongs to someone else, says so rather than opening an empty
         // screen.
         case DeepLinkKind.campaign:
+          // Same rule as the dashboard above: no campaign screens while the
+          // feature is switched off, however the link arrived. Said out loud
+          // rather than dropped — this route already has a place to say why a
+          // link went nowhere, and silence reads as a broken link.
+          if (!campaignsEnabled) {
+            debugPrint('$_tag campaigns are switched off — refusing the link');
+            setState(() {
+              _loading = false;
+              _error = 'Campaigns are not available right now.';
+            });
+            return;
+          }
           final campaign = await AdsRepository().getCampaign(link.id!);
           if (!mounted) return;
           _swapSelfFor(
@@ -526,7 +548,8 @@ class _DeepLinkTargetState extends State<DeepLinkTarget> {
             return;
           }
 
-          debugPrint('$_tag opening album ${photo.eventId} at photo ${link.id}');
+          debugPrint(
+              '$_tag opening album ${photo.eventId} at photo ${link.id}');
           _swapSelfFor(
             MaterialPageRoute<void>(
               settings: const RouteSettings(name: 'deeplink/album'),

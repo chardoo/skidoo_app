@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
+import 'package:jperg_app/features/ads/campaigns_enabled.dart';
 import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/create_request_flow.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -25,6 +26,15 @@ class CreateBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Watched rather than read: the sheet can be open when the switch moves,
+    // and an option that no longer exists must not stay tappable. See
+    // [CampaignsSwitch].
+    return CampaignsSwitch(
+      builder: (context, campaigns) => _build(context, campaigns),
+    );
+  }
+
+  Widget _build(BuildContext context, bool campaignsEnabled) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final cfg = AppConfigRepository.current;
 
@@ -111,11 +121,11 @@ class CreateBottomSheet extends StatelessWidget {
                     );
                   },
                 ),
-                if (cfg.adsEnabled) SizedBox(height: AppSpacing.md.h),
+                if (campaignsEnabled) SizedBox(height: AppSpacing.md.h),
               ],
 
-              // ── Option: Create Campaign (only when adsEnabled) ────────────
-              if (cfg.adsEnabled)
+              // ── Option: Create Campaign (only when campaigns are on) ──────
+              if (campaignsEnabled)
                 _CreateOption(
                   icon: Icons.rocket_launch_rounded,
                   iconColor: ext.accentGold,
@@ -212,13 +222,22 @@ class _CreateOption extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            title,
-                            style: TextStyle(
-                              color: ext.greetingColor,
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.2,
+                          // Flexible, because the badge beside it is fixed and
+                          // "Request a photographer" is long: on a narrow phone
+                          // — or at a large accessibility text size — an
+                          // unconstrained title takes the badge off the edge of
+                          // the card rather than ellipsing.
+                          Flexible(
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: ext.greetingColor,
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
+                              ),
                             ),
                           ),
                           SizedBox(width: AppSpacing.sm.w),

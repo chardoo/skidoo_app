@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/ads/campaigns_enabled.dart';
 import 'package:jperg_app/features/ads/data/models/ad_model.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
@@ -110,7 +111,12 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
           page: 1,
           limit: _limit,
         ),
-        _repo.serveAd(placement: 'request_board'),
+        // Not asked for at all while campaigns are switched off. The server
+        // answers such a request with nothing anyway; the round trip is the
+        // app admitting it does not know the feature is off.
+        campaignsEnabled
+            ? _repo.serveAd(placement: 'request_board')
+            : Future<AdModel?>.value(null),
       ]);
       if (!mounted) return;
       final requests = results[0] as List<FeedRequestModel>;
@@ -252,11 +258,14 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                       icon: Icons.cloud_off_outlined,
                       onRetry: _load,
                     )
-                  : Builder(builder: (context) {
+                  // Watched rather than read once: the sponsored slot below has
+                  // to go when the switch moves, without the board being
+                  // reopened. See [CampaignsSwitch].
+                  : CampaignsSwitch(builder: (context, campaigns) {
                       final visible = _requests
                           .where((r) => !_hiddenIds.contains(r.id))
                           .toList();
-                      final hasAd = _sponsoredAd != null;
+                      final hasAd = _sponsoredAd != null && campaigns;
                       final adOffset = hasAd ? 1 : 0;
                       final itemCount =
                           adOffset + visible.length + (_loadingMore ? 1 : 0);

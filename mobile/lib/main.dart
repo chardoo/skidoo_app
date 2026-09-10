@@ -9,6 +9,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 // Temporarily disabled for presentation screenshots — re-enable with the call below.
 // import 'package:jperg_app/core/security/screenshot_guard.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
+import 'package:jperg_app/features/admin/data/repositories/app_config_watcher.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 
@@ -38,6 +39,10 @@ void main() async {
     sl<AppConfigRepository>().fetch(),
     sl<AppConfigRepository>().fetchRates(),
   ]).ignore();
+
+  // And again on every return to the foreground, so a flag thrown on the admin
+  // dashboard reaches an app that is already running. See AppConfigWatcher.
+  AppConfigWatcher(sl<AppConfigRepository>().fetch).start();
 
   // Prints once per launch. Its absence means the running binary predates the
   // deep-link session fixes, and any report from it is about the old code —
