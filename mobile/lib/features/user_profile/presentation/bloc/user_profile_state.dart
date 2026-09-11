@@ -6,6 +6,9 @@ class UserProfileState extends Equatable {
   final bool isUpdateSuccess;
   final String name;
   final String email;
+
+  /// The account's profile picture, or '' when it has none.
+  final String profileUrl;
   final String uniqueName;
   final String contact;
   final String countryCode;
@@ -29,6 +32,7 @@ class UserProfileState extends Equatable {
     this.isUpdateSuccess = false,
     this.name = '',
     this.email = '',
+    this.profileUrl = '',
     this.uniqueName = '',
     this.contact = '',
     this.countryCode = '',
@@ -53,6 +57,7 @@ class UserProfileState extends Equatable {
     bool? isUpdateSuccess,
     String? name,
     String? email,
+    String? profileUrl,
     String? uniqueName,
     String? contact,
     String? countryCode,
@@ -81,6 +86,7 @@ class UserProfileState extends Equatable {
           : (isUpdateSuccess ?? this.isUpdateSuccess),
       name: name ?? this.name,
       email: email ?? this.email,
+      profileUrl: profileUrl ?? this.profileUrl,
       uniqueName: uniqueName ?? this.uniqueName,
       contact: contact ?? this.contact,
       countryCode: countryCode ?? this.countryCode,
@@ -111,6 +117,7 @@ class UserProfileState extends Equatable {
         isUpdateSuccess,
         name,
         email,
+        profileUrl,
         uniqueName,
         contact,
         countryCode,

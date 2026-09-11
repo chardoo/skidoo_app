@@ -220,6 +220,11 @@ class _WhoYouAre extends StatelessWidget {
     return Row(
       children: [
         UserAvatar(
+          // The picture when there is one, the initial only as a fallback.
+          // This never passed an image at all, so it drew initials for
+          // everybody — including accounts that plainly had a photo, which the
+          // Profile screen one tap away was happy to show.
+          imageUrl: state.profileUrl.isEmpty ? null : state.profileUrl,
           initial: state.name.isNotEmpty ? state.name : '?',
           radius: 22.r,
         ),

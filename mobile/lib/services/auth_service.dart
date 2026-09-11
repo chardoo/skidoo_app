@@ -51,6 +51,20 @@ class AuthService {
   /// (a request header, a one-off check before a network call).
   static final role = ValueNotifier<String>('');
 
+  /// The signed-in account's profile picture, or '' when it has none.
+  ///
+  /// A notifier for the same reason [role] is one: the avatar is drawn in
+  /// places that build once and stay up — the feed's top bar most of all — and
+  /// a one-shot read there keeps whatever storage happened to hold at build
+  /// time. That is exactly what went wrong: this was written only by the
+  /// upload in Edit Profile, so on a fresh sign-in it was empty, and the top
+  /// bar had read it before anything could fill it in. Signing in and never
+  /// touching Edit Profile meant never seeing your own face.
+  ///
+  /// Whoever learns the URL sets this — [setProfileUrl] does both — and every
+  /// avatar watching it redraws.
+  static final profileUrl = ValueNotifier<String>('');
+
   /// Whether the account may upload and sell work.
   static bool get isPhotographer => role.value == 'photographer';
 
@@ -196,7 +210,15 @@ class AuthService {
   Future<void> clearPendingInterests() => _delete(_kPendingInterests);
 
   // ── Role ─────────────────────────────────────────────────────────────────────
-  Future<void> setProfileUrl(String url) => _write(_kProfileUrl, url);
+  /// Records the profile picture and tells every avatar watching.
+  ///
+  /// The notifier is set first and synchronously, so a widget rebuilding on
+  /// this frame sees the new face rather than the pending write.
+  Future<void> setProfileUrl(String url) {
+    AuthService.profileUrl.value = url;
+    return _write(_kProfileUrl, url);
+  }
+
   Future<String> getProfileUrl() async => await _read(_kProfileUrl) ?? '';
 
   /// Writes the role and tells every screen watching [role] about it.
@@ -215,6 +237,14 @@ class AuthService {
   /// Seeds [role] from storage. Called once at startup, alongside the other
   /// synchronous auth state — see `main()`.
   Future<void> primeRole() async => AuthService.role.value = await getRole();
+
+  /// Seeds [profileUrl] from storage, alongside [primeRole].
+  ///
+  /// Without this the first frame after a cold start draws initials even for
+  /// an account whose picture is already on disk, and only corrects itself
+  /// once the profile request comes back.
+  Future<void> primeProfileUrl() async =>
+      AuthService.profileUrl.value = await getProfileUrl();
 
   // ── Onboarding ───────────────────────────────────────────────────────────────
   /// Device-level flag (not cleared on logout) — the 3-screen intro carousel
@@ -284,6 +314,11 @@ class AuthService {
     // out handed the next person their creator tools — an upload button and a
     // dashboard link for an account that has neither.
     role.value = '';
+    // Same reasoning, and the visible half of it: the key below is deleted, so
+    // leaving the notifier standing would show the last person's face on the
+    // settings and feed avatars of whoever signed in next, until their own
+    // profile finished loading over it.
+    profileUrl.value = '';
     // Everything the session put in memory, on the socket, or in a feed cache.
     // Registered by its owners rather than listed here — see [SessionReset],
     // and add to it rather than to this method.

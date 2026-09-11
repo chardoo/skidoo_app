@@ -59,6 +59,10 @@ class UserProfileRemoteDataSourceImpl implements UserProfileRemoteDataSource {
     return {
       'name': pick(['name']),
       'email': pick(['email']),
+      // Dropped here until now, which is why the app only ever knew a profile
+      // picture it had just uploaded itself: the endpoint returns this on
+      // every fetch, and nothing downstream ever saw it.
+      'profileUrl': pick(['profile_url', 'profileUrl']),
       'uniqueName': pick(['uniqueName', 'uiqueName', 'unique_name']),
       'contact': pick(['contact', 'phone']),
       'countryCode': pick(['countryCode', 'country_code']),

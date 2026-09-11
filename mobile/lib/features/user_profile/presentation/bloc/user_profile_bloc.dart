@@ -66,10 +66,28 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
       ]);
       final profile = results[0] as Map<dynamic, dynamic>;
       final features = results[1] as Map<String, bool>;
+
+      // Mirrored into AuthService, not just held here.
+      //
+      // The feed's top bar reads its avatar from there and has no bloc, so
+      // without this the two disagree: settings would show the picture and the
+      // top bar would not. AuthService only ever learnt the URL from an upload
+      // in Edit Profile, so signing in and never touching that screen meant
+      // never seeing your own face anywhere.
+      //
+      // Only when the fetch actually returned one — an empty answer here is a
+      // response that did not carry the field, not a deleted picture, and
+      // writing it would blank an avatar that was correct.
+      final profileUrl = profile['profileUrl'] as String? ?? '';
+      if (profileUrl.isNotEmpty && profileUrl != AuthService.profileUrl.value) {
+        await _authService.setProfileUrl(profileUrl);
+      }
+
       emit(state.copyWith(
         isLoading: false,
         name: profile['name'] as String? ?? '',
         email: profile['email'] as String? ?? '',
+        profileUrl: profileUrl.isNotEmpty ? profileUrl : null,
         uniqueName: profile['uniqueName'] as String? ?? '',
         contact: profile['contact'] as String? ?? '',
         countryCode: profile['countryCode'] as String? ?? '',

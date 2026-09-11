@@ -152,6 +152,7 @@ void main() async {
   // settle: it is one keychain read, and the alternative is the creator
   // affordances flickering in a moment after the feed has drawn.
   await authService.primeRole();
+  await authService.primeProfileUrl();
 
   // Push. Off the critical path — none of this blocks the first frame.
   //

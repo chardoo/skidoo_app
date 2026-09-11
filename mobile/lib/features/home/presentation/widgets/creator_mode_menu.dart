@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/config/app_links_config.dart';
-import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -39,17 +38,18 @@ class CreatorModeMenu extends StatefulWidget {
 }
 
 class _CreatorModeMenuState extends State<CreatorModeMenu> {
-  /// The avatar, which storage is the only source of. Held rather than re-read
-  /// on every build: this sits in the feed's top bar, which rebuilds on scroll
-  /// and on every tab change.
+  /// The avatar is watched, not read.
   ///
-  /// The *role* is deliberately not in here. It used to be, loaded once beside
-  /// the avatar and never looked at again — so somebody who became a creator
-  /// while the app was running went on being offered nothing, because this
-  /// widget was built long before the upgrade and had already made up its
-  /// mind. It watches [AuthService.role] instead, and re-reads the avatar when
-  /// the answer changes.
-  late Future<String> _avatar = sl<AuthService>().getProfileUrl();
+  /// It used to be a Future taken once from storage, which is the same mistake
+  /// the *role* used to make here and for the same reason: this sits in the
+  /// feed's top bar, built early and kept, so a value read at build time is
+  /// the value it keeps. Storage only ever held a URL that Edit Profile had
+  /// uploaded, so on a fresh sign-in this read an empty string — before the
+  /// profile request could fill one in — and then never asked again. Signing
+  /// in and never visiting Edit Profile meant never seeing your own face.
+  ///
+  /// [AuthService.profileUrl] is seeded at startup and set by whoever learns
+  /// the URL, so this now redraws when it arrives.
 
   @override
   void initState() {
@@ -65,17 +65,9 @@ class _CreatorModeMenuState extends State<CreatorModeMenu> {
 
   void _onRoleChanged() {
     if (!mounted) return;
-    // Becoming a creator is also when the avatar is worth asking about again:
-    // the wizard that grants the role is the one that just set a profile
-    // picture up.
-    //
-    // The read is started outside setState and the body is a block, not an
-    // arrow: an arrow returns what it assigns, and setState asserts on being
-    // handed a Future — which this is.
-    final avatar = sl<AuthService>().getProfileUrl();
-    setState(() {
-      _avatar = avatar;
-    });
+    // Only to show or hide the control — the avatar inside it follows
+    // [AuthService.profileUrl] on its own now.
+    setState(() {});
   }
 
   Future<void> _openMenu() async {
@@ -107,10 +99,10 @@ class _CreatorModeMenuState extends State<CreatorModeMenu> {
   }
 
   Widget _buildAvatar(BuildContext context, AppThemeExtension ext) {
-    return FutureBuilder<String>(
-      future: _avatar,
-      builder: (context, snapshot) {
-        final identity = _CreatorIdentity(imageUrl: snapshot.data ?? '');
+    return ValueListenableBuilder<String>(
+      valueListenable: AuthService.profileUrl,
+      builder: (context, url, _) {
+        final identity = _CreatorIdentity(imageUrl: url);
 
         return Semantics(
           button: true,
