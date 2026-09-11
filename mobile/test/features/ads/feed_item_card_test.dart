@@ -16,9 +16,11 @@ import 'package:jperg_app/features/ads/presentation/widgets/feed_item_card.dart'
 /// media, so between two edge-to-edge posts they read as a different app.
 ///
 /// What each card carries differs on purpose, and that is most of what is
-/// pinned here: a campaign can be liked and discussed, while a request carries
-/// share alone and answers itself through its button. A heart on somebody's
-/// work enquiry says nothing they can use.
+/// pinned here: a campaign can be liked, discussed and passed on, while a
+/// request carries only the means to report or hide it and answers itself
+/// through its button. A heart on somebody's work enquiry says nothing they
+/// can use, and neither does sharing it — the people who can answer a request
+/// are already reading the board.
 AdModel _ad({
   bool commentsEnabled = true,
   int likeCount = 0,
@@ -196,16 +198,35 @@ void main() {
       expect(find.text('Hourly Coverage (~3 hrs)'), findsOneWidget);
     });
 
-    testWidgets('carries share and nothing to react with', (t) async {
+    testWidgets('carries nothing to engage with — only report or hide',
+        (t) async {
       await t.pumpWidget(host(FeedItemData.fromRequest(_request())));
       await t.pump();
 
       final labels =
           railOf(t).map((a) => (a.semanticLabel ?? '').toLowerCase()).toList();
-      expect(labels.any((l) => l.contains('share')), isTrue);
       expect(labels.any((l) => l.contains('like')), isFalse,
           reason: 'a job going begging is not a post to like');
       expect(labels.any((l) => l.contains('comment')), isFalse);
+      expect(labels.any((l) => l.contains('share')), isFalse,
+          reason: 'passing a request on is not how one gets answered');
+      // The rail is not empty: reporting and hiding survive, and for a request
+      // they are now the whole of it.
+      expect(labels, isNotEmpty);
+      expect(labels.any((l) => l.contains('more') || l.contains('option')),
+          isTrue);
+    });
+
+    testWidgets('an advertiser keeps share, which is theirs to want',
+        (t) async {
+      // The removal is about requests. A campaign is a post someone paid to
+      // put in front of people, and passing it on is the point.
+      await t.pumpWidget(host(FeedItemData.fromAd(_ad(), onCtaTap: () {})));
+      await t.pump();
+
+      final labels =
+          railOf(t).map((a) => (a.semanticLabel ?? '').toLowerCase()).toList();
+      expect(labels.any((l) => l.contains('share')), isTrue);
     });
   });
 

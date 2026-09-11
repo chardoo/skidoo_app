@@ -573,9 +573,14 @@ class _FeedItemCardState extends State<FeedItemCard> {
             // ── The rail ─────────────────────────────────────────────────────
             //
             // A campaign can be liked, discussed and passed on. A request
-            // carries share alone: it is a job going begging, not a post — the
+            // carries none of it: it is a job going begging, not a post — the
             // way to answer one is the button, and a heart on somebody's work
             // enquiry says nothing they can use.
+            //
+            // Share went the same way as the heart, and for the same reason.
+            // Passing a request to a friend is not how one gets answered — the
+            // people who can answer it are already reading the board — so it
+            // was an engagement control on something nobody engages with.
             Positioned(
               right: 12.w,
               top: 0,
@@ -602,13 +607,14 @@ class _FeedItemCardState extends State<FeedItemCard> {
                           )
                         else
                           MediaReaction.commentsDisabled(count: _commentCount),
-                      MediaReaction.share(
-                        busy: _sharing,
-                        onTap: _handleShare,
-                      ),
-                      // Not in the design, and kept: this is how an ad gets
-                      // reported or hidden, and removing that from advertising
-                      // is not a simplification.
+                      if (isAd)
+                        MediaReaction.share(
+                          busy: _sharing,
+                          onTap: _handleShare,
+                        ),
+                      // The one control both kinds keep. Not in the design, and
+                      // kept anyway: this is how either gets reported or
+                      // hidden, and for a request it is now the whole rail.
                       MediaReaction.more(onTap: _showMoreOptions),
                     ],
                   ),
