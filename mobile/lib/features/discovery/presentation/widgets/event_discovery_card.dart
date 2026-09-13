@@ -545,12 +545,19 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             ext: ext,
             isOwner: widget.isOwner,
             isAuthenticated: widget.isAuthenticated,
-            onPhotographerTap: () => openPhotographerProfile(
-              context,
-              photographerId: widget.event.photographerId,
-              photographerName: widget.event.photographerName,
-              photographerProfileUrl: widget.event.photographerProfileUrl,
-            ),
+            // Guest-gated like everything else on this header — the follow
+            // pill and the more menu already ask. This card is only built
+            // signed in today, but it defaults to `isAuthenticated: false`
+            // and the header is written for both, so the creator tap has to
+            // hold up on the guest side of that default too.
+            onPhotographerTap: () => widget.isAuthenticated
+                ? openPhotographerProfile(
+                    context,
+                    photographerId: widget.event.photographerId,
+                    photographerName: widget.event.photographerName,
+                    photographerProfileUrl: widget.event.photographerProfileUrl,
+                  )
+                : widget.onTap(),
             onHide: widget.onHide,
             onLoginRequired: widget.onTap,
             onImage: false,

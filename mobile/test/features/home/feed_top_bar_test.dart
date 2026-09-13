@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -173,6 +174,76 @@ void main() {
     // Tinted over the tween's duration, not instantly.
     await t.pumpAndSettle();
     expect(glyphColour(t), ext.accentGold);
+  });
+
+  testWidgets('the QR mark and the search icon are the same size', (t) async {
+    // What the feed was reported for. Both controls asked for 24 and both
+    // boxes came out 24, so nothing in the widget tree looked wrong — but a
+    // Material icon leaves 2 dp of clearance all round and paints a ~20 dp
+    // mark, while the QR glyph painted its design edge to edge and filled all
+    // 24. Side by side in one row, the QR read a fifth bigger than the search
+    // icon next to it. Only the *ink* shows that, so this test measures it.
+    //
+    // On the solid background, where the glyph carries no drop shadow: over
+    // media it does, and a blur wide enough to hold the mark against a photo
+    // inks the whole box on its own, which is nothing to measure.
+    await t.pumpWidget(
+        host(AppThemeExtension.dark, bar(onUnlock: () {}, solid: true)));
+
+    final qr = t
+        .widgetList<CustomPaint>(find.descendant(
+          of: find.bySemanticsLabel('Unlock private photos'),
+          matching: find.byType(CustomPaint),
+        ))
+        .firstWhere((p) => p.painter != null);
+    final box = t.getSize(find.descendant(
+      of: find.bySemanticsLabel('Unlock private photos'),
+      matching: find.byType(CustomPaint),
+    ));
+    final search = t.widget<Icon>(find.descendant(
+      of: find.bySemanticsLabel('Open search'),
+      matching: find.byType(Icon),
+    ));
+
+    expect(box.width, closeTo(search.size!, 0.01),
+        reason: 'the two glyphs are not even being given the same box');
+
+    // Rasterise the painter on its own and measure how much of that box it
+    // actually inks. The painter type is private, but a CustomPainter can be
+    // driven through its public `paint` without naming it.
+    final ink = await t.runAsync(() async {
+      final recorder = ui.PictureRecorder();
+      qr.painter!.paint(Canvas(recorder), box);
+      final image = await recorder
+          .endRecording()
+          .toImage(box.width.ceil(), box.height.ceil());
+      final data = await image.toByteData();
+      var left = image.width, right = -1, top = image.height, bottom = -1;
+      for (var y = 0; y < image.height; y++) {
+        for (var x = 0; x < image.width; x++) {
+          // Alpha is the last byte of each RGBA pixel.
+          if (data!.getUint8((y * image.width + x) * 4 + 3) == 0) continue;
+          if (x < left) left = x;
+          if (x > right) right = x;
+          if (y < top) top = y;
+          if (y > bottom) bottom = y;
+        }
+      }
+      image.dispose();
+      return Rect.fromLTRB(
+          left.toDouble(), top.toDouble(), right + 1, bottom + 1);
+    });
+
+    // Material's live area: 20 of every 24 dp. A pixel of slack each way for
+    // the stroke's own antialiasing.
+    final live = box.width * 20 / 24;
+    expect(ink!.width, closeTo(live, 1.5),
+        reason: 'the QR mark is not sitting in a Material icon\'s live area');
+    expect(ink.height, closeTo(live, 1.5));
+    // And centred in the box, or it would sit off the row's optical line even
+    // at the right size.
+    expect(ink.center.dx, closeTo(box.width / 2, 1.5));
+    expect(ink.center.dy, closeTo(box.height / 2, 1.5));
   });
 
   testWidgets('the search icon hands off to the Search screen', (t) async {

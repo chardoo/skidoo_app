@@ -72,10 +72,20 @@ class DeepLink {
   /// public object — your messages, your earnings, your notifications — so
   /// every one of them needs a session. A signed-out tap holds the link,
   /// shows the sign-in screen, and resumes afterwards.
+  ///
+  /// [DeepLinkKind.photographer] is here for a different reason: it is
+  /// shareable, and it does open a public object, but a creator's profile is a
+  /// signed-in destination everywhere else in the app — see
+  /// `openPhotographerProfile`, which every avatar tap goes through. Left open,
+  /// the link was a way around that gate: a guest who could not reach a profile
+  /// by tapping the creator's face on their own event could reach the same page
+  /// by opening a link to it. Holding it is the better half of the trade
+  /// anyway, since the link resumes after sign-in and lands where it was going.
   bool get requiresAuth => switch (kind) {
         DeepLinkKind.myPhotos ||
         DeepLinkKind.notifications ||
         DeepLinkKind.chat ||
+        DeepLinkKind.photographer ||
         DeepLinkKind.adsDashboard ||
         DeepLinkKind.campaign ||
         DeepLinkKind.earnings ||

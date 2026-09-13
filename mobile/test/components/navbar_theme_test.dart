@@ -39,6 +39,18 @@ BoxDecoration pill(WidgetTester t) => t
 Color labelColour(WidgetTester t, String label) =>
     t.widget<Text>(find.text(label)).style!.color!;
 
+/// The bar's four resting glyphs, all from the one `_outlined` family — see
+/// [AppNavbar] for why that family and not the `_rounded` one the app leans on
+/// elsewhere. Named here so a tab that quietly changes families is a failure
+/// rather than something to be noticed on a screenshot.
+// Not const: [IconData] overrides `==`, which a constant set will not take.
+final _outlineGlyphs = <IconData>{
+  Icons.home_outlined,
+  Icons.notifications_none_outlined,
+  Icons.forum_outlined,
+  Icons.person_outline_outlined,
+};
+
 void main() {
   setUp(() {
     final view = TestWidgetsFlutterBinding.ensureInitialized()
@@ -166,11 +178,21 @@ void main() {
       (t) async {
     await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
 
-    final inactive = t
-        .widgetList<Icon>(find.byType(Icon))
-        .where((i) => i.color != null)
+    // The selected tab is the accent on either ground — this is about the three
+    // it leaves behind. It has to be filtered out by hand now that every tab
+    // draws an [Icon]: Home used to be an `Image.asset`, so with Home selected
+    // the sweep below happened to see only inactive tabs.
+    final icons = t
+        .widgetList<Icon>(find.descendant(
+          of: find.byType(AppNavbar),
+          matching: find.byType(Icon),
+        ))
         .toList();
-    expect(inactive, isNotEmpty);
+    final inactive =
+        icons.where((i) => i.color != AppThemeExtension.light.accentGold);
+
+    expect(icons, hasLength(4));
+    expect(inactive, hasLength(3));
     for (final icon in inactive) {
       expect(icon.color, Colors.white70,
           reason: 'grey-on-dark-media is the case this fixes');
@@ -180,6 +202,36 @@ void main() {
   testWidgets('over the feed the active label is the accent', (t) async {
     await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
     expect(labelColour(t, 'Home'), AppThemeExtension.light.accentGold);
+  });
+
+  testWidgets('every tab draws one size of Material glyph', (t) async {
+    // The bar was reported for uneven icons, and Home was why: it drew a 50 px
+    // PNG whose artwork ran to the edge of its own box, so the shared 20 dp
+    // came out a ~19 dp mark with a ~1.9 dp stroke against the Material
+    // glyphs' 16.7 dp mark and 1.7 dp stroke. Same number in the code either
+    // way — what makes the row even is every tab taking its glyph from one
+    // family, which is drawn to one grid at one outline weight.
+    for (final selected in [0, 1, 2, 3]) {
+      await t.pumpWidget(host(AppThemeExtension.dark, selected: selected));
+
+      final icons = t.widgetList<Icon>(find.descendant(
+        of: find.byType(AppNavbar),
+        matching: find.byType(Icon),
+      ));
+
+      expect(icons, hasLength(4),
+          reason: 'a tab is drawing something that is not a Material icon');
+      expect(icons.map((i) => i.size).toSet(), hasLength(1),
+          reason: 'the four tabs are not asking for the same size');
+
+      // Exactly one tab is filled — the one you are on. Home used to have no
+      // filled form at all, so it stayed an outline while its chip lit up.
+      final filled = icons
+          .map((i) => i.icon)
+          .where((i) => !_outlineGlyphs.contains(i));
+      expect(filled, hasLength(1),
+          reason: 'the selected tab is not the only filled glyph');
+    }
   });
 
   testWidgets('chats is two bubbles, not the comment glyph', (t) async {

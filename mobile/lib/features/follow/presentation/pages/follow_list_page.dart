@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/time_formatter.dart';
 import 'package:jperg_app/core/widgets/animations/app_animations.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
-import 'package:jperg_app/features/photographers/presentation/pages/creator_profile_page.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/common/widgets/app_error_view.dart';
 
@@ -269,16 +269,19 @@ class _FollowListViewState extends State<_FollowListView>
     );
   }
 
+  /// Through the one helper every creator tap goes through.
+  ///
+  /// This used to seed the profile and push the route itself, which is the same
+  /// thing [openPhotographerProfile] does — minus the sign-in gate it does it
+  /// behind. Reaching this list needs an account today, so nothing changes
+  /// here; going through the helper is what keeps that true if the list ever
+  /// becomes something a guest can open.
   void _openProfile(FollowEntry entry) {
-    final page = CreatorProfilePage(
-      profile: CreatorProfile.seed(
-        id: entry.id,
-        name: entry.name,
-        photoUrl: entry.profileUrl,
-      ),
-    );
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => page),
+    openPhotographerProfile(
+      context,
+      photographerId: entry.id,
+      photographerName: entry.name,
+      photographerProfileUrl: entry.profileUrl,
     );
   }
 

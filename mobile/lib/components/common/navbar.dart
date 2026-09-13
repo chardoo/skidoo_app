@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:jperg_app/constants/icons.dart';
 import 'package:jperg_app/core/common/widgets/glass_surface.dart';
 import 'package:jperg_app/core/navigation/chrome_visibility.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -14,6 +13,16 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 /// creation and the Creators tab moved into [AccountPage]'s `_AdsCard`
 /// section since they have no other reachable entry point once removed from
 /// here).
+///
+/// Every glyph here is a Material icon, resting shapes all from the `_outlined`
+/// family and selected shapes all from the filled `_rounded` one. The rule is
+/// worth stating because it is what keeps the row even: a family is drawn to
+/// one grid at one outline weight, so four icons from it asked for the same
+/// [_NavTab._iconSize] come out the same size and the same weight without
+/// anything having to be tuned per tab. The app leans `_rounded` elsewhere, and
+/// this row cannot — `home` has no rounded outline, so `_outlined` is the only
+/// family that covers all four resting shapes. Picking a glyph from outside it,
+/// or from outside Material altogether, is what puts one tab out of step.
 class AppNavbar extends StatelessWidget {
   const AppNavbar({
     super.key,
@@ -91,7 +100,18 @@ class AppNavbar extends StatelessWidget {
                     children: [
                       _NavTab(
                         label: 'Home',
-                        iconPath: IconsPath.home,
+                        // Material, like its three neighbours, and paired with
+                        // a filled variant like them too. This was the one tab
+                        // drawing a bitmap: a 50 px PNG whose artwork ran to
+                        // the edge of its own box, so at the shared 20 dp it
+                        // came out a mark about 19 dp across with a ~1.9 dp
+                        // stroke, against the Material glyphs' 16.7 dp mark and
+                        // 1.7 dp stroke. Same number in the code, a visibly
+                        // bigger and heavier icon on the screen — and, having
+                        // no selected form, the only tab that stayed an outline
+                        // when you were on it.
+                        icon: Icons.home_outlined,
+                        selectedIcon: Icons.home_rounded,
                         selected: selectedIndex == _feedTabIndex,
                         ext: ext,
                         onDark: onDark,
@@ -104,7 +124,7 @@ class AppNavbar extends StatelessWidget {
                         // ~97px when its tab was active, since only the active tab
                         // shows a label and the row is sized to its content.
                         label: 'Alerts',
-                        icon: Icons.notifications_none_rounded,
+                        icon: Icons.notifications_none_outlined,
                         selectedIcon: Icons.notifications_rounded,
                         selected: selectedIndex == 2,
                         ext: ext,
@@ -130,7 +150,7 @@ class AppNavbar extends StatelessWidget {
                       ),
                       _NavTab(
                         label: 'Profile',
-                        icon: Icons.person_outline_rounded,
+                        icon: Icons.person_outline_outlined,
                         selectedIcon: Icons.person_rounded,
                         selected: selectedIndex == 3,
                         ext: ext,
@@ -157,14 +177,23 @@ class _NavTab extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.ext,
+    required this.icon,
+    required this.selectedIcon,
     required this.onDark,
     required this.expanded,
     required this.onTap,
-    this.iconPath,
-    this.icon,
-    this.selectedIcon,
     this.unreadCount = 0,
-  }) : assert(iconPath != null || icon != null);
+  });
+
+  /// Size of every glyph in the bar, and the only place it is decided.
+  ///
+  /// It reads as one number because every tab now draws a Material icon, which
+  /// all share the family's 24 dp grid and 2 dp outline weight — ask the four
+  /// of them for 20 and you get four marks of the same size and the same
+  /// weight. That only holds while they stay in the family: an asset dropped in
+  /// beside them answers this number with whatever its artwork happens to fill,
+  /// which is exactly how the Home tab came to be the odd one out.
+  static const double _iconSize = 20;
 
   final String label;
   final bool selected;
@@ -178,9 +207,12 @@ class _NavTab extends StatelessWidget {
   /// still marks it, so which tab you are on survives the collapse.
   final bool expanded;
   final VoidCallback onTap;
-  final String? iconPath;
-  final IconData? icon;
-  final IconData? selectedIcon;
+
+  /// The tab's resting glyph, and the filled form it takes when you are on it.
+  /// Both required: a tab with no selected form is a tab that stays an outline
+  /// while the other three fill.
+  final IconData icon;
+  final IconData selectedIcon;
   final int unreadCount;
 
   @override
@@ -206,19 +238,11 @@ class _NavTab extends StatelessWidget {
         ? activeForeground
         : (onDark ? Colors.white70 : ext.searchHintColor);
 
-    Widget iconWidget = icon != null
-        ? Icon(
-            selected && selectedIcon != null ? selectedIcon! : icon!,
-            size: 20.sp,
-            color: iconColor,
-          )
-        : ExcludeSemantics(
-            child: Image.asset(
-            iconPath!,
-            width: 20.sp,
-            height: 20.sp,
-            color: iconColor,
-          ));
+    Widget iconWidget = Icon(
+      selected ? selectedIcon : icon,
+      size: _iconSize.sp,
+      color: iconColor,
+    );
 
     if (unreadCount > 0) {
       iconWidget = Stack(

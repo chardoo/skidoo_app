@@ -117,6 +117,22 @@ class FeedMusicController with WidgetsBindingObserver {
     if (nowPlaying.value != null) _publishNowPlaying(null);
   }
 
+  /// How loud an unmuted soundtrack plays, and the only place that is decided.
+  ///
+  /// Low on purpose. This is a feed playing under a card somebody is looking at
+  /// — it is the room tone of the event, not something anyone chose to listen
+  /// to, and it arrives unannounced the moment a card settles. It used to be a
+  /// bare `1` in the two places below, so every card came in at the device's
+  /// full output: loud enough to be startling on speakers and genuinely
+  /// unpleasant on headphones, which is what this was reported for.
+  ///
+  /// [FeedMusicPlayer.setVolume] is a linear amplitude scale, and loudness is
+  /// not linear in it — 0.2 amplitude is about -14 dB, which lands as clearly
+  /// audible but well under the app's own sounds rather than as a fifth of the
+  /// volume. Anything below roughly 0.1 stops being audible at all over street
+  /// noise, which is no better than silence.
+  static const double playbackVolume = 0.2;
+
   final FeedMusicPlayer _player;
   final Duration _settleDelay;
   final Duration _fadeDuration;
@@ -494,7 +510,7 @@ class FeedMusicController with WidgetsBindingObserver {
 
       _sounding = true;
       _publish();
-      _fadeTo(muted.value ? 0 : 1, generation);
+      _fadeTo(muted.value ? 0 : playbackVolume, generation);
     } catch (e) {
       // Music is decoration on a feed. A dead URL, an unplayable format or a
       // provider outage means no pill and no sound — never a message, because
@@ -520,7 +536,7 @@ class FeedMusicController with WidgetsBindingObserver {
     _fade?.cancel();
     if (nowPlaying.value == null) return;
     try {
-      await _player.setVolume(muted.value ? 0 : 1);
+      await _player.setVolume(muted.value ? 0 : playbackVolume);
     } catch (e) {
       debugPrint('[Music] could not set volume: $e');
     }

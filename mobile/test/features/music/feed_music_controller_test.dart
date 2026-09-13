@@ -194,7 +194,8 @@ void main() {
       await settle(t);
 
       expect(player.isPlaying, isTrue);
-      expect(player.volume, 1.0, reason: 'the fade must still have run');
+      expect(player.volume, FeedMusicController.playbackVolume,
+          reason: 'the fade must still have run');
       expect(music.nowPlaying.value?.eventId, 'event-1',
           reason: 'the pill must still have lit');
     });
@@ -496,6 +497,44 @@ void main() {
     });
   });
 
+  group('level', () {
+    testWidgets('a card comes in quietly, never at full output', (t) async {
+      // What this was reported for: the unmuted level was a bare `1`, so every
+      // card that settled came in at the device's full output — startling on
+      // speakers, worse on headphones. Music under a feed card is room tone
+      // nobody asked for; it has to sit under the app rather than take it over.
+      final player = FakePlayer();
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+
+      expect(player.volume, lessThan(0.35),
+          reason: 'this is background music, not something anyone chose');
+      expect(player.volume, greaterThan(0.05),
+          reason: 'too quiet to hear is no better than silent');
+    });
+
+    testWidgets('the fade in never overshoots on its way up', (t) async {
+      // The ramp walks the volume up in steps, and a step computed against the
+      // old full-scale target would peak loud and settle quiet — the startling
+      // part would survive the fix and only the sustained level would drop.
+      final player = FakePlayer();
+      final music = build(player);
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      await settle(t);
+
+      expect(player.volumes, isNotEmpty);
+      for (final v in player.volumes) {
+        expect(v, lessThanOrEqualTo(FeedMusicController.playbackVolume),
+            reason: 'the ramp passed through $v on the way to its target');
+      }
+    });
+  });
+
   group('mute', () {
     testWidgets('muting silences without stopping the track', (t) async {
       final player = FakePlayer();
@@ -504,7 +543,7 @@ void main() {
 
       music.claim(#cardA, 'event-1', [track('a')]);
       await settle(t);
-      expect(player.volume, 1);
+      expect(player.volume, FeedMusicController.playbackVolume);
 
       await music.setMuted(true);
 

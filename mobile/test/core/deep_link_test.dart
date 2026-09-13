@@ -83,13 +83,28 @@ void main() {
   });
 
   group('what a link needs before it can be followed', () {
-    test('my photos needs a signed-in person; the rest do not', () {
+    test('my photos needs a signed-in person; a shared photo does not', () {
       expect(const DeepLink(DeepLinkKind.myPhotos).requiresAuth, isTrue);
       // A shared photo has to work for someone who has just installed the app
       // and has no account — that is the whole point of sharing it.
-      expect(const DeepLink(DeepLinkKind.picture, id: 'x').requiresAuth, isFalse);
+      expect(
+          const DeepLink(DeepLinkKind.picture, id: 'x').requiresAuth, isFalse);
       expect(const DeepLink(DeepLinkKind.event, id: 'x').requiresAuth, isFalse);
-      expect(const DeepLink(DeepLinkKind.request, id: 'x').requiresAuth, isFalse);
+      expect(
+          const DeepLink(DeepLinkKind.request, id: 'x').requiresAuth, isFalse);
+    });
+
+    test('a creator profile needs a signed-in person', () {
+      // Every avatar in the app goes through `openPhotographerProfile`, which
+      // asks a guest to sign in. A link left open was the way around that
+      // gate — the same page, reached without the account, by opening a URL
+      // instead of tapping a face. It still shares: the link holds, the sign-in
+      // sheet comes up, and following it afterwards lands on the profile.
+      expect(const DeepLink(DeepLinkKind.photographer, id: 'ph_7').requiresAuth,
+          isTrue);
+      expect(const DeepLink(DeepLinkKind.photographer, id: 'ph_7').isShareable,
+          isTrue,
+          reason: 'gating who may open it must not stop it being shared');
     });
   });
 

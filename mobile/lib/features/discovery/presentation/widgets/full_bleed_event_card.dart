@@ -352,6 +352,16 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   /// from under the glass.
   static const double _navBand = 96;
 
+  /// Where the right-hand action rail sits: a little below the card's middle,
+  /// as a fraction of the card rather than an offset from an edge, so it holds
+  /// its place across phone sizes.
+  ///
+  /// Read twice — once to place the rail in the card, once to place the rail's
+  /// contents inside a card too short to hold them. Both have to be the same
+  /// fraction or the rail jumps at the moment it stops fitting; see the rail
+  /// itself for when that happens.
+  static const Alignment _railAnchor = Alignment(0, 0.4);
+
   /// Whether the owner is taking comments on what is on screen.
   ///
   /// Comments only. This used to gate the heart as well, on the reading that
@@ -546,6 +556,15 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   }
 
   void _openPhotographerProfile() {
+    // On the guest feed [onTap] is the login sheet, the same trade the album
+    // and every reaction on this card make. [openPhotographerProfile] would
+    // ask on its own, but it would ask its own way and land the person on the
+    // profile with the guest feed still underneath — this card's other gates
+    // all go through [onTap], which signs them in and puts them on Home.
+    if (!widget.isAuthenticated) {
+      widget.onTap();
+      return;
+    }
     final event = widget.event;
     openPhotographerProfile(
       context,
@@ -932,120 +951,157 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           ),
 
           // ── Right action rail ─────────────────────────────────────────────
+          //
+          // Stretched top to bottom and anchored by [_railAnchor], so where the
+          // rail sits is a fraction of the card rather than a number of pixels
+          // from an edge.
           Positioned(
             right: 12.w,
             top: 0,
             bottom: 0,
             child: CommentSheetHide(
               child: Align(
-                alignment: const Alignment(0, 0.4),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.bottomCenter,
-                      children: [
-                        Semantics(
-                          button: true,
-                          label: "View ${event.photographerName}'s profile",
-                          child: GestureDetector(
-                            onTap: _openPhotographerProfile,
-                            child: CircleAvatar(
-                              radius: 20.r,
-                              backgroundColor: Colors.white24,
-                              backgroundImage: event.photographerProfileUrl !=
-                                      null
-                                  ? CachedNetworkImageProvider(
-                                      event.photographerProfileUrl!,
-                                      cacheManager: JpergImageCache.instance,
-                                    )
-                                  : null,
-                              child: event.photographerProfileUrl == null
-                                  ? Text(
-                                      event.photographerName.isNotEmpty
-                                          ? event.photographerName[0]
-                                              .toUpperCase()
-                                          : '?',
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700),
-                                    )
-                                  : null,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: -8.h,
-                          child: FollowButton(
-                            photographerId: event.photographerId,
-                            onImage: true,
-                            compact: true,
-                            initialFollowing: event.isFollowed,
-                            onLoginRequired:
-                                widget.isAuthenticated ? null : widget.onTap,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 26.h),
-                    // The bookmark and the heart both read bloc state: the
-                    // reaction has to come from there rather than from the
-                    // event this card was built with, or a like in Following
-                    // would be recorded and never shown — see
-                    // [EventReactionState].
-                    BlocBuilder<DiscoveryBloc, DiscoveryState>(
-                      buildWhen: (prev, next) =>
-                          prev.savedEventIds != next.savedEventIds ||
-                          prev.reactions[widget.event.id] !=
-                              next.reactions[widget.event.id],
-                      builder: (context, state) {
-                        // The bloc's record where it has one, this card's own
-                        // copy otherwise — the first time a post is liked in
-                        // Following there is nothing in the bloc yet.
-                        final reaction =
-                            state.reactions[event.id] ?? _ownReaction;
-                        return MediaReactionRail(
-                          actions: [
-                            // The heart is always here. Closing the thread is
-                            // the owner declining a conversation, not
-                            // declining reactions — see [_commentsAllowed].
-                            //
-                            // Where they have closed it the comment glyph
-                            // stays, drawn unavailable: a rail with no comment
-                            // button at all reads as one that never had one,
-                            // and their decision is worth stating.
-                            MediaReaction.like(
-                              liked: reaction.liked,
-                              count: reaction.likes,
-                              onTap: _toggleLike,
-                            ),
-                            if (_commentsAllowed)
-                              MediaReaction.comment(
-                                count: _commentCount,
-                                onTap: _openComments,
-                              )
-                            else
-                              MediaReaction.commentsDisabled(
-                                count: _commentCount,
+                alignment: _railAnchor,
+                // The rail keeps its natural height even when the card is
+                // shorter than it, and is clipped rather than squeezed.
+                //
+                // Stretching the [Positioned] hands this column a *tight*
+                // height, which is the card's — and when a comment sheet opens,
+                // [CommentPushArea] relays the whole card out into the strip
+                // above the sheet. Around 253 dp the rail's ~290 dp of avatar,
+                // follow button and five reactions no longer fit, and a Column
+                // cannot shrink: it overflowed, which in debug is 37 px of
+                // stripes across a card somebody is reading comments on.
+                //
+                // Sizing to the child instead is the same remedy
+                // [CommentPushArea.fillsBand] applies to column-shaped cards one
+                // level up, for the same reason. It costs nothing at full
+                // height, where the rail fits and this box is exactly the
+                // column: only once the band is shorter than the rail does it
+                // start clipping, and by then [CommentSheetHide] has the rail
+                // most of the way faded out — the designs draw that band as
+                // media and nothing else.
+                //
+                // Anchored on [_railAnchor] here too, the same fraction the
+                // [Align] outside uses, so the rail slides up continuously as
+                // the band closes instead of jumping the moment it stops
+                // fitting.
+                child: ConstraintsTransformBox(
+                  constraintsTransform:
+                      ConstraintsTransformBox.maxHeightUnconstrained,
+                  alignment: _railAnchor,
+                  // Clipped, not striped: an overflow indicator here is a
+                  // report about chrome that is on its way out, and there is
+                  // nothing for anyone to act on.
+                  clipBehavior: Clip.hardEdge,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.bottomCenter,
+                        children: [
+                          Semantics(
+                            button: true,
+                            label: "View ${event.photographerName}'s profile",
+                            child: GestureDetector(
+                              onTap: _openPhotographerProfile,
+                              child: CircleAvatar(
+                                radius: 20.r,
+                                backgroundColor: Colors.white24,
+                                backgroundImage: event.photographerProfileUrl !=
+                                        null
+                                    ? CachedNetworkImageProvider(
+                                        event.photographerProfileUrl!,
+                                        cacheManager: JpergImageCache.instance,
+                                      )
+                                    : null,
+                                child: event.photographerProfileUrl == null
+                                    ? Text(
+                                        event.photographerName.isNotEmpty
+                                            ? event.photographerName[0]
+                                                .toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700),
+                                      )
+                                    : null,
                               ),
-                            MediaReaction.bookmark(
-                              saved: state.savedEventIds.contains(event.id),
-                              onTap: _toggleSave,
                             ),
-                            // One button, two destinations, named in the sheet it
-                            // opens — the paper plane and the share arrow beside it
-                            // were two buttons for one intention.
-                            MediaReaction.share(
-                              busy: _sharingExternal,
-                              onTap: _openShareTargets,
+                          ),
+                          Positioned(
+                            bottom: -8.h,
+                            child: FollowButton(
+                              photographerId: event.photographerId,
+                              onImage: true,
+                              compact: true,
+                              initialFollowing: event.isFollowed,
+                              onLoginRequired:
+                                  widget.isAuthenticated ? null : widget.onTap,
                             ),
-                            MediaReaction.more(onTap: _showMoreOptions),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 26.h),
+                      // The bookmark and the heart both read bloc state: the
+                      // reaction has to come from there rather than from the
+                      // event this card was built with, or a like in Following
+                      // would be recorded and never shown — see
+                      // [EventReactionState].
+                      BlocBuilder<DiscoveryBloc, DiscoveryState>(
+                        buildWhen: (prev, next) =>
+                            prev.savedEventIds != next.savedEventIds ||
+                            prev.reactions[widget.event.id] !=
+                                next.reactions[widget.event.id],
+                        builder: (context, state) {
+                          // The bloc's record where it has one, this card's own
+                          // copy otherwise — the first time a post is liked in
+                          // Following there is nothing in the bloc yet.
+                          final reaction =
+                              state.reactions[event.id] ?? _ownReaction;
+                          return MediaReactionRail(
+                            actions: [
+                              // The heart is always here. Closing the thread is
+                              // the owner declining a conversation, not
+                              // declining reactions — see [_commentsAllowed].
+                              //
+                              // Where they have closed it the comment glyph
+                              // stays, drawn unavailable: a rail with no comment
+                              // button at all reads as one that never had one,
+                              // and their decision is worth stating.
+                              MediaReaction.like(
+                                liked: reaction.liked,
+                                count: reaction.likes,
+                                onTap: _toggleLike,
+                              ),
+                              if (_commentsAllowed)
+                                MediaReaction.comment(
+                                  count: _commentCount,
+                                  onTap: _openComments,
+                                )
+                              else
+                                MediaReaction.commentsDisabled(
+                                  count: _commentCount,
+                                ),
+                              MediaReaction.bookmark(
+                                saved: state.savedEventIds.contains(event.id),
+                                onTap: _toggleSave,
+                              ),
+                              // One button, two destinations, named in the sheet it
+                              // opens — the paper plane and the share arrow beside it
+                              // were two buttons for one intention.
+                              MediaReaction.share(
+                                busy: _sharingExternal,
+                                onTap: _openShareTargets,
+                              ),
+                              MediaReaction.more(onTap: _showMoreOptions),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

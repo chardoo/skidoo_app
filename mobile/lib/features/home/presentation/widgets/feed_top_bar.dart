@@ -250,6 +250,10 @@ class FeedTopBar extends StatelessWidget {
 /// glyphs are this sparse — `qr_code_2` reads as a dense code at this size,
 /// which is a visibly different mark. The geometry below is traced off the
 /// design at its natural 18 px, then scaled.
+///
+/// [size] is the *box*, not the mark — the same contract [Icon] has, so this
+/// and the search icon at the other end of the bar can both be asked for 24
+/// and come out matching. See [_QrGlyphPainter] for what happens inside it.
 class _QrGlyph extends StatelessWidget {
   const _QrGlyph({
     required this.color,
@@ -287,8 +291,27 @@ class _QrGlyphPainter extends CustomPainter {
   /// Everything below is expressed in the design's own 18-unit box.
   static const double _grid = 18;
 
-  /// Top-left corners of the three finder squares (6×6 each, 2-wide stroke,
-  /// so they occupy 8×8 once the stroke is counted).
+  /// Fraction of the box the mark is allowed to fill.
+  ///
+  /// A Material icon does not fill the size you ask it for: the family is drawn
+  /// on a 24 dp grid with 2 dp of clearance all round, so `Icon(size: 24)`
+  /// paints a mark about 20 dp across. This glyph used to paint its 18-unit
+  /// design edge to edge in the same box, which made it a 24 dp mark standing
+  /// next to the search icon's 20 — nominally the same `size`, visibly a fifth
+  /// bigger, and that is the mismatch the feed was reported for. Painting into
+  /// the same live area is what makes one number mean one thing across the bar.
+  static const double _liveArea = 20 / 24;
+
+  /// Stroke weight, also as a fraction of the box: 2 dp at 24, which is what
+  /// the outline weight of the Material family works out to. Kept in box units
+  /// rather than design units so it tracks [_liveArea] instead of drifting
+  /// heavier the moment either number is touched.
+  static const double _strokeWeight = 2 / 24;
+
+  /// Top-left corners of the three finder squares, 6×6 each. The stroke is
+  /// centred on that path and comes from [_strokeWeight] rather than from these
+  /// units, so a square reaches a little under 8×8 in the design's terms — the
+  /// mark still lands inside the 18-unit box either way.
   static const _finders = [Offset(1, 1), Offset(11, 1), Offset(1, 11)];
 
   /// The fourth corner's pattern, decomposed into solid blocks.
@@ -304,7 +327,14 @@ class _QrGlyphPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final s = size.width / _grid;
+    // The mark is inset into the box's live area and centred there, so the
+    // glyph's own geometry below stays in the design's units and only this one
+    // line decides how big it comes out.
+    final mark = size.shortestSide * _liveArea;
+    final s = mark / _grid;
+    final stroke = size.shortestSide * _strokeWeight;
+    canvas.save();
+    canvas.translate((size.width - mark) / 2, (size.height - mark) / 2);
 
     void draw(Paint strokePaint, Paint fillPaint) {
       for (final o in _finders) {
@@ -333,7 +363,7 @@ class _QrGlyphPainter extends CustomPainter {
         Paint()
           ..color = Colors.black87
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2 * s
+          ..strokeWidth = stroke
           ..maskFilter = blur,
         Paint()
           ..color = Colors.black87
@@ -345,9 +375,11 @@ class _QrGlyphPainter extends CustomPainter {
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2 * s,
+        ..strokeWidth = stroke,
       Paint()..color = color,
     );
+
+    canvas.restore();
   }
 
   @override
