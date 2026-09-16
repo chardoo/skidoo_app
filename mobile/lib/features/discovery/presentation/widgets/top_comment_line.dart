@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
@@ -5,9 +7,9 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
-/// The standout comment, drawn the way Shorts draws it: a dark translucent
-/// capsule holding the commenter's avatar and what they said, sitting directly
-/// above the post's own text.
+/// The standout comment, drawn the way Shorts draws it: a frosted capsule
+/// holding the commenter's avatar and what they said, sitting directly above
+/// the post's own text. See [_FrostedCapsule] for the glass.
 ///
 /// It is **not** a replacement for the caption. This used to take the caption's
 /// line for five seconds and then hand it back, which meant the post's own
@@ -58,21 +60,7 @@ class TopCommentLine extends StatelessWidget {
         // `right:` inset is what stops a long one reaching the action rail.
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm.w,
-              vertical: 6.h,
-            ),
-            decoration: BoxDecoration(
-              // Dark enough to carry white text over a bright photo, sheer
-              // enough to read as something laid on the image rather than a
-              // panel cut out of it.
-              color: Colors.black.withValues(alpha: 0.55),
-              // A capsule at any height: the radius clamps to half the box, so
-              // one line is a pill and two lines are a rounded rectangle with
-              // fully round ends — which is what the reference shows.
-              borderRadius: BorderRadius.circular(AppRadius.pill.r),
-            ),
+          child: _FrostedCapsule(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,6 +101,103 @@ class TopCommentLine extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The glass the comment sits on.
+///
+/// The reference is frosted, not tinted: the pitch is visible through it and
+/// visibly *softened*, which is what tells you the capsule is a sheet laid over
+/// the photograph rather than a hole cut in it. A flat black fill — which is
+/// what this was — reads as a sticker, and over a dark photo it disappears
+/// altogether while over a bright one it reads as a bar.
+///
+/// **Unconditionally blurred, unlike [GlassSurface].** That widget falls back
+/// to an opaque tonal surface off iOS, deliberately, because it dresses
+/// *chrome* — nav bars and icon buttons — where Material 3 wants a solid
+/// surface and where the blur would be paid for the whole session. Neither
+/// applies here: this is an overlay on media, the reference frosts it on every
+/// platform, and it is a capsule on screen for as long as one card is. The
+/// same reasoning already governs [MediaActionButtons] and the locked-photo
+/// overlay, both of which blur everywhere.
+class _FrostedCapsule extends StatelessWidget {
+  const _FrostedCapsule({required this.child});
+
+  final Widget child;
+
+  /// Soft enough that the photograph behind goes to colour and light rather
+  /// than staying a readable picture, which is what lets small white text sit
+  /// on it. Wider than the app's chrome blur on purpose — chrome wants the
+  /// content behind it recognisable, and this wants the opposite.
+  static const double _blurSigma = 24;
+
+  @override
+  Widget build(BuildContext context) {
+    // A capsule at any height: the radius clamps to half the box, so one line
+    // is a pill and two lines are a rounded rectangle with fully round ends —
+    // which is what the reference shows.
+    final shape = BorderRadius.circular(AppRadius.pill.r);
+
+    return DecoratedBox(
+      // Under the glass, so the capsule lifts off the photograph instead of
+      // lying flat on it. Wide and weak — a tight shadow would read as a
+      // drawn border.
+      decoration: BoxDecoration(
+        borderRadius: shape,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: shape,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: _blurSigma, sigmaY: _blurSigma),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: shape,
+              // A gradient rather than one flat tone. Real glass is lit from
+              // somewhere: catching slightly more light at the top edge and
+              // sitting darker at the bottom is the whole difference between
+              // a pane and a rectangle of paint.
+              //
+              // Dark overall because the text on it is white and the
+              // photograph behind could be anything — a snow scene has to
+              // carry 13sp white type as readably as a night shot. Rendered
+              // over a deliberately blown-out backdrop, 0.34/0.46 left the
+              // type sitting on pale grey; these hold up over the brightest
+              // thing a photo is likely to put behind them and still let the
+              // colour through.
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.46),
+                  Colors.black.withValues(alpha: 0.58),
+                ],
+              ),
+              // The lit edge. Barely visible by design — at anything stronger
+              // it stops being a highlight and becomes an outline, and an
+              // outlined capsule is a button.
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.14),
+                width: 0.5,
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm.w,
+                vertical: 6.h,
+              ),
+              child: child,
             ),
           ),
         ),

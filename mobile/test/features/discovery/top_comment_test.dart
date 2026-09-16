@@ -179,14 +179,27 @@ void main() {
       replyCount: 9,
     );
 
-    BoxDecoration capsuleOf(WidgetTester t) => t
-        .widgetList<Container>(find.descendant(
+    /// The glass itself — the one painted box carrying the gradient. The
+    /// capsule is drawn as a stack of boxes (a shadow under the clip, the
+    /// glass inside it), so "the decoration" has to name which.
+    BoxDecoration glassOf(WidgetTester t) => t
+        .widgetList<DecoratedBox>(find.descendant(
           of: find.byType(TopCommentLine),
-          matching: find.byType(Container),
+          matching: find.byType(DecoratedBox),
         ))
-        .map((c) => c.decoration)
+        .map((d) => d.decoration)
         .whereType<BoxDecoration>()
-        .firstWhere((d) => d.shape != BoxShape.circle);
+        .firstWhere((d) => d.gradient != null);
+
+    /// The box that carries the lift shadow, outside the clip.
+    BoxDecoration shadowOf(WidgetTester t) => t
+        .widgetList<DecoratedBox>(find.descendant(
+          of: find.byType(TopCommentLine),
+          matching: find.byType(DecoratedBox),
+        ))
+        .map((d) => d.decoration)
+        .whereType<BoxDecoration>()
+        .firstWhere((d) => (d.boxShadow ?? const []).isNotEmpty);
 
     testWidgets('carries the comment and nothing else', (t) async {
       await t.pumpWidget(host(TopCommentLine(comment: comment, onTap: () {})));
@@ -203,15 +216,51 @@ void main() {
       expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
     });
 
-    testWidgets('sits on a dark translucent capsule', (t) async {
+    testWidgets('is frosted glass, not a tinted sticker', (t) async {
       await t.pumpWidget(host(TopCommentLine(comment: comment, onTap: () {})));
-      final decoration = capsuleOf(t);
 
-      // Over an arbitrary photograph, and white text on it: opaque would read
-      // as a panel cut out of the image, clear would be unreadable.
-      expect(decoration.color!.a, greaterThan(0.0));
-      expect(decoration.color!.a, lessThan(1.0));
-      expect(decoration.borderRadius, isNotNull);
+      // The blur is the whole difference. Without it the capsule is a flat
+      // fill that disappears over a dark photo and reads as a bar over a
+      // bright one; with it the photograph behind goes soft and the capsule
+      // reads as a sheet laid on top.
+      expect(
+        find.descendant(
+          of: find.byType(TopCommentLine),
+          matching: find.byType(BackdropFilter),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the glass is lit rather than one flat tone', (t) async {
+      await t.pumpWidget(host(TopCommentLine(comment: comment, onTap: () {})));
+      final glass = glassOf(t);
+
+      // Real glass catches more light at one edge. A single flat tone is what
+      // makes an overlay read as paint.
+      final colors = (glass.gradient! as LinearGradient).colors;
+      expect(colors.first.a, isNot(colors.last.a));
+
+      // Translucent throughout: opaque would punch a hole in the photograph,
+      // clear would leave white text on whatever happened to be behind it.
+      for (final c in colors) {
+        expect(c.a, greaterThan(0.0));
+        expect(c.a, lessThan(1.0));
+      }
+
+      // The lit edge, not an outline — at any real weight the capsule stops
+      // being glass and becomes a button.
+      expect(glass.border!.top.color.a, lessThan(0.3));
+    });
+
+    testWidgets('it lifts off the photograph', (t) async {
+      await t.pumpWidget(host(TopCommentLine(comment: comment, onTap: () {})));
+
+      // Outside the clip, or it would be blurred along with everything else
+      // and never seen.
+      final shadow = shadowOf(t).boxShadow!.single;
+      expect(shadow.blurRadius, greaterThan(8));
+      expect(shadow.offset.dy, greaterThan(0));
     });
 
     testWidgets('an author with no picture gets their initial', (t) async {
@@ -262,12 +311,12 @@ void main() {
       // Sized to its content. A two-letter comment on a bar the width of the
       // screen reads as a banner rather than as something somebody said.
       //
-      // The capsule, not the widget: the widget is an Align filling whatever
-      // the card gives it, and the thing being drawn is what sits inside.
-      final capsule = find.byWidgetPredicate((w) =>
-          w is Container &&
-          w.decoration is BoxDecoration &&
-          (w.decoration as BoxDecoration).shape != BoxShape.circle);
+      // The glass, not the widget: the widget is an Align filling whatever the
+      // card gives it, and the thing being drawn is what sits inside.
+      final capsule = find.descendant(
+        of: find.byType(TopCommentLine),
+        matching: find.byType(BackdropFilter),
+      );
 
       expect(t.getSize(capsule).width, lessThan(390 * 0.9));
     });

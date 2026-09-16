@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -490,10 +491,18 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
             ? () {
                 final p = widget.event.pictures;
                 if (p.isEmpty) return;
+                // The picture actually on screen, not the first one — the
+                // carousel may have been swiped, and the price belongs to the
+                // photo being shared.
+                final picture = p[_currentPage.clamp(0, p.length - 1)];
                 GalleryShareSheet.show(
                   context,
-                  imageUrl: p[_currentPage.clamp(0, p.length - 1)].url,
+                  imageUrl: picture.url,
                   photoLabel: widget.event.eventName,
+                  paidPreview: PaidPhotoWatermark.shouldMark(
+                    price: picture.price,
+                    isPurchased: picture.isPurchased,
+                  ),
                 );
               }
             : widget.onTap,

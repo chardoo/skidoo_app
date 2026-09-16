@@ -30,7 +30,13 @@ class GalleryShareSheet {
     BuildContext context, {
     required String imageUrl,
     required String photoLabel,
-    bool paidPreview = false,
+    /// Whether this photo costs money and the sender has not bought it.
+    ///
+    /// Required, not defaulted. It defaulted to false and two of the four
+    /// callers never passed it, so sharing from the feed sent an unmarked
+    /// message and the omission was invisible — a compile error is the only
+    /// thing that catches the next one.
+    required bool paidPreview,
   }) {
     showModalBottomSheet(
       context: context,

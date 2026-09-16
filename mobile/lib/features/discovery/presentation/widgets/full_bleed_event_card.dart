@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -645,10 +646,17 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     }
     final event = widget.event;
     if (event.pictures.isEmpty) return;
+    final picture = event.pictures.first;
     GalleryShareSheet.show(
       context,
-      imageUrl: event.pictures.first.url,
+      imageUrl: picture.url,
       photoLabel: event.eventName,
+      // The recipient is handed a URL and nothing else, so whether this costs
+      // money has to travel with the message — see [PaidPhotoWatermark].
+      paidPreview: PaidPhotoWatermark.shouldMark(
+        price: picture.price,
+        isPurchased: picture.isPurchased,
+      ),
     );
   }
 
