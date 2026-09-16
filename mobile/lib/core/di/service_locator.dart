@@ -565,10 +565,14 @@ Future<void> setupServiceLocator() async {
       DeleteRoomUseCase(sl<ChatRepository>()));
   sl.registerSingleton<ClearRoomUseCase>(
       ClearRoomUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<SetEventReactionUseCase>(
+      SetEventReactionUseCase(sl<ChatRepository>()));
   sl.registerSingleton<ClearRoomCacheUseCase>(
       ClearRoomCacheUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetRoomMessagesUseCase>(
       GetRoomMessagesUseCase(sl<ChatRepository>()));
+  sl.registerSingleton<GetCommentRepliesUseCase>(
+      GetCommentRepliesUseCase(sl<ChatRepository>()));
   sl.registerSingleton<GetCachedMessagesUseCase>(
       GetCachedMessagesUseCase(sl<ChatRepository>()));
   sl.registerSingleton<CacheMessageUseCase>(

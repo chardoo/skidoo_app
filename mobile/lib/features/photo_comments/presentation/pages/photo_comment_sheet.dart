@@ -12,7 +12,9 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/time_formatter.dart';
-import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart' show GetPhotoRoomUseCase;
+import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart'
+    show GetCommentRepliesUseCase, GetPhotoRoomUseCase;
+import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -62,6 +64,13 @@ class _PhotoCommentSheetContentState
   late final ChatRoomBloc _bloc;
 
   final _expandedIds = <String>{};
+
+  /// Replies fetched so far, by the comment they hang under. Same story as the
+  /// event sheet: a comment room's history is top-level only, so a thread has
+  /// to be asked for before it can be shown.
+  final _replies = <String, List<ChatMessage>>{};
+  final _loadingReplies = <String>{};
+
   ChatMessage? _replyingTo;
 
   @override
@@ -70,6 +79,40 @@ class _PhotoCommentSheetContentState
     _bloc = context.read<ChatRoomBloc>();
     _scrollCtrl.addListener(_onScroll);
     _loadRoom();
+  }
+
+  /// Open or close one comment's thread, fetching it the first time. See the
+  /// event sheet's copy for why the replies are not already here.
+  Future<void> _toggleReplies(ChatMessage msg) async {
+    if (_expandedIds.contains(msg.id)) {
+      setState(() => _expandedIds.remove(msg.id));
+      return;
+    }
+
+    setState(() => _expandedIds.add(msg.id));
+    if (_replies.containsKey(msg.id) || _loadingReplies.contains(msg.id)) {
+      return;
+    }
+
+    setState(() => _loadingReplies.add(msg.id));
+    try {
+      final replies = await sl<GetCommentRepliesUseCase>().call(msg.id);
+      if (!mounted) return;
+      setState(() {
+        _replies[msg.id] = replies;
+        _loadingReplies.remove(msg.id);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingReplies.remove(msg.id);
+        _expandedIds.remove(msg.id);
+      });
+      AppSnackBar.error(
+        context,
+        chatErrorText(e, fallback: 'Could not load replies'),
+      );
+    }
   }
 
   Future<void> _loadRoom() async {
@@ -189,7 +232,11 @@ class _PhotoCommentSheetContentState
       timeLabel: TimeFormatter.relative(msg.createdAt),
       isMe: false,
       isPending: msg.isLocal,
-      replyCount: replies?.length ?? 0,
+      // The server's number, not the length of a list this sheet does not
+      // have until the thread is expanded — see [_toggleReplies].
+      replyCount: replies != null && replies.isNotEmpty
+          ? replies.length
+          : msg.replyCount,
       likeCount: like.likes,
       viewerLiked: like.liked,
       // Not offered on a comment still on its way to the server: it has no id
@@ -274,8 +321,9 @@ class _PhotoCommentSheetContentState
                                       );
                                     }
                                     final msg = threaded.topLevel[i];
-                                    final replies =
-                                        threaded.repliesMap[msg.id] ?? [];
+                                    final replies = _replies[msg.id] ??
+                                        threaded.repliesMap[msg.id] ??
+                                        [];
 
                                     return ThreadedCommentWidget(
                                       key: ValueKey(msg.id),
@@ -285,13 +333,8 @@ class _PhotoCommentSheetContentState
                                           .toList(),
                                       ext: ext,
                                       isExpanded: _expandedIds.contains(msg.id),
-                                      onToggleReplies: () => setState(() {
-                                        if (_expandedIds.contains(msg.id)) {
-                                          _expandedIds.remove(msg.id);
-                                        } else {
-                                          _expandedIds.add(msg.id);
-                                        }
-                                      }),
+                                      onToggleReplies: () =>
+                                          _toggleReplies(msg),
                                     );
                                   },
                                 );

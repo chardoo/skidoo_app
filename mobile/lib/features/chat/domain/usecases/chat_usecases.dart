@@ -305,6 +305,18 @@ class GetRoomMessagesUseCase {
       _repo.getMessages(roomId, beforeId: beforeId, limit: limit);
 }
 
+class GetCommentRepliesUseCase {
+  final ChatRepository _repo;
+  GetCommentRepliesUseCase(this._repo);
+
+  Future<List<ChatMessage>> call(
+    String commentId, {
+    int page = 1,
+    int limit = 20,
+  }) =>
+      _repo.getCommentReplies(commentId, page: page, limit: limit);
+}
+
 class GetCachedMessagesUseCase {
   final ChatRepository _repo;
   GetCachedMessagesUseCase(this._repo);
@@ -363,6 +375,17 @@ class GetPresenceUseCase {
 
   Future<Map<String, PresenceSnapshot>> call(List<String> userIds) =>
       _repo.getPresence(userIds);
+}
+
+/// Set or clear a reaction without needing a chat room.
+///
+/// The socket path routes a reaction through a room, which a feed card has no
+/// reason to have. See [ChatRepository.setEventReaction].
+class SetEventReactionUseCase {
+  final ChatRepository _repo;
+  SetEventReactionUseCase(this._repo);
+  Future<EventReaction> call(String eventId, String? reaction) =>
+      _repo.setEventReaction(eventId, reaction);
 }
 
 class GetEventReactionUseCase {

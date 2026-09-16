@@ -15,6 +15,9 @@ import 'package:sqflite/sqflite.dart';
 ///   v7 – added like_count / viewer_liked. Without them every cached comment
 ///        came back with an empty heart: the sheet paints from this cache
 ///        first, so liking a comment and reopening the sheet lost the like.
+///   v9 – added reply_count, for the same reason one layer along: the sheet
+///        paints from here first, and a cached comment with no count offers no
+///        way into its thread.
 class ChatDatabase {
   static const _dbName = 'jperg_chat.db';
 
@@ -25,7 +28,7 @@ class ChatDatabase {
   /// lose chat history permanently, not just force a re-fetch.
   static const _legacyDbName = 'skidoo_chat.db';
 
-  static const _dbVersion = 8;
+  static const _dbVersion = 9;
 
   static Database? _db;
 
@@ -95,6 +98,7 @@ class ChatDatabase {
         -- and the same filled/unfilled heart the server last reported.
         like_count          INTEGER NOT NULL DEFAULT 0,
         viewer_liked        INTEGER NOT NULL DEFAULT 0,
+        reply_count         INTEGER NOT NULL DEFAULT 0,
         -- Whether this image was a paid photo the sender had not bought. Cached
         -- for the same reason the likes are: the thread paints from here before
         -- any request goes out, and a mark that only appeared after a refetch
@@ -159,6 +163,10 @@ class ChatDatabase {
     if (oldVersion < 8) {
       await db.execute(
           'ALTER TABLE chat_messages ADD COLUMN paid_preview INTEGER NOT NULL DEFAULT 0');
+    }
+    if (oldVersion < 9) {
+      await db.execute(
+          'ALTER TABLE chat_messages ADD COLUMN reply_count INTEGER NOT NULL DEFAULT 0');
     }
   }
 
@@ -291,6 +299,7 @@ class ChatDatabase {
             'is_read': wasRead || msg.isRead ? 1 : 0,
             'like_count': msg.likeCount,
             'viewer_liked': msg.viewerLiked ? 1 : 0,
+            'reply_count': msg.replyCount,
             'paid_preview': msg.paidPreview ? 1 : 0,
           };
 
@@ -522,6 +531,7 @@ class ChatDatabase {
         'system_type': msg.systemType,
         'like_count': msg.likeCount,
         'viewer_liked': msg.viewerLiked ? 1 : 0,
+        'reply_count': msg.replyCount,
         'paid_preview': msg.paidPreview ? 1 : 0,
       };
 
@@ -580,6 +590,7 @@ class ChatDatabase {
       // Null-tolerant: a row written before v7 has no value for these, and an
       // upgrade that had not run yet must not crash the inbox.
       likeCount: (row['like_count'] as int?) ?? 0,
+      replyCount: (row['reply_count'] as int?) ?? 0,
       viewerLiked: (row['viewer_liked'] as int?) == 1,
       paidPreview: (row['paid_preview'] as int?) == 1,
       updatedAt: row['updated_at'] != null

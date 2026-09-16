@@ -151,6 +151,14 @@ class ChatMessage {
   final int likeCount;
   final bool viewerLiked;
 
+  /// How many replies hang off this comment.
+  ///
+  /// A comment room's history is top-level only, so this is the *only* way to
+  /// know a thread is there — it cannot be counted from the list, which is
+  /// what the sheet used to try. Replies are fetched on demand when somebody
+  /// asks to see them.
+  final int replyCount;
+
   /// Whether this image was a paid photo the sender had not bought.
   ///
   /// A chat message carries a URL and nothing else, so without this the bubble
@@ -200,6 +208,7 @@ class ChatMessage {
     this.targetCommentCount,
     this.likeCount = 0,
     this.viewerLiked = false,
+    this.replyCount = 0,
     this.paidPreview = false,
   });
 
@@ -271,6 +280,7 @@ class ChatMessage {
       targetCommentCount: (json['target_comment_count'] as num?)?.toInt(),
       likeCount: (json['like_count'] as num?)?.toInt() ?? 0,
       viewerLiked: (json['viewer_liked'] as bool?) ?? false,
+      replyCount: (json['reply_count'] as num?)?.toInt() ?? 0,
       paidPreview: _flag(json['paid_preview']),
     );
   }
@@ -305,12 +315,14 @@ class ChatMessage {
         'target_comment_count': targetCommentCount,
         'like_count': likeCount,
         'viewer_liked': viewerLiked,
+        'reply_count': replyCount,
         'paid_preview': paidPreview,
       };
 
   ChatMessage copyWith({
     int? likeCount,
     bool? viewerLiked,
+    int? replyCount,
     bool? paidPreview,
     String? id,
     String? senderName,
@@ -355,6 +367,7 @@ class ChatMessage {
       targetCommentCount: targetCommentCount,
       likeCount: likeCount ?? this.likeCount,
       viewerLiked: viewerLiked ?? this.viewerLiked,
+      replyCount: replyCount ?? this.replyCount,
       paidPreview: paidPreview ?? this.paidPreview,
     );
   }

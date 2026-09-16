@@ -17,7 +17,8 @@ import 'package:jperg_app/core/utils/time_formatter.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/config/chat_config.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart'
-    show GetEventRoomUseCase;
+    show GetCommentRepliesUseCase, GetEventRoomUseCase;
+import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/feed_active_event.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
@@ -103,6 +104,18 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
   // Local expand state for threaded comments (ChatRoomBloc doesn't track this).
   final _expandedIds = <String>{};
 
+  /// Replies fetched so far, by the comment they hang under.
+  ///
+  /// A comment room's history is top-level only — see the `parent_id IS NULL`
+  /// filter in chat's rooms.py — so a thread has to be asked for. Held here
+  /// rather than pushed into the bloc's message list: these are not messages
+  /// in the room, and mixing them in would put them through the same threading
+  /// pass that is already deciding what is top-level.
+  final _replies = <String, List<ChatMessage>>{};
+
+  /// Threads currently being fetched, so a second tap does not ask twice.
+  final _loadingReplies = <String>{};
+
   ChatMessage? _replyingTo;
 
   @override
@@ -139,6 +152,9 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
       _error = null;
       _replyingTo = null;
       _expandedIds.clear();
+      // The threads belong to the post being left.
+      _replies.clear();
+      _loadingReplies.clear();
       _inputCtrl.clear();
       _loading = next.commentsEnabled;
     });
@@ -149,6 +165,46 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
   Future<void> _loadMyId() async {
     final id = await sl<AuthService>().getUserId();
     if (mounted) setState(() => _myId = id);
+  }
+
+  /// Open or close one comment's thread, fetching it the first time.
+  ///
+  /// The replies are not in the room's history — it is top-level only — so
+  /// until this runs the sheet has the *number* of replies and none of their
+  /// text. Collapsing keeps whatever was fetched: reopening a thread is common
+  /// and it has not changed in the two seconds since.
+  Future<void> _toggleReplies(ChatMessage msg) async {
+    if (_expandedIds.contains(msg.id)) {
+      setState(() => _expandedIds.remove(msg.id));
+      return;
+    }
+
+    setState(() => _expandedIds.add(msg.id));
+    if (_replies.containsKey(msg.id) || _loadingReplies.contains(msg.id)) {
+      return;
+    }
+
+    setState(() => _loadingReplies.add(msg.id));
+    try {
+      final replies = await sl<GetCommentRepliesUseCase>().call(msg.id);
+      if (!mounted) return;
+      setState(() {
+        _replies[msg.id] = replies;
+        _loadingReplies.remove(msg.id);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      // Collapsed again rather than left open and empty, which would read as
+      // "no replies" — the opposite of what the count beside it says.
+      setState(() {
+        _loadingReplies.remove(msg.id);
+        _expandedIds.remove(msg.id);
+      });
+      AppSnackBar.error(
+        context,
+        chatErrorText(e, fallback: 'Could not load replies'),
+      );
+    }
   }
 
   Future<void> _loadRoom() async {
@@ -223,9 +279,18 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
   void _send() {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
+    final isReply = _replyingTo != null;
     _bloc.add(ChatRoomMessageSent(text, replyToId: _replyingTo?.id));
+    // Only a top-level comment moves the badge.
+    //
+    // The server counts the same way — both the socket path and the REST one
+    // guard on `if not parent_id` — so bumping it here for a reply pushed the
+    // badge one above the number of comments the sheet can show, and nothing
+    // ever corrected it: the authoritative count rides back on the message
+    // frame and is null for a reply.
+    //
     // The post as it is now, not the one the sheet opened on.
-    widget.onCommentSent?.call(_event);
+    if (!isReply) widget.onCommentSent?.call(_event);
     _inputCtrl.clear();
     if (_replyingTo != null) setState(() => _replyingTo = null);
   }
@@ -304,7 +369,14 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
       timeLabel: TimeFormatter.relative(msg.createdAt),
       isMe: msg.senderId == _myId,
       isPending: msg.isLocal,
-      replyCount: replies?.length ?? 0,
+      // The server's number, not the length of a list this sheet does not
+      // have. A comment room's history is top-level only, so `replies` is
+      // empty until somebody expands the thread — reading its length meant
+      // every comment reported zero replies and the toggle that fetches them
+      // never appeared, which left the replies unreachable.
+      replyCount: replies != null && replies.isNotEmpty
+          ? replies.length
+          : msg.replyCount,
       likeCount: likeFor(msg).likes,
       viewerLiked: likeFor(msg).liked,
       onLike: likeHandler(msg),
@@ -405,7 +477,9 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
                                       );
                                     }
                                     final msg = threaded.topLevel[i];
-                                    final replies =
+                                    // Fetched on expand, since the room's
+                                    // history never carries them.
+                                    final replies = _replies[msg.id] ??
                                         threaded.repliesMap[msg.id] ?? [];
 
                                     final focused = msg.id == _focusId;
@@ -430,13 +504,8 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
                                           .toList(),
                                       ext: ext,
                                       isExpanded: _expandedIds.contains(msg.id),
-                                      onToggleReplies: () => setState(() {
-                                        if (_expandedIds.contains(msg.id)) {
-                                          _expandedIds.remove(msg.id);
-                                        } else {
-                                          _expandedIds.add(msg.id);
-                                        }
-                                      }),
+                                      onToggleReplies: () =>
+                                          _toggleReplies(msg),
                                     );
                                   },
                                 );
@@ -592,8 +661,10 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
   void _send() {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
+    final isReply = _replyingTo != null;
     _bloc.add(ChatRoomMessageSent(text, replyToId: _replyingTo?.id));
-    widget.onCommentSent?.call();
+    // Replies do not move the badge — see the note in the sheet's _send.
+    if (!isReply) widget.onCommentSent?.call();
     _inputCtrl.clear();
     if (_replyingTo != null) setState(() => _replyingTo = null);
   }
@@ -666,7 +737,14 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
       timeLabel: TimeFormatter.relative(msg.createdAt),
       isMe: msg.senderId == _myId,
       isPending: msg.isLocal,
-      replyCount: replies?.length ?? 0,
+      // The server's number, not the length of a list this sheet does not
+      // have. A comment room's history is top-level only, so `replies` is
+      // empty until somebody expands the thread — reading its length meant
+      // every comment reported zero replies and the toggle that fetches them
+      // never appeared, which left the replies unreachable.
+      replyCount: replies != null && replies.isNotEmpty
+          ? replies.length
+          : msg.replyCount,
       likeCount: likeFor(msg).likes,
       viewerLiked: likeFor(msg).liked,
       onLike: likeHandler(msg),

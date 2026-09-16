@@ -516,6 +516,32 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
   // ── Reaction toggled by the current user ──────────────────────────────────
 
+  /// Record a reaction through REST, for when the socket is not an option.
+  ///
+  /// Puts the optimistic state back only if this fails too — at that point
+  /// nothing anywhere has the like and leaving the heart filled would be a
+  /// lie. Anything the server does record is confirmed by the usual echo.
+  Future<void> _sendReactionOverRest(
+    String eventId,
+    String action,
+    EventReactionState previous,
+    Emitter<DiscoveryState> emit,
+  ) async {
+    // "unlike" and "undislike" clear it, which the endpoint spells as no
+    // reaction at all rather than as a verb of its own.
+    final reaction = switch (action) {
+      'like' => 'like',
+      'dislike' => 'dislike',
+      _ => null,
+    };
+    try {
+      await sl<SetEventReactionUseCase>()(eventId, reaction);
+    } catch (e) {
+      debugPrint('[DiscoveryBloc] reaction REST failed for $eventId: $e');
+      if (!isClosed) emit(state.withReaction(eventId, previous));
+    }
+  }
+
   Future<void> _onReactionToggled(
     DiscoveryReactionToggled event,
     Emitter<DiscoveryState> emit,
@@ -538,7 +564,18 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     // visit, so this is what tells it an event joined or left the list.
     AppCacheSignals.likes.bump();
 
-    // On web, WS reactions are not supported — keep the optimistic update only.
+    // No socket, no room lookup: go straight to REST.
+    //
+    // The note that used to sit here said web keeps the optimistic update only
+    // — which is to say the like was never recorded anywhere. That is also
+    // what happened on mobile whenever the connection was down, because
+    // everything below assumes a live socket and the only other outcome was to
+    // undo the like. Asking whether the socket can carry it is cheaper than
+    // resolving a room to discover it cannot.
+    if (!_bgService.sharedWs.isConnected) {
+      await _sendReactionOverRest(event.eventId, action, current, emit);
+      return;
+    }
 
     // Resolve the room (needed for room_id in the WS payload).
     ChatRoom? room = _roomCache[event.eventId];
@@ -551,9 +588,21 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       room = _roomCache[event.eventId];
     }
     if (room == null) {
-      // Revert the optimistic update — there is no room to route through, so
-      // nothing was recorded anywhere but here.
-      emit(state.withReaction(event.eventId, current));
+      // No room to route through — so take the other road rather than undoing
+      // what the reader just did.
+      //
+      // Reactions travel over the chat socket keyed to a room. That is fine
+      // for a post this bloc fetched, because it prefetches their rooms; it is
+      // not fine for anything else. **A post in Following is never in that
+      // cache** — that feed fetches its own list — so liking there resolved no
+      // room and the like was silently thrown away. Same for a post whose room
+      // does not exist yet, and for web, where socket reactions are not
+      // supported at all.
+      //
+      // `POST /chat/events/{id}/reaction` exists for exactly this and needs no
+      // room; its own docstring says so. The app could only ever *read* over
+      // REST until now.
+      await _sendReactionOverRest(event.eventId, action, current, emit);
       return;
     }
 

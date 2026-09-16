@@ -121,6 +121,15 @@ abstract class ChatRepository {
     int limit,
   });
 
+  /// The thread under one comment. See [ChatRestDataSource.getCommentReplies]
+  /// — a comment room's history is top-level only, so replies are asked for
+  /// when somebody wants to read them.
+  Future<List<ChatMessage>> getCommentReplies(
+    String commentId, {
+    int page,
+    int limit,
+  });
+
   Future<List<ChatMessage>> getCachedMessages(
     String roomId, {
     int limit,
@@ -148,6 +157,14 @@ abstract class ChatRepository {
   /// Upload an image file and return the hosted URL.
   /// [mimeType] is the MIME type; on web it comes from the browser File API.
   Future<String> uploadImage(File file, {String? mimeType});
+
+  /// Set or clear the caller's reaction to an event, without a room.
+  ///
+  /// Reactions travel over the chat socket keyed to a room, which works while
+  /// the reader is in one. A feed card is not: liking a post from Following
+  /// meant resolving a room that had never been fetched, and failing to do so
+  /// silently undid the like. This is the path that does not care.
+  Future<EventReaction> setEventReaction(String eventId, String? reaction);
 
   /// GET /chat/events/{eventId}/reaction — user's reaction + aggregate counts.
   Future<EventReaction> getEventReaction(String eventId, String userId);

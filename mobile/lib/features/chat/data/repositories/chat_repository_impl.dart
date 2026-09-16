@@ -265,6 +265,10 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<EventReaction> setEventReaction(String eventId, String? reaction) =>
+      _rest.setEventReaction(eventId, reaction);
+
+  @override
   Future<void> clearRoom(String roomId) async {
     await _rest.clearRoom(roomId);
     // The local copy goes too, and it has to: the server now serves this room's
@@ -278,6 +282,17 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> clearRoomCache(String roomId) => _db.deleteRoom(roomId);
 
   // ── Messages ───────────────────────────────────────────────────────────────
+
+  @override
+  Future<List<ChatMessage>> getCommentReplies(
+    String commentId, {
+    int page = 1,
+    int limit = 20,
+  }) =>
+      // Straight through, with no cache layer. Replies are read on demand and
+      // thrown away when the thread is collapsed; the local table is keyed by
+      // room and a reply has no room to file it under.
+      _rest.getCommentReplies(commentId, page: page, limit: limit);
 
   @override
   Future<List<ChatMessage>> getMessages(

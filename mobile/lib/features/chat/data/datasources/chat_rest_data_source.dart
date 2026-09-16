@@ -299,10 +299,31 @@ abstract class ChatRestDataSource {
     int limit = ChatConfig.messagePageSize,
   });
 
+  /// GET /chat/comments/{id}/replies — the thread under one comment.
+  ///
+  /// A comment room's history is top-level only, so replies never arrive with
+  /// it and have to be asked for. Returned as [ChatMessage] rather than as the
+  /// endpoint's own comment shape, because every sheet that draws these is
+  /// built on rooms and messages and a second model would have to be converted
+  /// at each of them.
+  Future<List<ChatMessage>> getCommentReplies(
+    String commentId, {
+    int page,
+    int limit,
+  });
+
   /// POST /chat/upload-image — uploads [file] and returns the Cloudinary URL.
   /// [mimeType] overrides content-type detection; required on web where
   /// [file.path] is a blob URL with no meaningful extension.
   Future<String> uploadImage(File file, {String? mimeType});
+
+  /// POST /chat/events/{eventId}/reaction — set or clear the caller's reaction.
+  ///
+  /// The write half of the reaction API, and the one that needs no room. The
+  /// socket path routes a reaction through a chat room, which is fine while
+  /// somebody is in one and no use to a feed card — see
+  /// [ChatRepository.setEventReaction].
+  Future<EventReaction> setEventReaction(String eventId, String? reaction);
 
   /// GET /chat/events/{eventId}/reaction?userId=<userId>
   /// Returns the user's current reaction and aggregate counts.
@@ -766,6 +787,50 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   }
 
   @override
+  Future<List<ChatMessage>> getCommentReplies(
+    String commentId, {
+    int page = 1,
+    int limit = 20,
+  }) async {
+    return _wrap(() async {
+      final res = await _client.dio.get(
+        '/chat/comments/$commentId/replies',
+        queryParameters: {'page': page, 'limit': limit},
+      );
+      final list = res.data as List<dynamic>;
+      return list
+          .map((raw) => _replyToMessage(
+                raw as Map<String, dynamic>,
+                parentId: commentId,
+              ))
+          .toList();
+    });
+  }
+
+  /// One `CommentOut` as the message the sheets draw.
+  ///
+  /// The two shapes name the same things differently — `author_id` against
+  /// `sender_id`, `parent_id` against `reply_to_id` — and the reply endpoint
+  /// speaks the comment dialect while every sheet that shows a reply speaks
+  /// the message one.
+  ///
+  /// `room_id` is empty: a reply belongs to its parent comment, not to a room,
+  /// and nothing in the reply path reads it. Giving it a made-up room would be
+  /// worse than an honest blank.
+  static ChatMessage _replyToMessage(
+    Map<String, dynamic> raw, {
+    required String parentId,
+  }) =>
+      ChatMessage.fromJson({
+        ...raw,
+        'room_id': '',
+        'sender_id': raw['author_id'],
+        'sender_name': raw['author_name'] ?? '',
+        'sender_role': raw['author_role'],
+        'reply_to_id': raw['parent_id'] ?? parentId,
+      });
+
+  @override
   Future<String> uploadImage(File file, {String? mimeType}) async {
     return _wrap(() async {
       // ── Content type ─────────────────────────────────────────────────────
@@ -839,6 +904,20 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
 
       final data = res.data as Map<String, dynamic>;
       return data['url'] as String; // Changed from 'image_url' to 'url'
+    });
+  }
+
+  @override
+  Future<EventReaction> setEventReaction(String eventId, String? reaction) async {
+    debugPrint('[ChatREST] POST /chat/events/$eventId/reaction → $reaction');
+    return _wrap(() async {
+      final res = await _client.dio.post(
+        '/chat/events/$eventId/reaction',
+        // Omitted entirely to clear it. The server reads "no reaction" as a
+        // remove, and sending the one already held as an undo.
+        queryParameters: {if (reaction != null) 'reaction': reaction},
+      );
+      return EventReaction.fromJson(res.data as Map<String, dynamic>);
     });
   }
 
