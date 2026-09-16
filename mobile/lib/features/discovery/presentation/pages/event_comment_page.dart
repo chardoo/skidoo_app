@@ -167,6 +167,32 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
     if (mounted) setState(() => _myId = id);
   }
 
+  /// One comment's replies: what was fetched, plus anything that has arrived
+  /// since, in the order they were written.
+  ///
+  /// Both halves are needed and neither is enough. The fetch is the only way
+  /// to see replies written before the sheet opened — the room's history is
+  /// top-level only. The live list is the only way to see one written *now*,
+  /// including the reader's own, which arrives back over the socket.
+  ///
+  /// This was `fetched ?? live`, which reads as a sensible fallback and is
+  /// not: once a thread had been expanded the fetched list was never null, so
+  /// the live half was unreachable and a reply posted into an open thread
+  /// simply did not appear.
+  List<ChatMessage> _repliesFor(String commentId, {List<ChatMessage>? live}) {
+    final fetched = _replies[commentId];
+    if (fetched == null) return live ?? const [];
+    if (live == null || live.isEmpty) return fetched;
+
+    final seen = {for (final r in fetched) r.id};
+    final merged = [
+      ...fetched,
+      for (final r in live)
+        if (seen.add(r.id)) r,
+    ]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return merged;
+  }
+
   /// Open or close one comment's thread, fetching it the first time.
   ///
   /// The replies are not in the room's history — it is top-level only — so
@@ -477,10 +503,8 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
                                       );
                                     }
                                     final msg = threaded.topLevel[i];
-                                    // Fetched on expand, since the room's
-                                    // history never carries them.
-                                    final replies = _replies[msg.id] ??
-                                        threaded.repliesMap[msg.id] ?? [];
+                                    final replies = _repliesFor(msg.id,
+                                        live: threaded.repliesMap[msg.id]);
 
                                     final focused = msg.id == _focusId;
                                     if (focused) {
@@ -506,6 +530,8 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
                                       isExpanded: _expandedIds.contains(msg.id),
                                       onToggleReplies: () =>
                                           _toggleReplies(msg),
+                                      isLoadingReplies:
+                                          _loadingReplies.contains(msg.id),
                                     );
                                   },
                                 );

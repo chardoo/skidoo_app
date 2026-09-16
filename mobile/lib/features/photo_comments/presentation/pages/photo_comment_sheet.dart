@@ -81,6 +81,22 @@ class _PhotoCommentSheetContentState
     _loadRoom();
   }
 
+  /// What was fetched plus anything that has arrived since — see the event
+  /// sheet's copy for why taking one or the other loses replies.
+  List<ChatMessage> _repliesFor(String commentId, {List<ChatMessage>? live}) {
+    final fetched = _replies[commentId];
+    if (fetched == null) return live ?? const [];
+    if (live == null || live.isEmpty) return fetched;
+
+    final seen = {for (final r in fetched) r.id};
+    final merged = [
+      ...fetched,
+      for (final r in live)
+        if (seen.add(r.id)) r,
+    ]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return merged;
+  }
+
   /// Open or close one comment's thread, fetching it the first time. See the
   /// event sheet's copy for why the replies are not already here.
   Future<void> _toggleReplies(ChatMessage msg) async {
@@ -321,9 +337,8 @@ class _PhotoCommentSheetContentState
                                       );
                                     }
                                     final msg = threaded.topLevel[i];
-                                    final replies = _replies[msg.id] ??
-                                        threaded.repliesMap[msg.id] ??
-                                        [];
+                                    final replies = _repliesFor(msg.id,
+                                        live: threaded.repliesMap[msg.id]);
 
                                     return ThreadedCommentWidget(
                                       key: ValueKey(msg.id),
@@ -335,6 +350,8 @@ class _PhotoCommentSheetContentState
                                       isExpanded: _expandedIds.contains(msg.id),
                                       onToggleReplies: () =>
                                           _toggleReplies(msg),
+                                      isLoadingReplies:
+                                          _loadingReplies.contains(msg.id),
                                     );
                                   },
                                 );

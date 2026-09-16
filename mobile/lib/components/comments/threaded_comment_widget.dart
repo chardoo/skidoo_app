@@ -17,6 +17,7 @@ class ThreadedCommentWidget extends StatelessWidget {
     required this.ext,
     required this.isExpanded,
     required this.onToggleReplies,
+    this.isLoadingReplies = false,
   });
 
   /// Top-level comment data (includes onReply, onUserTap, onLongPress).
@@ -32,6 +33,14 @@ class ThreadedCommentWidget extends StatelessWidget {
 
   /// Called when the "X replies / Hide replies" toggle is tapped.
   final VoidCallback onToggleReplies;
+
+  /// Whether the thread is on its way.
+  ///
+  /// A comment room's history is top-level only, so expanding is a round trip
+  /// rather than a reveal. Without this the toggle flipped to "Hide replies"
+  /// and *nothing else happened* until the response landed — on a slow
+  /// connection, seconds of a control that looked broken.
+  final bool isLoadingReplies;
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +102,10 @@ class ThreadedCommentWidget extends StatelessWidget {
             ),
 
           // ── Expanded replies with gold connector ───────────────────────────
-          if (isExpanded && replies.isNotEmpty)
+          //
+          // The spinner sits on the same connector the replies will, so the
+          // thread opens in one movement rather than appearing in two places.
+          if (isExpanded && (replies.isNotEmpty || isLoadingReplies))
             Padding(
               padding: EdgeInsets.only(left: AppSpacing.xl.w),
               child: Row(
@@ -114,6 +126,23 @@ class ThreadedCommentWidget extends StatelessWidget {
                             data: reply,
                             ext: ext,
                             isReply: true,
+                          ),
+                        // Below whatever has already arrived, so a thread
+                        // being paged does not jump.
+                        if (isLoadingReplies)
+                          Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8.h),
+                            child: Semantics(
+                              label: 'Loading replies',
+                              child: SizedBox(
+                                width: 14.w,
+                                height: 14.w,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  color: ext.accentGold,
+                                ),
+                              ),
+                            ),
                           ),
                       ],
                     ),
