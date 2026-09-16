@@ -114,6 +114,7 @@ class TopComment {
     required this.id,
     required this.authorName,
     required this.content,
+    this.authorAvatarUrl,
     this.likeCount = 0,
     this.replyCount = 0,
   });
@@ -121,8 +122,22 @@ class TopComment {
   final String id;
   final String authorName;
   final String content;
+
+  /// The commenter's picture, for the avatar beside the text. Null for an
+  /// author with no photo, and for a comment whose author no longer exists —
+  /// the card draws an initial instead.
+  final String? authorAvatarUrl;
+
   final int likeCount;
   final int replyCount;
+
+  /// An empty avatar URL is no avatar. The server sends null for an author
+  /// with no picture, but a blank string is just as common in stored rows and
+  /// would send the image loader after nothing.
+  static String? _trimmedOrNull(Object? value) {
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty ? null : text;
+  }
 
   static TopComment? fromMap(Object? raw) {
     if (raw is! Map) return null;
@@ -137,6 +152,8 @@ class TopComment {
           raw['author_name']?.toString() ??
           '',
       content: content,
+      authorAvatarUrl: _trimmedOrNull(
+          raw['authorAvatarUrl'] ?? raw['author_avatar_url']),
       likeCount: (raw['likeCount'] as num?)?.toInt() ??
           (raw['like_count'] as num?)?.toInt() ??
           0,
@@ -149,6 +166,7 @@ class TopComment {
   Map<String, dynamic> toMap() => {
         'id': id,
         'authorName': authorName,
+        'authorAvatarUrl': authorAvatarUrl,
         'content': content,
         'likeCount': likeCount,
         'replyCount': replyCount,

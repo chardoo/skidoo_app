@@ -30,6 +30,7 @@ class GalleryShareSheet {
     BuildContext context, {
     required String imageUrl,
     required String photoLabel,
+    bool paidPreview = false,
   }) {
     showModalBottomSheet(
       context: context,
@@ -39,6 +40,7 @@ class GalleryShareSheet {
       builder: (ctx) => _ShareSheetContent(
         imageUrl: imageUrl,
         photoLabel: photoLabel,
+        paidPreview: paidPreview,
       ),
     );
   }
@@ -50,10 +52,16 @@ class _ShareSheetContent extends StatefulWidget {
   const _ShareSheetContent({
     required this.imageUrl,
     required this.photoLabel,
+    this.paidPreview = false,
   });
 
   final String imageUrl;
   final String photoLabel;
+
+  /// Whether this photo costs money and the sender has not bought it. Travels
+  /// with the message so the recipient's bubble can mark it — see
+  /// [ChatMessage.paidPreview].
+  final bool paidPreview;
 
   @override
   State<_ShareSheetContent> createState() => _ShareSheetContentState();
@@ -277,7 +285,11 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
     Navigator.of(context).pop();
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChatRoomPage(room: room, shareUrl: widget.imageUrl),
+        builder: (_) => ChatRoomPage(
+          room: room,
+          shareUrl: widget.imageUrl,
+          sharePaidPreview: widget.paidPreview,
+        ),
       ),
     );
   }

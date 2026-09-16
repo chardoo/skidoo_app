@@ -45,6 +45,9 @@ class ChatRoomState extends Equatable {
   /// A remote image URL queued to be sent as a message once the WS connects.
   final String? pendingShareUrl;
 
+  /// Whether [pendingShareUrl] is a paid photo the sender has not bought.
+  final bool pendingSharePaidPreview;
+
   /// The authenticated user's ID — set synchronously in [ChatRoomJoined] so
   /// the UI never has to async-load it separately.
   final String myUserId;
@@ -111,6 +114,7 @@ class ChatRoomState extends Equatable {
     this.pictureLikes,
     this.isPictureLiked = false,
     this.pendingShareUrl,
+    this.pendingSharePaidPreview = false,
     this.myUserId = '',
     this.isE2EEReady = false,
     this.systemNotice,
@@ -148,6 +152,7 @@ class ChatRoomState extends Equatable {
     int? pictureLikes,
     bool? isPictureLiked,
     String? pendingShareUrl,
+    bool? pendingSharePaidPreview,
     bool clearPendingShareUrl = false,
     String? myUserId,
     bool? isE2EEReady,
@@ -183,6 +188,9 @@ class ChatRoomState extends Equatable {
         pictureLikes: pictureLikes ?? this.pictureLikes,
         isPictureLiked: isPictureLiked ?? this.isPictureLiked,
         pendingShareUrl: clearPendingShareUrl ? null : (pendingShareUrl ?? this.pendingShareUrl),
+        pendingSharePaidPreview: clearPendingShareUrl
+            ? false
+            : (pendingSharePaidPreview ?? this.pendingSharePaidPreview),
         myUserId: myUserId ?? this.myUserId,
         isE2EEReady: isE2EEReady ?? this.isE2EEReady,
         systemNotice: clearSystemNotice ? null : (systemNotice ?? this.systemNotice),
@@ -218,6 +226,7 @@ class ChatRoomState extends Equatable {
         pictureLikes,
         isPictureLiked,
         pendingShareUrl,
+        pendingSharePaidPreview,
         myUserId,
         isE2EEReady,
         systemNotice,

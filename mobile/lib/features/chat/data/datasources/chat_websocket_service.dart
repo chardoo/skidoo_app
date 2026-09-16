@@ -955,6 +955,7 @@ class ChatWebSocketService {
   void send(String? content,
       {String? imageUrl,
       bool isVideo = false,
+      bool paidPreview = false,
       String? replyToId,
       String? roomId}) {
     final payload = <String, dynamic>{'type': 'message'};
@@ -962,6 +963,9 @@ class ChatWebSocketService {
     if (imageUrl != null) {
       payload['image_url'] = imageUrl;
       if (isVideo) payload['is_video'] = true;
+      // Only when true: the server reads null as "an older client that does
+      // not send this", which is a different thing from "known not to be one".
+      if (paidPreview) payload['paid_preview'] = true;
     }
     if (replyToId != null) payload['reply_to_id'] = replyToId;
     if (roomId != null) payload['room_id'] = roomId;
@@ -979,6 +983,7 @@ class ChatWebSocketService {
     required String iv,
     String? imageUrl,
     bool isVideo = false,
+    bool paidPreview = false,
     String? ephemeralKey,
     String? senderIdentityKey,
     int? otpkId,
@@ -992,6 +997,7 @@ class ChatWebSocketService {
       'iv': iv,
       if (imageUrl != null) 'image_url': imageUrl,
       if (imageUrl != null && isVideo) 'is_video': true,
+      if (imageUrl != null && paidPreview) 'paid_preview': true,
       if (ephemeralKey != null && ephemeralKey.isNotEmpty)
         'ephemeral_key': ephemeralKey,
       if (senderIdentityKey != null) 'sender_identity_key': senderIdentityKey,

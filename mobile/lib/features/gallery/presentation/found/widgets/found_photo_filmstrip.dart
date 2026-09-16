@@ -5,6 +5,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:jperg_app/core/purchase/photo_price_badge.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
@@ -206,13 +207,17 @@ class _FoundPhotoFilmstripState extends State<FoundPhotoFilmstrip> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      JpergImage(
-                        imageUrl: widget.photos[index].url,
-                        fit: BoxFit.cover,
-                        logicalWidth: 64,
-                        placeholder: (_, __) => const JpergImagePlaceholder(),
-                        errorWidget: (_, __, ___) =>
-                            const JpergImagePlaceholder(),
+                      PaidPhotoWatermark(
+                        price: widget.photos[index].price,
+                        isPurchased: widget.photos[index].isPurchased,
+                        child: JpergImage(
+                          imageUrl: widget.photos[index].url,
+                          fit: BoxFit.cover,
+                          logicalWidth: 64,
+                          placeholder: (_, __) => const JpergImagePlaceholder(),
+                          errorWidget: (_, __, ___) =>
+                              const JpergImagePlaceholder(),
+                        ),
                       ),
                       // Priced photos carry their amount here too, so scrubbing
                       // the strip shows which of them cost money without having

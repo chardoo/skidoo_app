@@ -4,6 +4,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:jperg_app/core/purchase/photo_price_badge.dart';
 import 'package:jperg_app/core/purchase/photo_selection.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
@@ -99,18 +100,22 @@ class SearchPhotoTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.passthrough,
         children: [
-          JpergImage(
-            imageUrl: photo.url,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            semanticLabel: photo.eventName.isEmpty
-                ? 'Photo'
-                : 'Photo from ${photo.eventName}',
-            placeholder: (_, __) => const JpergImagePlaceholder(),
-            errorWidget: (_, __, ___) => ColoredBox(
-              color: ext.searchFieldFill,
-              child: Icon(Icons.broken_image_outlined,
-                  color: ext.searchHintColor, size: 20.sp),
+          PaidPhotoWatermark(
+            price: photo.price,
+            isPurchased: photo.isPurchased,
+            child: JpergImage(
+              imageUrl: photo.url,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              semanticLabel: photo.eventName.isEmpty
+                  ? 'Photo'
+                  : 'Photo from ${photo.eventName}',
+              placeholder: (_, __) => const JpergImagePlaceholder(),
+              errorWidget: (_, __, ___) => ColoredBox(
+                color: ext.searchFieldFill,
+                child: Icon(Icons.broken_image_outlined,
+                    color: ext.searchHintColor, size: 20.sp),
+              ),
             ),
           ),
           if (photo.isVideo)

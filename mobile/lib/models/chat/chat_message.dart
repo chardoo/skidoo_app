@@ -151,6 +151,17 @@ class ChatMessage {
   final int likeCount;
   final bool viewerLiked;
 
+  /// Whether this image was a paid photo the sender had not bought.
+  ///
+  /// A chat message carries a URL and nothing else, so without this the bubble
+  /// cannot tell a photograph that costs money from one that does not — the
+  /// feed knows because it is handed `price` and `isPurchased` per viewer, and
+  /// a message is handed neither. Drives the same mark the gallery draws.
+  ///
+  /// Cosmetic: the clean URL is still in the message. Null on anything sent
+  /// before this existed.
+  final bool paidPreview;
+
   bool get isEdited => updatedAt != null;
 
   bool get isAdminMessage =>
@@ -189,6 +200,7 @@ class ChatMessage {
     this.targetCommentCount,
     this.likeCount = 0,
     this.viewerLiked = false,
+    this.paidPreview = false,
   });
 
   /// A flag that may arrive as a bool or as 1/0.
@@ -259,6 +271,7 @@ class ChatMessage {
       targetCommentCount: (json['target_comment_count'] as num?)?.toInt(),
       likeCount: (json['like_count'] as num?)?.toInt() ?? 0,
       viewerLiked: (json['viewer_liked'] as bool?) ?? false,
+      paidPreview: _flag(json['paid_preview']),
     );
   }
 
@@ -292,11 +305,13 @@ class ChatMessage {
         'target_comment_count': targetCommentCount,
         'like_count': likeCount,
         'viewer_liked': viewerLiked,
+        'paid_preview': paidPreview,
       };
 
   ChatMessage copyWith({
     int? likeCount,
     bool? viewerLiked,
+    bool? paidPreview,
     String? id,
     String? senderName,
     bool? isRead,
@@ -340,6 +355,7 @@ class ChatMessage {
       targetCommentCount: targetCommentCount,
       likeCount: likeCount ?? this.likeCount,
       viewerLiked: viewerLiked ?? this.viewerLiked,
+      paidPreview: paidPreview ?? this.paidPreview,
     );
   }
 }

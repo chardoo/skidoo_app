@@ -312,6 +312,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       isSyncing: true,
       myUserId: _myUserId,
       pendingShareUrl: event.shareUrl,
+      pendingSharePaidPreview: event.paidPreview,
       room: event.room,
       amIAdmin: amIAdmin,
     ));
@@ -925,6 +926,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     final pendingMimeType = state.pendingMimeType;
     final pendingIsVideo = state.pendingIsVideo;
     final pendingUrl = state.pendingShareUrl;
+    final pendingPaid = state.pendingSharePaidPreview;
     final hasText = content != null && content.isNotEmpty;
     final hasLocalImage = pendingPath != null;
     final hasUrlImage = pendingUrl != null;
@@ -944,6 +946,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         senderRole: ChatConfig.roleClient,
         content: content ?? '',
         imageUrl: pendingUrl,
+        paidPreview: pendingPaid,
         replyToId: event.replyToId,
         replyPreview: replyPreview,
         createdAt: DateTime.now().toUtc(),
@@ -960,6 +963,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       await _encryptAndSend(
         content: hasText ? content : null,
         imageUrl: pendingUrl,
+        paidPreview: pendingPaid,
         replyToId: event.replyToId,
         emit: emit,
       );
@@ -1068,6 +1072,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     String? content,
     String? imageUrl,
     bool isVideo = false,
+    /// Whether this image is a paid photo the sender has not bought, so the
+    /// recipient's bubble can mark it — see [ChatMessage.paidPreview].
+    bool paidPreview = false,
     String? replyToId,
     required Emitter<ChatRoomState> emit,
   }) async {
@@ -1092,6 +1099,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
+        paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: roomId);
       return;
@@ -1105,6 +1113,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         content: content,
         imageUrl: imageUrl,
         isVideo: isVideo,
+        paidPreview: paidPreview,
         replyToId: replyToId,
       );
       return;
@@ -1116,6 +1125,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
+        paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: _currentRoomId);
       return;
@@ -1155,6 +1165,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           _ws.send(content,
               imageUrl: imageUrl,
               isVideo: isVideo,
+        paidPreview: paidPreview,
               replyToId: replyToId,
               roomId: _currentRoomId);
           return;
@@ -1184,6 +1195,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           _ws.send(content,
               imageUrl: imageUrl,
               isVideo: isVideo,
+        paidPreview: paidPreview,
               replyToId: replyToId,
               roomId: _currentRoomId);
           return;
@@ -1218,6 +1230,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         iv: encrypted.iv,
         imageUrl: imageUrl,
         isVideo: isVideo,
+        paidPreview: paidPreview,
         ephemeralKey: ephemeralKey,
         senderIdentityKey: myIdentityKey,
         otpkId: otpkId,
@@ -1230,6 +1243,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
+        paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: _currentRoomId);
     }
@@ -1333,6 +1347,40 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     ));
   }
 
+
+  /// Carry forward what only the sender knew.
+  ///
+  /// The echo **replaces** the optimistic bubble, so anything the server does
+  /// not send back is anything the sender stops seeing. Both flags here are
+  /// facts the sending app established and the server may not return:
+  ///
+  ///  * `isVideo` — the sender picked the file and knows what it was; the URL
+  ///    is only a guess.
+  ///  * `paidPreview` — the sender's screen knew the photo was priced and
+  ///    unbought. An encrypted send has no `image_url` for the server to hang
+  ///    it off, so it comes back null there by construction.
+  ///
+  /// This is the whole of "the watermark shows when I share it and then
+  /// disappears after a few seconds" — the seconds being the round trip.
+  ///
+  /// Only ever turns a flag *on*. The optimistic message is the sender's own
+  /// claim about their own send; it is not evidence that something the server
+  /// asserts is false.
+  @visibleForTesting
+  static ChatMessage inheritFromOptimistic(
+    ChatMessage echo,
+    ChatMessage? optimistic,
+  ) {
+    if (optimistic == null) return echo;
+    var out = echo;
+    if (optimistic.isVideo && !out.isVideo) {
+      out = out.copyWith(isVideo: true);
+    }
+    if (optimistic.paidPreview && !out.paidPreview) {
+      out = out.copyWith(paidPreview: true);
+    }
+    return out;
+  }
   Future<void> _onReceived(
     ChatRoomMessageReceived event,
     Emitter<ChatRoomState> emit,
@@ -1579,11 +1627,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             m.isLocal && m.content == msg.content && m.imageUrl == msg.imageUrl)
         .firstOrNull;
 
-    // If the server didn't echo is_video, inherit the flag from the optimistic
-    // message so the cached version stays correct across sessions.
-    if (optimistic != null && optimistic.isVideo && !msg.isVideo) {
-      msg = msg.copyWith(isVideo: true);
-    }
+    msg = inheritFromOptimistic(msg, optimistic);
 
     // Remove matching optimistic placeholder.
     final updated = state.messages
@@ -3017,6 +3061,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   /// Falls back to plaintext if no sender key is available.
   Future<void> _encryptAndSendGroup({
     String? content,
+    bool paidPreview = false,
     String? imageUrl,
     bool isVideo = false,
     String? replyToId,
@@ -3028,6 +3073,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
+        paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: roomId);
       return;
@@ -3039,6 +3085,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
+        paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: roomId);
       return;
@@ -3051,6 +3098,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         iv: encrypted.iv,
         imageUrl: imageUrl,
         isVideo: isVideo,
+        paidPreview: paidPreview,
         replyToId: replyToId,
         roomId: roomId,
       );
@@ -3059,6 +3107,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
+        paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: roomId);
     }

@@ -1,5 +1,6 @@
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/cloudinary_transform.dart';
@@ -239,9 +240,24 @@ class _MessageBubbleState extends State<MessageBubble> {
                                   videoUrl: message.imageUrl!,
                                   aspectRatio: message.mediaAspectRatio,
                                 )
-                              : _MessageImage(
-                                  imageUrl: message.imageUrl!,
-                                  aspectRatio: message.mediaAspectRatio,
+                              // A shared photo that costs money and was not
+                              // bought carries the same mark the gallery puts
+                              // on it. The message is the one place the app
+                              // cannot work this out for itself — it is handed
+                              // a URL and nothing else — so the sender records
+                              // it and it travels with the message.
+                              //
+                              // `price: 1` because the amount is not carried
+                              // and is not needed: [paidPreview] already means
+                              // "priced and unbought", and the widget's rule
+                              // only asks whether the price is above zero.
+                              : PaidPhotoWatermark(
+                                  price: message.paidPreview ? 1 : 0,
+                                  isPurchased: false,
+                                  child: _MessageImage(
+                                    imageUrl: message.imageUrl!,
+                                    aspectRatio: message.mediaAspectRatio,
+                                  ),
                                 ),
                         ),
                       // Text content, with the timestamp tucked into its

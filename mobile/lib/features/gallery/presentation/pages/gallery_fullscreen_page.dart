@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -193,6 +194,10 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                         context,
                         imageUrl: _photo.url,
                         photoLabel: _photo.eventName,
+                        paidPreview: PaidPhotoWatermark.shouldMark(
+                          price: _photo.price,
+                          isPurchased: _photo.isPurchased,
+                        ),
                       ),
                     ),
                   ),

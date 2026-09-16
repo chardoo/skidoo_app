@@ -180,7 +180,6 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   void _syncAutoSlide() {
     if (!_wantsAutoSlide) {
       _slideTimer?.cancel();
-    _topCommentTimer?.cancel();
       _slideTimer = null;
       return;
     }
@@ -314,65 +313,65 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     _syncTopComment();
   }
 
-  // ── The comment that borrows the caption ──────────────────────────────────
+  // ── The standout comment ──────────────────────────────────────────────────
   //
-  // Shorts does this: for a few seconds the caption line makes way for the one
-  // comment people are reacting to, then gives the line back. The server
-  // decides whether there is one at all — most cards have none, which is what
-  // stops this becoming noise (see TOP_COMMENT_FLOOR in main).
+  // Drawn by [TopCommentLine] above the event's name and caption — never
+  // instead of them. The server decides whether there is one at all, and most
+  // cards have none, which is what stops this becoming noise (see
+  // TOP_COMMENT_FLOOR in main).
   //
-  // Timed from the card becoming *active*, not from it being built: a card
-  // sitting in the pager's cache would otherwise spend its five seconds
-  // offscreen and the reader would never see it. The dwell in front of that is
-  // so somebody scrolling hard is not strobed by a line of text per card.
-  static const _topCommentDwell = Duration(milliseconds: 1500);
-  static const _topCommentVisible = Duration(seconds: 5);
+  // It arrives a moment after the card does rather than with it. Present from
+  // the first frame it is simply part of the furniture: the eye has nothing to
+  // catch, because nothing happened. Arriving under a reader who has already
+  // settled on the photograph is a small event, and it reads as the card
+  // offering something rather than as another label printed on it.
+  //
+  // What it no longer does is *leave*. The old version borrowed the caption's
+  // line and had to give it back, so it needed a second timer and a record of
+  // which cards had had their turn. The capsule has its own space now, so
+  // there is nothing to return: it comes up once and stays for as long as the
+  // card is in front.
 
-  /// Cards that have already had their turn this session.
+  /// How long the card is left alone before the capsule arrives.
   ///
-  /// Static, so it survives the card being disposed and rebuilt as the pager
-  /// recycles — which is most of why "once per card" needs remembering at all.
-  /// Scrolling back to a post should not replay it.
-  static final Set<String> _topCommentShown = <String>{};
+  /// Long enough to be a separate event from the card landing — under about a
+  /// second the two read as one, and the arrival is lost. Short enough that
+  /// somebody who stops to look does not miss it.
+  static const _topCommentDelay = Duration(milliseconds: 1200);
 
   Timer? _topCommentTimer;
-  bool _showingTopComment = false;
+  bool _showTopComment = false;
 
-  /// Whether the reader has opened the caption. Set from
-  /// [ExpandableCaption.onExpandedChanged].
-  bool _captionExpanded = false;
-
+  /// Arms the arrival, or takes the capsule away again.
+  ///
+  /// Timed from the card becoming **active**, not from it being built: the
+  /// pager builds its neighbours ahead of time, so a card built now may not be
+  /// looked at for another minute, and one timed from `initState` would spend
+  /// its delay off-screen and be waiting on the reader when they arrived —
+  /// which is the thing this exists to avoid.
   void _syncTopComment() {
-    final comment = widget.event.topComment;
+    final hasComment = widget.event.topComment != null;
     final isActive = widget.activeCardIndex.value == widget.cardIndex;
 
-    if (!isActive || comment == null) {
-      // Leaving the card takes the comment with it — a card scrolled past
-      // mid-window must not be found still showing it on the way back.
+    if (!hasComment || !isActive) {
       _topCommentTimer?.cancel();
       _topCommentTimer = null;
-      if (_showingTopComment && mounted) {
-        setState(() => _showingTopComment = false);
+      // Scrolling away resets it, so coming back is another arrival rather
+      // than a capsule that was already sitting there.
+      if (_showTopComment && mounted) {
+        setState(() => _showTopComment = false);
       }
       return;
     }
 
-    if (_topCommentShown.contains(comment.id) || _showingTopComment) return;
+    // Already up, or already on its way. Re-arming would restart the delay for
+    // a card the reader has not left.
+    if (_showTopComment || _topCommentTimer != null) return;
 
-    _topCommentTimer?.cancel();
-    _topCommentTimer = Timer(_topCommentDwell, () {
-      // Re-checked because 1.5s is long enough for the reader to have moved on,
-      // and for them to have opened the caption to read it.
-      if (!mounted ||
-          widget.activeCardIndex.value != widget.cardIndex ||
-          _captionExpanded) {
-        return;
-      }
-      _topCommentShown.add(comment.id);
-      setState(() => _showingTopComment = true);
-      _topCommentTimer = Timer(_topCommentVisible, () {
-        if (mounted) setState(() => _showingTopComment = false);
-      });
+    _topCommentTimer = Timer(_topCommentDelay, () {
+      // Re-checked: a second is long enough for the reader to have moved on.
+      if (!mounted || widget.activeCardIndex.value != widget.cardIndex) return;
+      setState(() => _showTopComment = true);
     });
   }
 
@@ -432,6 +431,9 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     // is also what claims the position for the card a feed opens on, which no
     // page change ever fires for.
     _publishIfInFront();
+    // Likewise the only place the *opening* card can start its delay: the
+    // pager announces no page change for the page it begins on.
+    _syncTopComment();
   }
 
   @override
@@ -447,9 +449,13 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     if (old.event.id != widget.event.id) {
       // A new post has not been introduced yet, whatever the last one did.
       _slideDone = false;
+      _showTopComment = false;
+      _topCommentTimer?.cancel();
+      _topCommentTimer = null;
       _syncMusic();
       _syncAutoSlide();
       _publishIfInFront();
+      _syncTopComment();
     }
   }
 
@@ -544,6 +550,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     FeedChrome.visible.removeListener(_rebuild);
     CommentCounts.instance.removeListener(_rebuild);
     _slideTimer?.cancel();
+    _topCommentTimer?.cancel();
     // Hands the sound back before going: a card scrolled out of the PageView's
     // cache would otherwise keep the feed's one player held for a post that no
     // longer exists, and nothing else would ever release it.
@@ -917,6 +924,53 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // ── The standout comment ───────────────────────────────
+                    //
+                    // Above the post's own text, exactly as Shorts stacks it:
+                    // comment, then who made this, then what they said about
+                    // it. Everything is on screen at once.
+                    //
+                    // It used to *take* the caption's line for five seconds
+                    // and then give it back, which cost the description and
+                    // the hashtags for as long as the comment was up and cost
+                    // the comment for the rest of the time. Nothing here hides
+                    // anything else now, so there is no timer, nothing to
+                    // remember about which cards have had their turn, and no
+                    // reason to suppress it while the caption is expanded.
+                    //
+                    // It pops in a moment after the card lands rather than
+                    // arriving with it — see [_syncTopComment]. Rising as it
+                    // fades, because the column is anchored to its bottom
+                    // edge: the capsule appearing pushes everything below it
+                    // down, so coming up from under the name is the direction
+                    // that movement is already going.
+                    if (widget.event.topComment != null &&
+                        _showTopComment) ...[
+                      TweenAnimationBuilder<double>(
+                        // Keyed to the comment so a recycled card replays the
+                        // arrival for its own post instead of inheriting a
+                        // finished animation.
+                        key: ValueKey(widget.event.topComment!.id),
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, t, child) => Opacity(
+                          opacity: t,
+                          child: Transform.translate(
+                            offset: Offset(0, (1 - t) * 8.h),
+                            child: child,
+                          ),
+                        ),
+                        child: TopCommentLine(
+                          comment: widget.event.topComment!,
+                          onTap: () => _openComments(
+                            focusCommentId: widget.event.topComment!.id,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: AppSpacing.sm.h),
+                    ],
+
                     // The title and who shot it, read as one sentence —
                     // "Sunset at Labadi by Kwame Mensah".
                     //
@@ -998,29 +1052,11 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                     // written everywhere else. Two [ExpandableCaption]s meant
                     // two separate "more" links and two things to expand for
                     // what reads as one paragraph.
-                    // The caption line, or — for a few seconds, and only when
-                    // there is genuinely something to say — the comment people
-                    // are reacting to. Cross-faded rather than cut, and the
-                    // creator's name above is deliberately untouched: it is
-                    // what the card is for, and five seconds without it is
-                    // five seconds of an anonymous photograph.
-                    if (_showingTopComment && widget.event.topComment != null)
-                      Padding(
-                        padding: EdgeInsets.only(top: AppSpacing.xs.h),
-                        child: TopCommentLine(
-                          comment: widget.event.topComment!,
-                          onTap: () => _openComments(
-                            focusCommentId: widget.event.topComment!.id,
-                          ),
-                        ),
-                      )
-                    else if (_caption.isNotEmpty) ...[
+                    if (_caption.isNotEmpty) ...[
                       SizedBox(height: AppSpacing.xs.h),
                       ExpandableCaption(
                         text: _caption,
                         collapsedMaxLines: 2,
-                        onExpandedChanged: (expanded) =>
-                            _captionExpanded = expanded,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 13.sp,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -130,8 +131,15 @@ class FoundPhotoStage extends StatelessWidget {
                         isActive: isActive,
                         resetToken: photo.id,
                         onZoomChanged: onZoomChanged,
-                        child: JpergImage(
-                          imageUrl: photo.url,
+                        // Inside the zoom rather than over it, so the mark
+                        // scales with the photograph — pinching into a paid
+                        // photo must not leave the logo behind at its old size
+                        // over a magnified corner.
+                        child: PaidPhotoWatermark(
+                          price: photo.price,
+                          isPurchased: photo.isPurchased,
+                          child: JpergImage(
+                            imageUrl: photo.url,
                           // Identical to `cover` once the box is the photo's own
                           // shape, which is the steady state. It differs only in
                           // the moment before an unmeasured photo resolves, and
@@ -144,9 +152,11 @@ class FoundPhotoStage extends StatelessWidget {
                           // losing the strip of width the lift traded away.
                           fit: lifted ? BoxFit.cover : BoxFit.contain,
                           semanticLabel: 'Found photo',
-                          placeholder: (_, __) => const JpergImagePlaceholder(),
-                          errorWidget: (_, __, ___) =>
-                              const JpergImagePlaceholder(),
+                            placeholder: (_, __) =>
+                                const JpergImagePlaceholder(),
+                            errorWidget: (_, __, ___) =>
+                                const JpergImagePlaceholder(),
+                          ),
                         ),
                       ),
 

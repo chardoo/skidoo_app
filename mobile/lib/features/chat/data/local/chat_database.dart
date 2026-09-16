@@ -10,6 +10,8 @@ import 'package:sqflite/sqflite.dart';
 /// Schema version history:
 ///   v1 – initial: chat_rooms + chat_messages tables.
 ///   v2 – added sender_name, image_url, reply_to_id, reply_preview columns.
+///   v8 – added paid_preview, so a shared paid photo still draws its mark
+///        when the thread is reopened from cache rather than refetched.
 ///   v7 – added like_count / viewer_liked. Without them every cached comment
 ///        came back with an empty heart: the sheet paints from this cache
 ///        first, so liking a comment and reopening the sheet lost the like.
@@ -23,7 +25,7 @@ class ChatDatabase {
   /// lose chat history permanently, not just force a re-fetch.
   static const _legacyDbName = 'skidoo_chat.db';
 
-  static const _dbVersion = 7;
+  static const _dbVersion = 8;
 
   static Database? _db;
 
@@ -92,7 +94,12 @@ class ChatDatabase {
         -- alongside everything else so reopening a sheet draws the same count
         -- and the same filled/unfilled heart the server last reported.
         like_count          INTEGER NOT NULL DEFAULT 0,
-        viewer_liked        INTEGER NOT NULL DEFAULT 0
+        viewer_liked        INTEGER NOT NULL DEFAULT 0,
+        -- Whether this image was a paid photo the sender had not bought. Cached
+        -- for the same reason the likes are: the thread paints from here before
+        -- any request goes out, and a mark that only appeared after a refetch
+        -- would flash off on every reopen.
+        paid_preview        INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
@@ -148,6 +155,10 @@ class ChatDatabase {
           'ALTER TABLE chat_messages ADD COLUMN like_count INTEGER NOT NULL DEFAULT 0');
       await db.execute(
           'ALTER TABLE chat_messages ADD COLUMN viewer_liked INTEGER NOT NULL DEFAULT 0');
+    }
+    if (oldVersion < 8) {
+      await db.execute(
+          'ALTER TABLE chat_messages ADD COLUMN paid_preview INTEGER NOT NULL DEFAULT 0');
     }
   }
 
@@ -280,6 +291,7 @@ class ChatDatabase {
             'is_read': wasRead || msg.isRead ? 1 : 0,
             'like_count': msg.likeCount,
             'viewer_liked': msg.viewerLiked ? 1 : 0,
+            'paid_preview': msg.paidPreview ? 1 : 0,
           };
 
           // Only overwrite E2EE / content fields when the stored copy is still
@@ -510,6 +522,7 @@ class ChatDatabase {
         'system_type': msg.systemType,
         'like_count': msg.likeCount,
         'viewer_liked': msg.viewerLiked ? 1 : 0,
+        'paid_preview': msg.paidPreview ? 1 : 0,
       };
 
   /// Removes entries with null values before passing to sqflite insert/update.
@@ -568,6 +581,7 @@ class ChatDatabase {
       // upgrade that had not run yet must not crash the inbox.
       likeCount: (row['like_count'] as int?) ?? 0,
       viewerLiked: (row['viewer_liked'] as int?) == 1,
+      paidPreview: (row['paid_preview'] as int?) == 1,
       updatedAt: row['updated_at'] != null
           ? DateTime.tryParse(row['updated_at'] as String)
           : null,

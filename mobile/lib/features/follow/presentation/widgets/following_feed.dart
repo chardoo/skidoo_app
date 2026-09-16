@@ -47,6 +47,15 @@ class FollowingFeed extends StatefulWidget {
   /// Creators per card — the "first five, then the next five" of the design.
   static const suggestionsPerCard = 5;
 
+  /// Fewest creators worth giving a whole page to.
+  ///
+  /// The slices are disjoint, so the last one is whatever is left over: six
+  /// suggestions dealt cards of five and then **one**, and a full-screen page
+  /// introducing a single creator reads as a mistake. Below this the remainder
+  /// is dropped rather than shown — except on the very first card, where a
+  /// short list still beats no suggestions at all on a small platform.
+  static const minSuggestionsPerCard = 3;
+
   /// How far the empty state has to start below the floating header to clear
   /// it.
   ///
@@ -523,6 +532,7 @@ List<FeedSlot> buildFollowingSlots({
   required List<SuggestedPhotographer> suggestions,
   int eventsPerCard = FollowingFeed.eventsPerSuggestionCard,
   int suggestionsPerCard = FollowingFeed.suggestionsPerCard,
+  int minPerCard = FollowingFeed.minSuggestionsPerCard,
 }) {
   final slots = <FeedSlot>[];
   var slice = 0;
@@ -533,7 +543,14 @@ List<FeedSlot> buildFollowingSlots({
     if ((i + 1) % eventsPerCard != 0) continue;
 
     final start = slice * suggestionsPerCard;
-    if (start >= suggestions.length) continue;
+    final remaining = suggestions.length - start;
+    if (remaining <= 0) continue;
+    // A page for one creator is not worth a page. The slices are disjoint, so
+    // the last one is the remainder — six suggestions used to deal five and
+    // then one. The first card is exempt: on a platform with four creators on
+    // it, a short card is the only card there will ever be.
+    if (remaining < minPerCard && slice > 0) continue;
+
     final end = (start + suggestionsPerCard).clamp(0, suggestions.length);
     slots.add(FeedSlot.suggestions(suggestions.sublist(start, end)));
     slice++;

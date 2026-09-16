@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -95,16 +96,20 @@ class FoundPhotoTile extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                JpergImage(
-                  imageUrl: photo.url,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => const JpergImagePlaceholder(),
-                  errorWidget: (_, __, ___) => ColoredBox(
-                    color: ext.cardSurface,
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: ext.searchHintColor,
-                      size: 20.sp,
+                PaidPhotoWatermark(
+                  price: photo.price,
+                  isPurchased: photo.isPurchased,
+                  child: JpergImage(
+                    imageUrl: photo.url,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => const JpergImagePlaceholder(),
+                    errorWidget: (_, __, ___) => ColoredBox(
+                      color: ext.cardSurface,
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        color: ext.searchHintColor,
+                        size: 20.sp,
+                      ),
                     ),
                   ),
                 ),

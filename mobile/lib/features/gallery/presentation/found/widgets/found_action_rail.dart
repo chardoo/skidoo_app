@@ -1,5 +1,6 @@
 import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:flutter/services.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
@@ -209,6 +210,12 @@ class _FoundActionRailState extends State<FoundActionRail> {
         context,
         imageUrl: widget.photo.url,
         photoLabel: widget.photo.eventName,
+        // Travels with the message so the recipient's bubble marks it — they
+        // are handed a URL and nothing else, and cannot work it out.
+        paidPreview: PaidPhotoWatermark.shouldMark(
+          price: widget.photo.price,
+          isPurchased: widget.photo.isPurchased,
+        ),
       );
 
   @override

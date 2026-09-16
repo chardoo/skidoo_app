@@ -36,7 +36,12 @@ import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 
 /// Displays the messages for [room].
 class ChatRoomPage extends StatelessWidget {
-  const ChatRoomPage({super.key, required this.room, this.shareUrl});
+  const ChatRoomPage({
+    super.key,
+    required this.room,
+    this.shareUrl,
+    this.sharePaidPreview = false,
+  });
 
   final ChatRoom room;
 
@@ -44,11 +49,18 @@ class ChatRoomPage extends StatelessWidget {
   /// WebSocket connects — used by the in-app gallery share flow.
   final String? shareUrl;
 
+  /// Whether [shareUrl] is a paid photo the sender has not bought.
+  final bool sharePaidPreview;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<ChatRoomBloc>(),
-      child: _ChatRoomView(room: room, shareUrl: shareUrl),
+      child: _ChatRoomView(
+        room: room,
+        shareUrl: shareUrl,
+        sharePaidPreview: sharePaidPreview,
+      ),
     );
   }
 }
@@ -56,9 +68,16 @@ class ChatRoomPage extends StatelessWidget {
 // ── Main room view ────────────────────────────────────────────────────────────
 
 class _ChatRoomView extends StatefulWidget {
-  const _ChatRoomView({required this.room, this.shareUrl});
+  const _ChatRoomView({
+    required this.room,
+    this.shareUrl,
+    this.sharePaidPreview = false,
+  });
   final ChatRoom room;
   final String? shareUrl;
+
+  /// Whether [shareUrl] is a paid photo the sender has not bought.
+  final bool sharePaidPreview;
 
   @override
   State<_ChatRoomView> createState() => _ChatRoomViewState();
@@ -175,7 +194,9 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     super.initState();
     _bloc = context.read<ChatRoomBloc>();
     _bloc.add(ChatRoomJoined(widget.room.id,
-        shareUrl: widget.shareUrl, room: widget.room));
+        shareUrl: widget.shareUrl,
+        paidPreview: widget.sharePaidPreview,
+        room: widget.room));
     _scrollCtrl.addListener(_onScroll);
     if (_isDirect) _loadBlockStatus();
   }

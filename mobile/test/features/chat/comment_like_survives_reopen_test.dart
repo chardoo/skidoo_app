@@ -24,6 +24,8 @@ import 'package:jperg_app/models/chat/chat_message.dart';
 /// and the API both speak. The bloc half — writing it onto the message and into
 /// the cache — is `_onCommentLikeSettled`.
 void main() {
+  _paidPreview();
+
   ChatMessage comment({int likeCount = 0, bool viewerLiked = false}) =>
       ChatMessage(
         id: 'c1',
@@ -121,6 +123,85 @@ void main() {
       expect(edited.content, 'edited');
       expect(edited.likeCount, 2);
       expect(edited.viewerLiked, isTrue);
+    });
+  });
+}
+
+/// A shared paid photo stays marked when the thread is reopened.
+///
+/// Same failure mode as the likes above, and the reason this file covers both:
+/// the thread paints from the local cache before any request goes out, so a
+/// fact the cache does not carry is a fact that flashes off on every reopen.
+/// `paid_preview` is a cache column (schema v8) for exactly that reason.
+void _paidPreview() {
+  ChatMessage shared({bool paidPreview = false}) => ChatMessage(
+        id: 'm1',
+        roomId: 'r1',
+        senderId: 'u2',
+        senderName: 'Ama',
+        senderRole: 'user',
+        content: '',
+        imageUrl: 'https://cdn.example.com/p1.jpg',
+        createdAt: DateTime.utc(2026, 9, 16),
+        paidPreview: paidPreview,
+      );
+
+  group('a shared paid photo', () {
+    test('an ordinary shared photo is not marked', () {
+      expect(shared().paidPreview, isFalse);
+    });
+
+    test('the flag round-trips through json', () {
+      expect(ChatMessage.fromJson(shared(paidPreview: true).toJson()).paidPreview,
+          isTrue);
+    });
+
+    test('it reads the key the server sends', () {
+      final restored = ChatMessage.fromJson({
+        'id': 'm1',
+        'room_id': 'r1',
+        'sender_id': 'u2',
+        'sender_role': 'user',
+        'content': '',
+        'image_url': 'https://cdn.example.com/p1.jpg',
+        'created_at': DateTime.utc(2026, 9, 16).toIso8601String(),
+        'paid_preview': true,
+      });
+
+      expect(restored.paidPreview, isTrue);
+    });
+
+    test('a message from before this existed is simply unmarked', () {
+      final restored = ChatMessage.fromJson({
+        'id': 'm1',
+        'room_id': 'r1',
+        'sender_id': 'u2',
+        'sender_role': 'user',
+        'content': '',
+        'created_at': DateTime.utc(2026, 9, 16).toIso8601String(),
+      });
+
+      expect(restored.paidPreview, isFalse);
+    });
+
+    test('1/0 is accepted as well as true/false', () {
+      // The cache writes integers; the server sends booleans. Both land here.
+      final restored = ChatMessage.fromJson({
+        'id': 'm1',
+        'room_id': 'r1',
+        'sender_id': 'u2',
+        'sender_role': 'user',
+        'content': '',
+        'created_at': DateTime.utc(2026, 9, 16).toIso8601String(),
+        'paid_preview': 1,
+      });
+
+      expect(restored.paidPreview, isTrue);
+    });
+
+    test('copyWith does not drop it', () {
+      expect(shared(paidPreview: true).copyWith(content: 'look').paidPreview,
+          isTrue);
     });
   });
 }

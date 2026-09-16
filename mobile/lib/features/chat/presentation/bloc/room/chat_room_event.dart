@@ -11,8 +11,12 @@ abstract class ChatRoomEvent {
 class ChatRoomJoined extends ChatRoomEvent {
   final String roomId;
   final String? shareUrl;
+
+  /// Whether [shareUrl] is a paid photo the sender has not bought.
+  final bool paidPreview;
   final ChatRoom? room;
-  const ChatRoomJoined(this.roomId, {this.shareUrl, this.room});
+  const ChatRoomJoined(this.roomId,
+      {this.shareUrl, this.paidPreview = false, this.room});
 }
 
 /// Send the current input (text and/or staged image) as one message.
