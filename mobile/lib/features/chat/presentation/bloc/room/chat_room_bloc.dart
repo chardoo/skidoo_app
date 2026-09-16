@@ -67,6 +67,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   final KickParticipantUseCase _kickParticipant;
   final LeaveRoomUseCase _leaveRoom;
   final DeleteRoomUseCase _deleteRoom;
+  final ClearRoomUseCase _clearRoom;
   final ClearRoomCacheUseCase _clearRoomCache;
   final AuthService _authService;
   final ChatBackgroundService _bgService;
@@ -156,6 +157,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     required KickParticipantUseCase kickParticipant,
     required LeaveRoomUseCase leaveRoom,
     required DeleteRoomUseCase deleteRoom,
+    required ClearRoomUseCase clearRoom,
     required ClearRoomCacheUseCase clearRoomCache,
     required AuthService authService,
     required ChatBackgroundService bgService,
@@ -180,6 +182,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         _kickParticipant = kickParticipant,
         _leaveRoom = leaveRoom,
         _deleteRoom = deleteRoom,
+        _clearRoom = clearRoom,
         _clearRoomCache = clearRoomCache,
         _authService = authService,
         _bgService = bgService,
@@ -225,7 +228,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_RoomSettingsUpdated>(_onRoomSettingsUpdated);
     on<_ParticipantRemoved>(_onParticipantRemoved);
     on<ChatRoomLeaveGroupRequested>(_onLeaveGroupRequested);
+    on<ChatRoomCommentLikeSettled>(_onCommentLikeSettled);
     on<ChatRoomDeleteRequested>(_onDeleteRequested);
+    on<ChatRoomClearRequested>(_onClearRequested);
     on<_RoomDeleted>(_onRoomDeleted);
     on<_WsServerError>(
         (event, emit) => emit(state.copyWith(errorMessage: event.message)));
@@ -1254,6 +1259,35 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       replyingTo: event.message,
       clearReply: event.message == null,
     ));
+  }
+
+  /// Record a settled comment like on the message it belongs to.
+  ///
+  /// Both halves matter. The emit keeps the heart filled for as long as this
+  /// room is open; the cache write is what makes it survive the sheet closing,
+  /// because the sheet paints from the local database before any request goes
+  /// out. Persisting the message without the like — which is what happened
+  /// before `chat_messages` had the columns — is exactly how a like "worked"
+  /// and then vanished on reopen.
+  void _onCommentLikeSettled(
+    ChatRoomCommentLikeSettled event,
+    Emitter<ChatRoomState> emit,
+  ) {
+    final index =
+        state.messages.indexWhere((m) => m.id == event.messageId);
+    // Not in this room's list — a reply fetched into its own page, or a message
+    // since removed. Emitting an identical list would rebuild every row for
+    // nothing.
+    if (index < 0) return;
+
+    final updated = state.messages[index].copyWith(
+      likeCount: event.likeCount,
+      viewerLiked: event.liked,
+    );
+    final messages = List<ChatMessage>.of(state.messages)..[index] = updated;
+
+    emit(state.copyWith(messages: messages));
+    _cacheMessage(updated).catchError((_) {});
   }
 
   void _onLikeToggled(ChatRoomLikeToggled event, Emitter<ChatRoomState> emit) {
@@ -2494,6 +2528,10 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     emit(state.copyWith(isLeaving: true, clearError: true));
     try {
       await _leaveRoom(roomId);
+      // Leaving is a removal too, and the socket only says so second-hand —
+      // `participant_left` is broadcast to the room, so whether you drop the
+      // row depends on your own echo arriving. Say it locally as well.
+      _bgService.notifyRoomRemoved(roomId);
       emit(state.copyWith(isLeaving: false, isDeleted: true));
     } catch (_) {
       emit(state.copyWith(
@@ -2510,6 +2548,10 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     emit(state.copyWith(isDeleting: true, clearError: true));
     try {
       await _deleteRoom(roomId);
+      // Belt and braces next to the server's `room_deleted` broadcast: that
+      // echo only arrives if the socket is up at this moment, and the person
+      // who pressed delete should not be the one left looking at the room.
+      _bgService.notifyRoomRemoved(roomId);
       emit(state.copyWith(isDeleting: false, isDeleted: true));
     } on ServerException catch (e) {
       final code = _parseStatusCode(e.message);
@@ -2522,6 +2564,32 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     } catch (_) {
       emit(state.copyWith(
           isDeleting: false, errorMessage: 'Could not delete the group.'));
+    }
+  }
+
+  /// Delete this conversation for the reader alone.
+  ///
+  /// Reuses [isDeleting]/[isDeleted] because the screen's job is the same
+  /// either way — show a spinner, then leave. What differs is who it happens
+  /// to, and that is the server's business, not the view's.
+  Future<void> _onClearRequested(
+    ChatRoomClearRequested event,
+    Emitter<ChatRoomState> emit,
+  ) async {
+    final roomId = _currentRoomId;
+    if (roomId == null) return;
+    emit(state.copyWith(isDeleting: true, clearError: true));
+    try {
+      await _clearRoom(roomId);
+      // The inbox holds its rows in bloc state, so clearing the database under
+      // it is not enough — the row stays on screen until something forces a
+      // reload. Nothing else will say this: a per-person delete is announced to
+      // nobody, because it changes nothing for the other person.
+      _bgService.notifyRoomRemoved(roomId);
+      emit(state.copyWith(isDeleting: false, isDeleted: true));
+    } catch (_) {
+      emit(state.copyWith(
+          isDeleting: false, errorMessage: 'Could not delete the chat.'));
     }
   }
 

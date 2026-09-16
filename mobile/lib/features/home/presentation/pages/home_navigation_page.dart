@@ -273,7 +273,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
   Future<void> _onRefresh() {
     final bloc = context.read<DiscoveryBloc>();
-    bloc.add(const DiscoveryLoadRequested());
+    // They pulled: a new deal is exactly what was asked for.
+    bloc.add(const DiscoveryLoadRequested(userInitiated: true));
     // Await until the bloc leaves its loading state (or 10 s timeout).
     return bloc.stream
         .firstWhere((s) => !s.isLoading)

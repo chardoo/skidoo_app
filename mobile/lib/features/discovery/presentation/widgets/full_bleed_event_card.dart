@@ -12,10 +12,12 @@ import 'package:jperg_app/components/media/share_target_sheet.dart';
 import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/common/widgets/expandable_caption.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/top_comment_line.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/video_mute_preference.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
+import 'package:jperg_app/features/discovery/presentation/feed_active_event.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_event_photos.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/event_card/explore_event_cta.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/event_comment_page.dart';
@@ -178,12 +180,45 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   void _syncAutoSlide() {
     if (!_wantsAutoSlide) {
       _slideTimer?.cancel();
+    _topCommentTimer?.cancel();
       _slideTimer = null;
       return;
     }
     _slideTimer ??= Timer(
       Duration(seconds: AppConfigRepository.current.feedSlideIntervalSeconds),
       _advanceSlide,
+    );
+  }
+
+  /// A clip played through, so move on to the next asset.
+  ///
+  /// The auto-slide deliberately stops on a video — [_wantsAutoSlide] refuses
+  /// to talk over one — and until now that was the end of it: the video looped
+  /// forever and the card sat there until somebody swiped. Waiting for the
+  /// clip to finish is the same courtesy with an ending: it has had its full
+  /// say, and then the carousel carries on as it does between photos.
+  ///
+  /// Deliberately not gated on [_wantsAutoSlide]. That asks whether a *timer*
+  /// should fire, and answers no on a video by design; this is the video
+  /// itself saying it is done. It still respects the two things that mean
+  /// nobody is watching — the card being in front, and the reader having taken
+  /// the wheel.
+  void _onVideoEnded() {
+    if (!mounted || _slideDone || !_cardIsInFront) return;
+    if (!_mediaPageCtrl.hasClients) return;
+
+    final next = _mediaIndex + 1;
+    if (next >= widget.event.pictures.length) {
+      // The last asset. Nothing to advance to, and the CTA belongs on the last
+      // photo anyway — see [_showExploreCta].
+      _slideDone = true;
+      return;
+    }
+    _selfDrivenSlide = true;
+    _mediaPageCtrl.animateToPage(
+      next,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -275,6 +310,87 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     if (!mounted) return;
     _syncMusic();
     _syncAutoSlide();
+    _publishIfInFront();
+    _syncTopComment();
+  }
+
+  // ── The comment that borrows the caption ──────────────────────────────────
+  //
+  // Shorts does this: for a few seconds the caption line makes way for the one
+  // comment people are reacting to, then gives the line back. The server
+  // decides whether there is one at all — most cards have none, which is what
+  // stops this becoming noise (see TOP_COMMENT_FLOOR in main).
+  //
+  // Timed from the card becoming *active*, not from it being built: a card
+  // sitting in the pager's cache would otherwise spend its five seconds
+  // offscreen and the reader would never see it. The dwell in front of that is
+  // so somebody scrolling hard is not strobed by a line of text per card.
+  static const _topCommentDwell = Duration(milliseconds: 1500);
+  static const _topCommentVisible = Duration(seconds: 5);
+
+  /// Cards that have already had their turn this session.
+  ///
+  /// Static, so it survives the card being disposed and rebuilt as the pager
+  /// recycles — which is most of why "once per card" needs remembering at all.
+  /// Scrolling back to a post should not replay it.
+  static final Set<String> _topCommentShown = <String>{};
+
+  Timer? _topCommentTimer;
+  bool _showingTopComment = false;
+
+  /// Whether the reader has opened the caption. Set from
+  /// [ExpandableCaption.onExpandedChanged].
+  bool _captionExpanded = false;
+
+  void _syncTopComment() {
+    final comment = widget.event.topComment;
+    final isActive = widget.activeCardIndex.value == widget.cardIndex;
+
+    if (!isActive || comment == null) {
+      // Leaving the card takes the comment with it — a card scrolled past
+      // mid-window must not be found still showing it on the way back.
+      _topCommentTimer?.cancel();
+      _topCommentTimer = null;
+      if (_showingTopComment && mounted) {
+        setState(() => _showingTopComment = false);
+      }
+      return;
+    }
+
+    if (_topCommentShown.contains(comment.id) || _showingTopComment) return;
+
+    _topCommentTimer?.cancel();
+    _topCommentTimer = Timer(_topCommentDwell, () {
+      // Re-checked because 1.5s is long enough for the reader to have moved on,
+      // and for them to have opened the caption to read it.
+      if (!mounted ||
+          widget.activeCardIndex.value != widget.cardIndex ||
+          _captionExpanded) {
+        return;
+      }
+      _topCommentShown.add(comment.id);
+      setState(() => _showingTopComment = true);
+      _topCommentTimer = Timer(_topCommentVisible, () {
+        if (mounted) setState(() => _showingTopComment = false);
+      });
+    });
+  }
+
+  /// Tells an open comment sheet which post it is now sitting under.
+  ///
+  /// Not [_cardIsInFront], which is about the *soundtrack* and answers false
+  /// whenever a route is over the feed — and a comment sheet is a route. The
+  /// one moment this has to report is the one that getter deliberately
+  /// suppresses. What is left is the honest question: is this the card the
+  /// pager has stopped on, in a feed that is actually on screen.
+  void _publishIfInFront() {
+    if (!mounted) return;
+    if (widget.activeCardIndex.value != widget.cardIndex) return;
+    // An inactive tab of Home's IndexedStack keeps its cards mounted, and one
+    // of them is always its pager's current page. Without this, two feeds
+    // would each claim the front position and the last to rebuild would win.
+    if (!TickerMode.valuesOf(context).enabled) return;
+    FeedActiveEvent.publish(widget.event);
   }
 
   @override
@@ -312,6 +428,10 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     // Same reason it is here rather than in initState: the slide waits on
     // TickerMode and the route, and this is the first point either can be read.
     _syncAutoSlide();
+    // And the same reason again — [_publishIfInFront] reads TickerMode. This
+    // is also what claims the position for the card a feed opens on, which no
+    // page change ever fires for.
+    _publishIfInFront();
   }
 
   @override
@@ -329,6 +449,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
       _slideDone = false;
       _syncMusic();
       _syncAutoSlide();
+      _publishIfInFront();
     }
   }
 
@@ -477,12 +598,17 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
       CommentCounts.instance.countFor(widget.event.id) ??
       widget.event.commentCount;
 
-  void _openComments() {
+  void _openComments({String? focusCommentId}) {
     if (!widget.isAuthenticated) {
       widget.onTap();
       return;
     }
-    EventCommentPage.show(context, widget.event, onCommentSent: _onCommentSent);
+    EventCommentPage.show(
+      context,
+      widget.event,
+      onCommentSent: _onCommentSent,
+      focusCommentId: focusCommentId,
+    );
   }
 
   /// A comment of this viewer's just went. Move the badge now.
@@ -491,13 +617,17 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   /// response to read back — the server increments `Event.commentCount` on the
   /// same path (see chat's ws_handler), and this is the client's optimistic
   /// half of that. The next fetch confirms it.
-  void _onCommentSent() {
-    CommentCounts.instance
-        .adjust(widget.event.id, 1, base: widget.event.commentCount);
+  ///
+  /// [event] rather than `widget.event`: the sheet follows the feed, so by the
+  /// time a comment is sent it may be about a post two swipes further down.
+  /// Counting it against the card that happened to open the sheet would put
+  /// the badge on the wrong post.
+  void _onCommentSent(EventDiscovery event) {
+    CommentCounts.instance.adjust(event.id, 1, base: event.commentCount);
     // Keeps the Feed tab's own list honest for anything that rebuilds from it
     // rather than from the live count above.
     if (mounted) {
-      context.read<DiscoveryBloc>().add(DiscoveryCommentAdded(widget.event.id));
+      context.read<DiscoveryBloc>().add(DiscoveryCommentAdded(event.id));
     }
   }
 
@@ -615,6 +745,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
             // the player owns the bottom edge and the controls belong on it.
             videoControlsBottomInset:
                 FeedChrome.visible.value ? _navBand : 0,
+            onVideoEnded: _onVideoEnded,
             onMediaChanged: (i) {
               if (i == _mediaIndex) return;
 
@@ -867,11 +998,29 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                     // written everywhere else. Two [ExpandableCaption]s meant
                     // two separate "more" links and two things to expand for
                     // what reads as one paragraph.
-                    if (_caption.isNotEmpty) ...[
+                    // The caption line, or — for a few seconds, and only when
+                    // there is genuinely something to say — the comment people
+                    // are reacting to. Cross-faded rather than cut, and the
+                    // creator's name above is deliberately untouched: it is
+                    // what the card is for, and five seconds without it is
+                    // five seconds of an anonymous photograph.
+                    if (_showingTopComment && widget.event.topComment != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: AppSpacing.xs.h),
+                        child: TopCommentLine(
+                          comment: widget.event.topComment!,
+                          onTap: () => _openComments(
+                            focusCommentId: widget.event.topComment!.id,
+                          ),
+                        ),
+                      )
+                    else if (_caption.isNotEmpty) ...[
                       SizedBox(height: AppSpacing.xs.h),
                       ExpandableCaption(
                         text: _caption,
                         collapsedMaxLines: 2,
+                        onExpandedChanged: (expanded) =>
+                            _captionExpanded = expanded,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 13.sp,

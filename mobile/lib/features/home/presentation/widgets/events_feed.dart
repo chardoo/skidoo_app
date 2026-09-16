@@ -150,7 +150,11 @@ class EventsFeedState extends State<EventsFeed> {
     _activeCardIndex.value = 0;
     // They have left the card they were on, whatever the refetch brings back.
     _syncWatch();
-    context.read<DiscoveryBloc>().add(const DiscoveryLoadRequested());
+    // Tapping Home while already on Home means "show me what is there
+    // now" — the same request a pull to refresh makes.
+    context
+        .read<DiscoveryBloc>()
+        .add(const DiscoveryLoadRequested(userInitiated: true));
   }
 
   /// Tell the watch what is being looked at now.

@@ -13,6 +13,7 @@ class ExpandableCaption extends StatefulWidget {
     this.linkStyle,
     this.moreLabel = 'more',
     this.lessLabel = 'less',
+    this.onExpandedChanged,
   });
 
   final String text;
@@ -21,6 +22,13 @@ class ExpandableCaption extends StatefulWidget {
   final TextStyle? linkStyle;
   final String moreLabel;
   final String lessLabel;
+
+  /// Told when the reader opens or closes the caption.
+  ///
+  /// The feed card needs it: it lends this line to a comment for a few
+  /// seconds, and doing that to somebody who has just tapped "more" to read
+  /// the caption takes the text away mid-sentence.
+  final ValueChanged<bool>? onExpandedChanged;
 
   @override
   State<ExpandableCaption> createState() => _ExpandableCaptionState();
@@ -56,7 +64,10 @@ class _ExpandableCaptionState extends State<ExpandableCaption> {
           button: true,
           label: _expanded ? widget.lessLabel : widget.moreLabel,
           child: GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: () {
+              setState(() => _expanded = !_expanded);
+              widget.onExpandedChanged?.call(_expanded);
+            },
             behavior: HitTestBehavior.opaque,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -171,7 +171,7 @@
 
   "shareSheetTitle": "Send to…",
   "@shareSheetTitle": {},
-  "shareSheetSearchByName": "Search by name…",
+  "shareSheetSearchByName": "Search by name or email…",
   "@shareSheetSearchByName": {},
   "shareSheetTypeToSearch": "Type a name to search",
   "@shareSheetTypeToSearch": {},

@@ -289,13 +289,19 @@ class _CountryStepState extends State<_CountryStep> {
       children: [
         Padding(
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-          child: AppTextField(
+          // [SearchField], not a form field wearing a search icon. These two
+          // are searches, and they were the only ones in the app drawn as a
+          // bordered text input — so the same act looked like typing into a
+          // form here and like searching everywhere else.
+          child: SearchField(
             controller: _filterCtrl,
+            surface: SearchFieldSurface.page,
             hint: 'Search countries',
-            prefixIcon: Icons.search_rounded,
-            dense: true,
-            textInputAction: TextInputAction.search,
             onChanged: (v) => setState(() => _filter = v.trim()),
+            onClear: () {
+              _filterCtrl.clear();
+              setState(() => _filter = '');
+            },
           ),
         ),
         SizedBox(height: AppSpacing.sm.h),
@@ -363,14 +369,16 @@ class _PlaceStep extends StatelessWidget {
       children: [
         Padding(
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-          child: AppTextField(
+          child: SearchField(
             controller: controller,
+            surface: SearchFieldSurface.page,
             hint: 'Search a town or city',
-            prefixIcon: Icons.search_rounded,
-            dense: true,
             autofocus: true,
-            textInputAction: TextInputAction.search,
             onChanged: onQueryChanged,
+            onClear: () {
+              controller.clear();
+              onQueryChanged('');
+            },
           ),
         ),
         SizedBox(height: AppSpacing.sm.h),

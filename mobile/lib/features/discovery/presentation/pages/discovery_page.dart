@@ -232,7 +232,8 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                           icon: Icons.cloud_off_outlined,
                           onRetry: () => context
                               .read<DiscoveryBloc>()
-                              .add(const DiscoveryLoadRequested()),
+                              .add(const DiscoveryLoadRequested(
+                                  userInitiated: true)),
                         );
                       }
 

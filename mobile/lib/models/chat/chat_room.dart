@@ -64,6 +64,21 @@ enum RoomType {
       this == RoomType.eventPrivate ||
       this == RoomType.group;
 
+  /// True for rooms the "Send to…" sheet may offer.
+  ///
+  /// Narrower than [isConversation], and deliberately: that sheet sends a photo
+  /// to *somebody*, and the recent list under it is meant to be people you
+  /// have already talked to. An event room is not a person — it is a room you
+  /// were put in by opening an album, named after a UUID, and it filled the
+  /// sheet with rows reading "Event a32e7081-381e-…" above the actual
+  /// conversations.
+  ///
+  /// `eventPrivate` goes with it for the same reason. The inbox counts it as a
+  /// conversation because it is one; it still carries the event's generated
+  /// name and reads as a room rather than a recipient.
+  bool get isShareTarget =>
+      this == RoomType.direct || this == RoomType.group;
+
   /// A comment thread rather than a conversation: opened, read, and left.
   ///
   /// These are subscribed while they are on screen and dropped on the way out,

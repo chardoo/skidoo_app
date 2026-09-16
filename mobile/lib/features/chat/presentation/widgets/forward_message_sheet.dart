@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/search_field.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -36,11 +37,20 @@ class _ForwardMessageSheetState extends State<ForwardMessageSheet> {
   List<ChatRoom> _rooms = const [];
   bool _loading = true;
   String _query = '';
+  // The field kept its text in the widget tree before; [SearchField] takes a
+  // controller so the clear button has something to clear.
+  final TextEditingController _searchCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -146,23 +156,20 @@ class _ForwardMessageSheetState extends State<ForwardMessageSheet> {
               ),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
-                child: TextField(
+                // The shared field. This was a third treatment of the same
+                // control: filled, no border at all, a prefixIcon instead of an
+                // inline one, and no clear button — so the box you search
+                // conversations in looked unrelated to the box you search
+                // everything else in.
+                child: SearchField(
+                  controller: _searchCtrl,
+                  surface: SearchFieldSurface.page,
+                  hint: 'Search conversations',
                   onChanged: (value) => setState(() => _query = value),
-                  style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    filled: true,
-                    fillColor: ext.searchFieldFill,
-                    hintText: 'Search conversations',
-                    hintStyle:
-                        TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-                    prefixIcon: Icon(Icons.search_rounded,
-                        size: 18.sp, color: ext.searchHintColor),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(22.r),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
+                  onClear: () {
+                    _searchCtrl.clear();
+                    setState(() => _query = '');
+                  },
                 ),
               ),
               SizedBox(height: AppSpacing.sm.h),

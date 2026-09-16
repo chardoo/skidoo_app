@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/common/widgets/app_confirm_dialog.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -115,6 +116,15 @@ class ContactInfoPage extends StatelessWidget {
                             onTap: onToggleBlock,
                           ),
                         ),
+                      // The only delete a direct conversation has. Blocking was
+                      // the whole of what this screen offered, and blocking
+                      // somebody to be rid of a thread is a different thing
+                      // said to a different person.
+                      ChatSettingsTile(
+                        label: 'Delete Chat',
+                        labelColor: ext.errorRed,
+                        onTap: () => _confirmDeleteChat(context),
+                      ),
                     ],
                   ),
                 ],
@@ -125,6 +135,28 @@ class ContactInfoPage extends StatelessWidget {
       ),
     );
     return page;
+  }
+
+  /// Ask, then delete for this reader only.
+  ///
+  /// The message says who it affects, because the two deletes in this app do
+  /// very different things and the group one says "for everyone". Somebody who
+  /// has read that dialog will read this one expecting the same, and it is the
+  /// opposite.
+  Future<void> _confirmDeleteChat(BuildContext context) async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Delete chat?',
+      message:
+          'This removes the conversation from your chats. The other person '
+          'keeps their copy. If they message you again, the chat comes back '
+          'with their new messages only.',
+      confirmLabel: 'Delete',
+      isDestructive: true,
+    );
+    if (confirmed && context.mounted) {
+      context.read<ChatRoomBloc>().add(const ChatRoomClearRequested());
+    }
   }
 
   void _openSharedMedia(BuildContext context, ChatRoom room) {

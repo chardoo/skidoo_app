@@ -8,7 +8,18 @@ abstract class DiscoveryEvent extends Equatable {
 
 /// Initial load (clears existing list).
 class DiscoveryLoadRequested extends DiscoveryEvent {
-  const DiscoveryLoadRequested();
+  const DiscoveryLoadRequested({this.userInitiated = false});
+
+  /// Whether the reader asked for this — a pull to refresh, or tapping Home
+  /// while already on Home.
+  ///
+  /// It decides whether the post currently on screen may be replaced. Opening
+  /// the app is not a request for different content: the feed paints from
+  /// cache instantly and the network answer lands a second or two later, and
+  /// swapping the card being looked at at that moment is the feed changing
+  /// under the reader's thumb. A pull to refresh *is* that request, so there
+  /// the whole list is dealt again.
+  final bool userInitiated;
 }
 
 /// Load the next page and append to the existing list.

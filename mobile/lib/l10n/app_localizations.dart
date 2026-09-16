@@ -575,7 +575,7 @@ abstract class AppLocalizations {
   /// No description provided for @shareSheetSearchByName.
   ///
   /// In en, this message translates to:
-  /// **'Search by name…'**
+  /// **'Search by name or email…'**
   String get shareSheetSearchByName;
 
   /// No description provided for @shareSheetTypeToSearch.

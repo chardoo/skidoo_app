@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jperg_app/core/cache/hidden_events.dart';
 import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
@@ -106,19 +106,19 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       if (id.isNotEmpty) _currentUserId = id;
     });
 
-    // Restore previously-hidden event IDs from local storage.
-    SharedPreferences.getInstance().then((prefs) {
-      final ids = prefs.getStringList(_hiddenIdsKey) ?? [];
+    // Restore previously-hidden event IDs. Through [HiddenEvents] rather than
+    // straight from SharedPreferences, so this bloc and the Following feed
+    // read and write one set instead of two that drift — hiding here has to
+    // mean hidden there. Same storage key as before, so existing hides stand.
+    HiddenEvents.load().then((ids) {
       if (ids.isNotEmpty && !isClosed) {
-        add(_DiscoveryHiddenIdsLoaded(ids.toSet()));
+        add(_DiscoveryHiddenIdsLoaded(ids));
       }
     });
 
     // Load saved event IDs from the server in the background.
     _loadSavedItemsInBackground();
   }
-
-  static const _hiddenIdsKey = 'discovery_hidden_event_ids';
 
   void _setupLikeListener() {
     _likeUpdateSub?.cancel();
@@ -283,10 +283,23 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       FollowRepository.seedFollowed(
         events.where((e) => e.isFollowed).map((e) => e.photographerId),
       );
-      // Persist fresh events so the next launch is fast too.
+      // Persist fresh events so the next launch is fast too. Saved as the
+      // server ranked them, not as they are about to be shown — the pin below
+      // is about this moment on screen, and baking it into the cache would pin
+      // the same post at the top for ever.
       unawaited(_feedCache.save(events));
       emit(DiscoveryState(
-        events: withoutHidden(events, state.hiddenEventIds),
+        events: withoutHidden(
+          keepFirst(
+            events,
+            // Only what is already on screen is protected, and only when the
+            // reader did not ask for a new deal.
+            onScreen: event.userInitiated || state.events.isEmpty
+                ? null
+                : state.events.first.id,
+          ),
+          state.hiddenEventIds,
+        ),
         currentUserId: userId,
         // Measured on what the server actually returned: a page that happens
         // to be entirely hidden still means there is more behind it.
@@ -611,8 +624,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       events: withoutHidden(state.events, updated),
       clearPendingHide: true,
     ));
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_hiddenIdsKey, updated.toList());
+    await HiddenEvents.replace(updated);
   }
 
   /// Step 2b — user tapped Undo. Put the card back where it was.
@@ -644,6 +656,39 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     ));
   }
 
+  /// The fresh list, with the post the reader is currently looking at left
+  /// where it is.
+  ///
+  /// The feed paints from cache the instant the app opens and replaces that
+  /// with the server's answer a second or two later. Those two lists used to
+  /// agree, because the ranking was deterministic — so the replacement was
+  /// invisible. It is not deterministic any more: the top of the feed rotates
+  /// on purpose, and the impression log demotes whatever led last time. The
+  /// card restored from cache *is* whatever led last time, so it is precisely
+  /// the one the server will move — and the reader watches the post they just
+  /// opened the app to slide away.
+  ///
+  /// So on a cold start the first card stays first and the rest of the fresh
+  /// order follows it. The rotation still happens; it just is not applied to
+  /// the thing under the reader's thumb. A pull to refresh is an explicit
+  /// request for a new deal and is left alone.
+  ///
+  /// Nothing is pinned if the post is no longer in the fresh list — hidden,
+  /// deleted, or simply out of the ranking — because there is nothing to pin.
+  @visibleForTesting
+  static List<EventDiscovery> keepFirst(
+    List<EventDiscovery> fresh, {
+    required String? onScreen,
+  }) {
+    if (onScreen == null || fresh.isEmpty) return fresh;
+    if (fresh.first.id == onScreen) return fresh;
+    if (!fresh.any((e) => e.id == onScreen)) return fresh;
+    return [
+      fresh.firstWhere((e) => e.id == onScreen),
+      ...fresh.where((e) => e.id != onScreen),
+    ];
+  }
+
   /// [events] minus everything the user has hidden.
   ///
   /// Applied wherever events enter the state, not just where one was tapped.
@@ -659,9 +704,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
           : events.where((e) => !hidden.contains(e.id)).toList();
 
   void _persistHidden(Set<String> ids) {
-    SharedPreferences.getInstance()
-        .then((p) => p.setStringList(_hiddenIdsKey, ids.toList()))
-        .ignore();
+    HiddenEvents.replace(ids).ignore();
   }
 
   // ── Save / unsave ─────────────────────────────────────────────────────────

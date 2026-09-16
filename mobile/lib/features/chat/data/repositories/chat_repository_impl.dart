@@ -265,6 +265,16 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<void> clearRoom(String roomId) async {
+    await _rest.clearRoom(roomId);
+    // The local copy goes too, and it has to: the server now serves this room's
+    // history from the watermark onward, but the phone still holds every
+    // message it cached before. Leaving them would show the conversation the
+    // reader just deleted, from disk, on the next cold start.
+    await _db.deleteRoom(roomId);
+  }
+
+  @override
   Future<void> clearRoomCache(String roomId) => _db.deleteRoom(roomId);
 
   // ── Messages ───────────────────────────────────────────────────────────────

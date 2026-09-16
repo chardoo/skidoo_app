@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:jperg_app/core/theme/app_input.dart';
-import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
-import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/common/widgets/search_field.dart';
 
 /// The Search screen's header: a back arrow and the query field, nothing else.
 ///
@@ -31,8 +29,6 @@ class SearchTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-
     return Padding(
       padding: EdgeInsets.fromLTRB(AppSpacing.sm.w, AppSpacing.sm.h,
           AppSpacing.lg.w, AppSpacing.sm.h),
@@ -41,64 +37,30 @@ class SearchTopBar extends StatelessWidget {
           AppBackButton(onPressed: onBack),
           SizedBox(width: AppSpacing.xs.w),
           Expanded(
+            // The one search box, not a second copy of it. This was a
+            // hand-rolled duplicate that had drifted on every value that makes
+            // it recognisable — a different height, fill, border weight, icon
+            // colour and text size. Two search boxes that are nearly the same
+            // read as a mistake rather than as a style.
             child: ValueListenableBuilder<TextEditingValue>(
               valueListenable: controller,
-              builder: (context, value, _) => Container(
-                height: 44.h,
-                decoration: BoxDecoration(
-                  color: ext.searchFieldFill,
-                  borderRadius: BorderRadius.circular(AppRadius.md.r),
-                  border: Border.all(color: ext.glassBorder, width: 0.8),
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(width: AppSpacing.md.w),
-                    Icon(Icons.search_rounded,
-                        color: ext.searchHintColor, size: 19.sp),
-                    SizedBox(width: AppSpacing.sm.w),
-                    Expanded(
-                      child: TextField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        autofocus: true,
-                        textInputAction: TextInputAction.search,
-                        style: TextStyle(
-                            color: ext.greetingColor, fontSize: 14.5.sp),
-                        // The pill above is the only outline this field gets —
-                        // see [kBorderlessInput].
-                        decoration: kBorderlessInput.copyWith(
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                          hintText: hintText,
-                          hintStyle: TextStyle(
-                              color: ext.searchHintColor, fontSize: 14.5.sp),
-                        ),
-                        onChanged: onChanged,
-                        onSubmitted: onSubmitted,
-                      ),
-                    ),
-                    if (value.text.isNotEmpty)
-                      Semantics(
-                        button: true,
-                        label: 'Clear search',
-                        child: GestureDetector(
-                          onTap: () {
-                            controller.clear();
-                            onChanged('');
-                          },
-                          behavior: HitTestBehavior.opaque,
-                          child: Padding(
-                            padding:
-                                EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
-                            child: Icon(Icons.close_rounded,
-                                color: ext.searchHintColor, size: 18.sp),
-                          ),
-                        ),
-                      )
-                    else
-                      SizedBox(width: AppSpacing.md.w),
-                  ],
-                ),
+              builder: (context, value, _) => SearchField(
+                controller: controller,
+                // On the page background, not over media — see
+                // [SearchFieldSurface]. The glass tint is 5% black and would
+                // be invisible here in light mode.
+                surface: SearchFieldSurface.page,
+                focusNode: focusNode,
+                autofocus: true,
+                hint: hintText,
+                onChanged: onChanged,
+                onSubmitted: onSubmitted,
+                // Rebuilt by the listenable above, so the clear button appears
+                // and disappears with the text.
+                onClear: () {
+                  controller.clear();
+                  onChanged('');
+                },
               ),
             ),
           ),

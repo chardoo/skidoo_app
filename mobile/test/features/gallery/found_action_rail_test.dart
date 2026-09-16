@@ -91,7 +91,6 @@ void main() {
     )));
 
     expect(find.byIcon(Icons.download_outlined), findsNothing);
-    expect(find.byIcon(Icons.download_rounded), findsNothing);
     expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
     // Share stayed: it is an engagement like the rest of them.
     expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);

@@ -49,9 +49,16 @@ const like = Icons.favorite_border_rounded;
 const comment = Icons.mode_comment_outlined;
 const commentOff = Icons.comments_disabled_rounded;
 const bookmark = Icons.bookmark_border_rounded;
-/// The bar's download glyph. Deliberately a different icon from the rail's
-/// old one, so a test cannot pass by finding the button in the wrong place.
-const download = Icons.download_rounded;
+/// The bar's download glyph — the same outlined arrow every other download in
+/// the app uses.
+///
+/// It was deliberately the *filled* one for a while, so that a test could not
+/// pass by finding the button in the wrong place. That bought a test a
+/// discriminator at the price of the one solid glyph on a surface where
+/// everything else is hollow. The separation is structural instead:
+/// [barHasDownload] pumps the bar alone and [railOf] never asks about the
+/// download, so neither can see the other's button whatever it is drawn with.
+const download = Icons.download_outlined;
 const share = Icons.near_me_outlined;
 
 /// The glyphs on the rail, in the order the rail lists them.

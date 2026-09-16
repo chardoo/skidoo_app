@@ -348,6 +348,36 @@ void main() {
       expect(RoomType.direct.isConversation, isTrue);
       expect(RoomType.group.isConversation, isTrue);
     });
+
+    test('the share sheet offers people, not event rooms', () {
+      // "Send to…" sends a photo to somebody. An event room is not a
+      // somebody — it is a room you were put in by opening an album, named
+      // after a UUID, and the sheet filled up with rows reading
+      // "Event a32e7081-381e-…" above the actual conversations.
+      expect(RoomType.direct.isShareTarget, isTrue);
+      expect(RoomType.group.isShareTarget, isTrue);
+
+      expect(RoomType.event.isShareTarget, isFalse);
+      // Goes with it despite counting as a conversation in the inbox: it
+      // still carries the event's generated name and reads as a room rather
+      // than a recipient.
+      expect(RoomType.eventPrivate.isShareTarget, isFalse);
+
+      expect(RoomType.global.isShareTarget, isFalse);
+      expect(RoomType.photo.isShareTarget, isFalse);
+      expect(RoomType.sample.isShareTarget, isFalse);
+      expect(RoomType.unknown.isShareTarget, isFalse);
+    });
+
+    test('it is narrower than the inbox, not the same rule renamed', () {
+      // If these ever coincide, one of them is redundant and the distinction
+      // has been lost.
+      final inbox = RoomType.values.where((t) => t.isConversation).toSet();
+      final share = RoomType.values.where((t) => t.isShareTarget).toSet();
+      expect(share, isNot(equals(inbox)));
+      expect(share.difference(inbox), isEmpty,
+          reason: 'a share target must always be a conversation');
+    });
   });
 
   group('video attachments', _videoTests);

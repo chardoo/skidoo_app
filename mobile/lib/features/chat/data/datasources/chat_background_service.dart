@@ -90,6 +90,24 @@ class ChatBackgroundService {
   final _roomRemovedRelay = StreamController<String>.broadcast();
   Stream<String> get roomRemovedStream => _roomRemovedRelay.stream;
 
+  /// Say that a room has gone, for a removal this device performed itself.
+  ///
+  /// Everything else on this relay arrives over the socket — a group deleted
+  /// for everyone, or being removed from one — so until now a room could only
+  /// leave the inbox if the *server* announced it. Deleting a conversation for
+  /// yourself is announced to nobody, deliberately: it changes nothing for the
+  /// other person, so there is no broadcast to ride on. Without this the row
+  /// stayed on screen, cleared from the database underneath it, until something
+  /// else forced a full reload.
+  ///
+  /// The same call makes the group delete robust: that one relied on its own
+  /// `room_deleted` echo coming back over the socket, which does not arrive if
+  /// the socket happens to be down at the moment you delete.
+  void notifyRoomRemoved(String roomId) {
+    if (roomId.isEmpty || _roomRemovedRelay.isClosed) return;
+    _roomRemovedRelay.add(roomId);
+  }
+
   /// Fires when a room's membership / settings changed (someone joined or left,
   /// name or admin-only toggled) so the rooms list should re-sync.
   final _roomsChangedRelay = StreamController<void>.broadcast();

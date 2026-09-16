@@ -135,7 +135,17 @@ class _FoundPhotoQuickActionsState extends State<FoundPhotoQuickActions> {
           padding: EdgeInsets.only(left: AppSpacing.sm.w),
           child: MediaRailAction(
             key: _downloadKey,
-            icon: Icons.download_rounded,
+            // The outlined arrow, the same glyph [MediaReaction.download]
+            // declares for every other download in the app. This was the
+            // filled one — the only solid glyph on a surface where every
+            // reaction is hollow at rest, and on a private photo it sat
+            // directly beside engagements drawn from that rail, so the two
+            // read as different kinds of control.
+            //
+            // Nothing here is ever filled, because a fill means "active" and a
+            // download has no such state: having saved a photo once is not
+            // something this button can know.
+            icon: Icons.download_outlined,
             // No count under it — the download has no number behind it, and a
             // hardcoded zero is worse than nothing. `semanticLabel` carries
             // what the missing text would have said.

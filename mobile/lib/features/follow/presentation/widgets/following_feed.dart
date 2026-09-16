@@ -1,10 +1,12 @@
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/cache/disk_cache.dart';
+import 'package:jperg_app/core/cache/hidden_events.dart';
 import 'package:jperg_app/core/session/view_reporter.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/features/follow/presentation/widgets/feed_suggestions_card.dart';
@@ -82,6 +84,12 @@ class FollowingFeedState extends State<FollowingFeed> {
   List<FeedSlot> _slots = const [];
 
   List<EventDiscovery> _events = [];
+
+  /// The card Hide just took off the screen, and where it sat, in case Undo is
+  /// pressed. Held rather than recomputed: by the time the snackbar closes the
+  /// list may have grown underneath it, so the index is a hint and the event is
+  /// the thing that has to come back.
+  (int, EventDiscovery)? _undoHide;
   bool _loading = true;
   bool _loadingMore = false;
   bool _hasMore = true;
@@ -125,7 +133,7 @@ class FollowingFeedState extends State<FollowingFeed> {
     // The index itself is left to the page callback, which fires for the jump
     // above and carries the rest of the bookkeeping with it.
     _watch.hidden();
-    _load();
+    _load(userInitiated: true);
   }
 
   /// Tell the watch which post is on screen — null for a suggestions card,
@@ -143,6 +151,14 @@ class FollowingFeedState extends State<FollowingFeed> {
     super.initState();
     FollowRepository.followedRevision.addListener(_onFollowedChanged);
     _restoreFromDisk();
+    // Read the hidden set before the first request can answer, then re-filter
+    // what the disk restore already painted. The load is a no-op after the
+    // first screen asks for it, so this costs nothing on later opens.
+    HiddenEvents.load().then((_) {
+      if (mounted && _events.isNotEmpty) {
+        setState(() => _events = HiddenEvents.filter(_events, (e) => e.id));
+      }
+    });
     _load();
     _loadSuggestions();
   }
@@ -175,7 +191,7 @@ class FollowingFeedState extends State<FollowingFeed> {
         }
       }
       if (events.isEmpty) return;
-      _events = events;
+      _events = HiddenEvents.filter(events, (e) => e.id);
       _loading = false;
       // Where the paging had got to, not just what it had fetched. Restoring
       // three pages of posts as "page 1" would make the next load-more ask
@@ -219,7 +235,7 @@ class FollowingFeedState extends State<FollowingFeed> {
     _hadFollows = hasFollows;
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool userInitiated = false}) async {
     setState(() {
       // Only when there is nothing to read. With posts already restored from
       // disk this is a refresh happening underneath them, and a spinner over
@@ -233,7 +249,22 @@ class FollowingFeedState extends State<FollowingFeed> {
           : await _repo.getFollowFeed(page: 1, limit: _initialLimit);
       if (!mounted) return;
       setState(() {
-        _events = result.events;
+        // Filtered on arrival, not just where Hide was tapped. The server does
+        // not know what this reader has hidden, so every page it sends can
+        // carry one back — which is exactly how "You won't see this event
+        // again" was being broken on this screen.
+        _events = HiddenEvents.filter(
+          // The same rule the Feed tab uses, through the same helper: the post
+          // on screen when the fetch lands does not move unless the reader
+          // asked for a new deal. See [DiscoveryBloc.keepFirst].
+          DiscoveryBloc.keepFirst(
+            result.events,
+            onScreen: userInitiated || _events.isEmpty
+                ? null
+                : _events.first.id,
+          ),
+          (e) => e.id,
+        );
         _loading = false;
         // Reset here rather than before the request: a refresh that fails
         // leaves the restored pages on screen, and calling those "page 1"
@@ -261,7 +292,10 @@ class FollowingFeedState extends State<FollowingFeed> {
       if (!mounted) return;
       setState(() {
         _page = next;
-        _events = [..._events, ...result.events];
+        _events = [
+          ..._events,
+          ...HiddenEvents.filter(result.events, (e) => e.id),
+        ];
         _loadingMore = false;
         _hasMore = result.hasMore;
       });
@@ -302,16 +336,54 @@ class FollowingFeedState extends State<FollowingFeed> {
     }
   }
 
+  /// Hide a card: off the screen now, written down when the snackbar goes.
+  ///
+  /// The card used to leave only inside the `.then` below — that is, several
+  /// seconds later, when the snackbar closed. Tapping Hide appeared to do
+  /// nothing at all, which is the whole of "it does not hide, but it works
+  /// nicely on the feed": Discover has always removed the card on the tap and
+  /// kept the removal pending until the snackbar resolves.
+  ///
+  /// Three steps, the same three Discover uses. Remove now, put it back on
+  /// Undo, and only persist once Undo is no longer on offer — hiding writes to
+  /// storage, and a hide that was taken back must leave nothing behind.
   void _onHide(String eventId) {
+    final index = _events.indexWhere((e) => e.id == eventId);
+    if (index < 0) return;
+
+    setState(() {
+      _undoHide = (index, _events[index]);
+      _events = [..._events]..removeAt(index);
+    });
+
     AppSnackBar.withAction(
       context,
       AppLocalizations.of(context)!.discoveryContentHidden,
       actionLabel: AppLocalizations.of(context)!.discoveryUndo,
-      onAction: () {},
+      onAction: _undoLastHide,
     ).then((reason) {
-      if (reason != SnackBarClosedReason.action && mounted) {
-        setState(() => _events.removeWhere((e) => e.id == eventId));
-      }
+      if (reason == SnackBarClosedReason.action) return;
+      // Nothing left to undo means Undo already ran — the snackbar can report
+      // its own dismissal after the action has been handled.
+      if (_undoHide == null) return;
+      _undoHide = null;
+      // Written somewhere that outlives this widget, or the next fetch hands
+      // the card straight back: the server does not know what this reader has
+      // hidden. See [HiddenEvents].
+      HiddenEvents.hide(eventId);
+    });
+  }
+
+  void _undoLastHide() {
+    final restore = _undoHide;
+    _undoHide = null;
+    if (restore == null || !mounted) return;
+    final (index, event) = restore;
+    setState(() {
+      // A load-more may have landed inside the undo window, so the old index is
+      // a hint rather than a guarantee.
+      _events = [..._events]
+        ..insert(index.clamp(0, _events.length), event);
     });
   }
 
@@ -368,7 +440,7 @@ class FollowingFeedState extends State<FollowingFeed> {
     if (_events.isEmpty) {
       return FollowingEmptyState(
         topPadding: widget.chromeTopPadding,
-        onRefresh: _load,
+        onRefresh: () => _load(userInitiated: true),
       );
     }
 
@@ -385,7 +457,7 @@ class FollowingFeedState extends State<FollowingFeed> {
     });
 
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () => _load(userInitiated: true),
       color: ext.accentGold,
       // The Feed tab's pager, to the letter: vertical, one slot per page,
       // snapping. See the note on [FollowingFeed] for why the suggestions card

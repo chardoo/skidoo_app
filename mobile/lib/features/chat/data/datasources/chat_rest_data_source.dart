@@ -289,6 +289,9 @@ abstract class ChatRestDataSource {
   /// DELETE /chat/rooms/{room_id} — permanently delete a group room (sole admin only).
   Future<void> deleteRoom(String roomId);
 
+  /// Delete a conversation for the caller only. The other person keeps theirs.
+  Future<void> clearRoom(String roomId);
+
   /// GET /chat/rooms/{room_id}/messages?before_id=&limit=
   Future<List<ChatMessage>> getMessages(
     String roomId, {
@@ -728,6 +731,17 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
     debugPrint('[ChatREST] DELETE /chat/rooms/$roomId');
     await _wrap(() => _client.dio.delete('/chat/rooms/$roomId'));
     debugPrint('[ChatREST] room deleted — roomId=$roomId');
+  }
+
+  @override
+  Future<void> clearRoom(String roomId) async {
+    // Not [deleteRoom]. That verb destroys a group for everybody, and for a
+    // direct conversation the server refuses it outright — it has no admins,
+    // so every rule that endpoint applies would be skipped and the other
+    // person's copy would go with yours.
+    debugPrint('[ChatREST] DELETE /chat/rooms/$roomId/clear');
+    await _wrap(() => _client.dio.delete('/chat/rooms/$roomId/clear'));
+    debugPrint('[ChatREST] room cleared for me — roomId=$roomId');
   }
 
   @override

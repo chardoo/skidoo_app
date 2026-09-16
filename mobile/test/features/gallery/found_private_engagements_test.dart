@@ -96,7 +96,7 @@ void main() {
     ));
 
     expect(find.byType(MediaReactionRail), findsNothing);
-    expect(find.byIcon(Icons.download_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.download_outlined), findsOneWidget);
   });
 
   testWidgets('an unbought photo gets no actions anywhere', (t) async {
@@ -107,7 +107,7 @@ void main() {
     ));
 
     expect(find.byType(MediaReactionRail), findsNothing);
-    expect(find.byIcon(Icons.download_rounded), findsNothing);
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
   });
 
   testWidgets('the download is a bare glyph, like the actions beside it',
@@ -124,7 +124,7 @@ void main() {
     ));
 
     final download = find.ancestor(
-      of: find.byIcon(Icons.download_rounded),
+      of: find.byIcon(Icons.download_outlined),
       matching: find.byType(MediaRailAction),
     );
     expect(download, findsOneWidget);
@@ -151,7 +151,7 @@ void main() {
     ));
 
     final action = t.widget<MediaRailAction>(find.ancestor(
-      of: find.byIcon(Icons.download_rounded),
+      of: find.byIcon(Icons.download_outlined),
       matching: find.byType(MediaRailAction),
     ));
     expect(action.tapTargetSize, isNotNull);

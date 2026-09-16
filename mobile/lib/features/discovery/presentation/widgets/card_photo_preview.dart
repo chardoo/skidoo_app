@@ -23,6 +23,7 @@ class PostPhotoCarousel extends StatefulWidget {
     this.activeCardIndex,
     this.onMediaChanged,
     this.videoControlsBottomInset = 0,
+    this.onVideoEnded,
   });
 
   final List<EventPicture> pics;
@@ -48,6 +49,10 @@ class PostPhotoCarousel extends StatefulWidget {
   /// [JpergVideoPlayer.controlsBottomInset]. The card works this out, because
   /// the card is what knows whether the bar is up.
   final double videoControlsBottomInset;
+
+  /// Fired when a video slide plays through. The card uses it to move on to
+  /// the next asset — see [FullBleedEventCard].
+  final VoidCallback? onVideoEnded;
 
   @override
   State<PostPhotoCarousel> createState() => _PostPhotoCarouselState();
@@ -103,6 +108,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                   activeCardIndex: widget.activeCardIndex,
                   fit: BoxFit.contain,
                   controlsBottomInset: widget.videoControlsBottomInset,
+                  onEnded: widget.onVideoEnded,
                 ),
               ),
               if (isLastLocked)
@@ -162,6 +168,7 @@ class _SliderVideoItem extends StatefulWidget {
     required this.activeIndex,
     required this.onTap,
     this.controlsBottomInset = 0,
+    this.onEnded,
     this.cardIndex = 0,
     this.activeCardIndex,
     this.fit = BoxFit.contain,
@@ -178,6 +185,9 @@ class _SliderVideoItem extends StatefulWidget {
   /// Passed straight through to the player. See
   /// [JpergVideoPlayer.controlsBottomInset].
   final double controlsBottomInset;
+
+  /// Fired when this clip plays through.
+  final VoidCallback? onEnded;
 
   @override
   State<_SliderVideoItem> createState() => _SliderVideoItemState();
@@ -216,13 +226,16 @@ class _SliderVideoItemState extends State<_SliderVideoItem> {
         url: widget.url,
         isActive: _isSlideActive && _isCardActive,
         autoPlay: true,
-        loop: true,
+        // A looping video never ends, so it could never hand the card a moment
+        // to move on from. Loops only when nobody is waiting for it to finish.
+        loop: widget.onEnded == null,
         fit: widget.fit,
         showControls: true,
         controlsBottomInset: widget.controlsBottomInset,
         // The feed's sound switch lives in the navigation band, where a
         // soundtrack's does — one control, one place. See [FeedVolumeButton].
         showMuteButton: false,
+        onEnded: widget.onEnded,
         // Transparent so the [MediaBackdrop] behind this slide shows through
         // the letterbox bands. The player paints this colour across its whole
         // box, so any opaque value here — themed or not — would cover the

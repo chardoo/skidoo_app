@@ -169,6 +169,17 @@ class _PhotoCommentSheetContentState
     return (topLevel: topLevel, repliesMap: repliesMap);
   }
 
+  @override
+  void onLikeSettled(String messageId, bool liked, int likes) {
+    // Onto the message, and from there into the local cache — the sheet is
+    // rebuilt from this bloc's list and thrown away when it closes.
+    context.read<ChatRoomBloc>().add(ChatRoomCommentLikeSettled(
+          messageId: messageId,
+          liked: liked,
+          likeCount: likes,
+        ));
+  }
+
   CommentRowData _toRowData(ChatMessage msg, {List<ChatMessage>? replies}) {
     final like = likeFor(msg);
     return CommentRowData(

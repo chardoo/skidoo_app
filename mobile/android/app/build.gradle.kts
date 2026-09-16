@@ -36,7 +36,7 @@ android {
         // google_ml_kit requires minSdk 21; camera requires 21
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 16 
+        versionCode = 17 
         versionName = flutter.versionName
     }
 

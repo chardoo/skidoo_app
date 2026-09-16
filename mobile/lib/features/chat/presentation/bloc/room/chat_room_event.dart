@@ -293,9 +293,38 @@ class ChatRoomLeaveGroupRequested extends ChatRoomEvent {
   const ChatRoomLeaveGroupRequested();
 }
 
+/// The server settled a heart on a comment: this is where it landed.
+///
+/// Dispatched after the toggle returns, not when it is tapped — the optimistic
+/// state lives in the sheet for the moment the request is in the air, and this
+/// is the value that outlives it. Writing it onto the message is the whole
+/// point: the sheet is rebuilt from the bloc's list every frame and thrown away
+/// when it closes, so a like held anywhere else is gone by the time the sheet
+/// is opened again.
+class ChatRoomCommentLikeSettled extends ChatRoomEvent {
+  const ChatRoomCommentLikeSettled({
+    required this.messageId,
+    required this.liked,
+    required this.likeCount,
+  });
+
+  final String messageId;
+  final bool liked;
+  final int likeCount;
+}
+
 /// Admin requested permanent deletion of the room.
 class ChatRoomDeleteRequested extends ChatRoomEvent {
   const ChatRoomDeleteRequested();
+}
+
+/// The reader deleted this conversation for themselves.
+///
+/// Distinct from [ChatRoomDeleteRequested], which destroys a group for every
+/// member. This one leaves the other person's copy untouched, and is the only
+/// delete a direct conversation offers.
+class ChatRoomClearRequested extends ChatRoomEvent {
+  const ChatRoomClearRequested();
 }
 
 /// WS broadcast: room was deleted by an admin (received by all participants).

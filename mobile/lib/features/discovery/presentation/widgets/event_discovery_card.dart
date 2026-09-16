@@ -622,8 +622,14 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
   /// Optimistically bump the feed card's comment count when the user posts a
   /// comment. The feed rebuilds from DiscoveryBloc state, so the count updates
   /// live without waiting for a reload.
-  void _onCommentSent() {
-    _discoveryBloc?.add(DiscoveryCommentAdded(widget.event.id));
+  ///
+  /// [event] is the post the sheet was on when the comment went, which on a
+  /// vertical feed is not necessarily the one this card opened it with — see
+  /// [FeedActiveEvent]. This card is in a scrolling list rather than a pager,
+  /// so in practice the two are the same; taking it as an argument is what
+  /// keeps that true if this card is ever paged.
+  void _onCommentSent(EventDiscovery event) {
+    _discoveryBloc?.add(DiscoveryCommentAdded(event.id));
     // The line above only moves this event's card inside the discovery feed.
     // The same album also appears in search, in saved items and on a
     // photographer's profile, and those read the count straight off their own
@@ -634,9 +640,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
     // back. It is replaced by an authoritative number the next time the list
     // is fetched.
     CommentCounts.instance.adjust(
-      widget.event.id,
+      event.id,
       1,
-      base: widget.event.commentCount,
+      base: event.commentCount,
     );
   }
 }

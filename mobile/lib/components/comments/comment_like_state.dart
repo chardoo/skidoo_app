@@ -38,6 +38,16 @@ mixin CommentLikeState<T extends StatefulWidget> on State<T> {
   VoidCallback? likeHandler(ChatMessage msg) =>
       msg.isLocal ? null : () => toggleLike(msg);
 
+  /// Where the server put the like, for a surface that can keep it.
+  ///
+  /// The map above dies with this widget, and that was the whole bug: liking a
+  /// comment worked, and reopening the sheet showed an empty heart again,
+  /// because nothing outside the sheet had been told. Override this to write
+  /// the value onto the message — the sheets that render from [ChatRoomBloc]
+  /// dispatch `ChatRoomCommentLikeSettled`, which updates the list and the
+  /// local cache the next sheet will paint from.
+  void onLikeSettled(String messageId, bool liked, int likes) {}
+
   /// Optimistic: the count moves immediately and is corrected, or put back,
   /// when the server answers. A heart that waits for a round trip before it
   /// fills reads as a button that did not work.
@@ -62,5 +72,11 @@ mixin CommentLikeState<T extends StatefulWidget> on State<T> {
       // agreed to.
       _likes[msg.id] = settled ?? current;
     });
+
+    // Only a real answer is worth keeping. Reporting the reverted value would
+    // write a failed request into the cache as though it had succeeded.
+    if (settled != null) {
+      onLikeSettled(msg.id, settled.liked, settled.likes);
+    }
   }
 }

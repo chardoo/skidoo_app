@@ -103,6 +103,59 @@ class EventPicture {
   }
 }
 
+/// The one comment on a post that people are visibly reacting to.
+///
+/// Null on nearly every card, and that is the feature rather than a gap: the
+/// server only sends one when a comment clears both a floor and a margin over
+/// the runner-up, so a card with something to say is rare enough to be worth
+/// looking at. See `TOP_COMMENT_FLOOR` in main's feed_repository.
+class TopComment {
+  const TopComment({
+    required this.id,
+    required this.authorName,
+    required this.content,
+    this.likeCount = 0,
+    this.replyCount = 0,
+  });
+
+  final String id;
+  final String authorName;
+  final String content;
+  final int likeCount;
+  final int replyCount;
+
+  static TopComment? fromMap(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['id']?.toString() ?? '';
+    final content = raw['content']?.toString() ?? '';
+    // Both are load-bearing: a comment with no id cannot be opened, and one
+    // with no text has nothing to show. Either way there is no card to draw.
+    if (id.isEmpty || content.trim().isEmpty) return null;
+    return TopComment(
+      id: id,
+      authorName: raw['authorName']?.toString() ??
+          raw['author_name']?.toString() ??
+          '',
+      content: content,
+      likeCount: (raw['likeCount'] as num?)?.toInt() ??
+          (raw['like_count'] as num?)?.toInt() ??
+          0,
+      replyCount: (raw['replyCount'] as num?)?.toInt() ??
+          (raw['reply_count'] as num?)?.toInt() ??
+          0,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'authorName': authorName,
+        'content': content,
+        'likeCount': likeCount,
+        'replyCount': replyCount,
+      };
+}
+
+
 class EventDiscovery {
   final String id;
   final String eventName;
@@ -150,6 +203,10 @@ class EventDiscovery {
   /// soundtrack is the normal case, not a missing one.
   final List<MusicTrack> music;
 
+  /// The standout comment, when there is one. Null is the ordinary case — see
+  /// [TopComment].
+  final TopComment? topComment;
+
   const EventDiscovery({
     required this.id,
     required this.eventName,
@@ -166,6 +223,7 @@ class EventDiscovery {
     this.contentTags = const [],
     this.description = '',
     this.music = const [],
+    this.topComment,
   });
 
   Map<String, dynamic> toMap() => {
@@ -185,6 +243,7 @@ class EventDiscovery {
         'content_tags': contentTags,
         'description': description,
         'music': music.map((t) => t.toMap()).toList(),
+        if (topComment != null) 'topComment': topComment!.toMap(),
       };
 
   EventDiscovery copyWith({
@@ -198,6 +257,7 @@ class EventDiscovery {
     List<String>? contentTags,
     String? description,
     List<MusicTrack>? music,
+    TopComment? topComment,
   }) {
     return EventDiscovery(
       id: id,
@@ -216,6 +276,7 @@ class EventDiscovery {
       contentTags: contentTags ?? this.contentTags,
       description: description ?? this.description,
       music: music ?? this.music,
+      topComment: topComment ?? this.topComment,
     );
   }
 
@@ -264,6 +325,10 @@ class EventDiscovery {
       // every cached feed written before it existed — both parse to empty,
       // which is the same as an unscored event and needs no special case.
       music: MusicTrack.listFrom(event['music']),
+      // Absent on most cards by design, and on any cached feed written before
+      // this existed. Both parse to null, which is "nothing to show" — the
+      // same case the card already handles.
+      topComment: TopComment.fromMap(event['topComment'] ?? event['top_comment']),
     );
   }
 }

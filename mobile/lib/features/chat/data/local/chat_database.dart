@@ -10,6 +10,9 @@ import 'package:sqflite/sqflite.dart';
 /// Schema version history:
 ///   v1 – initial: chat_rooms + chat_messages tables.
 ///   v2 – added sender_name, image_url, reply_to_id, reply_preview columns.
+///   v7 – added like_count / viewer_liked. Without them every cached comment
+///        came back with an empty heart: the sheet paints from this cache
+///        first, so liking a comment and reopening the sheet lost the like.
 class ChatDatabase {
   static const _dbName = 'jperg_chat.db';
 
@@ -20,7 +23,7 @@ class ChatDatabase {
   /// lose chat history permanently, not just force a re-fetch.
   static const _legacyDbName = 'skidoo_chat.db';
 
-  static const _dbVersion = 6;
+  static const _dbVersion = 7;
 
   static Database? _db;
 
@@ -84,7 +87,12 @@ class ChatDatabase {
         otpk_id             INTEGER,
         spk_id              INTEGER,
         updated_at          TEXT,
-        system_type         TEXT
+        system_type         TEXT,
+        -- A comment row is a message row, and comments carry a heart. Cached
+        -- alongside everything else so reopening a sheet draws the same count
+        -- and the same filled/unfilled heart the server last reported.
+        like_count          INTEGER NOT NULL DEFAULT 0,
+        viewer_liked        INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
@@ -131,6 +139,15 @@ class ChatDatabase {
       // Group photo, so the inbox draws the right avatar from cache on a cold
       // start rather than falling back to an initial until the sync lands.
       await db.execute('ALTER TABLE chat_rooms ADD COLUMN image_url TEXT');
+    }
+    if (oldVersion < 7) {
+      // Defaulting to 0/false rather than backfilling: the true values are the
+      // server's, and the next fetch of any room brings them. An empty heart
+      // for a moment is right; a *wrong* filled one would not be.
+      await db.execute(
+          'ALTER TABLE chat_messages ADD COLUMN like_count INTEGER NOT NULL DEFAULT 0');
+      await db.execute(
+          'ALTER TABLE chat_messages ADD COLUMN viewer_liked INTEGER NOT NULL DEFAULT 0');
     }
   }
 
@@ -261,6 +278,8 @@ class ChatDatabase {
             'is_local': msg.isLocal ? 1 : 0,
             // Preserve is_read=1 if the user already read this message.
             'is_read': wasRead || msg.isRead ? 1 : 0,
+            'like_count': msg.likeCount,
+            'viewer_liked': msg.viewerLiked ? 1 : 0,
           };
 
           // Only overwrite E2EE / content fields when the stored copy is still
@@ -489,6 +508,8 @@ class ChatDatabase {
         'spk_id': msg.senderSpkId,
         'updated_at': msg.updatedAt?.toIso8601String(),
         'system_type': msg.systemType,
+        'like_count': msg.likeCount,
+        'viewer_liked': msg.viewerLiked ? 1 : 0,
       };
 
   /// Removes entries with null values before passing to sqflite insert/update.
@@ -543,6 +564,10 @@ class ChatDatabase {
       otpkId: row['otpk_id'] as int?,
       senderSpkId: row['spk_id'] as int?,
       systemType: row['system_type'] as String?,
+      // Null-tolerant: a row written before v7 has no value for these, and an
+      // upgrade that had not run yet must not crash the inbox.
+      likeCount: (row['like_count'] as int?) ?? 0,
+      viewerLiked: (row['viewer_liked'] as int?) == 1,
       updatedAt: row['updated_at'] != null
           ? DateTime.tryParse(row['updated_at'] as String)
           : null,

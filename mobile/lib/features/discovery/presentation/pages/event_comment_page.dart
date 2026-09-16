@@ -19,6 +19,7 @@ import 'package:jperg_app/core/config/chat_config.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart'
     show GetEventRoomUseCase;
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
+import 'package:jperg_app/features/discovery/presentation/feed_active_event.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
@@ -27,13 +28,23 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 
 /// Opens a bottom sheet showing an image slider + real-time event comments.
 class EventCommentPage {
+  /// [focusCommentId] scrolls to and highlights one comment once the thread
+  /// has loaded. Passed when the sheet was opened *by* a comment — the card
+  /// promotes one for a few seconds, and opening the thread at the top after
+  /// tapping a specific comment makes the tap feel like it went somewhere
+  /// else.
   static void show(BuildContext context, EventDiscovery event,
-      {VoidCallback? onCommentSent}) {
+      {void Function(EventDiscovery event)? onCommentSent,
+      String? focusCommentId}) {
     showCommentSheet(
       context,
       builder: (ctx) => BlocProvider(
         create: (_) => sl<ChatRoomBloc>(),
-        child: _EventCommentSheet(event: event, onCommentSent: onCommentSent),
+        child: _EventCommentSheet(
+          event: event,
+          onCommentSent: onCommentSent,
+          focusCommentId: focusCommentId,
+        ),
       ),
     );
   }
@@ -42,9 +53,20 @@ class EventCommentPage {
 // ── Sheet ─────────────────────────────────────────────────────────────────────
 
 class _EventCommentSheet extends StatefulWidget {
-  const _EventCommentSheet({required this.event, this.onCommentSent});
+  const _EventCommentSheet({
+    required this.event,
+    this.onCommentSent,
+    this.focusCommentId,
+  });
+
+  /// The post the sheet opens on. Not the post it stays on — see
+  /// [_EventCommentSheetState._onFeedMoved].
   final EventDiscovery event;
-  final VoidCallback? onCommentSent;
+  final void Function(EventDiscovery event)? onCommentSent;
+
+  /// A comment to scroll to and highlight once the thread has loaded. Set when
+  /// the sheet was opened by tapping that comment on the card.
+  final String? focusCommentId;
 
   @override
   State<_EventCommentSheet> createState() => _EventCommentSheetState();
@@ -52,6 +74,14 @@ class _EventCommentSheet extends StatefulWidget {
 
 class _EventCommentSheetState extends State<_EventCommentSheet>
     with CommentLikeState<_EventCommentSheet> {
+  /// The post this sheet is currently about.
+  ///
+  /// Seeded from the card that opened the sheet, and then owned by the feed:
+  /// the band above the sheet stays live so the media can be swiped while it
+  /// is read, and a vertical swipe there pages the feed. Every use of
+  /// `widget.event` below is deliberately this instead.
+  late EventDiscovery _event = widget.event;
+
   bool _loading = true;
   String? _error;
   String _myId = '';
@@ -59,6 +89,15 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
   final _inputCtrl = TextEditingController();
   final _focusNode = FocusNode();
   final _scrollCtrl = ScrollController();
+
+  // ── Opening on a particular comment ───────────────────────────────────────
+  //
+  // The card promotes one comment for a few seconds; tapping it has to land on
+  // *that* comment, not at the top of the thread. Cleared once used, so a later
+  // load-more or a swipe to the next post does not drag the list back.
+  String? _focusId;
+  final _focusKey = GlobalKey();
+  bool _focusSettled = false;
   late final ChatRoomBloc _bloc;
 
   // Local expand state for threaded comments (ChatRoomBloc doesn't track this).
@@ -71,8 +110,40 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
     super.initState();
     _bloc = context.read<ChatRoomBloc>();
     _scrollCtrl.addListener(_onScroll);
-    _loadRoom();
+    _focusId = widget.focusCommentId;
+    FeedActiveEvent.current.addListener(_onFeedMoved);
+    // A locked post has no room to join and nothing to wait for.
+    _loading = _event.commentsEnabled;
+    if (_event.commentsEnabled) _loadRoom();
     _loadMyId();
+  }
+
+  /// The feed moved under the sheet: follow it.
+  ///
+  /// Everything held here belongs to the post being left, and every piece of
+  /// it would be wrong about the new one — a half-typed reply to a comment no
+  /// longer on screen, expanded threads keyed to messages from another room, a
+  /// scroll offset into a list of a different length.
+  void _onFeedMoved() {
+    final next = FeedActiveEvent.current.value;
+    // Null is "nobody has claimed the front position", not "no post". And the
+    // same post arriving again is not a move.
+    if (next == null || next.id == _event.id) return;
+
+    _bloc.add(const ChatRoomLeft());
+    _focusNode.unfocus();
+    if (_scrollCtrl.hasClients) _scrollCtrl.jumpTo(0);
+
+    setState(() {
+      _event = next;
+      _error = null;
+      _replyingTo = null;
+      _expandedIds.clear();
+      _inputCtrl.clear();
+      _loading = next.commentsEnabled;
+    });
+
+    if (next.commentsEnabled) _loadRoom();
   }
 
   Future<void> _loadMyId() async {
@@ -81,29 +152,54 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
   }
 
   Future<void> _loadRoom() async {
+    // The post this call is for. A reader swipes faster than a room lookup
+    // answers, and without this the reply for the post they left arrives last
+    // and wins — joining its room under the new post's header.
+    final target = _event.id;
     try {
-      final room = await sl<GetEventRoomUseCase>().call(widget.event.id);
-      if (mounted) {
-        setState(() => _loading = false);
-        _bloc.add(ChatRoomJoined(room.id, room: room));
-      }
+      final room = await sl<GetEventRoomUseCase>().call(target);
+      if (!mounted || _event.id != target) return;
+      setState(() => _loading = false);
+      _bloc.add(ChatRoomJoined(room.id, room: room));
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
-      }
+      if (!mounted || _event.id != target) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
   @override
   void dispose() {
+    FeedActiveEvent.current.removeListener(_onFeedMoved);
     _bloc.add(const ChatRoomLeft());
     _inputCtrl.dispose();
     _focusNode.dispose();
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  /// Bring the comment the reader tapped into view, once.
+  ///
+  /// [Scrollable.ensureVisible] rather than an offset: the rows are different
+  /// heights, so there is no arithmetic that lands on one. It only works for a
+  /// row the list has actually built — a target far down an unloaded thread
+  /// stays where it is rather than the sheet guessing and jumping somewhere
+  /// wrong, which is the honest failure here.
+  void _settleFocus() {
+    if (_focusSettled || !mounted) return;
+    final target = _focusKey.currentContext;
+    if (target == null) return;
+    _focusSettled = true;
+    Scrollable.ensureVisible(
+      target,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      // Not flush to the top: a comment pinned against the header reads as
+      // the start of the thread rather than as the one that was tapped.
+      alignment: 0.2,
+    );
   }
 
   void _onScroll() {
@@ -128,7 +224,8 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
     _bloc.add(ChatRoomMessageSent(text, replyToId: _replyingTo?.id));
-    widget.onCommentSent?.call();
+    // The post as it is now, not the one the sheet opened on.
+    widget.onCommentSent?.call(_event);
     _inputCtrl.clear();
     if (_replyingTo != null) setState(() => _replyingTo = null);
   }
@@ -184,6 +281,17 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
     return (topLevel: topLevel, repliesMap: repliesMap);
   }
 
+  @override
+  void onLikeSettled(String messageId, bool liked, int likes) {
+    // Onto the message, and from there into the local cache — the sheet is
+    // rebuilt from this bloc's list and thrown away when it closes.
+    context.read<ChatRoomBloc>().add(ChatRoomCommentLikeSettled(
+          messageId: messageId,
+          liked: liked,
+          likeCount: likes,
+        ));
+  }
+
   CommentRowData _toRowData(
     ChatMessage msg, {
     List<ChatMessage>? replies,
@@ -215,14 +323,21 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return CommentSheetShell(
-      title: widget.event.eventName,
-      subtitle: 'by ${widget.event.photographerName}',
+      title: _event.eventName,
+      subtitle: 'by ${_event.photographerName}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Comments ────────────────────────────────────────────────────────
           Expanded(
-            child: _loading
+            // Locked before loaded, because there is nothing to load: a post
+            // with comments off has no thread to fetch and no input to offer.
+            // It is checked here rather than by hiding the input bar alone, so
+            // swiping onto one cannot leave the previous post's thread on
+            // screen under a header that says otherwise.
+            child: !_event.commentsEnabled
+                ? CommentsLockedState(ext: ext)
+                : _loading
                 ? const AppLoadingIndicator()
                 : _error != null
                     ? AppErrorView(
@@ -293,8 +408,19 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
                                     final replies =
                                         threaded.repliesMap[msg.id] ?? [];
 
+                                    final focused = msg.id == _focusId;
+                                    if (focused) {
+                                      // The row exists this frame, so it can
+                                      // be scrolled to on the next one.
+                                      WidgetsBinding.instance
+                                          .addPostFrameCallback(
+                                              (_) => _settleFocus());
+                                    }
+
                                     return ThreadedCommentWidget(
-                                      key: ValueKey(msg.id),
+                                      key: focused
+                                          ? _focusKey
+                                          : ValueKey(msg.id),
                                       comment: _toRowData(msg,
                                           replies: replies,
                                           onReply: _startReply),
@@ -517,6 +643,17 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
       }
     }
     return (topLevel: topLevel, repliesMap: repliesMap);
+  }
+
+  @override
+  void onLikeSettled(String messageId, bool liked, int likes) {
+    // Onto the message, and from there into the local cache — the sheet is
+    // rebuilt from this bloc's list and thrown away when it closes.
+    context.read<ChatRoomBloc>().add(ChatRoomCommentLikeSettled(
+          messageId: messageId,
+          liked: liked,
+          likeCount: likes,
+        ));
   }
 
   CommentRowData _toRowData(ChatMessage msg,

@@ -280,6 +280,19 @@ class DeleteRoomUseCase {
   Future<void> call(String roomId) => _repo.deleteRoom(roomId);
 }
 
+/// Delete a conversation for this user alone.
+///
+/// The counterpart to [DeleteRoomUseCase], and not interchangeable with it: that
+/// one destroys a group for every member, this one moves a watermark on the
+/// caller's own participant row. A direct conversation can only be deleted this
+/// way — the server refuses the other verb for one, because a DM has no admins
+/// and every rule protecting a group would be skipped.
+class ClearRoomUseCase {
+  final ChatRepository _repo;
+  ClearRoomUseCase(this._repo);
+  Future<void> call(String roomId) => _repo.clearRoom(roomId);
+}
+
 class GetRoomMessagesUseCase {
   final ChatRepository _repo;
   GetRoomMessagesUseCase(this._repo);

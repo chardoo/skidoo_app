@@ -139,15 +139,25 @@ void main() {
     // MediaReactionRail is on the list because the feed card and the Found
     // viewer now delegate their glyphs to it — leave it off and this guard
     // passes by checking two files that no longer name an icon at all.
+    // The Found viewer's bottom bar is on the list because the download moved
+    // off the rail and into it, taking the glyph out of this guard's sight —
+    // and promptly drifted to the filled arrow, the one solid icon on a
+    // surface where everything else is hollow. A glyph that leaves the rail
+    // does not leave the rule.
     final rails = [
       'lib/components/media/media_reaction_rail.dart',
       'lib/features/gallery/presentation/found/widgets/found_action_rail.dart',
+      'lib/features/gallery/presentation/found/widgets/found_photo_quick_actions.dart',
       'lib/features/discovery/presentation/widgets/full_bleed_event_card.dart',
       'lib/features/discovery/presentation/widgets/card_interaction_bar.dart',
       'lib/components/media/media_action_buttons.dart',
     ];
+    // `download` has no active state at all — see [MediaReaction.download] —
+    // so a filled download arrow is never the right answer, conditional or
+    // not. It is caught here anyway rather than given its own rule: the
+    // conditional escape below is harmless for a glyph nothing ever fills.
     final filled = RegExp(
-        r'Icons\.(favorite|thumb_down|thumb_up|mode_comment|bookmark|near_me)_rounded');
+        r'Icons\.(favorite|thumb_down|thumb_up|mode_comment|bookmark|near_me|download)_rounded');
 
     for (final path in rails) {
       final source = File(path).readAsStringSync();

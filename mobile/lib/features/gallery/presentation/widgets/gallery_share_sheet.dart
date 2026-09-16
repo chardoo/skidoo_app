@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
@@ -17,7 +18,6 @@ import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/shareable_user.dart';
 import 'package:jperg_app/services/auth_service.dart';
-import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_section_label.dart';
 
@@ -103,7 +103,10 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
       final cached = await sl<GetCachedRoomsUseCase>().call();
       if (mounted) {
         setState(() {
-          _rooms = cached.where((r) => !r.hasPendingInvite(_myUserId)).toList();
+          _rooms = cached
+              .where((r) =>
+                  r.type.isShareTarget && !r.hasPendingInvite(_myUserId))
+              .toList();
           _loadingRooms = false;
         });
       }
@@ -116,7 +119,10 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
       final fresh = await sl<GetMyRoomsUseCase>().call();
       if (mounted) {
         setState(() {
-          _rooms = fresh.where((r) => !r.hasPendingInvite(_myUserId)).toList();
+          _rooms = fresh
+              .where((r) =>
+                  r.type.isShareTarget && !r.hasPendingInvite(_myUserId))
+              .toList();
           _loadingRooms = false;
         });
       }
@@ -175,11 +181,12 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
         });
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = e.toString();
           _loading = false;
         });
+      }
     }
   }
 
@@ -279,8 +286,28 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
-    return Container(
-      height: MediaQuery.sizeOf(context).height * 0.75,
+    // The sheet has to give the keyboard its room back.
+    //
+    // It was a flat 75% of the screen with nothing watching `viewInsets`, and
+    // this sheet's whole purpose is to type a name into: tapping the search
+    // field raised the keyboard over the bottom third of it, so the results
+    // being searched for were behind the keyboard and the send button could
+    // not be reached. `isScrollControlled: true` allows a taller sheet; it does
+    // not make one shrink.
+    //
+    // So: still 75% when there is no keyboard, and never taller than the space
+    // actually left above one. The padding moves the sheet up; the height stops
+    // it being clipped at the top.
+    final media = MediaQuery.of(context);
+    final keyboard = media.viewInsets.bottom;
+    final available = media.size.height - keyboard - media.padding.top;
+
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: keyboard),
+      child: Container(
+      height: math.min(media.size.height * 0.75, available),
       decoration: BoxDecoration(
         color: ext.homeBackground,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
@@ -323,7 +350,12 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
               padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
               child: SearchField(
                 controller: _searchCtrl,
-                hint: 'Search by name…',
+                // Says "or email" because it is the only way to reach someone
+                // who has hidden their profile — they are out of search by
+                // name on purpose, and an exact address still finds them.
+                // From l10n rather than hardcoded: the string already existed
+                // there and the two had drifted apart.
+                hint: AppLocalizations.of(context)!.shareSheetSearchByName,
                 // No autofocus — the sheet opens to recent chats/suggestions
                 // to browse, not straight to the keyboard.
                 autofocus: false,
@@ -380,71 +412,19 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                                   );
                                 }
                                 final u = _results[i];
-                                final isSending = _sendingTo == u.id;
-                                return ListTile(
-                                  leading: CircleAvatar(
-                                    radius: 22.r,
-                                    backgroundColor:
-                                        ext.accentGold.withValues(alpha: 0.15),
-                                    backgroundImage: u.imageUrl != null
-                                        ? boundedNetworkImage(
-                                            context, u.imageUrl!,
-                                            diameter: 44.r)
-                                        : null,
-                                    child: u.imageUrl == null
-                                        ? Icon(Icons.person_rounded,
-                                            color: ext.accentGold, size: 20.sp)
-                                        : null,
-                                  ),
-                                  title: Text(u.name,
-                                      style: TextStyle(
-                                          color: ext.greetingColor,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14.sp)),
-                                  subtitle: Row(
-                                    children: [
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 6.w, vertical: 2.h),
-                                        decoration: BoxDecoration(
-                                          color: (u.role == 'photographer'
-                                                  ? ext.accentGold
-                                                  : Colors.blueAccent)
-                                              .withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(
-                                              AppRadius.xs.r),
-                                        ),
-                                        child: Text(
-                                          u.role == 'photographer'
-                                              ? 'Creator'
-                                              : 'User',
-                                          style: TextStyle(
-                                            color: u.role == 'photographer'
-                                                ? ext.accentGold
-                                                : Colors.blueAccent,
-                                            fontSize: 10.sp,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  trailing: isSending
-                                      ? SizedBox(
-                                          width: 22.w,
-                                          height: 22.w,
-                                          child: CircularProgressIndicator(
-                                              color: ext.accentGold,
-                                              strokeWidth: 2))
-                                      : Icon(Icons.send_rounded,
-                                          color: ext.accentGold, size: 20.sp),
-                                  onTap: isSending ? null : () => _sendTo(u),
+                                return _personTile(
+                                  ext,
+                                  name: u.name,
+                                  imageUrl: u.imageUrl,
+                                  sending: _sendingTo == u.id,
+                                  onTap: () => _sendTo(u),
                                 );
                               },
                             ),
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -491,52 +471,57 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
               padding: EdgeInsets.fromLTRB(AppSpacing.lg.w, AppSpacing.sm.h,
                   AppSpacing.lg.w, AppSpacing.xs.h)),
           for (final p in _recommended)
-            ListTile(
-              leading: CircleAvatar(
-                radius: 22.r,
-                backgroundColor: ext.accentGold.withValues(alpha: 0.15),
-                backgroundImage: p.profileUrl != null
-                    ? boundedNetworkImage(context, p.profileUrl!,
-                        diameter: 44.r)
-                    : null,
-                child: p.profileUrl == null
-                    ? Icon(Icons.person_rounded,
-                        color: ext.accentGold, size: 20.sp)
-                    : null,
-              ),
-              title: Text(p.name,
-                  style: TextStyle(
-                      color: ext.greetingColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14.sp)),
-              subtitle: Container(
-                margin: const EdgeInsets.only(top: 2),
-                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                decoration: BoxDecoration(
-                  color: ext.accentGold.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppRadius.xs.r),
-                ),
-                child: Text(
-                  'Creator',
-                  style: TextStyle(
-                    color: ext.accentGold,
-                    fontSize: 10.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              trailing: _sendingTo == p.id
-                  ? SizedBox(
-                      width: 22.w,
-                      height: 22.w,
-                      child: CircularProgressIndicator(
-                          color: ext.accentGold, strokeWidth: 2))
-                  : Icon(Icons.send_rounded,
-                      color: ext.accentGold, size: 20.sp),
-              onTap: _sendingTo != null ? null : () => _sendToRecommended(p),
+            _personTile(
+              ext,
+              name: p.name,
+              imageUrl: p.profileUrl,
+              sending: _sendingTo == p.id,
+              onTap: () => _sendToRecommended(p),
             ),
         ],
       ],
     );
   }
+
+  /// One row of the person list: picture, name, send.
+  ///
+  /// Both lists used to carry a "Creator"/"User" badge under the name. Which
+  /// kind of account someone has changes nothing about sharing a photo with
+  /// them, so it was colour and a second line of text spent on a distinction
+  /// the sheet never acts on — and it was the only thing making the search
+  /// rows and the suggested rows two different tiles.
+  Widget _personTile(
+    AppThemeExtension ext, {
+    required String name,
+    required String? imageUrl,
+    required bool sending,
+    required VoidCallback onTap,
+  }) =>
+      ListTile(
+        leading: CircleAvatar(
+          radius: 22.r,
+          backgroundColor: ext.accentGold.withValues(alpha: 0.15),
+          backgroundImage: imageUrl != null
+              ? boundedNetworkImage(context, imageUrl, diameter: 44.r)
+              : null,
+          child: imageUrl == null
+              ? Icon(Icons.person_rounded, color: ext.accentGold, size: 20.sp)
+              : null,
+        ),
+        title: Text(name,
+            style: TextStyle(
+                color: ext.greetingColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 14.sp)),
+        trailing: sending
+            ? SizedBox(
+                width: 22.w,
+                height: 22.w,
+                child: CircularProgressIndicator(
+                    color: ext.accentGold, strokeWidth: 2))
+            : Icon(Icons.send_rounded, color: ext.accentGold, size: 20.sp),
+        // A send already in flight owns the sheet — tapping a second person
+        // would open a second room out from under the first.
+        onTap: _sendingTo != null ? null : onTap,
+      );
 }

@@ -191,6 +191,19 @@ class ChatMessage {
     this.viewerLiked = false,
   });
 
+  /// A flag that may arrive as a bool or as 1/0.
+  ///
+  /// The server sends JSON booleans; [toJson] writes `1`/`0` for the same
+  /// fields, so `fromJson(toJson(m))` threw "type 'int' is not a subtype of
+  /// type 'bool?'". Nothing round-trips a message today, which is the only
+  /// reason that has never been hit — reading both is cheaper than leaving a
+  /// landmine for whoever does it first.
+  static bool _flag(Object? value, {bool orElse = false}) => switch (value) {
+        bool b => b,
+        num n => n != 0,
+        _ => orElse,
+      };
+
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     ReplyPreview? preview;
     final previewRaw = json['reply_preview'];
@@ -225,20 +238,20 @@ class ChatMessage {
       replyToId: json['reply_to_id'] as String?,
       replyPreview: preview,
       createdAt: parseServerTime(json['created_at'] as String),
-      isRead: (json['is_read'] as bool?) ?? false,
+      isRead: _flag(json['is_read']),
       readBy: (json['read_by'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
       deliveredTo: (json['delivered_to'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
-      isEncrypted: (json['is_encrypted'] as bool?) ?? false,
+      isEncrypted: _flag(json['is_encrypted']),
       iv: json['iv'] as String?,
       ephemeralKey: json['ephemeral_key'] as String?,
       senderIdentityKey: json['sender_identity_key'] as String?,
       otpkId: (json['otpk_id'] as num?)?.toInt(),
       senderSpkId: ((json['sender_spk_id'] ?? json['spk_id']) as num?)?.toInt(),
-      stale: json['stale'] as bool?,
+      stale: json['stale'] == null ? null : _flag(json['stale']),
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'] as String)
           : null,

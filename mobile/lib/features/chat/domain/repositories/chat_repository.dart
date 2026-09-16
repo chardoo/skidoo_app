@@ -104,6 +104,10 @@ abstract class ChatRepository {
   /// DELETE /chat/rooms/{room_id} — permanently delete a group room.
   Future<void> deleteRoom(String roomId);
 
+  /// Delete a conversation for this user only, leaving the other person's copy
+  /// alone. What "delete chat" means for a DM.
+  Future<void> clearRoom(String roomId);
+
   /// Local-only: remove a room and all its cached messages from the DB.
   /// Called when a WS event signals the room is gone for the current user
   /// (room_deleted broadcast, participant_removed for self).

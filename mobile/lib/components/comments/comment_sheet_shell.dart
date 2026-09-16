@@ -197,6 +197,90 @@ class _SheetSurface extends StatelessWidget {
   }
 }
 
+// ── Locked state ──────────────────────────────────────────────────────────────
+
+/// The whole sheet body when the post has comments turned off.
+///
+/// Distinct from [CommentEmptyState], and the difference is the point: an empty
+/// thread is an invitation — "be the first to say something", with an input bar
+/// under it to do so. This is a closed door, so it replaces the thread *and*
+/// the input bar rather than greying one out. A disabled text field still reads
+/// as something to try.
+///
+/// It matters most on a post swiped to rather than opened: the sheet follows
+/// the feed, so a reader can arrive here from a post where they were mid-
+/// sentence, and the bar going away is what says the conversation is not on
+/// offer here.
+class CommentsLockedState extends StatelessWidget {
+  const CommentsLockedState({super.key, required this.ext});
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Sheds its parts as the room runs out, exactly as [CommentEmptyState]
+    // does — this state has the sheet's full height rather than sharing it
+    // with an input bar, but the keyboard can still be up from the post
+    // before.
+    return LayoutBuilder(builder: (context, constraints) {
+      final room = constraints.maxHeight;
+      final showIcon = !room.isFinite || room >= 124.h;
+      final showReason = !room.isFinite || room >= 46.h;
+
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showIcon) ...[
+              Container(
+                width: 56.w,
+                height: 56.w,
+                decoration: BoxDecoration(
+                  color: (isDark ? Colors.white : Colors.black)
+                      .withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(18.r),
+                  border: Border.all(
+                    color: (isDark ? Colors.white : Colors.black)
+                        .withValues(alpha: 0.10),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(
+                  Icons.lock_outline_rounded,
+                  size: 26.sp,
+                  color: ext.searchHintColor,
+                ),
+              ),
+              SizedBox(height: 14.h),
+            ],
+            Text(
+              'Comments are turned off',
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontSize: 15.sp,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+              ),
+            ),
+            if (showReason) ...[
+              SizedBox(height: 5.h),
+              Text(
+                'The creator has closed this conversation',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ext.searchHintColor,
+                  fontSize: 13.sp,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
+  }
+}
+
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 class CommentEmptyState extends StatelessWidget {

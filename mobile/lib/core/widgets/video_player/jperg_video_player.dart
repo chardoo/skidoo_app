@@ -66,6 +66,7 @@ class JpergVideoPlayer extends StatefulWidget {
     this.allowFullscreen = true,
     this.controlsBottomInset = 0,
     this.showMuteButton = true,
+    this.onEnded,
     this.borderRadius,
     this.backgroundColor = Colors.black,
     // ── Coordination ──────────────────────────────────────────────────────
@@ -120,6 +121,16 @@ class JpergVideoPlayer extends StatefulWidget {
   /// both would be two mute buttons for one video, in two corners, one of them
   /// vanishing on a timer.
   final bool showMuteButton;
+
+  /// Fired once when the clip reaches its end.
+  ///
+  /// Only meaningful with `loop: false` — a looping video never ends, it
+  /// starts again, which is why the feed could never advance off one.
+  ///
+  /// Called once per play-through, not once per frame near the end:
+  /// video_player reports position by polling, so the last stretch produces
+  /// several values that all satisfy "at the end".
+  final VoidCallback? onEnded;
 
   /// Include a full-screen button in the controls bar. Defaults to true.
   final bool allowFullscreen;
@@ -253,6 +264,35 @@ class _JpergVideoPlayerState extends State<JpergVideoPlayer>
     }
     if (value.isInitialized && value.size != _videoSize) {
       setState(() => _videoSize = value.size);
+    }
+
+    _checkEnded(value);
+  }
+
+  /// Whether [onEnded] has already fired for this play-through.
+  ///
+  /// Position is polled rather than pushed, so the end of a clip arrives as a
+  /// run of values that all read as finished — without this the feed would be
+  /// told to advance several times and skip past the next asset.
+  bool _endReported = false;
+
+  void _checkEnded(VideoPlayerValue value) {
+    if (widget.onEnded == null || !value.isInitialized) return;
+
+    final duration = value.duration;
+    if (duration <= Duration.zero) return;
+
+    // A shade before the very end: the final position reported is often a few
+    // milliseconds short of the duration, so an equality test never fires.
+    final atEnd = value.position >= duration - const Duration(milliseconds: 250);
+
+    if (atEnd && !value.isPlaying) {
+      if (_endReported) return;
+      _endReported = true;
+      widget.onEnded!.call();
+    } else if (!atEnd) {
+      // Rewound, replayed, or seeked back — this play-through can end again.
+      _endReported = false;
     }
   }
 

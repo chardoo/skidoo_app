@@ -275,7 +275,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shareSheetTitle => 'Senden an…';
 
   @override
-  String get shareSheetSearchByName => 'Nach Name suchen…';
+  String get shareSheetSearchByName => 'Nach Name oder E-Mail suchen…';
 
   @override
   String get shareSheetTypeToSearch => 'Namen eingeben, um zu suchen';
