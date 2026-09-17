@@ -134,6 +134,37 @@ class ChatBackgroundService {
   // Rooms whose connection is temporarily handed to ChatRoomBloc.
   // Messages for paused rooms are silently dropped (the bloc handles them).
   final Set<String> _paused = {};
+
+  /// When this device last sent something to each room.
+  ///
+  /// A belt to the `senderId == myId` brace in [shouldPlayDmSound]. That check
+  /// is correct and still the first line of defence; this one does not depend
+  /// on the echo's sender surviving encryption, on the id cache being warm, or
+  /// on the open room having been paused under the id the echo arrives with —
+  /// any of which failing puts the platform alert tone on the user's own
+  /// outgoing message, which is what was reported.
+  ///
+  /// The cost is bounded and small: within the window the user is all but
+  /// certainly sitting in that room, where the room is paused and no tone was
+  /// going to play anyway. The only thing it can cost is the chime on a reply
+  /// that lands within [_ownSendQuietWindow] of your own message in a room the
+  /// pause did not cover — which is the broken case this exists for.
+  final Map<String, DateTime> _ownSendAt = {};
+
+  static const _ownSendQuietWindow = Duration(seconds: 10);
+
+  /// Told by [ChatRoomBloc] when this device sends to [roomId]. Long enough to
+  /// cover a slow echo; short enough not to mute a conversation.
+  void noteOwnSend(String roomId) {
+    if (roomId.isEmpty) return;
+    _ownSendAt[roomId] = DateTime.now();
+    // The map is one entry per room the user has written in this session, so
+    // it does not grow without bound, but stale entries are dead weight.
+    _ownSendAt.removeWhere(
+      (_, at) => DateTime.now().difference(at) > const Duration(minutes: 5),
+    );
+  }
+
   bool _connected = false;
   bool _connecting = false;
   int _reconnectAttempts = 0;
@@ -540,12 +571,15 @@ class ChatBackgroundService {
     try {
       final myId = await _myUserIdCached();
       final room = _rooms[msg.roomId];
+      final sentHere = _ownSendAt[msg.roomId];
       if (shouldPlayDmSound(
         muted: _notifPrefs.isMuted,
         senderId: msg.senderId,
         myId: myId,
         roomType: room?.type,
         isSystem: msg.isSystem,
+        iJustSentHere: sentHere != null &&
+            DateTime.now().difference(sentHere) < _ownSendQuietWindow,
       )) {
         _sound.playMessageTone();
       }
@@ -565,6 +599,9 @@ class ChatBackgroundService {
   ///
   /// [isSystem] messages never chime: "X accepted group invite" is a notice
   /// about the room, not somebody getting in touch.
+  ///
+  /// [iJustSentHere] is the second, independent answer to "is this my own
+  /// message coming back" — see [_ownSendAt] for why one is not enough.
   @visibleForTesting
   static bool shouldPlayDmSound({
     required bool muted,
@@ -572,9 +609,11 @@ class ChatBackgroundService {
     required String myId,
     required RoomType? roomType,
     bool isSystem = false,
+    bool iJustSentHere = false,
   }) {
     if (muted) return false;
     if (isSystem) return false;
+    if (iJustSentHere) return false;
 
     // Not knowing who I am is not evidence that this came from somebody else.
     // [AuthService.getUserId] answers '' when the read fails, and `senderId ==

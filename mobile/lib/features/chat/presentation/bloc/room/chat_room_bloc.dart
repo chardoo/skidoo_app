@@ -1060,8 +1060,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         debugPrint('[ChatBloc] media upload failed: $e');
         emit(state.copyWith(
           isUploadingImage: false,
-          messages:
-              state.messages.where((m) => m.id != tempId).toList(),
+          messages: state.messages.where((m) => m.id != tempId).toList(),
           pendingImagePath: pendingPath,
           pendingMimeType: pendingMimeType,
           pendingIsVideo: pendingIsVideo,
@@ -1107,6 +1106,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   void _cacheAndAnnounce(ChatMessage msg) {
     _cacheMessage(msg).catchError((_) {});
     _bgService.reportOpenRoomMessage(msg);
+    // Every outgoing message passes through here — the four send branches all
+    // call it and nothing else does. That makes it the one place to say "this
+    // came from me", which is what stops the alert tone firing at the user's
+    // own message if any of the other guards misses. See
+    // ChatBackgroundService.noteOwnSend.
+    _bgService.noteOwnSend(msg.roomId);
   }
 
   /// Encrypts [content] (when non-empty) for DM rooms and sends over the WS.
@@ -1116,6 +1121,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     String? content,
     String? imageUrl,
     bool isVideo = false,
+
     /// Whether this image is a paid photo the sender has not bought, so the
     /// recipient's bubble can mark it — see [ChatMessage.paidPreview].
     bool paidPreview = false,
@@ -1143,7 +1149,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
-        paidPreview: paidPreview,
+          paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: roomId);
       return;
@@ -1169,7 +1175,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
-        paidPreview: paidPreview,
+          paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: _currentRoomId);
       return;
@@ -1209,7 +1215,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           _ws.send(content,
               imageUrl: imageUrl,
               isVideo: isVideo,
-        paidPreview: paidPreview,
+              paidPreview: paidPreview,
               replyToId: replyToId,
               roomId: _currentRoomId);
           return;
@@ -1239,7 +1245,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           _ws.send(content,
               imageUrl: imageUrl,
               isVideo: isVideo,
-        paidPreview: paidPreview,
+              paidPreview: paidPreview,
               replyToId: replyToId,
               roomId: _currentRoomId);
           return;
@@ -1287,7 +1293,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
-        paidPreview: paidPreview,
+          paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: _currentRoomId);
     }
@@ -1331,8 +1337,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     ChatRoomCommentLikeSettled event,
     Emitter<ChatRoomState> emit,
   ) {
-    final index =
-        state.messages.indexWhere((m) => m.id == event.messageId);
+    final index = state.messages.indexWhere((m) => m.id == event.messageId);
     // Not in this room's list — a reply fetched into its own page, or a message
     // since removed. Emitting an identical list would rebuild every row for
     // nothing.
@@ -1352,8 +1357,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     ChatRoomCommentEdited event,
     Emitter<ChatRoomState> emit,
   ) {
-    final index =
-        state.messages.indexWhere((m) => m.id == event.commentId);
+    final index = state.messages.indexWhere((m) => m.id == event.commentId);
     if (index < 0) return;
 
     final updated = state.messages[index].copyWith(
@@ -1436,7 +1440,6 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       isPictureLiked: event.update.liked,
     ));
   }
-
 
   /// Carry forward what only the sender knew.
   ///
@@ -3182,7 +3185,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
-        paidPreview: paidPreview,
+          paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: roomId);
       return;
@@ -3194,7 +3197,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
-        paidPreview: paidPreview,
+          paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: roomId);
       return;
@@ -3216,7 +3219,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _ws.send(content,
           imageUrl: imageUrl,
           isVideo: isVideo,
-        paidPreview: paidPreview,
+          paidPreview: paidPreview,
           replyToId: replyToId,
           roomId: roomId);
     }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
@@ -225,7 +227,11 @@ class _MessageBubbleState extends State<MessageBubble> {
                       // bubble is filled with the accent colour, and a photo
                       // still loading or failed to load would otherwise show
                       // that green through its placeholder.
-                      if (message.imageUrl != null)
+                      // `hasLocalMedia` as well as `imageUrl`: a photo or clip
+                      // the sender just picked has no URL yet and is drawn from
+                      // disk while it uploads. Waiting for the URL meant the
+                      // bubble did not exist until the upload finished.
+                      if (message.imageUrl != null || message.hasLocalMedia)
                         ColoredBox(
                           color: Colors.black.withValues(alpha: 0.06),
                           // message.isVideo first: it carries what the sender
@@ -235,10 +241,18 @@ class _MessageBubbleState extends State<MessageBubble> {
                           // does not look like one was handed to the image
                           // loader and rendered "Photo unavailable".
                           child: (message.isVideo ||
-                                  _isVideoUrl(message.imageUrl!))
+                                  (message.imageUrl != null &&
+                                      _isVideoUrl(message.imageUrl!)))
                               ? _MessageVideo(
-                                  videoUrl: message.imageUrl!,
+                                  // The local file wins while it exists: it is
+                                  // already on this device, so it plays with no
+                                  // download and does not re-fetch on the echo.
+                                  videoUrl: message.localMediaPath != null
+                                      ? Uri.file(message.localMediaPath!)
+                                          .toString()
+                                      : message.imageUrl!,
                                   aspectRatio: message.mediaAspectRatio,
+                                  uploadProgress: message.uploadProgress,
                                 )
                               // A shared photo that costs money and was not
                               // bought carries the same mark the gallery puts
@@ -252,8 +266,10 @@ class _MessageBubbleState extends State<MessageBubble> {
                               // "priced and unbought", and the widget's rule
                               // only asks whether the price is above zero.
                               : _MessageImage(
-                                  imageUrl: message.imageUrl!,
+                                  imageUrl: message.imageUrl,
+                                  localPath: message.localMediaPath,
                                   aspectRatio: message.mediaAspectRatio,
+                                  uploadProgress: message.uploadProgress,
                                   // Handed down rather than wrapped here: the
                                   // tap opens a second, full-screen copy that
                                   // has to be marked too.
@@ -549,10 +565,25 @@ class _ReplyPreviewStrip extends StatelessWidget {
 class _MessageImage extends StatelessWidget {
   const _MessageImage({
     required this.imageUrl,
+    this.localPath,
     this.aspectRatio,
+    this.uploadProgress,
     this.paidPreview = false,
-  });
-  final String imageUrl;
+  }) : assert(imageUrl != null || localPath != null,
+            'a photo has to come from somewhere');
+
+  /// Null until the upload finishes — see [localPath].
+  final String? imageUrl;
+
+  /// The file on this device, while the upload is in flight and after.
+  ///
+  /// Takes precedence over [imageUrl] whenever it is set: it needs no network,
+  /// so the photo is on screen in the frame the user hit send, and the echo
+  /// that swaps in the URL costs no re-fetch and shows no placeholder.
+  final String? localPath;
+
+  /// Upload progress 0..1, or null when there is no upload in flight.
+  final double? uploadProgress;
 
   /// Whether this is a paid photo the sender had not bought.
   ///
@@ -568,51 +599,68 @@ class _MessageImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final img = JpergImage(
-      imageUrl: imageUrl,
-      fit: BoxFit.cover,
-      semanticLabel: 'Shared photo',
-      placeholder: (_, __) => Container(
-        // Use known aspect ratio so bubble height is correct before decode.
-        height: aspectRatio != null ? null : 180.h,
-        color: Colors.black12,
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      ),
-      // A photo that will not load is a dead end for the reader: they can see
-      // something was sent and have no way to know why it is not there. Say so,
-      // and offer the tap that opens it full-screen — which retries the fetch.
-      errorWidget: (context, __, ___) => Container(
-        height: aspectRatio != null ? null : 140.h,
-        color: Colors.black12,
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.lg.h),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.broken_image_rounded,
-                color: Colors.white70, size: 26.sp),
-            SizedBox(height: AppSpacing.xs.h),
-            Text(
-              'Photo unavailable',
-              style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+    final Widget img = localPath != null
+        ? Image.file(
+            File(localPath!),
+            fit: BoxFit.cover,
+            semanticLabel: 'Shared photo',
+            // The picked file can be gone by the time this draws — a temp file
+            // the OS reclaimed, or a share that copied and cleaned up. Fall
+            // back to the URL when there is one rather than showing the grey
+            // box of a broken decode.
+            errorBuilder: (context, _, __) => imageUrl != null
+                ? JpergImage(imageUrl: imageUrl!, fit: BoxFit.cover)
+                : const SizedBox.shrink(),
+          )
+        : JpergImage(
+            imageUrl: imageUrl!,
+            fit: BoxFit.cover,
+            semanticLabel: 'Shared photo',
+            placeholder: (_, __) => Container(
+              // Use known aspect ratio so bubble height is correct before decode.
+              height: aspectRatio != null ? null : 180.h,
+              color: Colors.black12,
+              child: const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2)),
             ),
-            SizedBox(height: 2.h),
-            Text(
-              'Tap to retry',
-              style: TextStyle(color: Colors.white54, fontSize: 11.sp),
+            // A photo that will not load is a dead end for the reader: they can see
+            // something was sent and have no way to know why it is not there. Say so,
+            // and offer the tap that opens it full-screen — which retries the fetch.
+            errorWidget: (context, __, ___) => Container(
+              height: aspectRatio != null ? null : 140.h,
+              color: Colors.black12,
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.lg.h),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.broken_image_rounded,
+                      color: Colors.white70, size: 26.sp),
+                  SizedBox(height: AppSpacing.xs.h),
+                  Text(
+                    'Photo unavailable',
+                    style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    'Tap to retry',
+                    style: TextStyle(color: Colors.white54, fontSize: 11.sp),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
-    );
+          );
     // `price: 1` because the amount is not carried on a message and is not
     // needed — [paidPreview] already means "priced and unbought", and the rule
     // only asks whether the price is above zero.
-    final marked = PaidPhotoWatermark(
+    Widget marked = PaidPhotoWatermark(
       price: paidPreview ? 1 : 0,
       isPurchased: false,
       child: img,
     );
+    if (uploadProgress != null) {
+      marked = _UploadProgressOverlay(progress: uploadProgress!, child: marked);
+    }
     final tappable = Semantics(
       button: true,
       label: 'Open photo',
@@ -622,6 +670,7 @@ class _MessageImage extends StatelessWidget {
             fullscreenDialog: true,
             builder: (_) => _ZoomableImageView(
               imageUrl: imageUrl,
+              localPath: localPath,
               paidPreview: paidPreview,
             ),
           ),
@@ -641,8 +690,17 @@ class _MessageImage extends StatelessWidget {
 /// Supports pinch / scroll-wheel zoom (1×–6×), double-tap to toggle zoom at the
 /// tapped point, and swipe-down-to-dismiss while at rest.
 class _ZoomableImageView extends StatefulWidget {
-  const _ZoomableImageView({required this.imageUrl, this.paidPreview = false});
-  final String imageUrl;
+  const _ZoomableImageView({
+    required this.imageUrl,
+    this.localPath,
+    this.paidPreview = false,
+  });
+  final String? imageUrl;
+
+  /// The copy on this device, preferred over [imageUrl] when present — same
+  /// reason as in [_MessageImage], and it is the only source there is while an
+  /// upload is still in flight.
+  final String? localPath;
 
   /// Whether to mark this as a paid photo — see the overlay in [build], and
   /// why it sits outside the zoom.
@@ -733,17 +791,31 @@ class _ZoomableImageViewState extends State<_ZoomableImageView>
                     }
                   },
                   child: Center(
-                    child: JpergImage(
-                      imageUrl: widget.imageUrl,
-                      fit: BoxFit.contain,
-                      semanticLabel: 'Shared photo',
-                      placeholder: (_, __) => const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      errorWidget: (_, __, ___) => const Icon(
-                          Icons.broken_image_rounded,
-                          color: Colors.white54),
-                    ),
+                    child: widget.localPath != null
+                        ? Image.file(
+                            File(widget.localPath!),
+                            fit: BoxFit.contain,
+                            semanticLabel: 'Shared photo',
+                            errorBuilder: (_, __, ___) =>
+                                widget.imageUrl != null
+                                    ? JpergImage(
+                                        imageUrl: widget.imageUrl!,
+                                        fit: BoxFit.contain,
+                                      )
+                                    : const Icon(Icons.broken_image_rounded,
+                                        color: Colors.white54, size: 48),
+                          )
+                        : JpergImage(
+                            imageUrl: widget.imageUrl!,
+                            fit: BoxFit.contain,
+                            semanticLabel: 'Shared photo',
+                            placeholder: (_, __) => const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            errorWidget: (_, __, ___) => const Icon(
+                                Icons.broken_image_rounded,
+                                color: Colors.white54),
+                          ),
                   ),
                 ),
               ),
@@ -797,8 +869,19 @@ class _ZoomableImageViewState extends State<_ZoomableImageView>
 /// Keeps the current bubble-constrained size; aspect ratio hint avoids the
 /// 16:9 default while the player reads the container headers.
 class _MessageVideo extends StatelessWidget {
-  const _MessageVideo({required this.videoUrl, this.aspectRatio});
+  const _MessageVideo({
+    required this.videoUrl,
+    this.aspectRatio,
+    this.uploadProgress,
+  });
+
+  /// Either a remote URL or a `file://` path — [JpergVideoPlayer] picks the
+  /// right controller for each, which is what lets a clip play from disk while
+  /// it is still uploading.
   final String videoUrl;
+
+  /// Upload progress 0..1, or null when nothing is in flight.
+  final double? uploadProgress;
 
   /// Server-supplied aspect ratio. Passed to the player so the correct height
   /// is reserved from the first frame instead of snapping once headers load.
@@ -806,15 +889,82 @@ class _MessageVideo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return JpergVideoPlayer(
+    final player = JpergVideoPlayer(
       url: videoUrl,
-      showControls: true,
+      // Not while it is uploading: the controls offer a scrub bar and a
+      // fullscreen button for something that is not finished being sent, and
+      // the progress bar is sitting in the same corner.
+      showControls: uploadProgress == null,
       autoPlay: false,
       loop: false,
       aspectRatio: aspectRatio,
       fit: BoxFit.contain,
       backgroundColor: Colors.black,
       borderRadius: BorderRadius.circular(12),
+    );
+    if (uploadProgress == null) return player;
+    return _UploadProgressOverlay(progress: uploadProgress!, child: player);
+  }
+}
+
+/// What a send looks like while it is still going out.
+///
+/// Sits over the media rather than replacing it — the whole point is that the
+/// picture or clip is visible from the moment it is picked, so this has to be
+/// something laid on top and not something shown instead.
+class _UploadProgressOverlay extends StatelessWidget {
+  const _UploadProgressOverlay({
+    required this.progress,
+    required this.child,
+  });
+
+  /// 0..1.
+  final double progress;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        // Dimmed while it is not really sent yet, which reads as "pending"
+        // without needing a word for it.
+        Opacity(opacity: 0.75, child: child),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Center(
+              child: Semantics(
+                label: 'Sending, ${(progress * 100).round()} percent',
+                child: SizedBox(
+                  width: 44.w,
+                  height: 44.w,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // A determinate ring rather than a spinner: on a clip
+                      // over a slow connection a spinner and a hang look
+                      // exactly the same, and the difference is the only thing
+                      // the sender wants to know.
+                      CircularProgressIndicator(
+                        value: progress == 0 ? null : progress,
+                        strokeWidth: 3,
+                        backgroundColor: Colors.black.withValues(alpha: 0.35),
+                        valueColor:
+                            const AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                      Icon(
+                        Icons.arrow_upward_rounded,
+                        size: 16.sp,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

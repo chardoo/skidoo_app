@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
     show Clipboard, ClipboardData, HapticFeedback;
@@ -33,6 +34,36 @@ import 'package:jperg_app/services/notification_prefs_service.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+
+/// Which of [newIds] are really *new*, and so should play the entrance fade.
+///
+/// An id nobody has seen before is usually an arriving message. For one's own
+/// messages it usually is not: they enter the list optimistically under a
+/// `local_` id and are replaced a moment later by the server's echo under the
+/// real one. That swap looks exactly like an arrival — same list, one id gone
+/// and one id here — so the bubble played its 220ms fade-from-nothing a second
+/// time, and the message the user had just sent blinked out and back in a beat
+/// later.
+///
+/// The test is "mine, and no longer local". One's own messages always enter as
+/// local first, so a settled message from me under a brand-new id is the echo
+/// of something already on screen rather than news.
+///
+/// Anything from anyone else animates as before, and so does the optimistic
+/// insert itself — the send should feel like something happened. It is only the
+/// second, redundant playing that goes.
+@visibleForTesting
+Set<String> idsToAnimate({
+  required Set<String> newIds,
+  required List<ChatMessage> messages,
+  required String myUserId,
+}) {
+  final settledEchoes = {
+    for (final m in messages)
+      if (newIds.contains(m.id) && m.senderId == myUserId && !m.isLocal) m.id,
+  };
+  return newIds.difference(settledEchoes);
+}
 
 /// Displays the messages for [room].
 class ChatRoomPage extends StatelessWidget {
@@ -826,7 +857,11 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     }
   }
 
-  void _syncAnimationState(List<ChatMessage> messages, bool isLoadingHistory) {
+  void _syncAnimationState(
+    List<ChatMessage> messages,
+    bool isLoadingHistory, {
+    required String myUserId,
+  }) {
     if (isLoadingHistory) return;
     final currentIds = messages.map((m) => m.id).toSet();
 
@@ -846,7 +881,11 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     }
     final newIds = currentIds.difference(_knownIds);
     if (newIds.isNotEmpty) {
-      _animateIds.addAll(newIds);
+      _animateIds.addAll(idsToAnimate(
+        newIds: newIds,
+        messages: messages,
+        myUserId: myUserId,
+      ));
       _knownIds.addAll(newIds);
     } else {
       _knownIds.addAll(currentIds);
@@ -1091,7 +1130,10 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                           p.myUserId != c.myUserId,
                       builder: (context, state) {
                         _syncAnimationState(
-                            state.messages, state.isLoadingHistory);
+                          state.messages,
+                          state.isLoadingHistory,
+                          myUserId: state.myUserId,
+                        );
                         if (state.isLoadingHistory && state.messages.isEmpty) {
                           return Center(
                             child: CircularProgressIndicator(

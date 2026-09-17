@@ -923,7 +923,8 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
   }
 
   @override
-  Future<EventReaction> setEventReaction(String eventId, String? reaction) async {
+  Future<EventReaction> setEventReaction(
+      String eventId, String? reaction) async {
     debugPrint('[ChatREST] POST /chat/events/$eventId/reaction → $reaction');
     return _wrap(() async {
       final res = await _client.dio.post(

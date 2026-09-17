@@ -24,6 +24,7 @@ class GetEventRoomUseCase {
 class GetEventRoomsBatchUseCase {
   final ChatRepository _repo;
   GetEventRoomsBatchUseCase(this._repo);
+
   /// Returns a map of eventId → ChatRoom. Handles up to 20 IDs per call.
   Future<Map<String, ChatRoom>> call(List<String> eventIds) =>
       _repo.getEventRoomsBatch(eventIds);

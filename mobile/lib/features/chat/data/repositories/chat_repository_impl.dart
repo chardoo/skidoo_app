@@ -358,7 +358,8 @@ class ChatRepositoryImpl implements ChatRepository {
       _rest.getEventReaction(eventId, userId);
 
   @override
-  Future<Map<String, PresenceSnapshot>> getPresence(List<String> userIds) async {
+  Future<Map<String, PresenceSnapshot>> getPresence(
+      List<String> userIds) async {
     try {
       return await _rest.getPresence(userIds);
     } catch (_) {
@@ -409,8 +410,7 @@ class ChatRepositoryImpl implements ChatRepository {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  Future<ChatRoom> _fetchAndCacheRoom(
-      Future<ChatRoom> Function() fetch) async {
+  Future<ChatRoom> _fetchAndCacheRoom(Future<ChatRoom> Function() fetch) async {
     try {
       final room = await fetch();
       await _db.upsertRoom(room);
