@@ -24,8 +24,9 @@ import 'package:jperg_app/features/ads/presentation/widgets/create_bottom_sheet.
 import 'package:jperg_app/features/user_profile/data/repositories/profile_overview_repository.dart';
 import 'package:jperg_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:jperg_app/features/settings/presentation/pages/settings_page.dart';
-import 'package:jperg_app/features/user_profile/presentation/widgets/profile_photo_tile.dart';
+import 'package:jperg_app/features/user_profile/presentation/widgets/profile_photo_grid.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The profile screen.
 ///
@@ -56,6 +57,9 @@ class UserProfilePageState extends State<UserProfilePage>
   int _likedPage = 1;
   bool _likedHasMore = false;
   bool _loadingMoreLiked = false;
+  int _savedPage = 1;
+  bool _savedHasMore = false;
+  bool _loadingMoreSaved = false;
   List<ProfilePhoto> _bookmarked = const [];
 
   /// An event tile has to fetch the event before it can open it; this keeps a
@@ -188,6 +192,7 @@ class UserProfilePageState extends State<UserProfilePage>
       // Merged and re-sorted rather than appended: the two sections are paged
       // together, so page two of each interleaves with the other by the time
       // it was liked.
+      final before = _liked.length;
       final seen = {for (final p in _liked) p.id};
       final merged = [
         ..._liked,
@@ -197,7 +202,11 @@ class UserProfilePageState extends State<UserProfilePage>
       setState(() {
         _liked = merged;
         _likedPage += 1;
-        _likedHasMore = next.hasMore;
+        // A page that brought nothing new is the end, whatever it claimed.
+        // Without this a service that ignores `page` — as this one did until
+        // it learned to honour a limit — would be asked for the same rows for
+        // as long as the reader kept scrolling.
+        _likedHasMore = next.hasMore && merged.length > before;
         _loadingMoreLiked = false;
       });
     } catch (e) {
@@ -215,15 +224,59 @@ class UserProfilePageState extends State<UserProfilePage>
       // the caller's own, so it takes the signed-in id rather than a param.
       final userId = await AuthService().getUserId();
       final saved = userId.isEmpty
-          ? <ProfilePhoto>[]
-          : await _repo.getBookmarkedPhotos(userId);
+          ? const LikedPage(photos: [], hasMore: false)
+          : await _repo.getBookmarkedPhotos(userId, page: 1);
       _savesLoadedAt = at;
-      if (mounted) setState(() => _bookmarked = saved);
+      if (mounted) {
+        setState(() {
+          _bookmarked = saved.photos;
+          _savedPage = 1;
+          _savedHasMore = saved.hasMore;
+        });
+      }
     } catch (e) {
       debugPrint('[UserProfilePage] bookmarks ERROR: $e');
     } finally {
       if (mounted && _loadingBookmarks)
         setState(() => _loadingBookmarks = false);
+    }
+  }
+
+  /// The next page of bookmarks, appended.
+  ///
+  /// The endpoint has answered with a pagination envelope all along; the grid
+  /// simply never asked for a second page, so a reader with more bookmarks
+  /// than a page held could not reach them.
+  Future<void> _loadMoreBookmarks() async {
+    if (_loadingMoreSaved || !_savedHasMore) return;
+    setState(() => _loadingMoreSaved = true);
+    try {
+      final userId = await AuthService().getUserId();
+      if (userId.isEmpty) {
+        if (mounted) setState(() => _loadingMoreSaved = false);
+        return;
+      }
+      final next =
+          await _repo.getBookmarkedPhotos(userId, page: _savedPage + 1);
+      if (!mounted) return;
+      // Appended, not merged-and-sorted: this list is already in one order —
+      // when it was bookmarked — and the server pages it in that order.
+      final before = _bookmarked.length;
+      final seen = {for (final p in _bookmarked) p.id};
+      setState(() {
+        _bookmarked = [
+          ..._bookmarked,
+          for (final p in next.photos)
+            if (seen.add(p.id)) p,
+        ];
+        _savedPage += 1;
+        // See the note in _loadMoreLiked: nothing new means the end.
+        _savedHasMore = next.hasMore && _bookmarked.length > before;
+        _loadingMoreSaved = false;
+      });
+    } catch (e) {
+      debugPrint('[UserProfilePage] bookmarks page ERROR: $e');
+      if (mounted) setState(() => _loadingMoreSaved = false);
     }
   }
 
@@ -440,7 +493,7 @@ class UserProfilePageState extends State<UserProfilePage>
                 tooltip: campaigns
                     ? 'Post a request or start a campaign'
                     : 'Post a request',
-                icon: Icon(Icons.add_rounded,
+                icon: AppSvgIcon(AppIcons.add,
                     color: ext.greetingColor, size: 26.r),
                 onPressed: () => CreateBottomSheet.show(context),
               ),
@@ -459,7 +512,7 @@ class UserProfilePageState extends State<UserProfilePage>
         actions: [
           IconButton(
             tooltip: 'Settings',
-            icon: Icon(Icons.settings_outlined,
+            icon: AppSvgIcon(AppIcons.settings,
                 color: ext.greetingColor, size: 24.r),
             onPressed: _openSettings,
           ),
@@ -505,7 +558,7 @@ class UserProfilePageState extends State<UserProfilePage>
             _Refreshable(
               onRefresh: _load,
               ext: ext,
-              child: _PhotoGrid(
+              child: ProfilePhotoGrid(
                 photos: _liked,
                 loading: _loadingLiked,
                 ext: ext,
@@ -522,7 +575,7 @@ class UserProfilePageState extends State<UserProfilePage>
             _Refreshable(
               onRefresh: _load,
               ext: ext,
-              child: _PhotoGrid(
+              child: ProfilePhotoGrid(
                 photos: _bookmarked,
                 loading: _loadingBookmarks,
                 ext: ext,
@@ -532,6 +585,8 @@ class UserProfilePageState extends State<UserProfilePage>
                 removeTooltip: 'Remove bookmark',
                 onRemove: _removeBookmark,
                 onOpen: (photo) => _openTile(_bookmarked, photo),
+                onLoadMore: _savedHasMore ? _loadMoreBookmarks : null,
+                loadingMore: _loadingMoreSaved,
               ),
             ),
             _Refreshable(
@@ -747,100 +802,6 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
       old.tabBar != tabBar || old.background != background;
 }
 
-class _PhotoGrid extends StatelessWidget {
-  const _PhotoGrid({
-    required this.photos,
-    required this.loading,
-    required this.ext,
-    required this.emptyTitle,
-    required this.emptyHint,
-    required this.removeIcon,
-    required this.removeTooltip,
-    required this.onRemove,
-    required this.onOpen,
-    this.onLoadMore,
-    this.loadingMore = false,
-  });
-
-  final List<ProfilePhoto> photos;
-  final bool loading;
-
-  /// Fetches the next page, or null when there is nothing more to fetch.
-  final VoidCallback? onLoadMore;
-
-  /// Whether that fetch is in the air, so the grid can say so rather than
-  /// ending in what looks like the last row.
-  final bool loadingMore;
-  final AppThemeExtension ext;
-  final String emptyTitle;
-  final String emptyHint;
-
-  /// The filled heart / bookmark on each tile — tapping it takes the photo out
-  /// of the list it is in.
-  final IconData removeIcon;
-  final String removeTooltip;
-  final Future<void> Function(ProfilePhoto) onRemove;
-
-  /// Tapping the tile opens what it stands for.
-  final void Function(ProfilePhoto) onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    if (loading) return const Center(child: CircularProgressIndicator());
-    if (photos.isEmpty) {
-      return _Empty(title: emptyTitle, hint: emptyHint, ext: ext);
-    }
-
-    return NotificationListener<ScrollNotification>(
-      // Asked for before the reader reaches the bottom, so the next page is
-      // usually there by the time they would have seen the end.
-      onNotification: (notification) {
-        if (onLoadMore == null || loadingMore) return false;
-        final metrics = notification.metrics;
-        if (metrics.axis != Axis.vertical) return false;
-        if (metrics.pixels >= metrics.maxScrollExtent - 400) onLoadMore!();
-        return false;
-      },
-      child: GridView.builder(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
-        padding: EdgeInsets.all(2.w),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 2,
-          mainAxisSpacing: 2,
-        ),
-        itemCount: photos.length + (loadingMore ? 3 : 0),
-        itemBuilder: (_, i) {
-          // The trailing row while a page is on its way. Three cells rather
-          // than one, so the grid keeps its shape instead of ending on a
-          // ragged part-row.
-          if (i >= photos.length) {
-            return Center(
-              child: SizedBox(
-                width: 18.w,
-                height: 18.w,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: ext.accentGold),
-              ),
-            );
-          }
-          final photo = photos[i];
-          return ProfilePhotoTile(
-            photo: photo,
-            ext: ext,
-            removeIcon: removeIcon,
-            removeTooltip: removeTooltip,
-            onRemove: () => onRemove(photo),
-            onOpen: () => onOpen(photo),
-          );
-        },
-      ),
-    );
-  }
-}
-
 /// The third tab is a doorway rather than a list: Broadcasts is its own screen
 /// with its own tabs, and nesting a second set of tabs inside this one would
 /// leave two rows of them on the same screen.
@@ -950,7 +911,7 @@ class _BroadcastCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded,
+              AppSvgIcon(AppIcons.chevronRight,
                   color: ext.searchHintColor, size: 20.r),
             ],
           ),
@@ -960,40 +921,3 @@ class _BroadcastCard extends StatelessWidget {
   }
 }
 
-class _Empty extends StatelessWidget {
-  const _Empty({required this.title, required this.hint, required this.ext});
-
-  final String title;
-  final String hint;
-  final AppThemeExtension ext;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
-      children: [
-        SizedBox(height: 80.h),
-        Icon(Icons.photo_library_outlined,
-            color: ext.searchHintColor.withValues(alpha: 0.5), size: 40.r),
-        SizedBox(height: AppSpacing.md.h),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: ext.greetingColor,
-            fontSize: 15.sp,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        SizedBox(height: 6.h),
-        Text(
-          hint,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
-        ),
-      ],
-    );
-  }
-}

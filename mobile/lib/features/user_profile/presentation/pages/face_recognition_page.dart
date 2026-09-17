@@ -15,6 +15,7 @@ import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class FaceRecognitionPage extends StatefulWidget {
   const FaceRecognitionPage({super.key});
@@ -303,7 +304,7 @@ class _SelfieTile extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_rounded, color: Colors.white, size: 10),
+                const AppSvgIcon(AppIcons.check, color: Colors.white, size: 10),
                 SizedBox(width: 2.w),
                 Text('Face OK',
                     style: TextStyle(
@@ -329,7 +330,7 @@ class _SelfieTile extends StatelessWidget {
                     color: Colors.black54,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.close_rounded,
+                  child: AppSvgIcon(AppIcons.closeMd,
                       color: Colors.white, size: 13.sp),
                 ),
               )),

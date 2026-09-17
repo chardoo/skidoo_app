@@ -33,6 +33,7 @@ import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_section_label.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 String _resolveErrorMessage(String key, AppLocalizations l10n) => switch (key) {
       'accountAnonymousModeUpdateFailed' =>
@@ -348,7 +349,7 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                   padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 14.h),
                   child: Row(
                     children: [
-                      Icon(Icons.edit_outlined,
+                      AppSvgIcon(AppIcons.edit,
                           color: ext.accentGold, size: 18.sp),
                       SizedBox(width: 10.w),
                       Expanded(
@@ -604,7 +605,7 @@ class _ProfileDropdownState extends State<_ProfileDropdown> {
               style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp)),
           dropdownColor: ext.cardSurface,
           style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-          icon: Icon(Icons.keyboard_arrow_down_rounded,
+          icon: AppSvgIcon(AppIcons.caretDown,
               color: ext.searchHintColor, size: 20.sp),
           items: entries
               .map((e) => DropdownMenuItem<String>(
@@ -818,7 +819,7 @@ class _PublicationSettingsCard extends StatelessWidget {
               AppLocalizations.of(context)!.accountViewBookmarkedEvents,
               style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
             ),
-            trailing: Icon(Icons.chevron_right_rounded,
+            trailing: AppSvgIcon(AppIcons.chevronRight,
                 color: ext.searchHintColor, size: 20.sp),
             onTap: () {
               final discoveryBloc = context.read<DiscoveryBloc>();
@@ -939,8 +940,8 @@ class _PrivacySettingsCard extends StatelessWidget {
                     child: CircularProgressIndicator(
                         color: ext.searchHintColor, strokeWidth: 2),
                   )
-                : Icon(
-                    Icons.visibility_off_outlined,
+                : AppSvgIcon(
+                    AppIcons.hide,
                     color:
                         hideProfile ? ext.greetingColor : ext.searchHintColor,
                   ),
@@ -1553,7 +1554,7 @@ class _FaceRecognitionCardState extends State<_FaceRecognitionCard> {
                     child: const CircularProgressIndicator(
                         color: Colors.redAccent, strokeWidth: 2),
                   )
-                : Icon(Icons.chevron_right_rounded,
+                : AppSvgIcon(AppIcons.chevronRight,
                     color: ext.searchHintColor, size: 20.sp),
             onTap: _deleting ? null : _deleteFaceData,
           ),
@@ -1660,7 +1661,7 @@ class _AdsListTile extends StatelessWidget {
         subtitle,
         style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
       ),
-      trailing: Icon(Icons.chevron_right_rounded,
+      trailing: AppSvgIcon(AppIcons.chevronRight,
           color: ext.searchHintColor, size: 20.sp),
       onTap: onTap,
     );

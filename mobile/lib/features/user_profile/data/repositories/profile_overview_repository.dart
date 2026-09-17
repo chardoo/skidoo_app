@@ -9,11 +9,13 @@ const _tag = '[ProfileOverviewRepository]';
 ///
 /// Kept apart from [UserProfileRepository], which owns the account record and
 /// its settings — this is what the three tabs and the header read.
-/// One page of the Liked grid, and whether asking again would bring more.
+/// One page of a profile grid, and whether asking again would bring more.
 ///
-/// The grid merges two independently-counted lists — liked events and liked
-/// photos — so "is there more" cannot be read off the number of items that
-/// came back.
+/// Used by both tabs. Liked merges two independently-counted lists — liked
+/// events and liked photos — so "is there more" cannot be read off the number
+/// of items that came back; Saved skips bookmarks whose asset has since been
+/// deleted, which costs it items for the same reason. Both need the server's
+/// answer rather than the length of the list.
 class LikedPage {
   const LikedPage({required this.photos, required this.hasMore});
 
@@ -71,16 +73,22 @@ class ProfileOverviewRepository {
     // order, and the only one that makes sense is when it was liked.
     liked.sort((a, b) => (b.likedAt ?? '').compareTo(a.likedAt ?? ''));
 
-    // Read from the server rather than guessed from the length. A section
-    // shorter than the limit means *that section* is exhausted, which is not
-    // the same as the page being the last one — the other section may have
-    // plenty left.
+    // Read from the server where it says. A section shorter than the limit
+    // means *that section* is exhausted, which is not the same as the page
+    // being the last one — the other section may have plenty left, and only
+    // the server knows.
+    //
+    // Falling back to "the page came back full" when it says nothing, rather
+    // than to "no more": a build talking to a service that predates `hasMore`
+    // would otherwise page exactly once and stop, which is the bug this is
+    // fixing wearing a different hat.
     final data = resp.data;
     final more = data is Map ? data['hasMore'] : null;
     return LikedPage(
       photos: liked,
-      hasMore: more is Map &&
-          (more['events'] == true || more['pictures'] == true),
+      hasMore: more is Map
+          ? (more['events'] == true || more['pictures'] == true)
+          : liked.length >= limit,
     );
   }
 
@@ -90,7 +98,7 @@ class ProfileOverviewRepository {
   ///
   /// The endpoint carries the client id in the path and only ever serves the
   /// caller's own, so the id has to be the signed-in one.
-  Future<List<ProfilePhoto>> getBookmarkedPhotos(
+  Future<LikedPage> getBookmarkedPhotos(
     String userId, {
     int page = 1,
     int limit = 30,
@@ -113,7 +121,22 @@ class ProfileOverviewRepository {
       );
       if (photo != null) photos.add(photo);
     }
-    return photos;
+
+    // The endpoint answers with the shared pagination envelope, which has said
+    // whether there is a next page all along — the Saved grid simply never
+    // asked for one and stopped at whatever the first page held.
+    //
+    // Counted off the rows rather than the parsed photos: a bookmark whose
+    // asset has been deleted is skipped above, and a page of nothing but those
+    // is still a page with more behind it.
+    final data = resp.data;
+    final pagination = data is Map ? data['pagination'] : null;
+    return LikedPage(
+      photos: photos,
+      hasMore: pagination is Map
+          ? pagination['hasNext'] == true
+          : _listUnder(resp.data, 'data').length >= limit,
+    );
   }
 
   /// Un-bookmark. Takes the saved-row id, which is what the list returns.
