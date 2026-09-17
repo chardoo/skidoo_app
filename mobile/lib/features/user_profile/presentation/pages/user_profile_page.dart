@@ -53,6 +53,9 @@ class UserProfilePageState extends State<UserProfilePage>
 
   ProfileOverview _overview = ProfileOverview.empty;
   List<ProfilePhoto> _liked = const [];
+  int _likedPage = 1;
+  bool _likedHasMore = false;
+  bool _loadingMoreLiked = false;
   List<ProfilePhoto> _bookmarked = const [];
 
   /// An event tile has to fetch the event before it can open it; this keeps a
@@ -154,13 +157,52 @@ class UserProfilePageState extends State<UserProfilePage>
     // strength of a response written before it happened.
     final at = AppCacheSignals.likes.value;
     try {
-      final liked = await _repo.getLikedPhotos();
+      final page = await _repo.getLikedPhotos(page: 1);
       _likesLoadedAt = at;
-      if (mounted) setState(() => _liked = liked);
+      if (mounted) {
+        setState(() {
+          _liked = page.photos;
+          _likedPage = 1;
+          _likedHasMore = page.hasMore;
+        });
+      }
     } catch (e) {
       debugPrint('[UserProfilePage] liked ERROR: $e');
     } finally {
       if (mounted && _loadingLiked) setState(() => _loadingLiked = false);
+    }
+  }
+
+  /// The next page of likes, appended.
+  ///
+  /// The grid used to be one fixed fetch, so it showed whatever the first
+  /// response held and no scrolling could ever reach the rest — which, with
+  /// the server capping that response at ten a section, is why a reader with
+  /// forty likes saw ten.
+  Future<void> _loadMoreLiked() async {
+    if (_loadingMoreLiked || !_likedHasMore) return;
+    setState(() => _loadingMoreLiked = true);
+    try {
+      final next = await _repo.getLikedPhotos(page: _likedPage + 1);
+      if (!mounted) return;
+      // Merged and re-sorted rather than appended: the two sections are paged
+      // together, so page two of each interleaves with the other by the time
+      // it was liked.
+      final seen = {for (final p in _liked) p.id};
+      final merged = [
+        ..._liked,
+        for (final p in next.photos)
+          if (seen.add(p.id)) p,
+      ]..sort((a, b) => (b.likedAt ?? '').compareTo(a.likedAt ?? ''));
+      setState(() {
+        _liked = merged;
+        _likedPage += 1;
+        _likedHasMore = next.hasMore;
+        _loadingMoreLiked = false;
+      });
+    } catch (e) {
+      debugPrint('[UserProfilePage] liked page ERROR: $e');
+      if (mounted) setState(() => _loadingMoreLiked = false);
     }
   }
 
@@ -473,6 +515,8 @@ class UserProfilePageState extends State<UserProfilePage>
                 removeTooltip: 'Unlike',
                 onRemove: _unlike,
                 onOpen: (photo) => _openTile(_liked, photo),
+                onLoadMore: _likedHasMore ? _loadMoreLiked : null,
+                loadingMore: _loadingMoreLiked,
               ),
             ),
             _Refreshable(
@@ -714,10 +758,19 @@ class _PhotoGrid extends StatelessWidget {
     required this.removeTooltip,
     required this.onRemove,
     required this.onOpen,
+    this.onLoadMore,
+    this.loadingMore = false,
   });
 
   final List<ProfilePhoto> photos;
   final bool loading;
+
+  /// Fetches the next page, or null when there is nothing more to fetch.
+  final VoidCallback? onLoadMore;
+
+  /// Whether that fetch is in the air, so the grid can say so rather than
+  /// ending in what looks like the last row.
+  final bool loadingMore;
   final AppThemeExtension ext;
   final String emptyTitle;
   final String emptyHint;
@@ -738,28 +791,52 @@ class _PhotoGrid extends StatelessWidget {
       return _Empty(title: emptyTitle, hint: emptyHint, ext: ext);
     }
 
-    return GridView.builder(
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
-      padding: EdgeInsets.all(2.w),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 2,
-        mainAxisSpacing: 2,
-      ),
-      itemCount: photos.length,
-      itemBuilder: (_, i) {
-        final photo = photos[i];
-        return ProfilePhotoTile(
-          photo: photo,
-          ext: ext,
-          removeIcon: removeIcon,
-          removeTooltip: removeTooltip,
-          onRemove: () => onRemove(photo),
-          onOpen: () => onOpen(photo),
-        );
+    return NotificationListener<ScrollNotification>(
+      // Asked for before the reader reaches the bottom, so the next page is
+      // usually there by the time they would have seen the end.
+      onNotification: (notification) {
+        if (onLoadMore == null || loadingMore) return false;
+        final metrics = notification.metrics;
+        if (metrics.axis != Axis.vertical) return false;
+        if (metrics.pixels >= metrics.maxScrollExtent - 400) onLoadMore!();
+        return false;
       },
+      child: GridView.builder(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: EdgeInsets.all(2.w),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 2,
+          mainAxisSpacing: 2,
+        ),
+        itemCount: photos.length + (loadingMore ? 3 : 0),
+        itemBuilder: (_, i) {
+          // The trailing row while a page is on its way. Three cells rather
+          // than one, so the grid keeps its shape instead of ending on a
+          // ragged part-row.
+          if (i >= photos.length) {
+            return Center(
+              child: SizedBox(
+                width: 18.w,
+                height: 18.w,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: ext.accentGold),
+              ),
+            );
+          }
+          final photo = photos[i];
+          return ProfilePhotoTile(
+            photo: photo,
+            ext: ext,
+            removeIcon: removeIcon,
+            removeTooltip: removeTooltip,
+            onRemove: () => onRemove(photo),
+            onOpen: () => onOpen(photo),
+          );
+        },
+      ),
     );
   }
 }

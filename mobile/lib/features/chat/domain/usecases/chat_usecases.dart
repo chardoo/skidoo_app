@@ -363,8 +363,12 @@ class UploadChatImageUseCase {
   final ChatRepository _repo;
   UploadChatImageUseCase(this._repo);
 
-  Future<String> call(File file, {String? mimeType}) =>
-      _repo.uploadImage(file, mimeType: mimeType);
+  Future<String> call(
+    File file, {
+    String? mimeType,
+    void Function(int sent, int total)? onProgress,
+  }) =>
+      _repo.uploadImage(file, mimeType: mimeType, onProgress: onProgress);
 }
 
 /// Who of these people is online right now — the state on arrival, which the

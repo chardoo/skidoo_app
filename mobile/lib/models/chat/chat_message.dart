@@ -170,6 +170,27 @@ class ChatMessage {
   /// before this existed.
   final bool paidPreview;
 
+  /// The file on this device, while it is still being uploaded.
+  ///
+  /// A photo or clip the user just picked exists locally before it exists
+  /// anywhere else, so there is no reason to make them watch a spinner in the
+  /// input bar until the upload finishes — the bubble is drawn from this path
+  /// the moment they hit send, and swaps to [imageUrl] when the upload lands.
+  /// Sender-side and transient: never sent to the server, never cached.
+  final String? localMediaPath;
+
+  /// Upload progress 0..1 while [localMediaPath] is showing, or null once the
+  /// upload is done. A clip can take long enough that a bare spinner reads as
+  /// a hang.
+  final double? uploadProgress;
+
+  /// Whether this message is still on its way out — either uploading its media
+  /// or waiting for the server to acknowledge it.
+  bool get isSending => isLocal;
+
+  /// Whether to draw the media from disk rather than from the network.
+  bool get hasLocalMedia => localMediaPath != null;
+
   bool get isEdited => updatedAt != null;
 
   bool get isAdminMessage =>
@@ -210,6 +231,8 @@ class ChatMessage {
     this.viewerLiked = false,
     this.replyCount = 0,
     this.paidPreview = false,
+    this.localMediaPath,
+    this.uploadProgress,
   });
 
   /// A flag that may arrive as a bool or as 1/0.
@@ -324,6 +347,10 @@ class ChatMessage {
     bool? viewerLiked,
     int? replyCount,
     bool? paidPreview,
+    String? localMediaPath,
+    bool clearLocalMediaPath = false,
+    double? uploadProgress,
+    bool clearUploadProgress = false,
     String? id,
     String? senderName,
     bool? isRead,
@@ -369,6 +396,10 @@ class ChatMessage {
       viewerLiked: viewerLiked ?? this.viewerLiked,
       replyCount: replyCount ?? this.replyCount,
       paidPreview: paidPreview ?? this.paidPreview,
+      localMediaPath:
+          clearLocalMediaPath ? null : (localMediaPath ?? this.localMediaPath),
+      uploadProgress:
+          clearUploadProgress ? null : (uploadProgress ?? this.uploadProgress),
     );
   }
 }

@@ -156,7 +156,11 @@ abstract class ChatRepository {
 
   /// Upload an image file and return the hosted URL.
   /// [mimeType] is the MIME type; on web it comes from the browser File API.
-  Future<String> uploadImage(File file, {String? mimeType});
+  Future<String> uploadImage(
+    File file, {
+    String? mimeType,
+    void Function(int sent, int total)? onProgress,
+  });
 
   /// Set or clear the caller's reaction to an event, without a room.
   ///

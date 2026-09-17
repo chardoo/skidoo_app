@@ -18,6 +18,8 @@ class CommentRowData {
     this.onReply,
     this.onUserTap,
     this.onLongPress,
+    this.canEdit = false,
+    this.canDelete = false,
   });
 
   final String id;
@@ -52,4 +54,18 @@ class CommentRowData {
 
   /// Long-press on the comment — null means not interactive.
   final VoidCallback? onLongPress;
+
+  /// Whether this reader may change what the comment says.
+  ///
+  /// The author, and nobody else. The creator of the album may take a comment
+  /// down but may not rewrite it — removing somebody's words and putting
+  /// different ones in their mouth are not the same act, and only one of them
+  /// is moderation. Enforced on the server either way; this decides whether
+  /// the option is offered at all.
+  final bool canEdit;
+
+  /// Whether this reader may remove the comment.
+  ///
+  /// The author, or the creator of the content it is sitting on.
+  final bool canDelete;
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -13,7 +12,13 @@ void showCommentOptionsSheet(
   required AppThemeExtension ext,
   required VoidCallback onEdit,
   required VoidCallback onDelete,
+  bool canEdit = true,
+  bool canDelete = true,
 }) {
+  // Nothing on offer, nothing to open. A sheet with an empty list reads as a
+  // broken screen rather than as "you may not do this".
+  if (!canEdit && !canDelete) return;
+
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
@@ -41,26 +46,31 @@ void showCommentOptionsSheet(
                 borderRadius: BorderRadius.circular(2.r),
               ),
             ),
-            ListTile(
-              leading:
-                  Icon(Icons.edit_rounded, color: ext.accentGold, size: 22.sp),
-              title: Text('Edit comment',
-                  style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
-              onTap: () {
-                Navigator.of(context).pop();
-                onEdit();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline_rounded,
-                  color: Colors.redAccent),
-              title: Text('Delete comment',
-                  style: TextStyle(color: Colors.redAccent, fontSize: 15.sp)),
-              onTap: () {
-                Navigator.of(context).pop();
-                onDelete();
-              },
-            ),
+            // Edit is the author's alone; delete is also the creator's. The
+            // two are listed separately because they are separately granted —
+            // a photographer moderating their album sees only Delete.
+            if (canEdit)
+              ListTile(
+                leading: Icon(Icons.edit_rounded,
+                    color: ext.accentGold, size: 22.sp),
+                title: Text('Edit comment',
+                    style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onEdit();
+                },
+              ),
+            if (canDelete)
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded,
+                    color: Colors.redAccent),
+                title: Text('Delete comment',
+                    style: TextStyle(color: Colors.redAccent, fontSize: 15.sp)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onDelete();
+                },
+              ),
           ],
         ),
       ),
@@ -68,49 +78,10 @@ void showCommentOptionsSheet(
   );
 }
 
-/// Shows an [AlertDialog] pre-filled with [initialContent].
-/// Calls [onSave] with the new text when the user confirms.
-void showEditCommentDialog(
-  BuildContext context, {
-  required AppThemeExtension ext,
-  required String initialContent,
-  required void Function(String newContent) onSave,
-}) {
-  final ctrl = TextEditingController(text: initialContent);
-  showDialog<void>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      backgroundColor: ext.cardSurface,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg.r)),
-      title: Text('Edit comment',
-          style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
-      content: AppTextField(
-        controller: ctrl,
-        autofocus: true,
-        maxLines: 4,
-        minLines: 1,
-        dense: true,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: Text('Cancel', style: TextStyle(color: ext.searchHintColor)),
-        ),
-        TextButton(
-          onPressed: () {
-            final text = ctrl.text.trim();
-            if (text.isNotEmpty) onSave(text);
-            Navigator.of(ctx).pop();
-          },
-          child: Text('Save',
-              style: TextStyle(
-                  color: ext.accentGold, fontWeight: FontWeight.bold)),
-        ),
-      ],
-    ),
-  );
-}
+// `showEditCommentDialog` lived here. Editing a comment now loads it into the
+// composer the way the chat room does — the thread stays on screen while the
+// comment is rewritten, instead of a dialog covering the conversation the
+// comment belongs to. See [CommentInputBarWidget.editingContent].
 
 /// Shows a delete confirmation dialog.
 void showDeleteCommentDialog(

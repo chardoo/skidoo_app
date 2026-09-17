@@ -9,8 +9,25 @@ const _tag = '[ProfileOverviewRepository]';
 ///
 /// Kept apart from [UserProfileRepository], which owns the account record and
 /// its settings — this is what the three tabs and the header read.
+/// One page of the Liked grid, and whether asking again would bring more.
+///
+/// The grid merges two independently-counted lists — liked events and liked
+/// photos — so "is there more" cannot be read off the number of items that
+/// came back.
+class LikedPage {
+  const LikedPage({required this.photos, required this.hasMore});
+
+  final List<ProfilePhoto> photos;
+  final bool hasMore;
+}
+
 class ProfileOverviewRepository {
   ProfileOverviewRepository() : _dio = Api().dio;
+
+  /// A repository talking to [dio] instead of the app's shared client, so the
+  /// paging can be exercised against a stubbed transport.
+  @visibleForTesting
+  ProfileOverviewRepository.forTest(Dio dio) : _dio = dio;
 
   final Dio _dio;
 
@@ -37,9 +54,10 @@ class ProfileOverviewRepository {
   /// Asks for both rather than just pictures: a liked event is a like, and a
   /// tab that dropped it would look like the like had failed. An event renders
   /// by its own cover.
-  Future<List<ProfilePhoto>> getLikedPhotos({int limit = 30}) async {
+  Future<LikedPage> getLikedPhotos({int page = 1, int limit = 30}) async {
     final resp = await _dio.get('/client/my-likes', queryParameters: {
       'type': 'all',
+      'page': page,
       'limit': limit,
     });
 
@@ -52,7 +70,18 @@ class ProfileOverviewRepository {
     // Each list arrives sorted, but they are two lists — one grid means one
     // order, and the only one that makes sense is when it was liked.
     liked.sort((a, b) => (b.likedAt ?? '').compareTo(a.likedAt ?? ''));
-    return liked;
+
+    // Read from the server rather than guessed from the length. A section
+    // shorter than the limit means *that section* is exhausted, which is not
+    // the same as the page being the last one — the other section may have
+    // plenty left.
+    final data = resp.data;
+    final more = data is Map ? data['hasMore'] : null;
+    return LikedPage(
+      photos: liked,
+      hasMore: more is Map &&
+          (more['events'] == true || more['pictures'] == true),
+    );
   }
 
   /// Everything bookmarked — the same list the Saved screen shows, from the

@@ -19,6 +19,8 @@ class CommentInputBarWidget extends StatefulWidget {
     required this.ext,
     this.replyingToName,
     this.onCancelReply,
+    this.editingContent,
+    this.onCancelEdit,
   });
 
   final TextEditingController controller;
@@ -29,6 +31,17 @@ class CommentInputBarWidget extends StatefulWidget {
   /// Display name of the user being replied to. Null means no active reply.
   final String? replyingToName;
   final VoidCallback? onCancelReply;
+
+  /// What the comment being edited said, or null when nothing is being edited.
+  ///
+  /// The composer holds the text and [onSend] applies the change — the same
+  /// shape the chat room uses, and for the same reason: a dialog covers the
+  /// thread the comment belongs to, so you rewrite it with no sight of what
+  /// you were replying to or what you said above it.
+  final String? editingContent;
+
+  /// Leaves edit mode without applying anything.
+  final VoidCallback? onCancelEdit;
 
   @override
   State<CommentInputBarWidget> createState() => _CommentInputBarWidgetState();
@@ -61,8 +74,66 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
             onEmojiSelected: (emoji) => insertEmoji(widget.controller, emoji),
           ),
 
-        // ── Reply banner ─────────────────────────────────────────────────────
-        if (widget.replyingToName != null)
+        // ── Editing / reply banner ───────────────────────────────────────────
+        // Never both: loading a comment in for editing clears any staged reply,
+        // which would otherwise be attached to nothing once the edit applies.
+        if (widget.editingContent != null)
+          Container(
+            padding: EdgeInsets.fromLTRB(16.w, 8.h, 8.w, 8.h),
+            decoration: BoxDecoration(
+              color: ext.accentGold.withValues(alpha: 0.08),
+              border: Border(
+                top: BorderSide(
+                    color: ext.accentGold.withValues(alpha: 0.25), width: 1),
+                left: BorderSide(color: ext.accentGold, width: 3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.edit_rounded, size: 14.sp, color: ext.accentGold),
+                SizedBox(width: 6.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Edit comment',
+                        style: TextStyle(
+                          color: ext.accentGold,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      // What it said before. The composer already holds the
+                      // same words, but they are about to be typed over —
+                      // this is the only thing on screen that still says what
+                      // is being changed.
+                      Text(
+                        widget.editingContent!,
+                        style: TextStyle(
+                          color: ext.searchHintColor,
+                          fontSize: 12.sp,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: AppSpacing.xs.w),
+                Semantics(
+                    button: true,
+                    label: 'Cancel edit',
+                    child: GestureDetector(
+                      onTap: widget.onCancelEdit,
+                      child: Icon(Icons.close_rounded,
+                          size: 16.sp, color: ext.searchHintColor),
+                    )),
+              ],
+            ),
+          )
+        else if (widget.replyingToName != null)
           Container(
             padding: EdgeInsets.fromLTRB(16.w, 8.h, 8.w, 8.h),
             decoration: BoxDecoration(
@@ -151,9 +222,11 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                     textCapitalization: TextCapitalization.sentences,
                     dense: true,
                     borderRadius: 22.r,
-                    hint: widget.replyingToName != null
-                        ? 'Write a reply…'
-                        : 'Add a comment…',
+                    hint: widget.editingContent != null
+                        ? 'Edit your comment…'
+                        : widget.replyingToName != null
+                            ? 'Write a reply…'
+                            : 'Add a comment…',
                     onFieldSubmitted: (_) => widget.onSend(),
                   ),
                 ),
@@ -165,7 +238,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                 cursor: SystemMouseCursors.click,
                 child: Semantics(
                     button: true,
-                    label: 'Send',
+                    label: widget.editingContent != null ? 'Save edit' : 'Send',
                     child: GestureDetector(
                       onTap: widget.onSend,
                       child: AnimatedContainer(
@@ -188,8 +261,14 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                           ],
                         ),
                         alignment: Alignment.center,
-                        child: Icon(Icons.send_rounded,
-                            color: Colors.white, size: 18.sp),
+                        // A check rather than a plane while editing: nothing
+                        // new is being sent.
+                        child: Icon(
+                            widget.editingContent != null
+                                ? Icons.check_rounded
+                                : Icons.send_rounded,
+                            color: Colors.white,
+                            size: 18.sp),
                       ),
                     )),
               ),

@@ -317,6 +317,49 @@ class ChatRoomCommentLikeSettled extends ChatRoomEvent {
   final int likeCount;
 }
 
+/// A comment's text was changed, and the list must say so now.
+///
+/// **Not a refetch.** Re-joining the room cannot show an edit: the join merges
+/// fresh history into what is already held and skips every id it has seen, so
+/// the edited row arrives and is discarded as a duplicate of itself. That is
+/// right for history — a live message must never be dropped — and useless as a
+/// way to reflect a change to a row already on screen.
+///
+/// So the sheet applies the edit here and calls the server after. The server
+/// is the authority on whether it was allowed; this is the authority on what
+/// the reader is looking at while the answer travels.
+class ChatRoomCommentEdited extends ChatRoomEvent {
+  const ChatRoomCommentEdited({required this.commentId, required this.content});
+
+  final String commentId;
+  final String content;
+}
+
+/// A comment is gone from the list.
+///
+/// Same reasoning as [ChatRoomCommentEdited] and the more visible half of it:
+/// merging fresh history only ever *adds*, so nothing a refetch does can take
+/// a deleted comment off the screen. It sat there until the sheet was closed
+/// and reopened.
+class ChatRoomCommentRemoved extends ChatRoomEvent {
+  const ChatRoomCommentRemoved(this.commentId);
+
+  final String commentId;
+}
+
+/// A delete that the server refused: put the comment back where it was.
+///
+/// The row is carried whole rather than refetched, because there is nothing to
+/// refetch it from — the comment is still on the server, but the only endpoint
+/// that lists it is the room history, and merging that back in is what does
+/// not work here. The list is re-sorted on arrival, so it lands in its own
+/// place rather than at the end.
+class ChatRoomCommentRestored extends ChatRoomEvent {
+  const ChatRoomCommentRestored(this.comment);
+
+  final ChatMessage comment;
+}
+
 /// Admin requested permanent deletion of the room.
 class ChatRoomDeleteRequested extends ChatRoomEvent {
   const ChatRoomDeleteRequested();

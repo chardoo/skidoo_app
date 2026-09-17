@@ -346,8 +346,12 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<String> uploadImage(File file, {String? mimeType}) =>
-      _rest.uploadImage(file, mimeType: mimeType);
+  Future<String> uploadImage(
+    File file, {
+    String? mimeType,
+    void Function(int sent, int total)? onProgress,
+  }) =>
+      _rest.uploadImage(file, mimeType: mimeType, onProgress: onProgress);
 
   @override
   Future<EventReaction> getEventReaction(String eventId, String userId) =>

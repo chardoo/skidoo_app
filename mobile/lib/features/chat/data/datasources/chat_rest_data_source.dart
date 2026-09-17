@@ -315,7 +315,17 @@ abstract class ChatRestDataSource {
   /// POST /chat/upload-image — uploads [file] and returns the Cloudinary URL.
   /// [mimeType] overrides content-type detection; required on web where
   /// [file.path] is a blob URL with no meaningful extension.
-  Future<String> uploadImage(File file, {String? mimeType});
+  /// Uploads a photo or clip and answers its URL.
+  ///
+  /// [onProgress] reports bytes sent as they go out. A clip is large enough
+  /// that the sender needs to see it moving — without it the only honest thing
+  /// the UI can show is an indeterminate spinner, which after ten seconds is
+  /// indistinguishable from a hang.
+  Future<String> uploadImage(
+    File file, {
+    String? mimeType,
+    void Function(int sent, int total)? onProgress,
+  });
 
   /// POST /chat/events/{eventId}/reaction — set or clear the caller's reaction.
   ///
@@ -831,7 +841,11 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
       });
 
   @override
-  Future<String> uploadImage(File file, {String? mimeType}) async {
+  Future<String> uploadImage(
+    File file, {
+    String? mimeType,
+    void Function(int sent, int total)? onProgress,
+  }) async {
     return _wrap(() async {
       // ── Content type ─────────────────────────────────────────────────────
       // On web, file.path is a blob URL — extension-based detection fails.
@@ -896,6 +910,7 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
       final res = await _client.dio.post(
         '/chat/upload-image',
         data: formData,
+        onSendProgress: onProgress,
         options: dio_pkg.Options(
           sendTimeout: uploadTimeout,
           receiveTimeout: uploadTimeout,

@@ -229,6 +229,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     on<_ParticipantRemoved>(_onParticipantRemoved);
     on<ChatRoomLeaveGroupRequested>(_onLeaveGroupRequested);
     on<ChatRoomCommentLikeSettled>(_onCommentLikeSettled);
+    on<ChatRoomCommentEdited>(_onCommentEdited);
+    on<ChatRoomCommentRemoved>(_onCommentRemoved);
+    on<ChatRoomCommentRestored>(_onCommentRestored);
     on<ChatRoomDeleteRequested>(_onDeleteRequested);
     on<ChatRoomClearRequested>(_onClearRequested);
     on<_RoomDeleted>(_onRoomDeleted);
@@ -971,37 +974,75 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
 
     if (hasLocalImage) {
-      // Clear the staged image immediately so the user can't double-send.
+      final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+
+      // The bubble goes up FIRST, drawn from the file on disk.
+      //
+      // This used to wait for the upload: the picked clip sat behind a spinner
+      // in the input bar and only became a bubble once the server had it, which
+      // for a video over a slow connection is many seconds of the app looking
+      // like it ate the thing. Nothing about showing it needs the server —
+      // the file is right here.
+      final optimistic = ChatMessage(
+        id: tempId,
+        roomId: _currentRoomId ?? '',
+        senderId: _myUserId,
+        senderRole: ChatConfig.roleClient,
+        content: content ?? '',
+        isVideo: pendingIsVideo,
+        replyToId: event.replyToId,
+        replyPreview: replyPreview,
+        createdAt: DateTime.now().toUtc(),
+        isLocal: true,
+        localMediaPath: pendingPath,
+        uploadProgress: 0,
+      );
+
       emit(state.copyWith(
-        isUploadingImage: true,
+        // Not `isUploadingImage: true` any more — the progress is on the bubble
+        // now, and a second indicator in the composer only says the same thing
+        // in a worse place. Clearing the staged image still stops a double-send.
         clearPendingImage: true,
         clearReply: true,
+        messages: _sorted([optimistic, ...state.messages]),
       ));
+      _cacheAndAnnounce(optimistic);
 
       try {
-        final imageUrl =
-            await _uploadImage(File(pendingPath), mimeType: pendingMimeType);
-        final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
-
-        final optimistic = ChatMessage(
-          id: tempId,
-          roomId: _currentRoomId ?? '',
-          senderId: _myUserId,
-          senderRole: ChatConfig.roleClient,
-          content: content ?? '',
-          imageUrl: imageUrl,
-          isVideo: pendingIsVideo,
-          replyToId: event.replyToId,
-          replyPreview: replyPreview,
-          createdAt: DateTime.now().toUtc(),
-          isLocal: true,
+        // Rounded to hundredths before comparing: a large upload fires this
+        // callback hundreds of times and each distinct value is a rebuild of
+        // the room. A bar cannot show more than that anyway.
+        var lastEmitted = 0.0;
+        final imageUrl = await _uploadImage(
+          File(pendingPath),
+          mimeType: pendingMimeType,
+          onProgress: (sent, total) {
+            if (total <= 0 || isClosed) return;
+            final fraction = (sent / total).clamp(0.0, 1.0).toDouble();
+            if (fraction - lastEmitted < 0.01 && fraction < 1.0) return;
+            lastEmitted = fraction;
+            emit(state.copyWith(
+              messages: _withMessage(
+                tempId,
+                (m) => m.copyWith(uploadProgress: fraction),
+              ),
+            ));
+          },
         );
 
+        // Replaced in place, same id, same position: the bubble already on
+        // screen gains a URL and loses its progress bar. Removing and
+        // re-inserting would rebuild the row and flash the photo.
+        //
+        // [localMediaPath] deliberately stays. The sender goes on seeing the
+        // file from their own disk for the rest of the session — instant, and
+        // it means the swap costs no download and shows no placeholder.
         emit(state.copyWith(
-          isUploadingImage: false,
-          messages: _sorted([optimistic, ...state.messages]),
+          messages: _withMessage(
+            tempId,
+            (m) => m.copyWith(imageUrl: imageUrl, clearUploadProgress: true),
+          ),
         ));
-        _cacheAndAnnounce(optimistic);
 
         await _encryptAndSend(
           content: hasText ? content : null,
@@ -1011,13 +1052,16 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           emit: emit,
         );
       } catch (e) {
-        // Restore the pending media so the user can retry, and say what
-        // actually went wrong — the server distinguishes "too large" from
+        // Take the bubble back down — it promised something that did not
+        // happen — and restore the pending media so the user can retry. Say
+        // what actually went wrong: the server distinguishes "too large" from
         // "unsupported type" from "storage not configured", and all three used
         // to arrive here as the same sentence.
         debugPrint('[ChatBloc] media upload failed: $e');
         emit(state.copyWith(
           isUploadingImage: false,
+          messages:
+              state.messages.where((m) => m.id != tempId).toList(),
           pendingImagePath: pendingPath,
           pendingMimeType: pendingMimeType,
           pendingIsVideo: pendingIsVideo,
@@ -1304,6 +1348,52 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _cacheMessage(updated).catchError((_) {});
   }
 
+  void _onCommentEdited(
+    ChatRoomCommentEdited event,
+    Emitter<ChatRoomState> emit,
+  ) {
+    final index =
+        state.messages.indexWhere((m) => m.id == event.commentId);
+    if (index < 0) return;
+
+    final updated = state.messages[index].copyWith(
+      content: event.content,
+      updatedAt: DateTime.now(),
+    );
+    final messages = List<ChatMessage>.of(state.messages)..[index] = updated;
+
+    emit(state.copyWith(messages: messages));
+    // And into the cache, or reopening the sheet paints the old words back:
+    // the join emits what is stored here before any network call returns.
+    _updateCachedMessage(event.commentId, event.content, DateTime.now())
+        .catchError((_) {});
+  }
+
+  void _onCommentRemoved(
+    ChatRoomCommentRemoved event,
+    Emitter<ChatRoomState> emit,
+  ) {
+    final messages =
+        state.messages.where((m) => m.id != event.commentId).toList();
+    // Nothing matched — already gone, or never in this page.
+    if (messages.length == state.messages.length) return;
+
+    emit(state.copyWith(messages: messages));
+    _deleteCachedMessage(event.commentId).catchError((_) {});
+  }
+
+  void _onCommentRestored(
+    ChatRoomCommentRestored event,
+    Emitter<ChatRoomState> emit,
+  ) {
+    if (state.messages.any((m) => m.id == event.comment.id)) return;
+
+    emit(state.copyWith(
+      messages: _sorted([...state.messages, event.comment]),
+    ));
+    _cacheMessage(event.comment).catchError((_) {});
+  }
+
   void _onLikeToggled(ChatRoomLikeToggled event, Emitter<ChatRoomState> emit) {
     if (!_ws.isConnected) return;
     if (state.isEventLiked) {
@@ -1359,6 +1449,9 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   ///  * `paidPreview` — the sender's screen knew the photo was priced and
   ///    unbought. An encrypted send has no `image_url` for the server to hang
   ///    it off, so it comes back null there by construction.
+  ///  * `localMediaPath` — the file on the sender's own disk. Keeping it means
+  ///    the echo does not send them back to the network for a picture they
+  ///    already have, which is a visible re-fetch of their own photograph.
   ///
   /// This is the whole of "the watermark shows when I share it and then
   /// disappears after a few seconds" — the seconds being the round trip.
@@ -1379,8 +1472,24 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     if (optimistic.paidPreview && !out.paidPreview) {
       out = out.copyWith(paidPreview: true);
     }
+    if (optimistic.localMediaPath != null && out.localMediaPath == null) {
+      out = out.copyWith(localMediaPath: optimistic.localMediaPath);
+    }
     return out;
   }
+
+  /// The message list with [id] passed through [change], in place.
+  ///
+  /// Position and identity are preserved on purpose: the alternative — drop the
+  /// old one and insert a new one — rebuilds the row from scratch, which throws
+  /// away the decoded image and replays the entrance fade.
+  List<ChatMessage> _withMessage(
+    String id,
+    ChatMessage Function(ChatMessage) change,
+  ) =>
+      [
+        for (final m in state.messages) m.id == id ? change(m) : m,
+      ];
   Future<void> _onReceived(
     ChatRoomMessageReceived event,
     Emitter<ChatRoomState> emit,

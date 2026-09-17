@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/features/ads/data/datasources/feed_comment_data_source.dart';
+import 'package:jperg_app/components/comments/comment_dialogs.dart';
 import 'package:jperg_app/core/celebration/comment_milestone_watcher.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
@@ -11,6 +13,7 @@ import 'package:jperg_app/components/comments/comment_row_data.dart';
 import 'package:jperg_app/components/comments/comment_sheet_shell.dart';
 import 'package:jperg_app/components/comments/threaded_comment_widget.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
+import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/time_formatter.dart';
@@ -118,6 +121,17 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
 
   ChatMessage? _replyingTo;
 
+  /// The comment whose text the composer is currently holding for a rewrite,
+  /// or null when it is holding a new comment.
+  ///
+  /// The same shape the chat room uses. A dialog was covering the thread the
+  /// comment belongs to, so it was rewritten with no sight of what it replied
+  /// to or what came after it.
+  ChatMessage? _editing;
+
+  /// Whatever was half-typed when the edit began, put back on cancel.
+  String? _draftBeforeEdit;
+
   @override
   void initState() {
     super.initState();
@@ -151,6 +165,9 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
       _event = next;
       _error = null;
       _replyingTo = null;
+      // An edit in flight belongs to a comment on the post being left.
+      _editing = null;
+      _draftBeforeEdit = null;
       _expandedIds.clear();
       // The threads belong to the post being left.
       _replies.clear();
@@ -297,6 +314,34 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
     _focusNode.requestFocus();
   }
 
+  /// Load a comment into the composer to be rewritten.
+  void _beginEdit(ChatMessage msg) {
+    setState(() {
+      // Editing and replying both own the composer; a reply left staged would
+      // be attached to nothing once the edit is applied.
+      _replyingTo = null;
+      _draftBeforeEdit = _inputCtrl.text;
+      _editing = msg;
+    });
+    _inputCtrl.value = TextEditingValue(
+      text: msg.content,
+      selection: TextSelection.collapsed(offset: msg.content.length),
+    );
+    _focusNode.requestFocus();
+  }
+
+  void _cancelEdit() {
+    final draft = _draftBeforeEdit ?? '';
+    setState(() {
+      _editing = null;
+      _draftBeforeEdit = null;
+    });
+    _inputCtrl.value = TextEditingValue(
+      text: draft,
+      selection: TextSelection.collapsed(offset: draft.length),
+    );
+  }
+
   void _cancelReply() {
     setState(() => _replyingTo = null);
     _focusNode.unfocus();
@@ -305,6 +350,20 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
   void _send() {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
+
+    // Send doubles as the edit's confirm — the composer is holding a rewrite,
+    // not a new comment.
+    final editing = _editing;
+    if (editing != null) {
+      // An unchanged body is a cancel. Stamping "edited" on a comment nobody
+      // changed is a lie the reader can see.
+      if (text != editing.content.trim()) _editComment(editing, text);
+      _inputCtrl.clear();
+      _cancelEdit();
+      _focusNode.unfocus();
+      return;
+    }
+
     final isReply = _replyingTo != null;
     _bloc.add(ChatRoomMessageSent(text, replyToId: _replyingTo?.id));
     // Only a top-level comment moves the badge.
@@ -383,6 +442,83 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
         ));
   }
 
+  /// Offer whatever this reader may actually do to this comment.
+  void _showOptions(ChatMessage msg) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final mine = msg.senderId == _myId;
+    showCommentOptionsSheet(
+      context,
+      ext: ext,
+      // Two different grants: the author may change what they said, the
+      // creator of the album may take it down. Showing an option the server
+      // would refuse is worse than not showing it.
+      canEdit: mine,
+      canDelete: mine || _event.photographerId == _myId,
+      // Into the composer, not a dialog — the thread stays on screen while
+      // the comment is rewritten. See [_beginEdit].
+      onEdit: () => _beginEdit(msg),
+      onDelete: () => showDeleteCommentDialog(
+        context,
+        ext: ext,
+        onConfirm: () => _deleteComment(msg),
+      ),
+    );
+  }
+
+  /// Change what a comment says, through the *comment* endpoints.
+  ///
+  /// Not the message ones, which is the trap here: an event's comments are
+  /// served as messages, so each carries a message-shaped row — but the row
+  /// itself lives in `chat_comments`, and `PUT /rooms/{id}/messages/{id}`
+  /// only ever touches `chat_messages`. It would answer "Message not found"
+  /// for every comment. The id is the comment's own, so these take it directly.
+  Future<void> _editComment(ChatMessage msg, String content) async {
+    final text = content.trim();
+    if (text.isEmpty || text == msg.content) return;
+
+    // Applied here, before the request goes.
+    //
+    // It used to call `_loadRoom()` on success, which cannot work: re-joining
+    // merges fresh history into the list it already holds and drops every id
+    // it has seen, so the edited row came back and was discarded as a
+    // duplicate of itself. The comment simply never changed on screen.
+    //
+    // Reverted below if the server refuses — which it does for anyone but the
+    // author, and that rule is enforced there rather than trusted from here.
+    _bloc.add(ChatRoomCommentEdited(commentId: msg.id, content: text));
+    try {
+      await sl<FeedCommentDataSource>().editComment(msg.id, text);
+    } catch (e) {
+      debugPrint('[EventComments] edit failed for ${msg.id}: $e');
+      if (!mounted) return;
+      _bloc.add(
+          ChatRoomCommentEdited(commentId: msg.id, content: msg.content));
+      AppSnackBar.error(context, 'Could not edit the comment.');
+    }
+  }
+
+  Future<void> _deleteComment(ChatMessage msg) async {
+    // Gone from the list now. A refetch could never take it off: merging fresh
+    // history only ever *adds*, so the deleted comment sat there until the
+    // sheet was closed and opened again.
+    _bloc.add(ChatRoomCommentRemoved(msg.id));
+    try {
+      final remaining = await sl<FeedCommentDataSource>().deleteComment(msg.id);
+      // The target's count after the delete, straight from the server. Null
+      // for a reply, which does not count towards the badge.
+      if (remaining != null) {
+        CommentCounts.instance.report(_event.id, remaining);
+      }
+    } catch (e) {
+      debugPrint('[EventComments] delete failed for ${msg.id}: $e');
+      if (!mounted) return;
+      // Put it back. Dropping somebody's comment off the screen and leaving it
+      // on the server is the one outcome worse than the delete failing loudly.
+      _bloc.add(ChatRoomCommentRestored(msg));
+      AppSnackBar.error(context, 'Could not delete the comment.');
+    }
+  }
+
   CommentRowData _toRowData(
     ChatMessage msg, {
     List<ChatMessage>? replies,
@@ -411,6 +547,17 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
               msg.senderRole != ChatConfig.rolePhotographer)
           ? null
           : () => _openProfile(msg),
+      // Who may do what, and they are not the same list. The author may
+      // change what they said; the creator of the album may take it down but
+      // not rewrite it. The server enforces both — this decides what is worth
+      // offering, so nobody is shown an option that will 403.
+      //
+      // Never on a comment still on its way to the server: it has no id yet
+      // to edit or delete against.
+      canEdit: !msg.isLocal && msg.senderId == _myId,
+      canDelete: !msg.isLocal &&
+          (msg.senderId == _myId || _event.photographerId == _myId),
+      onLongPress: msg.isLocal ? null : () => _showOptions(msg),
     );
   }
 
@@ -548,6 +695,8 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
                                 ? _label(_replyingTo!)
                                 : null,
                             onCancelReply: _cancelReply,
+                            editingContent: _editing?.content,
+                            onCancelEdit: _cancelEdit,
                           ),
                         ],
                       ),
@@ -620,6 +769,17 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
   String _myId = '';
   ChatMessage? _replyingTo;
 
+  /// The comment whose text the composer is currently holding for a rewrite,
+  /// or null when it is holding a new comment.
+  ///
+  /// The same shape the chat room uses. A dialog was covering the thread the
+  /// comment belongs to, so it was rewritten with no sight of what it replied
+  /// to or what came after it.
+  ChatMessage? _editing;
+
+  /// Whatever was half-typed when the edit began, put back on cancel.
+  String? _draftBeforeEdit;
+
   final _inputCtrl = TextEditingController();
   final _focusNode = FocusNode();
   final _scrollCtrl = ScrollController();
@@ -679,6 +839,34 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
     _focusNode.requestFocus();
   }
 
+  /// Load a comment into the composer to be rewritten.
+  void _beginEdit(ChatMessage msg) {
+    setState(() {
+      // Editing and replying both own the composer; a reply left staged would
+      // be attached to nothing once the edit is applied.
+      _replyingTo = null;
+      _draftBeforeEdit = _inputCtrl.text;
+      _editing = msg;
+    });
+    _inputCtrl.value = TextEditingValue(
+      text: msg.content,
+      selection: TextSelection.collapsed(offset: msg.content.length),
+    );
+    _focusNode.requestFocus();
+  }
+
+  void _cancelEdit() {
+    final draft = _draftBeforeEdit ?? '';
+    setState(() {
+      _editing = null;
+      _draftBeforeEdit = null;
+    });
+    _inputCtrl.value = TextEditingValue(
+      text: draft,
+      selection: TextSelection.collapsed(offset: draft.length),
+    );
+  }
+
   void _cancelReply() {
     setState(() => _replyingTo = null);
     _focusNode.unfocus();
@@ -687,6 +875,20 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
   void _send() {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
+
+    // Send doubles as the edit's confirm — the composer is holding a rewrite,
+    // not a new comment.
+    final editing = _editing;
+    if (editing != null) {
+      // An unchanged body is a cancel. Stamping "edited" on a comment nobody
+      // changed is a lie the reader can see.
+      if (text != editing.content.trim()) _editComment(editing, text);
+      _inputCtrl.clear();
+      _cancelEdit();
+      _focusNode.unfocus();
+      return;
+    }
+
     final isReply = _replyingTo != null;
     _bloc.add(ChatRoomMessageSent(text, replyToId: _replyingTo?.id));
     // Replies do not move the badge — see the note in the sheet's _send.
@@ -753,6 +955,83 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
         ));
   }
 
+  /// Offer whatever this reader may actually do to this comment.
+  void _showOptions(ChatMessage msg) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final mine = msg.senderId == _myId;
+    showCommentOptionsSheet(
+      context,
+      ext: ext,
+      // Two different grants: the author may change what they said, the
+      // creator of the album may take it down. Showing an option the server
+      // would refuse is worse than not showing it.
+      canEdit: mine,
+      canDelete: mine || widget.event.photographerId == _myId,
+      // Into the composer, not a dialog — the thread stays on screen while
+      // the comment is rewritten. See [_beginEdit].
+      onEdit: () => _beginEdit(msg),
+      onDelete: () => showDeleteCommentDialog(
+        context,
+        ext: ext,
+        onConfirm: () => _deleteComment(msg),
+      ),
+    );
+  }
+
+  /// Change what a comment says, through the *comment* endpoints.
+  ///
+  /// Not the message ones, which is the trap here: an event's comments are
+  /// served as messages, so each carries a message-shaped row — but the row
+  /// itself lives in `chat_comments`, and `PUT /rooms/{id}/messages/{id}`
+  /// only ever touches `chat_messages`. It would answer "Message not found"
+  /// for every comment. The id is the comment's own, so these take it directly.
+  Future<void> _editComment(ChatMessage msg, String content) async {
+    final text = content.trim();
+    if (text.isEmpty || text == msg.content) return;
+
+    // Applied here, before the request goes.
+    //
+    // It used to call `_loadRoom()` on success, which cannot work: re-joining
+    // merges fresh history into the list it already holds and drops every id
+    // it has seen, so the edited row came back and was discarded as a
+    // duplicate of itself. The comment simply never changed on screen.
+    //
+    // Reverted below if the server refuses — which it does for anyone but the
+    // author, and that rule is enforced there rather than trusted from here.
+    _bloc.add(ChatRoomCommentEdited(commentId: msg.id, content: text));
+    try {
+      await sl<FeedCommentDataSource>().editComment(msg.id, text);
+    } catch (e) {
+      debugPrint('[EventComments] edit failed for ${msg.id}: $e');
+      if (!mounted) return;
+      _bloc.add(
+          ChatRoomCommentEdited(commentId: msg.id, content: msg.content));
+      AppSnackBar.error(context, 'Could not edit the comment.');
+    }
+  }
+
+  Future<void> _deleteComment(ChatMessage msg) async {
+    // Gone from the list now. A refetch could never take it off: merging fresh
+    // history only ever *adds*, so the deleted comment sat there until the
+    // sheet was closed and opened again.
+    _bloc.add(ChatRoomCommentRemoved(msg.id));
+    try {
+      final remaining = await sl<FeedCommentDataSource>().deleteComment(msg.id);
+      // The target's count after the delete, straight from the server. Null
+      // for a reply, which does not count towards the badge.
+      if (remaining != null) {
+        CommentCounts.instance.report(widget.event.id, remaining);
+      }
+    } catch (e) {
+      debugPrint('[EventComments] delete failed for ${msg.id}: $e');
+      if (!mounted) return;
+      // Put it back. Dropping somebody's comment off the screen and leaving it
+      // on the server is the one outcome worse than the delete failing loudly.
+      _bloc.add(ChatRoomCommentRestored(msg));
+      AppSnackBar.error(context, 'Could not delete the comment.');
+    }
+  }
+
   CommentRowData _toRowData(ChatMessage msg,
       {List<ChatMessage>? replies,
       required void Function(ChatMessage) onReply}) {
@@ -779,6 +1058,12 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
               msg.senderRole != ChatConfig.rolePhotographer)
           ? null
           : () => _openProfile(msg),
+      // The same two grants the sheet applies — this panel draws the same
+      // comments and must not answer the question differently.
+      canEdit: !msg.isLocal && msg.senderId == _myId,
+      canDelete: !msg.isLocal &&
+          (msg.senderId == _myId || widget.event.photographerId == _myId),
+      onLongPress: msg.isLocal ? null : () => _showOptions(msg),
     );
   }
 
@@ -962,6 +1247,8 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
                                 ? _label(_replyingTo!)
                                 : null,
                             onCancelReply: _cancelReply,
+                            editingContent: _editing?.content,
+                            onCancelEdit: _cancelEdit,
                           ),
                         ],
                       ),
@@ -982,6 +1269,8 @@ class _WebCommentInput extends StatefulWidget {
     required this.ext,
     this.replyingToName,
     this.onCancelReply,
+    this.editingContent,
+    this.onCancelEdit,
   });
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -989,6 +1278,11 @@ class _WebCommentInput extends StatefulWidget {
   final AppThemeExtension ext;
   final String? replyingToName;
   final VoidCallback? onCancelReply;
+
+  /// What the comment being edited said — see [CommentInputBarWidget] for the
+  /// reasoning. Null when the composer holds a new comment.
+  final String? editingContent;
+  final VoidCallback? onCancelEdit;
 
   @override
   State<_WebCommentInput> createState() => _WebCommentInputState();
@@ -1021,8 +1315,59 @@ class _WebCommentInputState extends State<_WebCommentInput> {
             onEmojiSelected: (emoji) => insertEmoji(widget.controller, emoji),
           ),
 
-        // Reply strip
-        if (widget.replyingToName != null)
+        // Editing / reply strip — never both.
+        if (widget.editingContent != null)
+          Container(
+            padding: EdgeInsets.fromLTRB(14.w, 7.h, 8.w, 7.h),
+            decoration: BoxDecoration(
+              color: ext.accentGold.withValues(alpha: 0.08),
+              border: Border(
+                top: BorderSide(color: dividerColor),
+                left: BorderSide(color: ext.accentGold, width: 3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.edit_rounded, size: 13.sp, color: ext.accentGold),
+                SizedBox(width: 6.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Edit comment',
+                        style: TextStyle(
+                          color: ext.accentGold,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        widget.editingContent!,
+                        style: TextStyle(
+                          color: ext.searchHintColor,
+                          fontSize: 11.sp,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Semantics(
+                  button: true,
+                  label: 'Cancel edit',
+                  child: GestureDetector(
+                    onTap: widget.onCancelEdit,
+                    child: Icon(Icons.close_rounded,
+                        size: 14.sp, color: ext.searchHintColor),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (widget.replyingToName != null)
           Container(
             padding: EdgeInsets.fromLTRB(14.w, 7.h, 8.w, 7.h),
             decoration: BoxDecoration(
@@ -1128,9 +1473,11 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                     textCapitalization: TextCapitalization.sentences,
                     dense: true,
                     borderRadius: 20.r,
-                    hint: widget.replyingToName != null
-                        ? 'Write a reply…'
-                        : 'Add a comment…',
+                    hint: widget.editingContent != null
+                        ? 'Edit your comment…'
+                        : widget.replyingToName != null
+                            ? 'Write a reply…'
+                            : 'Add a comment…',
                     onFieldSubmitted: (_) => widget.onSend(),
                   ),
                 ),
@@ -1164,7 +1511,10 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                         ],
                       ),
                       alignment: Alignment.center,
-                      child: Icon(Icons.send_rounded,
+                      child: Icon(
+                          widget.editingContent != null
+                              ? Icons.check_rounded
+                              : Icons.send_rounded,
                           color: Colors.white, size: 16.sp),
                     ),
                   ),
