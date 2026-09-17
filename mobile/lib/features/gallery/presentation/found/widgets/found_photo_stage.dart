@@ -131,15 +131,8 @@ class FoundPhotoStage extends StatelessWidget {
                         isActive: isActive,
                         resetToken: photo.id,
                         onZoomChanged: onZoomChanged,
-                        // Inside the zoom rather than over it, so the mark
-                        // scales with the photograph — pinching into a paid
-                        // photo must not leave the logo behind at its old size
-                        // over a magnified corner.
-                        child: PaidPhotoWatermark(
-                          price: photo.price,
-                          isPurchased: photo.isPurchased,
-                          child: JpergImage(
-                            imageUrl: photo.url,
+                        child: JpergImage(
+                          imageUrl: photo.url,
                           // Identical to `cover` once the box is the photo's own
                           // shape, which is the steady state. It differs only in
                           // the moment before an unmeasured photo resolves, and
@@ -152,10 +145,28 @@ class FoundPhotoStage extends StatelessWidget {
                           // losing the strip of width the lift traded away.
                           fit: lifted ? BoxFit.cover : BoxFit.contain,
                           semanticLabel: 'Found photo',
-                            placeholder: (_, __) =>
-                                const JpergImagePlaceholder(),
-                            errorWidget: (_, __, ___) =>
-                                const JpergImagePlaceholder(),
+                          placeholder: (_, __) => const JpergImagePlaceholder(),
+                          errorWidget: (_, __, ___) =>
+                              const JpergImagePlaceholder(),
+                        ),
+                      ),
+
+                    // The mark, over the zoom rather than inside it.
+                    //
+                    // Inside, it scaled with the photograph, which looked
+                    // better and was a hole: the viewer pans within the
+                    // photo's own bounds, so at 4x in a corner the logo is
+                    // somewhere off the visible window — pinch, pan, screenshot,
+                    // and the paid photo is clean. Fixed to the box it is in
+                    // every frame at every zoom. Video is not marked, so this
+                    // sits on the same branch as the image.
+                    if (!photo.isVideo)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: PaidPhotoWatermark(
+                            price: photo.price,
+                            isPurchased: photo.isPurchased,
+                            child: const SizedBox.expand(),
                           ),
                         ),
                       ),

@@ -251,13 +251,13 @@ class _MessageBubbleState extends State<MessageBubble> {
                               // and is not needed: [paidPreview] already means
                               // "priced and unbought", and the widget's rule
                               // only asks whether the price is above zero.
-                              : PaidPhotoWatermark(
-                                  price: message.paidPreview ? 1 : 0,
-                                  isPurchased: false,
-                                  child: _MessageImage(
-                                    imageUrl: message.imageUrl!,
-                                    aspectRatio: message.mediaAspectRatio,
-                                  ),
+                              : _MessageImage(
+                                  imageUrl: message.imageUrl!,
+                                  aspectRatio: message.mediaAspectRatio,
+                                  // Handed down rather than wrapped here: the
+                                  // tap opens a second, full-screen copy that
+                                  // has to be marked too.
+                                  paidPreview: message.paidPreview,
                                 ),
                         ),
                       // Text content, with the timestamp tucked into its
@@ -547,8 +547,19 @@ class _ReplyPreviewStrip extends StatelessWidget {
 // ── Image attachment ──────────────────────────────────────────────────────────
 
 class _MessageImage extends StatelessWidget {
-  const _MessageImage({required this.imageUrl, this.aspectRatio});
+  const _MessageImage({
+    required this.imageUrl,
+    this.aspectRatio,
+    this.paidPreview = false,
+  });
   final String imageUrl;
+
+  /// Whether this is a paid photo the sender had not bought.
+  ///
+  /// Carried rather than wrapped from outside, because the tap opens a
+  /// *second* copy of the photo full-screen and that one has to be marked too
+  /// — otherwise the mark is a thing you get rid of by tapping the picture.
+  final bool paidPreview;
 
   /// Server-supplied aspect ratio (width ÷ height). When present the
   /// placeholder renders at the correct height immediately — no layout jump.
@@ -594,6 +605,14 @@ class _MessageImage extends StatelessWidget {
         ),
       ),
     );
+    // `price: 1` because the amount is not carried on a message and is not
+    // needed — [paidPreview] already means "priced and unbought", and the rule
+    // only asks whether the price is above zero.
+    final marked = PaidPhotoWatermark(
+      price: paidPreview ? 1 : 0,
+      isPurchased: false,
+      child: img,
+    );
     final tappable = Semantics(
       button: true,
       label: 'Open photo',
@@ -601,10 +620,13 @@ class _MessageImage extends StatelessWidget {
         onTap: () => Navigator.of(context, rootNavigator: true).push(
           MaterialPageRoute<void>(
             fullscreenDialog: true,
-            builder: (_) => _ZoomableImageView(imageUrl: imageUrl),
+            builder: (_) => _ZoomableImageView(
+              imageUrl: imageUrl,
+              paidPreview: paidPreview,
+            ),
           ),
         ),
-        child: img,
+        child: marked,
       ),
     );
     if (aspectRatio != null) {
@@ -619,8 +641,12 @@ class _MessageImage extends StatelessWidget {
 /// Supports pinch / scroll-wheel zoom (1×–6×), double-tap to toggle zoom at the
 /// tapped point, and swipe-down-to-dismiss while at rest.
 class _ZoomableImageView extends StatefulWidget {
-  const _ZoomableImageView({required this.imageUrl});
+  const _ZoomableImageView({required this.imageUrl, this.paidPreview = false});
   final String imageUrl;
+
+  /// Whether to mark this as a paid photo — see the overlay in [build], and
+  /// why it sits outside the zoom.
+  final bool paidPreview;
 
   @override
   State<_ZoomableImageView> createState() => _ZoomableImageViewState();
@@ -723,6 +749,23 @@ class _ZoomableImageViewState extends State<_ZoomableImageView>
               ),
             ),
           ),
+          // The mark, pinned to the screen rather than to the photograph.
+          //
+          // Deliberately *outside* the InteractiveViewer. Inside, it would
+          // scale and pan with the image — and at 6x on a corner the logo
+          // would be somewhere off-screen, which hands back exactly the clean
+          // screenshot it exists to prevent. Fixed to the viewport it is in
+          // every frame, at every zoom, wherever the photo has been dragged.
+          if (widget.paidPreview)
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: PaidPhotoWatermark(
+                  price: 1,
+                  isPurchased: false,
+                  child: SizedBox.expand(),
+                ),
+              ),
+            ),
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
             right: 12,

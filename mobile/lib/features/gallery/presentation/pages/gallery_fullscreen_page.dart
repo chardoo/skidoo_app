@@ -254,20 +254,39 @@ class _ZoomablePhoto extends StatelessWidget {
       );
     }
 
-    return ZoomablePhoto(
-      imageUrl: photo.url,
-      knownAspect: photo.aspectRatio,
-      semanticLabel: 'Photo',
-      onTap: onTap,
-      onZoomChanged: onZoomChanged,
-      isActive: isActive,
-      errorWidget: (_, __, ___) => Center(
-        child: Icon(
-          Icons.broken_image_outlined,
-          color: ext.searchHintColor,
-          size: 64.sp,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ZoomablePhoto(
+          imageUrl: photo.url,
+          knownAspect: photo.aspectRatio,
+          semanticLabel: 'Photo',
+          onTap: onTap,
+          onZoomChanged: onZoomChanged,
+          isActive: isActive,
+          errorWidget: (_, __, ___) => Center(
+            child: Icon(
+              Icons.broken_image_outlined,
+              color: ext.searchHintColor,
+              size: 64.sp,
+            ),
+          ),
         ),
-      ),
+
+        // This is the biggest the photo ever gets, and it was the one copy
+        // carrying no mark — the grid tile had it, the stage had it, and
+        // opening the picture took it away. Over the zoom rather than inside
+        // it, so panning at 4x cannot leave it off-screen.
+        Positioned.fill(
+          child: IgnorePointer(
+            child: PaidPhotoWatermark(
+              price: photo.price,
+              isPurchased: photo.isPurchased,
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

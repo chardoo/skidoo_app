@@ -61,6 +61,60 @@ void main() {
     expect(mark, findsNothing);
   });
 
+  group('and opening it bigger does not take the mark away', () {
+    // The third round of this bug. Tapping the bubble pushes a *second* copy of
+    // the photo full-screen, and that one was built from the URL alone — so the
+    // way to get a clean screenshot of a paid photo was to tap it.
+    Future<void> openIt(WidgetTester t) async {
+      await t.tap(find.byType(GestureDetector).first);
+      // Not pumpAndSettle: the image placeholder is a CircularProgressIndicator
+      // that never stops spinning under a test's fake network, so nothing here
+      // ever settles. Long enough for the route transition to finish.
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('the enlarged paid photo carries it', (t) async {
+      await t.pumpWidget(host(shared(paidPreview: true)));
+      await t.pump();
+
+      expect(mark, findsOneWidget); // the bubble's
+
+      await openIt(t);
+
+      // Two, not one: the bubble stays mounted under the pushed route, so the
+      // second is the viewer's own. Before the fix this stayed at one — the
+      // enlarged copy was built from the URL alone.
+      expect(mark, findsNWidgets(2));
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+    });
+
+    testWidgets('an ordinary photo is still unmarked enlarged', (t) async {
+      await t.pumpWidget(host(shared()));
+      await t.pump();
+
+      await openIt(t);
+
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      expect(mark, findsNothing);
+    });
+
+    testWidgets('the mark is outside the zoom', (t) async {
+      // The point of the fix, and the thing a later refactor would undo without
+      // noticing: inside the InteractiveViewer the logo pans and scales with
+      // the photo, so at 6x in a corner it is off-screen and the hole is back.
+      // Pinned to the viewport it is in every frame at every zoom.
+      await t.pumpWidget(host(shared(paidPreview: true)));
+      await t.pump();
+      await openIt(t);
+
+      expect(
+        find.descendant(of: find.byType(InteractiveViewer), matching: mark),
+        findsNothing,
+      );
+    });
+  });
+
   testWidgets('the photo itself is drawn either way', (t) async {
     // Whatever else happens, the wrapper must not cost the bubble its image.
     for (final paid in [true, false]) {
