@@ -40,6 +40,14 @@ class HiddenEvents {
 
   static bool isHidden(String eventId) => ids.contains(eventId);
 
+  /// Forget what was read, so the next [load] goes back to disk.
+  ///
+  /// The set is cached in a static for the life of the process, which is right
+  /// in the app and wrong across tests: one case's hidden ids would otherwise
+  /// decide the next case's feed.
+  @visibleForTesting
+  static void debugReset() => _ids = null;
+
   /// Read the stored set. Safe to call repeatedly — the disk read happens once.
   ///
   /// Never throws: a screen that cannot read this should draw an unfiltered

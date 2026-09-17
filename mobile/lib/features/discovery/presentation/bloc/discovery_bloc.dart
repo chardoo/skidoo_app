@@ -253,6 +253,24 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     // can land in the middle of the fetch below. A value captured up here
     // would still be the empty one and would overwrite it.
     //
+    // ── Settle what is hidden before anything is drawn ───────────────────────
+    //
+    // The hidden set is restored asynchronously at construction, and the cache
+    // below paints synchronously — so on a cold start the feed showed posts
+    // the reader had hidden and took them away again a moment later. If the
+    // first cached post was one of them, the card they opened the app to slid
+    // away on its own, which is the same complaint [keepFirst] exists to
+    // answer, arriving by a different route.
+    //
+    // Awaited rather than raced: this reads SharedPreferences, which the app
+    // has already loaded by the time a feed is asked for, so it costs a
+    // microtask and not a frame. Anything that decides *what* the first card
+    // is has to be settled before that card is on screen.
+    final hidden = await HiddenEvents.load();
+    if (hidden.isNotEmpty && hidden != state.hiddenEventIds) {
+      emit(state.copyWith(hiddenEventIds: hidden));
+    }
+
     // ── Fast path: show cached events before the network returns ─────────────
     // restore() is synchronous (SharedPreferences is already in memory).
     final cached = _feedCache.restore();
