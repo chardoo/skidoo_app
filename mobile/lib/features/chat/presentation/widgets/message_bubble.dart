@@ -13,6 +13,7 @@ import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Returns true when [url] points to a video, using both explicit path
 /// patterns (Cloudinary /video/upload/) and file extensions as fallback.
@@ -852,7 +853,7 @@ class _ZoomableImageViewState extends State<_ZoomableImageView>
                     color: Colors.black54,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close_rounded, color: Colors.white),
+                  child: const AppSvgIcon(AppIcons.closeMd, color: Colors.white),
                 ),
               ),
             ),

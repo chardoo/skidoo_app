@@ -16,6 +16,7 @@ import 'package:jperg_app/features/admin/data/repositories/app_config_repository
 import 'package:jperg_app/features/ads/models/ad_media.dart';
 import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.dart';
 import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Edit Campaign — the whole wizard on one page.
 ///
@@ -767,7 +768,7 @@ class _Dropdown<T> extends StatelessWidget {
             value: value,
             isExpanded: true,
             dropdownColor: ext.cardSurface,
-            icon: Icon(Icons.expand_more_rounded, color: ext.searchHintColor),
+            icon: AppSvgIcon(AppIcons.caretDown, color: ext.searchHintColor),
             style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
             items: [
               for (final (v, label) in items)
@@ -967,7 +968,7 @@ class _Thumb extends StatelessWidget {
                     color: Colors.black54,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.close_rounded,
+                  child: AppSvgIcon(AppIcons.closeMd,
                       size: 13.r, color: Colors.white),
                 ),
               ),
@@ -1011,7 +1012,7 @@ class _Chip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (selected) ...[
-                Icon(Icons.check_rounded, size: 13.r, color: ext.accentGold),
+                AppSvgIcon(AppIcons.check, size: 13.r, color: ext.accentGold),
                 SizedBox(width: 4.w),
               ],
               Text(

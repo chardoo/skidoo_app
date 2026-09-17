@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/gallery/data/repositories/found_review_repository.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/review_found_photos_page.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// The review screen decides which photos are really of you, and everything
 /// after it — what is in your photos, what a rescan may re-add — follows from
@@ -132,7 +134,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.tap(findAppIcon(AppIcons.closeMd));
     await tester.pumpAndSettle();
 
     // False, not null: the caller keeps the banner and leaves the photos

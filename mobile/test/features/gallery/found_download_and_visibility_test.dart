@@ -6,6 +6,8 @@ import 'package:jperg_app/features/gallery/presentation/found/models/found_photo
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_meta_bar.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_visibility_badge.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// Two changes to the full-screen Found viewer.
 ///
@@ -196,16 +198,16 @@ void main() {
     testWidgets('a public photo gets an open eye', (t) async {
       await t.pumpWidget(host(const FoundVisibilityBadge(isPublic: true)));
 
-      expect(find.byIcon(Icons.visibility_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.visibility_off_outlined), findsNothing);
+      expect(findAppIcon(AppIcons.show), findsOneWidget);
+      expect(findAppIcon(AppIcons.hide), findsNothing);
       expect(find.text('Public'), findsNothing);
     });
 
     testWidgets('a private photo gets a closed one', (t) async {
       await t.pumpWidget(host(const FoundVisibilityBadge(isPublic: false)));
 
-      expect(find.byIcon(Icons.visibility_off_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.visibility_outlined), findsNothing);
+      expect(findAppIcon(AppIcons.hide), findsOneWidget);
+      expect(findAppIcon(AppIcons.show), findsNothing);
       expect(find.text('Private'), findsNothing);
     });
 

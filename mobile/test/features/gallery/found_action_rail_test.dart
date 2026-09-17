@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -37,6 +38,15 @@ Photo photo({
       'event': const {'id': 'evt-1', 'eventName': 'Praise Reloaded 2026'},
     });
 
+/// Finds a resting reaction by the artwork that draws it.
+///
+/// Rest glyphs come from the supplied SVG set rather than the icon font now,
+/// so `find.byIcon` no longer sees them — the font glyph is what an *active*
+/// reaction falls back to. The reaction each one stands for is unchanged.
+Finder restGlyph(String asset) => find.byWidgetPredicate(
+    (w) => w is AppSvgIcon && w.asset == asset,
+    description: 'the $asset glyph');
+
 void main() {
   setUp(() {
     final view = TestWidgetsFlutterBinding.ensureInitialized()
@@ -63,7 +73,7 @@ void main() {
   testWidgets('offers the share action', (t) async {
     await t.pumpWidget(host(FoundActionRail(photo: photo())));
 
-    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
+    expect(restGlyph(AppIcons.share), findsOneWidget);
     expect(find.bySemanticsLabel('Share photo'), findsOneWidget);
   });
 
@@ -74,8 +84,8 @@ void main() {
     // the same rail, since download is Found you's alone.
     await t.pumpWidget(host(FoundActionRail(photo: photo())));
 
-    expect(find.byIcon(Icons.bookmark_border_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
+    expect(restGlyph(AppIcons.save), findsOneWidget);
+    expect(restGlyph(AppIcons.share), findsOneWidget);
     expect(find.byIcon(Icons.download_outlined), findsNothing);
   });
 
@@ -91,9 +101,9 @@ void main() {
     )));
 
     expect(find.byIcon(Icons.download_outlined), findsNothing);
-    expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
+    expect(restGlyph(AppIcons.save), findsNothing);
     // Share stayed: it is an engagement like the rest of them.
-    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
+    expect(restGlyph(AppIcons.share), findsOneWidget);
   });
 
   testWidgets('send and share are one button, not two', (t) async {
@@ -104,7 +114,7 @@ void main() {
     // alone and the OS share box appears nowhere on it.
     await t.pumpWidget(host(FoundActionRail(photo: photo())));
 
-    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
+    expect(restGlyph(AppIcons.share), findsOneWidget);
     expect(find.byIcon(Icons.ios_share_rounded), findsNothing);
   });
 
@@ -116,10 +126,10 @@ void main() {
     await t.pumpWidget(
         host(FoundActionRail(photo: photo(commentsEnabled: false))));
 
-    expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
+    expect(restGlyph(AppIcons.like), findsOneWidget);
+    expect(restGlyph(AppIcons.comment), findsNothing);
     expect(find.byIcon(Icons.comments_disabled_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
+    expect(restGlyph(AppIcons.share), findsOneWidget);
   });
 }
 

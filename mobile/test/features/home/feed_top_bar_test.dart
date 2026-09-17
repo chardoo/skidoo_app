@@ -12,6 +12,8 @@ import 'package:jperg_app/core/theme/customThemeData.dart';
 import 'package:jperg_app/features/home/presentation/widgets/creator_mode_menu.dart';
 import 'package:jperg_app/features/home/presentation/widgets/feed_top_bar.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// Enough of an [AuthService] for the mode menu to decide it should draw: the
 /// role, and an empty avatar url so the avatar falls back to its initials
@@ -121,7 +123,7 @@ void main() {
         host(AppThemeExtension.dark, bar(onUnlock: () => taps++)));
 
     // The design's leading icon is a QR glyph; "+" (create) is not on this bar.
-    expect(find.byIcon(Icons.add_rounded), findsNothing);
+    expect(findAppIcon(AppIcons.add), findsNothing);
     final unlock = find.bySemanticsLabel('Unlock private photos');
     expect(unlock, findsOneWidget);
 
@@ -200,9 +202,13 @@ void main() {
       of: find.bySemanticsLabel('Unlock private photos'),
       matching: find.byType(CustomPaint),
     ));
-    final search = t.widget<Icon>(find.descendant(
+    // The magnifier is design's artwork now rather than a Material glyph, so
+    // the size is read off that. The question is unchanged: both controls are
+    // given the same box, and the QR must not ink more of it than the glyph
+    // beside it does.
+    final search = t.widget<AppSvgIcon>(find.descendant(
       of: find.bySemanticsLabel('Open search'),
-      matching: find.byType(Icon),
+      matching: find.byType(AppSvgIcon),
     ));
 
     expect(box.width, closeTo(search.size!, 0.01),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The "swipe up for more" nudge shown once, over the first card of the feed.
 ///
@@ -145,8 +146,8 @@ class _Chevron extends StatelessWidget {
     );
   }
 
-  Widget _mark(double opacity) => Icon(
-        Icons.keyboard_arrow_up_rounded,
+  Widget _mark(double opacity) => AppSvgIcon(
+        AppIcons.chevronUp,
         size: 30.sp,
         color: Colors.white.withValues(alpha: opacity),
         // The feed is full-bleed photography; without a shadow the mark

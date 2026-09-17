@@ -6,6 +6,7 @@ import 'package:jperg_app/features/discovery/presentation/utils/open_photographe
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/common/widgets/app_error_view.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Which list to show first when the page opens.
 enum FollowListTab { followers, following }
@@ -379,7 +380,7 @@ class _FollowTile extends StatelessWidget {
               ),
             )
           else if (onTap != null)
-            Icon(Icons.chevron_right_rounded,
+            AppSvgIcon(AppIcons.chevronRight,
                 color: ext.searchHintColor, size: 20),
         ],
       ),
@@ -449,7 +450,7 @@ class _PaginationError extends StatelessWidget {
       child: Center(
         child: TextButton.icon(
           onPressed: onRetry,
-          icon: Icon(Icons.refresh_rounded, color: ext.accentGold, size: 18),
+          icon: AppSvgIcon(AppIcons.redo, color: ext.accentGold, size: 18),
           label: Text(
             'Tap to load more',
             style: TextStyle(color: ext.accentGold),

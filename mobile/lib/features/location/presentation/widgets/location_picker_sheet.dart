@@ -8,6 +8,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/location/data/models/place.dart';
 import 'package:jperg_app/features/location/data/repositories/location_repository.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Picking somewhere: a country first, then a town inside it.
 ///
@@ -326,7 +327,7 @@ class _CountryStepState extends State<_CountryStep> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      trailing: Icon(Icons.chevron_right_rounded,
+                      trailing: AppSvgIcon(AppIcons.chevronRight,
                           color: ext.searchHintColor, size: 20.r),
                     );
                   },
@@ -425,7 +426,7 @@ class _PlaceStep extends StatelessWidget {
                     style: TextStyle(
                         color: ext.searchHintColor, fontSize: 12.sp),
                   ),
-                  trailing: Icon(Icons.add_rounded,
+                  trailing: AppSvgIcon(AppIcons.add,
                       color: ext.accentGold, size: 20.r),
                 );
               },
@@ -566,7 +567,7 @@ class LocationChips extends StatelessWidget {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => onRemove(place),
-                    child: Icon(Icons.close_rounded,
+                    child: AppSvgIcon(AppIcons.closeMd,
                         size: 14.r, color: ext.accentGold),
                   ),
                 ),
@@ -593,7 +594,7 @@ class LocationChips extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.add_rounded,
+                  AppSvgIcon(AppIcons.add,
                       size: 14.r, color: ext.searchHintColor),
                   SizedBox(width: 4.w),
                   Text(

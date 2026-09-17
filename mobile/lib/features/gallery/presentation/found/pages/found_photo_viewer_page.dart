@@ -15,6 +15,7 @@ import 'package:jperg_app/features/gallery/presentation/found/widgets/found_revi
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_stage.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Full-screen viewer for an album's photos: "n of total" in the app bar, the
 /// photo with its badge/action-rail/photographer overlays, and a filmstrip of
@@ -386,8 +387,8 @@ class _ViewerTopBar extends StatelessWidget {
             // than one that reads as unavailable.
             IconButton(
               onPressed: null,
-              icon: Icon(
-                Icons.more_vert_rounded,
+              icon: AppSvgIcon(
+                AppIcons.moreVertical,
                 size: 20.sp,
                 color: ext.greetingColor.withValues(alpha: 0.35),
               ),

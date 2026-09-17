@@ -7,6 +7,7 @@ import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.d
 import 'package:jperg_app/features/ads/presentation/pages/create_request_flow.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class CreateBottomSheet extends StatelessWidget {
   const CreateBottomSheet({super.key, this.isWeb = false});
@@ -61,7 +62,7 @@ class CreateBottomSheet extends StatelessWidget {
                     padding: EdgeInsets.only(top: AppSpacing.sm.h, right: 0),
                     child: IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: Icon(Icons.close_rounded,
+                      icon: AppSvgIcon(AppIcons.closeMd,
                           color: ext.searchHintColor, size: 22.sp),
                       tooltip: 'Close',
                     ),
@@ -288,8 +289,8 @@ class _CreateOption extends StatelessWidget {
                 ),
 
                 // Chevron
-                Icon(
-                  Icons.chevron_right_rounded,
+                AppSvgIcon(
+                  AppIcons.chevronRight,
                   color: ext.searchHintColor,
                   size: 20.sp,
                 ),

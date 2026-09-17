@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/creator_ready_page.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/creator_steps.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// The chrome of becoming a creator.
 ///
@@ -30,7 +32,7 @@ void main() {
       expect(find.text('Verification'), findsOneWidget);
       // Step two is still ahead, so it shows its number.
       expect(find.text('2'), findsOneWidget);
-      expect(find.byIcon(Icons.check_rounded), findsNothing);
+      expect(findAppIcon(AppIcons.check), findsNothing);
     });
 
     testWidgets('ticks a step once it is behind you', (tester) async {
@@ -38,7 +40,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // One tick for step one, and step two no longer shows a "1" beside it.
-      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+      expect(findAppIcon(AppIcons.check), findsOneWidget);
       expect(find.text('1'), findsNothing);
       expect(find.text('2'), findsOneWidget);
     });

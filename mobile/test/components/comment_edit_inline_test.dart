@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/components/comments/comment_input_bar_widget.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../support/icon_finders.dart';
 
 /// Editing a comment happens in the composer, not in a dialog.
 ///
@@ -49,7 +51,7 @@ void main() {
 
       expect(find.text('Edit comment'), findsNothing);
       expect(find.byIcon(Icons.send_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.check_rounded), findsNothing);
+      expect(findAppIcon(AppIcons.check), findsNothing);
     });
   });
 
@@ -67,7 +69,7 @@ void main() {
       await t.pumpWidget(_host(editingContent: 'x'));
 
       // A check, not a paper plane — nothing new is being sent.
-      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+      expect(findAppIcon(AppIcons.check), findsOneWidget);
       expect(find.byIcon(Icons.send_rounded), findsNothing);
     });
 

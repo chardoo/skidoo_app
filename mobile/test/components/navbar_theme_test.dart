@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/components/common/navbar.dart';
@@ -50,6 +51,26 @@ final _outlineGlyphs = <IconData>{
   Icons.forum_outlined,
   Icons.person_outline_outlined,
 };
+
+/// Every tab's glyph, whichever widget draws it.
+///
+/// The tabs draw the supplied artwork now rather than the icon font, so a
+/// sweep for [Icon] sees nothing. What the assertions are about — size, and
+/// the colour that says which tab you are on — is the same either way.
+List<({double? size, Color? color})> tabGlyphs(WidgetTester t) => [
+      ...t
+          .widgetList<AppSvgIcon>(find.descendant(
+            of: find.byType(AppNavbar),
+            matching: find.byType(AppSvgIcon),
+          ))
+          .map((w) => (size: w.size, color: w.color)),
+      ...t
+          .widgetList<Icon>(find.descendant(
+            of: find.byType(AppNavbar),
+            matching: find.byType(Icon),
+          ))
+          .map((w) => (size: w.size, color: w.color)),
+    ];
 
 void main() {
   setUp(() {
@@ -140,10 +161,7 @@ void main() {
     // white70 on a white pill is all but invisible.
     await t.pumpWidget(host(AppThemeExtension.light));
 
-    final icons = t.widgetList<Icon>(find.descendant(
-      of: find.byType(AppNavbar),
-      matching: find.byType(Icon),
-    ));
+    final icons = tabGlyphs(t);
     final inactive =
         icons.where((i) => i.color != AppThemeExtension.light.accentGold);
 
@@ -182,12 +200,7 @@ void main() {
     // it leaves behind. It has to be filtered out by hand now that every tab
     // draws an [Icon]: Home used to be an `Image.asset`, so with Home selected
     // the sweep below happened to see only inactive tabs.
-    final icons = t
-        .widgetList<Icon>(find.descendant(
-          of: find.byType(AppNavbar),
-          matching: find.byType(Icon),
-        ))
-        .toList();
+    final icons = tabGlyphs(t);
     final inactive =
         icons.where((i) => i.color != AppThemeExtension.light.accentGold);
 
@@ -204,7 +217,7 @@ void main() {
     expect(labelColour(t, 'Home'), AppThemeExtension.light.accentGold);
   });
 
-  testWidgets('every tab draws one size of Material glyph', (t) async {
+  testWidgets('every tab draws one size of glyph', (t) async {
     // The bar was reported for uneven icons, and Home was why: it drew a 50 px
     // PNG whose artwork ran to the edge of its own box, so the shared 20 dp
     // came out a ~19 dp mark with a ~1.9 dp stroke against the Material
@@ -214,23 +227,24 @@ void main() {
     for (final selected in [0, 1, 2, 3]) {
       await t.pumpWidget(host(AppThemeExtension.dark, selected: selected));
 
-      final icons = t.widgetList<Icon>(find.descendant(
-        of: find.byType(AppNavbar),
-        matching: find.byType(Icon),
-      ));
+      final icons = tabGlyphs(t);
 
       expect(icons, hasLength(4),
-          reason: 'a tab is drawing something that is not a Material icon');
+          reason: 'a tab is drawing something from neither the artwork nor '
+              'the icon font');
       expect(icons.map((i) => i.size).toSet(), hasLength(1),
           reason: 'the four tabs are not asking for the same size');
 
-      // Exactly one tab is filled — the one you are on. Home used to have no
-      // filled form at all, so it stayed an outline while its chip lit up.
-      final filled = icons
-          .map((i) => i.icon)
-          .where((i) => !_outlineGlyphs.contains(i));
-      expect(filled, hasLength(1),
-          reason: 'the selected tab is not the only filled glyph');
+      // Exactly one tab is accented — the one you are on.
+      //
+      // It used to be "exactly one tab is *filled*". The supplied set has no
+      // filled counterparts, so all four give the fill up together and the
+      // accent carries the answer, alongside the chip behind it and the label.
+      // Giving it up together is the part that matters: one tab keeping an
+      // outline while the others filled is the bug this file was written for.
+      final accented = icons.where((i) => i.color == AppThemeExtension.dark.accentGold);
+      expect(accented, hasLength(1),
+          reason: 'the selected tab is not the only accented glyph');
     }
   });
 
@@ -240,8 +254,12 @@ void main() {
     // picture on two different surfaces.
     await t.pumpWidget(host(AppThemeExtension.dark, selected: 3));
 
-    expect(find.byIcon(Icons.forum_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.chat_bubble_outline_rounded), findsNothing);
+    // A conversation, not the single bubble the app draws for a comment.
+    final assets = t
+        .widgetList<AppSvgIcon>(find.byType(AppSvgIcon))
+        .map((w) => w.asset);
+    expect(assets, contains(AppIcons.conversation));
+    expect(assets, isNot(contains(AppIcons.comment)));
   });
 
   testWidgets('leaving the feed returns the bar to the theme', (t) async {

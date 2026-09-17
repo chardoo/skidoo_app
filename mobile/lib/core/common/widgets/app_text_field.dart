@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The validation message under a form field.
 ///
@@ -30,7 +31,7 @@ class AppFieldError extends StatelessWidget {
             // Nudged down onto the text's optical baseline — an icon aligned
             // to the top of a 1.35-height line box floats above the words.
             padding: EdgeInsets.only(top: 1.h),
-            child: Icon(Icons.error_outline_rounded,
+            child: AppSvgIcon(AppIcons.warning,
                 size: 13.sp, color: ext.errorRed),
           ),
           SizedBox(width: AppSpacing.xs.w),

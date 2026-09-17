@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
 import 'package:jperg_app/components/media/media_rail_action.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 /// Every reaction in the app is a bare icon over the media. [MediaActionButtons]
@@ -27,6 +28,21 @@ Iterable<BoxDecoration> decorationsIn(WidgetTester t, Finder of) => t
         find.descendant(of: of, matching: find.byType(DecoratedBox)))
     .map((d) => d.decoration)
     .whereType<BoxDecoration>();
+
+/// The resting glyph, whichever widget draws it.
+///
+/// Rest states come from the supplied artwork ([AppSvgIcon]) and active ones
+/// from the icon font ([Icon]), so an assertion about size or shadow has to
+/// ask the one that is actually on screen. The properties are the same either
+/// way — that is the point of routing both through [MediaRailAction].
+({double? size, List<Shadow> shadows}) glyph(WidgetTester t) {
+  final svg = t.widgetList<AppSvgIcon>(find.byType(AppSvgIcon));
+  if (svg.isNotEmpty) {
+    return (size: svg.first.size, shadows: svg.first.shadows ?? const []);
+  }
+  final icon = t.widget<Icon>(find.byType(Icon));
+  return (size: icon.size, shadows: icon.shadows ?? const []);
+}
 
 void main() {
   setUp(() {
@@ -187,8 +203,15 @@ void main() {
       MediaReaction.bookmark(saved: false, onTap: () {}),
     ])));
 
-    expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.bookmark_border_rounded), findsOneWidget);
+    // Hollow at rest, and the hollow glyphs are design's own artwork.
+    expect(
+      t
+          .widgetList<AppSvgIcon>(find.byType(AppSvgIcon))
+          .map((i) => i.asset),
+      containsAll([AppIcons.like, AppIcons.save]),
+    );
+    // The filled font glyphs are what "active" looks like, and nothing here
+    // is active.
     expect(find.byIcon(Icons.favorite_rounded), findsNothing);
     expect(find.byIcon(Icons.bookmark_rounded), findsNothing);
   });
@@ -221,7 +244,9 @@ void main() {
         MediaReaction.like(liked: false, count: 206, onTap: () {}),
       ])));
 
-      final size = t.widget<Icon>(find.byType(Icon)).size!;
+      // The rail always names a size, so a null here is itself a failure —
+      // it would mean the glyph fell back to the ambient icon theme.
+      final size = glyph(t).size!;
       expect(size, size.roundToDouble());
     });
 
@@ -232,7 +257,7 @@ void main() {
         MediaReaction.like(liked: false, count: 206, onTap: () {}),
       ])));
 
-      expect(t.widget<Icon>(find.byType(Icon)).size, lessThan(28));
+      expect(glyph(t).size!, lessThan(28));
     });
 
     testWidgets('the shadow falls somewhere rather than everywhere', (t) async {
@@ -240,7 +265,7 @@ void main() {
         MediaReaction.like(liked: false, count: 206, onTap: () {}),
       ])));
 
-      final shadow = t.widget<Icon>(find.byType(Icon)).shadows!.single;
+      final shadow = glyph(t).shadows.single;
       expect(shadow.offset, isNot(Offset.zero),
           reason: 'a centred shadow haloes the glyph instead of lifting it');
       expect(shadow.blurRadius, lessThanOrEqualTo(2),
@@ -253,7 +278,7 @@ void main() {
         MediaReaction.like(liked: false, count: 206, onTap: () {}),
       ])));
 
-      final icon = t.widget<Icon>(find.byType(Icon)).shadows!.single;
+      final icon = glyph(t).shadows.single;
       final count = t.widget<Text>(find.text('206')).style!.shadows!.single;
       expect(count.offset, icon.offset);
       expect(count.blurRadius, icon.blurRadius);

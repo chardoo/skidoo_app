@@ -15,6 +15,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/common/widgets/app_section_label.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -558,7 +559,7 @@ class _StepDot extends StatelessWidget {
           ),
           alignment: Alignment.center,
           child: done
-              ? Icon(Icons.check_rounded, color: Colors.white, size: 12.sp)
+              ? AppSvgIcon(AppIcons.check, color: Colors.white, size: 12.sp)
               : Text(
                   '${_StepIndicator._labels.indexOf(label) + 1}',
                   style: TextStyle(
@@ -1374,7 +1375,7 @@ class _CDropdown<T> extends StatelessWidget {
         underline: const SizedBox.shrink(),
         dropdownColor: ext.cardSurface,
         style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-        icon: Icon(Icons.expand_more_rounded,
+        icon: AppSvgIcon(AppIcons.caretDown,
             color: ext.searchHintColor, size: 20.sp),
         hint: hint != null
             ? Text(hint!,
@@ -1456,7 +1457,7 @@ class _CampaignMultiPicker extends StatelessWidget {
                               color: Colors.black.withValues(alpha: 0.65),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.close_rounded,
+                            child: AppSvgIcon(AppIcons.closeMd,
                                 color: Colors.white, size: 14.sp),
                           ),
                         )),

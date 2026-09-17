@@ -6,6 +6,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/ads/data/models/booking_model.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// "Create Quote" — the photographer pricing a job they were picked for.
 ///
@@ -193,7 +194,7 @@ class _QuoteComposerSheetState extends State<QuoteComposerSheet> {
                     alignment: Alignment.centerLeft,
                     child: TextButton.icon(
                       onPressed: _addLine,
-                      icon: Icon(Icons.add, size: 16.sp, color: ext.accentGold),
+                      icon: AppSvgIcon(AppIcons.add, size: 16.sp, color: ext.accentGold),
                       label: Text(
                         'Add service item',
                         style: TextStyle(
@@ -352,8 +353,8 @@ class _QuoteComposerSheetState extends State<QuoteComposerSheet> {
           // would leave an empty sheet with nothing to fill in.
           if (_lines.length > 1)
             IconButton(
-              icon: Icon(
-                Icons.close_rounded, size: 18.sp, color: ext.searchHintColor,
+              icon: AppSvgIcon(
+                AppIcons.closeMd, size: 18.sp, color: ext.searchHintColor,
               ),
               onPressed: () => _removeLine(index),
             ),

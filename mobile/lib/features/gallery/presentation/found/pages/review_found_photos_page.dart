@@ -6,6 +6,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/gallery/data/repositories/found_review_repository.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// "Tap to deselect photos that aren't you."
 ///
@@ -77,7 +78,7 @@ class _ReviewFoundPhotosPageState extends State<ReviewFoundPhotosPage> {
         backgroundColor: Colors.transparent,
         leading: IconButton(
           tooltip: 'Close',
-          icon: Icon(Icons.close_rounded, color: ext.greetingColor, size: 24.r),
+          icon: AppSvgIcon(AppIcons.closeMd, color: ext.greetingColor, size: 24.r),
           // Nothing is sent — everything stays waiting.
           onPressed: () => Navigator.of(context).pop(false),
         ),
@@ -268,7 +269,7 @@ class _Tick extends StatelessWidget {
         ),
       ),
       child: selected
-          ? Icon(Icons.check_rounded, size: 13.r, color: Colors.white)
+          ? AppSvgIcon(AppIcons.check, size: 13.r, color: Colors.white)
           : null,
     );
   }

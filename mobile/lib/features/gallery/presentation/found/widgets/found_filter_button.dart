@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Pill that opens the Found filter sheet.
 ///
@@ -53,7 +54,7 @@ class FoundFilterButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.tune_rounded, size: 16.sp, color: foreground),
+              AppSvgIcon(AppIcons.filter, size: 16.sp, color: foreground),
               SizedBox(width: AppSpacing.sm.w),
               Text(
                 'Filters',

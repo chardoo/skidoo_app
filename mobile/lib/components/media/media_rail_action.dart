@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// One button in an action rail over media: an icon with its count underneath,
@@ -23,6 +24,7 @@ class MediaRailAction extends StatefulWidget {
     this.labelColor,
     this.semanticLabel,
     this.iconSize,
+    this.assetIcon,
     this.tapTargetSize,
   });
 
@@ -54,6 +56,13 @@ class MediaRailAction extends StatefulWidget {
 
   /// Glyph size, before rounding. Defaults to 24 — see [_MediaRailActionState].
   final double? iconSize;
+
+  /// A supplied glyph to draw instead of [icon].
+  ///
+  /// Design's own engagement set — see [EngagementIcons]. The icon-font glyph
+  /// is still required and is what an *active* reaction falls back to, since
+  /// the supplied set has rest states only.
+  final String? assetIcon;
 
   /// Pads the glyph out to a fixed square so a row of these keeps a finger-
   /// sized tap target even where the icons themselves are small. Null leaves
@@ -113,8 +122,15 @@ class _MediaRailActionState extends State<MediaRailAction>
             child: CircularProgressIndicator(
                 strokeWidth: 2, color: widget.iconColor),
           )
-        : Icon(widget.icon,
-            color: widget.iconColor, size: size, shadows: _shadows);
+        : widget.assetIcon != null
+            ? AppSvgIcon(
+                widget.assetIcon!,
+                size: size,
+                color: widget.iconColor,
+                shadows: _shadows,
+              )
+            : Icon(widget.icon,
+                color: widget.iconColor, size: size, shadows: _shadows);
 
     final inert = widget.busy || !widget.enabled;
 

@@ -23,6 +23,7 @@ import 'package:jperg_app/features/chat/presentation/pages/invite_to_group_page.
 import 'package:jperg_app/features/chat/presentation/pages/shared_media_page.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/chat_settings_tile.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Details for a group: its photo and name, shared media, mute, who is in it,
 /// and the admin controls.
@@ -105,7 +106,7 @@ class GroupInfoPage extends StatelessWidget {
                     children: [
                       ChatSettingsTile(
                         label: 'Shared Media',
-                        trailing: Icon(Icons.chevron_right_rounded,
+                        trailing: AppSvgIcon(AppIcons.chevronRight,
                             color: ext.searchHintColor, size: 22.sp),
                         onTap: () => Navigator.of(context, rootNavigator: true)
                             .push<void>(
@@ -376,7 +377,7 @@ class _GroupHeaderState extends State<_GroupHeader> {
                         color: ext.accentGold,
                         border: Border.all(color: ext.homeBackground, width: 2),
                       ),
-                      child: Icon(Icons.camera_alt_rounded,
+                      child: AppSvgIcon(AppIcons.camera,
                           color: Colors.white, size: 14.sp),
                     ),
                   ),

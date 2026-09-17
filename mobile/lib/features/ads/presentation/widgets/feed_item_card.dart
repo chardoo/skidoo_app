@@ -29,6 +29,7 @@ import 'package:jperg_app/features/discovery/presentation/widgets/card_photo_pre
     show CardGradientPlaceholder;
 import 'package:jperg_app/features/discovery/presentation/widgets/report_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model — same shape for campaigns and requests
@@ -814,7 +815,7 @@ class _CampaignCopy extends StatelessWidget {
                 SizedBox(height: AppSpacing.xs.h),
                 Row(
                   children: [
-                    Icon(Icons.place_rounded,
+                    AppSvgIcon(AppIcons.mapPin,
                         size: 14.r,
                         color: Colors.white.withValues(alpha: 0.75)),
                     SizedBox(width: 4.w),
@@ -1223,7 +1224,7 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
                     color: ext.searchFieldFill,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.visibility_off_outlined,
+                  child: AppSvgIcon(AppIcons.hide,
                       color: ext.greetingColor, size: 20.sp),
                 ),
                 title: Text(
@@ -1268,7 +1269,7 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
                   'Inappropriate, misleading or harmful content',
                   style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
                 ),
-                trailing: Icon(Icons.chevron_right_rounded,
+                trailing: AppSvgIcon(AppIcons.chevronRight,
                     color: ext.searchHintColor, size: 20.sp),
                 onTap: () {
                   Navigator.of(context).pop();

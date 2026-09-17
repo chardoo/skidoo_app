@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -45,10 +46,10 @@ Photo photo({
       'event': const {'id': 'evt-1', 'eventName': 'Praise Reloaded 2026'},
     });
 
-const like = Icons.favorite_border_rounded;
-const comment = Icons.mode_comment_outlined;
+const like = AppIcons.like;
+const comment = AppIcons.comment;
 const commentOff = Icons.comments_disabled_rounded;
-const bookmark = Icons.bookmark_border_rounded;
+const bookmark = AppIcons.save;
 /// The bar's download glyph — the same outlined arrow every other download in
 /// the app uses.
 ///
@@ -59,10 +60,18 @@ const bookmark = Icons.bookmark_border_rounded;
 /// [barHasDownload] pumps the bar alone and [railOf] never asks about the
 /// download, so neither can see the other's button whatever it is drawn with.
 const download = Icons.download_outlined;
-const share = Icons.near_me_outlined;
+const share = AppIcons.share;
+
+/// Finds a glyph whether it is drawn from the artwork or the icon font.
+///
+/// Rest states come from the supplied SVG set now; the font glyph is what an
+/// *active* reaction falls back to. Both are still one reaction each.
+Finder glyphFinder(Object glyph) => glyph is String
+    ? find.byWidgetPredicate((w) => w is AppSvgIcon && w.asset == glyph)
+    : find.byIcon(glyph as IconData);
 
 /// The glyphs on the rail, in the order the rail lists them.
-Set<IconData> railOf(WidgetTester t) => {
+Set<Object> railOf(WidgetTester t) => {
       // No download: it is not a rail action any more. [barHasDownload] asks
       // about it, and asking here as well would let a rail regression hide.
       for (final icon in [
@@ -72,10 +81,10 @@ Set<IconData> railOf(WidgetTester t) => {
         bookmark,
         share,
       ])
-        if (t.any(find.byIcon(icon))) icon,
+        if (t.any(glyphFinder(icon))) icon,
     };
 
-Future<Set<IconData>> pumpRail(WidgetTester t, Photo p,
+Future<Set<Object>> pumpRail(WidgetTester t, Photo p,
     {bool gated = true}) async {
   await t.pumpWidget(host(FoundActionRail(photo: p, purchaseGated: gated)));
   return railOf(t);
@@ -92,19 +101,26 @@ Future<bool> barHasDownload(WidgetTester t, Photo p,
   await t.pumpWidget(
       host(FoundPhotoQuickActions(photo: p, purchaseGated: gated)));
   await t.pump();
-  return t.any(find.byIcon(download));
+  return t.any(glyphFinder(download));
 }
 
 /// The rail's glyphs top to bottom. [railOf] answers *which* actions are on
 /// offer; this answers where they sit, which is a separate question and the
 /// only one an ordering assertion can be written against.
-List<IconData> railOrder(WidgetTester t) {
-  final icons = t
-      .widgetList<Icon>(find.byType(Icon))
-      .where((i) => i.icon != null)
-      .toList();
+List<Object> railOrder(WidgetTester t) {
+  // Both kinds: a rest glyph is artwork, an active one is a font icon, and a
+  // rail can hold some of each.
+  final glyphs = <Object>[
+    ...t
+        .widgetList<AppSvgIcon>(find.byType(AppSvgIcon))
+        .map((w) => w.asset),
+    ...t
+        .widgetList<Icon>(find.byType(Icon))
+        .where((i) => i.icon != null)
+        .map((i) => i.icon!),
+  ];
   final positions = {
-    for (final i in icons) i.icon!: t.getCenter(find.byIcon(i.icon!).first).dy,
+    for (final g in glyphs) g: t.getCenter(glyphFinder(g).first).dy,
   };
   final ordered = positions.keys.toList()
     ..sort((a, b) => positions[a]!.compareTo(positions[b]!));
@@ -327,7 +343,7 @@ void main() {
       await t.pumpAndSettle();
 
       expect(find.byIcon(Icons.bookmark_rounded), findsOneWidget);
-      expect(find.byIcon(bookmark), findsNothing);
+      expect(glyphFinder(bookmark), findsNothing);
     });
   });
 

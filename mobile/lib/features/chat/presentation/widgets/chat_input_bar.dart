@@ -18,6 +18,7 @@ import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class ChatInputBar extends StatefulWidget {
   const ChatInputBar({
@@ -577,7 +578,7 @@ class _StagedImagePreview extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
-                    child: Icon(Icons.close_rounded,
+                    child: AppSvgIcon(AppIcons.closeMd,
                         size: 16.sp, color: ext.searchHintColor),
                   ),
                 )),
@@ -626,7 +627,7 @@ class _StagedImageFullScreen extends StatelessWidget {
                     color: Colors.black54,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close_rounded, color: Colors.white),
+                  child: const AppSvgIcon(AppIcons.closeMd, color: Colors.white),
                 ),
               ),
             ),
@@ -725,7 +726,7 @@ class _StagedVideoPreviewState extends State<_StagedVideoPreview> {
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
-                    child: Icon(Icons.close_rounded,
+                    child: AppSvgIcon(AppIcons.closeMd,
                         size: 16.sp, color: widget.ext.searchHintColor),
                   ),
                 )),
@@ -808,7 +809,7 @@ class _StagedNetworkImagePreview extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
-                  child: Icon(Icons.close_rounded,
+                  child: AppSvgIcon(AppIcons.closeMd,
                       size: 16.sp, color: ext.searchHintColor),
                 ),
               )),
@@ -863,7 +864,7 @@ class _EditBar extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.edit_rounded,
+                    AppSvgIcon(AppIcons.edit,
                         size: 12.sp, color: ext.accentGold),
                     SizedBox(width: AppSpacing.xs.w),
                     Text(
@@ -893,7 +894,7 @@ class _EditBar extends StatelessWidget {
               onPressed: onCancel,
               tooltip: 'Cancel edit',
               visualDensity: VisualDensity.compact,
-              icon: Icon(Icons.close_rounded,
+              icon: AppSvgIcon(AppIcons.closeMd,
                   size: 20.sp, color: ext.searchHintColor),
             ),
           ),

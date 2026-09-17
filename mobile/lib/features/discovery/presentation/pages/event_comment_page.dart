@@ -29,6 +29,7 @@ import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Opens a bottom sheet showing an image slider + real-time event comments.
 class EventCommentPage {
@@ -1328,7 +1329,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
             ),
             child: Row(
               children: [
-                Icon(Icons.edit_rounded, size: 13.sp, color: ext.accentGold),
+                AppSvgIcon(AppIcons.edit, size: 13.sp, color: ext.accentGold),
                 SizedBox(width: 6.w),
                 Expanded(
                   child: Column(
@@ -1360,7 +1361,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                   label: 'Cancel edit',
                   child: GestureDetector(
                     onTap: widget.onCancelEdit,
-                    child: Icon(Icons.close_rounded,
+                    child: AppSvgIcon(AppIcons.closeMd,
                         size: 14.sp, color: ext.searchHintColor),
                   ),
                 ),
@@ -1398,7 +1399,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                   label: 'Cancel reply',
                   child: GestureDetector(
                     onTap: widget.onCancelReply,
-                    child: Icon(Icons.close_rounded,
+                    child: AppSvgIcon(AppIcons.closeMd,
                         size: 14.sp, color: ext.searchHintColor),
                   ),
                 ),
@@ -1599,7 +1600,7 @@ class _CommentPanelHeader extends StatelessWidget {
                     height: 34.w,
                     decoration: const BoxDecoration(shape: BoxShape.circle),
                     alignment: Alignment.center,
-                    child: Icon(Icons.close_rounded,
+                    child: AppSvgIcon(AppIcons.closeMd,
                         color: ext.greetingColor, size: 22.sp),
                   ),
                 ),

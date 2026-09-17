@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// Every row the settings designs draw, and the shape they draw it in.
 ///
@@ -27,7 +29,7 @@ void main() {
       )));
       await t.pump();
 
-      expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+      expect(findAppIcon(AppIcons.chevronRight), findsOneWidget);
       expect(find.byType(Switch), findsNothing);
     });
 
@@ -39,7 +41,7 @@ void main() {
       )));
       await t.pump();
 
-      expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+      expect(findAppIcon(AppIcons.chevronRight), findsNothing);
       expect(find.byType(Switch), findsOneWidget);
     });
 

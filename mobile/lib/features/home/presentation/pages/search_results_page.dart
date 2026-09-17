@@ -21,6 +21,7 @@ import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class SearchResultsPage extends StatefulWidget {
   static const routeName = '/searchresults';
@@ -349,7 +350,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         elevation: 0,
         leading: IconButton(
           tooltip: 'Close',
-          icon: Icon(Icons.close_rounded, color: ext.greetingColor),
+          icon: AppSvgIcon(AppIcons.closeMd, color: ext.greetingColor),
           onPressed: _exitSelectionMode,
         ),
         title: Text(
@@ -405,7 +406,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
             if (state.searchImages.isEmpty) return const SizedBox.shrink();
             return TextButton.icon(
               onPressed: () => _enterSelectionMode(state.searchImages.first),
-              icon: Icon(Icons.check_circle_outline_rounded,
+              icon: AppSvgIcon(AppIcons.circleCheck,
                   color: ext.accentGold, size: 18.sp),
               label: Text(
                 AppLocalizations.of(context)!.searchResultsSelect,
@@ -563,7 +564,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                                         shape: BoxShape.circle,
                                         color: ext.accentGold,
                                       ),
-                                      child: Icon(Icons.check_rounded,
+                                      child: AppSvgIcon(AppIcons.check,
                                           color: Colors.black, size: 14.sp),
                                     )
                                   : Container(
@@ -912,7 +913,7 @@ class _PayNotice extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline_rounded, color: ext.accentGold, size: 15.sp),
+          AppSvgIcon(AppIcons.info, color: ext.accentGold, size: 15.sp),
           SizedBox(width: AppSpacing.sm.w),
           Expanded(
             child: Text(

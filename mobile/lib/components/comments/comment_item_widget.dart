@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/comments/comment_row_data.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Single comment/reply row — model-agnostic.
 /// Accepts pre-computed [CommentRowData]; contains no BLoC or model imports.
@@ -129,7 +130,7 @@ class CommentItemWidget extends StatelessWidget {
                       ),
                       if (data.isPending) ...[
                         SizedBox(width: AppSpacing.xs.w),
-                        Icon(Icons.access_time_rounded,
+                        AppSvgIcon(AppIcons.clock,
                             size: 10.sp, color: ext.searchHintColor),
                       ],
                     ],

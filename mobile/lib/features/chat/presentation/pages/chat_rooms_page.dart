@@ -12,6 +12,7 @@ import 'package:jperg_app/features/chat/presentation/pages/chat_search_page.dart
 import 'package:jperg_app/features/chat/presentation/pages/new_chat_page.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/room_tile.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The inbox — every conversation, newest first, with any pending group
 /// invites carded above them.
@@ -71,7 +72,7 @@ class _ChatRoomsView extends StatelessWidget {
         actions: [
           IconButton(
             tooltip: 'Search',
-            icon: Icon(Icons.search_rounded,
+            icon: AppSvgIcon(AppIcons.search,
                 color: ext.greetingColor, size: 22.sp),
             onPressed: () => _openSearch(context),
           ),

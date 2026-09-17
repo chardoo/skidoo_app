@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/campaign_row.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// A row in Broadcasts → Campaigns.
 ///
@@ -99,7 +101,7 @@ void main() {
     await pump(tester, campaign({'status': 'active'}));
     expect(find.byType(ElevatedButton), findsNothing);
     expect(find.byType(OutlinedButton), findsNothing);
-    expect(find.byIcon(Icons.edit_outlined), findsNothing);
+    expect(findAppIcon(AppIcons.edit), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsNothing);
   });
 

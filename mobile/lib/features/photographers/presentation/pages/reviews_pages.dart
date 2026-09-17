@@ -8,6 +8,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/photographers/data/repositories/reviews_repository.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Everything a client says about a photographer, and the screen where they
 /// say it.
@@ -679,7 +680,7 @@ class ReviewSubmittedPage extends StatelessWidget {
                 color: ext.accentGold.withValues(alpha: 0.12),
               ),
               child:
-                  Icon(Icons.check_rounded, color: ext.accentGold, size: 40.r),
+                  AppSvgIcon(AppIcons.check, color: ext.accentGold, size: 40.r),
             ),
             SizedBox(height: AppSpacing.xl.h),
             Text(

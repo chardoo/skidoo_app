@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The amount on a photo that has to be bought — "GHS 20".
 ///
@@ -108,7 +109,7 @@ class PhotoSelectionTick extends StatelessWidget {
           ),
         ),
         child: selected
-            ? Icon(Icons.check_rounded, size: 14.sp, color: Colors.white)
+            ? AppSvgIcon(AppIcons.check, size: 14.sp, color: Colors.white)
             : null,
       ),
     );

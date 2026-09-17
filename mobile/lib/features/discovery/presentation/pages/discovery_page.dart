@@ -22,6 +22,7 @@ import 'package:jperg_app/features/home/presentation/pages/search_results_page.d
 import 'package:jperg_app/features/discovery/presentation/widgets/swipe_up_hint.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class DiscoveryPage extends StatelessWidget {
   static const routeName = '/discovery';
@@ -375,8 +376,8 @@ class _GuestTabBar extends StatelessWidget {
               child: GestureDetector(
                 onTap: () => Navigator.of(context)
                     .pushNamed(SearchResultsPage.routeName),
-                child: Icon(
-                  Icons.search_rounded,
+                child: AppSvgIcon(
+                  AppIcons.search,
                   color: onSolid ? ext.greetingColor : Colors.white,
                   size: 24.sp,
                   shadows: onSolid ? null : _shadows,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The shape every search result row shares: a leading mark, a title, an
 /// optional subtitle, and an optional trailing chevron.
@@ -33,7 +34,7 @@ class SearchResultRow extends StatelessWidget {
   /// The chevron the event rows carry in the design.
   static Widget chevron(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    return Icon(Icons.chevron_right_rounded,
+    return AppSvgIcon(AppIcons.chevronRight,
         color: ext.searchHintColor, size: 22.sp);
   }
 

@@ -15,6 +15,8 @@ import 'package:jperg_app/features/search/presentation/widgets/search_top_bar.da
 import 'package:jperg_app/features/search/presentation/widgets/search_type_chips.dart';
 import 'package:jperg_app/features/search/presentation/widgets/section_header.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 Widget host(AppThemeExtension ext, Widget child) => ScreenUtilInit(
       designSize: const Size(390, 844),
@@ -79,7 +81,7 @@ void main() {
       expect(find.text('Praise Reloaded 2026'), findsOneWidget);
       expect(find.text('108 photos'), findsOneWidget);
       // The design's affordance for "this opens a grid".
-      expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+      expect(findAppIcon(AppIcons.chevronRight), findsOneWidget);
     });
 
     testWidgets('an event with no public photos falls back to its photographer',
@@ -302,7 +304,7 @@ void main() {
           ),
         ));
 
-        final icon = t.widget<Icon>(find.byIcon(Icons.refresh_rounded));
+        final icon = t.widget<Icon>(findAppIcon(AppIcons.redo));
         expect(icon.color, ext.accentGold);
       });
     });

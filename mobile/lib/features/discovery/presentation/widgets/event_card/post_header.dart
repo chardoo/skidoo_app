@@ -6,6 +6,7 @@ import 'package:jperg_app/features/discovery/presentation/widgets/event_more_opt
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Slim header row shown above a feed card's media: creator avatar + name,
 /// an "owner" badge for the current user's own posts, a Follow pill, and a
@@ -134,7 +135,7 @@ class PostHeader extends StatelessWidget {
                 child: Padding(
                   padding:
                       EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                  child: Icon(Icons.more_horiz_rounded,
+                  child: AppSvgIcon(AppIcons.moreHorizontal,
                       color: iconColor, size: 21.sp),
                 ),
               )),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/components/common/navbar.dart';
@@ -152,9 +153,13 @@ void main() {
     await t.pumpAndSettle();
 
     final ext = AppThemeExtension.dark;
-    final icons = t.widgetList<Icon>(find.byType(Icon));
+    // The tabs draw the supplied artwork, so the accent lands on an
+    // [AppSvgIcon] rather than on an [Icon]. It carries more weight than it
+    // used to: the set has no filled counterparts, so colour and the chip are
+    // the whole of what says which tab you are on.
+    final glyphs = t.widgetList<AppSvgIcon>(find.byType(AppSvgIcon));
     expect(
-      icons.where((i) => i.color == ext.accentGold),
+      glyphs.where((g) => g.color == ext.accentGold),
       isNotEmpty,
       reason: 'the active tab must stay marked when its label is gone',
     );

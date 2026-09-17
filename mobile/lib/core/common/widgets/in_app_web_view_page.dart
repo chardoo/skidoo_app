@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// A lightweight in-app browser used to show remote, always-up-to-date content
 /// (privacy policy, terms, etc.) without bundling it in the app.
@@ -79,7 +80,7 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
       elevation: 0,
       leading: IconButton(
         tooltip: 'Close',
-        icon: Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
+        icon: AppSvgIcon(AppIcons.closeMd, color: ext.greetingColor, size: 22.sp),
         onPressed: () => Navigator.of(context).maybePop(),
       ),
       title: Text(

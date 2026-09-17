@@ -34,6 +34,7 @@ import 'package:jperg_app/services/notification_prefs_service.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Which of [newIds] are really *new*, and so should play the entrance fade.
 ///
@@ -1008,7 +1009,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
           // single control instead of three competing ones.
           if (_hasDetailsScreen)
             PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert_rounded,
+              icon: AppSvgIcon(AppIcons.moreVertical,
                   color: ext.greetingColor, size: 20.sp),
               color: ext.cardSurface,
               onSelected: (value) {

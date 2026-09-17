@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// The three tick states, and the one the app could not previously draw.
 ///
@@ -55,7 +57,7 @@ Widget bubble(ChatMessage m, {required int totalOthers}) => MessageBubble(
 /// The tick actually drawn, by icon.
 Finder get oneTick => find.byIcon(Icons.done_rounded);
 Finder get twoTicks => find.byIcon(Icons.done_all_rounded);
-Finder get clock => find.byIcon(Icons.access_time_rounded);
+Finder get clock => findAppIcon(AppIcons.clock);
 
 Color tickColour(WidgetTester t, Finder f) => t.widget<Icon>(f).color!;
 

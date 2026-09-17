@@ -13,6 +13,7 @@ import 'package:jperg_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
 import 'package:jperg_app/core/common/widgets/app_drag_handle.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Shows the login bottom sheet. [onLoginSuccess] is called after successful
 /// login so the caller can navigate appropriately.
@@ -173,7 +174,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.error_outline_rounded,
+                            AppSvgIcon(AppIcons.warning,
                                 color: ext.errorRed, size: 18.sp),
                             SizedBox(width: AppSpacing.sm.w),
                             Expanded(

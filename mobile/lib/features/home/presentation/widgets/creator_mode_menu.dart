@@ -9,6 +9,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The photographer's avatar in the feed top bar, opening the mode menu.
 ///
@@ -131,8 +132,8 @@ class _CreatorModeMenuState extends State<CreatorModeMenu> {
                       radius: widget.size / 2,
                     ),
                   ),
-                  Icon(
-                    Icons.keyboard_arrow_down_rounded,
+                  AppSvgIcon(
+                    AppIcons.caretDown,
                     size: 18.sp,
                     color: widget.overSolidBackground
                         ? ext.greetingColor
@@ -228,7 +229,7 @@ class _CreatorModeSheet extends StatelessWidget {
             _MenuRow(
               label: 'Explorer',
               // The mode they are already in — ticked, not a destination.
-              trailing: Icon(Icons.check_rounded,
+              trailing: AppSvgIcon(AppIcons.check,
                   size: 18.sp, color: ext.accentGold),
               onTap: () => Navigator.of(context).pop(_CreatorModeChoice.explorer),
             ),
@@ -240,7 +241,7 @@ class _CreatorModeSheet extends StatelessWidget {
             _MenuRow(
               label: 'Creator Dashboard',
               // Leaves the app — say so before the tap, not after.
-              trailing: Icon(Icons.open_in_new_rounded,
+              trailing: AppSvgIcon(AppIcons.externalLink,
                   size: 16.sp, color: Colors.white70),
               onTap: () =>
                   Navigator.of(context).pop(_CreatorModeChoice.dashboard),

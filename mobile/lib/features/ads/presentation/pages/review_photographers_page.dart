@@ -25,6 +25,7 @@ import 'package:jperg_app/features/ads/presentation/pages/change_photographer_pa
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/reviews_pages.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// What happened to a request while it was open, so the list behind it knows
 /// whether it is out of date.
@@ -699,7 +700,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
         ),
         actions: [
           PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert_rounded, color: ext.greetingColor),
+            icon: AppSvgIcon(AppIcons.moreVertical, color: ext.greetingColor),
             onSelected: (value) {
               if (value == 'edit') _edit();
               if (value == 'close') _close();

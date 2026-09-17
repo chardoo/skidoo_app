@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/report_sheet.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Hide / Report bottom sheet for an event — shared by the classic feed
 /// card's post header, the web reactions column, and the full-bleed
@@ -56,7 +57,7 @@ class EventMoreOptionsSheet extends StatelessWidget {
                     color: ext.searchFieldFill,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.visibility_off_outlined,
+                  child: AppSvgIcon(AppIcons.hide,
                       color: ext.greetingColor, size: 20.sp),
                 ),
                 title: Text(
@@ -104,7 +105,7 @@ class EventMoreOptionsSheet extends StatelessWidget {
                   'Inappropriate, misleading or harmful content',
                   style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
                 ),
-                trailing: Icon(Icons.chevron_right_rounded,
+                trailing: AppSvgIcon(AppIcons.chevronRight,
                     color: ext.searchHintColor, size: 20.sp),
                 onTap: () {
                   Navigator.of(context).pop();

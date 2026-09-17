@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class CartItemWidget extends StatelessWidget {
   final Photo photo;
@@ -53,7 +54,7 @@ class CartItemWidget extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white24, width: 1),
                 ),
-                child: Icon(Icons.close_rounded,
+                child: AppSvgIcon(AppIcons.closeMd,
                     color: Colors.white, size: 18.sp),
               ),
             )),

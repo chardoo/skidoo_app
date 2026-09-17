@@ -23,6 +23,8 @@ import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/presentation/pages/request_board_page.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// Answers the board's two calls with nothing, and records that it was asked.
 ///
@@ -119,7 +121,7 @@ void main() {
     await t.pumpWidget(host(_SpyRepo()));
     await t.pump();
 
-    expect(find.byIcon(Icons.tune_rounded), findsNothing);
+    expect(findAppIcon(AppIcons.filter), findsNothing);
   });
 
   testWidgets('a photographer gets the board, not the refusal', (t) async {
@@ -130,7 +132,7 @@ void main() {
 
     expect(find.textContaining('for photographers'), findsNothing);
     expect(repo.asked, isTrue, reason: 'a photographer should get a real board');
-    expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
+    expect(findAppIcon(AppIcons.filter), findsOneWidget);
   });
 
   testWidgets('a signed-out visitor is refused too', (t) async {

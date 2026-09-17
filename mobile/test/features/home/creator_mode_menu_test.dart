@@ -7,6 +7,8 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/home/presentation/widgets/creator_mode_menu.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// The mode switcher is the photographer's way from the feed to the half of
 /// their account that lives on the web. Everyone else must not see it: a client
@@ -49,7 +51,7 @@ void main() {
     await t.pumpWidget(host(const CreatorModeMenu(overSolidBackground: false)));
     await t.pumpAndSettle();
 
-    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsOneWidget);
+    expect(findAppIcon(AppIcons.caretDown), findsOneWidget);
   });
 
   testWidgets('a client gets nothing at all', (t) async {
@@ -57,7 +59,7 @@ void main() {
     await t.pumpWidget(host(const CreatorModeMenu(overSolidBackground: false)));
     await t.pumpAndSettle();
 
-    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsNothing);
+    expect(findAppIcon(AppIcons.caretDown), findsNothing);
   });
 
   testWidgets('a known role draws on the very first frame', (t) async {
@@ -69,7 +71,7 @@ void main() {
     await signInAs('photographer');
     await t.pumpWidget(host(const CreatorModeMenu(overSolidBackground: false)));
     // Deliberately no settle: this is the first frame.
-    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsOneWidget);
+    expect(findAppIcon(AppIcons.caretDown), findsOneWidget);
   });
 
   testWidgets('upgrading mid-session brings the switcher in', (t) async {
@@ -79,12 +81,12 @@ void main() {
     await signInAs('user');
     await t.pumpWidget(host(const CreatorModeMenu(overSolidBackground: false)));
     await t.pumpAndSettle();
-    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsNothing);
+    expect(findAppIcon(AppIcons.caretDown), findsNothing);
 
     await GetIt.I<AuthService>().setRole('photographer');
     await t.pumpAndSettle();
 
-    expect(find.byIcon(Icons.keyboard_arrow_down_rounded), findsOneWidget);
+    expect(findAppIcon(AppIcons.caretDown), findsOneWidget);
   });
 
   testWidgets('tapping opens the two modes from the design', (t) async {
@@ -92,15 +94,15 @@ void main() {
     await t.pumpWidget(host(const CreatorModeMenu(overSolidBackground: false)));
     await t.pumpAndSettle();
 
-    await t.tap(find.byIcon(Icons.keyboard_arrow_down_rounded));
+    await t.tap(findAppIcon(AppIcons.caretDown));
     await t.pumpAndSettle();
 
     expect(find.text('Explorer'), findsOneWidget);
     expect(find.text('Creator Dashboard'), findsOneWidget);
     // Explorer is the mode they are already in — ticked, not a destination.
-    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+    expect(findAppIcon(AppIcons.check), findsOneWidget);
     // The dashboard leaves the app; say so before the tap.
-    expect(find.byIcon(Icons.open_in_new_rounded), findsOneWidget);
+    expect(findAppIcon(AppIcons.externalLink), findsOneWidget);
   });
 
   testWidgets('the menu closes when dismissed', (t) async {
@@ -108,7 +110,7 @@ void main() {
     await t.pumpWidget(host(const CreatorModeMenu(overSolidBackground: false)));
     await t.pumpAndSettle();
 
-    await t.tap(find.byIcon(Icons.keyboard_arrow_down_rounded));
+    await t.tap(findAppIcon(AppIcons.caretDown));
     await t.pumpAndSettle();
     expect(find.text('Creator Dashboard'), findsOneWidget);
 

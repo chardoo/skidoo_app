@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/swipe_up_hint.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 Widget host(Widget child, {bool reduceMotion = false}) => ScreenUtilInit(
       designSize: const Size(390, 844),
@@ -26,12 +28,12 @@ void main() {
   testWidgets('draws a pair of chevrons and keeps animating', (t) async {
     await t.pumpWidget(host(const SwipeUpHint(label: '')));
     await t.pump();
-    expect(find.byIcon(Icons.keyboard_arrow_up_rounded), findsNWidgets(2));
+    expect(findAppIcon(AppIcons.chevronUp), findsNWidgets(2));
 
     // The loop must still be running a beat later — a one-shot hint is easy to
     // miss on a page the user is still reading.
     await t.pump(const Duration(milliseconds: 600));
-    expect(find.byIcon(Icons.keyboard_arrow_up_rounded), findsNWidgets(2));
+    expect(findAppIcon(AppIcons.chevronUp), findsNWidgets(2));
 
     // Let the controller settle so the test doesn't leak a running ticker.
     await t.pumpWidget(host(const SizedBox.shrink()));
@@ -59,7 +61,7 @@ void main() {
 
     // Still legible — the direction reads from the stacked pair, with nothing
     // moving. pumpAndSettle would hang here if the controller were repeating.
-    expect(find.byIcon(Icons.keyboard_arrow_up_rounded), findsNWidgets(2));
+    expect(findAppIcon(AppIcons.chevronUp), findsNWidgets(2));
     await t.pumpAndSettle();
     await t.pumpWidget(host(const SizedBox.shrink()));
   });

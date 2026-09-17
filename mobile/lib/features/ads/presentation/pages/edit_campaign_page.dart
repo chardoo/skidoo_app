@@ -12,6 +12,7 @@ import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -775,7 +776,7 @@ class _MediaPreview extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.edit_rounded,
+                          AppSvgIcon(AppIcons.edit,
                               color: Colors.white70, size: 14.sp),
                           SizedBox(width: 6.w),
                           Text(
@@ -891,7 +892,7 @@ class _LocalMediaTile extends StatelessWidget {
                       color: Colors.black.withValues(alpha: 0.6),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.close_rounded,
+                    child: AppSvgIcon(AppIcons.closeMd,
                         color: Colors.white, size: 16.sp),
                   ),
                 )),
@@ -911,7 +912,7 @@ class _LocalMediaTile extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.edit_rounded,
+                        AppSvgIcon(AppIcons.edit,
                             color: Colors.white70, size: 14.sp),
                         SizedBox(width: 5.w),
                         Text(
@@ -1147,7 +1148,7 @@ class _EDropdown<T> extends StatelessWidget {
         underline: const SizedBox.shrink(),
         dropdownColor: ext.cardSurface,
         style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-        icon: Icon(Icons.expand_more_rounded,
+        icon: AppSvgIcon(AppIcons.caretDown,
             color: ext.searchHintColor, size: 20.sp),
         hint: hint != null
             ? Text(hint!,

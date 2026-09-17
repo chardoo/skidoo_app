@@ -5,6 +5,7 @@ import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/widgets/emoji_panel.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Shared text-input bar for both event and photo comments.
 ///
@@ -90,7 +91,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
             ),
             child: Row(
               children: [
-                Icon(Icons.edit_rounded, size: 14.sp, color: ext.accentGold),
+                AppSvgIcon(AppIcons.edit, size: 14.sp, color: ext.accentGold),
                 SizedBox(width: 6.w),
                 Expanded(
                   child: Column(
@@ -127,7 +128,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                     label: 'Cancel edit',
                     child: GestureDetector(
                       onTap: widget.onCancelEdit,
-                      child: Icon(Icons.close_rounded,
+                      child: AppSvgIcon(AppIcons.closeMd,
                           size: 16.sp, color: ext.searchHintColor),
                     )),
               ],
@@ -166,7 +167,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                     label: 'Cancel reply',
                     child: GestureDetector(
                       onTap: widget.onCancelReply,
-                      child: Icon(Icons.close_rounded,
+                      child: AppSvgIcon(AppIcons.closeMd,
                           size: 16.sp, color: ext.searchHintColor),
                     )),
               ],

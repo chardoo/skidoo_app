@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// The + badge under a creator's avatar has to look like a button.
 ///
@@ -62,7 +64,7 @@ void main() {
     await t.pump();
 
     final disc = t.getSize(find.byType(AnimatedContainer).first);
-    final glyph = t.widget<Icon>(find.byIcon(Icons.add_rounded));
+    final glyph = t.widget<Icon>(findAppIcon(AppIcons.add));
 
     // A proportion, not a measurement in pixels.
     //
@@ -93,7 +95,7 @@ void main() {
     await t.pumpWidget(host(badge(following: true)));
     await t.pump();
 
-    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+    expect(findAppIcon(AppIcons.check), findsOneWidget);
     expect(decorationOf(t).color, isNot(AppThemeExtension.dark.accentGold));
     expect(decorationOf(t).boxShadow, anyOf(isNull, isEmpty));
   });

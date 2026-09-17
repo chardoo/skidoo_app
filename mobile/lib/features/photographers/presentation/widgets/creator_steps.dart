@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// How far through becoming a creator you are: ① — ②, captioned.
 ///
@@ -100,7 +101,7 @@ class _Step extends StatelessWidget {
           ),
           alignment: Alignment.center,
           child: done
-              ? Icon(Icons.check_rounded, size: 15.sp, color: Colors.white)
+              ? AppSvgIcon(AppIcons.check, size: 15.sp, color: Colors.white)
               : Text(
                   '${index + 1}',
                   style: TextStyle(

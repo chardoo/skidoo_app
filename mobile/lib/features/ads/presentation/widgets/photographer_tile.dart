@@ -6,6 +6,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// One photographer in the list of who answered a request.
 ///
@@ -145,7 +146,7 @@ class PhotographerTile extends StatelessWidget {
                               ),
                             )
                           else
-                            Icon(Icons.chevron_right_rounded,
+                            AppSvgIcon(AppIcons.chevronRight,
                                 color: ext.searchHintColor, size: 20.r),
                         ],
                       ),

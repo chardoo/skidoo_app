@@ -9,6 +9,7 @@ import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/widgets/zoomable_photo.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/models/chat/shared_media.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Every photo and video shared in a room, newest first, in a three-column
 /// grid.
@@ -296,7 +297,7 @@ class _CloseButton extends StatelessWidget {
               color: Colors.black54,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.close_rounded, color: Colors.white),
+            child: const AppSvgIcon(AppIcons.closeMd, color: Colors.white),
           ),
         ),
       ),

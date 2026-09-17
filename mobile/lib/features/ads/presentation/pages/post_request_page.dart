@@ -12,6 +12,7 @@ import 'package:jperg_app/core/theme/app_input.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 const _eventTypes = [
   'Wedding',
@@ -339,7 +340,7 @@ class _MultiMediaPicker extends StatelessWidget {
                               color: Colors.black.withValues(alpha: 0.65),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.close_rounded,
+                            child: AppSvgIcon(AppIcons.closeMd,
                                 color: Colors.white, size: 14.sp),
                           ),
                         )),
@@ -475,7 +476,7 @@ class _EventTypeDropdown extends StatelessWidget {
         ),
         dropdownColor: ext.cardSurface,
         style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
-        icon: Icon(Icons.expand_more_rounded,
+        icon: AppSvgIcon(AppIcons.caretDown,
             color: ext.searchHintColor, size: 20.sp),
         // The container this sits in draws the only outline — see
         // [kBorderlessInput].

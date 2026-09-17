@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/glass_surface.dart';
@@ -112,6 +113,7 @@ class AppNavbar extends StatelessWidget {
                         // when you were on it.
                         icon: Icons.home_outlined,
                         selectedIcon: Icons.home_rounded,
+                        asset: AppIcons.home,
                         selected: selectedIndex == _feedTabIndex,
                         ext: ext,
                         onDark: onDark,
@@ -126,6 +128,7 @@ class AppNavbar extends StatelessWidget {
                         label: 'Alerts',
                         icon: Icons.notifications_none_outlined,
                         selectedIcon: Icons.notifications_rounded,
+                        asset: AppIcons.bell,
                         selected: selectedIndex == 2,
                         ext: ext,
                         onDark: onDark,
@@ -141,6 +144,7 @@ class AppNavbar extends StatelessWidget {
                         // indistinguishable at 20 dp.
                         icon: Icons.forum_outlined,
                         selectedIcon: Icons.forum_rounded,
+                        asset: AppIcons.conversation,
                         selected: selectedIndex == 1,
                         ext: ext,
                         onDark: onDark,
@@ -152,6 +156,7 @@ class AppNavbar extends StatelessWidget {
                         label: 'Profile',
                         icon: Icons.person_outline_outlined,
                         selectedIcon: Icons.person_rounded,
+                        asset: AppIcons.user,
                         selected: selectedIndex == 3,
                         ext: ext,
                         onDark: onDark,
@@ -179,6 +184,7 @@ class _NavTab extends StatelessWidget {
     required this.ext,
     required this.icon,
     required this.selectedIcon,
+    this.asset,
     required this.onDark,
     required this.expanded,
     required this.onTap,
@@ -213,6 +219,19 @@ class _NavTab extends StatelessWidget {
   /// while the other three fill.
   final IconData icon;
   final IconData selectedIcon;
+
+  /// The supplied artwork for this tab, drawn instead of either font glyph.
+  ///
+  /// One drawing for both states, because the set has no filled counterparts —
+  /// so the bar stops saying "you are here" by filling the glyph and says it
+  /// the three other ways it already does: the accent colour, the chip behind
+  /// it, and the label. All four tabs give the fill up together, which is the
+  /// part that matters. One tab keeping an outline while the others filled is
+  /// the bug this file already warns about.
+  ///
+  /// The artwork is on the same 24 dp grid and the same 2 dp stroke as the
+  /// family it replaces, so [_iconSize] still means what it says.
+  final String? asset;
   final int unreadCount;
 
   @override
@@ -238,11 +257,13 @@ class _NavTab extends StatelessWidget {
         ? activeForeground
         : (onDark ? Colors.white70 : ext.searchHintColor);
 
-    Widget iconWidget = Icon(
-      selected ? selectedIcon : icon,
-      size: _iconSize.sp,
-      color: iconColor,
-    );
+    Widget iconWidget = asset != null
+        ? AppSvgIcon(asset!, size: _iconSize.sp, color: iconColor)
+        : Icon(
+            selected ? selectedIcon : icon,
+            size: _iconSize.sp,
+            color: iconColor,
+          );
 
     if (unreadCount > 0) {
       iconWidget = Stack(

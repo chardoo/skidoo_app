@@ -7,6 +7,8 @@ import 'package:jperg_app/features/ads/models/boost_tier.dart';
 import 'package:jperg_app/features/ads/presentation/pages/boost_success_page.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/boost_active_bar.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/boost_request_sheet.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 Widget host(Widget child) => ScreenUtilInit(
       designSize: const Size(390, 844),
@@ -117,7 +119,7 @@ void main() {
     testWidgets('the benefits are printed under the tiers', (t) async {
       await t.pumpWidget(host(BoostRequestSheet(catalogue: _catalogue())));
       expect(find.text('Appear at the top of photographer feeds'), findsOneWidget);
-      expect(find.byIcon(Icons.check_rounded), findsNWidgets(3));
+      expect(findAppIcon(AppIcons.check), findsNWidgets(3));
     });
 
     testWidgets('pops with the tier that was chosen', (t) async {

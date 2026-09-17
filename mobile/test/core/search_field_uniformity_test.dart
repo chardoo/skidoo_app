@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/common/widgets/search_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/chat_search_field.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../support/icon_finders.dart';
 
 /// Every search box in the app is the same control, and the control is the
 /// chat search field.
@@ -128,7 +130,7 @@ void main() {
 
         // The chat field gave the magnifier's slot to the clear button, so the
         // query slid left by the width of an icon on the first keystroke.
-        expect(find.byIcon(Icons.search_rounded), findsOneWidget);
+        expect(findAppIcon(AppIcons.search), findsOneWidget);
         expect(t.getTopLeft(find.byType(TextField)), empty);
       });
 

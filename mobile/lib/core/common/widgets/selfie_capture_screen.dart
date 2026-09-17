@@ -7,6 +7,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Full-screen front-camera selfie capture with on-device face validation.
 ///
@@ -255,7 +256,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.check_circle_outline_rounded,
+                                  const AppSvgIcon(AppIcons.circleCheck,
                                       color: Colors.white70, size: 16),
                                   SizedBox(width: 6.w),
                                   Text(

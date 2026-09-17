@@ -8,6 +8,7 @@ import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/presentation/pages/my_campaigns_page.dart';
 import 'package:jperg_app/features/ads/presentation/pages/my_requests_page.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// "Broadcasts" — everything the user has put out: their requests, and the
 /// campaigns they are running.
@@ -102,7 +103,7 @@ class _BroadcastsPageState extends State<BroadcastsPage>
             tooltip: campaigns
                 ? 'Post a request or start a campaign'
                 : 'Post a request',
-            icon: Icon(Icons.add_rounded, color: ext.accentGold, size: 26.r),
+            icon: AppSvgIcon(AppIcons.add, color: ext.accentGold, size: 26.r),
             onPressed: () => CreateBottomSheet.show(context),
           ),
           SizedBox(width: AppSpacing.sm.w),

@@ -4,6 +4,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/ads/models/boost_tier.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// "Boost Your Request" — pick how many days of reach to buy.
 ///
@@ -126,7 +127,7 @@ class _BoostRequestSheetState extends State<BoostRequestSheet> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.check_rounded,
+                              AppSvgIcon(AppIcons.check,
                                   size: 16.sp, color: ext.accentGold),
                               SizedBox(width: AppSpacing.sm.w),
                               Expanded(

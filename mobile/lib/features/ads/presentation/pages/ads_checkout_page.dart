@@ -6,6 +6,7 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/admin/data/models/exchange_rates.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class AdsCheckoutPage extends StatefulWidget {
   const AdsCheckoutPage({
@@ -94,7 +95,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         leading: IconButton(
           tooltip: 'Close',
           icon:
-              Icon(Icons.close_rounded, color: ext.greetingColor, size: 22.sp),
+              AppSvgIcon(AppIcons.closeMd, color: ext.greetingColor, size: 22.sp),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(

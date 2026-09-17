@@ -10,6 +10,8 @@ import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/features/follow/presentation/widgets/following_feed.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// Hiding a post on Following has to hide it *when you tap Hide*.
 ///
@@ -64,7 +66,7 @@ Finder card(String id) => find.byKey(ValueKey('following_event_$id'));
 
 /// Open the card's "…" sheet and press Hide event.
 Future<void> tapHide(WidgetTester t) async {
-  await t.tap(find.byIcon(Icons.more_horiz_rounded).first);
+  await t.tap(findAppIcon(AppIcons.moreHorizontal).first);
   await t.pumpAndSettle();
   await t.tap(find.text('Hide event'));
   // One frame. Deliberately not pumpAndSettle: settling would run the

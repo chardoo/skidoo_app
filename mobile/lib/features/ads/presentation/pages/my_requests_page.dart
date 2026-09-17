@@ -20,6 +20,7 @@ import 'package:jperg_app/features/location/data/models/place.dart';
 import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class MyRequestsPage extends StatefulWidget {
   const MyRequestsPage({super.key, this.embedded = false, this.onCount});
@@ -1246,7 +1247,7 @@ class _EditPhotos extends StatelessWidget {
                             color: Colors.black54,
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.close_rounded,
+                          child: AppSvgIcon(AppIcons.closeMd,
                               size: 12.r, color: Colors.white),
                         ),
                       ),
@@ -1284,7 +1285,7 @@ class _EditPhotos extends StatelessWidget {
                         ),
                       ),
                     )
-                  : Icon(Icons.add_rounded,
+                  : AppSvgIcon(AppIcons.add,
                       color: ext.searchHintColor, size: 22.r),
             ),
           ),

@@ -15,6 +15,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/settings/data/profile_options.dart';
 import 'package:jperg_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The profile form, on its own screen.
 ///
@@ -356,7 +357,7 @@ class _AvatarField extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.photo_camera_rounded,
+                    AppSvgIcon(AppIcons.camera,
                         size: 12.sp, color: Colors.white),
                     SizedBox(width: 4.w),
                     Text(

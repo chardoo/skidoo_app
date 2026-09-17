@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// Where a photographer is, how many follow them, what they are rated.
 ///
@@ -78,7 +80,7 @@ void main() {
             variant: PhotographerMetaVariant.header,
           )));
       expect(tester.takeException(), isNull);
-      expect(find.byIcon(Icons.place_outlined), findsOneWidget);
+      expect(findAppIcon(AppIcons.mapPin), findsOneWidget);
 
       // "1.2K followers" is the accent colour; the location beside it is not.
       final ext = AppThemeExtension.light;
@@ -101,7 +103,7 @@ void main() {
             followerCount: 12,
             variant: PhotographerMetaVariant.header,
           )));
-      expect(find.byIcon(Icons.place_outlined), findsNothing);
+      expect(findAppIcon(AppIcons.mapPin), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

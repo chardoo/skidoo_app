@@ -15,6 +15,7 @@ import 'package:jperg_app/features/location/presentation/widgets/location_picker
 import 'package:jperg_app/features/admin/data/models/app_config.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Everything the five steps collect, in one place.
 ///
@@ -406,7 +407,7 @@ class _StepBar extends StatelessWidget {
                   ),
                 ),
                 child: i < step
-                    ? Icon(Icons.check_rounded, size: 15.r, color: Colors.white)
+                    ? AppSvgIcon(AppIcons.check, size: 15.r, color: Colors.white)
                     : Text(
                         '${i + 1}',
                         style: TextStyle(
@@ -1062,7 +1063,7 @@ class _PhotoStrip extends StatelessWidget {
                                 color: Colors.black54,
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(Icons.close_rounded,
+                              child: AppSvgIcon(AppIcons.closeMd,
                                   size: 13.r, color: Colors.white),
                             ),
                           ),
@@ -1084,7 +1085,7 @@ class _PhotoStrip extends StatelessWidget {
                           color: ext.accentGold.withValues(alpha: 0.5),
                         ),
                       ),
-                      child: Icon(Icons.add_rounded,
+                      child: AppSvgIcon(AppIcons.add,
                           color: ext.accentGold, size: 24.r),
                     ),
                   ),
@@ -1383,7 +1384,7 @@ class _Choice extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (selected) ...[
-                Icon(Icons.check_rounded, size: 13.r, color: ext.accentGold),
+                AppSvgIcon(AppIcons.check, size: 13.r, color: ext.accentGold),
                 SizedBox(width: 4.w),
               ],
               Text(
@@ -1921,7 +1922,7 @@ class CampaignSubmittedPage extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: ext.accentGold.withValues(alpha: 0.14),
                   ),
-                  child: Icon(Icons.check_rounded,
+                  child: AppSvgIcon(AppIcons.check,
                       size: 34.r, color: ext.accentGold),
                 ),
                 SizedBox(height: AppSpacing.lg.h),

@@ -5,6 +5,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/gallery/data/repositories/found_review_repository.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// "You were found — 2 new photos at Praise Reloaded 2026".
 ///
@@ -87,7 +88,7 @@ class FoundReviewBanner extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded,
+              AppSvgIcon(AppIcons.chevronRight,
                   color: ext.searchHintColor, size: 22.r),
             ],
           ),

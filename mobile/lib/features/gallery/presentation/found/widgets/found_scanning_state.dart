@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Found's empty state for a user who *has* a face on file but no matches yet.
 ///
@@ -92,7 +93,7 @@ class _CodeLink extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: AppSpacing.sm.w,
           children: [
-            Icon(Icons.qr_code_scanner_rounded,
+            AppSvgIcon(AppIcons.qrCode,
                 size: 18.sp, color: ext.accentGold),
             Text(
               'Have a code from a photographer?',

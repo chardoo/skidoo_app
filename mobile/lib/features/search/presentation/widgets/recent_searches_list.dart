@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The rows under the search box on the idle screen.
 ///
@@ -72,7 +73,7 @@ class _RecentRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.access_time_rounded,
+              AppSvgIcon(AppIcons.clock,
                   color: ext.searchHintColor, size: 18.sp),
               SizedBox(width: AppSpacing.md.w),
               Expanded(
@@ -96,7 +97,7 @@ class _RecentRow extends StatelessWidget {
                     // Padding, not size — it widens the tap target to something
                     // a thumb can hit without making the glyph any bigger.
                     padding: EdgeInsets.all(AppSpacing.xs.w),
-                    child: Icon(Icons.close_rounded,
+                    child: AppSvgIcon(AppIcons.closeMd,
                         color: ext.searchHintColor, size: 18.sp),
                   ),
                 ),

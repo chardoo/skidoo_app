@@ -11,6 +11,7 @@ import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/location/data/models/place.dart';
 import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Posting a request: fill it in, read it back, publish.
 ///
@@ -446,7 +447,7 @@ class _NewRequestStepState extends State<_NewRequestStep> {
             child: _Tappable(
               ext: ext,
               onTap: _pickCoverage,
-              trailing: Icon(Icons.expand_more_rounded,
+              trailing: AppSvgIcon(AppIcons.caretDown,
                   color: ext.searchHintColor, size: 20.r),
               child: Text(
                 draft.coverageLabel ?? 'Optional',
@@ -465,7 +466,7 @@ class _NewRequestStepState extends State<_NewRequestStep> {
             child: _Tappable(
               ext: ext,
               onTap: _pickType,
-              trailing: Icon(Icons.expand_more_rounded,
+              trailing: AppSvgIcon(AppIcons.caretDown,
                   color: ext.searchHintColor, size: 20.r),
               child: Text(
                 draft.eventType ?? 'Select event type',
@@ -792,7 +793,7 @@ class _PublishedStep extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: ext.accentGold.withValues(alpha: 0.12),
                 ),
-                child: Icon(Icons.check_rounded,
+                child: AppSvgIcon(AppIcons.check,
                     color: ext.accentGold, size: 44.r),
               ),
               SizedBox(height: AppSpacing.xl.h),
@@ -1145,7 +1146,7 @@ class _DraftPhotos extends StatelessWidget {
                           color: Colors.black54,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.close_rounded,
+                        child: AppSvgIcon(AppIcons.closeMd,
                             size: 12.r, color: Colors.white),
                       ),
                     ),
@@ -1169,7 +1170,7 @@ class _DraftPhotos extends StatelessWidget {
               ),
             ),
             child:
-                Icon(Icons.add_rounded, color: ext.searchHintColor, size: 22.r),
+                AppSvgIcon(AppIcons.add, color: ext.searchHintColor, size: 22.r),
           ),
         ),
       ],

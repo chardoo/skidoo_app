@@ -11,6 +11,7 @@ import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.da
 import 'package:jperg_app/features/chat/presentation/pages/shared_media_page.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/chat_settings_tile.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Details for a one-to-one conversation: who it is with, shared media, mute,
 /// and blocking.
@@ -92,7 +93,7 @@ class ContactInfoPage extends StatelessWidget {
                     children: [
                       ChatSettingsTile(
                         label: 'Shared Media',
-                        trailing: Icon(Icons.chevron_right_rounded,
+                        trailing: AppSvgIcon(AppIcons.chevronRight,
                             color: ext.searchHintColor, size: 22.sp),
                         onTap: () => _openSharedMedia(context, room),
                       ),

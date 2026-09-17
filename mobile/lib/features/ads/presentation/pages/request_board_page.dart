@@ -12,6 +12,7 @@ import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/feed_item_card.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 const _eventTypes = [
   'Wedding',
@@ -233,7 +234,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
               icon: Badge(
                 isLabelVisible: hasFilters,
                 backgroundColor: ext.accentGold,
-                child: Icon(Icons.tune_rounded,
+                child: AppSvgIcon(AppIcons.filter,
                     color: ext.greetingColor, size: 22.sp),
               ),
               onPressed: _showFilterSheet,

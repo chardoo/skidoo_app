@@ -147,6 +147,17 @@ flutter:
   generate: true
   uses-material-design: true
   assets:
+    - assets/ico/Arrow/
+    - assets/ico/Calendar/
+    - assets/ico/Communication/
+    - assets/ico/Edit/
+    - assets/ico/File/
+    - assets/ico/Interface/
+    - assets/ico/Menu/
+    - assets/ico/Navigation/
+    - assets/ico/System/
+    - assets/ico/User/
+    - assets/ico/Warning/
     - assets/navbar_icons/
     - assets/logo/
     - assets/splash/

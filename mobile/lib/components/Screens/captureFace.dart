@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/components/Screens/croptimage.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class TakePictureScreen extends StatefulWidget {
   final CameraDescription camera;
@@ -79,7 +80,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
             AppSnackBar.errorOnMessenger(messenger, 'Camera error: $e');
           }
         },
-        child: const Icon(Icons.camera_alt),
+        child: const AppSvgIcon(AppIcons.camera),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// An in-page message that stays put until it is answered.
 ///
@@ -128,8 +129,8 @@ class AppInlineBanner extends StatelessWidget {
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: EdgeInsets.all(AppSpacing.xs.w),
-                    child: Icon(
-                      Icons.close_rounded,
+                    child: AppSvgIcon(
+                      AppIcons.closeMd,
                       size: 16.sp,
                       color: ext.searchHintColor,
                     ),

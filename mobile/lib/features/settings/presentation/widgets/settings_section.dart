@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The two pieces every settings screen is built from: a small grey heading,
 /// and a rounded card holding rows divided by hairlines.
@@ -184,7 +185,7 @@ class SettingsRow extends StatelessWidget {
                   onChanged: isBusy ? null : onChanged,
                 )
               else if (onTap != null)
-                Icon(Icons.chevron_right_rounded,
+                AppSvgIcon(AppIcons.chevronRight,
                     size: 22.sp, color: ext.searchHintColor),
             ],
           ),

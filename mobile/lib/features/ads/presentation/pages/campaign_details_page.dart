@@ -17,6 +17,7 @@ import 'package:jperg_app/features/ads/presentation/pages/ads_checkout_page.dart
 import 'package:jperg_app/features/ads/presentation/pages/edit_campaign_form_page.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/campaign_status_pill.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/media_carousel.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// One campaign: what it is, and whatever it currently wants from its owner.
 ///
@@ -314,7 +315,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
         actions: [
           if (c.status.isEditable || c.status.canDuplicate)
             PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert_rounded, color: ext.greetingColor),
+              icon: AppSvgIcon(AppIcons.moreVertical, color: ext.greetingColor),
               onSelected: (value) => switch (value) {
                 'edit' => _edit(),
                 'duplicate' => _duplicate(),
@@ -635,7 +636,7 @@ class _PaymentWindow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.schedule_rounded, size: 16.r, color: amber),
+              AppSvgIcon(AppIcons.clock, size: 16.r, color: amber),
               SizedBox(width: 6.w),
               Text(
                 'Payment Window Closing',
@@ -1272,7 +1273,7 @@ class CampaignResumedPage extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: ext.accentGold.withValues(alpha: 0.14),
                   ),
-                  child: Icon(Icons.check_rounded,
+                  child: AppSvgIcon(AppIcons.check,
                       size: 34.r, color: ext.accentGold),
                 ),
                 SizedBox(height: AppSpacing.lg.h),

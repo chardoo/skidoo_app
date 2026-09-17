@@ -10,6 +10,7 @@ import 'package:jperg_app/core/utils/time_formatter.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/features/notifications/data/notification_inbox.dart';
 import 'package:jperg_app/features/notifications/data/notification_service.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The notification inbox.
 ///
@@ -638,7 +639,7 @@ class _RowMenu extends StatelessWidget {
         tooltip: 'Notification options',
         padding: EdgeInsets.zero,
         iconSize: 18.sp,
-        icon: Icon(Icons.more_horiz_rounded, color: color),
+        icon: AppSvgIcon(AppIcons.moreHorizontal, color: color),
         onSelected: (value) {
           if (value == 'read') onMarkRead();
           if (value == 'delete') onDelete();

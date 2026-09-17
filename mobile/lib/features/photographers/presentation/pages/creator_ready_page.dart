@@ -7,6 +7,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// "You're all set, Kwame!" — the end of becoming a creator.
 ///
@@ -76,7 +77,7 @@ class CreatorReadyPage extends StatelessWidget {
                   color: ext.accentGold.withValues(alpha: 0.15),
                 ),
                 alignment: Alignment.center,
-                child: Icon(Icons.check_rounded,
+                child: AppSvgIcon(AppIcons.check,
                     size: 32.sp, color: ext.accentGold),
               ),
               SizedBox(height: AppSpacing.xl.h),

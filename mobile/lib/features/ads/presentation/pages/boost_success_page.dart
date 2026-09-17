@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// "Request Boosted!" — the whole screen, after the money has landed.
 ///
@@ -43,8 +44,8 @@ class BoostSuccessPage extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
-                  child: Icon(
-                    Icons.check_circle_outline_rounded,
+                  child: AppSvgIcon(
+                    AppIcons.circleCheck,
                     size: 44.sp,
                     color: ext.accentGold,
                   ),

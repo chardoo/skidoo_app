@@ -5,6 +5,7 @@ import 'package:jperg_app/core/widgets/zoomable_photo.dart';
 import 'package:jperg_app/models/photographer/photographer_sample.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class SamplesFullscreenPage extends StatefulWidget {
   const SamplesFullscreenPage({
@@ -109,7 +110,7 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
                           color: Colors.black54,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.close_rounded,
+                        child: const AppSvgIcon(AppIcons.closeMd,
                             color: Colors.white, size: 20),
                       ),
                     )),

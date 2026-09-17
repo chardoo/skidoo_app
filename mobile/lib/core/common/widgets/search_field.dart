@@ -4,6 +4,7 @@ import 'package:jperg_app/core/theme/app_input.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// What surface a search field is sitting on, which is the only thing that may
 /// differ between two of them.
@@ -164,7 +165,7 @@ class _SearchFieldState extends State<SearchField> {
           // Always present, unlike the chat field it is taken from: there the
           // magnifier gave up its slot to the clear button, so the query
           // jumped left by the width of the icon on the first keystroke.
-          Icon(Icons.search_rounded, color: iconColor, size: 20.sp),
+          AppSvgIcon(AppIcons.search, color: iconColor, size: 20.sp),
           SizedBox(width: AppSpacing.md.w),
           Expanded(
             child: TextField(

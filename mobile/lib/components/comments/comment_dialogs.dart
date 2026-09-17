@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Shows a bottom sheet with Edit / Delete options.
 /// [onEdit] and [onDelete] receive no arguments — callers close over
@@ -51,7 +52,7 @@ void showCommentOptionsSheet(
             // a photographer moderating their album sees only Delete.
             if (canEdit)
               ListTile(
-                leading: Icon(Icons.edit_rounded,
+                leading: AppSvgIcon(AppIcons.edit,
                     color: ext.accentGold, size: 22.sp),
                 title: Text('Edit comment',
                     style: TextStyle(color: ext.greetingColor, fontSize: 15.sp)),
@@ -62,7 +63,7 @@ void showCommentOptionsSheet(
               ),
             if (canDelete)
               ListTile(
-                leading: const Icon(Icons.delete_outline_rounded,
+                leading: const AppSvgIcon(AppIcons.trash,
                     color: Colors.redAccent),
                 title: Text('Delete comment',
                     style: TextStyle(color: Colors.redAccent, fontSize: 15.sp)),

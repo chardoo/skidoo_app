@@ -7,6 +7,7 @@ import 'package:jperg_app/models/photographer/photographerModel.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class PhotographerCard extends StatelessWidget {
   const PhotographerCard({
@@ -65,8 +66,8 @@ class PhotographerCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.chevron_right_rounded,
+                AppSvgIcon(
+                  AppIcons.chevronRight,
                   color: ext.searchHintColor,
                   size: 20.sp,
                 ),

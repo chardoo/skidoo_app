@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/features/home/presentation/widgets/creator_mode_menu.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Feed top bar — the QR glyph, the plain-text Found/Feed/Following tabs
 /// (active tab bold + underlined), the search icon and the photographer's mode
@@ -233,7 +234,7 @@ class FeedTopBar extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.only(left: AppSpacing.md.w),
             child: Center(
-              child: Icon(Icons.search_rounded,
+              child: AppSvgIcon(AppIcons.search,
                   color: _chromeColor(ext),
                   size: 24.sp,
                   shadows: _chromeShadows),

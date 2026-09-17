@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/photographer_tile.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// The rows on Request Details.
 ///
@@ -68,7 +70,7 @@ void main() {
     expect(find.text('4.7'), findsOneWidget);
     expect(find.textContaining('Accra'), findsOneWidget);
     expect(find.textContaining('1.2K followers'), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    expect(findAppIcon(AppIcons.chevronRight), findsOneWidget);
     expect(find.text('Message'), findsNothing);
   });
 
@@ -80,7 +82,7 @@ void main() {
             'rounded decoration — two visible colours under a borderRadius '
             'throws');
     expect(find.text('Message'), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+    expect(findAppIcon(AppIcons.chevronRight), findsNothing);
   });
 
   testWidgets('the message pill is tappable on its own', (tester) async {

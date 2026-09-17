@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/media/media_rail_action.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -36,11 +37,18 @@ class MediaReaction {
     this.enabled = true,
     this.semanticLabel,
     this.anchorKey,
+    this.assetIcon,
   });
 
   /// The resting glyph — an outline, always. A reaction that has not happened
   /// yet is drawn hollow.
   final IconData icon;
+
+  /// Design's own artwork for the resting glyph, drawn instead of [icon] where
+  /// the set has one — see [AppIcons]. [activeIcon] is unaffected: the
+  /// supplied set is rest states only, so a filled reaction still comes from
+  /// the icon font.
+  final String? assetIcon;
 
   /// The glyph once [active]. Filled, and only filled here: colour alone is a
   /// weak signal at this size and none at all to a viewer who cannot separate
@@ -78,6 +86,7 @@ class MediaReaction {
     required VoidCallback onTap,
   }) : this(
           icon: Icons.favorite_border_rounded,
+          assetIcon: AppIcons.like,
           activeIcon: Icons.favorite_rounded,
           active: liked,
           count: count,
@@ -90,6 +99,7 @@ class MediaReaction {
     required VoidCallback onTap,
   }) : this(
           icon: Icons.mode_comment_outlined,
+          assetIcon: AppIcons.comment,
           count: count,
           semanticLabel: 'Comments',
           onTap: onTap,
@@ -132,6 +142,7 @@ class MediaReaction {
     Key? anchorKey,
   }) : this(
           icon: Icons.bookmark_border_rounded,
+          assetIcon: AppIcons.save,
           activeIcon: Icons.bookmark_rounded,
           active: saved,
           tint: MediaReactionTint.accent,
@@ -181,6 +192,7 @@ class MediaReaction {
     Key? anchorKey,
   }) : this(
           icon: Icons.near_me_outlined,
+          assetIcon: AppIcons.share,
           busy: busy,
           semanticLabel: 'Share photo',
           anchorKey: anchorKey,
@@ -261,6 +273,9 @@ class MediaReactionRail extends StatelessWidget {
   Widget _build(MediaReaction r, AppThemeExtension ext) => MediaRailAction(
         key: r.anchorKey,
         icon: r.active ? (r.activeIcon ?? r.icon) : r.icon,
+        // Only at rest. An active reaction is drawn filled, and the supplied
+        // set has no filled artwork to draw it with.
+        assetIcon: r.active ? null : r.assetIcon,
         iconColor: r.enabled
             ? (r.active ? _tint(r.tint, ext) : Colors.white)
             : _unavailable,

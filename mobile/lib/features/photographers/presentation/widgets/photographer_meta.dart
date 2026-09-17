@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// How the line is arranged. The parts are the same either way — that is the
 /// point of it being one widget.
@@ -67,7 +68,7 @@ class PhotographerMeta extends StatelessWidget {
       return Row(
         children: [
           if (_hasLocation) ...[
-            Icon(Icons.place_outlined, size: 13.r, color: ext.searchHintColor),
+            AppSvgIcon(AppIcons.mapPin, size: 13.r, color: ext.searchHintColor),
             SizedBox(width: 3.w),
           ],
           Flexible(

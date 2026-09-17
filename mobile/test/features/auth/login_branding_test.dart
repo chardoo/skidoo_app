@@ -13,6 +13,8 @@ import 'package:jperg_app/features/auth/presentation/bloc/signup/signup_bloc.dar
 import 'package:jperg_app/features/auth/presentation/pages/login_page.dart';
 import 'package:jperg_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import '../../support/icon_finders.dart';
 
 /// Stand-ins for the use cases the blocs are built from.
 ///
@@ -95,7 +97,7 @@ void main() {
       await tester.pump();
 
       expect(find.byType(JpergLogo), findsOneWidget);
-      expect(find.byIcon(Icons.photo_camera_rounded), findsNothing);
+      expect(findAppIcon(AppIcons.camera), findsNothing);
     });
 
     testWidgets('centres the logo above the left-aligned copy',
@@ -126,7 +128,7 @@ void main() {
       await tester.pump();
 
       expect(find.byType(JpergLogo), findsOneWidget);
-      expect(find.byIcon(Icons.photo_camera_rounded), findsNothing);
+      expect(findAppIcon(AppIcons.camera), findsNothing);
 
       final logo = tester.getCenter(find.byType(JpergLogo));
       final screen = tester.getSize(find.byType(MaterialApp)).width;

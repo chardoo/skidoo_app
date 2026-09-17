@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -45,7 +46,13 @@ Widget host(ChatMessage message) => ScreenUtilInit(
     );
 
 void main() {
-  final mark = find.byType(SvgPicture);
+  // The watermark itself, not any SVG on the screen. Scoped once the app's
+  // chrome moved to an SVG icon set — a bare `byType(SvgPicture)` started
+  // counting the close button and anything else on the same route.
+  final mark = find.descendant(
+    of: find.byType(PaidPhotoWatermark),
+    matching: find.byType(SvgPicture),
+  );
 
   testWidgets('a shared paid photo is marked', (t) async {
     await t.pumpWidget(host(shared(paidPreview: true)));

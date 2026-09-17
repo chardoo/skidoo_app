@@ -11,6 +11,7 @@ import 'package:jperg_app/features/photographers/domain/usecases/get_photographe
 import 'package:jperg_app/models/photographer/photographer_sample.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Minimum sample-work photos required, matching the design ("min. 4
 /// photos") and used by both callers to gate their primary action.
@@ -307,7 +308,7 @@ class _PortfolioFormState extends State<PortfolioForm> {
                     border: Border.all(
                         color: ext.accentGold.withValues(alpha: 0.5), width: 1.2),
                   ),
-                  child: Icon(Icons.add_rounded, color: ext.accentGold),
+                  child: AppSvgIcon(AppIcons.add, color: ext.accentGold),
                 ),
               ),
             ),
@@ -482,7 +483,7 @@ class _SampleThumb extends StatelessWidget {
                 padding: const EdgeInsets.all(2),
                 decoration: const BoxDecoration(
                     color: Colors.black54, shape: BoxShape.circle),
-                child: Icon(Icons.close_rounded, color: Colors.white, size: 12.sp),
+                child: AppSvgIcon(AppIcons.closeMd, color: Colors.white, size: 12.sp),
               ),
             ),
           ),
