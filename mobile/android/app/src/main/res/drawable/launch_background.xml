@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+<!--
+  The window the OS paints before Flutter has drawn a frame.
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+  Black, because the first Flutter frame is the splash animation and that is
+  drawn on black. It was @android:color/white, so every cold start opened with
+  a white flash and then went dark — the app blinking before it had shown
+  anything at all.
+
+  There is no night variant of this file on purpose: the splash is black in
+  both themes, so one colour is correct for both.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
 </layer-list>

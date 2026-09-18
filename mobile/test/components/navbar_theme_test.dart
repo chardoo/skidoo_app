@@ -40,18 +40,6 @@ BoxDecoration pill(WidgetTester t) => t
 Color labelColour(WidgetTester t, String label) =>
     t.widget<Text>(find.text(label)).style!.color!;
 
-/// The bar's four resting glyphs, all from the one `_outlined` family — see
-/// [AppNavbar] for why that family and not the `_rounded` one the app leans on
-/// elsewhere. Named here so a tab that quietly changes families is a failure
-/// rather than something to be noticed on a screenshot.
-// Not const: [IconData] overrides `==`, which a constant set will not take.
-final _outlineGlyphs = <IconData>{
-  Icons.home_outlined,
-  Icons.notifications_none_outlined,
-  Icons.forum_outlined,
-  Icons.person_outline_outlined,
-};
-
 /// Every tab's glyph, whichever widget draws it.
 ///
 /// The tabs draw the supplied artwork now rather than the icon font, so a

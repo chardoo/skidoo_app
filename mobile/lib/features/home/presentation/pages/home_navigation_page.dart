@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/features/home/presentation/widgets/feed_skeleton.dart';
 import 'package:jperg_app/core/common/widgets/glass_surface.dart';
 import 'package:jperg_app/core/navigation/chrome_visibility.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,7 +9,6 @@ import 'package:jperg_app/core/theme/dark_media_surface.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/event_comment_page.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_event_photos.dart';
-import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/features/search/presentation/pages/search_page.dart';
 import 'package:jperg_app/features/home/presentation/widgets/events_feed.dart';
 import 'package:jperg_app/features/home/presentation/widgets/home_empty_state.dart';
@@ -527,16 +527,14 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
               .read<DiscoveryBloc>()
               .add(const DiscoveryLoadMoreRequested()),
         ),
-        if (discoveryState.isLoading)
-          Positioned.fill(
-            child: ColoredBox(
-              color: ext.homeBackground,
-              child: const CustomScrollView(slivers: [
-                SliverFillRemaining(
-                    hasScrollBody: false, child: AppLoadingIndicator()),
-              ]),
-            ),
-          ),
+        // The wait, drawn as the thing being waited for.
+        //
+        // This was a spinner centred on an empty screen, which is what the
+        // reader sees immediately after the launch logo — the app's second
+        // impression, saying only that it is busy. The skeleton says what is
+        // coming and where it will be, so the photograph arriving reads as the
+        // picture appearing rather than as one screen replacing another.
+        if (discoveryState.isLoading) const Positioned.fill(child: FeedSkeleton()),
         if (!discoveryState.isLoading && discoveryState.events.isEmpty)
           Positioned.fill(
             child: ColoredBox(

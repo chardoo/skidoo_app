@@ -270,7 +270,7 @@ class FollowingFeedState extends State<FollowingFeed> {
             result.events,
             onScreen: userInitiated || _events.isEmpty
                 ? null
-                : _events.first.id,
+                : _events.first,
           ),
           (e) => e.id,
         );

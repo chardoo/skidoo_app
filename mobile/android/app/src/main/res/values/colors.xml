@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the splash artwork exactly (#000000, sampled from the gif).
+         Any difference shows as a seam when Flutter takes over. -->
+    <color name="launch_background">#000000</color>
+</resources>

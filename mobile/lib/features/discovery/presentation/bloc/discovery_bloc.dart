@@ -179,7 +179,12 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     }
   }
 
-  Future<List<EventDiscovery>> _enrichWithReactions(
+  /// The server's counts for [events], one entry per event asked about.
+  ///
+  /// An event the batch said nothing about gets [EventReaction.empty] rather
+  /// than being left out: silence means no reactions, and a card restored from
+  /// cache can be carrying a count that is no longer true.
+  Future<Map<String, EventReaction>> _enrichWithReactions(
     List<EventDiscovery> events,
     String userId,
   ) async {
@@ -195,15 +200,7 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
         debugPrint('[DiscoveryBloc] reactions batch error: $e');
       }
     }
-    return events.map((e) {
-      final r = reactions[e.id] ?? EventReaction.empty();
-      return e.copyWith(
-        likes: r.likes,
-        dislikes: r.dislikes,
-        userReaction: r.userReaction,
-        clearReaction: r.userReaction == null,
-      );
-    }).toList();
+    return {for (final id in ids) id: reactions[id] ?? EventReaction.empty()};
   }
 
   /// Batch-fetches rooms for [events] and stores them in [_roomCache].
@@ -311,10 +308,11 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
           keepFirst(
             events,
             // Only what is already on screen is protected, and only when the
-            // reader did not ask for a new deal.
+            // reader did not ask for a new deal. The post itself, not its id:
+            // the photo showing on it is part of what must not move.
             onScreen: event.userInitiated || state.events.isEmpty
                 ? null
-                : state.events.first.id,
+                : state.events.first,
           ),
           state.hiddenEventIds,
         ),
@@ -412,19 +410,33 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
 
   /// Fire-and-forget: fetch reactions for [events] then dispatch a patch event.
   void _enrichInBackground(List<EventDiscovery> events, String userId) {
-    _enrichWithReactions(events, userId).then((enriched) {
-      if (!isClosed) add(_DiscoveryReactionsPatchReceived(enriched));
+    _enrichWithReactions(events, userId).then((reactions) {
+      if (!isClosed) add(_DiscoveryReactionsPatchReceived(reactions));
     }).catchError((Object e) {
       debugPrint('[DiscoveryBloc] _enrichInBackground error: $e');
     });
   }
 
   /// Patch already-visible events with server-authoritative reaction counts.
+  ///
+  /// The counts land on the events as they stand, rather than those events
+  /// being replaced by the copies the fetch came back holding — see
+  /// [_DiscoveryReactionsPatchReceived]. The list on screen has already been
+  /// through [keepFirst] and [withoutHidden], and those decisions have to
+  /// survive a patch about likes.
   void _onReactionsPatchReceived(
       _DiscoveryReactionsPatchReceived event, Emitter<DiscoveryState> emit) {
     if (state.events.isEmpty) return;
-    final byId = {for (final e in event.enriched) e.id: e};
-    final patched = state.events.map((e) => byId[e.id] ?? e).toList();
+    final patched = state.events.map((e) {
+      final r = event.reactions[e.id];
+      if (r == null) return e;
+      return e.copyWith(
+        likes: r.likes,
+        dislikes: r.dislikes,
+        userReaction: r.userReaction,
+        clearReaction: r.userReaction == null,
+      );
+    }).toList();
     emit(state.copyWith(events: patched));
   }
 
@@ -742,18 +754,73 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   ///
   /// Nothing is pinned if the post is no longer in the fresh list — hidden,
   /// deleted, or simply out of the ranking — because there is nothing to pin.
+  ///
+  /// [onScreen] is the post *as it is on screen*, not just its id, because
+  /// holding its slot turned out to be only half the job — see
+  /// [keepMediaOrder].
   @visibleForTesting
   static List<EventDiscovery> keepFirst(
     List<EventDiscovery> fresh, {
-    required String? onScreen,
+    required EventDiscovery? onScreen,
   }) {
     if (onScreen == null || fresh.isEmpty) return fresh;
-    if (fresh.first.id == onScreen) return fresh;
-    if (!fresh.any((e) => e.id == onScreen)) return fresh;
-    return [
-      fresh.firstWhere((e) => e.id == onScreen),
-      ...fresh.where((e) => e.id != onScreen),
-    ];
+    final at = fresh.indexWhere((e) => e.id == onScreen.id);
+    if (at < 0) return fresh;
+
+    final pinned = keepMediaOrder(fresh[at], onScreen);
+    // Already first *and* dealing its photos the same way — nothing to rebuild.
+    if (identical(pinned, fresh.first)) return fresh;
+    return [pinned, ...fresh.where((e) => e.id != onScreen.id)];
+  }
+
+  /// [fresh], still showing the photo the reader is actually looking at.
+  ///
+  /// Holding the post's slot is only half of "nothing moves under the reader".
+  /// The photos *inside* a card are dealt by the server too, seeded off the
+  /// feed snapshot — and the first page of a feed rebuilds that snapshot every
+  /// time it is asked for (`skip == 0` always regenerates in main's
+  /// `random-images`, which reseeds `picture_seed`). So the fresh copy of the
+  /// pinned post arrives with its pictures freshly shuffled, while the card
+  /// keeps its widget key and its carousel index across the swap: same post,
+  /// same slot, a different photograph a second after launch. To the reader
+  /// that is the same complaint [keepFirst] exists to answer, arriving one
+  /// level down.
+  ///
+  /// So the arrangement on screen is carried over: every picture still served
+  /// keeps its place, and anything the server has added since is appended in
+  /// the server's own order rather than dropped. The picture *records* are the
+  /// fresh ones throughout — a new price, a like counted, a comment closed all
+  /// still land. Only the order is the reader's.
+  ///
+  /// Returns [fresh] itself when the order already agrees, so [keepFirst] can
+  /// tell "nothing to do" from "rebuilt" by identity.
+  @visibleForTesting
+  static EventDiscovery keepMediaOrder(
+    EventDiscovery fresh,
+    EventDiscovery onScreen,
+  ) {
+    // One picture cannot be out of order, and neither can none.
+    if (onScreen.pictures.length < 2 || fresh.pictures.length < 2) return fresh;
+
+    final byId = {for (final p in fresh.pictures) p.id: p};
+    final taken = <String>{};
+    final ordered = <EventPicture>[];
+    for (final was in onScreen.pictures) {
+      final now = byId[was.id];
+      if (now != null && taken.add(was.id)) ordered.add(now);
+    }
+    // Nothing in common — a different album behind the same id, or a cache
+    // written before these records carried ids. The server's order is all
+    // there is to go on.
+    if (ordered.isEmpty) return fresh;
+    for (final p in fresh.pictures) {
+      if (!taken.contains(p.id)) ordered.add(p);
+    }
+
+    final unchanged = ordered.length == fresh.pictures.length &&
+        Iterable<int>.generate(ordered.length)
+            .every((i) => ordered[i].id == fresh.pictures[i].id);
+    return unchanged ? fresh : fresh.copyWith(pictures: ordered);
   }
 
   /// [events] minus everything the user has hidden.

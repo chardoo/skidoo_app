@@ -14,12 +14,15 @@ import 'package:jperg_app/features/chat/domain/repositories/chat_repository.dart
 import 'package:jperg_app/core/cache/hidden_events.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-EventDiscovery ev(String id) => EventDiscovery(
+EventDiscovery ev(String id, {List<String> pics = const []}) => EventDiscovery(
       id: id,
       eventName: 'Event $id',
       photographerName: 'C',
       photographerId: 'c1',
-      pictures: const [],
+      pictures: [
+        for (final p in pics)
+          EventPicture(id: p, url: 'u/$p', imageId: 'i$p', price: 1),
+      ],
     );
 
 class _Cache implements FeedCacheService {
@@ -88,10 +91,15 @@ class _Repo implements ChatRepository {
   dynamic noSuchMethod(Invocation i) => null;
 }
 
+/// What the reader is actually looking at: the post, and the photo of it the
+/// card is showing. Both halves have to hold still, so both are watched.
+String _showing(EventDiscovery e) =>
+    e.pictures.isEmpty ? e.id : '${e.id}/${e.pictures.first.id}';
+
 /// The first card must be the card that stays.
 ///
-/// Two things could move it after the feed was already on screen, and both
-/// arrived a second or so in — long enough for the reader to have started
+/// Four things could move it after the feed was already on screen, and all of
+/// them arrived a second or so in — long enough for the reader to have started
 /// looking at it:
 ///
 ///  1. The server's fresh order replacing the cached one. [DiscoveryBloc.keepFirst]
@@ -99,9 +107,16 @@ class _Repo implements ChatRepository {
 ///  2. The hidden set, restored asynchronously at construction while the cache
 ///     painted synchronously — so a post the reader had hidden was drawn and
 ///     then taken away. If it was first, the card slid off on its own.
+///  3. The photos *inside* the pinned post, which the server re-deals on every
+///     first page — see [DiscoveryBloc.keepMediaOrder]. The post held its slot
+///     and showed a different photograph, which to the reader is the same
+///     complaint.
+///  4. The reactions patch, a second round trip later, which used to swap in
+///     the whole record it had fetched and so undid (1) and (3) a moment after
+///     they were applied.
 ///
 /// These drive the real bloc through a cold start and watch every state it
-/// emits, which is the only way to see either: both are correct in each
+/// emits, which is the only way to see any of them: each is correct in every
 /// individual emit and wrong only as a sequence.
 Future<List<String>> firstCardSequence({
   required List<EventDiscovery> cached,
@@ -121,7 +136,7 @@ Future<List<String>> firstCardSequence({
 
   final firsts = <String>[];
   final sub = bloc.stream.listen((s) {
-    if (s.events.isNotEmpty) firsts.add(s.events.first.id);
+    if (s.events.isNotEmpty) firsts.add(_showing(s.events.first));
   });
 
   bloc.add(const DiscoveryLoadRequested());
@@ -164,6 +179,31 @@ void main() {
 
     expect(firsts, isNotEmpty);
     expect(firsts.toSet(), {'b'}, reason: 'the first card changed: $firsts');
+  });
+
+  test('the photo on the first card does not change either', () async {
+    // The post holds its slot, and the server re-dealt its album — which is
+    // the thing the reader was actually looking at.
+    final firsts = await firstCardSequence(
+      cached: [ev('a', pics: ['p3', 'p1', 'p2']), ev('b')],
+      fresh: [ev('a', pics: ['p1', 'p2', 'p3']), ev('b')],
+    );
+
+    expect(firsts, isNotEmpty);
+    expect(firsts.toSet(), {'a/p3'}, reason: 'the first card changed: $firsts');
+  });
+
+  test('and the reactions patch does not put it back', () async {
+    // The patch lands a second round trip after the feed, carrying the
+    // server's own copy of every event. Swapping those in wholesale undid the
+    // pin — the post moved back and the photo with it, seconds after launch.
+    final firsts = await firstCardSequence(
+      cached: [ev('a', pics: ['p3', 'p1']), ev('b')],
+      fresh: [ev('b'), ev('a', pics: ['p1', 'p3'])],
+    );
+
+    expect(firsts, isNotEmpty);
+    expect(firsts.toSet(), {'a/p3'}, reason: 'the first card changed: $firsts');
   });
 
   test('and the hidden post is gone from the feed entirely', () async {

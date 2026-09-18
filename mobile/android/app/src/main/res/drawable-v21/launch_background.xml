@@ -1,12 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="?android:colorBackground" />
+<!--
+  The window the OS paints before Flutter has drawn a frame.
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+  This is the file that actually runs: every device the app ships to is API 21
+  or later, so the `drawable/` copy beside it is a fallback nothing reaches.
+  Both are black now, and they have to stay in step — editing only one is how
+  a white flash survives a fix for it.
+
+  It was `?android:colorBackground`, which is the *theme's* background, so a
+  phone in light mode opened the app on white and then went dark. Black is not
+  a theme decision here: the first Flutter frame is the splash animation, and
+  that is drawn on black whatever the device is set to.
+
+  No image on it, deliberately. The animation begins on an empty black field
+  and draws the mark on, so anything static here would appear, disappear and
+  then draw itself.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
 </layer-list>

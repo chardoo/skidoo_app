@@ -13,6 +13,16 @@
 
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">?android:colorBackground</item>
+        <!-- The window *behind* the Flutter UI, from the moment the process
+             has started until the first frame is on screen — and behind it for
+             the rest of the session.
+
+             Black, matching LaunchTheme above and the splash animation that
+             follows it. It was `?android:colorBackground`, which on this
+             Light parent is white: so a cold start went black (launch), white
+             (this, while the engine booted), then black again (the splash).
+             That middle flash is the gap, and it is invisible only when all
+             three are the same colour. -->
+        <item name="android:windowBackground">@color/launch_background</item>
     </style>
 </resources>

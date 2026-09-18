@@ -100,11 +100,19 @@ class _DiscoveryLikeUpdateReceived extends DiscoveryEvent {
 
 /// Internal — fired when background reaction enrichment finishes.
 /// Patches counts/userReaction onto already-visible events without a reload.
+/// The counts, keyed by event — not re-fetched events.
+///
+/// It used to carry whole [EventDiscovery] records, and the handler swapped
+/// them in wholesale, which quietly undid every decision the feed had already
+/// made about what is on screen: the record swapped in is the server's, with
+/// the server's picture order, so the post pinned by [DiscoveryBloc.keepFirst]
+/// showed a different photograph as soon as the reactions batch came back. A
+/// patch should change only the thing it is a patch of.
 class _DiscoveryReactionsPatchReceived extends DiscoveryEvent {
-  final List<EventDiscovery> enriched;
-  const _DiscoveryReactionsPatchReceived(this.enriched);
+  final Map<String, EventReaction> reactions;
+  const _DiscoveryReactionsPatchReceived(this.reactions);
   @override
-  List<Object?> get props => [enriched];
+  List<Object?> get props => [reactions];
 }
 
 /// Internal — restores persisted hidden IDs from SharedPreferences on startup.

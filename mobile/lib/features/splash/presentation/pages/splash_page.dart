@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -10,9 +11,20 @@ import 'package:jperg_app/features/discovery/domain/usecases/get_random_images_u
 import 'package:jperg_app/features/onboarding/presentation/pages/onboarding_page.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
-/// The asset's own colour. The gif is a near-white field, so a dark scaffold
-/// behind it showed as a black flash for the frame or two before it decoded.
-const _kSplashBg = Color(0xFFF7F7F2);
+/// The asset's own colour, sampled from the file.
+///
+/// Black, and that is the whole point of the change: the animation is drawn on
+/// black and so is every screen behind it. It used to be the cream field of
+/// the light cut, which put a full-screen flash from near-white to black at
+/// the exact moment the app opened — the brand moment ending in a blink.
+///
+/// Matched exactly (#000000) rather than to a theme token: any difference at
+/// all shows as a seam around a full-bleed asset.
+const _kSplashBg = Color(0xFF000000);
+
+/// The green the wordmark is drawn in, sampled from the same file, so anything
+/// this screen adds belongs to the picture rather than to the theme.
+const _kBrandGreen = Color(0xFF16795B);
 
 /// Branded splash — plays `assets/splash/splash.gif` full-bleed, then hands off
 /// to [nextRoute]. Shown on every cold start (mobile only).
@@ -46,9 +58,20 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
-  /// Floor: below about this the animation reads as a glitch rather than a
-  /// brand moment.
-  static const _kMinDisplay = Duration(milliseconds: 1200);
+  /// Floor: the length of the animation itself — 108 frames at 30 ms, read off
+  /// the file.
+  ///
+  /// It was 1200 ms, which is 40 frames in. The artwork *writes the wordmark
+  /// on*, so at that point the mark is half-drawn, the dot is missing and the
+  /// word "jperg" has not started — and that frozen half-logo is what the app
+  /// cut away from on every warm start. A brand animation that never reaches
+  /// its own last frame is worse than no animation.
+  ///
+  /// This is a floor, not a wait: the feed warm-up below runs alongside it, so
+  /// on a cold start the fetch is happening during the animation rather than
+  /// after it. What it costs is the difference between the two, and only when
+  /// the network is faster than the artwork.
+  static const _kMinDisplay = Duration(milliseconds: 3240);
 
   /// Ceiling on waiting for content. Long enough for a slow first fetch, short
   /// enough that a request which is never coming back doesn't trap the user.
@@ -135,7 +158,8 @@ class _SplashPageState extends State<SplashPage> {
       if (!completer.isCompleted) completer.complete();
     };
     DeepLinkService.isWaiting.addListener(listener);
-    _dropLinkListener = () => DeepLinkService.isWaiting.removeListener(listener);
+    _dropLinkListener =
+        () => DeepLinkService.isWaiting.removeListener(listener);
     return completer.future;
   }
 
@@ -181,10 +205,146 @@ class _SplashPageState extends State<SplashPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _kSplashBg,
+      // Opaque until the moment it is replaced, deliberately.
+      //
+      // Fading the wordmark out before navigating leaves the scaffold's own
+      // black on screen with nothing on it — a blank black screen between the
+      // brand moment and the app, which is the seam this whole change is
+      // about. The destination transitions in *over* a splash that is still
+      // fully painted, so there is never a frame showing neither.
       body: SizedBox.expand(
-        child: Image.asset(
-          'assets/splash/splash.gif',
-          fit: BoxFit.cover,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              // The dark cut. `Splash_small` over `Splash_gif`: the same
+              // artwork at the same 390x720, 108 frames against 72 so the
+              // draw-on is smoother, and a third of the bytes to decode on the
+              // one screen where nothing else is competing for the frame
+              // budget.
+              'assets/splash/Splash_small.gif',
+              fit: BoxFit.cover,
+            ),
+
+            // Only once the animation has finished having its say.
+            //
+            // Instagram holds its mark and, if the app is still fetching,
+            // shows something small underneath rather than replacing the
+            // brand screen with a spinner. Before the last frame there is
+            // nothing to report — the animation *is* the loading state for
+            // those three seconds, and a second thing moving over it would be
+            // two things asking for attention at once.
+            //
+            // On a warm start this page is usually gone before it appears at
+            // all, which is the intended common case.
+            Positioned(
+              left: 0,
+              right: 0,
+              // Logical pixels, not `.h`.
+              //
+              // This page is shown before [ScreenUtilInit] has initialised —
+              // the splash is the app's first route — and screenutil's
+              // extensions throw a LateInitializationError until it has. The
+              // artwork behind this is `BoxFit.cover` on a fixed 390x720
+              // anyway, so scaling the dots to the device would drift them off
+              // a mark that does not scale with it.
+              bottom: 88,
+              child: _StillWorking(after: _kMinDisplay),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Three dots under the wordmark, once the animation has ended and the app is
+/// still waiting.
+///
+/// Deliberately not a spinner. A spinner on a brand screen reads as a stall;
+/// a slow pulse travelling along three dots reads as the app still working,
+/// which is the same fact told in the register the rest of this screen is in.
+class _StillWorking extends StatefulWidget {
+  const _StillWorking({required this.after});
+
+  /// How long to stay out of the way — the length of the animation.
+  final Duration after;
+
+  @override
+  State<_StillWorking> createState() => _StillWorkingState();
+}
+
+class _StillWorkingState extends State<_StillWorking>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  );
+
+  Timer? _reveal;
+  bool _shown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _reveal = Timer(widget.after, () {
+      if (!mounted) return;
+      setState(() => _shown = true);
+      _pulse.repeat();
+    });
+  }
+
+  @override
+  void dispose() {
+    _reveal?.cancel();
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  /// Where this dot sits in the travelling pulse.
+  ///
+  /// Floored well above zero: a dot that goes out entirely reads as a gap in
+  /// the row rather than as one dot resting.
+  double _opacityOf(int index) {
+    final phase = (_pulse.value - index * 0.18) % 1.0;
+    return 0.3 + ((math.sin(phase * 2 * math.pi) + 1) / 2) * 0.7;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Held in the tree at zero rather than absent, so its arrival is a fade
+    // and not a relayout of the stack it sits in.
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        opacity: _shown ? 1 : 0,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOut,
+        child: SizedBox(
+          height: 7,
+          child: !_shown
+              ? null
+              : AnimatedBuilder(
+                  animation: _pulse,
+                  builder: (context, _) => Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (var i = 0; i < 3; i++) ...[
+                        if (i > 0) SizedBox(width: 7),
+                        Opacity(
+                          opacity: _opacityOf(i),
+                          child: Container(
+                            width: 7,
+                            height: 7,
+                            decoration: const BoxDecoration(
+                              color: _kBrandGreen,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
         ),
       ),
     );

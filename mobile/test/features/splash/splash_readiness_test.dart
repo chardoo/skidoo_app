@@ -98,13 +98,27 @@ Widget host() => MaterialApp(
 bool handedOver(WidgetTester t) =>
     find.text('DESTINATION').evaluate().isNotEmpty;
 
+/// Just past the point where the splash is free to hand over.
+///
+/// The floor is the length of the brand animation — the artwork writes the
+/// wordmark on, and leaving before its last frame showed a half-drawn logo —
+/// plus the dissolve into the destination. Named here rather than repeated as
+/// a number, so moving either does not silently strand these.
+const _pastTheBeat = Duration(milliseconds: 4200);
+
 /// Advances the clock by [by], then lets the replacement route build and its
 /// transition finish. Discrete pumps rather than `pumpAndSettle`, which would
 /// be at the mercy of the animated gif still producing frames.
 Future<void> advance(WidgetTester t, Duration by) async {
   await t.pump(by);
-  await t.pump();
-  await t.pump(const Duration(milliseconds: 500));
+  // Handing over is two waits now, not one — the beat, then the dissolve into
+  // the destination — and the replacement route's own transition follows both.
+  // Pumped in steps rather than settled, because the animated gif and the
+  // pulsing dots never stop producing frames and `pumpAndSettle` would wait
+  // for a still one that never comes.
+  for (var i = 0; i < 6; i++) {
+    await t.pump(const Duration(milliseconds: 300));
+  }
 }
 
 void main() {
@@ -147,7 +161,7 @@ void main() {
     await t.pumpWidget(host());
     expect(handedOver(t), isFalse, reason: 'the floor still applies');
 
-    await advance(t, const Duration(milliseconds: 1300));
+    await advance(t, _pastTheBeat);
     expect(handedOver(t), isTrue);
     expect(feed.calls, 0);
   });
@@ -157,7 +171,7 @@ void main() {
     register(withCache: _FakeCache(), feed: feed);
 
     await t.pumpWidget(host());
-    await advance(t, const Duration(milliseconds: 1300));
+    await advance(t, _pastTheBeat);
 
     expect(feed.calls, 1);
     expect(cache.saves, 1,
@@ -177,7 +191,7 @@ void main() {
 
     // Past the ceiling the app goes on and the feed shows its own loading
     // state, which is more honest than holding the splash indefinitely.
-    await advance(t, const Duration(seconds: 4));
+    await advance(t, const Duration(seconds: 8));
     expect(handedOver(t), isTrue);
   });
 
@@ -185,7 +199,7 @@ void main() {
     register(withCache: _FakeCache(), feed: _FakeFeed(throws: true));
 
     await t.pumpWidget(host());
-    await advance(t, const Duration(milliseconds: 1300));
+    await advance(t, _pastTheBeat);
 
     expect(handedOver(t), isTrue);
     expect(cache.saves, 0);
@@ -205,7 +219,7 @@ void main() {
             const Scaffold(body: Center(child: Text('ONBOARDING'))),
       },
     ));
-    await advance(t, const Duration(milliseconds: 1300));
+    await advance(t, _pastTheBeat);
 
     expect(find.text('ONBOARDING'), findsOneWidget);
     expect(feed.calls, 0);

@@ -265,6 +265,7 @@ class EventDiscovery {
       };
 
   EventDiscovery copyWith({
+    List<EventPicture>? pictures,
     int? likes,
     int? dislikes,
     int? commentCount,
@@ -283,7 +284,7 @@ class EventDiscovery {
       photographerName: photographerName,
       photographerId: photographerId,
       photographerProfileUrl: photographerProfileUrl,
-      pictures: pictures,
+      pictures: pictures ?? this.pictures,
       likes: likes ?? this.likes,
       dislikes: dislikes ?? this.dislikes,
       commentCount: commentCount ?? this.commentCount,
