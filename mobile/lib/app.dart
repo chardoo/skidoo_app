@@ -20,6 +20,7 @@ import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.
 import 'package:jperg_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/features/onboarding/presentation/pages/onboarding_page.dart';
+import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/features/splash/presentation/pages/splash_page.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
@@ -158,31 +159,49 @@ class _AppMaterial extends StatelessWidget {
         // cold start (including after "Continue as guest") goes straight to
         // Discovery.
         initialRoute: SplashPage.routeName,
-        routes: {
-          SplashPage.routeName: (_) => SplashPage(
-                nextRoute: token.isNotEmpty
-                    ? HomePage.routeName
-                    : !hasSeenOnboarding
-                        ? OnboardingPage.routeName
-                        : DiscoveryPage.routeName,
-              ),
-          OnboardingPage.routeName: (_) =>
-              const _GuestGuard(child: OnboardingPage()),
-          DiscoveryPage.routeName: (_) => _GuestGuard(
-                child: isDeviceCompromised
-                    ? const _SecurityWarningPage()
-                    : const DiscoveryPage(),
-              ),
-          LoginPage.routeName: (_) => const _GuestGuard(child: LoginPage()),
-          SignUpPage.routeName: (_) => const _GuestGuard(child: SignUpPage()),
-          HomePage.routeName: (_) => _AuthGuard(
-                child: isDeviceCompromised
-                    ? const _SecurityWarningPage()
-                    : const HomePage(),
-              ),
-          InterestsPage.routeName: (_) => const _AuthGuard(
-                child: InterestsPage(),
-              ),
+        // The same table `routes:` used to hold, one level down.
+        //
+        // It is here rather than there because `routes:` decides what a screen
+        // is and not how it arrives: every entry in it becomes a
+        // MaterialPageRoute wearing the app's Cupertino slide, and there is one
+        // navigation in the app that must not slide — the splash handing over,
+        // which dissolves. `routes:` is also consulted *before* `onGenerateRoute`
+        // by WidgetsApp, so the two cannot be mixed: a name in the map never
+        // reaches here. Everything else about this is unchanged, including
+        // falling through to [onUnknownRoute] on a name that isn't listed.
+        onGenerateRoute: (settings) {
+          final WidgetBuilder? builder = switch (settings.name) {
+            SplashPage.routeName => (_) => SplashPage(
+                  nextRoute: token.isNotEmpty
+                      ? HomePage.routeName
+                      : !hasSeenOnboarding
+                          ? OnboardingPage.routeName
+                          : DiscoveryPage.routeName,
+                ),
+            OnboardingPage.routeName => (_) =>
+                const _GuestGuard(child: OnboardingPage()),
+            DiscoveryPage.routeName => (_) => _GuestGuard(
+                  child: isDeviceCompromised
+                      ? const _SecurityWarningPage()
+                      : const DiscoveryPage(),
+                ),
+            LoginPage.routeName => (_) => const _GuestGuard(child: LoginPage()),
+            SignUpPage.routeName => (_) =>
+                const _GuestGuard(child: SignUpPage()),
+            HomePage.routeName => (_) => _AuthGuard(
+                  child: isDeviceCompromised
+                      ? const _SecurityWarningPage()
+                      : const HomePage(),
+                ),
+            InterestsPage.routeName => (_) => const _AuthGuard(
+                  child: InterestsPage(),
+                ),
+            _ => null,
+          };
+          if (builder == null) return null; // → onUnknownRoute
+
+          // How it arrives, as opposed to what it shows — see [appRouteFor].
+          return appRouteFor(settings, builder);
         },
         // Names that reach here are a bug, not a destination — this silently
         // showed DiscoveryPage instead, which reads as "logged out" and hid the

@@ -51,6 +51,18 @@ const _kBrandGreen = Color(0xFF16795B);
 class SplashPage extends StatefulWidget {
   static const routeName = '/splash';
 
+  /// Passed as the route arguments of the one navigation this page makes, and
+  /// read by the app's route table to build a [SplashHandoffRoute] instead of
+  /// an ordinary push — so the app dissolves up over the brand screen rather
+  /// than sliding in from the edge like a pushed detail page.
+  ///
+  /// Carried on the settings rather than decided by the route table on its own,
+  /// because "/home" is also reached by the tab bar, by deep links and by
+  /// sign-in, and those are ordinary pushes that should look like every other
+  /// push in the app. What earns the dissolve is where the navigation came
+  /// from, and this is the only way the destination gets told.
+  static const handoff = Object();
+
   const SplashPage({super.key, required this.nextRoute});
 
   /// Route to replace this page with once the splash beat is done.
@@ -148,7 +160,8 @@ class _SplashPageState extends State<SplashPage> {
     // than /home means the routing disagreed with the session, which is the
     // bug this pairing exists to make obvious rather than guess at.
     debugPrint('[Splash] → ${widget.nextRoute}');
-    Navigator.of(context).pushReplacementNamed(widget.nextRoute);
+    Navigator.of(context)
+        .pushReplacementNamed(widget.nextRoute, arguments: SplashPage.handoff);
     // Only now is it safe for a deep link to push: this replaced the top of the
     // stack, so anything opened before this point would have been thrown away.
     // A link held since launch is followed from here.

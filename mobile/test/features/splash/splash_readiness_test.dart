@@ -112,8 +112,9 @@ class _FakeFeed implements GetRandomImagesUseCase {
 }
 
 /// The splash plus a stub destination, so "did it hand over?" is observable.
-Widget host() => MaterialApp(
+Widget host({NavigatorObserver? watching}) => MaterialApp(
       initialRoute: SplashPage.routeName,
+      navigatorObservers: [if (watching != null) watching],
       routes: {
         SplashPage.routeName: (_) =>
             const SplashPage(nextRoute: _destination),
@@ -123,6 +124,22 @@ Widget host() => MaterialApp(
             const Scaffold(body: Center(child: Text('ONBOARDING'))),
       },
     );
+
+/// Keeps the settings of every route pushed, so what the splash *asked* for
+/// can be inspected — not just where it ended up.
+class _Watcher extends NavigatorObserver {
+  final pushed = <RouteSettings>[];
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (newRoute != null) pushed.add(newRoute.settings);
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushed.add(route.settings);
+  }
+}
 
 bool handedOver(WidgetTester t) =>
     find.text('DESTINATION').evaluate().isNotEmpty;
@@ -265,6 +282,26 @@ void main() {
     // on exactly the start it exists for. The photo still cannot be fetched
     // here; what must not happen is the warm-up giving up before trying.
     expect(said.where((l) => l.startsWith('[Splash] warm-up failed')), isEmpty);
+  });
+
+  testWidgets('it asks to be dissolved out of, not pushed off', (t) async {
+    // The app's own transition is a Cupertino slide, so an ordinary
+    // `pushReplacementNamed` brings the feed in from the trailing edge as
+    // though it had been opened on top of the brand moment. The marker on the
+    // settings is the whole of how the route table is told otherwise — drop it
+    // and everything still works, and the handover silently goes back to
+    // sliding. See `splash_handoff_test.dart` for what the marker then buys.
+    register(withCache: _FakeCache(seed: [event('a')]), feed: _FakeFeed());
+
+    final watcher = _Watcher();
+    await t.pumpWidget(host(watching: watcher));
+    await advance(t, _pastTheBeat);
+
+    expect(handedOver(t), isTrue);
+    final handover =
+        watcher.pushed.where((s) => s.name == _destination).toList();
+    expect(handover, hasLength(1));
+    expect(handover.single.arguments, same(SplashPage.handoff));
   });
 
   testWidgets('onboarding waits for nothing — there is no feed behind it',
