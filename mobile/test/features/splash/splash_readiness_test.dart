@@ -38,17 +38,32 @@ class _FakeCache implements FeedCacheService {
   List<EventDiscovery> stored;
   int saves = 0;
 
+  /// Whether the last save marked the page as this launch's own.
+  bool handedOver = false;
+
   @override
   List<EventDiscovery> restore() => stored;
 
   @override
-  Future<void> save(List<EventDiscovery> events) async {
-    saves++;
-    stored = events;
+  bool takeHandoff() {
+    final was = handedOver;
+    handedOver = false;
+    return was;
   }
 
   @override
-  Future<void> clear() async => stored = [];
+  Future<void> save(List<EventDiscovery> events,
+      {bool warmedForLaunch = false}) async {
+    saves++;
+    stored = events;
+    if (warmedForLaunch) handedOver = true;
+  }
+
+  @override
+  Future<void> clear() async {
+    stored = [];
+    handedOver = false;
+  }
 
   @override
   Future<bool> removeEvent(String eventId) async {

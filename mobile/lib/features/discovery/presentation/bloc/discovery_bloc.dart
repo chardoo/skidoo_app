@@ -271,6 +271,13 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     // ── Fast path: show cached events before the network returns ─────────────
     // restore() is synchronous (SharedPreferences is already in memory).
     final cached = _feedCache.restore();
+    // Asked before the emit below and only once — the flag is consumed by
+    // whoever reads it first, and on a user-initiated reload it is spent
+    // rather than honoured: a pull to refresh is a request for a new deal, and
+    // adopting a page fetched at launch would answer it with the feed they
+    // already had. See [FeedCacheService.takeHandoff].
+    final handedOver = _feedCache.takeHandoff() && !event.userInitiated;
+
     if (cached.isNotEmpty) {
       debugPrint(
           '[DiscoveryBloc] cache hit — ${cached.length} events shown instantly');
@@ -282,6 +289,35 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     } else {
       emit(DiscoveryState(
           isLoading: true, hiddenEventIds: state.hiddenEventIds));
+    }
+
+    // ── The splash already fetched this page ─────────────────────────────────
+    //
+    // Adopt it rather than asking for the first page again. The second request
+    // is not a cheaper version of the first: `skip == 0` rebuilds the ranking
+    // server-side, so it comes back dealt differently on purpose, and the card
+    // it displaces is the one the splash spent the brand animation decoding.
+    //
+    // `_skip` is set from what was actually stored, not from what the splash
+    // asked for — the cache keeps the first `_maxEvents` and the rest were
+    // never written, so paging has to resume where the stored page ends or
+    // load-more opens a gap.
+    if (handedOver && cached.isNotEmpty) {
+      debugPrint(
+          '[DiscoveryBloc] adopting the splash page — no second first-page fetch');
+      _skip = cached.length;
+      final userId = await _getUserId();
+      // Everything the fetch below would have done with its answer, done with
+      // this one instead. Seeding the follow set matters as much here as
+      // there: it is what the follow badges on these very cards read from,
+      // and skipping it drew every card as not-followed.
+      FollowRepository.seedFollowed(
+        cached.where((e) => e.isFollowed).map((e) => e.photographerId),
+      );
+      emit(state.copyWith(currentUserId: userId, hasMore: true));
+      if (userId != null) _enrichInBackground(cached, userId);
+      _prefetchRooms(cached);
+      return;
     }
 
     // ── Slow path: fetch fresh data and replace ───────────────────────────────
@@ -384,10 +420,17 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       emit(state.copyWith(
         isLoadingMore: false,
         // Filtered on the way in: a hidden event the server happens to return
-        // on a later page would otherwise walk straight back into the feed.
+        // on a later page would otherwise walk straight back into the feed,
+        // and an event already in the list would arrive as a second page
+        // carrying the same key — which a PageView does not survive.
+        //
+        // The second case is [keepFirst]'s doing and is the ordinary path, not
+        // a defensive one: a post kept on top *because* the ranking demoted it
+        // off page one is, by construction, waiting on some later page.
         events: [
           ...state.events,
-          ...withoutHidden(more, state.hiddenEventIds),
+          ...withoutSeen(withoutHidden(more, state.hiddenEventIds),
+              state.events),
         ],
         hasMore: more.isNotEmpty,
       ));
@@ -752,20 +795,45 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
   /// the thing under the reader's thumb. A pull to refresh is an explicit
   /// request for a new deal and is left alone.
   ///
-  /// Nothing is pinned if the post is no longer in the fresh list — hidden,
-  /// deleted, or simply out of the ranking — because there is nothing to pin.
+  /// A post absent from the fresh page is pinned anyway, and that is the part
+  /// that took two goes to get right. Pinning used to give up whenever
+  /// `indexWhere` came back -1, on the reasoning that a post not in the fresh
+  /// list is gone and inventing a row for it would put a dead card on top.
+  /// That reasoning had the common case backwards: the demotion this function
+  /// exists to defend against is the very thing that pushes a post off the
+  /// page. The recommender's impression damping (`SHOWN_MAX_PENALTY`, 0.6 in
+  /// `recommender/app/pipeline/scorer.py`) is aimed squarely at whatever led
+  /// the previous rebuild — which is precisely the card restored from cache —
+  /// so the pin stood down at the one moment it was written for.
+  ///
+  /// A short page was tried as the tell for "really gone" and is not one: with
+  /// a catalogue smaller than a page every absence looks final, which is the
+  /// case the reader hits most. So absence is now read as demotion, full stop.
+  /// The genuinely-gone case is not left unhandled — it is handled where it
+  /// can be known rather than guessed, by [FeedCacheService.removeEvent] when
+  /// opening the album 404s — and it costs at most the one card already on
+  /// screen, for one session, since the next launch's cache is written from
+  /// the server's order and no longer contains it.
   ///
   /// [onScreen] is the post *as it is on screen*, not just its id, because
   /// holding its slot turned out to be only half the job — see
   /// [keepMediaOrder].
-  @visibleForTesting
+  // Not @visibleForTesting: the Following feed applies the same rule through
+  // the same helper, which is the point of it being one.
   static List<EventDiscovery> keepFirst(
     List<EventDiscovery> fresh, {
     required EventDiscovery? onScreen,
   }) {
     if (onScreen == null || fresh.isEmpty) return fresh;
     final at = fresh.indexWhere((e) => e.id == onScreen.id);
-    if (at < 0) return fresh;
+    if (at < 0) {
+      // Demoted off the page rather than out of the feed: keep the card the
+      // reader is on, with the fresh order behind it. It is the copy already
+      // on screen, so nothing about it changes as it is kept — the reactions
+      // patch still lands on it, and [_onLoadMoreRequested] drops the
+      // duplicate if a later page turns it up again.
+      return [onScreen, ...fresh];
+    }
 
     final pinned = keepMediaOrder(fresh[at], onScreen);
     // Already first *and* dealing its photos the same way — nothing to rebuild.
@@ -836,6 +904,24 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       hidden.isEmpty
           ? events
           : events.where((e) => !hidden.contains(e.id)).toList();
+
+  /// [incoming] minus everything already in [existing].
+  ///
+  /// Two pages of a PageView cannot carry the same key, and the feed keys its
+  /// cards by event id — so an event arriving twice is not a cosmetic repeat,
+  /// it is a build-time throw. The snapshot the server pages through is stable
+  /// while it lives, but it is rebuilt on every first page and it expires on
+  /// its own clock, so a card can legitimately turn up on two pages of what
+  /// the reader experiences as one scroll.
+  // Shared with the Following feed, for the same reason as [keepFirst].
+  static List<EventDiscovery> withoutSeen(
+    List<EventDiscovery> incoming,
+    List<EventDiscovery> existing,
+  ) {
+    if (existing.isEmpty || incoming.isEmpty) return incoming;
+    final seen = {for (final e in existing) e.id};
+    return incoming.where((e) => !seen.contains(e.id)).toList();
+  }
 
   void _persistHidden(Set<String> ids) {
     HiddenEvents.replace(ids).ignore();

@@ -10,6 +10,10 @@ class FeedCacheService {
   final SharedPreferences _prefs;
 
   static const _key = 'jperg.feed_cache.v2';
+
+  /// Set by the splash when the page it stored is one it fetched *for this
+  /// launch*, and cleared by the first reader — see [takeHandoff].
+  static const _handoffKey = 'jperg.feed_cache.handoff';
   static const _maxEvents = 8;
 
   /// Synchronous read — SharedPreferences is already loaded in memory.
@@ -26,6 +30,33 @@ class FeedCacheService {
     }
   }
 
+  /// Whether what [restore] just handed back is this launch's own first page,
+  /// rather than a page left over from a previous session. Answering clears
+  /// it, so it is true exactly once.
+  ///
+  /// The splash fetches the first page when the cache is cold, stores it, and
+  /// spends the rest of the brand animation decoding the top card's photograph
+  /// so the feed opens on a picture rather than a spinner. The bloc then used
+  /// to ask for the first page all over again — and `/client/random-images`
+  /// treats every `skip == 0` as "deal again": it rebuilds the ranking
+  /// snapshot, reshuffles it through `banded()`, and applies the impression
+  /// damping that is aimed at whatever was served on top last time. Which was
+  /// the splash's request, moments earlier. So the launch warmed one card and
+  /// its very next act was to ask the server for a different one, which landed
+  /// a second or two later and took the card away.
+  ///
+  /// Synchronous like [restore], and for the same reason: it is read on the
+  /// path that decides the first frame.
+  bool takeHandoff() {
+    try {
+      if (!(_prefs.getBool(_handoffKey) ?? false)) return false;
+      _prefs.remove(_handoffKey).ignore();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Drops the cached feed. Called on sign-out.
   ///
   /// The events themselves are public, but what is stored with them is not:
@@ -37,15 +68,25 @@ class FeedCacheService {
   Future<void> clear() async {
     try {
       await _prefs.remove(_key);
+      // Or the next account adopts a handoff pointing at a page that is gone.
+      await _prefs.remove(_handoffKey);
     } catch (_) {}
   }
 
-  Future<void> save(List<EventDiscovery> events) async {
+  /// Stores [events] as the feed to paint from on the next cold open.
+  ///
+  /// [warmedForLaunch] marks the page as this launch's own — only the splash
+  /// passes it, and only for a page it fetched itself. See [takeHandoff].
+  Future<void> save(
+    List<EventDiscovery> events, {
+    bool warmedForLaunch = false,
+  }) async {
     try {
       final data = jsonEncode(
         events.take(_maxEvents).map((e) => e.toMap()).toList(),
       );
       await _prefs.setString(_key, data);
+      if (warmedForLaunch) await _prefs.setBool(_handoffKey, true);
     } catch (_) {}
   }
 

@@ -303,7 +303,14 @@ class FollowingFeedState extends State<FollowingFeed> {
         _page = next;
         _events = [
           ..._events,
-          ...HiddenEvents.filter(result.events, (e) => e.id),
+          // Deduped as well as filtered, for the same reason the Feed tab is:
+          // a post kept on top because the re-deal demoted it off page one is
+          // by construction waiting on a later page, and two pages of one
+          // PageView cannot carry the same key.
+          ...DiscoveryBloc.withoutSeen(
+            HiddenEvents.filter(result.events, (e) => e.id),
+            _events,
+          ),
         ];
         _loadingMore = false;
         _hasMore = result.hasMore;

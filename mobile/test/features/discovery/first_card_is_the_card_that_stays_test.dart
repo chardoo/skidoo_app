@@ -26,12 +26,21 @@ EventDiscovery ev(String id, {List<String> pics = const []}) => EventDiscovery(
     );
 
 class _Cache implements FeedCacheService {
-  _Cache(this._cached);
+  _Cache(this._cached, {bool handoff = false}) : _handoff = handoff;
   final List<EventDiscovery> _cached;
+  bool _handoff;
   @override
   List<EventDiscovery> restore() => _cached;
   @override
-  Future<void> save(List<EventDiscovery> e) async {}
+  bool takeHandoff() {
+    final was = _handoff;
+    _handoff = false;
+    return was;
+  }
+
+  @override
+  Future<void> save(List<EventDiscovery> e,
+      {bool warmedForLaunch = false}) async {}
   @override
   dynamic noSuchMethod(Invocation i) => null;
 }
@@ -39,6 +48,10 @@ class _Cache implements FeedCacheService {
 class _Images implements GetRandomImagesUseCase {
   _Images(this._fresh);
   final List<EventDiscovery> _fresh;
+
+  /// Every first-page request this saw. The launch must make exactly one.
+  final calls = <int>[];
+
   @override
   Future<List<EventDiscovery>> call({
     int? take,
@@ -46,6 +59,7 @@ class _Images implements GetRandomImagesUseCase {
     String? userId,
     List<String>? followedPhotographerIds,
   }) async {
+    calls.add(skip ?? 0);
     await Future<void>.delayed(const Duration(milliseconds: 5));
     return _fresh;
   }
@@ -118,20 +132,25 @@ String _showing(EventDiscovery e) =>
 /// These drive the real bloc through a cold start and watch every state it
 /// emits, which is the only way to see any of them: each is correct in every
 /// individual emit and wrong only as a sequence.
+/// The requests the last [firstCardSequence] made, by `skip`.
+List<int> lastCallSkips = const [];
+
 Future<List<String>> firstCardSequence({
   required List<EventDiscovery> cached,
   required List<EventDiscovery> fresh,
   List<String> hidden = const [],
+  bool handoff = false,
 }) async {
   SharedPreferences.setMockInitialValues(
       {'discovery_hidden_event_ids': hidden});
   HiddenEvents.debugReset();
 
+  final images = _Images(fresh);
   final bloc = DiscoveryBloc(
-    getRandomImagesUseCase: _Images(fresh),
+    getRandomImagesUseCase: images,
     getReactionsBatch: GetEventReactionsBatchUseCase(_Repo()),
     getEventRoomsBatch: GetEventRoomsBatchUseCase(_Repo()),
-    feedCache: _Cache(cached),
+    feedCache: _Cache(cached, handoff: handoff),
   );
 
   final firsts = <String>[];
@@ -143,6 +162,7 @@ Future<List<String>> firstCardSequence({
   await Future<void>.delayed(const Duration(milliseconds: 300));
   await sub.cancel();
   await bloc.close();
+  lastCallSkips = images.calls;
   return firsts;
 }
 
@@ -166,6 +186,36 @@ void main() {
 
     expect(firsts, isNotEmpty);
     expect(firsts.toSet(), {'a'}, reason: 'the first card changed: $firsts');
+  });
+
+  test('a post the server dropped off the page still holds its slot', () async {
+    // The case that was live on every launch and that the page-length
+    // heuristic did not catch: the re-deal demotes the cached leader clean out
+    // of the page, because demoting the previous leader is exactly what the
+    // ranking is built to do.
+    final firsts = await firstCardSequence(
+      cached: [ev('a'), ev('b')],
+      fresh: [ev('c'), ev('d')],
+    );
+
+    expect(firsts, isNotEmpty);
+    expect(firsts.toSet(), {'a'}, reason: 'the first card changed: $firsts');
+  });
+
+  test('the splash page is adopted instead of being re-dealt', () async {
+    // The root of it. The splash fetches the first page, stores it and spends
+    // the brand animation decoding its top card's photograph; the bloc then
+    // asked for the first page again, and `skip == 0` is a fresh deal
+    // server-side. One launch, one first-page request.
+    final firsts = await firstCardSequence(
+      cached: [ev('a'), ev('b')],
+      fresh: [ev('c'), ev('d')],
+      handoff: true,
+    );
+
+    expect(firsts.toSet(), {'a'}, reason: 'the first card changed: $firsts');
+    expect(lastCallSkips, isEmpty,
+        reason: 'the splash had already fetched this page');
   });
 
   test('a hidden post is never the first card, not even briefly', () async {

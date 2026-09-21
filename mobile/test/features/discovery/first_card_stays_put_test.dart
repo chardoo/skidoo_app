@@ -63,12 +63,55 @@ void main() {
       expect(DiscoveryBloc.keepFirst(fresh, onScreen: event('a')), same(fresh));
     });
 
-    test('a post that is gone is not pinned', () {
-      // Hidden, deleted, or simply out of the ranking — there is nothing to
-      // pin, and inventing a row for it would put a dead card on top.
+    test('a post demoted off the page is still pinned', () {
+      // The hole the complaint came back through, twice. The recommender's
+      // impression damping aims at whatever led the last rebuild — which is
+      // exactly the card restored from cache — so the protected post is the
+      // one most likely to be pushed off the page entirely. Absence is read as
+      // demotion, because that is what it almost always is.
       final fresh = [event('b'), event('c')];
 
-      expect(ids(DiscoveryBloc.keepFirst(fresh, onScreen: event('a'))), ['b', 'c']);
+      expect(
+        ids(DiscoveryBloc.keepFirst(fresh, onScreen: event('a'))),
+        ['a', 'b', 'c'],
+      );
+    });
+
+    test('a short page is not treated as proof the post is gone', () {
+      // Page length was tried as the tell for "really gone" and is not one:
+      // with a catalogue smaller than one page every absence looks final,
+      // which is the case the reader hits most.
+      final wholeFeed = [event('b')];
+
+      expect(
+        ids(DiscoveryBloc.keepFirst(wholeFeed, onScreen: event('a'))),
+        ['a', 'b'],
+      );
+    });
+
+    test('the pinned post keeps the photo that was on screen', () {
+      // Pinned from the cached copy rather than a fresh one, so what the
+      // reader is looking at carries over whole — the post and its photo.
+      final onScreen = event('a', pics: ['p2', 'p1']);
+
+      final kept = DiscoveryBloc.keepFirst([event('b')], onScreen: onScreen);
+
+      expect(picIds(kept.first), ['p2', 'p1']);
+    });
+
+    test('a later page does not bring the pinned post back as a twin', () {
+      // Two pages of a PageView cannot share a key. A post kept on top
+      // *because* it was demoted off page one is by construction waiting on
+      // some later page.
+      final firstPage =
+          DiscoveryBloc.keepFirst([event('b'), event('c')], onScreen: event('a'));
+
+      final merged = [
+        ...firstPage,
+        ...DiscoveryBloc.withoutSeen([event('a'), event('d')], firstPage),
+      ];
+
+      expect(ids(merged), ['a', 'b', 'c', 'd']);
     });
 
     test('an empty fetch is left alone', () {

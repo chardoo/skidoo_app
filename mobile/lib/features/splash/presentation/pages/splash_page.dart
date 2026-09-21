@@ -77,9 +77,12 @@ class _SplashPageState extends State<SplashPage> {
   /// enough that a request which is never coming back doesn't trap the user.
   static const _kMaxWait = Duration(seconds: 6);
 
-  /// One page of events — matches `DiscoveryBloc`'s own first request, so the
-  /// cache this leaves behind is the size that bloc expects to restore.
-  static const _kPageSize = 10;
+  /// One page of events — the same page `DiscoveryBloc` asks for, because the
+  /// bloc now adopts this page rather than fetching its own. It had drifted:
+  /// the comment here claimed the two matched while this asked for ten and the
+  /// bloc asked for twenty, which was harmless only for as long as the page
+  /// was going to be thrown away and refetched.
+  static const _kPageSize = 20;
 
   @override
   void initState() {
@@ -195,7 +198,14 @@ class _SplashPageState extends State<SplashPage> {
         skip: 0,
         userId: await sl<AuthService>().getUserId(),
       );
-      if (events.isNotEmpty) await cache.save(events);
+        // Marked as this launch's own page, so the bloc adopts it instead of
+        // asking for the first page a second time. Every `skip == 0` is a
+        // fresh deal server-side, so a second request would hand back a
+        // different top card — and take away the one this page just spent the
+        // brand animation decoding. See [FeedCacheService.takeHandoff].
+        if (events.isNotEmpty) {
+          await cache.save(events, warmedForLaunch: true);
+        }
     } catch (e) {
       debugPrint('[Splash] feed warm-up failed, going on anyway: $e');
     }
