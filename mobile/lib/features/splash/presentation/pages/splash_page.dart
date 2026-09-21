@@ -6,9 +6,12 @@ import 'package:flutter/scheduler.dart';
 import 'package:jperg_app/core/app_readiness.dart';
 import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/features/discovery/data/services/feed_cache_service.dart';
 import 'package:jperg_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
 import 'package:jperg_app/features/onboarding/presentation/pages/onboarding_page.dart';
+import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
 /// The asset's own colour, sampled from the file.
@@ -26,8 +29,8 @@ const _kSplashBg = Color(0xFF000000);
 /// this screen adds belongs to the picture rather than to the theme.
 const _kBrandGreen = Color(0xFF16795B);
 
-/// Branded splash — plays `assets/splash/splash.gif` full-bleed, then hands off
-/// to [nextRoute]. Shown on every cold start (mobile only).
+/// Branded splash — plays `assets/splash/Splash_reducedg.gif` full-bleed, then
+/// hands off to [nextRoute]. Shown on every cold start (mobile only).
 ///
 /// It holds until the screen behind it can actually show something, rather than
 /// for a fixed beat. Both destinations that matter open on the feed, and
@@ -58,8 +61,8 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
-  /// Floor: the length of the animation itself — 108 frames at 30 ms, read off
-  /// the file.
+  /// Floor: the length of the animation itself — 108 frames summing to 3600 ms,
+  /// added up from the file's own frame delays.
   ///
   /// It was 1200 ms, which is 40 frames in. The artwork *writes the wordmark
   /// on*, so at that point the mark is half-drawn, the dot is missing and the
@@ -67,15 +70,36 @@ class _SplashPageState extends State<SplashPage> {
   /// cut away from on every warm start. A brand animation that never reaches
   /// its own last frame is worse than no animation.
   ///
+  /// Then it was 3240 ms, which is 108 × 30 ms — the frame count times the
+  /// delay on *most* of the frames. The file does not use one delay throughout:
+  /// it mixes 30 ms and 40 ms, and the real total is 3600. So the floor was
+  /// still landing ten frames early, on the same kind of not-quite-finished
+  /// mark, just far less obviously.
+  ///
   /// This is a floor, not a wait: the feed warm-up below runs alongside it, so
   /// on a cold start the fetch is happening during the animation rather than
   /// after it. What it costs is the difference between the two, and only when
   /// the network is faster than the artwork.
-  static const _kMinDisplay = Duration(milliseconds: 3240);
+  static const _kMinDisplay = Duration(milliseconds: 3600);
 
   /// Ceiling on waiting for content. Long enough for a slow first fetch, short
   /// enough that a request which is never coming back doesn't trap the user.
   static const _kMaxWait = Duration(seconds: 6);
+
+  /// Ceiling on waiting for the top card's *photo*, separately and much sooner.
+  ///
+  /// Deliberately shorter than [_kMinDisplay], which is what makes it free: on
+  /// a warm cache the animation is still playing throughout, so a picture that
+  /// arrives costs nothing and a picture that never does costs nothing either.
+  /// Sharing [_kMaxWait] instead held a returning user with no signal on the
+  /// splash for six seconds to warm an image that was never coming — trading
+  /// the spinner this was meant to remove for a longer wait before it.
+  ///
+  /// The card behind this works without it. A photo still loading shows its
+  /// backdrop and a spinner, which is the state every other card in the feed
+  /// passes through; this is only about the first one, which is the only one
+  /// nobody chose to look at.
+  static const _kMediaWarmBudget = Duration(seconds: 3);
 
   /// One page of events — the same page `DiscoveryBloc` asks for, because the
   /// bloc now adopts this page rather than fetching its own. It had drifted:
@@ -185,19 +209,27 @@ class _SplashPageState extends State<SplashPage> {
   /// first frame. That also means a failure here costs nothing — the bloc still
   /// makes its own request, and the user sees its loading state exactly as they
   /// would have.
+  ///
+  /// Two halves, and the second is the one that shows. Feed *data* on its own
+  /// buys a card with a blurred backdrop and a spinner on it, because the photo
+  /// the card is made of is a separate download that had not started yet — so
+  /// the brand animation handed over to a dark screen with a ring spinning on
+  /// it, which is exactly the moment this page exists to remove. Being ready
+  /// means the first picture has been decoded, not that its JSON has arrived.
   Future<void> _warmFirstScreen() async {
     // The onboarding carousel is local; there is no feed behind it to wait for.
     if (widget.nextRoute == OnboardingPage.routeName) return;
 
     final cache = sl<FeedCacheService>();
-    if (cache.restore().isNotEmpty) return;
+    var events = cache.restore();
 
-    try {
-      final events = await sl<GetRandomImagesUseCase>()(
-        take: _kPageSize,
-        skip: 0,
-        userId: await sl<AuthService>().getUserId(),
-      );
+    if (events.isEmpty) {
+      try {
+        events = await sl<GetRandomImagesUseCase>()(
+          take: _kPageSize,
+          skip: 0,
+          userId: await sl<AuthService>().getUserId(),
+        );
         // Marked as this launch's own page, so the bloc adopts it instead of
         // asking for the first page a second time. Every `skip == 0` is a
         // fresh deal server-side, so a second request would hand back a
@@ -206,9 +238,59 @@ class _SplashPageState extends State<SplashPage> {
         if (events.isNotEmpty) {
           await cache.save(events, warmedForLaunch: true);
         }
-    } catch (e) {
-      debugPrint('[Splash] feed warm-up failed, going on anyway: $e');
+      } catch (e) {
+        debugPrint('[Splash] feed warm-up failed, going on anyway: $e');
+        return;
+      }
     }
+
+    await _warmFirstCardMedia(events).timeout(_kMediaWarmBudget, onTimeout: () {
+      debugPrint('[Splash] first picture is slow, going on without it');
+    });
+  }
+
+  /// Decodes the top card's picture while the animation is still playing.
+  ///
+  /// Only the first card, deliberately. It is the one the person lands on, the
+  /// rest are a swipe away and load in the time that swipe takes, and every
+  /// extra photo warmed here is one more thing the splash is waiting for.
+  ///
+  /// Both layers of it, because the card draws both: the blurred backdrop
+  /// behind the photo is its own 80 px fetch, and leaving that one cold shows
+  /// the empty fill around a photo that is otherwise ready. They are warmed
+  /// together — the backdrop is a few KB and shares the connection.
+  ///
+  /// A video at the top warms only the backdrop, which for a clip is its poster
+  /// frame: the player is a different subsystem with its own first frame, and
+  /// nothing here can hurry it.
+  Future<void> _warmFirstCardMedia(List<EventDiscovery> events) async {
+    if (events.isEmpty) return;
+    final pictures = events.first.pictures;
+    if (pictures.isEmpty) return;
+
+    // The frame this page is being built in has to finish first.
+    //
+    // A warm cache is the path with no `await` in front of it: `restore()` is
+    // synchronous, so everything above runs inside `initState`, and reading
+    // MediaQuery there throws `dependOnInheritedWidgetOfExactType called before
+    // initState completed`. That threw away the warm-up on exactly the start it
+    // was written for — a returning user, cache full, one decode short of a
+    // first frame with a photo on it.
+    await SchedulerBinding.instance.endOfFrame;
+    if (!mounted) return;
+
+    final url = pictures.first.url;
+    // Full-bleed: the card is as wide as the window, which is what decides both
+    // the Cloudinary width and the decode width. Read off MediaQuery rather
+    // than screenutil's `.w`, which is not initialised on this route yet.
+    final width = MediaQuery.sizeOf(context).width;
+
+    await Future.wait([
+      JpergImage.precache(context, url,
+          logicalWidth: width, isBlurBackground: true),
+      if (!CloudinaryTransform.isVideoUrl(url))
+        JpergImage.precache(context, url, logicalWidth: width),
+    ]);
   }
 
   @override
@@ -227,12 +309,22 @@ class _SplashPageState extends State<SplashPage> {
           fit: StackFit.expand,
           children: [
             Image.asset(
-              // The dark cut. `Splash_small` over `Splash_gif`: the same
-              // artwork at the same 390x720, 108 frames against 72 so the
-              // draw-on is smoother, and a third of the bytes to decode on the
-              // one screen where nothing else is competing for the frame
-              // budget.
-              'assets/splash/Splash_small.gif',
+              // The dark cut, with the wordmark drawn smaller. Same 108 frames
+              // over the same 3.6 s as `Splash_small`, so the timing above is
+              // unchanged — what differs is the type size and a quarter of the
+              // bytes to decode on the one screen where nothing else is
+              // competing for the frame budget.
+              //
+              // The file plays **once** and holds its last frame, and it has to
+              // stay that way. As exported it carried a GIF loop extension set
+              // to infinite, which Flutter honours: a start slower than 3.6 s —
+              // exactly the start this screen exists for — wiped the finished
+              // wordmark and drew it on again, on a loop, while the person
+              // waited. The still mark plus [_StillWorking] is the waiting
+              // state; a re-running brand animation is a screen that looks like
+              // it has restarted. A re-export will bring the loop back: strip
+              // the NETSCAPE2.0 application extension from the gif again.
+              'assets/splash/Splash_reducedg.gif',
               fit: BoxFit.cover,
             ),
 
@@ -255,7 +347,7 @@ class _SplashPageState extends State<SplashPage> {
               // This page is shown before [ScreenUtilInit] has initialised —
               // the splash is the app's first route — and screenutil's
               // extensions throw a LateInitializationError until it has. The
-              // artwork behind this is `BoxFit.cover` on a fixed 390x720
+              // artwork behind this is `BoxFit.cover` on a fixed 400x740
               // anyway, so scaling the dots to the device would drift them off
               // a mark that does not scale with it.
               bottom: 88,

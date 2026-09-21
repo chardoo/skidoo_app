@@ -19,13 +19,27 @@ import 'package:jperg_app/services/auth_service.dart';
 
 const _destination = '/home';
 
-EventDiscovery event(String id) => EventDiscovery(
+EventDiscovery event(String id, {List<EventPicture> pictures = const []}) =>
+    EventDiscovery(
       id: id,
       eventName: 'Event $id',
       photographerName: 'Creator',
       photographerId: 'c1',
-      pictures: const [],
+      pictures: pictures,
     );
+
+/// A picture whose bytes cannot be had: there is no HTTP server and no
+/// path_provider behind a widget test, so warming it always fails.
+///
+/// Which is the case worth pinning. The splash now waits for the top card's
+/// photo to decode before handing over, and a wait on something that can never
+/// arrive is the way that turns into a splash nobody can get past.
+const _unreachable = EventPicture(
+  id: 'p1',
+  url: 'https://res.cloudinary.com/demo/image/upload/v1/nope.jpg',
+  imageId: 'i1',
+  price: 0,
+);
 
 class _FakeAuth extends AuthService {
   @override
@@ -218,6 +232,39 @@ void main() {
 
     expect(handedOver(t), isTrue);
     expect(cache.saves, 0);
+  });
+
+  testWidgets('a photo that never arrives does not hold the splash',
+      (t) async {
+    // Feed data on its own was never the thing worth waiting for: it buys a
+    // card with a blurred backdrop and a spinner on it, because the photo is a
+    // separate download that had not started. So the warm-up now includes the
+    // top card's picture — and everything that wait is bounded by has to hold
+    // for it too, or the fix for an empty first screen becomes a stuck splash.
+    register(
+      withCache: _FakeCache(seed: [event('a', pictures: const [_unreachable])]),
+      feed: _FakeFeed(),
+    );
+
+    // Restored before the assertions, not in a tearDown: the binding checks
+    // that no foundation debug variable outlives the test body, and a tearDown
+    // runs after that check.
+    final said = <String>[];
+    final wasPrinting = debugPrint;
+    debugPrint = (message, {wrapWidth}) => said.add(message ?? '');
+    try {
+      await t.pumpWidget(host());
+      await advance(t, _pastTheBeat);
+    } finally {
+      debugPrint = wasPrinting;
+    }
+
+    expect(handedOver(t), isTrue);
+    // A warm cache is the path with no await before the picture, so the warm-up
+    // ran inside `initState` and reading MediaQuery there threw — abandoning it
+    // on exactly the start it exists for. The photo still cannot be fetched
+    // here; what must not happen is the warm-up giving up before trying.
+    expect(said.where((l) => l.startsWith('[Splash] warm-up failed')), isEmpty);
   });
 
   testWidgets('onboarding waits for nothing — there is no feed behind it',

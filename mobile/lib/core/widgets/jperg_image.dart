@@ -100,38 +100,114 @@ class JpergImage extends StatelessWidget {
   Widget _defaultPlaceholder(BuildContext context, String url) =>
       const JpergImagePlaceholder(spinner: true);
 
-  int _cacheWidth(BuildContext context, double availableWidth) {
+  /// How wide the decoded frame is kept in memory — and half of the key the
+  /// global [ImageCache] files it under, which is why [precache] derives it
+  /// from this same function rather than from a number of its own.
+  static int _cacheWidthFor({
+    required double logical,
+    required double dpr,
+    required bool isBlurBackground,
+  }) {
     if (isBlurBackground) return 120;
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final logical = logicalWidth ?? availableWidth;
     return (logical * dpr).ceil().clamp(1, 7680); // cap at 8K (future-proof)
   }
 
-  Widget _image(BuildContext context, double availableWidth) {
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final logical = logicalWidth ?? availableWidth;
+  int _cacheWidth(BuildContext context, double availableWidth) =>
+      _cacheWidthFor(
+        logical: logicalWidth ?? availableWidth,
+        dpr: MediaQuery.devicePixelRatioOf(context),
+        isBlurBackground: isBlurBackground,
+      );
 
+  /// The URL actually fetched: Cloudinary-optimised, sized to the slot, and
+  /// for a video the still frame at t=0 rather than the clip.
+  ///
+  /// Null means a video this app cannot derive a poster for — there is nothing
+  /// to load, and handing an mp4 to an image decoder can only fail.
+  ///
+  /// Shared with [precache] on purpose: the width is quantised (see
+  /// [CloudinaryTransform]), but two call sites computing it separately is
+  /// still how a warmed URL and a requested one drift apart, and a precache
+  /// that misses by one character is a wasted download rather than a fast
+  /// first frame.
+  static String? _deliveryUrl(
+    String imageUrl, {
+    required double logical,
+    required double dpr,
+    required bool isBlurBackground,
+  }) {
     // Blur backdrops request a tiny version since the blur destroys all
     // detail anyway; everything else is sized to what the slot displays.
     final requestWidth = isBlurBackground ? 80.0 : logical;
     final requestDpr = isBlurBackground ? 1.0 : dpr;
 
-    final String optimisedUrl;
     if (CloudinaryTransform.isVideoUrl(imageUrl)) {
-      final poster = CloudinaryTransform.videoPoster(imageUrl,
+      return CloudinaryTransform.videoPoster(imageUrl,
           displayWidth: requestWidth, devicePixelRatio: requestDpr);
-      // A video with no derivable poster has nothing to load — show the empty
-      // slot rather than fetch an mp4 into an image decoder.
-      if (poster == null) return const JpergImagePlaceholder();
-      optimisedUrl = poster;
-    } else {
-      // Cloudinary-optimise the delivery URL: AVIF/WebP, best quality, retina
-      // DPR, sized to the display, and gently sharpened.
-      optimisedUrl = CloudinaryTransform.image(imageUrl,
-          displayWidth: requestWidth,
-          devicePixelRatio: requestDpr,
-          sharpen: !isBlurBackground);
     }
+    // Cloudinary-optimise the delivery URL: AVIF/WebP, best quality, retina
+    // DPR, sized to the display, and gently sharpened.
+    return CloudinaryTransform.image(imageUrl,
+        displayWidth: requestWidth,
+        devicePixelRatio: requestDpr,
+        sharpen: !isBlurBackground);
+  }
+
+  /// Downloads and decodes [imageUrl] now, so the [JpergImage] that asks for it
+  /// later paints on its first frame instead of showing a placeholder.
+  ///
+  /// This is for the handful of images whose *first* appearance is worth paying
+  /// for ahead of time — the top of the feed while the splash is still up. It
+  /// is not a prefetcher: everything else should load when it is built.
+  ///
+  /// The provider is assembled exactly as [CachedNetworkImage] assembles its
+  /// own — `CachedNetworkImageProvider` wrapped by [ResizeImage] at
+  /// `memCacheWidth`, which is what `octo_image` does with that argument — so
+  /// the entry lands in the global [ImageCache] under the key the widget will
+  /// look up. Build it any other way and the bytes are on disk but the frame
+  /// still decodes on arrival, which is a spinner nobody expected.
+  ///
+  /// Never throws: a warm-up that fails is a slower first frame, not a fault,
+  /// and every caller is on a path where that is the correct trade.
+  static Future<void> precache(
+    BuildContext context,
+    String imageUrl, {
+    required double logicalWidth,
+    bool isBlurBackground = false,
+  }) async {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final url = _deliveryUrl(imageUrl,
+        logical: logicalWidth, dpr: dpr, isBlurBackground: isBlurBackground);
+    if (url == null) return;
+
+    final provider = ResizeImage.resizeIfNeeded(
+      _cacheWidthFor(
+          logical: logicalWidth, dpr: dpr, isBlurBackground: isBlurBackground),
+      null,
+      CachedNetworkImageProvider(url, cacheManager: JpergImageCache.instance),
+    );
+
+    // `onError` rather than a try/catch: without it a failed load is handed to
+    // `FlutterError.onError`, which in debug is a red screen for a photo that
+    // was only ever being fetched early.
+    await precacheImage(
+      provider,
+      context,
+      onError: (e, _) =>
+          debugPrint('[JpergImage] precache failed, going on anyway: $e'),
+    );
+  }
+
+  Widget _image(BuildContext context, double availableWidth) {
+    final optimisedUrl = _deliveryUrl(
+      imageUrl,
+      logical: logicalWidth ?? availableWidth,
+      dpr: MediaQuery.devicePixelRatioOf(context),
+      isBlurBackground: isBlurBackground,
+    );
+    // A video with no derivable poster has nothing to load — show the empty
+    // slot rather than fetch an mp4 into an image decoder.
+    if (optimisedUrl == null) return const JpergImagePlaceholder();
 
     final img = CachedNetworkImage(
       imageUrl: optimisedUrl,

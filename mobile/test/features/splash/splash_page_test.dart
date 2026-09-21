@@ -8,19 +8,21 @@ import 'package:jperg_app/features/splash/presentation/pages/splash_page.dart';
 /// Three things were wrong with it, and all three were about the seam between
 /// the brand screen and the app:
 ///
-///  1. The animation never finished. It runs 108 frames at 30 ms — 3.24 s — and
+///  1. The animation never finished. It runs 108 frames summing to 3.6 s and
 ///     the page left after 1.2 s, which is frame 40: the mark half-drawn, no
 ///     dot, and the word "jperg" not started. A brand animation cut before its
 ///     own last frame is worse than no animation.
 ///  2. The artwork was the light cut, on a cream field, while every screen
 ///     behind it is black. Opening the app flashed white and then went dark.
-///  3. It left by the platform's page transition, sliding away like an ordinary
-///     page in a stack — which it is not.
+///  3. It handed over as soon as the feed's *data* was in, which is not the
+///     same as the feed having anything to show: the first card's photo is its
+///     own download, so the brand screen gave way to a dark card with a spinner
+///     on it. See `splash_readiness_test.dart`.
 ///
 /// The Instagram shape, which is what was asked for: the mark completes and
 /// holds, anything still loading is said quietly underneath it rather than by
-/// replacing the screen with a spinner, and the whole thing dissolves into the
-/// feed rather than sliding off it.
+/// replacing the screen with a spinner, and what it hands over to is a photo
+/// rather than a loading state.
 Widget _host() => ScreenUtilInit(
       designSize: const Size(390, 844),
       builder: (_, __) => MaterialApp(
@@ -69,7 +71,7 @@ void main() {
       // is black, so opening the app flashed.
       final image = t.widget<Image>(find.byType(Image));
       final asset = (image.image as AssetImage).assetName;
-      expect(asset, contains('Splash_small'));
+      expect(asset, contains('Splash_reducedg'));
       expect(asset, isNot(contains('/splash.gif')));
 
       await drain(t);
@@ -119,13 +121,20 @@ void main() {
     // destination replaces it. Fading it out first would leave the scaffold's
     // own black on screen with nothing on it — a blank frame between the brand
     // moment and the app, which is the seam this whole change is about.
-    final opacities = t
-        .widgetList<AnimatedOpacity>(find.descendant(
-          of: find.byType(SplashPage),
+    //
+    // Asked of the artwork's own ancestors rather than of everything under the
+    // page: the waiting dots fade themselves in from zero, and a search for any
+    // `AnimatedOpacity` at zero finds *those* whenever the assertion lands
+    // before they appear. Which it now does — the floor is the full 3.6 s — so
+    // the broad version passed only for as long as the two happened not to
+    // overlap, and was never checking the thing it says it is.
+    final fadingArtwork = t
+        .widgetList<AnimatedOpacity>(find.ancestor(
+          of: find.byType(Image),
           matching: find.byType(AnimatedOpacity),
         ))
         .where((o) => o.opacity == 0);
-    expect(opacities, isEmpty,
+    expect(fadingArtwork, isEmpty,
         reason: 'something is fading the splash to nothing before it leaves');
     expect(find.byType(Image), findsOneWidget);
 
