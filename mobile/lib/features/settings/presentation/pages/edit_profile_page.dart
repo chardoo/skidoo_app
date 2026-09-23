@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -157,6 +158,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           'Edit Profile',
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
             fontWeight: FontWeight.w700,
           ),
@@ -646,6 +648,7 @@ class _InterestsSheetState extends State<_InterestsSheet> {
               'Your interests',
               style: TextStyle(
                 color: ext.greetingColor,
+                fontFamily: AppTypography.displayFontFamily,
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w700,
               ),

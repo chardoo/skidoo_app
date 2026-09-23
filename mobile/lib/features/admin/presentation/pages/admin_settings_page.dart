@@ -4,6 +4,7 @@ import 'package:jperg_app/core/common/widgets/app_error_view.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/admin/data/models/app_config.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
@@ -104,6 +105,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
           'Admin Settings',
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 18.sp,
             fontWeight: FontWeight.w700,
           ),

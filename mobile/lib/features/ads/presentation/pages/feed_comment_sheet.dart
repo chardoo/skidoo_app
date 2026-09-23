@@ -27,8 +27,6 @@ class FeedCommentSheet {
     BuildContext context, {
     required String targetType,
     required String targetId,
-    required String title,
-    String? subtitle,
     bool commentsEnabled = true,
   }) {
     showCommentSheet(
@@ -37,8 +35,6 @@ class FeedCommentSheet {
         create: (_) => sl<FeedCommentBloc>()
           ..add(FeedCommentStarted(targetType, targetId)),
         child: _FeedCommentSheetContent(
-          title: title,
-          subtitle: subtitle,
           // Respect both the per-item flag and the global admin kill switch.
           commentsEnabled:
               commentsEnabled && AppConfigRepository.current.commentsEnabled,
@@ -52,13 +48,9 @@ class FeedCommentSheet {
 
 class _FeedCommentSheetContent extends StatefulWidget {
   const _FeedCommentSheetContent({
-    required this.title,
-    this.subtitle,
     required this.commentsEnabled,
   });
 
-  final String title;
-  final String? subtitle;
   final bool commentsEnabled;
 
   @override
@@ -102,6 +94,9 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
   final _inputCtrl = TextEditingController();
   final _focusNode = FocusNode();
   final _scrollCtrl = ScrollController();
+
+  /// Which end of the thread is at the top — the bloc's list is newest-first.
+  CommentSort _sort = CommentSort.newest;
 
   PhotoComment? _replyingTo;
 
@@ -177,8 +172,14 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return CommentSheetShell(
-      title: widget.title,
-      subtitle: widget.subtitle,
+      // Not the post's title: it is on screen directly above the sheet.
+      title: 'Comments',
+      sort: _sort,
+      onSortChanged: (value) {
+        if (value == _sort) return;
+        setState(() => _sort = value);
+        if (_scrollCtrl.hasClients) _scrollCtrl.jumpTo(0);
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -212,57 +213,63 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
                     Expanded(
                       child: state.comments.isEmpty
                           ? CommentEmptyState(ext: ext)
-                          : ListView.builder(
-                              controller: _scrollCtrl,
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.lg.w,
-                                  vertical: AppSpacing.sm.h),
-                              itemCount: state.comments.length +
-                                  (state.isLoadingMore ? 1 : 0),
-                              itemBuilder: (_, i) {
-                                if (i == state.comments.length) {
-                                  return Padding(
-                                    padding: EdgeInsets.symmetric(
-                                        vertical: AppSpacing.md.h),
-                                    child: Center(
-                                      child: CircularProgressIndicator(
-                                        color: ext.accentGold,
-                                        strokeWidth: 2,
+                          : Builder(builder: (context) {
+                              // Only the top level turns over; a thread is a
+                              // conversation and reads one way round.
+                              final comments = _sort.apply(state.comments);
+                              return ListView.builder(
+                                controller: _scrollCtrl,
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.lg.w,
+                                    vertical: AppSpacing.sm.h),
+                                itemCount: comments.length +
+                                    (state.isLoadingMore ? 1 : 0),
+                                itemBuilder: (_, i) {
+                                  if (i == comments.length) {
+                                    return Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          vertical: AppSpacing.md.h),
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          color: ext.accentGold,
+                                          strokeWidth: 2,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }
-                                final comment = state.comments[i];
-                                final replies =
-                                    state.repliesMap[comment.id] ?? [];
-                                final isExpanded = state.expandedRepliesFor
-                                    .contains(comment.id);
+                                    );
+                                  }
+                                  final comment = comments[i];
+                                  final replies =
+                                      state.repliesMap[comment.id] ?? [];
+                                  final isExpanded = state.expandedRepliesFor
+                                      .contains(comment.id);
 
-                                return ThreadedCommentWidget(
-                                  key: ValueKey(comment.id),
-                                  comment: _toRowData(
-                                    comment,
-                                    myId: state.myUserId,
-                                    replies: replies,
-                                    onReply: () => _startReply(comment),
-                                  ),
-                                  replies: replies
-                                      .map((r) => _toRowData(
-                                            r,
-                                            myId: state.myUserId,
-                                            onReply: () => _startReply(comment),
-                                          ))
-                                      .toList(),
-                                  ext: ext,
-                                  isExpanded: isExpanded,
-                                  onToggleReplies: () => context
-                                      .read<FeedCommentBloc>()
-                                      .add(
-                                        FeedCommentRepliesRequested(comment.id),
-                                      ),
-                                );
-                              },
-                            ),
+                                  return ThreadedCommentWidget(
+                                    key: ValueKey(comment.id),
+                                    comment: _toRowData(
+                                      comment,
+                                      myId: state.myUserId,
+                                      replies: replies,
+                                      onReply: () => _startReply(comment),
+                                    ),
+                                    replies: replies
+                                        .map((r) => _toRowData(
+                                              r,
+                                              myId: state.myUserId,
+                                              onReply: () =>
+                                                  _startReply(comment),
+                                            ))
+                                        .toList(),
+                                    ext: ext,
+                                    isExpanded: isExpanded,
+                                    onToggleReplies: () =>
+                                        context.read<FeedCommentBloc>().add(
+                                              FeedCommentRepliesRequested(
+                                                  comment.id),
+                                            ),
+                                  );
+                                },
+                              );
+                            }),
                     ),
                     if (widget.commentsEnabled)
                       CommentInputBarWidget(

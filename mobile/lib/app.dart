@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
@@ -374,6 +375,7 @@ class _SecurityWarningPage extends StatelessWidget {
                 AppLocalizations.of(context)!.securityWarningTitle,
                 style: TextStyle(
                   color: Colors.white,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 24.sp,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.3,

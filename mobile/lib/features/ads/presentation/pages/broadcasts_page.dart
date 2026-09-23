@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/ads/campaigns_enabled.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/ads/presentation/pages/my_campaigns_page.dart';
@@ -95,6 +96,7 @@ class _BroadcastsPageState extends State<BroadcastsPage>
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
           ),
         ),

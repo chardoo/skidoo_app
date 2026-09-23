@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:jperg_app/features/discovery/data/datasources/client_saved_data_source.dart';
@@ -253,6 +254,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 18.sp,
           ),
         ),
@@ -301,6 +303,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
                 'No saved items yet',
                 style: TextStyle(
                   color: ext.greetingColor,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                 ),

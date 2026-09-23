@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 
 /// What the photographer chose to do about a request.
 enum InvitationAction { send, withdraw }
@@ -104,6 +105,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
                   _sent ? 'Your interest' : 'Express Interest',
                   style: TextStyle(
                     color: ext.greetingColor,
+                    fontFamily: AppTypography.displayFontFamily,
                     fontSize: 18.sp,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.3,

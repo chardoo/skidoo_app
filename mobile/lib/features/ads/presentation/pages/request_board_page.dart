@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/ads/campaigns_enabled.dart';
 import 'package:jperg_app/features/ads/data/models/ad_model.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
@@ -220,6 +221,7 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
           'Request Board',
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 17.sp,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.3,
@@ -424,6 +426,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 'Filter Requests',
                 style: TextStyle(
                   color: ext.greetingColor,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 20.sp,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.4,

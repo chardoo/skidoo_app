@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart' show DioException;
 
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
@@ -309,6 +310,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
           ),
         ),
@@ -388,6 +390,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
                     c.headline?.isNotEmpty == true ? c.headline! : c.name,
                     style: TextStyle(
                       color: ext.greetingColor,
+                      fontFamily: AppTypography.displayFontFamily,
                       fontSize: 19.sp,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.4,
@@ -1106,6 +1109,7 @@ class _ConfirmSheet extends StatelessWidget {
                   title,
                   style: TextStyle(
                     color: ext.greetingColor,
+                    fontFamily: AppTypography.displayFontFamily,
                     fontSize: 18.sp,
                     fontWeight: FontWeight.w800,
                   ),
@@ -1281,6 +1285,7 @@ class CampaignResumedPage extends StatelessWidget {
                   'Campaign Resumed!',
                   style: TextStyle(
                     color: ext.greetingColor,
+                    fontFamily: AppTypography.displayFontFamily,
                     fontSize: 20.sp,
                     fontWeight: FontWeight.w800,
                   ),

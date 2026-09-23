@@ -10,12 +10,12 @@ class SearchUseCase {
 
   final SearchRepository _repository;
 
-  /// First request for a query — fills all three sections and the chip counts.
+  /// First request for a query — fills all four sections and the chip counts.
   Future<SearchAllResults> all(String query) => _repository.searchAll(query);
 
   /// One section, paged. Dispatches on [type] so the caller can page whichever
   /// chip is active without a switch of its own; the row lists stay typed,
-  /// which is why the three sections are separate calls underneath.
+  /// which is why the four sections are separate calls underneath.
   Future<SearchSectionPage<Object>> section(
     SearchResultType type,
     String query, {
@@ -27,6 +27,8 @@ class SearchUseCase {
           _repository.searchEvents(query, page: page, limit: limit),
         SearchResultType.photographers =>
           _repository.searchPhotographers(query, page: page, limit: limit),
+        SearchResultType.users =>
+          _repository.searchUsers(query, page: page, limit: limit),
         SearchResultType.tags =>
           _repository.searchTags(query, page: page, limit: limit),
       };

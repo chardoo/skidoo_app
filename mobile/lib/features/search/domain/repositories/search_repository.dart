@@ -18,6 +18,12 @@ abstract class SearchRepository {
     int limit,
   });
 
+  Future<SearchSectionPage<SearchUserRow>> searchUsers(
+    String query, {
+    int page,
+    int limit,
+  });
+
   Future<SearchSectionPage<SearchTagRow>> searchTags(
     String query, {
     int page,

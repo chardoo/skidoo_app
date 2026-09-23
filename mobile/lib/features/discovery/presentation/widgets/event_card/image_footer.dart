@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
@@ -46,6 +47,7 @@ class _ImageFooterState extends State<ImageFooter> {
               _tagsExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.white,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 20.sp,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.6,

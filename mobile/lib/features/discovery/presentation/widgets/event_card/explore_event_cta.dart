@@ -29,6 +29,16 @@ class ExploreEventCta extends StatelessWidget {
   /// And when that single thing is a clip.
   static const forOneVideo = 'View full video';
 
+  /// What holds the white glyphs up once the fill behind them is light enough
+  /// to see the photo through.
+  ///
+  /// Soft and offsetless, so it reads as the letters lifting off the picture
+  /// rather than as drop-shadowed text. Applied on both treatments: the
+  /// frosted pill is the lighter of the two and wants it just as much.
+  static const _legibility = [
+    Shadow(blurRadius: 5, color: Color(0x99000000)),
+  ];
+
   final VoidCallback onTap;
   final String label;
 
@@ -61,9 +71,22 @@ class ExploreEventCta extends StatelessWidget {
           // Where the platform does not frost, the fallback is a scrim rather
           // than the opaque tonal surface the nav bar wears. The photo has to
           // come through — dimmed, not hidden — because this pill stands in the
-          // middle of it. 62 % is what the hand-rolled version used and it
-          // reads white text over anything; see [GlassSurface.tonalOpacity].
-          tonalOpacity: 0.62,
+          // middle of it. See [GlassSurface.tonalOpacity].
+          //
+          // This was 62 %, inherited from the hand-rolled pill this widget was
+          // written to replace, and at that strength it is the very thing the
+          // note above complains about: on Android and web, where nothing is
+          // blurred behind it, the photo stopped dead at the pill's edge and a
+          // dark bar sat across the middle of the picture. It was only ever
+          // right on iOS, where the blur — not the tint — is what makes the
+          // text readable, and the tint is 8 %.
+          //
+          // 45 % lets the picture through on the platforms that do not frost.
+          // What it gives up is the contrast that the extra 17 % was buying
+          // over a bright photo, and [_legibility] pays that back: a shadow
+          // behind the glyphs holds the text up against whatever it lands on,
+          // which is how the rest of the feed writes on a photograph.
+          tonalOpacity: 0.45,
           padding: EdgeInsets.symmetric(
             horizontal: AppSpacing.lg.w,
             vertical: AppSpacing.sm.h,
@@ -77,11 +100,12 @@ class ExploreEventCta extends StatelessWidget {
                   color: Colors.white,
                   fontSize: 14.sp,
                   fontWeight: FontWeight.w600,
+                  shadows: _legibility,
                 ),
               ),
               SizedBox(width: AppSpacing.sm.w),
               Icon(Icons.arrow_forward_rounded,
-                  color: Colors.white, size: 16.sp),
+                  color: Colors.white, size: 16.sp, shadows: _legibility),
             ],
           ),
         ),

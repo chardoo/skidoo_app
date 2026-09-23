@@ -134,5 +134,39 @@ void main() {
       final screen = tester.getSize(find.byType(MaterialApp)).width;
       expect(logo.dx, moreOrLessEquals(screen / 2, epsilon: 1.0));
     });
+
+    testWidgets('does not offer to skip signing up', (tester) async {
+      // "Continue as guest" belongs to the sign-in page. Offering it here too
+      // puts both answers to the same question on the page asking it, and the
+      // page loses its point. It is one tap away through "Log in".
+      await tester.pumpWidget(host(const SignUpPage()));
+      await tester.pump();
+
+      expect(find.text('Continue as guest'), findsNothing);
+      expect(find.text('Continue browsing'), findsNothing);
+    });
+
+    testWidgets('a prompted sign-up keeps its way back', (tester) async {
+      // The one case that still needs a foot-of-page escape: a guest tapped a
+      // gated action and this page was pushed over the feed. Without it they
+      // are on a page with no app bar and no way back to what they were doing.
+      var popped = false;
+      await tester.pumpWidget(host(SignUpPage(
+        headline: 'Join to get the full experience',
+        onContinueBrowsing: () => popped = true,
+      )));
+      await tester.pump();
+
+      expect(find.text('Continue as guest'), findsNothing,
+          reason: 'still not the guest door, even here');
+
+      // It sits at the foot of a scrolling form, past the bottom of this
+      // viewport — scroll it into view before tapping.
+      await tester.ensureVisible(find.text('Continue browsing'));
+      await tester.pump();
+      await tester.tap(find.text('Continue browsing'));
+      await tester.pump();
+      expect(popped, isTrue);
+    });
   });
 }

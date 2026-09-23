@@ -440,6 +440,98 @@ void main() {
     });
   });
 
+  group('the push belongs to the page the sheet is over', () {
+    // The flag is global; the sheet is one route deep. Reading the count alone
+    // meant a sheet left open anywhere squeezed the media on every screen
+    // opened afterwards — a portrait photo in an album came up at 190 x 253 in
+    // the top third of the screen with the rest black, behind a sheet that was
+    // nowhere on it.
+    Widget twoPageHost() => MaterialApp(
+          home: Scaffold(
+            body: CommentPushArea(
+              child: SizedBox.expand(
+                key: const Key('page'),
+                child: Builder(
+                  builder: (context) => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton(
+                        onPressed: () => showCommentSheet<void>(
+                          context,
+                          builder: (_) => const SizedBox(height: 300),
+                        ),
+                        child: const Text('comments'),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.of(context).push(MaterialPageRoute<void>(
+                          builder: (_) => const Scaffold(
+                            body: CommentPushArea(
+                              child: SizedBox.expand(key: Key('next')),
+                            ),
+                          ),
+                        )),
+                        child: const Text('open a photo'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('a page opened over an open sheet keeps its full height',
+        (t) async {
+      await t.pumpWidget(twoPageHost());
+      final screen = t.getSize(find.byType(MaterialApp));
+
+      await t.tap(find.text('comments'));
+      await t.pumpAndSettle();
+      expect(paintedRect(t).height, lessThan(screen.height),
+          reason: 'the page under the sheet does push');
+
+      await t.tap(find.text('open a photo'));
+      await t.pumpAndSettle();
+
+      expect(
+        t.getRect(find.byKey(const Key('next'))).height,
+        closeTo(screen.height, 1),
+        reason: 'the sheet is under this page, not over it',
+      );
+    });
+
+    testWidgets('the flag comes down with a navigator torn down under it',
+        (t) async {
+      // A tab disposed with a sheet still on it: the route is thrown away
+      // without ever completing, so a flag dropped after the `await` is never
+      // dropped at all — and it is global, so the squeeze follows the user for
+      // the rest of the session.
+      await t.pumpWidget(MaterialApp(
+        home: Navigator(
+          onGenerateRoute: (_) => MaterialPageRoute<void>(
+            builder: (context) => TextButton(
+              onPressed: () => showCommentSheet<void>(
+                context,
+                builder: (_) => const SizedBox(height: 300),
+              ),
+              child: const Text('comments'),
+            ),
+          ),
+        ),
+      ));
+
+      await t.tap(find.text('comments'));
+      await t.pumpAndSettle();
+      expect(CommentSheetScope.isOpen, isTrue);
+
+      await t.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+      await t.pumpAndSettle();
+
+      expect(CommentSheetScope.isOpen, isFalse);
+    });
+  });
+
   testWidgets('the sheet lays no scrim over the page', (t) async {
     // The whole point. A dimmed photo behind a sheet is the arrangement this
     // replaced — you could read the comments or look at the photo, not both.

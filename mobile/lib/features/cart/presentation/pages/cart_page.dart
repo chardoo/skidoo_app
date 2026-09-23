@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -82,7 +83,9 @@ class _CartView extends StatelessWidget {
                         Text(
                           'Cart Empty',
                           style: TextStyle(
-                              fontSize: 16.sp, color: ext.searchHintColor),
+                              fontFamily: AppTypography.displayFontFamily,
+                              fontSize: 16.sp,
+                              color: ext.searchHintColor),
                         ),
                       ],
                     ),

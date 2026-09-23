@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show File;
 
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -12,6 +13,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_media_limits.dart';
@@ -174,16 +176,13 @@ class _GroupNamePageState extends State<_GroupNamePage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded,
-              color: ext.greetingColor, size: 22.sp),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: const AppBackButton(),
         title: Text(
           'Group Name',
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 17.sp,
           ),
         ),

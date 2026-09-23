@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/image_aspect.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/dark_media_surface.dart';
@@ -376,6 +377,7 @@ class _ViewerTopBar extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: ext.greetingColor,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                 ),

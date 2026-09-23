@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/ads/campaigns_enabled.dart';
 import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.dart';
@@ -86,6 +87,7 @@ class CreateBottomSheet extends StatelessWidget {
                 'Create',
                 style: TextStyle(
                   color: ext.greetingColor,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 22.sp,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.5,

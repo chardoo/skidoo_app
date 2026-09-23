@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 
 class CardCommentSheet extends StatefulWidget {
   const CardCommentSheet(
@@ -57,6 +58,7 @@ class _CardCommentSheetState extends State<CardCommentSheet> {
               style: TextStyle(
                 color: ext.greetingColor,
                 fontWeight: FontWeight.bold,
+                fontFamily: AppTypography.displayFontFamily,
                 fontSize: 16.sp,
               ),
             ),

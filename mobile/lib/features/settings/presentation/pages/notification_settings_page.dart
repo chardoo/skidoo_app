@@ -5,6 +5,7 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/notifications/data/notification_service.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
@@ -196,6 +197,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           'Notifications',
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
             fontWeight: FontWeight.w700,
           ),

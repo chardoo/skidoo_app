@@ -5,6 +5,7 @@ import 'package:jperg_app/core/config/app_links_config.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
@@ -86,6 +87,7 @@ class CreatorReadyPage extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: ext.greetingColor,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 22.sp,
                   fontWeight: FontWeight.w700,
                 ),

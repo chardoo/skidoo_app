@@ -7,10 +7,10 @@ import 'package:jperg_app/core/theme/app_icons.dart';
 /// The shape every search result row shares: a leading mark, a title, an
 /// optional subtitle, and an optional trailing chevron.
 ///
-/// The three row types differ only in what goes in the leading slot — a cover
+/// The four row types differ only in what goes in the leading slot — a cover
 /// thumbnail, an avatar, a `#` — so the title/subtitle typography, the row
 /// height and the tap target are defined once here instead of drifting apart
-/// across three widgets.
+/// across four widgets.
 class SearchResultRow extends StatelessWidget {
   const SearchResultRow({
     super.key,

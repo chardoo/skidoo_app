@@ -6,6 +6,7 @@ import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/common/widgets/app_empty_state.dart';
 import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/time_formatter.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/features/notifications/data/notification_inbox.dart';
@@ -263,6 +264,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               style: TextStyle(
                 color: ext.greetingColor,
                 fontWeight: FontWeight.bold,
+                fontFamily: AppTypography.displayFontFamily,
                 fontSize: 20.sp,
               ),
             ),

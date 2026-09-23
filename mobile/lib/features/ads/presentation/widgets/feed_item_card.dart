@@ -1,6 +1,3 @@
-import 'dart:ui';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -13,6 +10,7 @@ import 'package:jperg_app/core/navigation/feed_chrome.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/widgets/media_backdrop.dart';
@@ -446,10 +444,6 @@ class _FeedItemCardState extends State<FeedItemCard> {
       context,
       targetType: d.type == FeedItemType.ad ? 'ad' : 'request',
       targetId: d.id,
-      title: d.title.isNotEmpty
-          ? d.title
-          : (d.type == FeedItemType.ad ? 'Ad' : 'Request'),
-      subtitle: 'by ${d.creatorName}',
       commentsEnabled: d.commentsEnabled,
     );
   }
@@ -777,6 +771,7 @@ class _CampaignCopy extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 18.sp,
                   fontWeight: FontWeight.w700,
                 ),
@@ -923,6 +918,7 @@ class _RequestCopy extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 18.sp,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1119,26 +1115,21 @@ class _SingleMediaFrame extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        // See [_MediaFrame] in media_carousel.dart: the same self-backdrop,
+        // from the one widget that owns the recipe rather than a third copy
+        // of it with its own blur and its own hardcoded wash.
+        MediaBackdrop(
+          url: media.url,
           child: JpergImage(
             imageUrl: media.url,
-            fit: BoxFit.cover,
-            isBlurBackground: true,
-            placeholder: (_, __) => const JpergImagePlaceholder(),
+            fit: BoxFit.contain,
+            semanticLabel: 'Advertisement image',
+            placeholder: (_, __) => const Center(
+              child: CircularProgressIndicator(
+                  color: Colors.white70, strokeWidth: 2),
+            ),
             errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
           ),
-        ),
-        const ColoredBox(color: Color(0x55000000)),
-        JpergImage(
-          imageUrl: media.url,
-          fit: BoxFit.contain,
-          semanticLabel: 'Advertisement image',
-          placeholder: (_, __) => const Center(
-            child: CircularProgressIndicator(
-                color: Colors.white70, strokeWidth: 2),
-          ),
-          errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
         ),
         if (media.isVideo)
           const Center(

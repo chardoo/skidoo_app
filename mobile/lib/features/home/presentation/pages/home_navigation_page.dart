@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jperg_app/features/home/presentation/widgets/feed_skeleton.dart';
 import 'package:jperg_app/core/common/widgets/glass_surface.dart';
 import 'package:jperg_app/core/navigation/chrome_visibility.dart';
+import 'package:jperg_app/core/navigation/feed_chrome.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -25,6 +26,33 @@ import 'package:jperg_app/core/utils/video_pause_notifier.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/features/location/presentation/location_mismatch_prompt.dart';
+
+/// Slides the header in and out with the feed's chrome.
+///
+/// Listens to [FeedChrome] rather than being handed a boolean, for the same
+/// reason the bottom bar does (see `_HomeViewState._buildPhoneLayout`): the tap
+/// that summons the chrome happens on a card, several widgets down, and flips
+/// the notifier from outside this page entirely — nothing here would otherwise
+/// know to rebuild. [visible] is read on each notification rather than captured,
+/// so it can fold in the tab you are on as well.
+class _WithHeaderVisibility extends StatelessWidget {
+  const _WithHeaderVisibility({required this.visible, required this.child});
+
+  final ValueGetter<bool> visible;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+        valueListenable: FeedChrome.visible,
+        builder: (context, _, child) => AnimatedSlide(
+          offset: visible() ? Offset.zero : const Offset(0, -1),
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          child: child,
+        ),
+        child: child,
+      );
+}
 
 class HomeNavigationPage extends StatefulWidget {
   const HomeNavigationPage({super.key});
@@ -72,9 +100,20 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
 
   List<String> get _tabs => _isGuest == true ? _guestTabs : _memberTabs;
 
-  bool _headerVisible = false;
-  double _headerDownAccum = 0;
-  static const _headerHideThreshold = 28.0;
+  /// Whether the Found/Feed/Following header is on screen.
+  ///
+  /// Derived, never stored. The header is the top half of the feed's chrome and
+  /// the floating nav bar is the bottom half; they answer to one gesture — a tap
+  /// on a photo — and [FeedChrome] is where that answer lives. Given a copy of
+  /// the state each, the two halves drift, and the drift is exactly what was
+  /// reported: the bar and the sound control came up on a tap while the tabs
+  /// stayed away, with no gesture left to bring them back but scrolling.
+  ///
+  /// Found is the one exception, and the only reason this is a rule rather than
+  /// a plain read of the notifier: it is a grid whose content starts *below* the
+  /// header rather than running under it, so hiding the header there would only
+  /// open a blank strip.
+  bool get _headerVisible => _selectedTab == 0 || FeedChrome.visible.value;
 
   // Measured height of the floating header overlay — used as list top padding.
   final _headerKey = GlobalKey();
@@ -103,10 +142,6 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     final pendingTab = HomeNavigationPage.pillTabRequest.value;
     if (pendingTab != null) {
       _selectedTab = pendingTab;
-      if (pendingTab == 0) {
-        _headerVisible = true;
-        _headerDownAccum = 0;
-      }
       HomeNavigationPage.pillTabRequest.value = null;
     }
   }
@@ -180,16 +215,9 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     // reading — a bar left collapsed here could only be reopened by finding
     // something to scroll, which on a short tab may not exist.
     ChromeVisibility.reset();
-    setState(() {
-      _selectedTab = index;
-      // Found never hides its header (see [_onScrollNotification]), so make
-      // sure arriving on it from a tab that had scrolled the header away
-      // brings it back.
-      if (index == 0) {
-        _headerVisible = true;
-        _headerDownAccum = 0;
-      }
-    });
+    // Found never hides its header — arriving on it from a feed whose chrome
+    // was away brings the tabs back on its own. See [_headerVisible].
+    setState(() => _selectedTab = index);
   }
 
   void _measureHeaderHeight() {
@@ -284,37 +312,15 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   bool _onScrollNotification(ScrollNotification notification) {
     // The bottom bar collapses on every tab, Found included: it floats over
     // the content everywhere and narrowing it gives the grid its width back.
-    // Fed before the Found guard below, which is only about the *header*.
     ChromeVisibility.handle(notification);
 
-    // Found is a grid, not full-bleed media: its content is padded to start
-    // below the header rather than running under it, so hiding the header
-    // would only open a blank strip. Keep it pinned there.
-    if (_selectedTab == 0) return false;
-
-    if (notification is ScrollUpdateNotification) {
-      final delta = notification.scrollDelta ?? 0;
-      final atTop = notification.metrics.pixels <= 0;
-
-      if (delta > 0 && !atTop) {
-        // Scrolling down (and not at the top boundary) — accumulate and hide.
-        _headerDownAccum += delta;
-        if (_headerDownAccum >= _headerHideThreshold && _headerVisible) {
-          setState(() => _headerVisible = false);
-        }
-      } else if (delta < 0 || atTop) {
-        // Scrolling up, or bounce-back at top — show header, reset accum.
-        _headerDownAccum = 0;
-        if (!_headerVisible) setState(() => _headerVisible = true);
-      }
-    } else if (notification is ScrollEndNotification) {
-      // Scrolling stopped — header stays exactly as it is (visible or
-      // hidden); it never auto-hides on a timer once at rest.
-      _headerDownAccum = 0;
-      if (notification.metrics.pixels <= 0 && !_headerVisible) {
-        setState(() => _headerVisible = true);
-      }
-    }
+    // Nothing here about the header. Reading down a feed takes it away and
+    // coming back up returns it — but that is [FeedChrome]'s rule, applied to
+    // both halves of the chrome at once by the shell's own scroll listener
+    // (see [_HomeViewState._onScrollNotification]), which sees these same
+    // notifications on their way up. This page used to keep a second copy of
+    // that rule for the header alone, with its own accumulator and its own
+    // threshold, and a second copy is a second answer.
     return false;
   }
 
@@ -379,10 +385,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
               // taller than the header it was backing.
               height: _headerHeight > 0 ? _headerHeight : 140,
               child: IgnorePointer(
-                child: AnimatedSlide(
-                  offset: _headerVisible ? Offset.zero : const Offset(0, -1),
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
+                child: _WithHeaderVisibility(
+                  visible: () => _headerVisible,
                   child: GlassSurface.isFrosted
                       ? GlassSurface(
                           borderRadius: BorderRadius.zero,
@@ -411,10 +415,8 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
             top: 0,
             left: 0,
             right: 0,
-            child: AnimatedSlide(
-              offset: _headerVisible ? Offset.zero : const Offset(0, -1),
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
+            child: _WithHeaderVisibility(
+              visible: () => _headerVisible,
               child: Padding(
                 key: _headerKey,
                 padding: EdgeInsets.only(top: topPadding),

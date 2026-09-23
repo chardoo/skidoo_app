@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -87,6 +88,7 @@ class _ReviewFoundPhotosPageState extends State<ReviewFoundPhotosPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
           ),
         ),

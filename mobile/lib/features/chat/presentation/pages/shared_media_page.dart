@@ -4,6 +4,7 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/widgets/zoomable_photo.dart';
@@ -121,6 +122,7 @@ class _SharedMediaPageState extends State<SharedMediaPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 17.sp,
           ),
         ),

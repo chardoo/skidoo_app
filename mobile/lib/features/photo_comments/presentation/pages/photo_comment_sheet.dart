@@ -52,8 +52,7 @@ class _PhotoCommentSheetContent extends StatefulWidget {
       _PhotoCommentSheetContentState();
 }
 
-class _PhotoCommentSheetContentState
-    extends State<_PhotoCommentSheetContent>
+class _PhotoCommentSheetContentState extends State<_PhotoCommentSheetContent>
     with CommentLikeState<_PhotoCommentSheetContent> {
   bool _loading = true;
   String? _error;
@@ -61,6 +60,9 @@ class _PhotoCommentSheetContentState
   final _inputCtrl = TextEditingController();
   final _focusNode = FocusNode();
   final _scrollCtrl = ScrollController();
+
+  /// Which end of the thread is at the top — the room's list is newest-first.
+  CommentSort _sort = CommentSort.newest;
   late final ChatRoomBloc _bloc;
 
   final _expandedIds = <String>{};
@@ -133,7 +135,11 @@ class _PhotoCommentSheetContentState
 
   Future<void> _loadRoom() async {
     if (widget.pictureId.isEmpty) {
-      if (mounted) setState(() { _error = 'Picture ID is missing.'; _loading = false; });
+      if (mounted)
+        setState(() {
+          _error = 'Picture ID is missing.';
+          _loading = false;
+        });
       return;
     }
     debugPrint('[PhotoComment] _loadRoom pictureId=${widget.pictureId}');
@@ -147,7 +153,10 @@ class _PhotoCommentSheetContentState
     } catch (e) {
       debugPrint('[PhotoComment] _loadRoom error: $e');
       if (mounted) {
-        setState(() { _error = e.toString(); _loading = false; });
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
       }
     }
   }
@@ -209,9 +218,9 @@ class _PhotoCommentSheetContentState
     String rootOf(ChatMessage m) {
       var pid = m.replyToId!;
       while (!topLevelIds.contains(pid)) {
-        final parent = messages.cast<ChatMessage?>().firstWhere(
-            (x) => x?.id == pid,
-            orElse: () => null);
+        final parent = messages
+            .cast<ChatMessage?>()
+            .firstWhere((x) => x?.id == pid, orElse: () => null);
         if (parent == null || parent.replyToId == null) break;
         pid = parent.replyToId!;
       }
@@ -270,10 +279,15 @@ class _PhotoCommentSheetContentState
 
     return CommentSheetShell(
       title: 'Comments',
+      sort: _sort,
+      onSortChanged: (value) {
+        if (value == _sort) return;
+        setState(() => _sort = value);
+        if (_scrollCtrl.hasClients) _scrollCtrl.jumpTo(0);
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Expanded(
             child: _loading
                 ? const AppLoadingIndicator()
@@ -281,7 +295,10 @@ class _PhotoCommentSheetContentState
                     ? AppErrorView(
                         message: _error!,
                         onRetry: () {
-                          setState(() { _loading = true; _error = null; });
+                          setState(() {
+                            _loading = true;
+                            _error = null;
+                          });
                           _loadRoom();
                         },
                       )
@@ -294,7 +311,8 @@ class _PhotoCommentSheetContentState
                                 ? LinearProgressIndicator(
                                     minHeight: 2,
                                     backgroundColor: Colors.transparent,
-                                    color: ext.accentGold.withValues(alpha: 0.6),
+                                    color:
+                                        ext.accentGold.withValues(alpha: 0.6),
                                   )
                                 : const SizedBox.shrink(),
                           ),
@@ -317,17 +335,22 @@ class _PhotoCommentSheetContentState
                                 }
 
                                 final threaded = _buildThreads(state.messages);
+                                // Only the top level turns over; a thread is a
+                                // conversation and reads one way round.
+                                final topLevel = _sort.apply(threaded.topLevel);
 
                                 return ListView.builder(
                                   controller: _scrollCtrl,
                                   padding: EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.lg.w, vertical: AppSpacing.sm.h),
-                                  itemCount: threaded.topLevel.length +
+                                      horizontal: AppSpacing.lg.w,
+                                      vertical: AppSpacing.sm.h),
+                                  itemCount: topLevel.length +
                                       (state.isLoadingMore ? 1 : 0),
                                   itemBuilder: (_, i) {
-                                    if (i == threaded.topLevel.length) {
+                                    if (i == topLevel.length) {
                                       return Padding(
-                                        padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                                        padding: EdgeInsets.symmetric(
+                                            vertical: AppSpacing.md.h),
                                         child: Center(
                                           child: CircularProgressIndicator(
                                             color: ext.accentGold,
@@ -336,13 +359,14 @@ class _PhotoCommentSheetContentState
                                         ),
                                       );
                                     }
-                                    final msg = threaded.topLevel[i];
+                                    final msg = topLevel[i];
                                     final replies = _repliesFor(msg.id,
                                         live: threaded.repliesMap[msg.id]);
 
                                     return ThreadedCommentWidget(
                                       key: ValueKey(msg.id),
-                                      comment: _toRowData(msg, replies: replies),
+                                      comment:
+                                          _toRowData(msg, replies: replies),
                                       replies: replies
                                           .map((r) => _toRowData(r))
                                           .toList(),

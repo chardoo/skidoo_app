@@ -11,6 +11,7 @@ import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
@@ -372,6 +373,7 @@ class _CreatorProfilePageState extends State<CreatorProfilePage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
           ),
         ),
@@ -443,14 +445,14 @@ class _CreatorProfilePageState extends State<CreatorProfilePage> {
                   index: _tab,
                   labels: [
                     'Portfolio',
+                    'Events',
                     // The count is in the label, so the weight of the reviews
                     // is visible before anyone opens them.
                     'Reviews ($_reviewCount)',
-                    'Events',
                   ],
                   onChanged: (i) {
                     setState(() => _tab = i);
-                    if (i == 1) _loadReviews();
+                    if (i == 2) _loadReviews();
                   },
                 ),
                 SizedBox(height: AppSpacing.md.h),
@@ -475,16 +477,16 @@ class _CreatorProfilePageState extends State<CreatorProfilePage> {
                           ext: ext,
                           onTap: _openPortfolio,
                         ),
-              1 => _ReviewsPreview(
+              // Their albums. Opening one is opening an event, exactly as it is
+              // everywhere else — no scan, no face gate: this is browsing
+              // somebody's work, not asking whether you are in it.
+              1 => CreatorEventsTab(photographerId: _p.id, ext: ext),
+              _ => _ReviewsPreview(
                   page: _reviews,
                   loading: _loadingReviews,
                   ext: ext,
                   onViewAll: _openAllReviews,
                 ),
-              // Their albums. Opening one is opening an event, exactly as it is
-              // everywhere else — no scan, no face gate: this is browsing
-              // somebody's work, not asking whether you are in it.
-              _ => CreatorEventsTab(photographerId: _p.id, ext: ext),
             },
           ),
           if (widget.note != null) ...[
@@ -582,6 +584,7 @@ class _IdentityRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: ext.greetingColor,
+                          fontFamily: AppTypography.displayFontFamily,
                           fontSize: 17.sp,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.3,
@@ -780,7 +783,7 @@ class _PillButton extends StatelessWidget {
 
 // ── Tabs and their contents ──────────────────────────────────────────────────
 
-/// Portfolio | Reviews (142) | Events.
+/// Portfolio | Events | Reviews (142).
 ///
 /// Left-aligned and only as wide as their labels, with the rule under the
 /// active word rather than a bar spanning the screen — tabs stretched across

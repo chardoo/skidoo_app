@@ -19,15 +19,16 @@ Widget host(Widget child, {GlobalKey<NavigatorState>? navigator}) =>
 
 /// Going back used to look like a different control on nearly every screen:
 /// four different glyphs at five different sizes, plus Flutter's [BackButton],
-/// which renders a *different* icon per platform. One arrow now, everywhere.
+/// which renders a *different* icon per platform. One chevron now, everywhere
+/// — the full arrow reads as an Android control on an iPhone.
 void main() {
-  testWidgets('draws the arrow, not a chevron', (t) async {
+  testWidgets('draws the chevron, not a full arrow', (t) async {
     await t.pumpWidget(host(const AppBackButton()));
     await t.pumpAndSettle();
 
     expect(
       t.widget<Icon>(find.byType(Icon)).icon,
-      Icons.arrow_back_rounded,
+      Icons.arrow_back_ios_new_rounded,
     );
   });
 
@@ -56,8 +57,10 @@ void main() {
 
       final source = entity.readAsStringSync();
       // `BackButton(` is Flutter's own, whose glyph follows the platform.
-      // The `arrow_back_ios*` family is the chevron this replaced.
-      if (source.contains('Icons.arrow_back_ios') ||
+      // Any `Icons.arrow_back*` named outside the widget is a screen picking
+      // its own glyph again — including the chevron, which has to stay one
+      // constant so the next change to it lands everywhere at once.
+      if (source.contains('Icons.arrow_back') ||
           RegExp(r'\bBackButton\(').hasMatch(source)) {
         offenders.add(entity.path);
       }

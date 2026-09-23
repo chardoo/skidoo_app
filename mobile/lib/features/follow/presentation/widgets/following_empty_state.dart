@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/features/follow/presentation/widgets/suggested_creators_list.dart';
 import 'package:jperg_app/core/common/widgets/app_section_label.dart';
@@ -201,6 +202,7 @@ class _Headline extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: ext.greetingColor,
+              fontFamily: AppTypography.displayFontFamily,
               fontSize: 16.sp,
               fontWeight: FontWeight.w700,
               height: 1.35,

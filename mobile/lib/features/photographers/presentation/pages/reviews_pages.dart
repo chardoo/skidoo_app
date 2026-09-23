@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
@@ -95,6 +96,7 @@ class _PhotographerReviewsPageState extends State<PhotographerReviewsPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
           ),
         ),
@@ -475,6 +477,7 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
           ),
         ),
@@ -663,6 +666,7 @@ class ReviewSubmittedPage extends StatelessWidget {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
           ),
         ),
@@ -687,6 +691,7 @@ class ReviewSubmittedPage extends StatelessWidget {
               'Thank You!',
               style: TextStyle(
                 color: ext.greetingColor,
+                fontFamily: AppTypography.displayFontFamily,
                 fontSize: 20.sp,
                 fontWeight: FontWeight.w700,
               ),

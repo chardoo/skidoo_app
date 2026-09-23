@@ -54,13 +54,36 @@ void main() {
     // The regression this whole widget exists to avoid, in the one case where
     // it is easy to reintroduce: no blur on offer, so an opaque tonal surface
     // would be a hole punched in the middle of the picture.
+    //
+    // The upper bound is the reported bug. At 62 % — the value inherited from
+    // the hand-rolled pill this widget replaced — the picture stopped dead at
+    // the pill's edge and Android and web got a dark bar across the middle of
+    // every photo carrying the offer, while iOS got glass. "Not opaque" was
+    // true of that build too, which is why the ceiling is a number now.
     GlassSurface.debugFrostedOverride = false;
     await t.pumpWidget(host(brightness: Brightness.dark));
 
     final container = t.widgetList<Container>(find.byType(Container)).first;
     final color = (container.decoration as BoxDecoration).color!;
-    expect(color.a, lessThan(1.0), reason: 'the photo has to come through');
-    expect(color.a, greaterThan(0.4), reason: 'white text has to stay legible');
+    expect(color.a, lessThan(0.55),
+        reason: 'above this it reads as a bar laid over the photo');
+    expect(color.a, greaterThan(0.3),
+        reason: 'the text still needs something to sit on');
+  });
+
+  testWidgets('its glyphs carry their own legibility', (t) async {
+    // The fill was lightened until the photo comes through it, so the fill is
+    // no longer what makes white text readable over a bright picture — the
+    // shadow is. Dropping it would put the pill back to relying on a tint
+    // heavy enough to be the bar this stopped being.
+    await t.pumpWidget(host(brightness: Brightness.dark));
+
+    final label = t.widget<Text>(find.text('Explore event photos'));
+    expect(label.style?.shadows, isNotEmpty);
+
+    final arrow = t.widget<Icon>(find.byType(Icon));
+    expect(arrow.shadows, isNotEmpty,
+        reason: 'the arrow sits on the same photo as the words');
   });
 
   testWidgets('takes the dark treatment even in a light theme', (t) async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:image_picker/image_picker.dart';
@@ -235,6 +236,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
           ),
         ),
@@ -654,6 +656,7 @@ class _Section extends StatelessWidget {
           text,
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.3,

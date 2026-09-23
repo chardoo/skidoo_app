@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/location/data/models/place.dart';
 import 'package:jperg_app/features/location/data/repositories/location_repository.dart';
@@ -270,7 +271,11 @@ void main() {
       await _openPicker(t, _FakeRepo());
       await t.tap(find.text('Ghana'));
       await t.pumpAndSettle();
-      await t.tap(find.byIcon(Icons.arrow_back_rounded));
+      // [AppBackButton.icon], not an `Icons.` constant of our own: this row
+      // draws the shared chevron inside its own gesture detector rather than
+      // using the widget, and naming the arrow pinned the test to a glyph the
+      // app stopped drawing.
+      await t.tap(find.byIcon(AppBackButton.icon));
       await t.pumpAndSettle();
 
       expect(find.text('Kenya'), findsOneWidget);

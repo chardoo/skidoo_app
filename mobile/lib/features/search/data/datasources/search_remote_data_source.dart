@@ -12,7 +12,7 @@ import 'package:jperg_app/models/photos/Photo.dart';
 /// the call succeeds. Recent searches are deliberately absent: they live on
 /// the device and never reach the server.
 abstract class SearchRemoteDataSource {
-  /// `type=all` — all three sections plus the counts behind the chip labels.
+  /// `type=all` — all four sections plus the counts behind the chip labels.
   Future<SearchAllResults> searchAll(String query);
 
   /// One section, paged. Used once a chip owns the screen.
@@ -23,6 +23,13 @@ abstract class SearchRemoteDataSource {
   });
 
   Future<SearchSectionPage<SearchPhotographerRow>> searchPhotographers(
+    String query, {
+    int page,
+    int limit,
+  });
+
+  /// People — app users who are not creators. See [SearchUserRow].
+  Future<SearchSectionPage<SearchUserRow>> searchUsers(
     String query, {
     int page,
     int limit,
@@ -98,6 +105,15 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
           page: page, limit: limit);
 
   @override
+  Future<SearchSectionPage<SearchUserRow>> searchUsers(
+    String query, {
+    int page = 1,
+    int limit = defaultLimit,
+  }) =>
+      _section(SearchResultType.users, query, SearchUserRow.fromJson,
+          page: page, limit: limit);
+
+  @override
   Future<SearchSectionPage<SearchTagRow>> searchTags(
     String query, {
     int page = 1,
@@ -106,8 +122,8 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
       _section(SearchResultType.tags, query, SearchTagRow.fromJson,
           page: page, limit: limit);
 
-  /// The three section reads differ only in `type` and the row parser, so they
-  /// share one implementation rather than three near-identical copies.
+  /// The four section reads differ only in `type` and the row parser, so they
+  /// share one implementation rather than four near-identical copies.
   Future<SearchSectionPage<T>> _section<T>(
     SearchResultType type,
     String query,

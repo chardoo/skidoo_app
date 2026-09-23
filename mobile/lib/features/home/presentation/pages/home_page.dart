@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/responsive.dart';
 import 'package:jperg_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
@@ -205,6 +206,7 @@ class _HomeViewState extends State<_HomeView> {
                       style: TextStyle(
                         color: ext.greetingColor,
                         fontWeight: FontWeight.w800,
+                        fontFamily: AppTypography.displayFontFamily,
                         fontSize: 20.sp,
                         letterSpacing: -0.2,
                       ),

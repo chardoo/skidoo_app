@@ -1,7 +1,6 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/widgets/media_backdrop.dart';
 import 'package:jperg_app/features/ads/models/ad_media.dart';
 
 /// The position indicator under a carousel: one dot per item, the current one
@@ -136,27 +135,23 @@ class _MediaFrame extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        // The blurred self-backdrop, from [MediaBackdrop] rather than a copy
+        // of it: this frame carried its own — a lighter blur and a hardcoded
+        // black wash — from before the recipe had one home, so the veil the
+        // rest of the feed answers to could not reach it.
+        MediaBackdrop(
+          url: media.url,
           child: JpergImage(
             imageUrl: media.url,
-            fit: BoxFit.cover,
-            isBlurBackground: true,
-            placeholder: (_, __) => const JpergImagePlaceholder(),
+            fit: BoxFit.contain,
+            placeholder: (_, __) => const Center(
+              child: CircularProgressIndicator(
+                color: Colors.white70,
+                strokeWidth: 2,
+              ),
+            ),
             errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
           ),
-        ),
-        const ColoredBox(color: Color(0x55000000)),
-        JpergImage(
-          imageUrl: media.url,
-          fit: BoxFit.contain,
-          placeholder: (_, __) => const Center(
-            child: CircularProgressIndicator(
-              color: Colors.white70,
-              strokeWidth: 2,
-            ),
-          ),
-          errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
         ),
         // Marked, not played. This frame is a still in a list; tapping through
         // to the page that plays it is the caller's business.

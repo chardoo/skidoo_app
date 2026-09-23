@@ -65,6 +65,7 @@ class SearchState extends Equatable {
     this.activeType = SearchResultType.events,
     this.events = const SearchSection<SearchEventRow>(),
     this.photographers = const SearchSection<SearchPhotographerRow>(),
+    this.users = const SearchSection<SearchUserRow>(),
     this.tags = const SearchSection<SearchTagRow>(),
     this.total = 0,
     this.errorMessage,
@@ -85,9 +86,10 @@ class SearchState extends Equatable {
 
   final SearchSection<SearchEventRow> events;
   final SearchSection<SearchPhotographerRow> photographers;
+  final SearchSection<SearchUserRow> users;
   final SearchSection<SearchTagRow> tags;
 
-  /// `counts.events + photographers + tags`. Zero is the `No results` state.
+  /// `counts.events + photographers + users + tags`. Zero is `No results`.
   final int total;
   final String? errorMessage;
 
@@ -127,12 +129,14 @@ class SearchState extends Equatable {
   int sectionCount(SearchResultType type) => switch (type) {
         SearchResultType.events => events.count,
         SearchResultType.photographers => photographers.count,
+        SearchResultType.users => users.count,
         SearchResultType.tags => tags.count,
       };
 
   SearchSection<Object> section(SearchResultType type) => switch (type) {
         SearchResultType.events => events,
         SearchResultType.photographers => photographers,
+        SearchResultType.users => users,
         SearchResultType.tags => tags,
       };
 
@@ -144,6 +148,7 @@ class SearchState extends Equatable {
     SearchResultType? activeType,
     SearchSection<SearchEventRow>? events,
     SearchSection<SearchPhotographerRow>? photographers,
+    SearchSection<SearchUserRow>? users,
     SearchSection<SearchTagRow>? tags,
     int? total,
     String? errorMessage,
@@ -163,6 +168,7 @@ class SearchState extends Equatable {
       activeType: activeType ?? this.activeType,
       events: events ?? this.events,
       photographers: photographers ?? this.photographers,
+      users: users ?? this.users,
       tags: tags ?? this.tags,
       total: total ?? this.total,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -194,6 +200,7 @@ class SearchState extends Equatable {
         activeType,
         events,
         photographers,
+        users,
         tags,
         total,
         errorMessage,

@@ -8,6 +8,30 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
+/// The most space there is between two tabs.
+///
+/// It used to be whatever was left over after four tabs were spread across the
+/// pill — about 28 dp on a 390 dp phone — which, on top of the 10 dp of padding
+/// each tab already carries, put roughly 48 dp between one glyph and the next
+/// and made the row read as four icons pushed into the corners. 16 brings that
+/// to 36 without closing it up entirely.
+///
+/// A ceiling rather than a fixed width: see [_TabGap].
+const double _kTabGap = AppSpacing.lg;
+
+/// The space between two tabs — [_kTabGap] wide, or as much of it as is left.
+///
+/// Wrapped in a [Flexible] at each call site, so the gaps are the part of the
+/// row that gives when there isn't room for all four tabs at full width: a
+/// fixed [SizedBox] overflows instead, which is what a long label, a large
+/// text scale or a narrow screen would each eventually cause.
+class _TabGap extends StatelessWidget {
+  const _TabGap();
+
+  @override
+  Widget build(BuildContext context) => SizedBox(width: _kTabGap.w);
+}
+
 /// Bottom nav: Home / notifications / chat / profile — floating rounded
 /// pill, only the active tab shows an icon+label (on a filled accent pill);
 /// inactive tabs are bare icons. No centre create button (ad/request
@@ -78,9 +102,16 @@ class AppNavbar extends StatelessWidget {
           // so the bar grew to fill the screen, floated in the middle of
           // itself, and made the Scaffold reserve that whole height as bottom
           // inset. heightFactor: 1 sizes to the child instead.
+          //
+          // widthFactor does the same job across: without it the pill stretched
+          // to the padding on both sides and the four tabs were spread over
+          // whatever was left, so the gaps between them were a function of the
+          // screen — wide, and wider on a bigger phone. Sizing to the content
+          // lets [_kTabGap] be the gap, the same on every device.
           child: Align(
             alignment: Alignment.center,
             heightFactor: 1,
+            widthFactor: 1,
             child: AnimatedSize(
               duration: const Duration(milliseconds: 260),
               curve: Curves.easeOutCubic,
@@ -96,8 +127,12 @@ class AppNavbar extends StatelessWidget {
                   // the active tab's icon+label pill gets exactly the room it
                   // needs — equal-width slots left too little space for even the
                   // shortest label ("Home") on real phone widths.
+                  //
+                  // min + [_TabGap], not spaceBetween: the row no longer has a
+                  // width to spread across, so the bar is only as wide as the
+                  // four tabs and the three gaps between them.
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       _NavTab(
                         label: 'Home',
@@ -120,6 +155,7 @@ class AppNavbar extends StatelessWidget {
                         expanded: expanded,
                         onTap: () => onchange(0),
                       ),
+                      const Flexible(child: _TabGap()),
                       _NavTab(
                         // 'Alerts', not 'Notifications' — the word is what the design
                         // calls that screen, and the long one overflowed the pill by
@@ -135,6 +171,7 @@ class AppNavbar extends StatelessWidget {
                         expanded: expanded,
                         onTap: () => onchange(2),
                       ),
+                      const Flexible(child: _TabGap()),
                       _NavTab(
                         // 'Chats', matching the screen's own title.
                         label: 'Chats',
@@ -152,6 +189,7 @@ class AppNavbar extends StatelessWidget {
                         unreadCount: messageUnreadCount,
                         onTap: () => onchange(1),
                       ),
+                      const Flexible(child: _TabGap()),
                       _NavTab(
                         label: 'Profile',
                         icon: Icons.person_outline_outlined,

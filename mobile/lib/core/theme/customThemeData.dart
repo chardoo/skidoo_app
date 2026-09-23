@@ -9,10 +9,12 @@ class Styles {
   static ThemeData get dark => themeData(true);
   static ThemeData get light => themeData(false);
 
-  /// Bundled font family — see the `fonts:` block in pubspec.yaml. Declared
-  /// as a plain string rather than via `GoogleFonts.poppins()` so the app
-  /// never depends on a CDN fetch to render its own typeface.
-  static const String fontFamily = 'Poppins';
+  /// The brand typefaces, defined with the rest of the type scale in
+  /// [AppTypography]. Syne carries headers (headlines, page and event titles,
+  /// hero copy); DM Sans carries everything else, as the app-wide default set
+  /// on [ThemeData.fontFamily] below.
+  static const String displayFontFamily = AppTypography.displayFontFamily;
+  static const String bodyFontFamily = AppTypography.bodyFontFamily;
 
   // Touch platforms get the slide-in transition that carries the edge
   // swipe-back gesture; desktop, which has no such gesture, keeps the fade.
@@ -83,7 +85,7 @@ class Styles {
                 ? Colors.white
                 : const Color.fromARGB(255, 9, 10, 9)),
       ),
-      fontFamily: fontFamily,
+      fontFamily: bodyFontFamily,
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: isDarkTheme
             ? const Color(0xFF111110)
@@ -133,11 +135,13 @@ class Styles {
         scrolledUnderElevation: 0.0,
         backgroundColor: Colors.transparent,
         foregroundColor: isDarkTheme ? Colors.white : Colors.black,
+        // An AppBar title is a page title, so it is Syne like the rest of
+        // [AppTypography.title].
         titleTextStyle: TextStyle(
           color: isDarkTheme ? Colors.white : Colors.black,
           fontSize: 18.sp,
           fontWeight: FontWeight.w600,
-          fontFamily: fontFamily,
+          fontFamily: displayFontFamily,
         ),
         iconTheme: IconThemeData(
           color: isDarkTheme ? Colors.white : Colors.black,

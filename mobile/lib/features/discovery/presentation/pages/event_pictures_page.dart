@@ -1,4 +1,5 @@
 import 'package:jperg_app/core/navigation/app_page_routes.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/material.dart';
@@ -133,6 +134,7 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
               style: TextStyle(
                 color: ext.greetingColor,
                 fontWeight: FontWeight.w700,
+                fontFamily: AppTypography.displayFontFamily,
                 fontSize: 16.sp,
                 letterSpacing: -0.3,
               ),

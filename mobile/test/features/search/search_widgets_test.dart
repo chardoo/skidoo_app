@@ -232,6 +232,7 @@ void main() {
           ),
           onEventTap: (_) {},
           onPhotographerTap: (_) {},
+          onUserTap: (_) {},
           onTagTap: (_) {},
         ),
       ));
@@ -252,6 +253,12 @@ void main() {
   ]) {
     group('$name mode', () {
       testWidgets('the active chip is the accent, the rest are not', (t) async {
+        // Wider than the default 800: the chip row is a horizontal ListView,
+        // and four chips at this design scale run past that, so the last one
+        // is never built and `find.text('Tags')` comes up empty.
+        await t.binding.setSurfaceSize(const Size(1400, 600));
+        addTearDown(() => t.binding.setSurfaceSize(null));
+
         await t.pumpWidget(host(
           ext,
           SearchTypeChips(
@@ -263,6 +270,7 @@ void main() {
 
         expect(colourOf(t, 'Events'), ext.accentGold);
         expect(colourOf(t, 'Photographers'), ext.greetingColor);
+        expect(colourOf(t, 'People'), ext.greetingColor);
         expect(colourOf(t, 'Tags'), ext.greetingColor);
       });
 

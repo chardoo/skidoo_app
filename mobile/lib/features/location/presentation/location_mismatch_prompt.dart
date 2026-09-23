@@ -4,6 +4,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/location/data/repositories/location_repository.dart';
 import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
@@ -222,6 +223,7 @@ class _MismatchSheetState extends State<_MismatchSheet> {
                         'Still working in ${widget.current}?',
                         style: TextStyle(
                           color: ext.greetingColor,
+                          fontFamily: AppTypography.displayFontFamily,
                           fontSize: 18.sp,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.4,

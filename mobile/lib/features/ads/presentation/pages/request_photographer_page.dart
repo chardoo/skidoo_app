@@ -5,6 +5,7 @@ import 'package:jperg_app/core/common/widgets/app_section_label.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/creator_profile_page.dart';
 
@@ -202,6 +203,7 @@ class _ConfirmSheet extends StatelessWidget {
                 'Confirm photographer?',
                 style: TextStyle(
                   color: ext.greetingColor,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 16.sp,
                   fontWeight: FontWeight.w700,
                 ),

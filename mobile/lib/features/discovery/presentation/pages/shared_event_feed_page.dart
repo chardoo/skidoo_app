@@ -142,14 +142,9 @@ class _SharedEventFeedPageState extends State<SharedEventFeedPage> {
             Positioned(
               top: MediaQuery.paddingOf(context).top + 4,
               left: 4,
-              child: Material(
+              child: const Material(
                 color: Colors.transparent,
-                child: IconButton(
-                  icon:
-                      const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  tooltip: 'Back',
-                ),
+                child: AppBackButton(color: Colors.white),
               ),
             ),
           ],

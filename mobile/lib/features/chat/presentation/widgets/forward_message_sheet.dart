@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/room_avatar.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
@@ -139,6 +140,7 @@ class _ForwardMessageSheetState extends State<ForwardMessageSheet> {
                       'Forward to',
                       style: TextStyle(
                         color: ext.greetingColor,
+                        fontFamily: AppTypography.displayFontFamily,
                         fontSize: 16.sp,
                         fontWeight: FontWeight.w700,
                       ),

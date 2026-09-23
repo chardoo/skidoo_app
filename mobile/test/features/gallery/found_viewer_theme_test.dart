@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_filmstrip.dart';
@@ -90,8 +91,18 @@ void main() {
         counter.textSpan!.style!.color,
         AppThemeExtension.dark.greetingColor.withValues(alpha: 0.7),
       );
+      // The glyph inside [AppBackButton] rather than a named icon of our own:
+      // the viewer's back control is the app's shared chevron now, and the
+      // arrow this used to look for is drawn nowhere. The button is handed no
+      // colour, so what it paints is what the palette under it resolves to —
+      // which is the thing being asserted.
       expect(
-        t.widget<Icon>(find.byIcon(Icons.arrow_back_rounded)).color,
+        t
+            .widget<Icon>(find.descendant(
+              of: find.byType(AppBackButton),
+              matching: find.byIcon(AppBackButton.icon),
+            ))
+            .color,
         AppThemeExtension.dark.greetingColor,
       );
     });

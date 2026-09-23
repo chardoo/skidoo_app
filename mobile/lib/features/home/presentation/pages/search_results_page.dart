@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
@@ -358,6 +359,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
           ),
         ),
@@ -397,6 +399,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         style: TextStyle(
           color: ext.greetingColor,
           fontWeight: FontWeight.w700,
+          fontFamily: AppTypography.displayFontFamily,
           fontSize: 16.sp,
         ),
       ),

@@ -4,6 +4,31 @@ import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:jperg_app/core/celebration/comment_milestone_watcher.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
+/// Which end of the thread comes first.
+///
+/// Every comment surface in the app is fed a list that is already newest-first
+/// — the chat room sorts its messages that way and the feed's endpoint returns
+/// them that way — so this is a choice between that list and its reverse, and
+/// [apply] is the only place that should be saying so.
+enum CommentSort {
+  newest('Newest', 'Newest first'),
+  oldest('Oldest', 'Oldest first');
+
+  const CommentSort(this.short, this.label);
+
+  /// What the control reads when this one is chosen.
+  final String short;
+
+  /// The same thing said in full, for the menu row and the screen reader —
+  /// "Newest" alone does not say first or last.
+  final String label;
+
+  /// [newestFirst] in this order. Takes the list the surface already has,
+  /// which must be newest-first.
+  List<T> apply<T>(List<T> newestFirst) =>
+      this == CommentSort.newest ? newestFirst : newestFirst.reversed.toList();
+}
+
 /// Shared bottom-sheet container for every comment surface — the photo sheet,
 /// the event sheet, the ads feed sheet.
 ///
@@ -23,11 +48,24 @@ class CommentSheetShell extends StatelessWidget {
     required this.child,
     this.title,
     this.subtitle,
+    this.sort,
+    this.onSortChanged,
   });
 
   final Widget child;
+
+  /// The header. "Comments" everywhere, and deliberately not the name of the
+  /// post: the thing being discussed is on screen directly above this — that
+  /// is the whole point of the arrangement — so naming it again in the one
+  /// line the sheet has says nothing the reader cannot see.
   final String? title;
   final String? subtitle;
+
+  /// The order the thread is in, and how to change it. The control is drawn
+  /// only when both are given, so a surface that has no say still gets a plain
+  /// header.
+  final CommentSort? sort;
+  final ValueChanged<CommentSort>? onSortChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -147,6 +185,13 @@ class CommentSheetShell extends StatelessWidget {
                             ],
                           ),
                         ),
+                        if (sort != null && onSortChanged != null)
+                          _SortControl(
+                            sort: sort!,
+                            onChanged: onSortChanged!,
+                            ext: ext,
+                            isDark: isDark,
+                          ),
                       ],
                     ),
                   ),
@@ -164,6 +209,104 @@ class CommentSheetShell extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Sort control ─────────────────────────────────────────────────────────────
+
+/// The pill on the right of the header: the order the thread is in, and a menu
+/// to change it.
+///
+/// It shows the order rather than the word "Sort", so the header answers the
+/// question without being opened — which is the question the reader of a busy
+/// thread actually has.
+class _SortControl extends StatelessWidget {
+  const _SortControl({
+    required this.sort,
+    required this.onChanged,
+    required this.ext,
+    required this.isDark,
+  });
+
+  final CommentSort sort;
+  final ValueChanged<CommentSort> onChanged;
+  final AppThemeExtension ext;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<CommentSort>(
+      initialValue: sort,
+      // The button's own label as well as its tooltip, and it has to carry the
+      // order: "Sort comments" alone leaves a screen reader unable to say
+      // which way round the thread already is.
+      tooltip: 'Sort comments, ${sort.label}',
+      position: PopupMenuPosition.under,
+      color: ext.cardSurface,
+      onSelected: onChanged,
+      itemBuilder: (_) => [
+        for (final option in CommentSort.values)
+          PopupMenuItem<CommentSort>(
+            value: option,
+            height: 40.h,
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_rounded,
+                  size: 16.sp,
+                  // Held rather than hidden: dropping the tick on the
+                  // inactive row shifts its label and the two read as
+                  // different widths of the same word.
+                  color: option == sort ? ext.accentGold : Colors.transparent,
+                ),
+                SizedBox(width: 8.w),
+                // Flexible, because the menu is only as wide as the button it
+                // hangs off: at a large text scale "Oldest first" is wider
+                // than that box, and a bare Text in a Row overflows rather
+                // than wrapping.
+                Flexible(
+                  child: Text(
+                    option.label,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : ext.greetingColor,
+                      fontSize: 13.sp,
+                      fontWeight:
+                          option == sort ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+      padding: EdgeInsets.zero,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+        decoration: BoxDecoration(
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(999.r),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              sort.short,
+              style: TextStyle(
+                color: ext.searchHintColor,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(width: 2.w),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16.sp,
+              color: ext.searchHintColor,
+            ),
+          ],
         ),
       ),
     );

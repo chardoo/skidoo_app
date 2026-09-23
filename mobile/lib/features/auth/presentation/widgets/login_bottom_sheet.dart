@@ -5,6 +5,7 @@ import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/validators/validators.dart';
 import 'package:jperg_app/features/auth/presentation/bloc/login/login_bloc.dart';
 import 'package:jperg_app/features/auth/presentation/pages/email_verification_page.dart';
@@ -138,6 +139,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                     'Welcome back',
                     style: TextStyle(
                       color: ext.greetingColor,
+                      fontFamily: AppTypography.displayFontFamily,
                       fontSize: 22.sp,
                       fontWeight: FontWeight.bold,
                     ),

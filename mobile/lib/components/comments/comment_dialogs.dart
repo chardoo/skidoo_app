@@ -4,6 +4,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 
 /// Shows a bottom sheet with Edit / Delete options.
 /// [onEdit] and [onDelete] receive no arguments — callers close over
@@ -97,7 +98,10 @@ void showDeleteCommentDialog(
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg.r)),
       title: Text('Delete comment',
-          style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
+          style: TextStyle(
+              fontFamily: AppTypography.displayFontFamily,
+              color: ext.greetingColor,
+              fontSize: 16.sp)),
       content: Text(
         'Are you sure you want to delete this comment?',
         style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),

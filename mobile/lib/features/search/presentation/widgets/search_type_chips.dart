@@ -5,7 +5,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 
-/// Events / Photographers / Tags. Only the sections the query actually matched
+/// Events / Photographers / People / Tags. Only the sections the query matched
 /// are offered — a chip that opens an empty list is a dead end — and the whole
 /// row disappears with the results, which is the `No results` state.
 class SearchTypeChips extends StatelessWidget {

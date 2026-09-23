@@ -6,6 +6,7 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/location/data/models/place.dart';
 import 'package:jperg_app/features/location/data/repositories/location_repository.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
@@ -216,7 +217,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                 }),
                 child: Padding(
                   padding: EdgeInsets.only(right: AppSpacing.sm.w),
-                  child: Icon(Icons.arrow_back_rounded,
+                  child: Icon(AppBackButton.icon,
                       color: ext.greetingColor, size: 20.r),
                 ),
               ),
@@ -228,6 +229,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                   : (widget.title ?? 'Choose a location'),
               style: TextStyle(
                 color: ext.greetingColor,
+                fontFamily: AppTypography.displayFontFamily,
                 fontSize: 18.sp,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.4,

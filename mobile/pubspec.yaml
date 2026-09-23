@@ -163,27 +163,53 @@ flutter:
     - assets/splash/
     - assets/Images/
 
-  # Poppins is bundled rather than fetched by google_fonts at runtime. Without
-  # these files the CDN download happens on first launch, so a cold/offline
-  # start renders in Roboto/SF — different metrics from Poppins, so layouts
-  # shift once the real font lands. Weights match what the app actually uses
-  # (see the fontWeight audit); Italic covers the two `FontStyle.italic` sites
-  # in message_bubble.dart, both at w400.
+  # The two brand typefaces (see the brand guidelines, Typography): Syne for
+  # headers, DM Sans for body. Both replace Poppins, which was never a brand
+  # font. `Styles.displayFontFamily` / `Styles.bodyFontFamily` are the only
+  # code that names them.
+  #
+  # Bundled rather than fetched by google_fonts at runtime. Without these files
+  # the CDN download happens on first launch, so a cold/offline start renders
+  # in Roboto/SF — different metrics, so layouts shift once the real font
+  # lands.
+  #
+  # These are static instances cut from the upstream variable fonts
+  # (fontTools.varLib.instancer), not the latin-subset statics Google's CSS API
+  # hands out: those carry only 222 glyphs and drop Latin Extended-A, which
+  # names in the app do use. DM Sans is pinned at `opsz` 14 — the optical size
+  # Google's own static family uses — since Flutter does not drive that axis.
+  #
+  # Weights match what the app actually uses (see the fontWeight audit).
+  # Syne's `wght` axis stops at 800, so it has no Black; nothing set in Syne
+  # asks for w900. DM Sans Italic covers the five `FontStyle.italic` sites,
+  # all at w400.
   fonts:
-    - family: Poppins
+    - family: Syne
       fonts:
-        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Syne-Regular.ttf
           weight: 400
-        - asset: assets/fonts/Poppins-Italic.ttf
+        - asset: assets/fonts/Syne-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Syne-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Syne-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Syne-ExtraBold.ttf
+          weight: 800
+    - family: DM Sans
+      fonts:
+        - asset: assets/fonts/DMSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/DMSans-Italic.ttf
           weight: 400
           style: italic
-        - asset: assets/fonts/Poppins-Medium.ttf
+        - asset: assets/fonts/DMSans-Medium.ttf
           weight: 500
-        - asset: assets/fonts/Poppins-SemiBold.ttf
+        - asset: assets/fonts/DMSans-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Poppins-Bold.ttf
+        - asset: assets/fonts/DMSans-Bold.ttf
           weight: 700
-        - asset: assets/fonts/Poppins-ExtraBold.ttf
+        - asset: assets/fonts/DMSans-ExtraBold.ttf
           weight: 800
-        - asset: assets/fonts/Poppins-Black.ttf
+        - asset: assets/fonts/DMSans-Black.ttf
           weight: 900

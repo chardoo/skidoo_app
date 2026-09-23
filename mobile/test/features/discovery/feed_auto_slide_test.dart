@@ -205,17 +205,59 @@ void main() {
     });
 
     testWidgets('stands on the last photo whatever number it is', (t) async {
-      // Four photos: the fourth is not a multiple of three, and it is the last
+      // Five photos: the fifth is not a multiple of three, and it is the last
       // chance to offer the album before the reader swipes to the next post.
-      await t.pumpWidget(host(event(photos: 4)));
+      await t.pumpWidget(host(event(photos: 5)));
       await t.pump();
 
-      for (var i = 0; i < 3; i++) {
+      for (var i = 0; i < 4; i++) {
         await swipeOn(t);
       }
 
-      expect(currentPage(t), 3);
+      expect(currentPage(t), 4);
       expect(find.byType(ExploreEventCta), findsOneWidget);
+    });
+
+    testWidgets('never stands on two photos in a row', (t) async {
+      // Four photos was the reported case. The third carries the offer because
+      // it is where the slide stops, and the fourth used to carry it again for
+      // being the last — so the reader swiped once and met the same pill, which
+      // reads as the app repeating itself rather than as an offer.
+      //
+      // The last-photo rule is a fallback for albums that do not end on a
+      // multiple of three. When the photo before the last already made the
+      // offer there is nothing to fall back to, so it stays away.
+      await t.pumpWidget(host(event(photos: 4)));
+      await t.pump();
+
+      await swipeOn(t); // 2nd
+      await swipeOn(t); // 3rd
+      expect(currentPage(t), 2);
+      expect(find.byType(ExploreEventCta), findsOneWidget,
+          reason: 'the third is where the slide stops, so the offer is there');
+
+      await swipeOn(t); // 4th — the last
+      expect(currentPage(t), 3);
+      expect(find.byType(ExploreEventCta), findsNothing,
+          reason: 'one swipe after the same offer is the app repeating itself');
+    });
+
+    testWidgets('and the last photo still carries it when there is a gap',
+        (t) async {
+      // Seven has the same shape as four one cycle along: the sixth carries
+      // the offer, so the seventh must not. What must not happen is the fix
+      // taking the offer off the end of every album.
+      await t.pumpWidget(host(event(photos: 7)));
+      await t.pump();
+
+      for (var i = 0; i < 5; i++) {
+        await swipeOn(t); // to the 6th
+      }
+      expect(currentPage(t), 5);
+      expect(find.byType(ExploreEventCta), findsOneWidget);
+
+      await swipeOn(t); // 7th — the last
+      expect(find.byType(ExploreEventCta), findsNothing);
     });
 
     testWidgets('a single-photo post offers the photo, not an album',

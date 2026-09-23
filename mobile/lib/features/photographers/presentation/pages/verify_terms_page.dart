@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/photographer_profile_usecases.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/creator_ready_page.dart';
@@ -114,6 +115,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
               : 'Verify and accept terms',
           style: TextStyle(
               color: ext.greetingColor,
+              fontFamily: AppTypography.displayFontFamily,
               fontSize: 17.sp,
               fontWeight: FontWeight.w700),
         ),
@@ -132,6 +134,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                   'Verify and accept terms',
                   style: TextStyle(
                     color: ext.greetingColor,
+                    fontFamily: AppTypography.displayFontFamily,
                     fontSize: 17.sp,
                     fontWeight: FontWeight.w700,
                   ),

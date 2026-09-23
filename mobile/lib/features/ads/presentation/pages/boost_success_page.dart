@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 
 /// "Request Boosted!" — the whole screen, after the money has landed.
 ///
@@ -55,6 +56,7 @@ class BoostSuccessPage extends StatelessWidget {
                   'Request Boosted!',
                   style: TextStyle(
                     color: ext.greetingColor,
+                    fontFamily: AppTypography.displayFontFamily,
                     fontSize: 22.sp,
                     fontWeight: FontWeight.w700,
                   ),

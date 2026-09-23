@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/ads/models/boost_tier.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 
@@ -78,6 +79,7 @@ class _BoostRequestSheetState extends State<BoostRequestSheet> {
                     'Boost Your Request',
                     style: TextStyle(
                       color: ext.greetingColor,
+                      fontFamily: AppTypography.displayFontFamily,
                       fontSize: 21.sp,
                       fontWeight: FontWeight.w700,
                     ),

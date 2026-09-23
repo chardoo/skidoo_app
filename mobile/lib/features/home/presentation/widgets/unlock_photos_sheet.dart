@@ -5,6 +5,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/common/widgets/app_drag_handle.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 
 /// "Unlock private photos" — the entry point for an event code a photographer
 /// shared, either typed or scanned.
@@ -123,6 +124,7 @@ class _UnlockPhotosSheetState extends State<UnlockPhotosSheet> {
                       'Unlock private photos',
                       style: TextStyle(
                         color: ext.greetingColor,
+                        fontFamily: AppTypography.displayFontFamily,
                         fontSize: 20.sp,
                         fontWeight: FontWeight.w700,
                       ),

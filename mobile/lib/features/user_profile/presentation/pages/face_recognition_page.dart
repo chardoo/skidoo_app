@@ -3,6 +3,7 @@ import 'package:dio/dio.dart' as dio_pkg;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/common/widgets/xfile_image.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
@@ -98,6 +99,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
           'Face Recognition',
           style: TextStyle(
               color: ext.greetingColor,
+              fontFamily: AppTypography.displayFontFamily,
               fontSize: 17.sp,
               fontWeight: FontWeight.w700),
         ),
@@ -117,6 +119,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
                     'Train Your Face Model',
                     style: TextStyle(
                       color: ext.greetingColor,
+                      fontFamily: AppTypography.displayFontFamily,
                       fontSize: 18.sp,
                       fontWeight: FontWeight.w700,
                     ),

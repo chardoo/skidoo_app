@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/search_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 
 class PhotographersHeader extends StatelessWidget {
   const PhotographersHeader({
@@ -27,6 +28,7 @@ class PhotographersHeader extends StatelessWidget {
             style: TextStyle(
               color: ext.greetingColor,
               fontWeight: FontWeight.bold,
+              fontFamily: AppTypography.displayFontFamily,
               fontSize: 20.sp,
             ),
           ),

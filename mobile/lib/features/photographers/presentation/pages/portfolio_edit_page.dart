@@ -4,6 +4,7 @@ import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/photographer_profile_usecases.dart';
@@ -215,6 +216,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
               widget.isCreatorSetup ? 'Become a Creator' : 'Portfolio',
               style: TextStyle(
                   color: ext.greetingColor,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 17.sp,
                   fontWeight: FontWeight.w700),
             ),
@@ -241,6 +243,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
                         'Profile info',
                         style: TextStyle(
                           color: ext.greetingColor,
+                          fontFamily: AppTypography.displayFontFamily,
                           fontSize: 17.sp,
                           fontWeight: FontWeight.w700,
                         ),

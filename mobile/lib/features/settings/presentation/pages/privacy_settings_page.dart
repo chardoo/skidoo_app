@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/settings/data/account_settings_api.dart';
 import 'package:jperg_app/features/settings/presentation/pages/face_data_page.dart';
@@ -119,6 +120,7 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
           'Privacy',
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
             fontWeight: FontWeight.w700,
           ),

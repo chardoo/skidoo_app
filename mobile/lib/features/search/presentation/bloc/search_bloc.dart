@@ -9,7 +9,7 @@ import 'package:jperg_app/features/search/domain/usecases/search_usecase.dart';
 part 'search_event.dart';
 part 'search_state.dart';
 
-/// Drives the whole Search screen: the query, the three chips and their
+/// Drives the whole Search screen: the query, the four chips and their
 /// paging, the recent searches, and the "You may like" grid behind them.
 class SearchBloc extends Bloc<SearchEvent, SearchState> {
   SearchBloc({
@@ -78,6 +78,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       events: isNewQuery ? const SearchSection<SearchEventRow>() : null,
       photographers:
           isNewQuery ? const SearchSection<SearchPhotographerRow>() : null,
+      users: isNewQuery ? const SearchSection<SearchUserRow>() : null,
       tags: isNewQuery ? const SearchSection<SearchTagRow>() : null,
       total: isNewQuery ? 0 : null,
     ));
@@ -112,6 +113,10 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
           items: results.photographers,
           count: _atLeast(
               results.counts.photographers, results.photographers.length),
+        ),
+        users: SearchSection<SearchUserRow>(
+          items: results.users,
+          count: _atLeast(results.counts.users, results.users.length),
         ),
         tags: SearchSection<SearchTagRow>(
           items: results.tags,
@@ -209,6 +214,15 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       SearchResultType.photographers => state.copyWith(
           photographers: state.photographers.copyWith(
             items: merge(state.photographers),
+            page: page,
+            hasNext: hasNext,
+            count: count,
+            isLoadingMore: isLoadingMore,
+          ),
+        ),
+      SearchResultType.users => state.copyWith(
+          users: state.users.copyWith(
+            items: merge(state.users),
             page: page,
             hasNext: hasNext,
             count: count,

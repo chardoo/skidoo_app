@@ -10,6 +10,7 @@ import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/auth/domain/usecases/request_password_reset_usecase.dart';
 import 'package:jperg_app/features/auth/domain/usecases/verify_reset_code_usecase.dart';
 import 'package:jperg_app/features/auth/presentation/pages/set_new_password_page.dart';
@@ -213,6 +214,7 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
                     'Check your email',
                     style: TextStyle(
                       color: ext.greetingColor,
+                      fontFamily: AppTypography.displayFontFamily,
                       fontSize: 26.sp,
                       fontWeight: FontWeight.w700,
                     ),

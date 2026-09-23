@@ -7,6 +7,7 @@ import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:jperg_app/features/chat/presentation/pages/shared_media_page.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/chat_settings_tile.dart';
@@ -52,6 +53,7 @@ class ContactInfoPage extends StatelessWidget {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 17.sp,
           ),
         ),
@@ -202,6 +204,7 @@ class _ContactHeader extends StatelessWidget {
           name,
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 19.sp,
             fontWeight: FontWeight.bold,
           ),

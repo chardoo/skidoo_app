@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_confirm_dialog.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
@@ -940,6 +941,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                             style: TextStyle(
                               color: ext.greetingColor,
                               fontWeight: FontWeight.bold,
+                              fontFamily: AppTypography.displayFontFamily,
                               fontSize: 16.sp,
                             ),
                             maxLines: 1,
@@ -1432,6 +1434,7 @@ class _UserOptionsSheetState extends State<_UserOptionsSheet> {
                     _displayName,
                     style: TextStyle(
                       color: ext.greetingColor,
+                      fontFamily: AppTypography.displayFontFamily,
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w600,
                     ),

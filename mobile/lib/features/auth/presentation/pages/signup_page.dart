@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/in_app_web_view_page.dart';
@@ -8,7 +9,6 @@ import 'package:jperg_app/core/validators/validators.dart';
 import 'package:jperg_app/features/auth/presentation/bloc/signup/signup_bloc.dart';
 import 'package:jperg_app/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:jperg_app/features/auth/presentation/pages/login_page.dart';
-import 'package:jperg_app/features/discovery/presentation/pages/discovery_page.dart';
 import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
@@ -41,10 +41,15 @@ class SignUpPage extends StatelessWidget {
   final String? headline;
   final String? subheadline;
 
-  /// Renders "Continue browsing" at the foot of the page. Only supplied when
-  /// sign-up was *prompted* (a guest tapped a gated action) — a guest who
-  /// chose Sign up from the app bar has the back button and needs no second
-  /// escape.
+  /// Renders "Continue browsing" at the foot of the page, which pops back to
+  /// whatever the reader was doing. Only supplied when sign-up was *prompted*
+  /// — a guest tapped a gated action and this page was pushed over the feed,
+  /// so there is somewhere to go back to and it is worth saying so.
+  ///
+  /// Without it the page offers no way out of signing up, which is the point:
+  /// "Continue as guest" belongs to the sign-in page, one tap away through
+  /// "Log in" below. Somebody who came here on purpose is answering the
+  /// question this page asks.
   final VoidCallback? onContinueBrowsing;
 
   @override
@@ -146,11 +151,6 @@ class _SignUpViewState extends State<_SignUpView>
     }
   }
 
-  void _continueAsGuest() {
-    Navigator.of(context)
-        .pushNamedAndRemoveUntil(DiscoveryPage.routeName, (route) => false);
-  }
-
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
@@ -247,6 +247,7 @@ class _SignUpViewState extends State<_SignUpView>
                                         .signupCreateAccount,
                                 style: TextStyle(
                                   color: ext.greetingColor,
+                                  fontFamily: AppTypography.displayFontFamily,
                                   fontSize: 30.sp,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: -0.5,
@@ -434,36 +435,38 @@ class _SignUpViewState extends State<_SignUpView>
                                   ],
                                 ),
                               ),
-                              SizedBox(height: AppSpacing.md.h),
-
-                              // ── Continue as guest / browsing ────────────────
-                              // A prompted sign-up (guest tapped a gated action)
-                              // returns to the feed they came from; the standalone
-                              // page resets to Discovery as before.
-                              Center(
-                                child: Semantics(
-                                  button: true,
-                                  label: widget.onContinueBrowsing != null
-                                      ? 'Continue browsing'
-                                      : 'Continue as guest',
-                                  child: TextButton(
-                                    onPressed: widget.onContinueBrowsing ??
-                                        _continueAsGuest,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          widget.onContinueBrowsing != null
-                                              ? 'Continue browsing'
-                                              : 'Continue as guest',
-                                          style: TextStyle(
-                                            color: ext.searchHintColor,
-                                            fontSize: 13.sp,
-                                            fontWeight: FontWeight.w500,
+                              // ── Continue browsing ───────────────────────────
+                              //
+                              // A prompted sign-up only: a guest tapped a gated
+                              // action, this page was pushed over the feed, and
+                              // this pops them back to what they were doing.
+                              //
+                              // There is no "Continue as guest" beside it any
+                              // more. Signing up and not signing up are opposite
+                              // answers to the same question, and the page asking
+                              // the first should not spend its last line offering
+                              // the second — that way past the gate lives on the
+                              // sign-in page, which is one tap away through "Log
+                              // in" above.
+                              if (widget.onContinueBrowsing != null) ...[
+                                SizedBox(height: AppSpacing.md.h),
+                                Center(
+                                  child: Semantics(
+                                    button: true,
+                                    label: 'Continue browsing',
+                                    child: TextButton(
+                                      onPressed: widget.onContinueBrowsing,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Continue browsing',
+                                            style: TextStyle(
+                                              color: ext.searchHintColor,
+                                              fontSize: 13.sp,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                           ),
-                                        ),
-                                        if (widget.onContinueBrowsing !=
-                                            null) ...[
                                           SizedBox(width: AppSpacing.xs.w),
                                           Icon(
                                             Icons.arrow_forward_rounded,
@@ -471,11 +474,11 @@ class _SignUpViewState extends State<_SignUpView>
                                             color: ext.searchHintColor,
                                           ),
                                         ],
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
+                              ],
                               SizedBox(height: AppSpacing.huge.h),
                             ],
                           ),

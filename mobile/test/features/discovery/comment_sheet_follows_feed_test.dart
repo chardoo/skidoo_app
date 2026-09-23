@@ -212,16 +212,19 @@ void main() {
   group('the sheet follows the feed', () {
     testWidgets('a swipe rebinds it to the post now in front', (t) async {
       await openSheetOn(t, _event('e1', name: 'Graduation'));
-      expect(find.text('Graduation'), findsOneWidget);
       expect(rooms.asked, ['e1']);
 
       await swipeTo(t, _event('e2', name: 'Beach Wedding'));
 
-      // The header and the room move together. Before this, both stayed on e1
-      // while the picture above showed e2.
-      expect(find.text('Beach Wedding'), findsOneWidget);
-      expect(find.text('Graduation'), findsNothing);
-      expect(find.text('by Kwame Studios'), findsOneWidget);
+      // The room moves with the picture. Before this it stayed on e1 while the
+      // photo above showed e2 — the reader was reading one post's comments
+      // under another post.
+      //
+      // The header is not the tell: it reads "Comments" on every post, because
+      // the post itself is on screen directly above the sheet and naming it
+      // again in the one line the sheet has says nothing new.
+      expect(find.text('Comments'), findsOneWidget);
+      expect(find.text('Beach Wedding'), findsNothing);
       expect(rooms.asked, ['e1', 'e2']);
       expect(bloc.joinedRooms, ['room-e1', 'room-e2']);
     });
@@ -274,7 +277,6 @@ void main() {
       await swipeTo(
           t, _event('e2', name: 'Private Shoot', commentsEnabled: false));
 
-      expect(find.text('Private Shoot'), findsOneWidget);
       expect(find.text('Comments are turned off'), findsOneWidget);
       // The thread and its input bar are gone, not merely covered.
       expect(find.byType(ListView), findsNothing);

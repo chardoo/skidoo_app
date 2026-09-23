@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/ads/data/datasources/feed_comment_data_source.dart';
 import 'package:jperg_app/components/comments/comment_dialogs.dart';
 import 'package:jperg_app/core/celebration/comment_milestone_watcher.dart';
@@ -90,6 +91,11 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
   bool _loading = true;
   String? _error;
   String _myId = '';
+
+  /// Which end of the thread is at the top. Newest is the order the room
+  /// already hands over, and the one the sheet is built around — a comment
+  /// sent from here lands at the top and the scroll goes back to it.
+  CommentSort _sort = CommentSort.newest;
 
   final _inputCtrl = TextEditingController();
   final _focusNode = FocusNode();
@@ -492,8 +498,7 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
     } catch (e) {
       debugPrint('[EventComments] edit failed for ${msg.id}: $e');
       if (!mounted) return;
-      _bloc.add(
-          ChatRoomCommentEdited(commentId: msg.id, content: msg.content));
+      _bloc.add(ChatRoomCommentEdited(commentId: msg.id, content: msg.content));
       AppSnackBar.error(context, 'Could not edit the comment.');
     }
   }
@@ -569,8 +574,19 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return CommentSheetShell(
-      title: _event.eventName,
-      subtitle: 'by ${_event.photographerName}',
+      // Not the event's name: the post is on screen directly above this, and
+      // the sheet rebinds to whichever one the feed moves to — a header that
+      // renamed itself mid-read said less than the picture already does.
+      title: 'Comments',
+      sort: _sort,
+      onSortChanged: (value) {
+        if (value == _sort) return;
+        setState(() => _sort = value);
+        // Back to the start of the list it just turned over. Holding the
+        // offset would leave the reader somewhere in the middle of a thread
+        // they did not scroll to.
+        if (_scrollCtrl.hasClients) _scrollCtrl.jumpTo(0);
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -584,123 +600,131 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
             child: !_event.commentsEnabled
                 ? CommentsLockedState(ext: ext)
                 : _loading
-                ? const AppLoadingIndicator()
-                : _error != null
-                    ? AppErrorView(
-                        message: _error!,
-                        onRetry: () {
-                          setState(() {
-                            _loading = true;
-                            _error = null;
-                          });
-                          _loadRoom();
-                        },
-                      )
-                    : Column(
-                        children: [
-                          // WebSocket syncing bar
-                          BlocBuilder<ChatRoomBloc, ChatRoomState>(
-                            buildWhen: (p, c) => p.isSyncing != c.isSyncing,
-                            builder: (_, s) => s.isSyncing
-                                ? LinearProgressIndicator(
-                                    minHeight: 2,
-                                    backgroundColor: Colors.transparent,
-                                    color:
-                                        ext.accentGold.withValues(alpha: 0.6),
-                                  )
-                                : const SizedBox.shrink(),
-                          ),
+                    ? const AppLoadingIndicator()
+                    : _error != null
+                        ? AppErrorView(
+                            message: _error!,
+                            onRetry: () {
+                              setState(() {
+                                _loading = true;
+                                _error = null;
+                              });
+                              _loadRoom();
+                            },
+                          )
+                        : Column(
+                            children: [
+                              // WebSocket syncing bar
+                              BlocBuilder<ChatRoomBloc, ChatRoomState>(
+                                buildWhen: (p, c) => p.isSyncing != c.isSyncing,
+                                builder: (_, s) => s.isSyncing
+                                    ? LinearProgressIndicator(
+                                        minHeight: 2,
+                                        backgroundColor: Colors.transparent,
+                                        color: ext.accentGold
+                                            .withValues(alpha: 0.6),
+                                      )
+                                    : const SizedBox.shrink(),
+                              ),
 
-                          Expanded(
-                            child: BlocConsumer<ChatRoomBloc, ChatRoomState>(
-                              listenWhen: (prev, curr) =>
-                                  curr.errorMessage != null &&
-                                  curr.errorMessage != prev.errorMessage,
-                              listener: (_, state) {
-                                AppSnackBar.error(context, state.errorMessage!);
-                              },
-                              builder: (_, state) {
-                                if (state.isLoadingHistory &&
-                                    state.messages.isEmpty) {
-                                  return const AppLoadingIndicator();
-                                }
-                                if (state.messages.isEmpty) {
-                                  return CommentEmptyState(ext: ext);
-                                }
-
-                                final threaded = _buildThreads(state.messages);
-
-                                return ListView.builder(
-                                  controller: _scrollCtrl,
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.lg.w,
-                                      vertical: AppSpacing.sm.h),
-                                  itemCount: threaded.topLevel.length +
-                                      (state.isLoadingMore ? 1 : 0),
-                                  itemBuilder: (_, i) {
-                                    if (i == threaded.topLevel.length) {
-                                      return Padding(
-                                        padding: EdgeInsets.symmetric(
-                                            vertical: AppSpacing.md.h),
-                                        child: Center(
-                                          child: CircularProgressIndicator(
-                                            color: ext.accentGold,
-                                            strokeWidth: 2,
-                                          ),
-                                        ),
-                                      );
+                              Expanded(
+                                child:
+                                    BlocConsumer<ChatRoomBloc, ChatRoomState>(
+                                  listenWhen: (prev, curr) =>
+                                      curr.errorMessage != null &&
+                                      curr.errorMessage != prev.errorMessage,
+                                  listener: (_, state) {
+                                    AppSnackBar.error(
+                                        context, state.errorMessage!);
+                                  },
+                                  builder: (_, state) {
+                                    if (state.isLoadingHistory &&
+                                        state.messages.isEmpty) {
+                                      return const AppLoadingIndicator();
                                     }
-                                    final msg = threaded.topLevel[i];
-                                    final replies = _repliesFor(msg.id,
-                                        live: threaded.repliesMap[msg.id]);
-
-                                    final focused = msg.id == _focusId;
-                                    if (focused) {
-                                      // The row exists this frame, so it can
-                                      // be scrolled to on the next one.
-                                      WidgetsBinding.instance
-                                          .addPostFrameCallback(
-                                              (_) => _settleFocus());
+                                    if (state.messages.isEmpty) {
+                                      return CommentEmptyState(ext: ext);
                                     }
 
-                                    return ThreadedCommentWidget(
-                                      key: focused
-                                          ? _focusKey
-                                          : ValueKey(msg.id),
-                                      comment: _toRowData(msg,
-                                          replies: replies,
-                                          onReply: _startReply),
-                                      replies: replies
-                                          .map((r) => _toRowData(r,
-                                              onReply: _startReply))
-                                          .toList(),
-                                      ext: ext,
-                                      isExpanded: _expandedIds.contains(msg.id),
-                                      onToggleReplies: () =>
-                                          _toggleReplies(msg),
-                                      isLoadingReplies:
-                                          _loadingReplies.contains(msg.id),
+                                    final threaded =
+                                        _buildThreads(state.messages);
+                                    // Only the top level turns over. A thread is a
+                                    // conversation and reads one way round.
+                                    final topLevel =
+                                        _sort.apply(threaded.topLevel);
+
+                                    return ListView.builder(
+                                      controller: _scrollCtrl,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: AppSpacing.lg.w,
+                                          vertical: AppSpacing.sm.h),
+                                      itemCount: topLevel.length +
+                                          (state.isLoadingMore ? 1 : 0),
+                                      itemBuilder: (_, i) {
+                                        if (i == topLevel.length) {
+                                          return Padding(
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: AppSpacing.md.h),
+                                            child: Center(
+                                              child: CircularProgressIndicator(
+                                                color: ext.accentGold,
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                        final msg = topLevel[i];
+                                        final replies = _repliesFor(msg.id,
+                                            live: threaded.repliesMap[msg.id]);
+
+                                        final focused = msg.id == _focusId;
+                                        if (focused) {
+                                          // The row exists this frame, so it can
+                                          // be scrolled to on the next one.
+                                          WidgetsBinding.instance
+                                              .addPostFrameCallback(
+                                                  (_) => _settleFocus());
+                                        }
+
+                                        return ThreadedCommentWidget(
+                                          key: focused
+                                              ? _focusKey
+                                              : ValueKey(msg.id),
+                                          comment: _toRowData(msg,
+                                              replies: replies,
+                                              onReply: _startReply),
+                                          replies: replies
+                                              .map((r) => _toRowData(r,
+                                                  onReply: _startReply))
+                                              .toList(),
+                                          ext: ext,
+                                          isExpanded:
+                                              _expandedIds.contains(msg.id),
+                                          onToggleReplies: () =>
+                                              _toggleReplies(msg),
+                                          isLoadingReplies:
+                                              _loadingReplies.contains(msg.id),
+                                        );
+                                      },
                                     );
                                   },
-                                );
-                              },
-                            ),
-                          ),
+                                ),
+                              ),
 
-                          CommentInputBarWidget(
-                            controller: _inputCtrl,
-                            focusNode: _focusNode,
-                            onSend: _send,
-                            ext: ext,
-                            replyingToName: _replyingTo != null
-                                ? _label(_replyingTo!)
-                                : null,
-                            onCancelReply: _cancelReply,
-                            editingContent: _editing?.content,
-                            onCancelEdit: _cancelEdit,
+                              CommentInputBarWidget(
+                                controller: _inputCtrl,
+                                focusNode: _focusNode,
+                                onSend: _send,
+                                ext: ext,
+                                replyingToName: _replyingTo != null
+                                    ? _label(_replyingTo!)
+                                    : null,
+                                onCancelReply: _cancelReply,
+                                editingContent: _editing?.content,
+                                onCancelEdit: _cancelEdit,
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
           ),
         ],
       ),
@@ -1005,8 +1029,7 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
     } catch (e) {
       debugPrint('[EventComments] edit failed for ${msg.id}: $e');
       if (!mounted) return;
-      _bloc.add(
-          ChatRoomCommentEdited(commentId: msg.id, content: msg.content));
+      _bloc.add(ChatRoomCommentEdited(commentId: msg.id, content: msg.content));
       AppSnackBar.error(context, 'Could not edit the comment.');
     }
   }
@@ -1516,7 +1539,8 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                           widget.editingContent != null
                               ? Icons.check_rounded
                               : Icons.send_rounded,
-                          color: Colors.white, size: 16.sp),
+                          color: Colors.white,
+                          size: 16.sp),
                     ),
                   ),
                 ),
@@ -1564,6 +1588,7 @@ class _CommentPanelHeader extends StatelessWidget {
               style: TextStyle(
                 color: ext.greetingColor,
                 fontWeight: FontWeight.w700,
+                fontFamily: AppTypography.displayFontFamily,
                 fontSize: 16.sp,
                 letterSpacing: -0.2,
               ),

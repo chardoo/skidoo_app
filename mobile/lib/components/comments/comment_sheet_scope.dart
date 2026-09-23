@@ -29,8 +29,23 @@ const double kCommentSheetFraction = 0.70;
 /// sheet opened from a comment, a report sheet opened from a reply — and with
 /// a bool the first one to close would drop the page back down while another
 /// was still up.
+///
+/// Each open sheet is held *with the route it was opened over*, and that is
+/// not bookkeeping — it is what keeps the push local. The flag is global, the
+/// sheet is not: a sheet left open on a page below, or in a tab the user
+/// switched away from, used to squeeze the media on every screen pushed
+/// afterwards. A photo opened from an album came up laid out into the 30 %
+/// band the sheet leaves — a portrait shot at 190 × 253 in the top third of
+/// the screen, with the rest black. Only the page the sheet is actually over
+/// has anything to make room for; see [isOpenOver].
 class CommentSheetScope {
   const CommentSheetScope._();
+
+  /// The host route of each open sheet, in the order they opened. Null for a
+  /// sheet opened from a context with no [ModalRoute] above it, which is
+  /// treated as "over everything" — the old behaviour, and the only safe
+  /// reading when there is no route to compare against.
+  static final List<Route<dynamic>?> _hosts = <Route<dynamic>?>[];
 
   static final ValueNotifier<int> _openCount = ValueNotifier<int>(0);
 
@@ -39,19 +54,40 @@ class CommentSheetScope {
 
   static bool get isOpen => _openCount.value > 0;
 
-  static void _enter() => _openCount.value++;
+  /// Whether an open sheet is sitting over [route] — the question a
+  /// [CommentPushArea] actually has to answer before it gives up two thirds of
+  /// its height.
+  static bool isOpenOver(Route<dynamic>? route) {
+    if (_hosts.isEmpty) return false;
+    if (route == null) return true;
+    return _hosts.any((host) => host == null || identical(host, route));
+  }
 
-  static void _exit() {
-    // Never below zero: a hot reload or a sheet dismissed by a route pop we
-    // did not observe would otherwise leave the count negative and the page
-    // permanently unable to push again.
-    _openCount.value = (_openCount.value - 1).clamp(0, 1 << 20);
+  static void _enter(Route<dynamic>? host) {
+    _hosts.add(host);
+    _openCount.value = _hosts.length;
+  }
+
+  static void _exit(Route<dynamic>? host) {
+    final index = _hosts.indexWhere((entry) => identical(entry, host));
+    // Never below zero, and never the wrong entry: a hot reload or a sheet
+    // dismissed by a route pop we did not observe would otherwise leave the
+    // count negative and the page permanently unable to push again.
+    if (index >= 0) {
+      _hosts.removeAt(index);
+    } else if (_hosts.isNotEmpty) {
+      _hosts.removeLast();
+    }
+    _openCount.value = _hosts.length;
   }
 
   /// Resets the count — for tests, and for a sign-out that tears down routes
   /// without unwinding them.
   @visibleForTesting
-  static void reset() => _openCount.value = 0;
+  static void reset() {
+    _hosts.clear();
+    _openCount.value = 0;
+  }
 }
 
 /// Shows a comment sheet, and tells the page underneath to make room.
@@ -70,33 +106,37 @@ class CommentSheetScope {
 ///     [_PassThroughBottomSheetRoute].
 ///   * **The scope flag**, so [CommentPushArea] knows to push.
 ///
-/// The flag is dropped in a `finally`, so it survives a sheet dismissed by a
-/// swipe, the back button, a barrier tap, or an exception thrown while it was
-/// open — all of which are routes popping without telling anyone.
+/// The flag is raised and dropped by the route itself, not around the `await`
+/// here — see [_PassThroughBottomSheetRoute.install]. Awaiting covers a sheet
+/// dismissed by a swipe, the back button or a barrier tap, because all of
+/// those pop it; it does not cover a route *removed* without its future ever
+/// completing — a navigator torn down with the sheet still on it, a stack
+/// replaced under it — and a flag left raised there is permanent. It squeezes
+/// the media on every screen opened afterwards, on a page that has no sheet
+/// anywhere near it.
 Future<T?> showCommentSheet<T>(
   BuildContext context, {
   required WidgetBuilder builder,
   bool allowMediaGestures = true,
-}) async {
-  CommentSheetScope._enter();
-  try {
-    return await Navigator.of(context).push(
-      _PassThroughBottomSheetRoute<T>(
-        builder: builder,
-        allowMediaGestures: allowMediaGestures,
-        // Themes do not cross a route boundary on their own, and this is
-        // pushed by hand rather than by showModalBottomSheet.
-        capturedThemes: InheritedTheme.capture(
-            from: context, to: Navigator.of(context).context),
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        modalBarrierColor: Colors.transparent,
-        useSafeArea: true,
-      ),
-    );
-  } finally {
-    CommentSheetScope._exit();
-  }
+}) {
+  return Navigator.of(context).push(
+    _PassThroughBottomSheetRoute<T>(
+      builder: builder,
+      allowMediaGestures: allowMediaGestures,
+      // The page this sheet is being opened over, so the push stays on it. Read
+      // here rather than in the route: this context is inside the page, the
+      // navigator's is not.
+      host: ModalRoute.of(context),
+      // Themes do not cross a route boundary on their own, and this is
+      // pushed by hand rather than by showModalBottomSheet.
+      capturedThemes: InheritedTheme.capture(
+          from: context, to: Navigator.of(context).context),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      modalBarrierColor: Colors.transparent,
+      useSafeArea: true,
+    ),
+  );
 }
 
 /// A bottom sheet whose modal barrier covers only the sheet, leaving the strip
@@ -120,11 +160,52 @@ class _PassThroughBottomSheetRoute<T> extends ModalBottomSheetRoute<T> {
     required super.builder,
     required super.isScrollControlled,
     this.allowMediaGestures = true,
+    this.host,
     super.capturedThemes,
     super.backgroundColor,
     super.modalBarrierColor,
     super.useSafeArea,
   });
+
+  /// The route this sheet was opened over — the one page that has to make
+  /// room. See [CommentSheetScope.isOpenOver].
+  final Route<dynamic>? host;
+
+  /// Whether this route is currently counted as open, so the pair can never
+  /// run twice in either direction.
+  bool _counted = false;
+
+  /// The flag goes up when the route is installed and comes down the moment
+  /// the sheet is finished with, so the page drops back as the sheet animates
+  /// away rather than a beat after it has gone.
+  @override
+  void install() {
+    super.install();
+    _counted = true;
+    CommentSheetScope._enter(host);
+  }
+
+  @override
+  void didComplete(T? result) {
+    _dropFlag();
+    super.didComplete(result);
+  }
+
+  /// The backstop, and the reason the flag is on the route at all: `dispose`
+  /// is the one call the navigator makes on every way out, including the ones
+  /// that never complete the route — a stack replaced under the sheet, a
+  /// navigator torn down with it still on top.
+  @override
+  void dispose() {
+    _dropFlag();
+    super.dispose();
+  }
+
+  void _dropFlag() {
+    if (!_counted) return;
+    _counted = false;
+    CommentSheetScope._exit(host);
+  }
 
   /// Whether the band above the sheet takes gestures.
   ///
@@ -217,10 +298,20 @@ class CommentPushArea extends StatelessWidget {
     // of a scrolling card.
     final strip = screenH * (1 - kCommentSheetFraction);
 
+    // The page this media is on. A sheet open over some *other* page is none
+    // of its business: the flag is global, the sheet is one route deep, and
+    // reading the count alone laid every later screen's media into the band
+    // behind a sheet nobody could see. See [CommentSheetScope.isOpenOver].
+    final host = ModalRoute.of(context);
+
     return ValueListenableBuilder<int>(
       valueListenable: CommentSheetScope.openCount,
       builder: (context, count, _) => TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: screenH, end: count > 0 ? strip : screenH),
+        tween: Tween<double>(
+            begin: screenH,
+            end: count > 0 && CommentSheetScope.isOpenOver(host)
+                ? strip
+                : screenH),
         duration: duration,
         curve: curve,
         builder: (context, height, child) {

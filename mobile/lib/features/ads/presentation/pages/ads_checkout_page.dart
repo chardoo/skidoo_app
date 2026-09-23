@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/admin/data/models/exchange_rates.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -102,6 +103,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
           'Complete Payment',
           style: TextStyle(
               color: ext.greetingColor,
+              fontFamily: AppTypography.displayFontFamily,
               fontSize: 17.sp,
               fontWeight: FontWeight.w700),
         ),

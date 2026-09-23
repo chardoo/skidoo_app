@@ -1,3 +1,4 @@
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -222,6 +223,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
           'Edit Campaign',
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 17.sp,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.3,
@@ -979,6 +981,7 @@ class _MediaPickerSheet extends StatelessWidget {
                     style: TextStyle(
                       color: ext.greetingColor,
                       fontWeight: FontWeight.w800,
+                      fontFamily: AppTypography.displayFontFamily,
                       fontSize: 16.sp,
                     ),
                   ),
@@ -1050,6 +1053,7 @@ class _SectionHeader extends StatelessWidget {
       title,
       style: TextStyle(
         color: ext.greetingColor,
+        fontFamily: AppTypography.displayFontFamily,
         fontSize: 16.sp,
         fontWeight: FontWeight.w900,
         letterSpacing: -0.3,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/search_field.dart';
@@ -358,6 +359,7 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                 style: TextStyle(
                   color: ext.greetingColor,
                   fontWeight: FontWeight.bold,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 17.sp,
                 ),
               ),

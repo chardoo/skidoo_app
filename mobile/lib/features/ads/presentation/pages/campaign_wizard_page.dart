@@ -6,6 +6,7 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/image_pick.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
@@ -266,6 +267,7 @@ class _CampaignWizardPageState extends State<CampaignWizardPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.w700,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
           ),
         ),
@@ -536,6 +538,7 @@ class _Heading extends StatelessWidget {
           text,
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 19.sp,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.4,
@@ -1930,6 +1933,7 @@ class CampaignSubmittedPage extends StatelessWidget {
                   'Campaign Submitted!',
                   style: TextStyle(
                     color: ext.greetingColor,
+                    fontFamily: AppTypography.displayFontFamily,
                     fontSize: 20.sp,
                     fontWeight: FontWeight.w800,
                   ),

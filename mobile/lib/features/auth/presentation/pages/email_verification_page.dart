@@ -7,6 +7,7 @@ import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/auth/domain/usecases/resend_verification_usecase.dart';
 import 'package:jperg_app/features/auth/domain/usecases/verify_code_usecase.dart';
 import 'package:jperg_app/features/auth/presentation/pages/face_capture_step_page.dart';
@@ -240,6 +241,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                     'Check your email',
                     style: TextStyle(
                       color: ext.greetingColor,
+                      fontFamily: AppTypography.displayFontFamily,
                       fontSize: 26.sp,
                       fontWeight: FontWeight.w700,
                     ),

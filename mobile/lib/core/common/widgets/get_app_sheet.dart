@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 
 /// Bottom sheet (mobile) / dialog (web) shown when the user taps a feature
 /// that requires the native app — e.g. share. Prompts them to download Jperg.
@@ -111,6 +112,7 @@ class GetAppSheet extends StatelessWidget {
               '$featureLabel is available on the app',
               style: TextStyle(
                 color: ext.greetingColor,
+                fontFamily: AppTypography.displayFontFamily,
                 fontSize: 17.sp,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.3,

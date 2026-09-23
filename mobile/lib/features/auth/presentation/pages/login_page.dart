@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
@@ -222,6 +223,7 @@ class _LoginViewState extends State<_LoginView>
                                 AppLocalizations.of(context)!.loginWelcomeBack,
                                 style: TextStyle(
                                   color: ext.greetingColor,
+                                  fontFamily: AppTypography.displayFontFamily,
                                   fontSize: 30.sp,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: -0.5,

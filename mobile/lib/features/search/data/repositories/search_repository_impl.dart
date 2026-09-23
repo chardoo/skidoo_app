@@ -30,6 +30,14 @@ class SearchRepositoryImpl implements SearchRepository {
       _guard(() => _remote.searchPhotographers(query, page: page, limit: limit));
 
   @override
+  Future<SearchSectionPage<SearchUserRow>> searchUsers(
+    String query, {
+    int page = 1,
+    int limit = SearchRemoteDataSourceImpl.defaultLimit,
+  }) =>
+      _guard(() => _remote.searchUsers(query, page: page, limit: limit));
+
+  @override
   Future<SearchSectionPage<SearchTagRow>> searchTags(
     String query, {
     int page = 1,

@@ -196,12 +196,17 @@ class _AppPhoneFieldState extends State<AppPhoneField> {
           ),
         );
 
-        if (!hasError) return input;
-
+        // Always the Column, never the bare box — see the note on the same
+        // line in [AppTextField]. Swapping the two shapes as the field went
+        // valid or invalid rebuilt the TextField underneath and dropped the
+        // keyboard mid-number.
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
-          children: [input, AppFieldError(state.errorText!)],
+          children: [
+            input,
+            if (hasError) AppFieldError(state.errorText!),
+          ],
         );
       },
     );

@@ -8,6 +8,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filter_options.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
@@ -258,6 +259,7 @@ class _FoundFilterSheetState extends State<FoundFilterSheet> {
                             'Filters',
                             style: TextStyle(
                               color: ext.greetingColor,
+                              fontFamily: AppTypography.displayFontFamily,
                               fontSize: 18.sp,
                               fontWeight: FontWeight.w700,
                             ),

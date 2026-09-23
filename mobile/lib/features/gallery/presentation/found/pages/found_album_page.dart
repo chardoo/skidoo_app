@@ -7,6 +7,7 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
 import 'package:jperg_app/features/gallery/presentation/found/bloc/found_album_bloc.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
@@ -163,6 +164,7 @@ class _FoundAlbumViewState extends State<_FoundAlbumView> {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
             fontWeight: FontWeight.w600,
           ),

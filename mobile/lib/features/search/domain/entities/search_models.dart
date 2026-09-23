@@ -1,22 +1,32 @@
 import 'package:equatable/equatable.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
-/// The three result lists a query fans out into. The wire value is the `type`
+/// The four result lists a query fans out into. The wire value is the `type`
 /// query parameter of `GET /client/search/results`; `all` is not a member
 /// because it is never a *selected* chip — it is the shape of the first
-/// request, which fills all three sections at once.
+/// request, which fills all four sections at once.
+///
+/// Declaration order is chip order, left to right, and the order
+/// [SearchAllResults.firstNonEmptyType] opens a query on — so Events stays
+/// first and People sits with the other people.
 enum SearchResultType {
   events,
   photographers,
+  users,
   tags;
 
   /// `type=` value on the wire.
   String get wire => name;
 
   /// Chip label, matching the design.
+  ///
+  /// `users` reads "People", not "Users": the chip sits next to
+  /// "Photographers", which is also a kind of user, and the pair only tells
+  /// you anything if one of them names the person rather than the account.
   String get label => switch (this) {
         SearchResultType.events => 'Events',
         SearchResultType.photographers => 'Photographers',
+        SearchResultType.users => 'People',
         SearchResultType.tags => 'Tags',
       };
 }
@@ -262,6 +272,74 @@ class SearchPhotographerRow extends Equatable {
       ];
 }
 
+// ── User ──────────────────────────────────────────────────────────────────────
+
+/// A row in the People section — somebody using the app who is not a creator.
+///
+/// Deliberately thinner than [SearchPhotographerRow]: no specialties, no
+/// studio, no event count. Those are a creator's shopfront, and printing them
+/// empty on a person would read as a half-finished profile rather than as
+/// somebody who simply isn't selling anything.
+class SearchUserRow extends Equatable {
+  const SearchUserRow({
+    required this.id,
+    required this.name,
+    required this.username,
+    required this.profileUrl,
+    required this.bio,
+    required this.location,
+    required this.isVerified,
+    required this.followerCount,
+    required this.isFollowedByMe,
+  });
+
+  final String id;
+  final String name;
+
+  /// The `@handle`, and empty when the account has none.
+  ///
+  /// The server withholds it rather than sending the raw column: `uiqueName`
+  /// doubles as the face-recognition person id and is usually just the email,
+  /// which is not something to print under somebody's name.
+  final String username;
+  final String profileUrl;
+  final String bio;
+  final String location;
+  final bool isVerified;
+  final int followerCount;
+
+  /// Always false for a signed-out viewer.
+  final bool isFollowedByMe;
+
+  factory SearchUserRow.fromJson(Map<String, dynamic> json) {
+    return SearchUserRow(
+      id: SearchJson.str(json, ['id']),
+      name: SearchJson.str(json, ['name', 'userName']),
+      username: SearchJson.str(json, ['username']),
+      profileUrl: SearchJson.avatar(json),
+      bio: SearchJson.str(json, ['bio']),
+      location: SearchJson.str(json, ['location']),
+      isVerified: SearchJson.boolOf(
+          json['verified_by_admin'] ?? json['verifiedByAdmin']),
+      followerCount: SearchJson.intOf(json['followerCount']),
+      isFollowedByMe: SearchJson.boolOf(json['isFollowedByMe']),
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        id,
+        name,
+        username,
+        profileUrl,
+        bio,
+        location,
+        isVerified,
+        followerCount,
+        isFollowedByMe,
+      ];
+}
+
 // ── Event ─────────────────────────────────────────────────────────────────────
 
 /// A row in the Events section, and the header of the event-photos screen.
@@ -422,28 +500,36 @@ class SearchTagRow extends Equatable {
 
 /// The `counts` block — one number per chip.
 class SearchCounts extends Equatable {
-  const SearchCounts({this.events = 0, this.photographers = 0, this.tags = 0});
+  const SearchCounts({
+    this.events = 0,
+    this.photographers = 0,
+    this.users = 0,
+    this.tags = 0,
+  });
 
   final int events;
   final int photographers;
+  final int users;
   final int tags;
 
   factory SearchCounts.fromJson(Map<String, dynamic> json) => SearchCounts(
         events: SearchJson.intOf(json['events']),
         photographers: SearchJson.intOf(json['photographers']),
+        users: SearchJson.intOf(json['users']),
         tags: SearchJson.intOf(json['tags']),
       );
 
   int of(SearchResultType type) => switch (type) {
         SearchResultType.events => events,
         SearchResultType.photographers => photographers,
+        SearchResultType.users => users,
         SearchResultType.tags => tags,
       };
 
   static const zero = SearchCounts();
 
   @override
-  List<Object?> get props => [events, photographers, tags];
+  List<Object?> get props => [events, photographers, users, tags];
 }
 
 /// `type=all` — every section at once, each capped at a screenful.
@@ -454,6 +540,7 @@ class SearchAllResults extends Equatable {
     required this.total,
     required this.events,
     required this.photographers,
+    required this.users,
     required this.tags,
   });
 
@@ -464,6 +551,7 @@ class SearchAllResults extends Equatable {
   final int total;
   final List<SearchEventRow> events;
   final List<SearchPhotographerRow> photographers;
+  final List<SearchUserRow> users;
   final List<SearchTagRow> tags;
 
   factory SearchAllResults.fromJson(Map<String, dynamic> json) {
@@ -471,6 +559,7 @@ class SearchAllResults extends Equatable {
     final events = _rows(json['events'], SearchEventRow.fromJson);
     final photographers =
         _rows(json['photographers'], SearchPhotographerRow.fromJson);
+    final users = _rows(json['users'], SearchUserRow.fromJson);
     final tags = _rows(json['tags'], SearchTagRow.fromJson);
     return SearchAllResults(
       query: SearchJson.str(json, ['query']),
@@ -478,9 +567,10 @@ class SearchAllResults extends Equatable {
       // Falls back to the rows actually delivered, so a missing `total` shows
       // results rather than the empty state.
       total: SearchJson.intOrNull(json['total']) ??
-          (events.length + photographers.length + tags.length),
+          (events.length + photographers.length + users.length + tags.length),
       events: events,
       photographers: photographers,
+      users: users,
       tags: tags,
     );
   }
@@ -496,6 +586,7 @@ class SearchAllResults extends Equatable {
   List<Object> _rowsOf(SearchResultType type) => switch (type) {
         SearchResultType.events => events,
         SearchResultType.photographers => photographers,
+        SearchResultType.users => users,
         SearchResultType.tags => tags,
       };
 
@@ -513,12 +604,13 @@ class SearchAllResults extends Equatable {
     total: 0,
     events: [],
     photographers: [],
+    users: [],
     tags: [],
   );
 
   @override
   List<Object?> get props =>
-      [query, counts, total, events, photographers, tags];
+      [query, counts, total, events, photographers, users, tags];
 }
 
 /// `GET /client/search/tags/{tag}` — the events behind one tag row.

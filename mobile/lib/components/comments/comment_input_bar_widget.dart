@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/widgets/emoji_panel.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 
@@ -11,7 +10,12 @@ import 'package:jperg_app/core/theme/app_icons.dart';
 ///
 /// Accepts [replyingToName] as a plain string (no model dependency).
 /// When non-null, a gold reply banner is shown above the text field.
-class CommentInputBarWidget extends StatefulWidget {
+///
+/// No emoji button. Every keyboard this app runs under has one of its own, so
+/// a second door to the same picker cost a button beside the field, a panel
+/// that had to be opened by taking focus off the composer, and a keyboard that
+/// closed and reopened as the two traded places.
+class CommentInputBarWidget extends StatelessWidget {
   const CommentInputBarWidget({
     super.key,
     required this.controller,
@@ -45,40 +49,14 @@ class CommentInputBarWidget extends StatefulWidget {
   final VoidCallback? onCancelEdit;
 
   @override
-  State<CommentInputBarWidget> createState() => _CommentInputBarWidgetState();
-}
-
-class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
-  bool _emojiOpen = false;
-
-  void _toggleEmoji() {
-    setState(() => _emojiOpen = !_emojiOpen);
-    if (_emojiOpen) {
-      widget.focusNode.unfocus();
-    } else {
-      widget.focusNode.requestFocus();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final ext = widget.ext;
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Emoji panel — rendered as sibling ABOVE the input row so it is
-        //    never clipped by the parent sheet or obscured by the keyboard.
-        if (_emojiOpen)
-          EmojiPickerPanel(
-            ext: ext,
-            onEmojiSelected: (emoji) => insertEmoji(widget.controller, emoji),
-          ),
-
         // ── Editing / reply banner ───────────────────────────────────────────
         // Never both: loading a comment in for editing clears any staged reply,
         // which would otherwise be attached to nothing once the edit applies.
-        if (widget.editingContent != null)
+        if (editingContent != null)
           Container(
             padding: EdgeInsets.fromLTRB(16.w, 8.h, 8.w, 8.h),
             decoration: BoxDecoration(
@@ -111,7 +89,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                       // this is the only thing on screen that still says what
                       // is being changed.
                       Text(
-                        widget.editingContent!,
+                        editingContent!,
                         style: TextStyle(
                           color: ext.searchHintColor,
                           fontSize: 12.sp,
@@ -127,14 +105,14 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                     button: true,
                     label: 'Cancel edit',
                     child: GestureDetector(
-                      onTap: widget.onCancelEdit,
+                      onTap: onCancelEdit,
                       child: AppSvgIcon(AppIcons.closeMd,
                           size: 16.sp, color: ext.searchHintColor),
                     )),
               ],
             ),
           )
-        else if (widget.replyingToName != null)
+        else if (replyingToName != null)
           Container(
             padding: EdgeInsets.fromLTRB(16.w, 8.h, 8.w, 8.h),
             decoration: BoxDecoration(
@@ -151,7 +129,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                 SizedBox(width: 6.w),
                 Expanded(
                   child: Text(
-                    'Replying to ${widget.replyingToName}',
+                    'Replying to $replyingToName',
                     style: TextStyle(
                       color: ext.accentGold,
                       fontSize: 12.sp,
@@ -166,7 +144,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                     button: true,
                     label: 'Cancel reply',
                     child: GestureDetector(
-                      onTap: widget.onCancelReply,
+                      onTap: onCancelReply,
                       child: AppSvgIcon(AppIcons.closeMd,
                           size: 16.sp, color: ext.searchHintColor),
                     )),
@@ -194,41 +172,29 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // ── Emoji button ─────────────────────────────────────────────
-              EmojiButton(
-                isOpen: _emojiOpen,
-                onToggle: _toggleEmoji,
-                ext: ext,
-                iconSize: 20.sp,
-              ),
-              SizedBox(width: AppSpacing.xs.w),
-
               // ── Text field ────────────────────────────────────────────────
               Expanded(
                 child: CallbackShortcuts(
                   bindings: <ShortcutActivator, VoidCallback>{
                     const SingleActivator(LogicalKeyboardKey.enter,
-                        shift: false): widget.onSend,
+                        shift: false): onSend,
                     const SingleActivator(LogicalKeyboardKey.numpadEnter,
-                        shift: false): widget.onSend,
+                        shift: false): onSend,
                   },
                   child: AppTextField(
-                    controller: widget.controller,
-                    focusNode: widget.focusNode,
-                    onTap: () {
-                      if (_emojiOpen) setState(() => _emojiOpen = false);
-                    },
+                    controller: controller,
+                    focusNode: focusNode,
                     maxLines: 4,
                     minLines: 1,
                     textCapitalization: TextCapitalization.sentences,
                     dense: true,
                     borderRadius: 22.r,
-                    hint: widget.editingContent != null
+                    hint: editingContent != null
                         ? 'Edit your comment…'
-                        : widget.replyingToName != null
+                        : replyingToName != null
                             ? 'Write a reply…'
                             : 'Add a comment…',
-                    onFieldSubmitted: (_) => widget.onSend(),
+                    onFieldSubmitted: (_) => onSend(),
                   ),
                 ),
               ),
@@ -239,9 +205,9 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                 cursor: SystemMouseCursors.click,
                 child: Semantics(
                     button: true,
-                    label: widget.editingContent != null ? 'Save edit' : 'Send',
+                    label: editingContent != null ? 'Save edit' : 'Send',
                     child: GestureDetector(
-                      onTap: widget.onSend,
+                      onTap: onSend,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 150),
                         width: 42.w,
@@ -265,7 +231,7 @@ class _CommentInputBarWidgetState extends State<CommentInputBarWidget> {
                         // A check rather than a plane while editing: nothing
                         // new is being sent.
                         child: Icon(
-                            widget.editingContent != null
+                            editingContent != null
                                 ? Icons.check_rounded
                                 : Icons.send_rounded,
                             color: Colors.white,

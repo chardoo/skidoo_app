@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/ads/data/models/booking_model.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 
@@ -175,6 +176,7 @@ class _QuoteComposerSheetState extends State<QuoteComposerSheet> {
                     widget.previous == null ? 'Create Quote' : 'Revise Quote',
                     style: TextStyle(
                       color: ext.greetingColor,
+                      fontFamily: AppTypography.displayFontFamily,
                       fontSize: 20.sp,
                       fontWeight: FontWeight.w700,
                     ),

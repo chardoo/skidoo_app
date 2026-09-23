@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 
 /// "Found photos" title with the running match count on the right.
 ///
@@ -32,6 +33,7 @@ class FoundHeader extends StatelessWidget {
             'Found photos',
             style: TextStyle(
               color: ext.greetingColor,
+              fontFamily: AppTypography.displayFontFamily,
               fontSize: 20.sp,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.2,

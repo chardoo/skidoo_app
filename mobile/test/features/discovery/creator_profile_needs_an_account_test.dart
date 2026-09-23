@@ -49,24 +49,24 @@ class _FakeLoginBloc extends Bloc<LoginEvent, LoginState> implements LoginBloc {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-/// Loads the real Poppins metrics.
+/// Loads the real DM Sans metrics.
 ///
 /// The default test font gives every glyph the same square advance, roughly
-/// double Poppins' width — enough to overflow the login sheet's "Don't have an
+/// double DM Sans' width — enough to overflow the login sheet's "Don't have an
 /// account? Sign up" row on a phone-width surface. That is an artefact of the
 /// font, not something the sheet does on a device, and it would fail these
 /// tests for a reason that has nothing to do with what they assert.
-Future<void> loadPoppins() async {
-  final loader = FontLoader(Styles.fontFamily);
+Future<void> loadBodyFont() async {
+  final loader = FontLoader(Styles.bodyFontFamily);
   for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
     loader.addFont(Future.value(ByteData.sublistView(
-        File('assets/fonts/Poppins-$weight.ttf').readAsBytesSync())));
+        File('assets/fonts/DMSans-$weight.ttf').readAsBytesSync())));
   }
   await loader.load();
 }
 
 void main() {
-  setUpAll(loadPoppins);
+  setUpAll(loadBodyFont);
 
   /// Signed in or out, as far as anything asking [AuthService] can tell.
   void signedIn(bool value) {
@@ -109,7 +109,7 @@ void main() {
           theme: ThemeData.dark().copyWith(
             // The real font, so the sheet measures the way it does on a phone.
             textTheme: ThemeData.dark().textTheme.apply(
-                  fontFamily: Styles.fontFamily,
+                  fontFamily: Styles.bodyFontFamily,
                 ),
             extensions: [AppThemeExtension.dark],
           ),

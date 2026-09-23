@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 
 /// Left-aligned title + subtitle copy block for a single onboarding slide.
 class OnboardingCopySection extends StatelessWidget {
@@ -21,6 +22,7 @@ class OnboardingCopySection extends StatelessWidget {
           title,
           style: TextStyle(
             color: Colors.white,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 26.sp,
             fontWeight: FontWeight.w700,
             height: 1.2,

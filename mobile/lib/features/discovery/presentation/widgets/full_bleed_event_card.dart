@@ -245,11 +245,23 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   /// every third photo after that, and the last photo of the album — which for
   /// a single-photo post is the first one, and has to be, or that post would
   /// have no way into the viewer at all now that a tap belongs to the chrome.
+  ///
+  /// The last-photo rule is a fallback, for an album that does not end on a
+  /// multiple of [_exploreEvery]. It used to fire regardless, so an album of
+  /// four put the offer on the third photo *and* on the fourth: the reader
+  /// swiped once and met the same pill again, which reads as the app repeating
+  /// itself rather than as an offer. Every length of `n % 3 == 1` did it — 4,
+  /// 7, 10 — which is why it looked intermittent.
+  ///
+  /// So the fallback stands down when the photo before this one already made
+  /// the offer. A single photo is the one case that has no photo before it,
+  /// and it keeps the offer.
   bool get _showExploreCta {
     final pics = widget.event.pictures;
     if (pics.isEmpty) return false;
-    if (_mediaIndex == pics.length - 1) return true;
-    return (_mediaIndex + 1) % _exploreEvery == 0;
+    if ((_mediaIndex + 1) % _exploreEvery == 0) return true;
+    if (_mediaIndex != pics.length - 1) return false;
+    return _mediaIndex == 0 || _mediaIndex % _exploreEvery != 0;
   }
 
   /// What the offer says, which depends on what is behind it.

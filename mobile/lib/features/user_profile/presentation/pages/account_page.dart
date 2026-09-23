@@ -8,6 +8,7 @@ import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/common/widgets/app_confirm_dialog.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/settings/data/profile_options.dart';
@@ -144,6 +145,7 @@ class _AccountView extends StatelessWidget {
                             state.name,
                             style: TextStyle(
                               color: ext.greetingColor,
+                              fontFamily: AppTypography.displayFontFamily,
                               fontSize: 22.sp,
                               fontWeight: FontWeight.bold,
                             ),

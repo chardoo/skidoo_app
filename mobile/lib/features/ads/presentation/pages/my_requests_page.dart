@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -384,6 +385,7 @@ class _MyRequestsPageState extends State<MyRequestsPage>
                 'My Requests',
                 style: TextStyle(
                   color: ext.greetingColor,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 17.sp,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.3,
@@ -887,6 +889,7 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
                   'Edit Request',
                   style: TextStyle(
                     color: ext.greetingColor,
+                    fontFamily: AppTypography.displayFontFamily,
                     fontSize: 20.sp,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.4,

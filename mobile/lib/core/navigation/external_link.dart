@@ -6,6 +6,7 @@ import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -110,6 +111,7 @@ class ExternalLink {
                   "You're leaving the app",
                   style: TextStyle(
                     color: ext.greetingColor,
+                    fontFamily: AppTypography.displayFontFamily,
                     fontSize: 17.sp,
                     fontWeight: FontWeight.w700,
                   ),

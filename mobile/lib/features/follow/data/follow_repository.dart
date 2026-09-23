@@ -285,6 +285,34 @@ class FollowRepository {
     }
   }
 
+  // ── Following somebody who is not a creator ──────────────────────────────
+  //
+  // Same two endpoints under a different type segment, and deliberately *not*
+  // routed through [follow] / [unfollow] above: those maintain [_followedIds],
+  // which is the set of creators the feed hands the recommender to boost with.
+  // A person you follow is not a creator whose events should float up the feed,
+  // and putting their id in that set would ask the recommender to boost events
+  // they do not have.
+  //
+  // So these have no session cache, and the profile screen holds the button's
+  // state itself — the server already told it `isFollowedByMe` when it opened.
+
+  /// POST /follow/client/{id} — follow an app user who is not a creator.
+  Future<void> followClient(String userId) async {
+    if (userId.isEmpty) return;
+    debugPrint('$_tag followClient → userId=$userId');
+    final resp = await _dio.post('/follow/client/$userId');
+    debugPrint('$_tag followClient ← status=${resp.statusCode}');
+  }
+
+  /// DELETE /follow/client/{id}
+  Future<void> unfollowClient(String userId) async {
+    if (userId.isEmpty) return;
+    debugPrint('$_tag unfollowClient → userId=$userId');
+    final resp = await _dio.delete('/follow/client/$userId');
+    debugPrint('$_tag unfollowClient ← status=${resp.statusCode}');
+  }
+
   // ── Suggested creators ───────────────────────────────────────────────────
 
   /// GET /client/photographers/suggested — recommended creators to follow,

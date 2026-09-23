@@ -7,10 +7,11 @@ import 'package:jperg_app/features/search/presentation/bloc/search_bloc.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_event_row_tile.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_photographer_row_tile.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_tag_row_tile.dart';
+import 'package:jperg_app/features/search/presentation/widgets/search_user_row_tile.dart';
 
 /// The rows of whichever chip is active, plus the paging spinner.
 ///
-/// One list rather than three: only the row widget changes with the chip, so
+/// One list rather than four: only the row widget changes with the chip, so
 /// padding, the paging footer and the scroll behaviour are defined once.
 class SearchResultsList extends StatelessWidget {
   const SearchResultsList({
@@ -18,12 +19,14 @@ class SearchResultsList extends StatelessWidget {
     required this.state,
     required this.onEventTap,
     required this.onPhotographerTap,
+    required this.onUserTap,
     required this.onTagTap,
   });
 
   final SearchState state;
   final ValueChanged<SearchEventRow> onEventTap;
   final ValueChanged<SearchPhotographerRow> onPhotographerTap;
+  final ValueChanged<SearchUserRow> onUserTap;
   final ValueChanged<SearchTagRow> onTagTap;
 
   List<Widget> _rows() => switch (state.activeType) {
@@ -41,6 +44,14 @@ class SearchResultsList extends StatelessWidget {
                 key: ValueKey('photographer_${photographer.id}'),
                 photographer: photographer,
                 onTap: () => onPhotographerTap(photographer),
+              ),
+          ],
+        SearchResultType.users => [
+            for (final user in state.users.items)
+              SearchUserRowTile(
+                key: ValueKey('user_${user.id}'),
+                user: user,
+                onTap: () => onUserTap(user),
               ),
           ],
         SearchResultType.tags => [

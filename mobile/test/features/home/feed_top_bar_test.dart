@@ -40,7 +40,7 @@ Widget topHost(Widget child) => ScreenUtilInit(
       designSize: const Size(390, 844),
       builder: (_, __) => MaterialApp(
         theme: ThemeData(
-          fontFamily: Styles.fontFamily,
+          fontFamily: Styles.bodyFontFamily,
           extensions: const [AppThemeExtension.dark],
         ),
         home: Scaffold(
@@ -51,17 +51,17 @@ Widget topHost(Widget child) => ScreenUtilInit(
       ),
     );
 
-/// Loads the real Poppins metrics.
+/// Loads the real DM Sans metrics.
 ///
 /// The default test font gives every glyph the same square advance, so a bold
 /// label and a medium one measure identically — which is exactly the difference
 /// the layout-shift test needs to see. Without the real font that test passes
 /// no matter what the widget does.
-Future<void> loadPoppins() async {
-  final loader = FontLoader(Styles.fontFamily);
+Future<void> loadBodyFont() async {
+  final loader = FontLoader(Styles.bodyFontFamily);
   for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
     loader.addFont(Future.value(ByteData.sublistView(
-        File('assets/fonts/Poppins-$weight.ttf').readAsBytesSync())));
+        File('assets/fonts/DMSans-$weight.ttf').readAsBytesSync())));
   }
   await loader.load();
 }
@@ -88,8 +88,8 @@ Color labelColour(WidgetTester t, String label) =>
 void main() {
   // Real metrics for every test in the file: the bar's layout is driven by how
   // wide the labels actually are, and the test font's square glyphs make them
-  // roughly twice Poppins' width — wide enough to change what fits.
-  setUpAll(loadPoppins);
+  // roughly twice DM Sans' width — wide enough to change what fits.
+  setUpAll(loadBodyFont);
 
   setUp(() {
     final view = TestWidgetsFlutterBinding.ensureInitialized()

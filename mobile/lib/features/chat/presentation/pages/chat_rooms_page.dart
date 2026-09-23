@@ -5,6 +5,7 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
@@ -66,6 +67,7 @@ class _ChatRoomsView extends StatelessWidget {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 18.sp,
           ),
         ),
@@ -78,7 +80,8 @@ class _ChatRoomsView extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'New chat',
-            icon: Icon(Icons.edit_square, color: ext.accentGold, size: 20.sp),
+            icon: AppSvgIcon(AppIcons.edit,
+                color: ext.greetingColor, size: 22.sp),
             onPressed: () => _openNewChat(context),
           ),
           SizedBox(width: AppSpacing.xs.w),
@@ -454,6 +457,7 @@ class _EmptyInbox extends StatelessWidget {
               'No messages yet!',
               style: TextStyle(
                 color: ext.greetingColor,
+                fontFamily: AppTypography.displayFontFamily,
                 fontSize: 16.sp,
                 fontWeight: FontWeight.bold,
               ),

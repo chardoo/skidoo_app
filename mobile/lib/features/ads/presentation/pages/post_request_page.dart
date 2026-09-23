@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/validators/validators.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
@@ -137,6 +138,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
           'Post a Request',
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 17.sp,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.3,

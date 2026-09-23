@@ -6,6 +6,7 @@ import 'package:jperg_app/core/common/widgets/xfile_image.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
@@ -330,7 +331,10 @@ class _NewRequestStepState extends State<_NewRequestStep> {
       builder: (dialogContext) => AlertDialog(
         backgroundColor: ext.cardSurface,
         title: Text(title,
-            style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
+            style: TextStyle(
+                fontFamily: AppTypography.displayFontFamily,
+                color: ext.greetingColor,
+                fontSize: 16.sp)),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -801,6 +805,7 @@ class _PublishedStep extends StatelessWidget {
                 'Your request is live!',
                 style: TextStyle(
                   color: ext.greetingColor,
+                  fontFamily: AppTypography.displayFontFamily,
                   fontSize: 20.sp,
                   fontWeight: FontWeight.w700,
                 ),
@@ -875,6 +880,7 @@ PreferredSizeWidget _stepBar(
         style: TextStyle(
           color: ext.greetingColor,
           fontWeight: FontWeight.w700,
+          fontFamily: AppTypography.displayFontFamily,
           fontSize: 16.sp,
         ),
       ),

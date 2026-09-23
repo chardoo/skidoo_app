@@ -7,6 +7,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/validators/validators.dart';
 import 'package:jperg_app/features/auth/domain/usecases/request_password_reset_usecase.dart';
 import 'package:jperg_app/features/auth/presentation/pages/verify_reset_code_page.dart';
@@ -90,6 +91,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                       'Reset your password',
                       style: TextStyle(
                         color: ext.greetingColor,
+                        fontFamily: AppTypography.displayFontFamily,
                         fontSize: 26.sp,
                         fontWeight: FontWeight.w700,
                       ),

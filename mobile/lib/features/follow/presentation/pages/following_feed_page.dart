@@ -5,6 +5,7 @@ import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/ads/presentation/feed_promos.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/feed_item_card.dart';
@@ -342,6 +343,7 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
           'Following',
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 17.sp,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.3,

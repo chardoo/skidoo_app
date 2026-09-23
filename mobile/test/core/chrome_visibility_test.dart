@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/navigation/chrome_visibility.dart';
+import 'package:jperg_app/core/navigation/feed_chrome.dart';
 
 /// Reading further collapses the chrome; coming back up restores it.
 ///
@@ -145,6 +146,43 @@ void main() {
     }
 
     expect(notifications, 1);
+  });
+
+  // ── Summoned chrome arrives at full size ───────────────────────────────────
+  //
+  // The two notifiers answer different questions and are moved by different
+  // gestures, so they drift apart exactly where the second gesture undoes the
+  // first: read down far enough to narrow the bar, tap the photo to send it
+  // away, tap again to bring it back. It came back narrowed, and there was
+  // nothing left to scroll to widen it.
+  group('a tap that summons the bar', () {
+    setUp(FeedChrome.hide);
+    tearDown(() {
+      FeedChrome.hide();
+      ChromeVisibility.reset();
+    });
+
+    test('brings it back at full size, not as bare icons', () {
+      ChromeVisibility.handle(_scroll(80));
+      expect(ChromeVisibility.expanded.value, isFalse);
+
+      FeedChrome.toggle();
+
+      expect(FeedChrome.visible.value, isTrue);
+      expect(ChromeVisibility.expanded.value, isTrue);
+    });
+
+    test('sending it away does not resize it on the way out', () {
+      // The bar sliding off screen is the one that should slide back, and a
+      // resize mid-exit is visible.
+      FeedChrome.show();
+      ChromeVisibility.handle(_scroll(80));
+      expect(ChromeVisibility.expanded.value, isFalse);
+
+      FeedChrome.hide();
+
+      expect(ChromeVisibility.expanded.value, isFalse);
+    });
   });
 }
 

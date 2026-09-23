@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/features/follow/presentation/widgets/suggested_creators_list.dart';
 import 'package:jperg_app/core/common/widgets/app_section_label.dart';
@@ -47,6 +48,7 @@ class FeedSuggestionsCard extends StatelessWidget {
               'Creators you might like',
               style: TextStyle(
                 color: ext.greetingColor,
+                fontFamily: AppTypography.displayFontFamily,
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w700,
               ),

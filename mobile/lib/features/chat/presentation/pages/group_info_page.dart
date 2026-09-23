@@ -13,6 +13,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_media_limits.dart';
@@ -50,6 +51,7 @@ class GroupInfoPage extends StatelessWidget {
           style: TextStyle(
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 17.sp,
           ),
         ),
@@ -390,6 +392,7 @@ class _GroupHeaderState extends State<_GroupHeader> {
           room.displayName,
           style: TextStyle(
             color: ext.greetingColor,
+            fontFamily: AppTypography.displayFontFamily,
             fontSize: 19.sp,
             fontWeight: FontWeight.bold,
           ),

@@ -105,22 +105,34 @@ void main() {
   });
 
   group('the veil strength', () {
-    // It used to be 33% in dark and 70% in light. At 70% the veil is opaque
-    // enough to erase what it sits on, so the light-mode backdrop stopped
-    // reading as the photo's colour and became a flat pale slab.
-    test('is the same in both themes, and leaves the backdrop visible', () {
-      final dark = AppThemeExtension.dark.mediaBackdropVeil;
-      final light = AppThemeExtension.light.mediaBackdropVeil;
-
-      expect(dark.a, closeTo(light.a, 0.02),
-          reason: 'themes should differ in colour, not in strength');
-      for (final veil in [dark, light]) {
+    // Both themes were briefly pinned to 50%, which was the right fix for
+    // light (it had been 70%, opaque enough to erase what it sat on) and the
+    // wrong one for dark: it took the black wash up from a third and the feed
+    // — which forces the dark palette whatever the app is set to — started
+    // reading as a photo on a grey ground rather than on its own light.
+    test('never erases the backdrop it is knocking back', () {
+      for (final veil in [
+        AppThemeExtension.dark.mediaBackdropVeil,
+        AppThemeExtension.light.mediaBackdropVeil,
+      ]) {
         expect(veil.a, lessThan(0.6),
             reason: 'past ~60% the veil erases the backdrop instead of '
                 'knocking it back');
-        expect(veil.a, greaterThan(0.35),
+        expect(veil.a, greaterThan(0.2),
             reason: 'below this the backdrop competes with the real image');
       }
+    });
+
+    test('is lighter in dark mode, where black has less work to do', () {
+      final dark = AppThemeExtension.dark.mediaBackdropVeil;
+      final light = AppThemeExtension.light.mediaBackdropVeil;
+
+      // Black over a blurred photo only has to dim something already dim. A
+      // pale wash has to lift a mid-to-dark photo to a light page before the
+      // surround belongs there, so it is the heavier of the two.
+      expect(dark.a, lessThan(light.a));
+      expect(dark.a, closeTo(0.33, 0.05),
+          reason: 'a third settles the backdrop without greying the feed');
     });
   });
 }

@@ -102,10 +102,17 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   /// Wash laid over the blurred cover-fit copy of a photo that fills those
   /// bands, so the backdrop doesn't compete with the sharp image on top.
   ///
-  /// Half in both themes: past roughly that the veil stops knocking the
-  /// backdrop back and starts erasing it, which leaves a flat slab rather than
-  /// the photo's own light. The two differ in colour, not in strength — black
-  /// in dark mode, the page's own background in light.
+  /// Past roughly 60 % the veil stops knocking the backdrop back and starts
+  /// erasing it, which leaves a flat slab rather than the photo's own light.
+  ///
+  /// The two themes differ in colour *and* in strength, because they are not
+  /// doing the same job. Black over a blurred photo darkens what is already
+  /// dim, so a third is enough to settle it behind the sharp image; a pale
+  /// wash has to lift a mid-to-dark photo all the way to a light page before
+  /// the surround belongs there, and needs half to do it. Matching the two
+  /// numbers is what made the feed's surround read as a grey ground — the
+  /// feed forces the dark palette (see [DarkMediaSurface]), so it wears the
+  /// dark veil whatever the app is set to.
   final Color mediaBackdropVeil;
 
   /// Values sampled directly from the Jperg product designs (folders 1 and 4).
@@ -143,7 +150,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     glassIcon:   Color(0xB3FFFFFF), // white 70 %
     glassHint:   Color(0x8CFFFFFF), // white 55 %
     mediaLetterbox:    Color(0xFF000000),
-    mediaBackdropVeil: Color(0x80000000), // black 50 %
+    mediaBackdropVeil: Color(0x55000000), // black 33 %
   );
 
   /// The same warm-neutral system inverted, sampled from the light designs in
@@ -182,9 +189,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     // The page background itself, so a letterboxed photo sits on the same
     // surface as the rest of the app rather than in a black box.
     mediaLetterbox:    Color(0xFFF7F7F2),
-    // 50 %, matching dark mode. It was 70 %, which is opaque enough to erase
-    // what it sits on: the backdrop stopped reading as the photo's own colour
-    // and became a flat pale slab, so in light mode the feature was effectively
+    // Heavier than dark mode's third, and deliberately so: a pale wash has to
+    // carry a mid-to-dark photo all the way to a light page, where black only
+    // has to dim one. It was 70 %, which is opaque enough to erase what it
+    // sits on — the backdrop stopped reading as the photo's own colour and
+    // became a flat pale slab, so in light mode the feature was effectively
     // off. Half lets the colour through while keeping it well behind the sharp
     // image. Tune here — it is the one knob for the whole feed.
     mediaBackdropVeil: Color(0x80F7F7F2), // background 50 %

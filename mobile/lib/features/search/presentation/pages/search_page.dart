@@ -15,8 +15,9 @@ import 'package:jperg_app/features/search/presentation/widgets/search_idle_view.
 import 'package:jperg_app/features/search/presentation/widgets/search_results_list.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_top_bar.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_type_chips.dart';
+import 'package:jperg_app/features/user_profile/presentation/utils/open_public_profile.dart';
 
-/// One text box over three result types, with the photo grid that fills the
+/// One text box over four result types, with the photo grid that fills the
 /// idle state behind it.
 ///
 /// Everything server-side lives in [SearchBloc] / `GET /client/search/*`: the
@@ -155,6 +156,21 @@ class _SearchViewState extends State<_SearchView> {
     );
   }
 
+  void _openUser(SearchUserRow user) {
+    _rememberQuery();
+    _focusNode.unfocus();
+    // Not [openPhotographerProfile]: a person is a different screen, and the
+    // creator profile would open on a portfolio, rates and reviews that this
+    // account has none of. See [PublicProfilePage].
+    openPublicProfile(
+      context,
+      userId: user.id,
+      userName: user.name,
+      userProfileUrl: user.profileUrl.isEmpty ? null : user.profileUrl,
+      username: user.username,
+    );
+  }
+
   void _openTag(SearchTagRow tag) {
     _rememberQuery();
     _focusNode.unfocus();
@@ -248,6 +264,7 @@ class _SearchViewState extends State<_SearchView> {
       state: state,
       onEventTap: _openEvent,
       onPhotographerTap: _openPhotographer,
+      onUserTap: _openUser,
       onTagTap: _openTag,
     );
   }

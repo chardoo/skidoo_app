@@ -306,12 +306,27 @@ class _AppTextFieldState extends State<AppTextField> {
               )
             : field;
 
-        if (!hasError) return input;
-
+        // The Column is here whether or not there is a message to put in it.
+        //
+        // It used to be returned only in the error case, with the bare box
+        // returned otherwise — so the widget under [FormField] changed runtime
+        // type every time the field went valid or invalid. Flutter matches a
+        // rebuilt child by type, so each flip threw away the element holding
+        // this TextField and built another, and a new [EditableText] means a
+        // new connection to the platform text input with the old one closing
+        // under it. On a device that is the keyboard dropping — once when the
+        // first character makes a password too short, again when it is long
+        // enough, on every field of a form that validates as you type.
+        //
+        // Keeping the Column keeps [input] at child 0 across the flip, so the
+        // field is updated in place and only the message comes and goes.
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
-          children: [input, AppFieldError(state.errorText!)],
+          children: [
+            input,
+            if (hasError) AppFieldError(state.errorText!),
+          ],
         );
       },
     );

@@ -8,12 +8,40 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 ///
 /// Getters (not `const`) because `.sp` depends on the runtime screen size
 /// via flutter_screenutil, same as every inline `TextStyle` in the app
-/// today. Font family/color are intentionally left off — family comes from
-/// `ThemeData.fontFamily` (Poppins, set once), and color varies by
-/// light/dark theme, so callers apply it via `.copyWith(color: ext.xxx)`,
-/// e.g. `AppTypography.body.copyWith(color: ext.greetingColor)`.
+/// today.
+///
+/// The scale is also where the brand's two typefaces are split. The header
+/// tiers — [title], [headline], [display] — carry Syne explicitly; every
+/// other tier leaves the family off and so inherits DM Sans from
+/// `ThemeData.fontFamily`. That is the whole reason a header should be
+/// spelled `AppTypography.title` rather than a hand-typed `TextStyle`: an
+/// inline style silently gets body type, which on a page title is wrong.
+///
+/// Color is still left off everywhere, because it varies by light/dark theme
+/// — callers apply it via `.copyWith(color: ext.xxx)`, e.g.
+/// `AppTypography.body.copyWith(color: ext.greetingColor)`.
 class AppTypography {
   const AppTypography._();
+
+  /// The two brand typefaces — see the `fonts:` block in pubspec.yaml.
+  /// Declared as plain strings rather than via `GoogleFonts.xxx()` so the app
+  /// never depends on a CDN fetch to render its own typeface.
+  ///
+  /// [bodyFontFamily] is the app-wide default, set once as
+  /// `ThemeData.fontFamily`, so every `TextStyle` that names no family
+  /// inherits it — which is the ~800 inline styles carrying body text, and
+  /// the right answer for all of them.
+  ///
+  /// [displayFontFamily] has to be named, because a hand-typed `TextStyle`
+  /// has no way to know it is a header. It appears on the header tiers below,
+  /// on the AppBar title in [Styles], and on the inline styles that draw a
+  /// page/sheet/section title or a hero line — grep for it to see the set.
+  /// Anything that is not a header must leave the family off: a body style
+  /// that names [bodyFontFamily] is saying the same thing twice, and a
+  /// number, a price, an avatar initial or a button label set in Syne is
+  /// simply wrong.
+  static const String displayFontFamily = 'Syne';
+  static const String bodyFontFamily = 'DM Sans';
 
   /// 9sp / w600 — tiny badge text (unread counts, micro tags).
   static TextStyle get micro => TextStyle(
@@ -65,25 +93,34 @@ class AppTypography {
       );
 
   /// 15sp / w600 — card/list-item subtitles, secondary headings.
+  ///
+  /// Body type, not Syne: this tier sits inside dense lists next to [caption]
+  /// and [body], and a display face at this size reads as noise rather than
+  /// hierarchy. A card heading that should be Syne wants [title].
   static TextStyle get subtitle => TextStyle(
         fontSize: 15.sp,
         fontWeight: FontWeight.w600,
       );
 
-  /// 17sp / w700 — page titles, app bar titles.
+  // ── Header tiers — Syne ────────────────────────────────────────────────
+
+  /// 17sp / w700 — page titles, app bar titles, event titles.
   static TextStyle get title => TextStyle(
+        fontFamily: displayFontFamily,
         fontSize: 17.sp,
         fontWeight: FontWeight.w700,
       );
 
   /// 20sp / w800 — section headlines within a page.
   static TextStyle get headline => TextStyle(
+        fontFamily: displayFontFamily,
         fontSize: 20.sp,
         fontWeight: FontWeight.w800,
       );
 
   /// 26sp / w700 — hero/display text (onboarding, empty states, splash).
   static TextStyle get display => TextStyle(
+        fontFamily: displayFontFamily,
         fontSize: 26.sp,
         fontWeight: FontWeight.w700,
       );

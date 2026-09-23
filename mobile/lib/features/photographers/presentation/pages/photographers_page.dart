@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -61,6 +62,7 @@ class _PhotographersPageState extends State<PhotographersPage> {
               style: TextStyle(
                 color: ext.greetingColor,
                 fontWeight: FontWeight.bold,
+                fontFamily: AppTypography.displayFontFamily,
                 fontSize: 20.sp,
               ),
             ),

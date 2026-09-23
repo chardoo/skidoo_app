@@ -88,6 +88,16 @@ class FakeSearchRepository implements SearchRepository {
   }
 
   @override
+  Future<SearchSectionPage<SearchUserRow>> searchUsers(
+    String query, {
+    int page = 1,
+    int limit = 25,
+  }) async {
+    calls.add('users:$query:$page');
+    return const SearchSectionPage(items: [], pagination: SearchPagination());
+  }
+
+  @override
   Future<SearchSectionPage<SearchTagRow>> searchTags(
     String query, {
     int page = 1,
@@ -306,6 +316,7 @@ void main() {
         total: 30,
         events: [for (var i = 0; i < 10; i++) event(i)],
         photographers: const [],
+        users: const [],
         tags: const [],
       );
       repo.eventPages[1] = SearchSectionPage(
@@ -399,6 +410,7 @@ void main() {
         total: 1,
         events: [event(99)],
         photographers: const [],
+        users: const [],
         tags: const [],
       );
       bloc.add(const SearchRequested.query('Genesis'));
@@ -433,6 +445,7 @@ void main() {
         total: 4,
         events: [event(0), event(1)],
         photographers: [photographer(0), photographer(1)],
+        users: const [],
         tags: const [],
       );
 
