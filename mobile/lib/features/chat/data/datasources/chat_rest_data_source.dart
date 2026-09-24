@@ -503,7 +503,9 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         '/chat/rooms/direct',
         data: jsonEncode({
           'recipient_id': recipientId,
-          'recipient_role': recipientRole,
+          // Translated, not passed through: the app says "client" where the
+          // service says "user" — see [ChatConfig.wireRole].
+          'recipient_role': ChatConfig.wireRole(recipientRole),
           // Let the chat service store the recipient's name (it has no user
           // table to look it up). The app knows it (DMing from a profile/
           // search), so the DM shows the right name instead of null.
@@ -567,7 +569,9 @@ class ChatRestDataSourceImpl implements ChatRestDataSource {
         '/chat/rooms/$roomId/invite',
         queryParameters: {
           'invitee_id': inviteeId,
-          'invitee_role': inviteeRole,
+          // Same translation the DM path needs — inviting an ordinary account
+          // to a group hit the identical 422. See [ChatConfig.wireRole].
+          'invitee_role': ChatConfig.wireRole(inviteeRole),
           // Server stores the invitee's name so it shows before they connect.
           if (inviteeName != null && inviteeName.trim().isNotEmpty)
             'invitee_name': inviteeName.trim(),

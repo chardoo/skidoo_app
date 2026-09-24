@@ -6,9 +6,27 @@ class ChatConfig {
   static const String restBaseUrl = 'https://photoapp-backend-ka5m.onrender.com';
   static const String wsBaseUrl = 'https://photoapp-backend-ka5m.onrender.com';
 
-  /// Roles recognised by the chat service.
+  /// What the app calls the two kinds of account.
+  ///
+  /// The app's own word, used everywhere in its code and its models. It is
+  /// *not* what goes on the wire for a non-photographer — see [wireRole].
   static const String roleClient = 'client';
   static const String rolePhotographer = 'photographer';
+
+  /// The same role in the chat service's vocabulary.
+  ///
+  /// Two names for one thing: an ordinary account is a "client" here and a
+  /// "user" there — which is also what the JWT says, and what every role check
+  /// in that service compares against. Sending the app's word straight through
+  /// meant `POST /chat/rooms/direct` answered 422 for every recipient who was
+  /// not a photographer, so starting a DM with an ordinary account failed while
+  /// messaging a photographer worked.
+  ///
+  /// One line at the boundary rather than renaming the constant: the app's word
+  /// is what its own screens, models and stored sessions are full of, and the
+  /// place the two vocabularies meet is the request.
+  static String wireRole(String role) =>
+      role == rolePhotographer ? rolePhotographer : 'user';
 
   /// Default page size for message history.
   static const int messagePageSize = 30;
