@@ -191,7 +191,7 @@ class _SuggestionCard extends StatelessWidget {
                             style: TextStyle(
                               color: ext.greetingColor,
                               fontSize: 15.sp,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                           SizedBox(height: 2.h),
@@ -242,7 +242,7 @@ class _SuggestionCard extends StatelessWidget {
                     : Text(
                         following ? 'Following' : 'Follow',
                         style: TextStyle(
-                            fontSize: 12.sp, fontWeight: FontWeight.w600),
+                            fontSize: 12.sp, fontWeight: FontWeight.w500),
                       ),
               ),
             ),

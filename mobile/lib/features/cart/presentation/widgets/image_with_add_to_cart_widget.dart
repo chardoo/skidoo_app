@@ -54,7 +54,7 @@ class ImageWithAddToCartWidget extends StatelessWidget {
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 10.sp,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),

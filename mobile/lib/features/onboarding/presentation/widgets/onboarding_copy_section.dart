@@ -23,7 +23,7 @@ class OnboardingCopySection extends StatelessWidget {
           style: TextStyle(
             color: Colors.white,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 26.sp,
+            fontSize: 24.sp,
             fontWeight: FontWeight.w700,
             height: 1.2,
           ),

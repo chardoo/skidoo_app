@@ -113,7 +113,7 @@ class CommentItemWidget extends StatelessWidget {
                                         ? ext.accentGold
                                         : ext.greetingColor),
                                 fontWeight: FontWeight.w700,
-                                fontSize: 13.sp,
+                                fontSize: 14.sp,
                                 decoration: canChat
                                     ? TextDecoration.underline
                                     : TextDecoration.none,
@@ -141,7 +141,7 @@ class CommentItemWidget extends StatelessWidget {
                   Text(
                     data.content,
                     style: TextStyle(
-                        color: ext.greetingColor, fontSize: 13.sp, height: 1.3),
+                        color: ext.greetingColor, fontSize: 14.sp, height: 1.3),
                   ),
 
                   // ── Heart, count, Reply ──────────────────────────────
@@ -192,7 +192,7 @@ class CommentItemWidget extends StatelessWidget {
                                         style: TextStyle(
                                           color: ext.searchHintColor,
                                           fontSize: 12.sp,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ],
@@ -214,7 +214,7 @@ class CommentItemWidget extends StatelessWidget {
                                   style: TextStyle(
                                     color: ext.searchHintColor,
                                     fontSize: 12.sp,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),

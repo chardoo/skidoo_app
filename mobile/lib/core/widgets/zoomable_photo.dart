@@ -26,9 +26,29 @@ class ZoomableArea extends StatefulWidget {
     this.onZoomChanged,
     this.isActive = true,
     this.resetToken,
+    this.overlayBuilder,
   });
 
   final Widget child;
+
+  /// Drawn over the photo and handed the live zoom, for a mark that has to
+  /// survive being zoomed into.
+  ///
+  /// Two things about where this sits, and both are the point:
+  ///
+  ///  * It is **outside** the transform, so it is never panned. Inside, the
+  ///    overlay travels with the photograph, and at 4× in a corner it is
+  ///    somewhere off the visible window — pinch, pan, screenshot, and the
+  ///    paid photo is clean.
+  ///  * It is given the **scale** anyway, so it can grow with the zoom. A mark
+  ///    pinned at a fixed size covers a quarter as much of the photograph at
+  ///    4× as it does at rest, because the window is showing a quarter as
+  ///    much photograph; growing it back keeps the share it covers roughly
+  ///    constant, which is what makes a zoomed screenshot no cleaner than an
+  ///    unzoomed one.
+  ///
+  /// Rebuilt on its own as the zoom changes — the host above is not touched.
+  final Widget Function(BuildContext context, double scale)? overlayBuilder;
 
   final double maxScale;
 
@@ -153,8 +173,9 @@ class _ZoomableAreaState extends State<ZoomableArea>
   @override
   Widget build(BuildContext context) {
     final doubleTap = widget.onTap == null;
+    final overlayBuilder = widget.overlayBuilder;
 
-    return InteractiveViewer(
+    final viewer = InteractiveViewer(
       transformationController: _transform,
       minScale: 1.0,
       maxScale: widget.maxScale,
@@ -170,6 +191,31 @@ class _ZoomableAreaState extends State<ZoomableArea>
         onDoubleTap: doubleTap ? _handleDoubleTap : null,
         child: widget.child,
       ),
+    );
+
+    if (overlayBuilder == null) return viewer;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        viewer,
+        // Ignores pointers, so the photo keeps every gesture it had: the
+        // overlay is something to look at, never something to interact with.
+        Positioned.fill(
+          child: IgnorePointer(
+            // Driven straight off the transformation controller — it is a
+            // ValueNotifier<Matrix4>, so this rebuilds the overlay and only
+            // the overlay, every frame of a pinch.
+            child: AnimatedBuilder(
+              animation: _transform,
+              builder: (context, _) => overlayBuilder(
+                context,
+                _transform.value.getMaxScaleOnAxis(),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -202,6 +248,7 @@ class ZoomablePhoto extends StatelessWidget {
     this.isActive = true,
     this.maxScale = 4.0,
     this.errorWidget,
+    this.overlayBuilder,
   });
 
   final String imageUrl;
@@ -226,6 +273,11 @@ class ZoomablePhoto extends StatelessWidget {
 
   final Widget Function(BuildContext, String, dynamic)? errorWidget;
 
+  /// Drawn over the photo, scaled with the zoom — see
+  /// [ZoomableArea.overlayBuilder]. It covers the photo's own box rather than
+  /// the screen, so it sits on the photograph and not on the letterbox.
+  final Widget Function(BuildContext context, double scale)? overlayBuilder;
+
   @override
   Widget build(BuildContext context) {
     return ResolvedAspect(
@@ -237,6 +289,7 @@ class ZoomablePhoto extends StatelessWidget {
         isActive: isActive,
         maxScale: maxScale,
         resetToken: imageUrl,
+        overlayBuilder: overlayBuilder,
         child: Center(
           child: AspectRatio(
             aspectRatio: aspect,

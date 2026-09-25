@@ -168,7 +168,7 @@ class _MediaRailActionState extends State<MediaRailAction>
                   style: TextStyle(
                     color: widget.labelColor ?? Colors.white,
                     fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     // Same treatment as the glyph above it, so the pair reads
                     // as one control rather than a sharp number under a soft
                     // icon.

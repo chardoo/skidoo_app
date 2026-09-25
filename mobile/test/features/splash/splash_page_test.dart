@@ -8,10 +8,14 @@ import 'package:jperg_app/features/splash/presentation/pages/splash_page.dart';
 /// Three things were wrong with it, and all three were about the seam between
 /// the brand screen and the app:
 ///
-///  1. The animation never finished. It runs 108 frames summing to 3.6 s and
+///  1. The animation never finished. It ran 108 frames summing to 3.6 s and
 ///     the page left after 1.2 s, which is frame 40: the mark half-drawn, no
 ///     dot, and the word "jperg" not started. A brand animation cut before its
-///     own last frame is worse than no animation.
+///     own last frame is worse than no animation. (The fix was to hold for the
+///     whole cut; the cut has since been re-timed to 1.8 s, because holding
+///     for 3.6 s of it made opening the app feel broken in the other
+///     direction. The floor and the file are kept equal by
+///     `splash_asset_test.dart` — the numbers below are that 1.8 s.)
 ///  2. The artwork was the light cut, on a cream field, while every screen
 ///     behind it is black. Opening the app flashed white and then went dark.
 ///  3. It handed over as soon as the feed's *data* was in, which is not the
@@ -91,10 +95,10 @@ void main() {
     testWidgets('says nothing while the animation is still playing',
         (t) async {
       await t.pumpWidget(_host());
-      await t.pump(const Duration(milliseconds: 1500));
+      await t.pump(const Duration(milliseconds: 1700));
 
-      // The animation *is* the loading state for its own three seconds. A
-      // second thing moving over it is two things asking for attention.
+      // The animation *is* the loading state while it runs. A second thing
+      // moving over it is two things asking for attention.
       expect(dots(t), isEmpty);
 
       await drain(t);
@@ -102,8 +106,8 @@ void main() {
 
     testWidgets('and speaks up once it has finished', (t) async {
       await t.pumpWidget(_host());
-      await t.pump(const Duration(milliseconds: 3300));
-      await t.pump(const Duration(milliseconds: 500));
+      await t.pump(const Duration(milliseconds: 1700));
+      await t.pump(const Duration(milliseconds: 200));
 
       // Three dots under the wordmark — the app still working, said in the
       // register the rest of the screen is in.
@@ -115,7 +119,7 @@ void main() {
 
   testWidgets('it never shows a blank black screen on the way out', (t) async {
     await t.pumpWidget(_host());
-    await t.pump(const Duration(milliseconds: 3300));
+    await t.pump(const Duration(milliseconds: 1700));
 
     // The artwork is still painted at full opacity right up to the moment the
     // destination replaces it. Fading it out first would leave the scaffold's
@@ -125,7 +129,8 @@ void main() {
     // Asked of the artwork's own ancestors rather than of everything under the
     // page: the waiting dots fade themselves in from zero, and a search for any
     // `AnimatedOpacity` at zero finds *those* whenever the assertion lands
-    // before they appear. Which it now does — the floor is the full 3.6 s — so
+    // before they appear. Which it now does — the assertion lands inside the
+    // floor, with the dots still at zero — so
     // the broad version passed only for as long as the two happened not to
     // overlap, and was never checking the thing it says it is.
     final fadingArtwork = t

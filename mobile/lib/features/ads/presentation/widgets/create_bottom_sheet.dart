@@ -89,8 +89,7 @@ class CreateBottomSheet extends StatelessWidget {
                   color: ext.greetingColor,
                   fontFamily: AppTypography.displayFontFamily,
                   fontSize: 22.sp,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               SizedBox(height: AppSpacing.xs.h),
@@ -98,7 +97,7 @@ class CreateBottomSheet extends StatelessWidget {
                 'What would you like to post?',
                 style: TextStyle(
                   color: ext.searchHintColor,
-                  fontSize: 13.sp,
+                  fontSize: 14.sp,
                 ),
               ),
               SizedBox(height: AppSpacing.xl.h),
@@ -238,7 +237,7 @@ class _CreateOption extends StatelessWidget {
                               style: TextStyle(
                                 color: ext.greetingColor,
                                 fontSize: 15.sp,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w700,
                                 letterSpacing: -0.2,
                               ),
                             ),

@@ -360,7 +360,7 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                           style: TextStyle(
                             color: ext.greetingColor,
                             fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -475,7 +475,7 @@ class _EditProfileCardState extends State<_EditProfileCard> {
                                 : ext.searchHintColor,
                             fontSize: 12.sp,
                             fontWeight:
-                                selected ? FontWeight.w600 : FontWeight.w400,
+                                selected ? FontWeight.w500 : FontWeight.w400,
                           ),
                           side: BorderSide(
                             color: selected
@@ -577,7 +577,7 @@ class _ProfileDropdownState extends State<_ProfileDropdown> {
     return InputDecorator(
       decoration: InputDecoration(
         labelText: widget.label,
-        labelStyle: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+        labelStyle: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
         prefixIcon: Icon(widget.icon, color: ext.searchHintColor, size: 18.sp),
         filled: true,
         fillColor: ext.homeBackground,
@@ -659,7 +659,7 @@ class _PhotographerPortfolioCard extends StatelessWidget {
                   style: TextStyle(
                     color: ext.searchHintColor,
                     fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     letterSpacing: 0.8,
                   ),
                 ),
@@ -711,7 +711,7 @@ class _ThemeToggleCard extends StatelessWidget {
                   style: TextStyle(
                     color: ext.searchHintColor,
                     fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     letterSpacing: 0.8,
                   ),
                 ),
@@ -777,7 +777,7 @@ class _PublicationSettingsCard extends StatelessWidget {
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 letterSpacing: 0.8,
               ),
             ),
@@ -880,7 +880,7 @@ class _PrivacySettingsCard extends StatelessWidget {
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 letterSpacing: 0.8,
               ),
             ),
@@ -992,7 +992,7 @@ class _NotificationSettingsCard extends StatelessWidget {
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 letterSpacing: 0.8,
               ),
             ),
@@ -1192,7 +1192,7 @@ class _NotificationCategoriesCardState
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 letterSpacing: 0.8,
               ),
             ),
@@ -1202,7 +1202,7 @@ class _NotificationCategoriesCardState
               contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
               title: Text(
                 'Could not load your settings.',
-                style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+                style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
               ),
               trailing: TextButton(
                 onPressed: _load,
@@ -1414,7 +1414,7 @@ class _AdsCard extends StatelessWidget {
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 letterSpacing: 0.8,
               ),
             ),
@@ -1516,7 +1516,7 @@ class _FaceRecognitionCardState extends State<_FaceRecognitionCard> {
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 letterSpacing: 0.8,
               ),
             ),
@@ -1594,7 +1594,7 @@ class _ConnectionsCard extends StatelessWidget {
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 letterSpacing: 0.8,
               ),
             ),

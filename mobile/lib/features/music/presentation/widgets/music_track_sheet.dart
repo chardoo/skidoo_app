@@ -114,7 +114,6 @@ class MusicTrackSheet extends StatelessWidget {
                   fontFamily: AppTypography.displayFontFamily,
                   fontSize: 22.sp,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
                 ),
               ),
               if (track.artist.isNotEmpty) ...[

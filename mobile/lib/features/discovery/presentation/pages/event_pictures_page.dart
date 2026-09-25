@@ -136,7 +136,6 @@ class _EventPicturesPageState extends State<EventPicturesPage> {
                 fontWeight: FontWeight.w700,
                 fontFamily: AppTypography.displayFontFamily,
                 fontSize: 16.sp,
-                letterSpacing: -0.3,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

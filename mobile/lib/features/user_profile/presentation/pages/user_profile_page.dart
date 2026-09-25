@@ -695,7 +695,7 @@ class _Header extends StatelessWidget {
                     initial,
                     style: TextStyle(
                       color: ext.avatarForeground,
-                      fontSize: 26.sp,
+                      fontSize: 24.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -761,7 +761,7 @@ class _Stat extends StatelessWidget {
           style: TextStyle(
             color: ext.greetingColor,
             fontSize: 18.sp,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             letterSpacing: -0.3,
           ),
         ),

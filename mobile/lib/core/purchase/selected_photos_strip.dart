@@ -47,7 +47,7 @@ class SelectedPhotosStrip extends StatelessWidget {
                 style: TextStyle(
                   color: ext.greetingColor,
                   fontSize: 15.sp,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -60,7 +60,7 @@ class SelectedPhotosStrip extends StatelessWidget {
                   style: TextStyle(
                     color: ext.accentGold,
                     fontSize: 14.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),

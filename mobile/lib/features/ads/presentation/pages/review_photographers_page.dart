@@ -503,7 +503,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(body, style: TextStyle(fontSize: 13.sp, height: 1.4)),
+              Text(body, style: TextStyle(fontSize: 14.sp, height: 1.4)),
               SizedBox(height: AppSpacing.md.h),
               TextField(
                 controller: controller,
@@ -943,7 +943,7 @@ class _ReviewPrompt extends StatelessWidget {
             'find great photographers.',
             style: TextStyle(
               color: ext.searchHintColor,
-              fontSize: 13.sp,
+              fontSize: 14.sp,
               height: 1.4,
             ),
           ),
@@ -1042,7 +1042,7 @@ class _RequestCard extends StatelessWidget {
                 style: TextStyle(
                   color: active ? ext.accentGold : ext.searchHintColor,
                   fontSize: 11.sp,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -1088,8 +1088,8 @@ class _SectionHeader extends StatelessWidget {
           text,
           style: TextStyle(
             color: ext.searchHintColor,
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w500,
           ),
         ),
       );

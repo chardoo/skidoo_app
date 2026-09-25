@@ -99,7 +99,7 @@ class ExploreEventCta extends StatelessWidget {
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 14.sp,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   shadows: _legibility,
                 ),
               ),

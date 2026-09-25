@@ -34,9 +34,8 @@ class FoundHeader extends StatelessWidget {
             style: TextStyle(
               color: ext.greetingColor,
               fontFamily: AppTypography.displayFontFamily,
-              fontSize: 20.sp,
+              fontSize: 18.sp,
               fontWeight: FontWeight.w700,
-              letterSpacing: -0.2,
             ),
           ),
         ),
@@ -45,8 +44,8 @@ class FoundHeader extends StatelessWidget {
             '$count found',
             style: TextStyle(
               color: ext.accentGold,
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w600,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w500,
             ),
           ),
       ],

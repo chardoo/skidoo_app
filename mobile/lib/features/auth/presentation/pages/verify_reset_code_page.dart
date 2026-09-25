@@ -215,7 +215,7 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
                     style: TextStyle(
                       color: ext.greetingColor,
                       fontFamily: AppTypography.displayFontFamily,
-                      fontSize: 26.sp,
+                      fontSize: 24.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -263,7 +263,7 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
                               filled ? digits[i] : '',
                               style: TextStyle(
                                 color: ext.greetingColor,
-                                fontSize: 20.sp,
+                                fontSize: 18.sp,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -376,8 +376,8 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
                                   color: _resendIn > Duration.zero
                                       ? ext.searchHintColor
                                       : ext.accentGold,
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                       ),

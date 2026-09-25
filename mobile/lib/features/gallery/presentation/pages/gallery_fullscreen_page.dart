@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
@@ -126,7 +125,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 14.sp,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               if (total > 1)
@@ -254,39 +253,31 @@ class _ZoomablePhoto extends StatelessWidget {
       );
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        ZoomablePhoto(
-          imageUrl: photo.url,
-          knownAspect: photo.aspectRatio,
-          semanticLabel: 'Photo',
-          onTap: onTap,
-          onZoomChanged: onZoomChanged,
-          isActive: isActive,
-          errorWidget: (_, __, ___) => Center(
-            child: Icon(
-              Icons.broken_image_outlined,
-              color: ext.searchHintColor,
-              size: 64.sp,
-            ),
-          ),
+    // This is the biggest the photo ever gets, and it was the one copy
+    // carrying no mark — the grid tile had it, the stage had it, and opening
+    // the picture took it away. It rides on the zoom rather than inside it,
+    // so panning at 4× cannot leave it off-screen, and it grows with the zoom
+    // so magnifying the photograph does not shrink the mark's share of it.
+    return ZoomablePhoto(
+      imageUrl: photo.url,
+      knownAspect: photo.aspectRatio,
+      semanticLabel: 'Photo',
+      onTap: onTap,
+      onZoomChanged: onZoomChanged,
+      isActive: isActive,
+      overlayBuilder: (_, scale) => PaidPhotoWatermark(
+        price: photo.price,
+        isPurchased: photo.isPurchased,
+        scale: scale,
+        child: const SizedBox.expand(),
+      ),
+      errorWidget: (_, __, ___) => Center(
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: ext.searchHintColor,
+          size: 64.sp,
         ),
-
-        // This is the biggest the photo ever gets, and it was the one copy
-        // carrying no mark — the grid tile had it, the stage had it, and
-        // opening the picture took it away. Over the zoom rather than inside
-        // it, so panning at 4x cannot leave it off-screen.
-        Positioned.fill(
-          child: IgnorePointer(
-            child: PaidPhotoWatermark(
-              price: photo.price,
-              isPurchased: photo.isPurchased,
-              child: const SizedBox.expand(),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

@@ -64,7 +64,7 @@ class EventMoreOptionsSheet extends StatelessWidget {
                   'Hide event',
                   style: TextStyle(
                     color: ext.greetingColor,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     fontSize: 15.sp,
                   ),
                 ),
@@ -97,7 +97,7 @@ class EventMoreOptionsSheet extends StatelessWidget {
                   'Report event',
                   style: TextStyle(
                     color: Colors.redAccent,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     fontSize: 15.sp,
                   ),
                 ),

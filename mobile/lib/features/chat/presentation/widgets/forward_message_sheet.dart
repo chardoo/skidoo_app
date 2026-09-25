@@ -183,7 +183,7 @@ class _ForwardMessageSheetState extends State<ForwardMessageSheet> {
                               ? 'Loading…'
                               : 'No conversations to forward to',
                           style: TextStyle(
-                              color: ext.searchHintColor, fontSize: 13.sp),
+                              color: ext.searchHintColor, fontSize: 14.sp),
                         ),
                       )
                     : ListView.builder(
@@ -202,7 +202,7 @@ class _ForwardMessageSheetState extends State<ForwardMessageSheet> {
                               style: TextStyle(
                                 color: ext.greetingColor,
                                 fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w500,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

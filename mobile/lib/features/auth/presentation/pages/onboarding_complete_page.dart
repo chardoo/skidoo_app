@@ -94,7 +94,7 @@ class _ScanningCard extends StatelessWidget {
             Flexible(
               child: Text(
                 'Scanning event photos…',
-                style: TextStyle(color: ext.greetingColor, fontSize: 13.sp),
+                style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
               ),
             ),
           ],

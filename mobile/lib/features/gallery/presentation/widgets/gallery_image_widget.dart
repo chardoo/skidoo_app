@@ -111,7 +111,7 @@ class GalleryImageWidget extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     letterSpacing: 0.2,
                     shadows: const [
                       Shadow(blurRadius: 4, color: Colors.black87),

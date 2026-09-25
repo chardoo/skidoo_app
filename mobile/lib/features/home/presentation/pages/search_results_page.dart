@@ -310,7 +310,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                                         .searchResultsFindingMore,
                                     style: TextStyle(
                                         color: ext.searchHintColor,
-                                        fontSize: 13.sp),
+                                        fontSize: 14.sp),
                                   ),
                                 ],
                               ),
@@ -378,8 +378,8 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                       : AppLocalizations.of(context)!.searchResultsSelectAll,
                   style: TextStyle(
                     color: ext.accentGold,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               );
@@ -415,8 +415,8 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
                 AppLocalizations.of(context)!.searchResultsSelect,
                 style: TextStyle(
                     color: ext.accentGold,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600),
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500),
               ),
             );
           },
@@ -813,7 +813,7 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
             style: TextStyle(
                 color: ext.greetingColor,
                 fontSize: 15.sp,
-                fontWeight: FontWeight.w600),
+                fontWeight: FontWeight.w500),
           ),
           SizedBox(height: AppSpacing.sm.h),
           Text(AppLocalizations.of(context)!.searchResultsMayTakeAMoment,
@@ -994,7 +994,7 @@ class _ActionButton extends StatelessWidget {
                             label,
                             style: TextStyle(
                               color: textColor,
-                              fontSize: 13.sp,
+                              fontSize: 14.sp,
                               fontWeight: FontWeight.w700,
                             ),
                             overflow: TextOverflow.ellipsis,

@@ -28,7 +28,7 @@ class SearchTagRowTile extends StatelessWidget {
             '#',
             style: TextStyle(
               color: ext.searchHintColor,
-              fontSize: 20.sp,
+              fontSize: 18.sp,
               fontWeight: FontWeight.w500,
             ),
           ),

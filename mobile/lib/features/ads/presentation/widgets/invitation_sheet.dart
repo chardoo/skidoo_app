@@ -107,8 +107,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
                     color: ext.greetingColor,
                     fontFamily: AppTypography.displayFontFamily,
                     fontSize: 18.sp,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 SizedBox(height: 4.h),
@@ -121,7 +120,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
                   "request. We'll share your profile and contact details with "
                   'them.',
                   style: TextStyle(
-                    color: ext.searchHintColor, fontSize: 13.sp, height: 1.45,
+                    color: ext.searchHintColor, fontSize: 14.sp, height: 1.45,
                   ),
                 ),
                 SizedBox(height: AppSpacing.lg.h),
@@ -129,8 +128,8 @@ class _InvitationSheetState extends State<InvitationSheet> {
                   'Additional message (optional)',
                   style: TextStyle(
                     color: ext.greetingColor,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 SizedBox(height: AppSpacing.sm.h),
@@ -190,7 +189,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
                       child: Text(
                         'Withdraw my interest',
                         style: TextStyle(
-                          color: ext.errorRed, fontSize: 13.sp,
+                          color: ext.errorRed, fontSize: 14.sp,
                         ),
                       ),
                     ),

@@ -140,7 +140,7 @@ class PhotographerTile extends StatelessWidget {
                                   style: TextStyle(
                                     color: ext.accentGold,
                                     fontSize: 12.sp,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),

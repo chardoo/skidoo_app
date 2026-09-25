@@ -226,7 +226,7 @@ class _EmojiCellState extends State<_EmojiCell> {
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(6.r),
           ),
-          child: Text(widget.emoji, style: TextStyle(fontSize: 20.sp)),
+          child: Text(widget.emoji, style: TextStyle(fontSize: 18.sp)),
         ),
       )),
     );

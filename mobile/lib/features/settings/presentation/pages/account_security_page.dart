@@ -12,6 +12,7 @@ import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/portfolio_edit_page.dart';
 import 'package:jperg_app/features/settings/data/account_settings_api.dart';
+import 'package:jperg_app/features/settings/presentation/pages/change_password_page.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
@@ -83,9 +84,8 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
   }
 
   Future<void> _changePassword() async {
-    final changed = await showDialog<bool>(
-      context: context,
-      builder: (_) => const _ChangePasswordDialog(),
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const ChangePasswordPage()),
     );
     if (changed == true && mounted) {
       AppSnackBar.success(context, 'Password updated.');
@@ -287,13 +287,13 @@ class _BecomeCreator extends StatelessWidget {
                 children: [
                   Text('•  ',
                       style: TextStyle(
-                          color: ext.searchHintColor, fontSize: 13.sp)),
+                          color: ext.searchHintColor, fontSize: 14.sp)),
                   Expanded(
                     child: Text(
                       line,
                       style: TextStyle(
                           color: ext.searchHintColor,
-                          fontSize: 13.sp,
+                          fontSize: 14.sp,
                           height: 1.4),
                     ),
                   ),
@@ -324,88 +324,3 @@ class _BecomeCreator extends StatelessWidget {
   }
 }
 
-/// Current password, new password, done — the shape the endpoint asks for.
-class _ChangePasswordDialog extends StatefulWidget {
-  const _ChangePasswordDialog();
-
-  @override
-  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
-}
-
-class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
-  final _current = TextEditingController();
-  final _next = TextEditingController();
-  bool _busy = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _current.dispose();
-    _next.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      await sl<Api>().dio.patch('/client/account/password', data: {
-        'current_password': _current.text,
-        'new_password': _next.text,
-      });
-      if (mounted) Navigator.of(context).pop(true);
-    } on dio.DioException catch (err) {
-      // The server says which of the two it objected to — the current password
-      // being wrong reads very differently from the new one being too weak.
-      final message = err.response?.data?['error']?['message'];
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error =
-            message is String ? message : 'Could not change your password.';
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Change password'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _current,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Current password'),
-          ),
-          SizedBox(height: AppSpacing.md.h),
-          TextField(
-            controller: _next,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'New password'),
-          ),
-          if (_error != null) ...[
-            SizedBox(height: AppSpacing.md.h),
-            Text(
-              _error!,
-              style: TextStyle(color: const Color(0xFFB00020), fontSize: 12.sp),
-            ),
-          ],
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: _busy ? null : _submit,
-          child: Text(_busy ? 'Saving…' : 'Save'),
-        ),
-      ],
-    );
-  }
-}

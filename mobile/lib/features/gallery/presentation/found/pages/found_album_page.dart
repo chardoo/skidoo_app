@@ -166,7 +166,7 @@ class _FoundAlbumViewState extends State<_FoundAlbumView> {
             color: ext.greetingColor,
             fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
@@ -225,7 +225,7 @@ class _FoundAlbumViewState extends State<_FoundAlbumView> {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: ext.searchHintColor,
-                                  fontSize: 13.sp,
+                                  fontSize: 14.sp,
                                 ),
                               ),
                             ),

@@ -421,7 +421,7 @@ class _CreatorProfilePageState extends State<CreatorProfilePage> {
                       _p.bio!,
                       style: TextStyle(
                         color: ext.searchHintColor,
-                        fontSize: 13.sp,
+                        fontSize: 14.sp,
                         height: 1.45,
                       ),
                     ),
@@ -585,9 +585,8 @@ class _IdentityRow extends StatelessWidget {
                         style: TextStyle(
                           color: ext.greetingColor,
                           fontFamily: AppTypography.displayFontFamily,
-                          fontSize: 17.sp,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.3,
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -897,7 +896,7 @@ class _Empty extends StatelessWidget {
       child: Center(
         child: Text(
           text,
-          style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+          style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
         ),
       ),
     );
@@ -1098,8 +1097,8 @@ class _ReviewsPreview extends StatelessWidget {
                       'View all ${data.count} reviews  \u2192',
                       style: TextStyle(
                         color: ext.accentGold,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -1214,7 +1213,7 @@ class _CreatorEventsTabState extends State<CreatorEventsTab> {
           children: [
             Text(
               'Could not load events.',
-              style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+              style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
             ),
             TextButton(
               onPressed: _loadMore,
@@ -1272,8 +1271,8 @@ class _CreatorEventsTabState extends State<CreatorEventsTab> {
                             event.eventName,
                             style: TextStyle(
                               color: ext.greetingColor,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14.sp,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -1292,7 +1291,7 @@ class _CreatorEventsTabState extends State<CreatorEventsTab> {
             onPressed: _loading ? null : _loadMore,
             child: Text(
               _loading ? 'Loading…' : 'Show more',
-              style: TextStyle(color: ext.accentGold, fontSize: 13.sp),
+              style: TextStyle(color: ext.accentGold, fontSize: 14.sp),
             ),
           ),
       ],

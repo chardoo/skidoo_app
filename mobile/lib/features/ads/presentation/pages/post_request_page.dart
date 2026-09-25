@@ -139,9 +139,8 @@ class _PostRequestPageState extends State<PostRequestPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 17.sp,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w700,
           ),
         ),
         centerTitle: false,
@@ -217,7 +216,7 @@ class _PostRequestPageState extends State<PostRequestPage> {
                   style: TextStyle(
                     color: ext.searchHintColor,
                     fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -381,7 +380,7 @@ class _MultiMediaPicker extends StatelessWidget {
                           style: TextStyle(
                             color: ext.searchHintColor,
                             fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -545,7 +544,7 @@ class _SubmitButton extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 15.sp,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       letterSpacing: 0.2,
                     ),
                   ),
@@ -640,7 +639,7 @@ class _VisibleToChip extends StatelessWidget {
               label,
               style: TextStyle(
                 color: selected ? ext.accentGold : ext.searchHintColor,
-                fontSize: 13.sp,
+                fontSize: 14.sp,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),

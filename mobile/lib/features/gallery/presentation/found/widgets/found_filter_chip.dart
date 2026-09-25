@@ -66,8 +66,8 @@ class FoundFilterChip extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: foreground,
-                  fontSize: 13.sp,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 14.sp,
+                  fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
                 ),
               ),
               if (count != null) ...[
@@ -104,7 +104,7 @@ class FoundFilterGroupLabel extends StatelessWidget {
       style: TextStyle(
         color: ext.searchHintColor,
         fontSize: 11.sp,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
         letterSpacing: 0.6,
       ),
     );

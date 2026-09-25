@@ -44,7 +44,7 @@ class _ExpandableCaptionState extends State<ExpandableCaption> {
     final linkStyle = widget.linkStyle ??
         widget.style.copyWith(
           color: widget.style.color?.withValues(alpha: 0.6),
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
         );
 
     return LayoutBuilder(

@@ -28,7 +28,7 @@ class PhotographerRatingRow extends StatelessWidget {
           r > 0 ? '${r.toStringAsFixed(1)} / 5.0' : 'No rating yet',
           style: TextStyle(
             color: r > 0 ? ext.greetingColor : ext.searchHintColor,
-            fontSize: 13.sp,
+            fontSize: 14.sp,
             fontWeight: FontWeight.w500,
           ),
         ),

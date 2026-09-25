@@ -131,6 +131,20 @@ class FoundPhotoStage extends StatelessWidget {
                         isActive: isActive,
                         resetToken: photo.id,
                         onZoomChanged: onZoomChanged,
+                        // The mark, over the zoom rather than inside it, and
+                        // growing with it. Inside, it travelled with the
+                        // photograph, so at 4× in a corner the logo was off
+                        // the visible window — pinch, pan, screenshot, and the
+                        // paid photo was clean. Pinned but held at one size it
+                        // was still beatable: the window shows a quarter as
+                        // much picture at 4×, so the mark covered a quarter as
+                        // much of it. This one is pinned *and* scales.
+                        overlayBuilder: (_, scale) => PaidPhotoWatermark(
+                          price: photo.price,
+                          isPurchased: photo.isPurchased,
+                          scale: scale,
+                          child: const SizedBox.expand(),
+                        ),
                         child: JpergImage(
                           imageUrl: photo.url,
                           // Identical to `cover` once the box is the photo's own
@@ -151,25 +165,10 @@ class FoundPhotoStage extends StatelessWidget {
                         ),
                       ),
 
-                    // The mark, over the zoom rather than inside it.
-                    //
-                    // Inside, it scaled with the photograph, which looked
-                    // better and was a hole: the viewer pans within the
-                    // photo's own bounds, so at 4x in a corner the logo is
-                    // somewhere off the visible window — pinch, pan, screenshot,
-                    // and the paid photo is clean. Fixed to the box it is in
-                    // every frame at every zoom. Video is not marked, so this
-                    // sits on the same branch as the image.
-                    if (!photo.isVideo)
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: PaidPhotoWatermark(
-                            price: photo.price,
-                            isPurchased: photo.isPurchased,
-                            child: const SizedBox.expand(),
-                          ),
-                        ),
-                      ),
+                    // The mark for a still lives on the zoom itself, above —
+                    // it has to know how far the photo has been zoomed, and
+                    // only the thing doing the zooming knows that. Video is
+                    // not marked at all, so there is nothing to draw here.
 
                     // Everything below is chrome over the photo, and all of it
                     // goes while a comment sheet is open — see [CommentSheetHide].

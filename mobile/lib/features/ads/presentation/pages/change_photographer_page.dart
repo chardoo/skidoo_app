@@ -127,8 +127,8 @@ class _ChangePhotographerPageState extends State<ChangePhotographerPage> {
                     'All Requests',
                     style: TextStyle(
                       color: ext.searchHintColor,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -246,7 +246,7 @@ class _RequestHeader extends StatelessWidget {
             style: TextStyle(
               color: request.isLive ? ext.accentGold : ext.searchHintColor,
               fontSize: 11.sp,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -307,7 +307,7 @@ class _SelectableTile extends StatelessWidget {
                     style: TextStyle(
                       color: ext.greetingColor,
                       fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   SizedBox(height: 2.h),
@@ -332,7 +332,7 @@ class _SelectableTile extends StatelessWidget {
                 style: TextStyle(
                   color: selected ? Colors.white : ext.accentGold,
                   fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -389,7 +389,7 @@ class _ConfirmSheet extends StatelessWidget {
                 message,
                 style: TextStyle(
                   color: ext.searchHintColor,
-                  fontSize: 13.sp,
+                  fontSize: 14.sp,
                   height: 1.45,
                 ),
               ),

@@ -116,7 +116,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
           style: TextStyle(
               color: ext.greetingColor,
               fontFamily: AppTypography.displayFontFamily,
-              fontSize: 17.sp,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w700),
         ),
         centerTitle: widget.isCreatorSetup,
@@ -135,7 +135,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontFamily: AppTypography.displayFontFamily,
-                    fontSize: 17.sp,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -143,7 +143,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
               ],
               Text(
                 'One last step before you start uploading events',
-                style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+                style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
               ),
               SizedBox(height: AppSpacing.xl.h),
               Semantics(
@@ -185,7 +185,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                                 style: TextStyle(
                                     color: ext.greetingColor,
                                     fontSize: 14.sp,
-                                    fontWeight: FontWeight.w600),
+                                    fontWeight: FontWeight.w500),
                               ),
                               SizedBox(height: 2.h),
                               Text(
@@ -201,8 +201,8 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                           _idDocument != null ? 'Change' : 'Upload',
                           style: TextStyle(
                               color: ext.accentGold,
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w600),
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
@@ -298,7 +298,7 @@ class _TermsCheckbox extends StatelessWidget {
                 child: Text(
                   label,
                   style: TextStyle(
-                      color: ext.greetingColor, fontSize: 13.sp, height: 1.4),
+                      color: ext.greetingColor, fontSize: 14.sp, height: 1.4),
                 ),
               ),
             ),

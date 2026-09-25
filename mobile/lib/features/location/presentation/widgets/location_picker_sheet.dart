@@ -231,8 +231,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                 color: ext.greetingColor,
                 fontFamily: AppTypography.displayFontFamily,
                 fontSize: 18.sp,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.4,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -326,7 +325,7 @@ class _CountryStepState extends State<_CountryStep> {
                         style: TextStyle(
                           color: ext.greetingColor,
                           fontSize: 15.sp,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       trailing: AppSvgIcon(AppIcons.chevronRight,
@@ -420,7 +419,7 @@ class _PlaceStep extends StatelessWidget {
                     style: TextStyle(
                       color: ext.greetingColor,
                       fontSize: 15.sp,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   subtitle: Text(
@@ -496,7 +495,7 @@ class _Hint extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyle(
             color: ext.searchHintColor,
-            fontSize: 13.sp,
+            fontSize: 14.sp,
             height: 1.5,
           ),
         ),
@@ -539,7 +538,7 @@ class LocationChips extends StatelessWidget {
         if (places.isEmpty)
           Text(
             emptyLabel,
-            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+            style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
           ),
         for (final place in places)
           Container(
@@ -604,7 +603,7 @@ class LocationChips extends StatelessWidget {
                     style: TextStyle(
                       color: ext.searchHintColor,
                       fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],

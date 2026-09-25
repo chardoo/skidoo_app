@@ -80,7 +80,7 @@ class _BoostRequestSheetState extends State<BoostRequestSheet> {
                     style: TextStyle(
                       color: ext.greetingColor,
                       fontFamily: AppTypography.displayFontFamily,
-                      fontSize: 21.sp,
+                      fontSize: 22.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -89,7 +89,7 @@ class _BoostRequestSheetState extends State<BoostRequestSheet> {
                     'Get your request seen by more photographers instantly.',
                     style: TextStyle(
                       color: ext.searchHintColor,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                       height: 1.3,
                     ),
                   ),
@@ -137,7 +137,7 @@ class _BoostRequestSheetState extends State<BoostRequestSheet> {
                                   benefit,
                                   style: TextStyle(
                                     color: ext.accentGold,
-                                    fontSize: 12.5.sp,
+                                    fontSize: 12.sp,
                                     height: 1.3,
                                   ),
                                 ),
@@ -181,7 +181,7 @@ class _BoostRequestSheetState extends State<BoostRequestSheet> {
                     selected == null ? 'Pay' : 'Pay - ${_price(selected)}',
                     style: TextStyle(
                       fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),

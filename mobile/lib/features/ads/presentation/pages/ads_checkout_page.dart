@@ -104,7 +104,7 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
           style: TextStyle(
               color: ext.greetingColor,
               fontFamily: AppTypography.displayFontFamily,
-              fontSize: 17.sp,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w700),
         ),
         centerTitle: false,

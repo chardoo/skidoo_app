@@ -148,7 +148,7 @@ class _MemberPickerState extends State<MemberPicker> {
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 17.sp,
+            fontSize: 16.sp,
           ),
         ),
         actions: [
@@ -170,7 +170,7 @@ class _MemberPickerState extends State<MemberPicker> {
                           ? ext.accentGold
                           : ext.searchHintColor.withValues(alpha: 0.5),
                       fontSize: 15.sp,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
           ),

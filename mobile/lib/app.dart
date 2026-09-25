@@ -253,6 +253,22 @@ class _AppMaterial extends StatelessWidget {
 ///
 /// Used to protect named routes that can be reached directly — a deep link to
 /// `/home`, say — without being authenticated.
+///
+/// Answered synchronously, from the same [AuthService.isAuthenticated] that
+/// [_GuestGuard] below reads — deliberately, and this is the interesting part
+/// of the class. It used to await a fresh Keychain read and show a bare dark
+/// Scaffold until it came back, which put a blank screen at the one moment the
+/// app can least afford one: `/home` is what the splash hands over to, and the
+/// splash dissolves *into* whatever the destination paints on its first frame.
+/// So the brand animation faded into an empty charcoal rectangle, and the feed
+/// appeared a beat later — the exact seam the splash was built to remove,
+/// reintroduced one widget further down.
+///
+/// The notifier is not a cached guess at the token: it is set wherever the
+/// token is (`setToken`, `removeToken`, the 401 interceptor's sign-out) and
+/// seeded in `main()` from the Keychain before the first frame. There is no
+/// state in which it and the stored token disagree, which is why the read it
+/// replaces could only ever return the answer already in hand.
 class _AuthGuard extends StatefulWidget {
   const _AuthGuard({required this.child});
   final Widget child;
@@ -262,37 +278,34 @@ class _AuthGuard extends StatefulWidget {
 }
 
 class _AuthGuardState extends State<_AuthGuard> {
-  late final Future<bool> _authorized;
+  /// Captured once in [initState] so repeated [build] calls are idempotent —
+  /// signing out from inside [child] must not rebuild this into a redirect
+  /// while that screen is still on its way out.
+  late final bool _authorized;
 
   @override
   void initState() {
     super.initState();
-    _authorized = sl<AuthService>().getToken().then((t) => t.isNotEmpty);
+    _authorized = AuthService.isAuthenticated.value;
+    if (!_authorized) {
+      // Not logged in — redirect after this frame so the navigator is ready.
+      debugPrint('[AuthGuard] no token → replacing with /login. If a deep '
+          'link was open, this is what took its place.');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed(LoginPage.routeName);
+        }
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _authorized,
-      builder: (context, snap) {
-        if (!snap.hasData) {
-          // Token check in flight — show a neutral background.
-          return const Scaffold(backgroundColor: Color(0xFF0D0D0D));
-        }
-        if (!snap.data!) {
-          // Not logged in — redirect after this frame so the navigator is ready.
-          debugPrint('[AuthGuard] no token → replacing with /login. If a deep '
-              'link was open, this is what took its place.');
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.of(context).pushReplacementNamed(LoginPage.routeName);
-            }
-          });
-          return const Scaffold(backgroundColor: Color(0xFF0D0D0D));
-        }
-        return widget.child;
-      },
-    );
+    if (!_authorized) {
+      // Show neutral background while the post-frame redirect fires.
+      return const Scaffold(backgroundColor: Color(0xFF0D0D0D));
+    }
+    return widget.child;
   }
 }
 

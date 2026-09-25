@@ -48,8 +48,8 @@ class CardDescriptionText extends StatelessWidget {
             overflow: expanded ? TextOverflow.visible : TextOverflow.ellipsis,
             style: TextStyle(
               color: ext.greetingColor,
-              fontSize: 13.5.sp,
-              fontWeight: FontWeight.w800,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w700,
               height: 1.35,
               letterSpacing: -0.3,
             ),
@@ -64,7 +64,7 @@ class CardDescriptionText extends StatelessWidget {
               collapsedMaxLines: 2,
               style: TextStyle(
                 color: ext.greetingColor,
-                fontSize: 13.sp,
+                fontSize: 14.sp,
                 height: 1.35,
               ),
               linkStyle: linkStyle,

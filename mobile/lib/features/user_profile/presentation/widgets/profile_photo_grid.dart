@@ -189,7 +189,7 @@ class _Empty extends StatelessWidget {
         Text(
           hint,
           textAlign: TextAlign.center,
-          style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+          style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
         ),
       ],
     );

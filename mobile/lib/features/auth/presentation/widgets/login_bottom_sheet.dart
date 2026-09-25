@@ -149,7 +149,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                     'Log in to view event photos',
                     style: TextStyle(
                       color: ext.searchHintColor,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                     ),
                   ),
                   SizedBox(height: AppSpacing.xl.h),
@@ -184,7 +184,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                                 state.errorMessage!,
                                 style: TextStyle(
                                     color: const Color(0xFFFF6B7A),
-                                    fontSize: 13.sp),
+                                    fontSize: 14.sp),
                               ),
                             ),
                           ],
@@ -220,7 +220,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                       child: Text(
                         'Forgot Password?',
                         style:
-                            TextStyle(color: ext.accentGold, fontSize: 13.sp),
+                            TextStyle(color: ext.accentGold, fontSize: 14.sp),
                       ),
                     ),
                   ),
@@ -246,7 +246,7 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                       Text(
                         "Don't have an account?",
                         style: TextStyle(
-                            color: ext.searchHintColor, fontSize: 13.sp),
+                            color: ext.searchHintColor, fontSize: 14.sp),
                       ),
                       TextButton(
                         onPressed: () {
@@ -259,8 +259,8 @@ class _LoginSheetContentState extends State<_LoginSheetContent> {
                           'Sign up',
                           style: TextStyle(
                               color: ext.accentGold,
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w600),
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500),
                         ),
                       ),
                     ],

@@ -54,7 +54,7 @@ class ContactInfoPage extends StatelessWidget {
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 17.sp,
+            fontSize: 16.sp,
           ),
         ),
       ),
@@ -205,7 +205,7 @@ class _ContactHeader extends StatelessWidget {
           style: TextStyle(
             color: ext.greetingColor,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 19.sp,
+            fontSize: 18.sp,
             fontWeight: FontWeight.bold,
           ),
           textAlign: TextAlign.center,
@@ -214,7 +214,7 @@ class _ContactHeader extends StatelessWidget {
           SizedBox(height: 2.h),
           Text(
             subtitle!,
-            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+            style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
           ),
         ],
       ],

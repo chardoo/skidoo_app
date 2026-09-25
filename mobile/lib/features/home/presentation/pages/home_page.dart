@@ -205,10 +205,9 @@ class _HomeViewState extends State<_HomeView> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: ext.greetingColor,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         fontFamily: AppTypography.displayFontFamily,
-                        fontSize: 20.sp,
-                        letterSpacing: -0.2,
+                        fontSize: 18.sp,
                       ),
                     ),
                     SizedBox(height: 10.h),
@@ -218,7 +217,7 @@ class _HomeViewState extends State<_HomeView> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: ext.searchHintColor,
-                        fontSize: 13.5.sp,
+                        fontSize: 14.sp,
                         height: 1.45,
                       ),
                     ),
@@ -254,8 +253,8 @@ class _HomeViewState extends State<_HomeView> {
                         'Maybe later',
                         style: TextStyle(
                           color: ext.searchHintColor,
-                          fontSize: 13.5.sp,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -289,7 +288,7 @@ class _HomeViewState extends State<_HomeView> {
             label,
             style: TextStyle(
               color: ext.greetingColor,
-              fontSize: 13.sp,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w500,
             ),
           ),

@@ -401,7 +401,7 @@ class BookingPanel extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: colour, fontSize: 13.sp, fontWeight: FontWeight.w600,
+            color: colour, fontSize: 14.sp, fontWeight: FontWeight.w500,
           ),
         ),
       ),

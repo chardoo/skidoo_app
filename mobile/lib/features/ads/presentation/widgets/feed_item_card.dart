@@ -785,7 +785,7 @@ class _CampaignCopy extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -797,7 +797,7 @@ class _CampaignCopy extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 13.sp,
+                    fontSize: 14.sp,
                     height: 1.35,
                   ),
                 ),
@@ -821,7 +821,7 @@ class _CampaignCopy extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 13.sp,
+                          fontSize: 14.sp,
                         ),
                       ),
                     ),
@@ -836,7 +836,7 @@ class _CampaignCopy extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: 13.sp,
+                    fontSize: 14.sp,
                   ),
                 ),
               ],
@@ -932,7 +932,7 @@ class _RequestCopy extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -954,7 +954,7 @@ class _RequestCopy extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: ext.accentGold,
-                    fontSize: 20.sp,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1000,7 +1000,7 @@ class _RequestRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 13.sp,
+                fontSize: 14.sp,
               ),
             ),
           ),
@@ -1083,7 +1083,7 @@ class _CtaButton extends StatelessWidget {
             style: TextStyle(
               color: color,
               fontSize: 15.sp,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -1222,7 +1222,7 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
                   'Hide this $label',
                   style: TextStyle(
                     color: ext.greetingColor,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     fontSize: 15.sp,
                   ),
                 ),
@@ -1252,7 +1252,7 @@ class _FeedItemMoreOptionsSheet extends StatelessWidget {
                   'Report $label',
                   style: TextStyle(
                     color: Colors.redAccent,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     fontSize: 15.sp,
                   ),
                 ),

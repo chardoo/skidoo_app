@@ -275,8 +275,8 @@ class _FoundFilterSheetState extends State<FoundFilterSheet> {
                                 'Clear',
                                 style: TextStyle(
                                   color: ext.accentGold,
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ),

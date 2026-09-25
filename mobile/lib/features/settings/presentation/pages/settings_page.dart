@@ -237,7 +237,7 @@ class _WhoYouAre extends StatelessWidget {
             style: TextStyle(
               color: ext.greetingColor,
               fontSize: 16.sp,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

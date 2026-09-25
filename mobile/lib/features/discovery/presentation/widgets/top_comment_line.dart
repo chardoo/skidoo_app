@@ -93,7 +93,7 @@ class TopCommentLine extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 13.sp,
+                        fontSize: 14.sp,
                         height: 1.25,
                         fontWeight: FontWeight.w500,
                       ),

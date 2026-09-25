@@ -224,9 +224,8 @@ class _LoginViewState extends State<_LoginView>
                                 style: TextStyle(
                                   color: ext.greetingColor,
                                   fontFamily: AppTypography.displayFontFamily,
-                                  fontSize: 30.sp,
+                                  fontSize: 24.sp,
                                   fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.5,
                                   height: 1.1,
                                 ),
                               ),
@@ -297,7 +296,7 @@ class _LoginViewState extends State<_LoginView>
                                             .loginForgotPassword,
                                         style: TextStyle(
                                           color: _kTeal,
-                                          fontSize: 13.sp,
+                                          fontSize: 14.sp,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
@@ -340,7 +339,7 @@ class _LoginViewState extends State<_LoginView>
                                             style: TextStyle(
                                               color: _kTeal,
                                               fontSize: 14.sp,
-                                              fontWeight: FontWeight.w600,
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                         )),
@@ -365,7 +364,7 @@ class _LoginViewState extends State<_LoginView>
                                       'Continue as guest',
                                       style: TextStyle(
                                         color: ext.searchHintColor,
-                                        fontSize: 13.sp,
+                                        fontSize: 14.sp,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -454,7 +453,7 @@ class _GradientButton extends StatelessWidget {
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16.sp,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         letterSpacing: 0.3,
                       ),
                     ),

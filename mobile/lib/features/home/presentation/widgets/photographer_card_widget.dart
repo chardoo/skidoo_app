@@ -75,8 +75,8 @@ class PhotographerCardWidget extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
                         shadows: const [
                           Shadow(blurRadius: 4, color: Colors.black45),
                         ],

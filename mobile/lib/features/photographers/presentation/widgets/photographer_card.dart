@@ -43,7 +43,7 @@ class PhotographerCard extends StatelessWidget {
                         photographer.name,
                         style: TextStyle(
                           color: ext.greetingColor,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                           fontSize: 15.sp,
                         ),
                         maxLines: 1,
@@ -58,7 +58,7 @@ class PhotographerCard extends StatelessWidget {
                           photographer.contact,
                           style: TextStyle(
                             color: ext.searchHintColor,
-                            fontSize: 13.sp,
+                            fontSize: 14.sp,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -151,8 +151,8 @@ class PhotographerGridCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: ext.greetingColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14.sp,
                         ),
                       ),
                       SizedBox(height: AppSpacing.xs.h),

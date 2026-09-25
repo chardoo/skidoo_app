@@ -656,7 +656,7 @@ class _ProcessingOverlayState extends State<_ProcessingOverlay>
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 15.sp,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         letterSpacing: 0.2,
                       ),
                     ),

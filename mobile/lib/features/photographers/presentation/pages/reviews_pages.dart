@@ -147,7 +147,7 @@ class _PhotographerReviewsPageState extends State<PhotographerReviewsPage> {
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontSize: 14.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const Spacer(),
@@ -155,7 +155,7 @@ class _PhotographerReviewsPageState extends State<PhotographerReviewsPage> {
                   value: _sort,
                   underline: const SizedBox.shrink(),
                   isDense: true,
-                  style: TextStyle(color: ext.greetingColor, fontSize: 13.sp),
+                  style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                   dropdownColor: ext.cardSurface,
                   items: [
                     for (final entry in _sortLabels.entries)
@@ -287,7 +287,7 @@ class ReviewCard extends StatelessWidget {
               review.comment!,
               style: TextStyle(
                 color: ext.searchHintColor,
-                fontSize: 13.sp,
+                fontSize: 14.sp,
                 height: 1.45,
               ),
             ),
@@ -367,7 +367,7 @@ class _Chip extends StatelessWidget {
               style: TextStyle(
                 color: selected ? ext.accentGold : ext.searchHintColor,
                 fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -552,7 +552,7 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
             style: TextStyle(
               color: ext.greetingColor,
               fontSize: 14.sp,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
           SizedBox(height: AppSpacing.sm.h),
@@ -583,7 +583,7 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
             style: TextStyle(
               color: ext.greetingColor,
               fontSize: 14.sp,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
           SizedBox(height: AppSpacing.sm.h),
@@ -692,7 +692,7 @@ class ReviewSubmittedPage extends StatelessWidget {
               style: TextStyle(
                 color: ext.greetingColor,
                 fontFamily: AppTypography.displayFontFamily,
-                fontSize: 20.sp,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.w700,
               ),
             ),

@@ -40,7 +40,7 @@ class InterestedRow extends StatelessWidget {
     final labelStyle = TextStyle(
       color: ext.accentGold,
       fontSize: 12.sp,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w500,
     );
 
     // How many faces are drawn depends on the room there is, because the two

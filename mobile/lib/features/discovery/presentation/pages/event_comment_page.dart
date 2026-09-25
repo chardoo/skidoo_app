@@ -1411,7 +1411,7 @@ class _WebCommentInputState extends State<_WebCommentInput> {
                     style: TextStyle(
                       color: ext.accentGold,
                       fontSize: 11.sp,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1590,7 +1590,6 @@ class _CommentPanelHeader extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 fontFamily: AppTypography.displayFontFamily,
                 fontSize: 16.sp,
-                letterSpacing: -0.2,
               ),
             ),
             BlocBuilder<ChatRoomBloc, ChatRoomState>(
@@ -1686,7 +1685,7 @@ class _CommentEmptyView extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: ext.searchHintColor,
-                fontSize: 13.sp,
+                fontSize: 14.sp,
                 height: 1.4,
               ),
             ),

@@ -267,8 +267,8 @@ class _PortfolioFormState extends State<PortfolioForm> {
                     tag,
                     style: TextStyle(
                       color: selected ? Colors.white : ext.searchHintColor,
-                      fontSize: 12.5.sp,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                      fontSize: 12.sp,
+                      fontWeight: selected ? FontWeight.w500 : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -329,7 +329,7 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-          color: ext.greetingColor, fontSize: 13.sp, fontWeight: FontWeight.w600),
+          color: ext.greetingColor, fontSize: 14.sp, fontWeight: FontWeight.w500),
     );
   }
 }

@@ -33,7 +33,7 @@ class FoundCounterPill extends StatelessWidget {
             style: TextStyle(
               color: Colors.white,
               fontSize: 12.sp,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
               // Tabular so the pill does not resize as the index ticks past 9,
               // which reads as a jitter when swiping quickly.
               fontFeatures: const [FontFeature.tabularFigures()],

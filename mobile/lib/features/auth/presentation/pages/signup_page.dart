@@ -248,9 +248,8 @@ class _SignUpViewState extends State<_SignUpView>
                                 style: TextStyle(
                                   color: ext.greetingColor,
                                   fontFamily: AppTypography.displayFontFamily,
-                                  fontSize: 30.sp,
+                                  fontSize: 24.sp,
                                   fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.5,
                                   height: 1.1,
                                 ),
                               ),
@@ -376,7 +375,7 @@ class _SignUpViewState extends State<_SignUpView>
                                       'By creating an account, you agree to our ',
                                       style: TextStyle(
                                           color: ext.searchHintColor,
-                                          fontSize: 12.5.sp),
+                                          fontSize: 12.sp),
                                     ),
                                     Semantics(
                                       button: true,
@@ -391,8 +390,8 @@ class _SignUpViewState extends State<_SignUpView>
                                           'Privacy Policy',
                                           style: TextStyle(
                                             color: _kTeal,
-                                            fontSize: 12.5.sp,
-                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w500,
                                           ),
                                         ),
                                       ),
@@ -428,7 +427,7 @@ class _SignUpViewState extends State<_SignUpView>
                                             style: TextStyle(
                                               color: _kTeal,
                                               fontSize: 14.sp,
-                                              fontWeight: FontWeight.w600,
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                         )),
@@ -463,7 +462,7 @@ class _SignUpViewState extends State<_SignUpView>
                                             'Continue browsing',
                                             style: TextStyle(
                                               color: ext.searchHintColor,
-                                              fontSize: 13.sp,
+                                              fontSize: 14.sp,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
@@ -561,7 +560,7 @@ class _GradientButton extends StatelessWidget {
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16.sp,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         letterSpacing: 0.3,
                       ),
                     ),

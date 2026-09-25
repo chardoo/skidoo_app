@@ -379,7 +379,7 @@ class _ViewerTopBar extends StatelessWidget {
                   color: ext.greetingColor,
                   fontFamily: AppTypography.displayFontFamily,
                   fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -420,7 +420,7 @@ class _ViewerTopBar extends StatelessWidget {
                     style: TextStyle(
                       color: ext.greetingColor.withValues(alpha: 0.7),
                       fontSize: 15.sp,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                       height: 1.0,
                       leadingDistribution: TextLeadingDistribution.even,
                     ),

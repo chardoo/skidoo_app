@@ -296,7 +296,7 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
                         child: Text(
                           'Comments are disabled',
                           style: TextStyle(
-                              color: ext.searchHintColor, fontSize: 13.sp),
+                              color: ext.searchHintColor, fontSize: 14.sp),
                         ),
                       ),
                   ],

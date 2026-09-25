@@ -1079,13 +1079,13 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                         collapsedMaxLines: 2,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 13.sp,
+                          fontSize: 14.sp,
                           height: 1.3,
                         ),
                         linkStyle: TextStyle(
                           color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],

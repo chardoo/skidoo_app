@@ -415,7 +415,7 @@ class _FoundCard extends StatelessWidget {
               style: TextStyle(
                 color: ext.publicAmber,
                 fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),

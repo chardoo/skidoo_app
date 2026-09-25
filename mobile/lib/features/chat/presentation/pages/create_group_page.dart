@@ -183,7 +183,7 @@ class _GroupNamePageState extends State<_GroupNamePage> {
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 17.sp,
+            fontSize: 16.sp,
           ),
         ),
         actions: [
@@ -356,7 +356,7 @@ class _DashedCircle extends StatelessWidget {
           style: TextStyle(
             color: ext.accentGold,
             fontSize: 12.sp,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),

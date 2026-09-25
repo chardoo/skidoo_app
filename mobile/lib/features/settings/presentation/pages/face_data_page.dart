@@ -179,7 +179,7 @@ class _FaceDataPageState extends State<FaceDataPage> {
                               style: TextStyle(
                                 color: const Color(0xFFB00020),
                                 fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w500,
                                 decoration: TextDecoration.underline,
                                 decorationColor: const Color(0xFFB00020),
                               ),
@@ -229,7 +229,7 @@ class _Explainer extends StatelessWidget {
             'delete those at any time.',
             style: TextStyle(
               color: ext.searchHintColor,
-              fontSize: 13.sp,
+              fontSize: 14.sp,
               height: 1.45,
             ),
           ),

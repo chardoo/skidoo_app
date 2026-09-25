@@ -265,7 +265,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 color: ext.greetingColor,
                 fontWeight: FontWeight.bold,
                 fontFamily: AppTypography.displayFontFamily,
-                fontSize: 20.sp,
+                fontSize: 18.sp,
               ),
             ),
             actions: [
@@ -274,7 +274,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   onPressed: _markAllRead,
                   child: Text(
                     'Mark all read',
-                    style: TextStyle(fontSize: 13.sp),
+                    style: TextStyle(fontSize: 14.sp),
                   ),
                 ),
             ],
@@ -428,7 +428,7 @@ class _FilterBar extends StatelessWidget {
                 child: Text(
                   filter.label,
                   style: TextStyle(
-                    fontSize: 13.sp,
+                    fontSize: 14.sp,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     // White on the accent in both themes, for the same reason
                     // the fill is not `primary`: `onPrimary` is grey in dark
@@ -521,7 +521,7 @@ class _NotificationTile extends StatelessWidget {
                             style: TextStyle(
                               color: ext.greetingColor,
                               fontWeight:
-                                  unread ? FontWeight.w700 : FontWeight.w600,
+                                  unread ? FontWeight.w700 : FontWeight.w500,
                             ),
                           ),
                           if (item.body.isNotEmpty)
@@ -548,7 +548,7 @@ class _NotificationTile extends StatelessWidget {
                           color: ext.searchHintColor.withValues(alpha: 0.8),
                           fontSize: 11.sp,
                           fontWeight:
-                              unread ? FontWeight.w600 : FontWeight.w400,
+                              unread ? FontWeight.w500 : FontWeight.w400,
                         ),
                       ),
                     ),

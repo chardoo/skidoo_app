@@ -87,7 +87,7 @@ class AppInlineBanner extends StatelessWidget {
                     message,
                     style: TextStyle(
                       color: ext.greetingColor,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                       height: 1.35,
                       fontWeight: FontWeight.w500,
                     ),
@@ -107,7 +107,7 @@ class AppInlineBanner extends StatelessWidget {
                             actionLabel!,
                             style: TextStyle(
                               color: accent,
-                              fontSize: 13.sp,
+                              fontSize: 14.sp,
                               fontWeight: FontWeight.w700,
                               decoration: TextDecoration.underline,
                               decorationColor: accent,

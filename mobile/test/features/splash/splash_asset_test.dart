@@ -21,7 +21,12 @@ import 'package:flutter_test/flutter_test.dart';
 const _asset = 'assets/splash/Splash_reducedg.gif';
 
 /// Must match `_kMinDisplay` in `splash_page.dart` — which is the point.
-const _animationLength = Duration(milliseconds: 3600);
+///
+/// 1800, not the 3600 it was: the cut was re-timed to play at twice the speed
+/// (54 frames at 30 fps rather than 108) because every launch was waiting out
+/// the full 3.6 s of it. Change the file and this fails until the page's floor
+/// is moved with it — the failure message says by how much.
+const _animationLength = Duration(milliseconds: 1800);
 
 /// Walks the gif's block structure, adding up the per-frame delays.
 ///

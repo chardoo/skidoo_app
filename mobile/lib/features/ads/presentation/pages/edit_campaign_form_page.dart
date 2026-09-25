@@ -440,7 +440,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: ext.greetingColor,
-                              fontSize: 13.sp,
+                              fontSize: 14.sp,
                             ),
                           ),
                         ),
@@ -455,7 +455,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
             '${_ages.start.round()} – ${_ages.end.round()} years',
             style: TextStyle(
               color: ext.accentGold,
-              fontSize: 13.sp,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -489,7 +489,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
               dense: true,
               title: Text(
                 entry.$2,
-                style: TextStyle(color: ext.greetingColor, fontSize: 13.sp),
+                style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
               ),
               onChanged: (v) => setState(() {
                 v == true
@@ -540,7 +540,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
                         '${_derived.toStringAsFixed(2)}',
                 style: TextStyle(
                   color: ext.accentGold,
-                  fontSize: 13.sp,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -658,8 +658,7 @@ class _Section extends StatelessWidget {
             color: ext.greetingColor,
             fontFamily: AppTypography.displayFontFamily,
             fontSize: 16.sp,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
+            fontWeight: FontWeight.w700,
           ),
         ),
       );
@@ -683,8 +682,8 @@ class _FieldLabel extends StatelessWidget {
           ]),
           style: TextStyle(
             color: ext.greetingColor,
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w500,
           ),
         ),
       );
@@ -821,7 +820,7 @@ class _Segments extends StatelessWidget {
                       labels[i],
                       style: TextStyle(
                         color: i == index ? Colors.white : ext.greetingColor,
-                        fontSize: 13.sp,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -917,7 +916,7 @@ class _EditPhotoStrip extends StatelessWidget {
                           style: TextStyle(
                             color: ext.accentGold,
                             fontSize: 11.sp,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -1023,7 +1022,7 @@ class _Chip extends StatelessWidget {
                 style: TextStyle(
                   color: selected ? ext.accentGold : ext.greetingColor,
                   fontSize: 12.sp,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
                 ),
               ),
             ],

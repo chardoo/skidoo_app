@@ -177,7 +177,7 @@ class _QuoteComposerSheetState extends State<QuoteComposerSheet> {
                     style: TextStyle(
                       color: ext.greetingColor,
                       fontFamily: AppTypography.displayFontFamily,
-                      fontSize: 20.sp,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -185,7 +185,7 @@ class _QuoteComposerSheetState extends State<QuoteComposerSheet> {
                   Text(
                     'Booking proposal for ${widget.clientName}',
                     style: TextStyle(
-                      color: ext.searchHintColor, fontSize: 13.sp,
+                      color: ext.searchHintColor, fontSize: 14.sp,
                     ),
                   ),
                   SizedBox(height: AppSpacing.lg.h),
@@ -201,8 +201,8 @@ class _QuoteComposerSheetState extends State<QuoteComposerSheet> {
                         'Add service item',
                         style: TextStyle(
                           color: ext.accentGold,
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -218,7 +218,7 @@ class _QuoteComposerSheetState extends State<QuoteComposerSheet> {
                       hintText:
                           'Special instructions, payment terms, deadlines…',
                       hintStyle: TextStyle(
-                        color: ext.searchHintColor, fontSize: 13.sp,
+                        color: ext.searchHintColor, fontSize: 14.sp,
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.md.r),
@@ -314,7 +314,7 @@ class _QuoteComposerSheetState extends State<QuoteComposerSheet> {
                     ? 'Full day coverage (10 hours)'
                     : 'Drone coverage (2 hours)',
                 hintStyle:
-                    TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+                    TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md.r),
                 ),
@@ -341,10 +341,10 @@ class _QuoteComposerSheetState extends State<QuoteComposerSheet> {
                 isDense: true,
                 prefixText: 'GHS ',
                 prefixStyle:
-                    TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+                    TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
                 hintText: '0',
                 hintStyle:
-                    TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+                    TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md.r),
                 ),

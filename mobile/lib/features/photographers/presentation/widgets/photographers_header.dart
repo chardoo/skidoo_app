@@ -29,7 +29,7 @@ class PhotographersHeader extends StatelessWidget {
               color: ext.greetingColor,
               fontWeight: FontWeight.bold,
               fontFamily: AppTypography.displayFontFamily,
-              fontSize: 20.sp,
+              fontSize: 18.sp,
             ),
           ),
           SizedBox(height: 10.h),

@@ -125,7 +125,7 @@ class _UnlockPhotosSheetState extends State<UnlockPhotosSheet> {
                       style: TextStyle(
                         color: ext.greetingColor,
                         fontFamily: AppTypography.displayFontFamily,
-                        fontSize: 20.sp,
+                        fontSize: 18.sp,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -135,7 +135,7 @@ class _UnlockPhotosSheetState extends State<UnlockPhotosSheet> {
                       'private photos.',
                       style: TextStyle(
                         color: ext.searchHintColor,
-                        fontSize: 13.sp,
+                        fontSize: 14.sp,
                         height: 1.4,
                       ),
                     ),
@@ -379,7 +379,7 @@ class _ScannerPane extends StatelessWidget {
                               'Camera unavailable. Enter the code instead.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                  color: ext.searchHintColor, fontSize: 13.sp),
+                                  color: ext.searchHintColor, fontSize: 14.sp),
                             ),
                           ),
                         ),

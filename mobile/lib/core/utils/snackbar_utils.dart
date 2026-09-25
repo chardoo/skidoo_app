@@ -18,6 +18,21 @@ class AppSnackBar {
   static const _kDark    = Color(0xFF2C2C2E);
   static const _kGold    = Color(0xFF1D9E75);
 
+  /// Spelled out, never inherited.
+  ///
+  /// Every background above is a fixed, saturated, *dark* colour in both
+  /// themes, so the text over it has to be fixed too. Left to the theme it is
+  /// not: Material resolves snackbar content to `colorScheme.onInverseSurface`,
+  /// the app's scheme never set that, and the fallback for it is
+  /// `colorScheme.surface` — near-black in dark mode. So an error in dark mode
+  /// was #1F1F1D text on a #B00020 field, about 1.3:1, which is a snackbar
+  /// that arrives, says nothing legible, and leaves.
+  ///
+  /// The size is a plain number rather than `.sp` on purpose: this runs from
+  /// failure paths, including ones that fire before a screen — and therefore
+  /// before screenutil — is up. It is the same 14 as [AppTypography.sm].
+  static const _kContentStyle = TextStyle(color: Colors.white, fontSize: 14);
+
   static const _kDefaultMargin =
       EdgeInsets.fromLTRB(16, 0, 16, 16);
   static const _kShape = RoundedRectangleBorder(
@@ -64,10 +79,7 @@ class AppSnackBar {
           margin: _kDefaultMargin,
           backgroundColor: _kDark,
           shape: _kShape,
-          content: Text(
-            message,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-          ),
+          content: Text(message, style: _kContentStyle),
           action: SnackBarAction(
             label: actionLabel,
             textColor: _kGold,
@@ -111,7 +123,7 @@ class AppSnackBar {
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
-        content: Text(message),
+        content: Text(message, style: _kContentStyle),
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         margin: margin ?? _kDefaultMargin,

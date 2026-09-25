@@ -391,9 +391,8 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
                     style: TextStyle(
                       color: ext.greetingColor,
                       fontFamily: AppTypography.displayFontFamily,
-                      fontSize: 19.sp,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.4,
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w700,
                       height: 1.25,
                     ),
                   ),
@@ -558,7 +557,7 @@ class _CampaignDetailsPageState extends State<CampaignDetailsPage> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: ext.searchHintColor,
-                    fontSize: 12.5.sp,
+                    fontSize: 12.sp,
                     height: 1.45,
                   ),
                 ),
@@ -645,7 +644,7 @@ class _PaymentWindow extends StatelessWidget {
                 'Payment Window Closing',
                 style: TextStyle(
                   color: amber,
-                  fontSize: 13.sp,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -657,7 +656,7 @@ class _PaymentWindow extends StatelessWidget {
             style: TextStyle(
               color: amber,
               fontSize: 27.sp,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               letterSpacing: -0.5,
               // Tabular, so the digits do not shuffle as they tick.
               fontFeatures: const [FontFeature.tabularFigures()],
@@ -716,7 +715,7 @@ class _Notice extends StatelessWidget {
                     title,
                     style: TextStyle(
                       color: tone,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -780,7 +779,7 @@ class _Card extends StatelessWidget {
             style: TextStyle(
               color: ext.greetingColor,
               fontSize: 14.sp,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
             ),
           ),
           SizedBox(height: AppSpacing.sm.h),
@@ -812,8 +811,8 @@ class _Card extends StatelessWidget {
                         body!,
                         style: TextStyle(
                           color: ext.greetingColor,
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       if (bodySub != null)
@@ -843,7 +842,7 @@ class _Card extends StatelessWidget {
                   ),
                   TextSpan(text: value),
                 ]),
-                style: TextStyle(color: ext.searchHintColor, fontSize: 12.5.sp),
+                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
               ),
             ),
         ],
@@ -943,7 +942,7 @@ class _PerformanceSummary extends StatelessWidget {
             style: TextStyle(
               color: ext.greetingColor,
               fontSize: 15.sp,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -1040,8 +1039,8 @@ class _Stat extends StatelessWidget {
               value,
               style: TextStyle(
                 color: ext.greetingColor,
-                fontSize: 19.sp,
-                fontWeight: FontWeight.w800,
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w700,
                 letterSpacing: -0.5,
               ),
             ),
@@ -1111,7 +1110,7 @@ class _ConfirmSheet extends StatelessWidget {
                     color: ext.greetingColor,
                     fontFamily: AppTypography.displayFontFamily,
                     fontSize: 18.sp,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 SizedBox(height: AppSpacing.sm.h),
@@ -1119,7 +1118,7 @@ class _ConfirmSheet extends StatelessWidget {
                   body,
                   style: TextStyle(
                     color: ext.searchHintColor,
-                    fontSize: 13.sp,
+                    fontSize: 14.sp,
                     height: 1.45,
                   ),
                 ),
@@ -1286,8 +1285,8 @@ class CampaignResumedPage extends StatelessWidget {
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontFamily: AppTypography.displayFontFamily,
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 SizedBox(height: AppSpacing.sm.h),
@@ -1299,7 +1298,7 @@ class CampaignResumedPage extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: ext.searchHintColor,
-                    fontSize: 13.sp,
+                    fontSize: 14.sp,
                     height: 1.5,
                   ),
                 ),
@@ -1395,13 +1394,13 @@ class _SummaryRow extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+            style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
           ),
           Text(
             value,
             style: TextStyle(
               color: ext.greetingColor,
-              fontSize: 13.sp,
+              fontSize: 14.sp,
               fontWeight: FontWeight.w700,
             ),
           ),

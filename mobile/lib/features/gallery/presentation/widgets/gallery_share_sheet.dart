@@ -360,7 +360,7 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                   color: ext.greetingColor,
                   fontWeight: FontWeight.bold,
                   fontFamily: AppTypography.displayFontFamily,
-                  fontSize: 17.sp,
+                  fontSize: 16.sp,
                 ),
               ),
             ),
@@ -396,7 +396,7 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                       ? Center(
                           child: Text(_error!,
                               style: TextStyle(
-                                  color: ext.searchHintColor, fontSize: 13.sp),
+                                  color: ext.searchHintColor, fontSize: 14.sp),
                               textAlign: TextAlign.center))
                       : _results.isEmpty && !_loading
                           ? Center(
@@ -406,7 +406,7 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
                                     : 'No users found.',
                                 style: TextStyle(
                                     color: ext.searchHintColor,
-                                    fontSize: 13.sp),
+                                    fontSize: 14.sp),
                               ),
                             )
                           : ListView.builder(
@@ -466,7 +466,7 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
       return Center(
         child: Text(
           'Type a name to search',
-          style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+          style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
         ),
       );
     }
@@ -531,7 +531,7 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
         title: Text(name,
             style: TextStyle(
                 color: ext.greetingColor,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 fontSize: 14.sp)),
         trailing: sending
             ? SizedBox(

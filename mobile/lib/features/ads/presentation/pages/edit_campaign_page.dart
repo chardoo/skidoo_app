@@ -224,9 +224,8 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 17.sp,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w700,
           ),
         ),
         centerTitle: false,
@@ -439,7 +438,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 15.sp,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                   ),
@@ -786,7 +785,7 @@ class _MediaPreview extends StatelessWidget {
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 12.sp,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -922,7 +921,7 @@ class _LocalMediaTile extends StatelessWidget {
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 12.sp,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -980,7 +979,7 @@ class _MediaPickerSheet extends StatelessWidget {
                     'Change Creative',
                     style: TextStyle(
                       color: ext.greetingColor,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       fontFamily: AppTypography.displayFontFamily,
                       fontSize: 16.sp,
                     ),
@@ -1007,7 +1006,7 @@ class _MediaPickerSheet extends StatelessWidget {
                 title: Text('Photo from Gallery',
                     style: TextStyle(
                         color: ext.greetingColor,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         fontSize: 14.sp)),
               ),
               ListTile(
@@ -1028,7 +1027,7 @@ class _MediaPickerSheet extends StatelessWidget {
                 title: Text('Video from Gallery',
                     style: TextStyle(
                         color: ext.greetingColor,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         fontSize: 14.sp)),
               ),
               SizedBox(height: AppSpacing.sm.h),
@@ -1055,8 +1054,7 @@ class _SectionHeader extends StatelessWidget {
         color: ext.greetingColor,
         fontFamily: AppTypography.displayFontFamily,
         fontSize: 16.sp,
-        fontWeight: FontWeight.w900,
-        letterSpacing: -0.3,
+        fontWeight: FontWeight.w700,
       ),
     );
   }
@@ -1087,7 +1085,7 @@ class _ELabel extends StatelessWidget {
       text,
       style: TextStyle(
         color: ext.greetingColor,
-        fontSize: 13.sp,
+        fontSize: 14.sp,
         fontWeight: FontWeight.w700,
       ),
     );
@@ -1210,7 +1208,7 @@ class _EToggleRow extends StatelessWidget {
           style: TextStyle(
             color: ext.greetingColor,
             fontSize: 14.sp,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           ),
         ),
         subtitle: Text(
@@ -1253,7 +1251,7 @@ class _DateBtn extends StatelessWidget {
                       color: (label == 'Start date' || label == 'End date')
                           ? ext.searchHintColor
                           : ext.greetingColor,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),

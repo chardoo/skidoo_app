@@ -100,9 +100,9 @@ void main() {
     });
 
     test('covers every weight the app asks for', () {
-      // Audited from the `FontWeight.wNNN` call sites. Syne's `wght` axis stops
-      // at 800 and has no Black, which is fine as long as nothing set in Syne
-      // asks for w900 — the header tiers above top out at w800.
+      // Syne's `wght` axis stops at 800 and has no Black. That is fine only as
+      // long as nothing set in Syne asks for w900 — which the call-site group
+      // below is what actually holds to.
       final weights = {
         for (final family in ours.entries)
           family.key: {for (final font in family.value) font['weight']}
@@ -111,4 +111,121 @@ void main() {
       expect(weights['Syne'], {400, 500, 600, 700, 800});
     });
   });
+
+  group('the call sites', () {
+    // Read off the source, because these are properties of ~130 hand-typed
+    // `TextStyle`s scattered across the app rather than of the scale — there
+    // is no object to assert against. Both rules below were broken by exactly
+    // one thing: styles carried over from Poppins with their old numbers
+    // still on them.
+    final syneStyles = <({String where, String source})>[];
+
+    setUpAll(() {
+      final block = RegExp(r'TextStyle\((?:[^()]|\([^()]*\))*\)', dotAll: true);
+      for (final file in Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))) {
+        final source = file.readAsStringSync();
+        for (final match in block.allMatches(source)) {
+          final style = match.group(0)!;
+          if (!style.contains('displayFontFamily') && !style.contains("'Syne'")) {
+            continue;
+          }
+          final line = '\n'.allMatches(source.substring(0, match.start)).length + 1;
+          syneStyles.add((where: '${file.path}:$line', source: style));
+        }
+      }
+    });
+
+    test('there are Syne styles to check', () {
+      // A scan that silently matches nothing would pass both tests below.
+      expect(syneStyles.length, greaterThan(100));
+    });
+
+    test('none asks for a weight Syne does not have', () {
+      final offenders = [
+        for (final style in syneStyles)
+          if (style.source.contains('FontWeight.w900')) style.where,
+      ];
+      expect(offenders, isEmpty,
+          reason: 'Syne stops at w800; asking for Black gets the nearest face, '
+              'synthetically emboldened on iOS');
+    });
+
+    test('none tightens the tracking Syne ships with', () {
+      final offenders = [
+        for (final style in syneStyles)
+          if (RegExp(r'letterSpacing:\s*-').hasMatch(style.source)) style.where,
+      ];
+      expect(offenders, isEmpty,
+          reason: 'negative tracking is a Poppins habit — Syne is already '
+              'narrow, and tightening it closes the counters');
+    });
+  });
+
+  group('the scale', () {
+    // The design file names seven sizes and four weights. The app had drifted
+    // to 22 sizes and a vocabulary of its own — w600 and w800 exist nowhere in
+    // the file — which is most of why the type read as nearly-right. These two
+    // scan every `fontSize:` and `FontWeight.` in lib/, not just the tiers,
+    // because the tiers are 32 of ~900 call sites.
+    final sizes = <double>{12, 14, 15, 16, 18, 22, 24};
+    const weights = {'w300', 'w400', 'w500', 'w700', 'normal', 'bold'};
+
+    /// Sizes the scale deliberately does not cover, each with a reason it is
+    /// not text: unread-count bubbles and micro tags below it (see
+    /// [AppTypography.badge] / [AppTypography.tag]), and above it a countdown,
+    /// an emoji glyph and the letters in an avatar.
+    final outside = <double>{8, 9, 10, 10.5, 11, 11.5, 27, 28, 36, 40, 56};
+
+    late String allSource;
+
+    setUpAll(() {
+      allSource = Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))
+          .map((f) => f.readAsStringSync())
+          .join('\n');
+    });
+
+    test('every size is a step on the scale, or deliberately off it', () {
+      final used = RegExp(r'fontSize:\s*([0-9.]+)\.sp')
+          .allMatches(allSource)
+          .map((m) => double.parse(m.group(1)!))
+          .toSet();
+      expect(used.difference(sizes).difference(outside), isEmpty,
+          reason: 'a size between two steps is a design decision, not a '
+              'rounding one — put it in the file first');
+    });
+
+    test('every weight is one of the four the file names', () {
+      final used = RegExp(r'FontWeight\.(\w+)')
+          .allMatches(allSource)
+          .map((m) => m.group(1)!)
+          .toSet();
+      expect(used.difference(weights), isEmpty,
+          reason: 'the file has light/regular/medium/bold and no semibold');
+    });
+
+    test('the tiers are built from the scale', () {
+      for (final tier in {
+        'caption': AppTypography.caption,
+        'body': AppTypography.body,
+        'bodyLarge': AppTypography.bodyLarge,
+        'subtitle': AppTypography.subtitle,
+        'title': AppTypography.title,
+        'headline': AppTypography.headline,
+        'display': AppTypography.display,
+      }.entries) {
+        expect(sizes, contains(tier.value.fontSize), reason: tier.key);
+        expect(weights, contains(_nameOf(tier.value.fontWeight!)),
+            reason: tier.key);
+      }
+    });
+  });
 }
+
+/// `FontWeight.w500` prints as `FontWeight.w500`; this is the tail of it.
+String _nameOf(FontWeight w) => w.toString().split('.').last;

@@ -92,7 +92,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                       style: TextStyle(
                         color: ext.greetingColor,
                         fontFamily: AppTypography.displayFontFamily,
-                        fontSize: 26.sp,
+                        fontSize: 24.sp,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -138,8 +138,8 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                             'Back to sign in',
                             style: TextStyle(
                               color: ext.searchHintColor,
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),

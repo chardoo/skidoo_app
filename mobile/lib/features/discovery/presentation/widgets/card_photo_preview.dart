@@ -337,7 +337,7 @@ class CardGradientPlaceholder extends StatelessWidget {
               color: (isLight ? Colors.black : Colors.white)
                   .withValues(alpha: isLight ? 0.06 : 0.08),
               fontSize: 120,
-              fontWeight: FontWeight.w900)),
+              fontWeight: FontWeight.w700)),
     );
   }
 }

@@ -117,7 +117,7 @@ class RequestPhotographerPage extends StatelessWidget {
               onPressed: () => Navigator.of(context).pop(false),
               child: Text(
                 'View more profiles',
-                style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+                style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
               ),
             ),
           ),
@@ -155,7 +155,7 @@ class _Note extends StatelessWidget {
             message,
             style: TextStyle(
               color: ext.searchHintColor,
-              fontSize: 13.sp,
+              fontSize: 14.sp,
               height: 1.45,
             ),
           ),
@@ -217,7 +217,7 @@ class _ConfirmSheet extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: ext.searchHintColor,
-                  fontSize: 13.sp,
+                  fontSize: 14.sp,
                   height: 1.4,
                 ),
               ),

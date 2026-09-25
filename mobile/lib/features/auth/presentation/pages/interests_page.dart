@@ -93,9 +93,9 @@ class _InterestsView extends StatelessWidget {
                       tag,
                       style: TextStyle(
                         color: selected ? Colors.white : ext.searchHintColor,
-                        fontSize: 13.sp,
+                        fontSize: 14.sp,
                         fontWeight:
-                            selected ? FontWeight.w600 : FontWeight.normal,
+                            selected ? FontWeight.w500 : FontWeight.normal,
                       ),
                     ),
                   ),

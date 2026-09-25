@@ -60,7 +60,7 @@ class SearchItemWidget extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: ext.searchItemTextColor,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
               fontSize: 14.sp,
             ),
           ),

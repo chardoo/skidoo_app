@@ -150,7 +150,10 @@ bool handedOver(WidgetTester t) =>
 /// wordmark on, and leaving before its last frame showed a half-drawn logo —
 /// plus the dissolve into the destination. Named here rather than repeated as
 /// a number, so moving either does not silently strand these.
-const _pastTheBeat = Duration(milliseconds: 4200);
+///
+/// 1800 ms of animation + 520 ms of dissolve, rounded up. It was 4200 back when
+/// the animation was the full 3.6 s cut rather than the re-timed one.
+const _pastTheBeat = Duration(milliseconds: 2600);
 
 /// Advances the clock by [by], then lets the replacement route build and its
 /// transition finish. Discrete pumps rather than `pumpAndSettle`, which would
@@ -232,7 +235,9 @@ void main() {
     register(withCache: _FakeCache(), feed: _FakeFeed(completer: never));
 
     await t.pumpWidget(host());
-    await t.pump(const Duration(seconds: 3));
+    // Past the floor, inside the ceiling: the animation has finished and the
+    // dots are up, but the page is still waiting on the fetch.
+    await t.pump(const Duration(seconds: 2));
     expect(handedOver(t), isFalse, reason: 'still inside the ceiling');
 
     // Past the ceiling the app goes on and the feed shows its own loading

@@ -314,7 +314,7 @@ class _CouldNotLoad extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: ext.searchHintColor,
-              fontSize: 13.sp,
+              fontSize: 14.sp,
               height: 1.4,
             ),
           ),

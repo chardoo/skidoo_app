@@ -172,13 +172,13 @@ class CardCommentTile extends StatelessWidget {
                   style: TextStyle(
                     color: ext.accentGold,
                     fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 SizedBox(height: 2.h),
                 Text(
                   comment.text,
-                  style: TextStyle(color: ext.greetingColor, fontSize: 13.sp),
+                  style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                 ),
               ],
             ),

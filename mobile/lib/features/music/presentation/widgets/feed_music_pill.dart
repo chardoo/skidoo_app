@@ -117,7 +117,7 @@ class FeedMusicPill extends StatelessWidget {
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 11.5.sp,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -164,7 +164,7 @@ class FeedMusicPill extends StatelessWidget {
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 10.sp,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: -0.2,
                       ),
                     ),

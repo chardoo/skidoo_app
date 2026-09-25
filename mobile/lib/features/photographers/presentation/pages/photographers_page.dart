@@ -63,7 +63,7 @@ class _PhotographersPageState extends State<PhotographersPage> {
                 color: ext.greetingColor,
                 fontWeight: FontWeight.bold,
                 fontFamily: AppTypography.displayFontFamily,
-                fontSize: 20.sp,
+                fontSize: 18.sp,
               ),
             ),
             actions: [

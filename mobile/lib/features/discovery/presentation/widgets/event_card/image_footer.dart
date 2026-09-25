@@ -48,9 +48,8 @@ class _ImageFooterState extends State<ImageFooter> {
           style: TextStyle(
             color: Colors.white,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 20.sp,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.6,
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w700,
             height: 1.15,
             shadows: _heavy,
           ),

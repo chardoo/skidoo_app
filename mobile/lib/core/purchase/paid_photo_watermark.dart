@@ -27,6 +27,7 @@ class PaidPhotoWatermark extends StatelessWidget {
     this.viewerIsPhotographer = false,
     this.opacity = _defaultOpacity,
     this.widthFactor = _defaultWidthFactor,
+    this.scale = 1.0,
   });
 
   /// Faint enough to leave the photograph readable, strong enough to be
@@ -40,6 +41,15 @@ class PaidPhotoWatermark extends StatelessWidget {
   /// the width alone makes it tiny on a tall photo.
   static const _defaultWidthFactor = 0.55;
 
+  /// The most of the shorter edge the mark will ever span, however far the
+  /// photograph is zoomed.
+  ///
+  /// Past roughly here the logo runs out of window and is clipped to a
+  /// fragment, and a fragment of a logo does not read as a watermark — which
+  /// is the one thing it has to do. So the growth stops rather than carrying
+  /// on to a shape nobody recognises.
+  static const _maxWidthFactor = 0.95;
+
   final Widget child;
   final double price;
   final bool isPurchased;
@@ -50,6 +60,20 @@ class PaidPhotoWatermark extends StatelessWidget {
 
   final double opacity;
   final double widthFactor;
+
+  /// How far the photograph under this is zoomed — 1 at rest.
+  ///
+  /// The mark grows with it. A mark held at a fixed size covers a quarter as
+  /// much of the *photograph* at 4× as it does at rest, because the window is
+  /// showing a quarter as much photograph: pinch in on a face, and the face
+  /// arrives clean beside a logo that has stayed the size it was. Growing the
+  /// mark keeps the share of the picture it covers roughly constant, so a
+  /// zoomed screenshot is no cleaner than an unzoomed one.
+  ///
+  /// It is only ever *scaled*, never moved: see [ZoomableArea.overlayBuilder]
+  /// for why the mark stays pinned to the window while the photo pans under
+  /// it. Capped at [_maxWidthFactor].
+  final double scale;
 
   /// Whether a photo in this state should carry the mark.
   ///
@@ -90,12 +114,17 @@ class PaidPhotoWatermark extends StatelessWidget {
                 if (!shortest.isFinite || shortest <= 0) {
                   return const SizedBox.shrink();
                 }
+                // Never below the resting size: a scale under 1 only comes
+                // from a pinch already being animated back to rest, and a
+                // mark that shrinks with it flickers.
+                final factor =
+                    (widthFactor * scale).clamp(widthFactor, _maxWidthFactor);
                 return Center(
                   child: Opacity(
                     opacity: opacity,
                     child: SvgPicture.asset(
                       'assets/logo/jperg_icon_white.svg',
-                      width: shortest * widthFactor,
+                      width: shortest * factor,
                       // Vector, so it stays crisp from a 60px thumbnail to a
                       // full-screen viewer. A raster mark scaled up to a
                       // detail view is visibly soft at exactly the moment

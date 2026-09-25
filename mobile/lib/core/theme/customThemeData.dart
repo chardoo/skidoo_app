@@ -140,11 +140,35 @@ class Styles {
         titleTextStyle: TextStyle(
           color: isDarkTheme ? Colors.white : Colors.black,
           fontSize: 18.sp,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
           fontFamily: displayFontFamily,
         ),
         iconTheme: IconThemeData(
           color: isDarkTheme ? Colors.white : Colors.black,
+        ),
+      ),
+      // ── Snackbars ─────────────────────────────────────────────────────────
+      //
+      // The app shows its snackbars through [AppSnackBar], which spells out
+      // its own colours. This is for the handful raised as a bare `SnackBar`,
+      // and for anything Material raises on its own: without it they resolve
+      // their background from `colorScheme.inverseSurface` and their text from
+      // `colorScheme.onInverseSurface`, and those fall back to `onSurface` and
+      // `surface` respectively when a scheme does not set them. In dark mode
+      // that is a white slab in a dark app; the same fallback on a coloured
+      // background is near-black text on it, which is what made an error in
+      // dark mode unreadable.
+      //
+      // Dark in both themes, like every snackbar the app draws: a notice that
+      // covers the bottom of the screen for three seconds should read as
+      // something laid over the app rather than as part of it.
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF2C2C2E),
+        contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
+        actionTextColor: const Color(0xFF1D9E75),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
       extensions: [
@@ -165,6 +189,17 @@ class Styles {
         onError: isDarkTheme ? Colors.white : Colors.black,
         surface: isDarkTheme ? const Color(0xFF1F1F1D) : Colors.white,
         onSurface: isDarkTheme ? Colors.white : Colors.black,
+        // The inverse pair, spelled out because the fallbacks for it are
+        // wrong rather than merely unset: `inverseSurface` falls back to
+        // `onSurface` and `onInverseSurface` to `surface`, so in dark mode a
+        // widget asking for "a surface opposite this one, and a colour legible
+        // on it" is handed white and then near-black *to write on the dark
+        // red of an error snackbar*. Material asks for this pair for
+        // snackbars and tooltips.
+        inverseSurface:
+            isDarkTheme ? const Color(0xFFF7F7F2) : const Color(0xFF1F1F1D),
+        onInverseSurface:
+            isDarkTheme ? const Color(0xFF1F1F1D) : const Color(0xFFF7F7F2),
       ),
     );
   }

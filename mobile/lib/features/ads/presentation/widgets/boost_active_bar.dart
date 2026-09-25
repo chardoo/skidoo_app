@@ -53,8 +53,8 @@ class BoostActiveBar extends StatelessWidget {
                   'Boost Active',
                   style: TextStyle(
                     color: ext.greetingColor,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

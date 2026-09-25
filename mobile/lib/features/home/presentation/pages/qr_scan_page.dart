@@ -69,7 +69,7 @@ class _QrScanPageState extends State<QrScanPage> {
           style: TextStyle(
             color: Colors.white,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 17.sp,
+            fontSize: 16.sp,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -135,7 +135,7 @@ class _QrScanPageState extends State<QrScanPage> {
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 14.sp,
-                          fontWeight: FontWeight.w600),
+                          fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
@@ -169,7 +169,7 @@ class _QrScanPageState extends State<QrScanPage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white70,
-                        fontSize: 13.sp,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -199,8 +199,8 @@ class _QrScanPageState extends State<QrScanPage> {
                                   'Choose from Gallery',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],

@@ -106,8 +106,8 @@ class _EventCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: ext.greetingColor,
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w600,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w500,
             ),
           ),
           if (subtitle != null)

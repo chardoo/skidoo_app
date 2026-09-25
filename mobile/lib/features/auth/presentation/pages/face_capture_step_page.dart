@@ -233,7 +233,7 @@ class _ConfirmedPhoto extends StatelessWidget {
                 Flexible(
                   child: Text(
                     'Use this photo as my profile picture too',
-                    style: TextStyle(color: ext.greetingColor, fontSize: 13.sp),
+                    style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                   ),
                 ),
               ],

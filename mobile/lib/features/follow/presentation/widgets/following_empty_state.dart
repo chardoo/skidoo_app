@@ -156,7 +156,7 @@ class _FollowingEmptyStateState extends State<FollowingEmptyState> {
           child: Text(
             message,
             textAlign: TextAlign.center,
-            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+            style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
           ),
         ),
       ];

@@ -539,9 +539,8 @@ class _Heading extends StatelessWidget {
           style: TextStyle(
             color: ext.greetingColor,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 19.sp,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.4,
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w700,
           ),
         ),
       );
@@ -579,8 +578,8 @@ class _Label extends StatelessWidget {
           ]),
           style: TextStyle(
             color: ext.greetingColor,
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w500,
           ),
         ),
       );
@@ -687,7 +686,7 @@ class _Segmented extends StatelessWidget {
                     labels[i],
                     style: TextStyle(
                       color: i == index ? Colors.white : ext.greetingColor,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1213,7 +1212,7 @@ class _AudienceStep extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: ext.greetingColor,
-                            fontSize: 13.sp,
+                            fontSize: 14.sp,
                           ),
                         ),
                       ),
@@ -1258,7 +1257,7 @@ class _AudienceStep extends StatelessWidget {
                 SizedBox(width: 6.w),
                 Text(
                   entry.value,
-                  style: TextStyle(color: ext.greetingColor, fontSize: 13.sp),
+                  style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
                 ),
               ],
             ),
@@ -1325,7 +1324,7 @@ class _AgeRange extends StatelessWidget {
           '${values.start.round()} – ${values.end.round()} years',
           style: TextStyle(
             color: ext.accentGold,
-            fontSize: 13.sp,
+            fontSize: 14.sp,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -1395,7 +1394,7 @@ class _Choice extends StatelessWidget {
                 style: TextStyle(
                   color: selected ? ext.accentGold : ext.greetingColor,
                   fontSize: 12.sp,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
                 ),
               ),
             ],
@@ -1527,7 +1526,7 @@ class _BudgetStepState extends State<_BudgetStep> {
                   : 'Estimated daily: GHS ${draft.derived.toStringAsFixed(2)}',
               style: TextStyle(
                 color: ext.accentGold,
-                fontSize: 13.sp,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1767,7 +1766,7 @@ class _ReviewStep extends StatelessWidget {
                     'I agree to the Advertising Terms & Content Guidelines',
                     style: TextStyle(
                       color: ext.greetingColor,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                       height: 1.35,
                     ),
                   ),
@@ -1826,7 +1825,7 @@ class _ReviewCard extends StatelessWidget {
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontSize: 14.sp,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -1837,8 +1836,8 @@ class _ReviewCard extends StatelessWidget {
                   'Edit',
                   style: TextStyle(
                     color: ext.accentGold,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -1860,8 +1859,8 @@ class _ReviewCard extends StatelessWidget {
                         body!,
                         style: TextStyle(
                           color: ext.greetingColor,
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       if (bodySub != null)
@@ -1891,7 +1890,7 @@ class _ReviewCard extends StatelessWidget {
                   ),
                   TextSpan(text: value),
                 ]),
-                style: TextStyle(color: ext.searchHintColor, fontSize: 12.5.sp),
+                style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
               ),
             ),
         ],
@@ -1934,8 +1933,8 @@ class CampaignSubmittedPage extends StatelessWidget {
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontFamily: AppTypography.displayFontFamily,
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 SizedBox(height: AppSpacing.sm.h),
@@ -1945,7 +1944,7 @@ class CampaignSubmittedPage extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: ext.searchHintColor,
-                    fontSize: 13.sp,
+                    fontSize: 14.sp,
                     height: 1.5,
                   ),
                 ),
@@ -1963,7 +1962,7 @@ class CampaignSubmittedPage extends StatelessWidget {
                         'What happens next?',
                         style: TextStyle(
                           color: ext.accentGold,
-                          fontSize: 13.sp,
+                          fontSize: 14.sp,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1976,7 +1975,7 @@ class CampaignSubmittedPage extends StatelessWidget {
                         'once payment is confirmed.',
                         style: TextStyle(
                           color: ext.greetingColor,
-                          fontSize: 12.5.sp,
+                          fontSize: 12.sp,
                           height: 1.45,
                         ),
                       ),

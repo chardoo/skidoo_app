@@ -806,7 +806,7 @@ class _PublishedStep extends StatelessWidget {
                 style: TextStyle(
                   color: ext.greetingColor,
                   fontFamily: AppTypography.displayFontFamily,
-                  fontSize: 20.sp,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -833,7 +833,7 @@ class _PublishedStep extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: ext.searchHintColor,
-                    fontSize: 13.sp,
+                    fontSize: 14.sp,
                   ),
                 ),
               ),
@@ -987,8 +987,8 @@ class _Field extends StatelessWidget {
               label,
               style: TextStyle(
                 color: ext.greetingColor,
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w600,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
               ),
             ),
             SizedBox(height: AppSpacing.xs.h),

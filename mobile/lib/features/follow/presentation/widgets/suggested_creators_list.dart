@@ -177,8 +177,8 @@ class SuggestedCreatorRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: ext.greetingColor,
-                        fontSize: 14.5.sp,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     SizedBox(height: 2.h),
@@ -259,7 +259,7 @@ class _FollowButton extends StatelessWidget {
               : Text(
                   following ? 'Following' : 'Follow',
                   style:
-                      TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600),
+                      TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500),
                 ),
         ),
       ),

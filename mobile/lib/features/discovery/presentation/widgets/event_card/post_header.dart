@@ -97,7 +97,7 @@ class PostHeader extends StatelessWidget {
                           name,
                           style: TextStyle(
                             color: nameColor,
-                            fontSize: 13.5.sp,
+                            fontSize: 14.sp,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.3,
                             shadows: textShadows,
@@ -230,7 +230,7 @@ class CreatorInitialsAvatar extends StatelessWidget {
         style: TextStyle(
           color: Colors.white,
           fontSize: (size - borderPad * 2) * 0.42,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           letterSpacing: -0.5,
         ),
       ),

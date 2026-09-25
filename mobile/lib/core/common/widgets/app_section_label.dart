@@ -27,7 +27,7 @@ class AppSectionLabel extends StatelessWidget {
       style: TextStyle(
         color: ext.searchHintColor,
         fontSize: 11.sp,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
         letterSpacing: 0.8,
         // The web sidebar renders above the Navigator, where there is no
         // Material ancestor to supply a default — without this its labels get

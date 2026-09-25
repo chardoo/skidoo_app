@@ -88,7 +88,7 @@ class FoundBuyPill extends StatelessWidget {
                       color:
                           selected ? const Color(0xFF1A1A1A) : ext.publicAmber,
                       fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],

@@ -1224,7 +1224,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
                                     .chatRoomOnlyAdminsCanSend,
                                 style: TextStyle(
                                   color: ext.searchHintColor,
-                                  fontSize: 13.sp,
+                                  fontSize: 14.sp,
                                 ),
                               ),
                             ],
@@ -1352,7 +1352,7 @@ class _LikeButton extends StatelessWidget {
                     style: TextStyle(
                       color: isLiked ? Colors.redAccent : ext.searchHintColor,
                       fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -1421,7 +1421,7 @@ class _UserOptionsSheetState extends State<_UserOptionsSheet> {
                   _displayName[0].toUpperCase(),
                   style: TextStyle(
                     color: ext.greetingColor,
-                    fontSize: 20.sp,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1436,7 +1436,7 @@ class _UserOptionsSheetState extends State<_UserOptionsSheet> {
                       color: ext.greetingColor,
                       fontFamily: AppTypography.displayFontFamily,
                       fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   Text(
@@ -1566,7 +1566,7 @@ class _BlockedBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+              style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
             ),
           ),
           if (onUnblock != null)
@@ -1583,8 +1583,8 @@ class _BlockedBanner extends StatelessWidget {
                       'Unblock',
                       style: TextStyle(
                         color: ext.accentGold,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
             ),

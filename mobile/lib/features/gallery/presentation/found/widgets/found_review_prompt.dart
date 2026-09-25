@@ -128,7 +128,7 @@ class _AnswerButton extends StatelessWidget {
               style: TextStyle(
                 color: filled ? Colors.white : ext.greetingColor,
                 fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),

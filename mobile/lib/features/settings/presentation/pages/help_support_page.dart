@@ -219,7 +219,7 @@ class _Faq extends StatelessWidget {
               answer,
               style: TextStyle(
                 color: ext.searchHintColor,
-                fontSize: 13.sp,
+                fontSize: 14.sp,
                 height: 1.5,
               ),
             ),

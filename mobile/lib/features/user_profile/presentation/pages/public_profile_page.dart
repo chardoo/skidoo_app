@@ -239,7 +239,7 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
                     _p.bio,
                     style: TextStyle(
                       color: ext.searchHintColor,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                       height: 1.45,
                     ),
                   ),
@@ -290,9 +290,8 @@ class _Identity extends StatelessWidget {
                 style: TextStyle(
                   color: ext.greetingColor,
                   fontFamily: AppTypography.displayFontFamily,
-                  fontSize: 19.sp,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -308,7 +307,7 @@ class _Identity extends StatelessWidget {
             subtitle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+            style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
           ),
         ],
       ],
@@ -361,7 +360,7 @@ class _Figure extends StatelessWidget {
             style: TextStyle(
               color: ext.greetingColor,
               fontSize: 16.sp,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
             ),
           ),
           SizedBox(height: 2.h),

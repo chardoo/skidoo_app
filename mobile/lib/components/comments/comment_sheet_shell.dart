@@ -272,9 +272,9 @@ class _SortControl extends StatelessWidget {
                     option.label,
                     style: TextStyle(
                       color: isDark ? Colors.white : ext.greetingColor,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                       fontWeight:
-                          option == sort ? FontWeight.w600 : FontWeight.w400,
+                          option == sort ? FontWeight.w500 : FontWeight.w400,
                     ),
                   ),
                 ),
@@ -297,7 +297,7 @@ class _SortControl extends StatelessWidget {
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
             SizedBox(width: 2.w),
@@ -408,12 +408,17 @@ class CommentsLockedState extends StatelessWidget {
             ),
             if (showReason) ...[
               SizedBox(height: 5.h),
-              Text(
-                'The creator has closed this conversation',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: ext.searchHintColor,
-                  fontSize: 13.sp,
+              // Flexible for the reason [CommentEmptyState] gives: this
+              // sentence is longer than that one, so it wraps sooner, and the
+              // threshold that let it through was measured on one line.
+              Flexible(
+                child: Text(
+                  'The creator has closed this conversation',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: ext.searchHintColor,
+                    fontSize: 14.sp,
+                  ),
                 ),
               ),
             ],
@@ -487,11 +492,20 @@ class CommentEmptyState extends StatelessWidget {
             ),
             if (showInvite) ...[
               SizedBox(height: 5.h),
-              Text(
-                'Be the first to say something',
-                style: TextStyle(
-                  color: ext.searchHintColor,
-                  fontSize: 13.sp,
+              // Flexible, because the thresholds above are measured against a
+              // sentence on one line. At a large text scale — or in any sheet
+              // narrow enough — this wraps to two, and a fixed threshold that
+              // has already decided there is room then overflows by the extra
+              // line. This clips the second line instead, which is the same
+              // bargain the icon and the invitation make above.
+              Flexible(
+                child: Text(
+                  'Be the first to say something',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: ext.searchHintColor,
+                    fontSize: 14.sp,
+                  ),
                 ),
               ),
             ],

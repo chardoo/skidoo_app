@@ -49,7 +49,7 @@ class SearchDetailAppBar extends StatelessWidget {
                     color: ext.greetingColor,
                     fontFamily: AppTypography.displayFontFamily,
                     fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 if (sub != null && sub.isNotEmpty) ...[

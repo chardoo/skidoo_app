@@ -123,7 +123,7 @@ class _SharedMediaPageState extends State<SharedMediaPage> {
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 17.sp,
+            fontSize: 16.sp,
           ),
         ),
       ),

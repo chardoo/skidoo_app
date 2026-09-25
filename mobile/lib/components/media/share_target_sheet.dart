@@ -82,7 +82,7 @@ class ShareTargetSheet extends StatelessWidget {
                 title,
                 style: TextStyle(
                   color: ext.greetingColor,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   fontSize: 15.sp,
                 ),
               ),
@@ -187,7 +187,7 @@ class _ShareTarget extends StatelessWidget {
                 style: TextStyle(
                   color: ext.greetingColor,
                   fontWeight: FontWeight.w500,
-                  fontSize: 13.sp,
+                  fontSize: 14.sp,
                 ),
               ),
             ],

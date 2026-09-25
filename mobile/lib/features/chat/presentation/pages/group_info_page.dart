@@ -52,7 +52,7 @@ class GroupInfoPage extends StatelessWidget {
             color: ext.greetingColor,
             fontWeight: FontWeight.bold,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 17.sp,
+            fontSize: 16.sp,
           ),
         ),
       ),
@@ -169,8 +169,8 @@ class GroupInfoPage extends StatelessWidget {
                           'Add Member',
                           style: TextStyle(
                             color: ext.accentGold,
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -393,7 +393,7 @@ class _GroupHeaderState extends State<_GroupHeader> {
           style: TextStyle(
             color: ext.greetingColor,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 19.sp,
+            fontSize: 18.sp,
             fontWeight: FontWeight.bold,
           ),
           textAlign: TextAlign.center,
@@ -402,7 +402,7 @@ class _GroupHeaderState extends State<_GroupHeader> {
         Text(
           '${widget.memberCount} '
           '${widget.memberCount == 1 ? 'member' : 'members'}',
-          style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+          style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
         ),
       ],
     );
@@ -620,7 +620,7 @@ class _MemberRow extends StatelessWidget {
                     style: TextStyle(
                       color: ext.accentGold,
                       fontSize: 11.sp,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -683,7 +683,7 @@ class _MemberOptionsSheet extends StatelessWidget {
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

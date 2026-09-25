@@ -108,8 +108,8 @@ class CardInteractionBar extends StatelessWidget {
                     _fmt(likeCount),
                     style: TextStyle(
                       color: liked ? ext.likeRed : ext.greetingColor,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -152,8 +152,8 @@ class CardInteractionBar extends StatelessWidget {
                     _fmt(dislikeCount),
                     style: TextStyle(
                       color: disliked ? ext.dislikeBlue : ext.greetingColor,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -179,8 +179,8 @@ class CardInteractionBar extends StatelessWidget {
                       _fmt(commentCount),
                       style: TextStyle(
                         color: ext.greetingColor,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -200,8 +200,8 @@ class CardInteractionBar extends StatelessWidget {
                     _fmt(commentCount),
                     style: TextStyle(
                       color: ext.searchHintColor.withValues(alpha: 0.4),
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -619,7 +619,7 @@ class CardActionButton extends StatelessWidget {
                 Text(label,
                     style: TextStyle(
                         color: ext.searchHintColor,
-                        fontSize: 13.sp,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w500)),
               ],
             ],

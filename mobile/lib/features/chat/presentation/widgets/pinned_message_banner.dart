@@ -91,7 +91,7 @@ class PinnedMessageBanner extends StatelessWidget {
                       pinned.preview,
                       style: TextStyle(
                         color: ext.greetingColor,
-                        fontSize: 13.sp,
+                        fontSize: 14.sp,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

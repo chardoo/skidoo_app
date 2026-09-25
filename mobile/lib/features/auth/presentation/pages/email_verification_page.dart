@@ -242,7 +242,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                     style: TextStyle(
                       color: ext.greetingColor,
                       fontFamily: AppTypography.displayFontFamily,
-                      fontSize: 26.sp,
+                      fontSize: 24.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -290,7 +290,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                               filled ? digits[i] : '',
                               style: TextStyle(
                                 color: ext.greetingColor,
-                                fontSize: 20.sp,
+                                fontSize: 18.sp,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -411,8 +411,8 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                                   color: _resendIn > Duration.zero
                                       ? ext.searchHintColor
                                       : ext.accentGold,
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                       ),

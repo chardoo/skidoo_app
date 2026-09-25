@@ -113,9 +113,8 @@ class GetAppSheet extends StatelessWidget {
               style: TextStyle(
                 color: ext.greetingColor,
                 fontFamily: AppTypography.displayFontFamily,
-                fontSize: 17.sp,
+                fontSize: 16.sp,
                 fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
               ),
               textAlign: TextAlign.center,
             ),
@@ -126,7 +125,7 @@ class GetAppSheet extends StatelessWidget {
               'Download Jperg to share, send to friends, and enjoy the full experience.',
               style: TextStyle(
                 color: ext.searchHintColor,
-                fontSize: 13.sp,
+                fontSize: 14.sp,
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
@@ -169,7 +168,7 @@ class GetAppSheet extends StatelessWidget {
                 'Maybe later',
                 style: TextStyle(
                   color: ext.searchHintColor,
-                  fontSize: 13.sp,
+                  fontSize: 14.sp,
                 ),
               ),
             ),

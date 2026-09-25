@@ -217,7 +217,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
               style: TextStyle(
                   color: ext.greetingColor,
                   fontFamily: AppTypography.displayFontFamily,
-                  fontSize: 17.sp,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w700),
             ),
             if (_verifiedByAdmin) ...[
@@ -244,7 +244,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
                         style: TextStyle(
                           color: ext.greetingColor,
                           fontFamily: AppTypography.displayFontFamily,
-                          fontSize: 17.sp,
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -253,7 +253,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
                         'This is what shows on your public profile',
                         style: TextStyle(
                           color: ext.searchHintColor,
-                          fontSize: 13.sp,
+                          fontSize: 14.sp,
                         ),
                       ),
                       SizedBox(height: AppSpacing.lg.h),

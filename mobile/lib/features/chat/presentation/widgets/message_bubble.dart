@@ -157,7 +157,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                   style: TextStyle(
                     color: ext.accentGold,
                     fontSize: 12.sp,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -325,7 +325,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                                           'Encrypted message',
                                           style: TextStyle(
                                             color: mutedTextColor,
-                                            fontSize: 13.sp,
+                                            fontSize: 14.sp,
                                             fontStyle: FontStyle.italic,
                                           ),
                                         ),
@@ -357,7 +357,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                                         decoration: TextDecoration.underline,
                                         decorationColor:
                                             textColor.withValues(alpha: 0.6),
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                       handles: widget.mentionHandles,
                                       displayNames: widget.mentionNames,
@@ -822,20 +822,29 @@ class _ZoomableImageViewState extends State<_ZoomableImageView>
               ),
             ),
           ),
-          // The mark, pinned to the screen rather than to the photograph.
+          // The mark: pinned to the screen, sized to the zoom.
           //
           // Deliberately *outside* the InteractiveViewer. Inside, it would
-          // scale and pan with the image — and at 6x on a corner the logo
-          // would be somewhere off-screen, which hands back exactly the clean
+          // travel with the image — and at 6x on a corner the logo would be
+          // somewhere off-screen, which hands back exactly the clean
           // screenshot it exists to prevent. Fixed to the viewport it is in
           // every frame, at every zoom, wherever the photo has been dragged.
+          //
+          // It still takes the zoom, because pinning alone was not enough: at
+          // 6× the window holds a sixth of the picture, so a mark held at its
+          // resting size covered a sixth as much of it. This grows to match,
+          // driven off the same controller the viewer is transformed by.
           if (widget.paidPreview)
-            const Positioned.fill(
+            Positioned.fill(
               child: IgnorePointer(
-                child: PaidPhotoWatermark(
-                  price: 1,
-                  isPurchased: false,
-                  child: SizedBox.expand(),
+                child: AnimatedBuilder(
+                  animation: _ctrl,
+                  builder: (_, __) => PaidPhotoWatermark(
+                    price: 1,
+                    isPurchased: false,
+                    scale: _ctrl.value.getMaxScaleOnAxis(),
+                    child: const SizedBox.expand(),
+                  ),
                 ),
               ),
             ),

@@ -145,7 +145,7 @@ class _AudienceOption extends StatelessWidget {
                       style: TextStyle(
                         color: ext.greetingColor,
                         fontSize: 15.sp,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     SizedBox(height: 3.h),

@@ -37,8 +37,8 @@ const _kBrandGreen = Color(0xFF16795B);
 /// [DiscoveryBloc] paints instantly *if* [FeedCacheService] has something to
 /// restore — that read is synchronous. With a cold cache it emits a loading
 /// state and waits on the network instead, which is what used to leak through:
-/// the splash left after 1.8 s regardless, so a slow first launch went from
-/// brand animation to an empty screen.
+/// the splash left on a fixed timer regardless, so a slow first launch went
+/// from brand animation to an empty screen.
 ///
 /// So the wait is bounded on both sides. [_kMinDisplay] stops the gif being a
 /// flicker on a warm start, and [_kMaxWait] stops a dead network stranding
@@ -73,30 +73,65 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
-  /// Floor: the length of the animation itself — 108 frames summing to 3600 ms,
-  /// added up from the file's own frame delays.
+  /// Floor: the length of the animation itself — 54 frames summing to 1800 ms,
+  /// added up from the file's own frame delays. `splash_asset_test.dart` reads
+  /// those bytes and fails if this number and the file disagree.
   ///
-  /// It was 1200 ms, which is 40 frames in. The artwork *writes the wordmark
-  /// on*, so at that point the mark is half-drawn, the dot is missing and the
-  /// word "jperg" has not started — and that frozen half-logo is what the app
-  /// cut away from on every warm start. A brand animation that never reaches
-  /// its own last frame is worse than no animation.
+  /// It was 1200 ms, which was 40 frames into a 108-frame cut. The artwork
+  /// *writes the wordmark on*, so at that point the mark was half-drawn, the
+  /// dot was missing and the word "jperg" had not started — and that frozen
+  /// half-logo is what the app cut away from on every warm start. A brand
+  /// animation that never reaches its own last frame is worse than no
+  /// animation.
   ///
-  /// Then it was 3240 ms, which is 108 × 30 ms — the frame count times the
-  /// delay on *most* of the frames. The file does not use one delay throughout:
-  /// it mixes 30 ms and 40 ms, and the real total is 3600. So the floor was
-  /// still landing ten frames early, on the same kind of not-quite-finished
-  /// mark, just far less obviously.
+  /// Then it was 3600 ms: the whole cut, which fixed the half-drawn mark by
+  /// making every single launch wait 3.6 s for a screen nobody opened the app
+  /// to look at. The animation finishing and the animation being long are two
+  /// different things, and only the first one was ever the requirement.
+  ///
+  /// So the *artwork* was re-timed instead: the same animation played at twice
+  /// the speed and resampled to 30 fps, which is 54 frames over 1800 ms. Half
+  /// the drawing steps of the original, at the same frame rate on screen —
+  /// the mark is drawn on exactly as before, just faster, rather than the same
+  /// draw held for longer. Nothing in the app changed except this number
+  /// following the file.
+  ///
+  /// To re-cut it from a new export, at the source's own frame rate:
+  ///
+  /// ```
+  /// ffmpeg -i in.gif -vf "setpts=0.5*PTS,fps=30,palettegen=stats_mode=diff" pal.png
+  /// ffmpeg -i in.gif -i pal.png -lavfi \
+  ///   "setpts=0.5*PTS,fps=30[x];[x][1:v]paletteuse=dither=none:diff_mode=rectangle" \
+  ///   -loop -1 Splash_reducedg.gif
+  /// ```
+  ///
+  /// Neither flag is decoration. `-loop -1` is what leaves out the NETSCAPE2.0
+  /// block the asset test checks for. `dither=none` is what keeps the field
+  /// black: this artwork is four flat colours, so there is nothing for a
+  /// dither to help with, and the default bayer pattern lifts a quarter of the
+  /// background off #000000 — which is the one colour on this screen that has
+  /// to match the launch image behind it exactly.
   ///
   /// This is a floor, not a wait: the feed warm-up below runs alongside it, so
   /// on a cold start the fetch is happening during the animation rather than
   /// after it. What it costs is the difference between the two, and only when
   /// the network is faster than the artwork.
-  static const _kMinDisplay = Duration(milliseconds: 3600);
+  static const _kMinDisplay = Duration(milliseconds: 1800);
 
   /// Ceiling on waiting for content. Long enough for a slow first fetch, short
   /// enough that a request which is never coming back doesn't trap the user.
-  static const _kMaxWait = Duration(seconds: 6);
+  ///
+  /// Counted from mount, not from the end of the animation, so this is the
+  /// whole splash at its worst. It was 6 s, which was set when the floor
+  /// underneath it was 3.6 s and the ceiling was therefore only 2.4 s of
+  /// actual waiting. Left alone it would have quietly become a *longer* wait
+  /// than the one being removed: 4.2 s of dots after a 1.8 s animation.
+  ///
+  /// Past it the app goes on and the feed shows its own loading state, which
+  /// on a network this slow is the honest thing to do — the person is at least
+  /// somewhere they can pull to refresh, rather than held on a screen with no
+  /// controls on it.
+  static const _kMaxWait = Duration(milliseconds: 3500);
 
   /// Ceiling on waiting for the top card's *photo*, separately and much sooner.
   ///
@@ -107,11 +142,15 @@ class _SplashPageState extends State<SplashPage> {
   /// splash for six seconds to warm an image that was never coming — trading
   /// the spinner this was meant to remove for a longer wait before it.
   ///
+  /// It has to keep being shorter than the floor. At 3 s against a 1.8 s
+  /// animation it was no longer a budget the animation absorbed but 1.2 s of
+  /// dots added to every warm start, which is the same bug in miniature.
+  ///
   /// The card behind this works without it. A photo still loading shows its
   /// backdrop and a spinner, which is the state every other card in the feed
   /// passes through; this is only about the first one, which is the only one
   /// nobody chose to look at.
-  static const _kMediaWarmBudget = Duration(seconds: 3);
+  static const _kMediaWarmBudget = Duration(milliseconds: 1500);
 
   /// One page of events — the same page `DiscoveryBloc` asks for, because the
   /// bloc now adopts this page rather than fetching its own. It had drifted:
@@ -134,7 +173,7 @@ class _SplashPageState extends State<SplashPage> {
     // otherwise throw the link's screen away. But "wait for the splash to
     // navigate" had become "wait for the splash to warm a feed the person is
     // not going to look at", and a link tapped in an email or a notification
-    // sat behind 1.2s of brand beat plus a fetch of up to six seconds before
+    // sat behind the whole brand beat plus a fetch of several seconds before
     // anything started happening.
     //
     // So the ordering is kept and the waiting is not: as soon as a link is
@@ -322,21 +361,22 @@ class _SplashPageState extends State<SplashPage> {
           fit: StackFit.expand,
           children: [
             Image.asset(
-              // The dark cut, with the wordmark drawn smaller. Same 108 frames
-              // over the same 3.6 s as `Splash_small`, so the timing above is
-              // unchanged — what differs is the type size and a quarter of the
-              // bytes to decode on the one screen where nothing else is
-              // competing for the frame budget.
+              // The dark cut, with the wordmark drawn smaller, re-timed to 54
+              // frames over 1.8 s — `Splash_small`'s 108 drawing steps at twice
+              // the speed and the same 30 fps. [_kMinDisplay] is that number;
+              // the two are checked against each other in
+              // `splash_asset_test.dart`.
               //
               // The file plays **once** and holds its last frame, and it has to
               // stay that way. As exported it carried a GIF loop extension set
-              // to infinite, which Flutter honours: a start slower than 3.6 s —
-              // exactly the start this screen exists for — wiped the finished
-              // wordmark and drew it on again, on a loop, while the person
-              // waited. The still mark plus [_StillWorking] is the waiting
-              // state; a re-running brand animation is a screen that looks like
-              // it has restarted. A re-export will bring the loop back: strip
-              // the NETSCAPE2.0 application extension from the gif again.
+              // to infinite, which Flutter honours: a start slower than the
+              // animation — exactly the start this screen exists for — wiped
+              // the finished wordmark and drew it on again, on a loop, while
+              // the person waited. The still mark plus [_StillWorking] is the
+              // waiting state; a re-running brand animation is a screen that
+              // looks like it has restarted. A re-export will bring the loop
+              // back: strip the NETSCAPE2.0 application extension from the gif
+              // again (`ffmpeg … -loop -1` writes it without one).
               'assets/splash/Splash_reducedg.gif',
               fit: BoxFit.cover,
             ),
@@ -346,9 +386,9 @@ class _SplashPageState extends State<SplashPage> {
             // Instagram holds its mark and, if the app is still fetching,
             // shows something small underneath rather than replacing the
             // brand screen with a spinner. Before the last frame there is
-            // nothing to report — the animation *is* the loading state for
-            // those three seconds, and a second thing moving over it would be
-            // two things asking for attention at once.
+            // nothing to report — the animation *is* the loading state while
+            // it runs, and a second thing moving over it would be two things
+            // asking for attention at once.
             //
             // On a warm start this page is usually gone before it appears at
             // all, which is the intended common case.

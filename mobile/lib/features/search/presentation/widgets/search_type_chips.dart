@@ -90,8 +90,8 @@ class _Chip extends StatelessWidget {
             label,
             style: TextStyle(
               color: foreground,
-              fontSize: 13.sp,
-              fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+              fontSize: 14.sp,
+              fontWeight: active ? FontWeight.w500 : FontWeight.w500,
             ),
           ),
         ),

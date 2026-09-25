@@ -103,7 +103,7 @@ class _ReviewFoundPhotosPageState extends State<ReviewFoundPhotosPage> {
             child: Text(
               "Tap to deselect photos that aren't you",
               textAlign: TextAlign.center,
-              style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+              style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
             ),
           ),
           Expanded(
@@ -126,8 +126,8 @@ class _ReviewFoundPhotosPageState extends State<ReviewFoundPhotosPage> {
                         event.eventName,
                         style: TextStyle(
                           color: ext.searchHintColor,
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -230,7 +230,7 @@ class _ReviewTile extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),

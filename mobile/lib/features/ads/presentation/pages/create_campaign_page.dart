@@ -377,9 +377,8 @@ class _CreateCampaignPageState extends State<CreateCampaignPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 17.sp,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w700,
           ),
         ),
         centerTitle: false,
@@ -680,7 +679,7 @@ class _BottomBar extends StatelessWidget {
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 15.sp,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w700,
                                   letterSpacing: 0.2,
                                 ),
                               ),
@@ -982,7 +981,7 @@ class _Step3 extends StatelessWidget {
               style: TextStyle(
                 color: ext.searchHintColor,
                 fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -1232,7 +1231,7 @@ class _ReviewRow extends StatelessWidget {
               label,
               style: TextStyle(
                 color: ext.searchHintColor,
-                fontSize: 13.sp,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1242,8 +1241,8 @@ class _ReviewRow extends StatelessWidget {
               value,
               style: TextStyle(
                 color: ext.greetingColor,
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w600,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -1278,9 +1277,8 @@ class _StepScroll extends StatelessWidget {
           style: TextStyle(
             color: ext.greetingColor,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 20.sp,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.4,
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w700,
           ),
         ),
         SizedBox(height: AppSpacing.xs.h),
@@ -1288,7 +1286,7 @@ class _StepScroll extends StatelessWidget {
           stepSubtitle,
           style: TextStyle(
             color: ext.searchHintColor,
-            fontSize: 13.sp,
+            fontSize: 14.sp,
           ),
         ),
         SizedBox(height: AppSpacing.xxl.h),
@@ -1311,7 +1309,7 @@ class _CLabel extends StatelessWidget {
       text,
       style: TextStyle(
         color: ext.greetingColor,
-        fontSize: 13.sp,
+        fontSize: 14.sp,
         fontWeight: FontWeight.w700,
       ),
     );
@@ -1497,7 +1495,7 @@ class _CampaignMultiPicker extends StatelessWidget {
                           style: TextStyle(
                             color: ext.searchHintColor,
                             fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -1543,7 +1541,7 @@ class _DatePickerTile extends StatelessWidget {
                     label,
                     style: TextStyle(
                       color: ext.searchHintColor,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),

@@ -415,8 +415,8 @@ class _InviteButton extends StatelessWidget {
             label,
             style: TextStyle(
               color: filled ? Colors.white : ext.greetingColor,
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w600,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -479,7 +479,7 @@ class _EmptyInbox extends StatelessWidget {
                           'Start a chat',
                           style: TextStyle(
                             color: ext.accentGold,
-                            fontSize: 13.sp,
+                            fontSize: 14.sp,
                             decoration: TextDecoration.underline,
                             decorationColor: ext.accentGold,
                           ),
@@ -491,7 +491,7 @@ class _EmptyInbox extends StatelessWidget {
                     text: ' to see your conversations here',
                     style: TextStyle(
                       color: ext.searchHintColor,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                     ),
                   ),
                 ],

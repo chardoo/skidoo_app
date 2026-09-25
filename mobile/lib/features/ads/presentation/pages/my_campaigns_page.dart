@@ -101,9 +101,8 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
                 style: TextStyle(
                   color: ext.greetingColor,
                   fontFamily: AppTypography.displayFontFamily,
-                  fontSize: 17.sp,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               centerTitle: false,
@@ -135,7 +134,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
                           'Create a campaign to get started.',
                           style: TextStyle(
                             color: ext.accentGold,
-                            fontSize: 13.sp,
+                            fontSize: 14.sp,
                             decoration: TextDecoration.underline,
                             decorationColor: ext.accentGold,
                           ),

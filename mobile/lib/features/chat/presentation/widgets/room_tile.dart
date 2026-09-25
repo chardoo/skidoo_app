@@ -104,7 +104,7 @@ class RoomTile extends StatelessWidget {
                                   : ext.searchHintColor,
                               fontSize: 12.sp,
                               fontWeight: hasUnread
-                                  ? FontWeight.w600
+                                  ? FontWeight.w500
                                   : FontWeight.normal,
                             ),
                           ),
@@ -118,7 +118,7 @@ class RoomTile extends StatelessWidget {
                             _preview(context),
                             style: TextStyle(
                               color: ext.searchHintColor,
-                              fontSize: 13.sp,
+                              fontSize: 14.sp,
                               fontWeight:
                                   hasUnread ? FontWeight.w500 : FontWeight.normal,
                             ),

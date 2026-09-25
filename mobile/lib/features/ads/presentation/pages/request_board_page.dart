@@ -222,9 +222,8 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
           style: TextStyle(
             color: ext.greetingColor,
             fontFamily: AppTypography.displayFontFamily,
-            fontSize: 17.sp,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w700,
           ),
         ),
         centerTitle: false,
@@ -427,9 +426,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                 style: TextStyle(
                   color: ext.greetingColor,
                   fontFamily: AppTypography.displayFontFamily,
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.4,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               SizedBox(height: AppSpacing.xl.h),
@@ -437,7 +435,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 'Event type',
                 style: TextStyle(
                   color: ext.greetingColor,
-                  fontSize: 13.sp,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -465,7 +463,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 'Location',
                 style: TextStyle(
                   color: ext.greetingColor,
-                  fontSize: 13.sp,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -500,7 +498,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 15.sp,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),

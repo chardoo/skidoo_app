@@ -85,7 +85,7 @@ class PhotographerMeta extends StatelessWidget {
                     text: _followers,
                     style: TextStyle(
                       color: ext.accentGold,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],

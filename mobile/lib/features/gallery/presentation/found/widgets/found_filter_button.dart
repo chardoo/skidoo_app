@@ -60,8 +60,8 @@ class FoundFilterButton extends StatelessWidget {
                 'Filters',
                 style: TextStyle(
                   color: foreground,
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               if (activeCount > 0) ...[

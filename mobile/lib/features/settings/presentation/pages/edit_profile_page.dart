@@ -274,8 +274,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                   : 'Edit Interests',
                               style: TextStyle(
                                 color: ext.accentGold,
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w500,
                                 decoration: TextDecoration.underline,
                                 decorationColor: ext.accentGold,
                               ),
@@ -367,7 +367,7 @@ class _AvatarField extends StatelessWidget {
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -599,7 +599,7 @@ class _InterestChip extends StatelessWidget {
             style: TextStyle(
               color: selected ? ext.greetingColor : ext.searchHintColor,
               fontSize: 12.sp,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
             ),
           ),
         ),

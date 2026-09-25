@@ -242,7 +242,6 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
               fontFamily: AppTypography.displayFontFamily,
               fontSize: 16.sp,
               fontWeight: FontWeight.w700,
-              letterSpacing: -0.2,
             ),
           ),
           SizedBox(height: 4.h),
@@ -259,7 +258,7 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
               request.description,
               style: TextStyle(
                 color: ext.searchHintColor,
-                fontSize: 13.sp,
+                fontSize: 14.sp,
                 height: 1.4,
               ),
             ),
@@ -355,7 +354,7 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
                         item.label,
                         style: TextStyle(
                           color: ext.searchHintColor,
-                          fontSize: 13.sp,
+                          fontSize: 14.sp,
                         ),
                       ),
                     ),
@@ -363,7 +362,7 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
                       _money(item.amount, quote.currency),
                       style: TextStyle(
                         color: ext.searchHintColor,
-                        fontSize: 13.sp,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -631,7 +630,7 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
                 label,
                 style: TextStyle(
                   color: ext.searchHintColor,
-                  fontSize: 13.sp,
+                  fontSize: 14.sp,
                 ),
               ),
             ),

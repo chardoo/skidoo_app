@@ -80,7 +80,7 @@ class SearchIdleView extends StatelessWidget {
               child: Text(
                 state.youMayLikeError ?? 'Nothing to show here yet.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: ext.searchHintColor, fontSize: 13.sp),
+                style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
               ),
             ),
           )

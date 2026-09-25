@@ -377,11 +377,11 @@ class _NavTab extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: activeForeground,
-                        fontSize: 12.5.sp,
-                        // Semibold, not bold: the chip and the accent already
+                        fontSize: 12.sp,
+                        // Medium, not bold: the chip and the accent already
                         // mark the tab, and the design's label sits alongside
                         // its icon rather than shouting over it.
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         letterSpacing: 0.1,
                       ),
                     ),

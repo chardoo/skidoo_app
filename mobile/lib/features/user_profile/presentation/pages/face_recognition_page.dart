@@ -100,7 +100,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
           style: TextStyle(
               color: ext.greetingColor,
               fontFamily: AppTypography.displayFontFamily,
-              fontSize: 17.sp,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w700),
         ),
         centerTitle: false,
@@ -131,7 +131,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
                     'Face the camera directly in good lighting.',
                     style: TextStyle(
                         color: ext.searchHintColor,
-                        fontSize: 13.sp,
+                        fontSize: 14.sp,
                         height: 1.5),
                   ),
                 ],
@@ -169,7 +169,7 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
                         child: Text(
                           'Use my first photo as my profile picture too',
                           style: TextStyle(
-                              color: ext.greetingColor, fontSize: 13.sp),
+                              color: ext.greetingColor, fontSize: 14.sp),
                         ),
                       ),
                     ],
@@ -313,7 +313,7 @@ class _SelfieTile extends StatelessWidget {
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 9.sp,
-                        fontWeight: FontWeight.w600)),
+                        fontWeight: FontWeight.w500)),
               ],
             ),
           ),

@@ -233,7 +233,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                             child: Text(
                               _errorHint!,
                               style: TextStyle(
-                                  color: Colors.white, fontSize: 13.sp),
+                                  color: Colors.white, fontSize: 14.sp),
                             ),
                           ),
                         ],
@@ -265,8 +265,8 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                                     'Use this photo anyway',
                                     style: TextStyle(
                                         color: Colors.white70,
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w600),
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w500),
                                   ),
                                 ],
                               ),
@@ -283,7 +283,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
                         : 'Ensure good lighting and face the camera',
                     style: TextStyle(
                       color: Colors.white70,
-                      fontSize: 13.sp,
+                      fontSize: 14.sp,
                     ),
                   ),
                   SizedBox(height: 22.h),

@@ -102,7 +102,7 @@ class OnboardingStepScaffold extends StatelessWidget {
                       subtitle!,
                       style: TextStyle(
                           color: ext.searchHintColor,
-                          fontSize: 13.sp,
+                          fontSize: 14.sp,
                           height: 1.4),
                     ),
                   ],

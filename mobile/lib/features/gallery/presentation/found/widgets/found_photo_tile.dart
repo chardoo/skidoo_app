@@ -123,8 +123,8 @@ class FoundPhotoTile extends StatelessWidget {
                       'Not me',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -154,7 +154,7 @@ class FoundPhotoTile extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18.sp,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),

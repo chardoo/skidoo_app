@@ -164,4 +164,55 @@ void main() {
       expect(tall, closeTo(await widthIn(const Size(200, 200)), 0.01));
     });
   });
+
+  group('growing with the zoom', () {
+    // Pinning the mark outside the transform stopped it being panned
+    // off-screen, and was still beatable: the window holds a quarter as much
+    // photograph at 4×, so a mark held at its resting size covered a quarter
+    // as much of it — zoom in on a face and it arrives clean beside a logo
+    // that stayed where it was. The mark takes the scale for that reason.
+    Future<double> widthAt(WidgetTester t, double scale) async {
+      await t.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 390,
+            height: 390,
+            child: PaidPhotoWatermark(
+              price: 20,
+              isPurchased: false,
+              scale: scale,
+              child: const ColoredBox(color: Colors.blue),
+            ),
+          ),
+        ),
+      ));
+      await t.pumpAndSettle();
+      return t.widget<SvgPicture>(mark).width!;
+    }
+
+    testWidgets('a zoomed photo gets a bigger mark', (t) async {
+      final rest = await widthAt(t, 1);
+      final zoomed = await widthAt(t, 1.5);
+
+      expect(zoomed, greaterThan(rest));
+      expect(zoomed, closeTo(rest * 1.5, 0.01));
+    });
+
+    testWidgets('it stops growing before it outgrows the window', (t) async {
+      // Past the cap the logo is clipped to a fragment, and a fragment of a
+      // logo does not read as a watermark — which is the one thing it is for.
+      final far = await widthAt(t, 6);
+
+      expect(far, lessThanOrEqualTo(390));
+      expect(far, closeTo(390 * 0.95, 0.01));
+    });
+
+    testWidgets('it never shrinks below its resting size', (t) async {
+      // A scale under 1 only comes from a pinch already easing back to rest,
+      // and a mark that shrank with it would flicker.
+      final rest = await widthAt(t, 1);
+
+      expect(await widthAt(t, 0.4), rest);
+    });
+  });
 }

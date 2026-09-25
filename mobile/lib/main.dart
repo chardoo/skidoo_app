@@ -85,7 +85,14 @@ void main() async {
   // for the token, one more for the expiration, and camera enumeration). Now
   // they all race together so the critical path is only as long as the slowest
   // one rather than the sum of all four.
-  final results = await Future.wait([
+  //
+  // Everything the first frame needs is in here, including the two `prime`
+  // calls at the end, which used to be awaited one after the other *after*
+  // this completed — two more serial Keychain round trips in front of
+  // `runApp`, on the stretch where the screen is still the OS launch image.
+  // They read different keys and depend on nothing here, so they belong in the
+  // same batch.
+  final results = await Future.wait<Object?>([
     // [0] Jailbreak / root detection (skip on web — plugin not supported)
     Future<bool>(() async {
       try {
@@ -104,6 +111,13 @@ void main() async {
     // [4] Whether a reference selfie is on file — gates the Found tab. Seeded
     //     here so the gate resolves on the first frame instead of flashing.
     authService.getHasAddedFaces(),
+    // [5] Role decides which tools the app offers, so a returning creator must
+    //     not spend the first frames looking like a viewer. Seeds
+    //     AuthService.role rather than returning anything.
+    authService.primeRole(),
+    // [6] Same, for the avatar: without it the first frame draws initials for
+    //     an account whose picture is already on disk.
+    authService.primeProfileUrl(),
   ]);
 
   final isDeviceCompromised = results[0] as bool;
@@ -120,9 +134,10 @@ void main() async {
   // if it has expired"), because it marks perfectly good sessions dead. Routing
   // still trusted it, and the two disagreeing is what made a signed-in person
   // land on the guest feed: the token was blanked here, `nextRoute` in app.dart
-  // read that blank and chose Discovery, while _AuthGuard — which reads the
-  // real token — would have let them into Home. Nothing was ever logged out,
-  // which is why relaunching appeared to "fix" it.
+  // read that blank and chose Discovery, while _AuthGuard — which went back to
+  // the Keychain for the real token — would have let them into Home. Nothing
+  // was ever logged out, which is why relaunching appeared to "fix" it. (Both
+  // now read the same seeded flag, so they can no longer disagree at all.)
   //
   // Production issues 48-hour tokens (JWT_ACCESS_TOKEN_TIME defaults to 48 and
   // is not set on the server), so this fired for every user every two days.
@@ -145,14 +160,12 @@ void main() async {
   // Seed the synchronous auth state before the first frame, so the first
   // screen is chosen without an async round-trip. Presence of a token,
   // matching _AuthGuard and the interceptor.
+  // Presence of a token, matching _AuthGuard and the interceptor — and read by
+  // both guards in app.dart as *the* answer to "is this session real", with no
+  // Keychain read of their own. So it has to be set before the first frame,
+  // not merely before the first request.
   AuthService.isAuthenticated.value = token.isNotEmpty;
   AuthService.hasAddedFaces.value = hasFaces;
-  // Role decides which tools the app offers, so a returning creator must not
-  // spend the first frames looking like a viewer. Awaited rather than left to
-  // settle: it is one keychain read, and the alternative is the creator
-  // affordances flickering in a moment after the feed has drawn.
-  await authService.primeRole();
-  await authService.primeProfileUrl();
 
   // Push. Off the critical path — none of this blocks the first frame.
   //
