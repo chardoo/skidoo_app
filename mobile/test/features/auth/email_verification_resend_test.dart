@@ -94,17 +94,25 @@ void main() {
         reason: 'the button must send a request, not just start a timer');
   });
 
-  testWidgets('a sent code is confirmed in the banner', (tester) async {
+  testWidgets('a sent code is confirmed quietly, under the button', (tester) async {
     await pumpPage(tester);
     await waitOutCooldown(tester);
+    // Where the Verify button sits before the resend, so the confirmation can
+    // be shown not to have moved it.
+    final before = tester.getTopLeft(find.text('Verify'));
 
     await tester.tap(find.text("Didn't receive it? Resend code"));
     await tester.pump();
     await tester.pump();
 
-    final banner = tester.widget<AppInlineBanner>(find.byType(AppInlineBanner));
-    expect(banner.kind, AppBannerKind.success);
-    expect(banner.message, contains('ada@example.com'));
+    expect(find.textContaining('New code sent'), findsOneWidget);
+    // Not a banner. The confirmation used to be a three-line success panel
+    // between the code boxes and the button — the largest thing on a screen
+    // whose whole job is six digits — and tapping Resend shoved the button a
+    // hundred pixels down the page.
+    expect(find.byType(AppInlineBanner), findsNothing);
+    expect(tester.getTopLeft(find.text('Verify')), before,
+        reason: 'confirming a resend must not move the button');
   });
 
   testWidgets('a failed resend says so, and stays retryable', (tester) async {
@@ -115,8 +123,11 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    // A failure does take the banner: it is something to fix before the button
+    // below is worth pressing.
     final banner = tester.widget<AppInlineBanner>(find.byType(AppInlineBanner));
     expect(banner.kind, AppBannerKind.error);
+    expect(find.textContaining('New code sent'), findsNothing);
     // The cooldown starts only once the server has taken the request, so a
     // request that never landed must not lock the button for thirty seconds.
     expect(find.text("Didn't receive it? Resend code"), findsOneWidget);
@@ -128,17 +139,17 @@ void main() {
     expect(find.byType(AppBackButton), findsOneWidget);
   });
 
-  testWidgets('typing a fresh code clears the resend banner', (tester) async {
+  testWidgets('typing a fresh code clears the confirmation', (tester) async {
     await pumpPage(tester);
     await waitOutCooldown(tester);
     await tester.tap(find.text("Didn't receive it? Resend code"));
     await tester.pump();
     await tester.pump();
-    expect(find.byType(AppInlineBanner), findsOneWidget);
+    expect(find.textContaining('New code sent'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), '1');
     await tester.pump();
 
-    expect(find.byType(AppInlineBanner), findsNothing);
+    expect(find.textContaining('New code sent'), findsNothing);
   });
 }

@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/common/widgets/app_code_field.dart';
 import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
@@ -53,8 +53,14 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
   bool _isLoading = false;
   bool _isResending = false;
   String? _error;
-  String? _notice;
-  AppBannerKind _noticeKind = AppBannerKind.info;
+
+  /// A resend that failed — kept apart from [_error] because a resend failing
+  /// and a code being rejected are different problems with different fixes.
+  String? _resendError;
+
+  /// A resend that worked. Drawn under the Resend control rather than in the
+  /// banner slot; see the twin of this on EmailVerificationPage.
+  bool _codeResent = false;
   Duration _resendIn = Duration.zero;
   Timer? _resendTimer;
 
@@ -98,16 +104,12 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
   String get _code => _controller.text;
 
   void _onCodeChanged(String value) {
+    if (_error == null && _resendError == null && !_codeResent) return;
     setState(() {
       _error = null;
-      _notice = null;
+      _resendError = null;
+      _codeResent = false;
     });
-    if (value.length == _kCodeLength) {
-      // Complete — close the keyboard deliberately, once, rather than letting
-      // it flicker on the way there.
-      _focusNode.unfocus();
-      _verify();
-    }
   }
 
   Future<void> _verify() async {
@@ -115,7 +117,8 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
     setState(() {
       _isLoading = true;
       _error = null;
-      _notice = null;
+      _resendError = null;
+      _codeResent = false;
     });
     try {
       await sl<VerifyResetCodeUseCase>().call(
@@ -147,25 +150,20 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
     setState(() {
       _isResending = true;
       _error = null;
-      _notice = null;
+      _resendError = null;
+      _codeResent = false;
     });
     try {
       await sl<RequestPasswordResetUseCase>().call(widget.email);
       if (!mounted) return;
-      setState(() {
-        _noticeKind = AppBannerKind.success;
-        _notice = 'A new code is on its way to ${widget.email}. '
-            'If it does not arrive shortly, check your spam folder.';
-      });
+      setState(() => _codeResent = true);
       // Whatever is typed is now the previous code.
       _controller.clear();
       _startResendCooldown();
     } catch (_) {
       if (mounted) {
-        setState(() {
-          _noticeKind = AppBannerKind.error;
-          _notice = 'Could not resend the code. Please try again.';
-        });
+        setState(() =>
+            _resendError = 'Could not resend the code. Please try again.');
       }
     } finally {
       if (mounted) setState(() => _isResending = false);
@@ -227,95 +225,28 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
                   ),
                   SizedBox(height: AppSpacing.xxxl.h),
 
-                  // ── Code boxes ─────────────────────────────────────────
-                  // A single transparent TextField laid over six boxes: the
-                  // boxes are decoration driven by the controller, so there is
-                  // exactly one focus node and one keyboard session.
-                  Stack(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List.generate(_kCodeLength, (i) {
-                          final digits = _code;
-                          final filled = i < digits.length;
-                          // The caret sits on the first empty box — or on the
-                          // last one when the code is complete.
-                          final isCurrent = _focusNode.hasFocus &&
-                              (i == digits.length ||
-                                  (digits.length == _kCodeLength &&
-                                      i == _kCodeLength - 1));
-                          return Container(
-                            width: 44.w,
-                            height: 52.h,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: ext.searchFieldFill,
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md.r),
-                              border: Border.all(
-                                color: isCurrent
-                                    ? ext.accentGold
-                                    : Colors.transparent,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Text(
-                              filled ? digits[i] : '',
-                              style: TextStyle(
-                                color: ext.greetingColor,
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                      // Invisible, but real: it owns the input connection and
-                      // takes the taps, so tapping any box opens the keyboard.
-                      Positioned.fill(
-                        child: TextField(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          autofocus: true,
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.done,
-                          autofillHints: const [AutofillHints.oneTimeCode],
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(_kCodeLength),
-                          ],
-                          showCursor: false,
-                          cursorColor: Colors.transparent,
-                          style: const TextStyle(
-                            color: Colors.transparent,
-                            height: 0.01,
-                          ),
-                          decoration: const InputDecoration(
-                            counterText: '',
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                            fillColor: Colors.transparent,
-                            filled: true,
-                          ),
-                          onChanged: _onCodeChanged,
-                          onSubmitted: (_) => _verify(),
-                        ),
-                      ),
-                    ],
+                  AppCodeField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    length: _kCodeLength,
+                    hasError: _error != null,
+                    onChanged: _onCodeChanged,
+                    onCompleted: (_) {
+                      // Close the keyboard deliberately, once, rather than
+                      // letting it flicker on the way there.
+                      _focusNode.unfocus();
+                      _verify();
+                    },
                   ),
 
-                  if (_error != null) ...[
+                  // Failures only, and one at a time — a rejected code or a
+                  // resend that did not go through. A successful resend is a
+                  // quiet line under the Resend control instead of a panel
+                  // here, so confirming it does not push the button away. See
+                  // the twin of this on EmailVerificationPage.
+                  if (_error != null || _resendError != null) ...[
                     SizedBox(height: AppSpacing.lg.h),
-                    AppInlineBanner(message: _error!),
-                  ] else if (_notice != null) ...[
-                    SizedBox(height: AppSpacing.lg.h),
-                    AppInlineBanner(
-                      message: _notice!,
-                      kind: _noticeKind,
-                      onDismiss: () => setState(() => _notice = null),
-                    ),
+                    AppInlineBanner(message: _error ?? _resendError!),
                   ],
                   SizedBox(height: 28.h),
 
@@ -383,7 +314,33 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
                       ),
                     ),
                   ),
-                  SizedBox(height: AppSpacing.huge.h),
+
+                  // The confirmation, where the action is. The slot is held
+                  // whether or not there is anything in it, so confirming a
+                  // resend moves nothing — see the twin of this on
+                  // EmailVerificationPage for why that needs saying.
+                  SizedBox(
+                    height: 34.h,
+                    child: _codeResent
+                        ? Center(
+                            child: Semantics(
+                              liveRegion: true,
+                              child: Text(
+                                'New code sent. Check your spam folder too.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: ext.accentGold,
+                                  // A step below the control above it: this is
+                                  // subordinate to the thing it reports on.
+                                  fontSize: AppTypography.xs,
+                                  fontWeight: AppTypography.medium,
+                                ),
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                  SizedBox(height: AppSpacing.xxl.h),
                 ],
               ),
             ),

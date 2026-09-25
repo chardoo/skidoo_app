@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/common/widgets/app_code_field.dart';
 import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
@@ -11,9 +12,7 @@ import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/auth/domain/usecases/resend_verification_usecase.dart';
 import 'package:jperg_app/features/auth/domain/usecases/verify_code_usecase.dart';
 import 'package:jperg_app/features/auth/presentation/pages/face_capture_step_page.dart';
-import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
-import 'package:flutter/services.dart';
 
 const _kCodeLength = 6;
 const _kResendCooldown = Duration(seconds: 30);
@@ -52,11 +51,14 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
   bool _isResending = false;
   String? _error;
 
-  /// The outcome of the last resend, shown in the banner. Separate from
-  /// [_error] because a successful resend is a success message, and because a
-  /// failed resend must not look like a rejected code.
-  String? _notice;
-  AppBannerKind _noticeKind = AppBannerKind.info;
+  /// A resend that failed. Kept apart from [_error] because a resend failing
+  /// and a code being rejected are different problems with different fixes,
+  /// and they must never be mistaken for one another.
+  String? _resendError;
+
+  /// A resend that worked, which is a different kind of thing entirely — see
+  /// where it is drawn, under the button that caused it.
+  bool _codeResent = false;
   Duration _resendIn = Duration.zero;
   Timer? _resendTimer;
 
@@ -101,17 +103,12 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
   String get _code => _controller.text;
 
   void _onCodeChanged(String value) {
-    // Redraw the boxes for the new digit / caret position.
+    if (_error == null && _resendError == null && !_codeResent) return;
     setState(() {
       _error = null;
-      _notice = null;
+      _resendError = null;
+      _codeResent = false;
     });
-    if (value.length == _kCodeLength) {
-      // Complete — close the keyboard deliberately, once, rather than letting
-      // it flicker on the way there.
-      _focusNode.unfocus();
-      _verify();
-    }
   }
 
   Future<void> _verify() async {
@@ -151,40 +148,25 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     setState(() {
       _isResending = true;
       _error = null;
-      _notice = null;
+      _resendError = null;
+      _codeResent = false;
     });
     try {
       await sl<ResendVerificationUseCase>().call(widget.email);
       if (!mounted) return;
-      setState(() {
-        _noticeKind = AppBannerKind.success;
-        _notice = 'A new code is on its way to ${widget.email}. '
-            'If it does not arrive shortly, check your spam folder.';
-      });
+      setState(() => _codeResent = true);
       // The typed digits are now the *old* code; leaving them in place invites
       // the user to submit them and be told they are wrong.
       _controller.clear();
       _startResendCooldown();
     } on NetworkException catch (e) {
-      if (mounted) {
-        setState(() {
-          _noticeKind = AppBannerKind.error;
-          _notice = e.message;
-        });
-      }
+      if (mounted) setState(() => _resendError = e.message);
     } on ServerException catch (e) {
-      if (mounted) {
-        setState(() {
-          _noticeKind = AppBannerKind.error;
-          _notice = e.message;
-        });
-      }
+      if (mounted) setState(() => _resendError = e.message);
     } catch (_) {
       if (mounted) {
-        setState(() {
-          _noticeKind = AppBannerKind.error;
-          _notice = 'Could not send a new code. Please try again.';
-        });
+        setState(() =>
+            _resendError = 'Could not send a new code. Please try again.');
       }
     } finally {
       if (mounted) setState(() => _isResending = false);
@@ -254,103 +236,36 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                   ),
                   SizedBox(height: AppSpacing.xxxl.h),
 
-                  // ── Code boxes ─────────────────────────────────────────
-                  // A single transparent TextField laid over the six boxes:
-                  // the boxes are pure decoration driven by the controller, so
-                  // there is exactly one focus node and one keyboard session.
-                  Stack(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List.generate(_kCodeLength, (i) {
-                          final digits = _code;
-                          final filled = i < digits.length;
-                          // The caret sits on the first empty box — or on the
-                          // last one when the code is complete.
-                          final isCurrent = _focusNode.hasFocus &&
-                              (i == digits.length ||
-                                  (digits.length == _kCodeLength &&
-                                      i == _kCodeLength - 1));
-                          return Container(
-                            width: 44.w,
-                            height: 52.h,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: ext.searchFieldFill,
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md.r),
-                              border: Border.all(
-                                color: isCurrent
-                                    ? ext.accentGold
-                                    : Colors.transparent,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Text(
-                              filled ? digits[i] : '',
-                              style: TextStyle(
-                                color: ext.greetingColor,
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                      // Invisible, but real: it owns the input connection and
-                      // takes the taps, so tapping any box opens the keyboard.
-                      Positioned.fill(
-                        child: TextField(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          autofocus: true,
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.done,
-                          // Lets iOS offer the emailed code from the keyboard
-                          // bar instead of making the user retype it.
-                          autofillHints: const [AutofillHints.oneTimeCode],
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(_kCodeLength),
-                          ],
-                          // Hidden rather than removed — the boxes above are
-                          // the visible rendering of this field's value.
-                          showCursor: false,
-                          cursorColor: Colors.transparent,
-                          style: const TextStyle(
-                            color: Colors.transparent,
-                            height: 0.01,
-                          ),
-                          decoration: const InputDecoration(
-                            counterText: '',
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                            fillColor: Colors.transparent,
-                            filled: true,
-                          ),
-                          onChanged: _onCodeChanged,
-                          onSubmitted: (_) => _verify(),
-                        ),
-                      ),
-                    ],
+                  AppCodeField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    length: _kCodeLength,
+                    hasError: _error != null,
+                    onChanged: _onCodeChanged,
+                    onCompleted: (_) {
+                      // Close the keyboard deliberately, once, rather than
+                      // letting it flicker on the way there.
+                      _focusNode.unfocus();
+                      _verify();
+                    },
                   ),
 
-                  // A rejected code and the outcome of a resend are different
-                  // messages about different actions, so they never share a
-                  // slot — but only one can be true at a time, since each is
-                  // cleared when the other is set.
-                  if (_error != null) ...[
+                  // Only failures take space up here, and only one at a time:
+                  // a rejected code, or a resend that did not go through.
+                  // Both are things to fix before the button below is worth
+                  // pressing, which is why they sit between the code and it.
+                  //
+                  // A *successful* resend does not belong here. It used to
+                  // take this slot as a three-line green panel — repeating the
+                  // email address the screen states two lines above, plus a
+                  // note about the spam folder — which made the largest thing
+                  // on the screen an acknowledgement, and shoved the Verify
+                  // button a hundred pixels down the instant you tapped
+                  // Resend. It is now one quiet line under the Resend control
+                  // itself, where the action was: see below.
+                  if (_error != null || _resendError != null) ...[
                     SizedBox(height: AppSpacing.lg.h),
-                    AppInlineBanner(message: _error!),
-                  ] else if (_notice != null) ...[
-                    SizedBox(height: AppSpacing.lg.h),
-                    AppInlineBanner(
-                      message: _notice!,
-                      kind: _noticeKind,
-                      onDismiss: () => setState(() => _notice = null),
-                    ),
+                    AppInlineBanner(message: _error ?? _resendError!),
                   ],
                   SizedBox(height: 28.h),
 
@@ -386,39 +301,86 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                   ),
                   SizedBox(height: AppSpacing.xl.h),
 
-                  Center(
-                    child: Semantics(
-                      button: true,
-                      label: 'Resend code',
-                      child: TextButton(
-                        onPressed: (_resendIn > Duration.zero || _isResending)
-                            ? null
-                            : _resend,
-                        child: _isResending
-                            ? SizedBox(
-                                width: 16.w,
-                                height: 16.w,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: ext.accentGold,
+                  // Fixed height, because the label changes shape as well as
+                  // wording: "Didn't receive it? Resend code" wraps to two
+                  // lines at this width while "Resend code in 0:30" fits one,
+                  // so the control was 56 high before a resend and 48 after.
+                  // In a vertically centred column that shrinkage moves
+                  // everything — including the Verify button, a moment after
+                  // the thumb has tapped just below it.
+                  SizedBox(
+                    height: 56.h,
+                    child: Center(
+                      child: Semantics(
+                        button: true,
+                        label: 'Resend code',
+                        child: TextButton(
+                          onPressed: (_resendIn > Duration.zero || _isResending)
+                              ? null
+                              : _resend,
+                          child: _isResending
+                              ? SizedBox(
+                                  width: 16.w,
+                                  height: 16.w,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: ext.accentGold,
+                                  ),
+                                )
+                              : Text(
+                                  _resendIn > Duration.zero
+                                      ? 'Resend code in 0:${_resendIn.inSeconds.toString().padLeft(2, '0')}'
+                                      : "Didn't receive it? Resend code",
+                                  style: TextStyle(
+                                    color: _resendIn > Duration.zero
+                                        ? ext.searchHintColor
+                                        : ext.accentGold,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              )
-                            : Text(
-                                _resendIn > Duration.zero
-                                    ? 'Resend code in 0:${_resendIn.inSeconds.toString().padLeft(2, '0')}'
-                                    : "Didn't receive it? Resend code",
-                                style: TextStyle(
-                                  color: _resendIn > Duration.zero
-                                      ? ext.searchHintColor
-                                      : ext.accentGold,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
+                        ),
                       ),
                     ),
                   ),
-                  SizedBox(height: AppSpacing.huge.h),
+
+                  // The confirmation, where the action is.
+                  //
+                  // The countdown in the control right above already says the
+                  // send went through, so this is reinforcement rather than
+                  // news — and the spam hint is the part actually worth
+                  // reading, since wanting a code that has not arrived is the
+                  // only reason anyone taps Resend.
+                  //
+                  // The slot is held whether or not there is anything in it,
+                  // so confirming a resend moves nothing. Without that the
+                  // page still jumps: the whole column is vertically centred,
+                  // so growing it by a line lifts everything above by half a
+                  // line — less rude than the banner that used to shove the
+                  // button down the page, but still the button moving under a
+                  // thumb that has just tapped near it.
+                  SizedBox(
+                    height: 34.h,
+                    child: _codeResent
+                        ? Center(
+                            child: Semantics(
+                              liveRegion: true,
+                              child: Text(
+                                'New code sent. Check your spam folder too.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: ext.accentGold,
+                                  // A step below the control above it: this is
+                                  // subordinate to the thing it reports on.
+                                  fontSize: AppTypography.xs,
+                                  fontWeight: AppTypography.medium,
+                                ),
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                  SizedBox(height: AppSpacing.xxl.h),
                 ],
               ),
             ),
