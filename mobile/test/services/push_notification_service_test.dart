@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 
@@ -62,11 +66,48 @@ class _FakeBackend extends PushBackend {
   Future<String?> attachedUserId() async => attached;
 }
 
+/// Every service a test builds, so tearDown can detach their lifecycle
+/// listeners. One left attached goes on hearing about foregrounds from
+/// whatever test runs next, and this service's whole job is acting on those.
+final _built = <PushNotificationService>[];
+
 PushNotificationService serviceFor(_FakeBackend backend,
-        {bool muted = false}) =>
-    PushNotificationService.forTest(backend: backend, isMuted: () => muted);
+    {bool muted = false}) {
+  final service =
+      PushNotificationService.forTest(backend: backend, isMuted: () => muted);
+  _built.add(service);
+  return service;
+}
+
+/// Drive the app to the background and back, the way the OS actually does it.
+///
+/// Through `inactive` in both directions rather than straight across:
+/// [AppLifecycleListener] asserts on the transitions, and paused → resumed is
+/// not one a device ever performs.
+void background(WidgetTester t) {
+  t.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+  t.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+  t.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+}
+
+void foreground(WidgetTester t) {
+  t.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+  t.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+  t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+}
 
 void main() {
+  tearDown(() {
+    for (final service in _built) {
+      service.dispose();
+    }
+    _built.clear();
+    // The binding remembers the last state, so a test that ended backgrounded
+    // would make the next one's first transition an invalid one.
+    TestWidgetsFlutterBinding.ensureInitialized()
+        .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  });
+
   group('granting permission', () {
     test('subscribes the device', () async {
       // The bug this is here for: optIn() is refused while permission is
@@ -228,6 +269,127 @@ void main() {
 
         expect(backend.calls, isEmpty, reason: '$decided was asked again');
       }
+    });
+
+    testWidgets('a launch asks, with nobody signed in', (t) async {
+      // The headline of this group. The ask used to be signed-in only, so a
+      // guest was never asked at all — and a guest who is never asked is one
+      // the app cannot reach when their photos are found, which is the single
+      // notification they are here for.
+      t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      final backend = _FakeBackend(permission: PushPermission.undecided);
+
+      unawaited(serviceFor(backend).promptAtLaunch());
+      await t.pump(PushNotificationService.launchPromptDelay);
+      await t.pump();
+
+      expect(backend.calls, contains('requestPermission'));
+    });
+
+    testWidgets('an ask that cannot be shown is not spent', (t) async {
+      // iOS refuses to present the dialog unless the app is frontmost and
+      // discards the attempt rather than queueing it, so a launch somebody
+      // switched away from is a launch where they were never asked.
+      final backend = _FakeBackend(permission: PushPermission.undecided);
+      final service = serviceFor(backend);
+      // init() is what registers the lifecycle listener that retries.
+      await service.init();
+      background(t);
+
+      unawaited(service.promptAtLaunch());
+      await t.pump(PushNotificationService.launchPromptDelay);
+      await t.pump();
+      expect(backend.calls, isNot(contains('requestPermission')),
+          reason: 'nothing can be shown in the background');
+
+      // Coming back is what puts the question.
+      foreground(t);
+      await t.pump();
+      await t.pump();
+
+      expect(backend.calls, contains('requestPermission'));
+    });
+
+    testWidgets('an ask abandoned after a long absence is put on the next return',
+        (t) async {
+      // The in-flight wait above gives up after two minutes rather than
+      // holding a pending prompt for the life of the process. Past that, the
+      // launch ask is gone — and somebody who opened the app, was called away,
+      // and came back ten minutes later had simply never been asked. This is
+      // the half that covers them: the question is still outstanding, so the
+      // next foreground puts it.
+      final backend = _FakeBackend(permission: PushPermission.undecided);
+      final service = serviceFor(backend);
+      await service.init();
+      background(t);
+
+      unawaited(service.promptAtLaunch());
+      await t.pump(PushNotificationService.launchPromptDelay);
+      // Long enough for the in-flight wait to time out and give up.
+      await t.pump(const Duration(minutes: 3));
+      expect(backend.calls, isNot(contains('requestPermission')),
+          reason: 'the launch ask should have been abandoned, not queued');
+
+      foreground(t);
+      await t.pump();
+      await t.pump();
+
+      expect(backend.calls, contains('requestPermission'),
+          reason: 'coming back must put the question that was never asked');
+    });
+
+    testWidgets('two asks at once only ask once', (t) async {
+      // A prompt waiting on the app to come forward, and a resume firing the
+      // retry. Two concurrent requestPermission calls is the one thing that
+      // must not happen: past the OS dialog the second opens system settings.
+      t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      final backend = _FakeBackend(permission: PushPermission.undecided);
+      final service = serviceFor(backend);
+
+      unawaited(service.promptIfUndecided());
+      unawaited(service.promptIfUndecided());
+      await t.pump();
+      await t.pump();
+
+      expect(backend.calls.where((c) => c == 'requestPermission'), hasLength(1));
+    });
+
+    test('the launch asks, and does not gate the ask on being signed in', () {
+      // main() is not reachable from a test, and this is the line the whole
+      // group exists to protect: it was `if (!signedIn) return;` above the
+      // prompt, so every guest launch skipped it silently. Nothing else here
+      // would notice it coming back.
+      final source = File('lib/main.dart').readAsStringSync();
+
+      expect(source, contains('promptAtLaunch()'),
+          reason: 'the cold start has to ask');
+      expect(
+        source,
+        isNot(contains('if (!signedIn) return')),
+        reason: 'the ask must not be signed-in only — a guest who is never '
+            'asked cannot be told their photos were found',
+      );
+    });
+
+    testWidgets('a decided answer stops the retrying', (t) async {
+      final backend = _FakeBackend(permission: PushPermission.undecided);
+      final service = serviceFor(backend);
+      await service.init();
+      t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+
+      unawaited(service.promptAtLaunch());
+      await t.pump(PushNotificationService.launchPromptDelay);
+      await t.pump();
+      expect(backend.calls, contains('requestPermission'));
+      backend.calls.clear();
+
+      // Granted now. Every later foreground must leave it alone.
+      background(t);
+      foreground(t);
+      await t.pump();
+      await t.pump();
+
+      expect(backend.calls, isNot(contains('requestPermission')));
     });
   });
 }

@@ -176,13 +176,20 @@ void main() async {
   unawaited(() async {
     await PushNotificationService.instance.init();
 
-    // Signed in only. A guest is never asked — the prompt is a one-shot on
-    // iOS, and spending it on someone with no account is spending it on
-    // someone with nothing to be notified about yet and every reason to
-    // decline. Sign-up reaches this through LoginUseCase.establishSession,
-    // which VerifyCodeUseCase also calls, so a new account is asked at the
-    // point it is created rather than waiting for a second launch.
-    final signedIn = AuthService.isAuthenticated.value;
+    // The ask, for everybody, signed in or not.
+    //
+    // Started before the reconcile below rather than after it, and on its own
+    // future: reconcile talks to the SDK and the Keychain, and anything it
+    // throws used to take the rest of this closure with it — including the
+    // prompt, which then never happened and left nothing in the log saying
+    // why. The two have no reason to be sequential; only one of them can
+    // raise a dialog and it is this one.
+    //
+    // `promptIfUndecided` underneath means a second launch does not re-ask
+    // somebody who already said no, and does not reopen the system settings
+    // page at them. See PushPermission for why that distinction is load
+    // bearing.
+    unawaited(PushNotificationService.instance.promptAtLaunch());
 
     // Everything a push needs, asserted together: attached to this account,
     // opted in unless the master switch says otherwise, and not left opted
@@ -193,19 +200,17 @@ void main() async {
     //
     // Safe for a signed-out launch: with no account it only makes the
     // subscription match the switch, and nothing in it can raise a dialog.
-    await PushNotificationService.instance.reconcile(
-      userId: signedIn ? await authService.getUserId() : null,
-    );
-
-    if (!signedIn) return;
-
-    // Only where there is still a question to ask. It used to call
-    // requestPermission outright on the belief that a recorded decision
-    // makes it a no-op — it does not: with fallbackToSettings it opens the
-    // system settings page, so anyone who had declined was sent there ten
-    // seconds after opening the app, every single time.
-    await Future.delayed(PushNotificationService.permissionPromptDelay);
-    await PushNotificationService.instance.promptIfUndecided();
+    String? userId;
+    if (AuthService.isAuthenticated.value) {
+      // Guarded because it is a Keychain read on the startup path: a throw
+      // here is not a reason to skip reconciling the rest.
+      try {
+        userId = await authService.getUserId();
+      } catch (e) {
+        debugPrint('[Startup] could not read the user id for push: $e');
+      }
+    }
+    await PushNotificationService.instance.reconcile(userId: userId);
   }());
 
   runApp(MyApp(

@@ -88,6 +88,34 @@ class PushNotificationService {
   /// so the OS dialog lands on a settled screen rather than mid-render.
   static const Duration permissionPromptDelay = Duration(seconds: 10);
 
+  /// The same, at cold start.
+  ///
+  /// Much shorter, because there is much less to wait for: the splash holds
+  /// for 1.8 s and dissolves in 0.5, so by three seconds the feed is up and
+  /// settled. The sign-in delay above is ten because the home screen is still
+  /// assembling then; using that number here would put the dialog most of a
+  /// minute into the session on a slow start, by which time a good share of
+  /// people have already put the phone down.
+  static const Duration launchPromptDelay = Duration(seconds: 3);
+
+  /// Set while an ask is wanted but has not been put yet.
+  ///
+  /// The dialog is not guaranteed to appear the moment it is requested — iOS
+  /// refuses to present it unless the app is frontmost, and spends the attempt
+  /// rather than queueing it — so a launch where the person switched away in
+  /// the first three seconds is a launch where they were simply never asked.
+  /// This is what makes the next foreground try again instead of writing the
+  /// session off.
+  bool _wantsPrompt = false;
+
+  /// Guards against two asks running at once. [promptIfUndecided] can be
+  /// waiting on the app to come forward while a resume fires the retry, and
+  /// two concurrent `requestPermission` calls is the one thing that must not
+  /// happen: past the OS's single dialog the second opens the system settings
+  /// page, unprompted, which is exactly the behaviour [PushPermission] exists
+  /// to prevent.
+  bool _prompting = false;
+
   /// The account this device should be reachable as, once known. Held so
   /// [reconcile] can re-assert it from a lifecycle callback that has no idea
   /// who is signed in.
@@ -113,13 +141,27 @@ class PushNotificationService {
     if (_lifecycle != null) return;
     try {
       _lifecycle = AppLifecycleListener(
-        onResume: () => unawaited(reconcile()),
+        onResume: () => unawaited(_onForeground()),
       );
     } catch (e) {
       // Bindings not up yet. Not worth failing init over — every other entry
       // point still reconciles.
       debugPrint('[Push] could not watch the lifecycle: $e');
     }
+  }
+
+  /// What every return to the foreground does: re-assert the three things a
+  /// push needs, and put the question if it is still outstanding.
+  ///
+  /// The retry is what makes the ask survive a bad moment. Asking is a single
+  /// shot on iOS *once taken*, but an attempt made while the app is in the
+  /// background is not taken at all — it is discarded, silently — so without
+  /// this, switching away during the first few seconds of a cold start cost
+  /// the person the prompt until the next launch. Now it costs them until
+  /// they come back.
+  Future<void> _onForeground() async {
+    await reconcile();
+    if (_wantsPrompt) await promptIfUndecided();
   }
 
   /// Asks for the OS notification permission, and subscribes the device if the
@@ -171,15 +213,58 @@ class PushNotificationService {
   /// [requestPermission] sends the person to the system settings page once the
   /// OS is done showing its own dialog, which every launch is far too often.
   Future<void> promptIfUndecided() async {
-    if (await permissionState() != PushPermission.undecided) return;
-    // iOS will not present the dialog unless the app is frontmost, and the
-    // attempt is spent rather than queued — so a prompt fired while the person
-    // is on their home screen is a launch where they were simply never asked,
-    // with nothing to show it happened. The wait before this one is ten
-    // seconds, which is long enough to lose the race often.
-    if (!await _waitForForeground()) return;
-    if (await permissionState() != PushPermission.undecided) return;
-    await requestPermission();
+    if (_prompting) return;
+    _prompting = true;
+    try {
+      if (await permissionState() != PushPermission.undecided) {
+        // Answered — by this dialog or a previous one, either way there is
+        // nothing left to ask and no reason for a later foreground to retry.
+        _wantsPrompt = false;
+        return;
+      }
+      // Still worth asking, so keep wanting it: everything below can fail to
+      // put the question, and none of it means "answered".
+      _wantsPrompt = true;
+
+      // iOS will not present the dialog unless the app is frontmost, and the
+      // attempt is spent rather than queued — so a prompt fired while the
+      // person is on their home screen is a launch where they were simply
+      // never asked, with nothing to show it happened.
+      if (!await _waitForForeground()) return;
+      if (await permissionState() != PushPermission.undecided) {
+        _wantsPrompt = false;
+        return;
+      }
+
+      await requestPermission();
+      // Asked. Whatever the answer, the question has now been put, and the
+      // state is no longer undecided — so nothing should ask again.
+      _wantsPrompt = false;
+    } finally {
+      _prompting = false;
+    }
+  }
+
+  /// Ask at cold start, and keep meaning to until the question has been put.
+  ///
+  /// Called from `main()` for every launch, signed in or not. It used to be
+  /// signed-in only, on the reasoning that iOS allows one ask and it is better
+  /// spent on somebody with an account — true as far as it goes, but it left
+  /// every guest unasked, and a guest who is never asked is a guest the app
+  /// cannot reach when their photos are found, which is the one notification
+  /// they are here for.
+  ///
+  /// Deliberately not awaited by the caller and impossible to throw: this runs
+  /// beside app startup and must never be able to take it down.
+  Future<void> promptAtLaunch() async {
+    _wantsPrompt = true;
+    try {
+      await Future<void>.delayed(launchPromptDelay);
+      await promptIfUndecided();
+    } catch (e) {
+      // Left wanted, so the next foreground picks it up.
+      debugPrint('[Push] launch prompt failed, will retry on resume: $e');
+    }
   }
 
   /// Resolves once the app is frontmost, or false if it does not become so
@@ -266,6 +351,19 @@ class PushNotificationService {
   /// previous account left opted out — signing in and receiving nothing was
   /// exactly that, and the switch on the settings screen read "on" throughout.
   Future<void> login(String userId) => reconcile(userId: userId);
+
+  /// Stops watching the lifecycle.
+  ///
+  /// The singleton lives as long as the process and never needs this. Tests
+  /// build their own instances, and a listener left attached goes on hearing
+  /// about foregrounds from whatever test runs next — which for a service
+  /// whose whole job is "act on resume" means one test prompting inside
+  /// another.
+  @visibleForTesting
+  void dispose() {
+    _lifecycle?.dispose();
+    _lifecycle = null;
+  }
 
   /// Detaches the device from the current user. Called from
   /// `AuthService.removeToken`, so every logout path is covered — otherwise
