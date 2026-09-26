@@ -37,7 +37,7 @@ class CreatorReadyPage extends StatelessWidget {
     // Uploading a shoot is a desktop job — dozens of files, off a camera —
     // and the app has no bulk picker. The design says so on the button, and
     // this hands them the same web app the link would.
-    final uri = Uri.parse('${AppLinksConfig.shareBaseUrl}/upload');
+    final uri = Uri.parse(AppLinksConfig.creatorUploadUrl);
     try {
       final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!opened && context.mounted) {

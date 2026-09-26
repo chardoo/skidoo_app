@@ -497,6 +497,9 @@ class _EventDiscoveryCardState extends State<EventDiscoveryCard>
                 final picture = p[_currentPage.clamp(0, p.length - 1)];
                 GalleryShareSheet.show(
                   context,
+                  // The album, sent as an album — see the note in
+                  // [FullBleedEventCard]. The photo on screen is its cover.
+                  link: DeepLink(DeepLinkKind.event, id: widget.event.id),
                   imageUrl: picture.url,
                   photoLabel: widget.event.eventName,
                   paidPreview: PaidPhotoWatermark.shouldMark(

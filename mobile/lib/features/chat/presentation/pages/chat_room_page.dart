@@ -74,6 +74,7 @@ class ChatRoomPage extends StatelessWidget {
     required this.room,
     this.shareUrl,
     this.sharePaidPreview = false,
+    this.shareCaption,
   });
 
   final ChatRoom room;
@@ -85,6 +86,11 @@ class ChatRoomPage extends StatelessWidget {
   /// Whether [shareUrl] is a paid photo the sender has not bought.
   final bool sharePaidPreview;
 
+  /// The body that goes with [shareUrl] — a title and the link to what was
+  /// shared, when what was shared is an event rather than a photograph. See
+  /// [GalleryShareSheet].
+  final String? shareCaption;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -93,6 +99,7 @@ class ChatRoomPage extends StatelessWidget {
         room: room,
         shareUrl: shareUrl,
         sharePaidPreview: sharePaidPreview,
+        shareCaption: shareCaption,
       ),
     );
   }
@@ -105,12 +112,16 @@ class _ChatRoomView extends StatefulWidget {
     required this.room,
     this.shareUrl,
     this.sharePaidPreview = false,
+    this.shareCaption,
   });
   final ChatRoom room;
   final String? shareUrl;
 
   /// Whether [shareUrl] is a paid photo the sender has not bought.
   final bool sharePaidPreview;
+
+  /// See [ChatRoomPage.shareCaption].
+  final String? shareCaption;
 
   @override
   State<_ChatRoomView> createState() => _ChatRoomViewState();
@@ -229,6 +240,7 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
     _bloc.add(ChatRoomJoined(widget.room.id,
         shareUrl: widget.shareUrl,
         paidPreview: widget.sharePaidPreview,
+        shareCaption: widget.shareCaption,
         room: widget.room));
     _scrollCtrl.addListener(_onScroll);
     if (_isDirect) _loadBlockStatus();

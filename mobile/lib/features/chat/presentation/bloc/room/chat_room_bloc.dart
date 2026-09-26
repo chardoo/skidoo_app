@@ -316,6 +316,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       myUserId: _myUserId,
       pendingShareUrl: event.shareUrl,
       pendingSharePaidPreview: event.paidPreview,
+      pendingShareCaption: event.shareCaption,
       room: event.room,
       amIAdmin: amIAdmin,
     ));
@@ -924,12 +925,20 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // arrive with "typing…" still sitting under it.
     _stopTyping();
 
-    final content = event.content?.trim();
+    final typedContent = event.content?.trim();
     final pendingPath = state.pendingImagePath;
     final pendingMimeType = state.pendingMimeType;
     final pendingIsVideo = state.pendingIsVideo;
     final pendingUrl = state.pendingShareUrl;
     final pendingPaid = state.pendingSharePaidPreview;
+    // A shared event carries its own body — the album's name and its link —
+    // and anything typed goes above it, the way a caption sits above a quote.
+    final caption = state.pendingShareCaption;
+    final typed =
+        typedContent != null && typedContent.isNotEmpty ? typedContent : null;
+    final content = caption == null
+        ? typed
+        : (typed == null ? caption : '$typed\n$caption');
     final hasText = content != null && content.isNotEmpty;
     final hasLocalImage = pendingPath != null;
     final hasUrlImage = pendingUrl != null;

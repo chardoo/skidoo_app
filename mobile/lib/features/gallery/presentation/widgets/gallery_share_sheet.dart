@@ -15,12 +15,15 @@ import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/room_tile.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/shared_link_card.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/shareable_user.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_section_label.dart';
+import 'package:jperg_app/core/deep_links/deep_link.dart';
+import 'package:jperg_app/core/config/app_links_config.dart';
 
 /// Bottom sheet with an in-app user search to send a photo directly to
 /// another app user's DM room. The native OS share sheet is a separate,
@@ -38,6 +41,18 @@ class GalleryShareSheet {
     /// message and the omission was invisible — a compile error is the only
     /// thing that catches the next one.
     required bool paidPreview,
+
+    /// What is being shared, when it is a *thing* and not just a picture.
+    ///
+    /// Given, the message becomes a card: [imageUrl] is its cover, [photoLabel]
+    /// its title, and tapping it opens this link in the app. Sharing an event
+    /// used to send `event.pictures.first` and nothing else — the recipient
+    /// got a photograph with no album name, no count, and no way to reach the
+    /// event it came from.
+    ///
+    /// Omitted, nothing changes: a shared photo is sent as a photo, which is
+    /// what a shared photo should be.
+    DeepLink? link,
   }) {
     showModalBottomSheet(
       context: context,
@@ -48,6 +63,7 @@ class GalleryShareSheet {
         imageUrl: imageUrl,
         photoLabel: photoLabel,
         paidPreview: paidPreview,
+        link: link,
       ),
     );
   }
@@ -60,10 +76,14 @@ class _ShareSheetContent extends StatefulWidget {
     required this.imageUrl,
     required this.photoLabel,
     this.paidPreview = false,
+    this.link,
   });
 
   final String imageUrl;
   final String photoLabel;
+
+  /// See [GalleryShareSheet.show].
+  final DeepLink? link;
 
   /// Whether this photo costs money and the sender has not bought it. Travels
   /// with the message so the recipient's bubble can mark it — see
@@ -287,6 +307,20 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
     _openRoom(room);
   }
 
+  /// The message body that travels with the picture, or null for a plain one.
+  ///
+  /// Title first, link last: the bubble reads the link off the end, and a
+  /// client too old to draw the card shows a name and a tappable address —
+  /// which still says what it is and still opens it.
+  String? _caption() {
+    final link = widget.link;
+    if (link == null) return null;
+    return SharedLinkContent.compose(
+      title: widget.photoLabel,
+      url: AppLinksConfig.urlFor(link),
+    );
+  }
+
   void _openRoom(ChatRoom room) {
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -296,6 +330,7 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
           room: room,
           shareUrl: widget.imageUrl,
           sharePaidPreview: widget.paidPreview,
+          shareCaption: _caption(),
         ),
       ),
     );

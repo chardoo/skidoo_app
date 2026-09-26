@@ -20,6 +20,15 @@ class AppLinksConfig {
   static const String creatorDashboardUrl =
       '$shareBaseUrl/photographer/dashboard';
 
+  /// Where a new creator goes to put their first photos up.
+  ///
+  /// The photo library, not an `/upload` page: on the web an upload belongs to
+  /// an event, so there is nowhere to put a file until one exists. This used to
+  /// point at `/upload`, which is not a route the site has — the button on
+  /// "you're ready" opened the site's own 404 page, which is a poor first
+  /// impression of a portal somebody has just signed up for.
+  static const String creatorUploadUrl = '$shareBaseUrl/photographer/events';
+
   /// The URL a share should carry for [link].
   ///
   /// Built from [DeepLink.path] rather than assembled by hand, so anything the

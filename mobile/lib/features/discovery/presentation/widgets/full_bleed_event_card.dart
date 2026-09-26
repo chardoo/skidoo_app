@@ -661,6 +661,13 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     final picture = event.pictures.first;
     GalleryShareSheet.show(
       context,
+      // The event, not one of its photographs. This used to send
+      // `pictures.first` and nothing else: the recipient got a photo with no
+      // album name, no count, and no way to reach the event — and tapping it
+      // opened the image viewer, which is the one place the event is not. The
+      // first picture is still what the card shows, because it is what the
+      // feed was showing.
+      link: DeepLink(DeepLinkKind.event, id: event.id),
       imageUrl: picture.url,
       photoLabel: event.eventName,
       // The recipient is handed a URL and nothing else, so whether this costs

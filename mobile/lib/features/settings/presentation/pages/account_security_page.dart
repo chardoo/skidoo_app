@@ -20,7 +20,11 @@ import 'package:jperg_app/services/auth_service.dart';
 ///
 /// Change Password and Delete Account existed on the server and nowhere in the
 /// app — the endpoints have been there the whole time with no screen to reach
-/// them. Two-factor is new on both sides.
+/// them.
+///
+/// Two-factor is the same gap in the other direction and is commented out
+/// below: the server can challenge, the app cannot answer, so offering the
+/// switch would let somebody lock themselves out.
 class AccountSecurityPage extends StatefulWidget {
   const AccountSecurityPage({super.key});
 
@@ -31,9 +35,13 @@ class AccountSecurityPage extends StatefulWidget {
 class _AccountSecurityPageState extends State<AccountSecurityPage> {
   final _api = AccountSettingsApi();
 
+  // Read by the two-factor row, which is commented out below — kept because
+  // fetching it also warms the cache Privacy settings and Face data read, so
+  // dropping the field would quietly slow down two other screens.
+  // ignore: unused_field
   AccountSettings _settings = const AccountSettings();
   bool _loading = true;
-  bool _savingTwoFactor = false;
+  // bool _savingTwoFactor = false;
 
   /// Read once from the stored session rather than from the profile state,
   /// which does not carry the role.
@@ -63,25 +71,26 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
     }
   }
 
-  Future<void> _setTwoFactor(bool on) async {
-    setState(() => _savingTwoFactor = true);
-    try {
-      final updated = await _api.update('two_factor_enabled', on);
-      if (!mounted) return;
-      setState(() => _settings = updated);
-      AppSnackBar.success(
-        context,
-        on
-            ? 'Two-factor is on. You will be sent a code when you sign in.'
-            : 'Two-factor is off.',
-      );
-    } catch (e) {
-      if (!mounted) return;
-      AppSnackBar.error(context, 'Could not change that. Please try again.');
-    } finally {
-      if (mounted) setState(() => _savingTwoFactor = false);
-    }
-  }
+  // Restored together with the row below.
+  //Future<void> _setTwoFactor(bool on) async {
+  //  setState(() => _savingTwoFactor = true);
+  //  try {
+  //    final updated = await _api.update('two_factor_enabled', on);
+  //    if (!mounted) return;
+  //    setState(() => _settings = updated);
+  //    AppSnackBar.success(
+  //      context,
+  //      on
+  //          ? 'Two-factor is on. You will be sent a code when you sign in.'
+  //          : 'Two-factor is off.',
+  //    );
+  //  } catch (e) {
+  //    if (!mounted) return;
+  //    AppSnackBar.error(context, 'Could not change that. Please try again.');
+  //  } finally {
+  //    if (mounted) setState(() => _savingTwoFactor = false);
+  //  }
+  //}
 
   Future<void> _changePassword() async {
     final changed = await Navigator.of(context).push<bool>(
@@ -185,13 +194,30 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
                               label: 'Change Password',
                               onTap: _changePassword,
                             ),
-                            SettingsRow(
-                              label: 'Two-Factor Authentication',
-                              subtitle: 'Secure your account with a code',
-                              value: _settings.twoFactorEnabled,
-                              isBusy: _savingTwoFactor,
-                              onChanged: _setTwoFactor,
-                            ),
+                            // ── Two-factor — not shipped ──────────────────
+                            //
+                            // The server can issue the challenge; this app
+                            // cannot answer it. Nothing here reads
+                            // `twoFactorRequired` off the login response and
+                            // there is no screen to type the code into, so
+                            // turning this on signs you out of your own
+                            // account for good — the next sign-in comes back
+                            // with no token and the app reports it as a wrong
+                            // password.
+                            //
+                            // The login branch that issues the challenge is
+                            // commented out server-side too, so this switch
+                            // is not the only thing standing between someone
+                            // and a lock-out. Restore both together, with the
+                            // code screen.
+                            //
+                            // SettingsRow(
+                            //   label: 'Two-Factor Authentication',
+                            //   subtitle: 'Secure your account with a code',
+                            //   value: _settings.twoFactorEnabled,
+                            //   isBusy: _savingTwoFactor,
+                            //   onChanged: _setTwoFactor,
+                            // ),
                           ],
                         ),
                         // Only for someone who is not one already — a

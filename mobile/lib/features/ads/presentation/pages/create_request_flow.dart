@@ -23,7 +23,15 @@ import 'package:jperg_app/core/theme/app_icons.dart';
 /// The draft lives here and is handed down, so going back from the review step
 /// returns to a filled form rather than an empty one.
 class CreateRequestFlow extends StatefulWidget {
-  const CreateRequestFlow({super.key});
+  const CreateRequestFlow({super.key, this.startPublished = false});
+
+  /// Opens straight on the confirmation, for tests.
+  ///
+  /// Reaching it for real means filling the form, passing the review step and
+  /// posting a request to the server — three screens and a network call in the
+  /// way of asserting what one button does.
+  @visibleForTesting
+  final bool startPublished;
 
   @override
   State<CreateRequestFlow> createState() => _CreateRequestFlowState();
@@ -158,17 +166,30 @@ const requestEventTypes = [
 class _CreateRequestFlowState extends State<CreateRequestFlow> {
   final _draft = RequestDraft();
 
+  /// True once the request exists on the server.
+  ///
+  /// The confirmation takes over *this* route rather than being pushed on top
+  /// of it, which is what makes Done a way out of the flow. As its own route it
+  /// sat above a form for a request that had already been published, so Done —
+  /// and the back gesture with it — popped one route and landed the reader back
+  /// on that form, apparently having undone the thing they had just been
+  /// congratulated for.
+  ///
+  /// Set the moment the review step reports success, so the form is already
+  /// gone underneath as that step animates away: the pop reveals the
+  /// confirmation, not a flash of the form on its way out.
+  late bool _published = widget.startPublished;
+
   @override
-  Widget build(BuildContext context) =>
-      _NewRequestStep(draft: _draft, onContinue: _review);
+  Widget build(BuildContext context) => _published
+      ? const _PublishedStep()
+      : _NewRequestStep(draft: _draft, onContinue: _review);
 
   Future<void> _review() async {
     final published = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => _ReviewStep(draft: _draft)),
     );
-    // Published: this screen goes too, so Back from the success screen does
-    // not land on a form for a request that already exists.
-    if (published == true && mounted) Navigator.of(context).pop(true);
+    if (published == true && mounted) setState(() => _published = true);
   }
 }
 
@@ -672,10 +693,16 @@ class _ReviewStepState extends State<_ReviewStep> {
       }
 
       if (!mounted) return;
-      await Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const _PublishedStep()),
-      );
-      if (mounted) Navigator.of(context).pop(true);
+      // Hand the result back and let the flow show the confirmation in its own
+      // route — see [_CreateRequestFlowState._published].
+      //
+      // This used to push the confirmation over the top with
+      // `pushReplacement`, then pop the form once it was dismissed. Neither
+      // half worked: `pushReplacement` disposes this route, so the `await`
+      // resumed in a dead State and the pop never ran — and it completes the
+      // replaced route's future with its own `result`, which was null, so the
+      // form was never told the request had been published either.
+      Navigator.of(context).pop(true);
     } catch (e) {
       debugPrint('[CreateRequest] publish ERROR: $e');
       if (!mounted) return;
@@ -841,7 +868,11 @@ class _PublishedStep extends StatelessWidget {
               _PrimaryButton(
                 label: 'Done',
                 ext: ext,
-                onPressed: () => Navigator.of(context).pop(),
+                // Leaves the flow. This is the flow's own route now, so one pop
+                // is the whole way out — back to wherever "Request a
+                // photographer" was tapped, with `true` for anyone who wants to
+                // refresh a list because of it.
+                onPressed: () => Navigator.of(context).pop(true),
               ),
             ],
           ),

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/features/chat/presentation/widgets/shared_link_card.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -117,6 +118,13 @@ class _MessageBubbleState extends State<MessageBubble> {
     // glance, so text colour has to follow the fill rather than the theme.
     final bubbleColor = isMe ? ext.accentGold : ext.cardSurface;
     final textColor = isMe ? Colors.white : ext.greetingColor;
+
+    // Is this message *about* something the app can open — a shared event?
+    // Only with media: a bare link in a typed message stays a link, and
+    // [MentionText] already makes it tappable.
+    final shared = message.imageUrl != null && message.content.isNotEmpty
+        ? SharedLinkContent.parse(message.content)
+        : null;
     final mutedTextColor =
         isMe ? Colors.white.withValues(alpha: 0.75) : ext.searchHintColor;
 
@@ -232,7 +240,21 @@ class _MessageBubbleState extends State<MessageBubble> {
                       // the sender just picked has no URL yet and is drawn from
                       // disk while it uploads. Waiting for the URL meant the
                       // bubble did not exist until the upload finished.
-                      if (message.imageUrl != null || message.hasLocalMedia)
+                      // A shared thing is a preview card — its cover, its
+                      // name, and one tap that opens the real thing. It stands
+                      // in for the media rather than wrapping it: the media
+                      // below carries a tap of its own that opens a full-screen
+                      // viewer, and nested inside a card the deeper gesture
+                      // wins, so the card would open the wrong screen.
+                      if (shared != null)
+                        SharedLinkCard(
+                          shared: shared,
+                          imageUrl: message.imageUrl ?? '',
+                          textColor: textColor,
+                          paidPreview: message.paidPreview,
+                        )
+                      else if (message.imageUrl != null ||
+                          message.hasLocalMedia)
                         ColoredBox(
                           color: Colors.black.withValues(alpha: 0.06),
                           // message.isVideo first: it carries what the sender
@@ -281,7 +303,13 @@ class _MessageBubbleState extends State<MessageBubble> {
                       // bottom-right corner — the designs put the time inside
                       // the bubble, where it reads as part of the message
                       // rather than a line of its own under every one.
-                      if (message.isEncrypted || message.content.isNotEmpty)
+                      // The card has said the title and holds the link, so
+                      // the only text left to draw is whatever the sender typed
+                      // above it — and nothing at all when they typed nothing.
+                      if (message.isEncrypted ||
+                          (shared == null
+                              ? message.content.isNotEmpty
+                              : shared.leadingText != null))
                         Padding(
                           padding: EdgeInsets.fromLTRB(
                             14.w,
@@ -332,7 +360,8 @@ class _MessageBubbleState extends State<MessageBubble> {
                                       ],
                                     )
                                   : MentionText(
-                                      text: message.content,
+                                      text: shared?.leadingText ??
+                                          message.content,
                                       style: TextStyle(
                                         color: textColor,
                                         fontSize: 14.sp,

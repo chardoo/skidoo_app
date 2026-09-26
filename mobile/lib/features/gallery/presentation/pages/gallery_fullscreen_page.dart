@@ -191,6 +191,12 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                       showComment: false,
                       onSend: () => GalleryShareSheet.show(
                         context,
+                        // See [FoundActionRail]: a preview of the photo that
+                        // opens the photo, not a copy of it that opens a
+                        // viewer.
+                        link: _photo.id.isNotEmpty
+                            ? DeepLink(DeepLinkKind.picture, id: _photo.id)
+                            : null,
                         imageUrl: _photo.url,
                         photoLabel: _photo.eventName,
                         paidPreview: PaidPhotoWatermark.shouldMark(

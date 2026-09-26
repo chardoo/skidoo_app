@@ -48,6 +48,12 @@ class ChatRoomState extends Equatable {
   /// Whether [pendingShareUrl] is a paid photo the sender has not bought.
   final bool pendingSharePaidPreview;
 
+  /// The body that goes with [pendingShareUrl] — the title of the thing shared
+  /// and its link, for a shared event. Held here rather than prefilled into
+  /// the composer so it cannot be half-deleted on its way out; whatever the
+  /// sender types is appended to it.
+  final String? pendingShareCaption;
+
   /// The authenticated user's ID — set synchronously in [ChatRoomJoined] so
   /// the UI never has to async-load it separately.
   final String myUserId;
@@ -115,6 +121,7 @@ class ChatRoomState extends Equatable {
     this.isPictureLiked = false,
     this.pendingShareUrl,
     this.pendingSharePaidPreview = false,
+    this.pendingShareCaption,
     this.myUserId = '',
     this.isE2EEReady = false,
     this.systemNotice,
@@ -153,6 +160,7 @@ class ChatRoomState extends Equatable {
     bool? isPictureLiked,
     String? pendingShareUrl,
     bool? pendingSharePaidPreview,
+    String? pendingShareCaption,
     bool clearPendingShareUrl = false,
     String? myUserId,
     bool? isE2EEReady,
@@ -191,6 +199,9 @@ class ChatRoomState extends Equatable {
         pendingSharePaidPreview: clearPendingShareUrl
             ? false
             : (pendingSharePaidPreview ?? this.pendingSharePaidPreview),
+        pendingShareCaption: clearPendingShareUrl
+            ? null
+            : (pendingShareCaption ?? this.pendingShareCaption),
         myUserId: myUserId ?? this.myUserId,
         isE2EEReady: isE2EEReady ?? this.isE2EEReady,
         systemNotice: clearSystemNotice ? null : (systemNotice ?? this.systemNotice),

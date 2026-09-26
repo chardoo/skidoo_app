@@ -208,6 +208,13 @@ class _FoundActionRailState extends State<FoundActionRail> {
 
   void _send() => GalleryShareSheet.show(
         context,
+        // The photo itself, so the bubble is a preview of it and tapping it
+        // opens the photo in the app — inside its album, with this shot
+        // showing. Sending the bare image URL instead put a full-height copy
+        // in the thread that opened a zoom viewer and went nowhere.
+        link: widget.photo.id.isNotEmpty
+            ? DeepLink(DeepLinkKind.picture, id: widget.photo.id)
+            : null,
         imageUrl: widget.photo.url,
         photoLabel: widget.photo.eventName,
         // Travels with the message so the recipient's bubble marks it — they
