@@ -72,14 +72,21 @@ void main() {
 
       testWidgets('the search bar draws no inner outline, focused or not',
           (t) async {
-        // Focus is what surfaced the regression in the first place: the bar
-        // autofocuses, so the very first frame the user sees had two outlines.
+        // Focus is what surfaced the regression in the first place: the field
+        // takes focus as soon as search is open, so the very first frame the
+        // user sees had two outlines.
+        //
+        // Asked for explicitly. The bar no longer focuses itself — SearchPage
+        // does it once the route has finished arriving, so the keyboard is not
+        // raised under a moving page — but the state being checked here is the
+        // focused one, so this turns it on.
         final focusNode = FocusNode();
         await t.pumpWidget(host(
           dark,
           SearchTopBar(
             controller: TextEditingController(text: 'Hussein'),
             focusNode: focusNode,
+            autofocus: true,
             onChanged: (_) {},
             onSubmitted: (_) {},
             onBack: () {},

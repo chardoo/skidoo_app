@@ -18,6 +18,7 @@ class SearchTopBar extends StatelessWidget {
     required this.onSubmitted,
     required this.onBack,
     this.hintText = 'event name, hashtag, photographer…',
+    this.autofocus = false,
   });
 
   final TextEditingController controller;
@@ -26,6 +27,15 @@ class SearchTopBar extends StatelessWidget {
   final ValueChanged<String> onSubmitted;
   final VoidCallback onBack;
   final String hintText;
+
+  /// Whether to take focus as this bar is built.
+  ///
+  /// Off by default, and the page that wants it asks *after* its route has
+  /// finished arriving. This used to be a hard-coded true, so opening search
+  /// raised the keyboard while the route was still sliding in — and a scaffold
+  /// resizing under a moving page is most of what made the open feel rough.
+  /// See `SearchPage`'s `_whenSettled`.
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +61,7 @@ class SearchTopBar extends StatelessWidget {
                 // be invisible here in light mode.
                 surface: SearchFieldSurface.page,
                 focusNode: focusNode,
-                autofocus: true,
+                autofocus: autofocus,
                 hint: hintText,
                 onChanged: onChanged,
                 onSubmitted: onSubmitted,

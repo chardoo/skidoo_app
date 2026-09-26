@@ -35,9 +35,16 @@ class SearchPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<SearchBloc>(
-      create: (_) => sl<SearchBloc>()
-        ..add(const SearchRecentsRequested())
-        ..add(const SearchYouMayLikeRequested()),
+      // Recents only, and deliberately.
+      //
+      // This runs while the page is sliding in. Recents are a read off disk
+      // and a handful of text rows — cheap enough to be there when the screen
+      // arrives, which is the point of them. "You may like" is a network call
+      // and a grid of photographs to decode, and doing that here spent the
+      // transition's frame budget on work nobody is looking at yet: the slide
+      // stuttered on every open. It is asked for once the page has landed —
+      // see [_SearchViewState._whenSettled].
+      create: (_) => sl<SearchBloc>()..add(const SearchRecentsRequested()),
       child: _SearchView(initialQuery: initialQuery),
     );
   }
@@ -57,9 +64,16 @@ class _SearchViewState extends State<_SearchView> {
       TextEditingController(text: widget.initialQuery ?? '');
   final _focusNode = FocusNode();
 
+  /// Whether [_whenSettled] has already been armed. `didChangeDependencies`
+  /// runs more than once.
+  bool _armed = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_armed) return;
+    _armed = true;
+
     final seed = widget.initialQuery?.trim() ?? '';
     if (seed.isNotEmpty) {
       // Post-frame: the bloc is provided by the widget above this one, so it
@@ -67,7 +81,53 @@ class _SearchViewState extends State<_SearchView> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.read<SearchBloc>().add(SearchRequested.now(seed));
       });
+      // A pre-filled search is a screen showing results; the field is not
+      // where the eye goes and raising the keyboard over them would be wrong.
+      _whenSettled(_loadSuggestions);
+      return;
     }
+
+    _whenSettled(() {
+      _loadSuggestions();
+      // Straight into the field, the way every search on a phone works — but
+      // *after* the page has landed. Focusing during the push raises the
+      // keyboard while the route is still sliding, and the scaffold resizing
+      // under a moving page is the other half of what made this feel rough.
+      _focusNode.requestFocus();
+    });
+  }
+
+  void _loadSuggestions() {
+    if (!mounted) return;
+    context.read<SearchBloc>().add(const SearchYouMayLikeRequested());
+  }
+
+  /// Runs [action] once this route has finished animating in.
+  ///
+  /// Immediately when there is no animation to wait for — a screen pumped
+  /// straight into a test, or a route pushed without one.
+  ///
+  /// Asked one frame late, which is not optional. A route's `animation` is a
+  /// [ProxyAnimation] that is not bound to the real controller until the route
+  /// is installed, and until then it reports `kAlwaysCompleteAnimation` — so
+  /// read during the first build it says the transition is already over and
+  /// every deferral here fires immediately, which is the bug this method
+  /// exists to avoid.
+  void _whenSettled(VoidCallback action) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final animation = ModalRoute.of(context)?.animation;
+      if (animation == null || animation.isCompleted) {
+        action();
+        return;
+      }
+      void listener(AnimationStatus status) {
+        if (status != AnimationStatus.completed) return;
+        animation.removeStatusListener(listener);
+        if (mounted) action();
+      }
+      animation.addStatusListener(listener);
+    });
   }
 
   @override
