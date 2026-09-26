@@ -3,7 +3,7 @@
 
     python3 tool/generate_app_icon.py            # write the icons
     python3 tool/generate_app_icon.py --check    # verify, touch nothing
-    python3 tool/generate_app_icon.py --field '#000000' --mark '#1D9E75'
+    python3 tool/generate_app_icon.py --field '#1D9E75' --mark '#F7F7F2'
 
 The icons that shipped before this script were a small, soft raster blown up to
 1024 — a JPEG's worth of ringing around every edge, the mark sitting a little
@@ -17,10 +17,20 @@ itself uses. Re-run it after any change to that file.
 
 ## The composition
 
-Field #1D9E75 with the mark in #F7F7F2, which is not a new invention: it is
-`logoBadgeBackground` / `logoTextColor` from AppThemeExtension — the design
-system's own answer to "what does the logo look like as a tile". The asset is
-named `_white` for the same reason; it is drawn to sit on a colour.
+White field, mark in #1D9E75 — the logo as it is drawn everywhere else: on the
+site's header, on the email template, on paper. The icons that shipped before
+this script were white-backed too, and going green was a change nobody had
+asked for; this puts the field back and keeps the part that was worth keeping,
+which is that every size is now rendered from the vector rather than resized
+from a soft raster.
+
+The mark asset is named `_white` because it is drawn to be filled at the point
+of use — the fill colour is an argument here, not a property of the file.
+
+A green tile is one flag away (`--field '#1D9E75' --mark '#F7F7F2'`), and it is
+not a bad icon: those are `logoBadgeBackground` / `logoTextColor` from
+AppThemeExtension, the design system's own answer to the logo as a tile. It
+just is not this app's icon.
 
 The mark is 66% of the tile width, lifted 2.5% above centre. The lift is the
 correction a triangle always needs: bounding-box centring puts a triangle's
@@ -28,13 +38,14 @@ mass low, and this mark's centre of mass sits 76 px below the middle of a
 1024 px tile when its box is centred exactly. Half of that correction looks
 centred; all of it looks top-heavy.
 
-## Why not the black field
+## Why not a dark field
 
-Black would match the launch screen and the splash, which is a real argument —
-and it is one flag away (`--field '#000000' --mark '#1D9E75'`). It loses on the
-one thing an icon is for: the triangle's inner void is the field colour, so on
-black the shape reads as two loose wings rather than one mark, and a dark tile
-has nothing to separate it from every other dark tile on a home screen.
+Black would match the launch screen and the splash, which is a real argument.
+It loses on the one thing an icon is for: the triangle's inner void is the
+field colour showing through, so on black the shape reads as two loose wings
+rather than one mark, and a dark tile has nothing to separate it from every
+other dark tile on a home screen. White keeps the void reading as part of the
+mark, which is how the logo is drawn.
 
 ## Requirements
 
@@ -61,8 +72,8 @@ SVG = ROOT / 'assets/logo/jperg_icon_white.svg'
 # box exactly, so the box is what gets centred.
 VIEWBOX_W, VIEWBOX_H = 78.0, 62.0
 
-FIELD = '#1D9E75'
-MARK = '#F7F7F2'
+FIELD = '#FFFFFF'
+MARK = '#1D9E75'
 WIDTH_FRACTION = 0.66
 LIFT_FRACTION = 0.025
 
