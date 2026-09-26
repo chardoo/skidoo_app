@@ -11,6 +11,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/gallery_refresh_signal.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
@@ -62,6 +63,10 @@ class UserProfilePageState extends State<UserProfilePage>
   bool _savedHasMore = false;
   bool _loadingMoreSaved = false;
   List<ProfilePhoto> _bookmarked = const [];
+  List<ProfilePhoto> _purchased = const [];
+  int _purchasedPage = 1;
+  bool _purchasedHasMore = false;
+  bool _loadingMorePurchased = false;
 
   /// An event tile has to fetch the event before it can open it; this keeps a
   /// second tap from starting a second fetch.
@@ -70,6 +75,7 @@ class UserProfilePageState extends State<UserProfilePage>
   bool _loadingHeader = true;
   bool _loadingLiked = true;
   bool _loadingBookmarks = true;
+  bool _loadingPurchased = true;
 
   /// The revision each grid was fetched at, against the shared signals that
   /// something else in the app moved a like or a bookmark. Both start below
@@ -77,10 +83,16 @@ class UserProfilePageState extends State<UserProfilePage>
   int _likesLoadedAt = -1;
   int _savesLoadedAt = -1;
 
+  /// The same, for purchases — against [GalleryRefreshSignal], which checkout
+  /// already bumps. A new signal was not wanted: "the set of photos this
+  /// person owns changed" is exactly what that one means, and the gallery is
+  /// the other thing reading it.
+  int _purchasesLoadedAt = -1;
+
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 3, vsync: this);
+    _tabs = TabController(length: 4, vsync: this);
     _load();
     // initState has no inherited widgets to read yet.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -109,6 +121,8 @@ class UserProfilePageState extends State<UserProfilePage>
       _loadHeader(),
       if (_likesLoadedAt != AppCacheSignals.likes.value) _loadLiked(),
       if (_savesLoadedAt != AppCacheSignals.saves.value) _loadBookmarks(),
+      if (_purchasesLoadedAt != GalleryRefreshSignal.revision.value)
+        _loadPurchased(),
     ]);
   }
 
@@ -136,7 +150,8 @@ class UserProfilePageState extends State<UserProfilePage>
   /// header — the figures are the first thing on screen and the cheapest to
   /// fetch.
   Future<void> _load() async {
-    await Future.wait([_loadHeader(), _loadLiked(), _loadBookmarks()]);
+    await Future.wait(
+        [_loadHeader(), _loadLiked(), _loadBookmarks(), _loadPurchased()]);
   }
 
   Future<void> _loadHeader() async {
@@ -278,6 +293,76 @@ class UserProfilePageState extends State<UserProfilePage>
     } catch (e) {
       debugPrint('[UserProfilePage] bookmarks page ERROR: $e');
       if (mounted) setState(() => _loadingMoreSaved = false);
+    }
+  }
+
+  /// Photos this person bought.
+  ///
+  /// Deliberately a different list from Found, which the header counts two
+  /// lines above: Found is what face recognition matched *them* in. This is
+  /// what they paid for, which is mostly photos of somebody else. Neither
+  /// contains the other, and a purchase of a photo they are in appears in
+  /// both, correctly.
+  Future<void> _loadPurchased() async {
+    if (_purchased.isEmpty && mounted) setState(() => _loadingPurchased = true);
+    // Stamped before the request, for the reason in _loadLiked: a purchase
+    // completed while this is in flight has to leave the grid stale rather
+    // than be marked current by a response written before it happened.
+    final at = GalleryRefreshSignal.revision.value;
+    try {
+      // The endpoint serves only the caller's own purchases and checks the id
+      // against the token, so it takes the signed-in one.
+      final userId = await AuthService().getUserId();
+      final bought = userId.isEmpty
+          ? const LikedPage(photos: [], hasMore: false)
+          : await _repo.getPurchasedPhotos(userId, page: 1);
+      _purchasesLoadedAt = at;
+      if (mounted) {
+        setState(() {
+          _purchased = bought.photos;
+          _purchasedPage = 1;
+          _purchasedHasMore = bought.hasMore;
+        });
+      }
+    } catch (e) {
+      debugPrint('[UserProfilePage] purchased ERROR: $e');
+    } finally {
+      if (mounted && _loadingPurchased) {
+        setState(() => _loadingPurchased = false);
+      }
+    }
+  }
+
+  /// The next page of purchases, appended — the same shape as the bookmarks
+  /// paging, and for the same reason: one list in one order, newest first.
+  Future<void> _loadMorePurchased() async {
+    if (_loadingMorePurchased || !_purchasedHasMore) return;
+    setState(() => _loadingMorePurchased = true);
+    try {
+      final userId = await AuthService().getUserId();
+      if (userId.isEmpty) {
+        if (mounted) setState(() => _loadingMorePurchased = false);
+        return;
+      }
+      final next =
+          await _repo.getPurchasedPhotos(userId, page: _purchasedPage + 1);
+      if (!mounted) return;
+      final before = _purchased.length;
+      final seen = {for (final p in _purchased) p.id};
+      setState(() {
+        _purchased = [
+          ..._purchased,
+          for (final p in next.photos)
+            if (seen.add(p.id)) p,
+        ];
+        _purchasedPage += 1;
+        // See the note in _loadMoreLiked: nothing new means the end.
+        _purchasedHasMore = next.hasMore && _purchased.length > before;
+        _loadingMorePurchased = false;
+      });
+    } catch (e) {
+      debugPrint('[UserProfilePage] purchased page ERROR: $e');
+      if (mounted) setState(() => _loadingMorePurchased = false);
     }
   }
 
@@ -428,6 +513,13 @@ class UserProfilePageState extends State<UserProfilePage>
         mediaType: photo.mediaType,
         width: photo.width,
         height: photo.height,
+        // Carried through so the viewer does not draw the paid-preview
+        // watermark over a photo this person bought. The price above is 0 and
+        // `shouldMark` gates on `price > 0`, so today this changes nothing —
+        // which is exactly why it is worth setting: the day a tile learns its
+        // price, a purchase would start wearing a "pay to unlock" mark, and
+        // the app would be telling its owner they do not own it.
+        isPurchased: photo.isPurchased,
       );
 
   void _openSettings() {
@@ -548,6 +640,11 @@ class UserProfilePageState extends State<UserProfilePage>
                 tabs: const [
                   Tab(icon: Icon(Icons.favorite_rounded), text: null),
                   Tab(icon: Icon(Icons.bookmark_rounded)),
+                  // Third, between what they kept and what they put out:
+                  // liked, saved, bought, broadcast. Filled to match its
+                  // neighbours rather than outlined as the mock draws it —
+                  // restyling all four is a change nobody asked for.
+                  Tab(icon: Icon(Icons.shopping_bag_rounded)),
                   Tab(icon: Icon(Icons.campaign_rounded)),
                 ],
               ),
@@ -589,6 +686,25 @@ class UserProfilePageState extends State<UserProfilePage>
                 onOpen: (photo) => _openTile(_bookmarked, photo),
                 onLoadMore: _savedHasMore ? _loadMoreBookmarks : null,
                 loadingMore: _loadingMoreSaved,
+              ),
+            ),
+            _Refreshable(
+              onRefresh: _load,
+              ext: ext,
+              child: ProfilePhotoGrid(
+                photos: _purchased,
+                loading: _loadingPurchased,
+                ext: ext,
+                emptyTitle: 'No purchased photos yet',
+                emptyHint: 'All your purchased photos live here.',
+                // No corner action, and that is the point: un-liking and
+                // un-bookmarking undo something free and reversible. A
+                // purchase is neither, and the endpoint that removes one is
+                // not something to put a tap away on a photo somebody paid
+                // for.
+                onOpen: (photo) => _openTile(_purchased, photo),
+                onLoadMore: _purchasedHasMore ? _loadMorePurchased : null,
+                loadingMore: _loadingMorePurchased,
               ),
             ),
             _Refreshable(

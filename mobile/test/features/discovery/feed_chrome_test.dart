@@ -46,26 +46,39 @@ class _StubDiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState>
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-Widget host({bool isAuthenticated = true, VoidCallback? onTap}) =>
+/// [hasNavBar] is what the Home shell provides and the guest feed does not —
+/// see [FeedNavBarScope]. Defaulted true because most of this file is about
+/// the Home feed; the guest case asks for false explicitly.
+Widget host({
+  bool isAuthenticated = true,
+  bool hasNavBar = true,
+  VoidCallback? onTap,
+}) =>
     ScreenUtilInit(
       designSize: const Size(390, 844),
       builder: (_, __) => MaterialApp(
         theme: ThemeData.dark().copyWith(extensions: [AppThemeExtension.dark]),
         home: Scaffold(
-          body: BlocProvider<DiscoveryBloc>(
-            create: (_) => _StubDiscoveryBloc(),
-            child: FullBleedEventCard(
-              event: event(),
-              cardIndex: 0,
-              activeCardIndex: ValueNotifier<int>(0),
-              isAuthenticated: isAuthenticated,
-              onTap: onTap ?? () {},
-              onHide: () {},
+          body: _maybeScope(
+            hasNavBar,
+            BlocProvider<DiscoveryBloc>(
+              create: (_) => _StubDiscoveryBloc(),
+              child: FullBleedEventCard(
+                event: event(),
+                cardIndex: 0,
+                activeCardIndex: ValueNotifier<int>(0),
+                isAuthenticated: isAuthenticated,
+                onTap: onTap ?? () {},
+                onHide: () {},
+              ),
             ),
           ),
         ),
       ),
     );
+
+Widget _maybeScope(bool hasNavBar, Widget child) =>
+    hasNavBar ? FeedNavBarScope(child: child) : child;
 
 /// Where the caption block sits above the bottom edge.
 double captionBottom(WidgetTester t) {
@@ -139,8 +152,7 @@ void main() {
         reason: 'a guest has no navigation bar to summon');
   });
 
-  testWidgets('the caption steps over the bar rather than under it',
-      (t) async {
+  testWidgets('the caption steps over the bar rather than under it', (t) async {
     await t.pumpWidget(host());
     await t.pump();
 
@@ -155,5 +167,53 @@ void main() {
     expect(lifted - resting, greaterThanOrEqualTo(58.0),
         reason: 'the event name, the track and the hashtags all sit in this '
             'block, and the bar frosts whatever is behind it');
+  });
+
+  group('a screen with no navigation bar', () {
+    // The reported bug. [FeedChrome.visible] is a static and nothing reset it
+    // when the shell owning the bar went away, so signing out and continuing
+    // as a guest left it true — and the guest feed, which has no bar at all,
+    // cleared ninety-six points for one anyway. The description and its
+    // hashtags sat with dead space under them until the app was restarted.
+
+    testWidgets('the flag makes no difference to it', (t) async {
+      // Measured off two fresh pumps rather than by toggling a live card: the
+      // caption animates between the two positions, so a single pump after a
+      // toggle reads the place it is leaving and would agree with itself
+      // whatever the rule said.
+      FeedChrome.hide();
+      await t.pumpWidget(host(hasNavBar: false, isAuthenticated: false));
+      await t.pump();
+      final flagClear = captionBottom(t);
+
+      // The flag as a logout leaves it: set by the Home feed this session,
+      // with nothing to reset it. Nothing here has a bar.
+      FeedChrome.show();
+      await t.pumpWidget(host(hasNavBar: false, isAuthenticated: false));
+      // Long enough for the lift to finish. An identical tree reuses its
+      // elements, so the caption would be caught mid-travel and read as though
+      // it had never moved — which is the answer this test wants, arrived at
+      // for the wrong reason.
+      await t.pump(const Duration(milliseconds: 400));
+
+      expect(captionBottom(t), closeTo(flagClear, 1),
+          reason: 'with no bar to step over, the flag must change nothing');
+    });
+
+    testWidgets('sits where the Home feed sits with its bar away', (t) async {
+      // Same card, same resting place. The guest caption was ~96 higher.
+      FeedChrome.hide();
+      await t.pumpWidget(host());
+      await t.pump();
+      final home = captionBottom(t);
+
+      FeedChrome.show();
+      await t.pumpWidget(host(hasNavBar: false, isAuthenticated: false));
+      await t.pump(const Duration(milliseconds: 400));
+
+      expect(captionBottom(t), closeTo(home, 1),
+          reason: 'a guest caption rests on the same edge, not above a bar '
+              'that is not there');
+    });
   });
 }

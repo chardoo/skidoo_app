@@ -348,10 +348,11 @@ void main() {
   });
 
   group('the download', () {
-    testWidgets('appears nowhere but a bought photo in Found you', (t) async {
-      // The whole rule in one place. Every combination that is not "Found you,
-      // priced, paid for" must not offer to write the file to the phone —
-      // everywhere else the photo belongs to the photographer who took it.
+    testWidgets('is never in the rail, whatever the photo', (t) async {
+      // Where it is drawn, not whether. The download belongs to the bar across
+      // the bottom — it is the one action that takes the file off the platform
+      // and it sits beside the name of whoever took it — so no combination of
+      // price, visibility or purchase puts it in the rail of engagements.
       for (final gated in [true, false]) {
         for (final p in [
           photo(),
@@ -371,15 +372,30 @@ void main() {
       }
     });
 
-    testWidgets('appears on a bought photo in Found you, and only there',
+    testWidgets('appears on a bought photo, whichever screen opened it',
         (t) async {
       final bought = photo(price: 20, isPurchased: true);
 
       expect(await barHasDownload(t, bought, gated: true), isTrue);
-      // Same photo, opened from a screen that shows someone's work. Nobody has
-      // bought anything there, so the bar has nothing to offer and draws
-      // nothing at all.
-      expect(await barHasDownload(t, bought, gated: false), isFalse);
+      // The same photo, opened from a screen that shows someone's work — the
+      // profile's Purchased and Saved grids are exactly that. This used to
+      // draw nothing, on the reasoning that nobody has bought anything on
+      // those screens. Wrong for the two grids that are full of purchases: a
+      // photo somebody paid for is theirs wherever they are looking at it, and
+      // refusing the file there sent a paying customer to another screen to
+      // fetch what they had already bought.
+      expect(await barHasDownload(t, bought, gated: false), isTrue);
+    });
+
+    testWidgets('stays away from a photo nobody has bought', (t) async {
+      // The half of the old rule that was right, and the one that matters:
+      // ownership decides, not the screen. An unbought photo on a profile grid
+      // or in discovery offers nothing, or the app hands out a
+      // photographer's work for free.
+      final unbought = photo(price: 20);
+
+      expect(await barHasDownload(t, unbought, gated: false), isFalse);
+      expect(await barHasDownload(t, unbought, gated: true), isFalse);
     });
   });
 }

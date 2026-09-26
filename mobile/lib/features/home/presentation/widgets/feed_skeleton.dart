@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/components/common/navbar.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:shimmer/shimmer.dart';
@@ -21,9 +22,12 @@ import 'package:shimmer/shimmer.dart';
 class FeedSkeleton extends StatelessWidget {
   const FeedSkeleton({super.key});
 
-  /// Matches `FullBleedEventCard._navBand`: the strip the floating navigation
-  /// bar occupies along the bottom.
-  static const double _navBand = 96;
+  /// The strip the floating navigation bar occupies, from the bar itself —
+  /// see [AppNavbar.bandHeight]. Read rather than copied: a skeleton that
+  /// places its blocks anywhere but where the real card puts its own is a
+  /// layout that jumps at the moment the content arrives, which is the one
+  /// thing a skeleton exists to avoid.
+  static double _navBand(BuildContext context) => AppNavbar.bandHeight(context);
 
   /// Matches `FullBleedEventCard._railAnchor`.
   static const Alignment _railAnchor = Alignment(0, 0.4);
@@ -67,7 +71,7 @@ class FeedSkeleton extends StatelessWidget {
           Positioned(
             left: 16.w,
             right: 88.w,
-            bottom: _navBand + 24.h,
+            bottom: _navBand(context) + 24.h,
             child: Shimmer.fromColors(
               baseColor: block,
               highlightColor: highlight,

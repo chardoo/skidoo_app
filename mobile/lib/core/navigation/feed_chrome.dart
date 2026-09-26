@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'package:jperg_app/core/navigation/chrome_visibility.dart';
 
@@ -45,4 +45,32 @@ class FeedChrome {
     if (value) ChromeVisibility.reset();
     visible.value = value;
   }
+}
+
+/// Marks the part of the tree that has the floating navigation bar beneath it.
+///
+/// [FeedChrome.visible] says whether the bar is *up*; this says whether there
+/// is a bar at all. Both are needed, and conflating them is a bug the feed had:
+/// the notifier is a static that outlives the shell which owns the bar, so a
+/// card on a screen with no bar read "visible" left over from the Home feed and
+/// stepped its caption over ninety-six points of nothing. Logging out and
+/// continuing as a guest was the reliable way to see it — the guest feed is a
+/// different route with no bar, and the flag stayed true until the app was
+/// restarted.
+///
+/// Presence is the signal, so there is no boolean to pass down wrongly. The
+/// shell that draws the bar wraps its body; everything else gets false for
+/// free. That includes pushed routes, which are siblings of the shell in the
+/// navigator rather than descendants of it — so a shared-event link opened
+/// over the Home feed correctly reports no bar, which a flag threaded through
+/// call sites would have got wrong.
+class FeedNavBarScope extends InheritedWidget {
+  const FeedNavBarScope({super.key, required super.child});
+
+  /// Whether a navigation bar sits below [context].
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<FeedNavBarScope>() != null;
+
+  @override
+  bool updateShouldNotify(FeedNavBarScope oldWidget) => false;
 }

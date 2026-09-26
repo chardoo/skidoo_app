@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/components/media/share_target_sheet.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
@@ -86,7 +87,12 @@ void main() {
     await openSheet(t);
 
     expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
+    // The platform's own share mark, not iOS's on both: see
+    // [AppIcons.systemShare]. This button opens the *system* sheet, and the
+    // glyph is how a reader recognises which sheet they are about to get.
+    expect(find.byIcon(AppIcons.systemShare), findsOneWidget);
+    expect(find.byIcon(Icons.ios_share_rounded), findsNothing,
+        reason: 'tests run as Android; the iOS box belongs to iOS');
     // Outlined, not the filled variants.
     expect(find.byIcon(Icons.near_me), findsNothing);
   });

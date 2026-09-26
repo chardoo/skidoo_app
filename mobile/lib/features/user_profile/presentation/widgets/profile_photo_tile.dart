@@ -11,6 +11,11 @@ import 'package:jperg_app/features/user_profile/data/repositories/profile_overvi
 /// Two gestures live here and they must not fight: the whole tile opens the
 /// photo, and the icon in its corner takes it out of the list.
 ///
+/// The corner icon is optional, and a grid without one is not an oversight:
+/// the Purchased tab has nothing to offer there. Un-liking and un-bookmarking
+/// undo something free and reversible; a purchase is neither, and an X on the
+/// corner of a photo somebody paid for is an invitation to destroy it.
+///
 /// Both press: a photo is a flat rectangle with no button around it, so
 /// without the tile giving under the finger there is nothing to tell you the
 /// tap landed until the next screen arrives.
@@ -19,17 +24,20 @@ class ProfilePhotoTile extends StatefulWidget {
     super.key,
     required this.photo,
     required this.ext,
-    required this.removeIcon,
-    required this.removeTooltip,
-    required this.onRemove,
+    this.removeIcon,
+    this.removeTooltip,
+    this.onRemove,
     required this.onOpen,
   });
 
   final ProfilePhoto photo;
   final AppThemeExtension ext;
-  final IconData removeIcon;
-  final String removeTooltip;
-  final VoidCallback onRemove;
+
+  /// All three together, or none: the corner affordance only exists when there
+  /// is something for it to do.
+  final IconData? removeIcon;
+  final String? removeTooltip;
+  final VoidCallback? onRemove;
   final VoidCallback onOpen;
 
   @override
@@ -63,7 +71,7 @@ class _ProfilePhotoTileState extends State<ProfilePhotoTile> {
     // Heavier than opening: this one takes something away, and the tile it was
     // on is about to disappear from under the finger.
     HapticFeedback.lightImpact();
-    widget.onRemove();
+    widget.onRemove?.call();
   }
 
   @override
@@ -87,79 +95,80 @@ class _ProfilePhotoTileState extends State<ProfilePhotoTile> {
         duration: _press,
         curve: AppMotion.ease,
         child: ColoredBox(
-        color: ext.avatarBackground,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            JpergImage(
-              imageUrl: photo.url,
-              fit: BoxFit.cover,
-              // See the review grid: a spinner per tile reads as flicker.
-              placeholder: (_, __) => const JpergImagePlaceholder(),
-              errorWidget: (_, __, ___) => Icon(
-                Icons.broken_image_outlined,
-                color: ext.searchHintColor,
-                size: 20.r,
-              ),
-            ),
-            if (photo.isVideo)
-              Positioned(
-                left: 6.w,
-                top: 6.h,
-                child: Icon(
-                  Icons.play_circle_fill_rounded,
-                  color: Colors.white.withValues(alpha: 0.9),
-                  size: 18.r,
+          color: ext.avatarBackground,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              JpergImage(
+                imageUrl: photo.url,
+                fit: BoxFit.cover,
+                // See the review grid: a spinner per tile reads as flicker.
+                placeholder: (_, __) => const JpergImagePlaceholder(),
+                errorWidget: (_, __, ___) => Icon(
+                  Icons.broken_image_outlined,
+                  color: ext.searchHintColor,
+                  size: 20.r,
                 ),
               ),
-            if (photo.isEvent)
-              Positioned(
-                left: 6.w,
-                bottom: 6.h,
-                child: Icon(
-                  Icons.event_rounded,
-                  color: Colors.white.withValues(alpha: 0.9),
-                  size: 16.r,
+              if (photo.isVideo)
+                Positioned(
+                  left: 6.w,
+                  top: 6.h,
+                  child: Icon(
+                    Icons.play_circle_fill_rounded,
+                    color: Colors.white.withValues(alpha: 0.9),
+                    size: 18.r,
+                  ),
                 ),
-              ),
-            Positioned(
-              right: 0,
-              top: 0,
-              child: Semantics(
-                button: true,
-                label: widget.removeTooltip,
-                child: GestureDetector(
-                  // Opaque so the corner takes its own taps rather than
-                  // letting them through to the tile underneath and opening
-                  // the photo the user was trying to remove.
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _remove,
-                  onTapDown: (_) => _setIconPressed(true),
-                  onTapUp: (_) => _setIconPressed(false),
-                  onTapCancel: () => _setIconPressed(false),
-                  child: Padding(
-                    // Padded rather than sized: the icon is small, and the tap
-                    // target around it needs to be a finger wide.
-                    padding: EdgeInsets.all(6.r),
-                    child: AnimatedScale(
-                      scale: _iconPressed ? _iconPressedScale : 1,
-                      duration: _press,
-                      curve: AppMotion.ease,
-                      child: Icon(
-                        widget.removeIcon,
-                        size: 18.r,
-                        color: Colors.white.withValues(alpha: 0.95),
-                        shadows: const [
-                          Shadow(color: Colors.black54, blurRadius: 4),
-                        ],
+              if (photo.isEvent)
+                Positioned(
+                  left: 6.w,
+                  bottom: 6.h,
+                  child: Icon(
+                    Icons.event_rounded,
+                    color: Colors.white.withValues(alpha: 0.9),
+                    size: 16.r,
+                  ),
+                ),
+              if (widget.onRemove != null && widget.removeIcon != null)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Semantics(
+                    button: true,
+                    label: widget.removeTooltip,
+                    child: GestureDetector(
+                      // Opaque so the corner takes its own taps rather than
+                      // letting them through to the tile underneath and opening
+                      // the photo the user was trying to remove.
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _remove,
+                      onTapDown: (_) => _setIconPressed(true),
+                      onTapUp: (_) => _setIconPressed(false),
+                      onTapCancel: () => _setIconPressed(false),
+                      child: Padding(
+                        // Padded rather than sized: the icon is small, and the tap
+                        // target around it needs to be a finger wide.
+                        padding: EdgeInsets.all(6.r),
+                        child: AnimatedScale(
+                          scale: _iconPressed ? _iconPressedScale : 1,
+                          duration: _press,
+                          curve: AppMotion.ease,
+                          child: Icon(
+                            widget.removeIcon!,
+                            size: 18.r,
+                            color: Colors.white.withValues(alpha: 0.95),
+                            shadows: const [
+                              Shadow(color: Colors.black54, blurRadius: 4),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );

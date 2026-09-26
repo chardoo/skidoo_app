@@ -2,13 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/presentation/feed_promos.dart';
 
-/// What a boost buys, past the top of the board.
+/// What a boost buys, past the top of the board — and what it does not.
 ///
 /// The sheet sells "appear at the top of photographer feeds" and "priority
-/// placement in discovery". The server's ordering delivers the first half — a
-/// boosted request is the first one dealt — and delivered the whole of it,
-/// which meant a boost was one card in one scroll and then gone. This is the
-/// other half: it comes back round.
+/// placement in discovery". A boost therefore decides *which* request is dealt
+/// and how soon: boosted ones come first, so on a scroll that only ever
+/// reaches two or three request slots, they are the ones seen.
+///
+/// It does not buy the same card twice. It used to: boosted requests took
+/// every other slot and cycled, and once the unboosted ran out they took every
+/// slot — so a board with one boosted request showed that request over and
+/// over down a single scroll. Reach across sessions is what a campaign buys
+/// and what pacing is for; volume inside one scroll is just the same card
+/// again.
 FeedRequestModel req(String id, {bool boosted = false}) =>
     FeedRequestModel.fromJson({
       'id': id,
@@ -21,39 +27,53 @@ List<String> deal(List<FeedRequestModel> pool, int slots) => [
     ];
 
 void main() {
-  test('nothing boosted deals the board in order, once each', () {
-    // The behaviour the feed had before boosts existed, unchanged: a slot past
-    // the end of the list holds nothing rather than wrapping.
+  test('the board is dealt in order, once each', () {
+    // A slot past the end holds nothing rather than wrapping.
     final pool = [req('a'), req('b'), req('c')];
 
     expect(deal(pool, 5), ['a', 'b', 'c', '—', '—']);
   });
 
-  test('a boosted request comes back round; the rest are dealt once', () {
-    final pool = [req('boost', boosted: true), req('a'), req('b')];
+  test('boosted requests come first, and still only once', () {
+    final pool = [req('a'), req('boost', boosted: true), req('b')];
 
-    expect(deal(pool, 6), ['boost', 'a', 'boost', 'b', 'boost', 'boost']);
+    expect(deal(pool, 5), ['boost', 'a', 'b', '—', '—']);
   });
 
-  test('two boosted requests take turns rather than one hogging the rota', () {
+  test('two boosted requests are both dealt before the rest', () {
     final pool = [
+      req('a'),
       req('b1', boosted: true),
       req('b2', boosted: true),
-      req('a'),
     ];
 
-    final dealt = deal(pool, 4);
-    expect(dealt[0], 'b1');
-    expect(dealt[1], 'a');
-    expect(dealt[2], 'b2');
-    // The unboosted one is spent, so the paid-for slots carry on.
-    expect(dealt[3], 'b1');
+    expect(deal(pool, 4), ['b1', 'b2', 'a', '—']);
   });
 
-  test('an all-boosted board still fills every slot', () {
+  test('a single boosted request does not fill the feed with itself', () {
+    // The reported bug, at its smallest: one boosted request and nothing else
+    // on the board used to mean that card in every request slot.
+    final pool = [req('boost', boosted: true)];
+
+    expect(deal(pool, 4), ['boost', '—', '—', '—']);
+  });
+
+  test('an all-boosted board is still dealt once each', () {
     final pool = [req('b1', boosted: true), req('b2', boosted: true)];
 
-    expect(deal(pool, 4), ['b1', 'b2', 'b1', 'b2']);
+    expect(deal(pool, 4), ['b1', 'b2', '—', '—']);
+  });
+
+  test('what another feed already showed is not dealt again', () {
+    // "Once per launch" spans both feeds and every refresh: the ledger is what
+    // Explore and Following both read, so swapping between them does not deal
+    // the board from the top again.
+    final pool = [req('b1', boosted: true), req('a'), req('b')];
+
+    expect(
+      [for (var i = 0; i < 3; i++) requestInSlot(pool, i, seen: {'b1'})?.id ?? '—'],
+      ['a', 'b', '—'],
+    );
   });
 
   test('an empty board fills nothing', () {

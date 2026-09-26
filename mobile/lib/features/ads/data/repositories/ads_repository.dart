@@ -227,6 +227,7 @@ class AdsRepository {
     String? location,
     int page = 1,
     int limit = 20,
+    bool paced = false,
   }) async {
     debugPrint(
         '$_tag getRequests → page=$page limit=$limit eventType=$eventType');
@@ -236,6 +237,10 @@ class AdsRepository {
         if (location != null) 'location': location,
         'page': page,
         'limit': limit,
+        // The feed asks to be paced; the board does not. On the board a
+        // reader came to see the list, so rotating it under them would be
+        // the bug rather than the fix.
+        if (paced) 'paced': true,
       });
       debugPrint('$_tag getRequests ← status=${resp.statusCode}');
       debugPrint('$_tag getRequests RAW BODY type=${resp.data.runtimeType}');

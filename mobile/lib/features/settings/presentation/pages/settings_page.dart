@@ -11,9 +11,10 @@ import 'package:jperg_app/features/settings/presentation/pages/account_security_
 import 'package:jperg_app/features/settings/presentation/pages/edit_profile_page.dart';
 import 'package:jperg_app/features/settings/presentation/pages/help_support_page.dart';
 import 'package:jperg_app/features/settings/presentation/pages/notification_settings_page.dart';
+import 'package:jperg_app/features/settings/presentation/pages/payments_page.dart';
 import 'package:jperg_app/features/settings/presentation/pages/privacy_settings_page.dart';
+import 'package:jperg_app/features/settings/presentation/pages/profile_settings_page.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
-import 'package:jperg_app/features/photographers/presentation/pages/portfolio_edit_page.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
@@ -92,10 +93,31 @@ class SettingsPage extends StatelessWidget {
                     SettingsSection(
                       title: 'Account settings',
                       children: [
-                        SettingsRow(
-                          icon: Icons.person_outline_rounded,
-                          label: 'Profile',
-                          onTap: () => _open(context, const EditProfilePage()),
+                        // Profile and Portfolio are two halves of one idea —
+                        // how you present yourself — and used to sit at
+                        // opposite ends of this list. They are together now,
+                        // behind this row: see [ProfileSettingsPage].
+                        //
+                        // Watched because the destination depends on the role,
+                        // and the role moves while this page is open — the
+                        // creator wizard is reachable two rows below.
+                        ValueListenableBuilder<String>(
+                          valueListenable: AuthService.role,
+                          builder: (context, _, __) => SettingsRow(
+                            icon: Icons.person_outline_rounded,
+                            label: 'Profile',
+                            // Straight to the editor for a viewer, who has no
+                            // portfolio: the hub would be one row called
+                            // Profile opening a page called Profile, a tap
+                            // that exists only to be got past. This row has
+                            // always gone there for them and still does.
+                            onTap: () => _open(
+                              context,
+                              ProfileSettingsPage.isWorthShowing
+                                  ? const ProfileSettingsPage()
+                                  : const EditProfilePage(),
+                            ),
+                          ),
                         ),
                         SettingsRow(
                           icon: Icons.shield_outlined,
@@ -109,39 +131,18 @@ class SettingsPage extends StatelessWidget {
                           onTap: () =>
                               _open(context, const PrivacySettingsPage()),
                         ),
+                        // Every account has one, which is why it is here and
+                        // not under Photographer: a client has receipts for
+                        // the photos they bought, a creator has those plus
+                        // boosts, campaigns and payouts. The screen shows
+                        // whichever of those exist.
+                        SettingsRow(
+                          icon: Icons.receipt_long_outlined,
+                          label: 'Payments',
+                          subtitle: 'What you paid, and what you were paid',
+                          onTap: () => _open(context, const PaymentsPage()),
+                        ),
                       ],
-                    ),
-                    // Photographer accounts only. A viewer has no portfolio,
-                    // and a heading over an empty section is worse than no
-                    // heading.
-                    //
-                    // Watched rather than read: this used to await the stored
-                    // role, which meant the section was missing for a frame on
-                    // every build, and — the real problem — stayed missing for
-                    // somebody who became a creator while this page was open.
-                    ValueListenableBuilder<String>(
-                      valueListenable: AuthService.role,
-                      builder: (context, role, _) {
-                        if (role != 'photographer') {
-                          return const SizedBox.shrink();
-                        }
-                        return SettingsSection(
-                          title: 'Photographer',
-                          children: [
-                            SettingsRow(
-                              icon: Icons.photo_library_outlined,
-                              label: 'Portfolio',
-                              subtitle:
-                                  'Studio name, bio, specialties and samples',
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const PortfolioEditPage(),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
                     ),
                     SettingsSection(
                       title: 'Preferences',

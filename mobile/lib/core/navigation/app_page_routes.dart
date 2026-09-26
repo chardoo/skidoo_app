@@ -3,13 +3,18 @@ import 'package:jperg_app/features/splash/presentation/pages/splash_page.dart';
 
 /// A normal push that opts the destination out of the edge swipe-back gesture.
 ///
-/// Every route in the app can be dragged back from the leading edge (see
+/// Every route in the app can be dragged back from the leading edge on iOS (see
 /// `AppPageTransitionsBuilder`). That is right for a screen the user reads, and
 /// wrong for a screen that is itself a horizontal pager: in a full-screen photo
 /// viewer the leading 20 logical pixels would pop the whole viewer instead of
 /// turning to the previous photo, so a thumb that lands slightly too far left
 /// throws the user out of the gallery. iOS's own photo browser disables the
 /// gesture for exactly this reason.
+///
+/// A no-op on Android, where the app draws no such gesture — the edge belongs
+/// to the system there, and the system's back is not something a route may
+/// refuse. Still the right route to push these screens with: the app runs on
+/// both.
 ///
 /// The route still animates like every other push, and still has its back
 /// button and the system back gesture — only the drag is off.
@@ -29,8 +34,9 @@ class NoSwipeBackPageRoute<T> extends MaterialPageRoute<T> {
 ///
 /// The app's route table decides *what* a name shows; this decides how it
 /// arrives. They are separate because almost every route arrives the same way
-/// — the app's Cupertino slide — and the exceptions are about the navigation
-/// rather than about the screen: `/home` reached from the tab bar, a deep link
+/// — the platform's own transition, a slide on iOS and predictive back on
+/// Android — and the exceptions are about the navigation rather than about the
+/// screen: `/home` reached from the tab bar, a deep link
 /// or sign-in is an ordinary push, and the same `/home` reached from the splash
 /// dissolves.
 ///

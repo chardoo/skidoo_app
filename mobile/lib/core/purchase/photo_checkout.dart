@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/purchase/photo_selection.dart';
 import 'package:jperg_app/core/utils/gallery_refresh_signal.dart';
+import 'package:jperg_app/features/gallery/data/purchased_photos.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/cart/domain/usecases/save_images_free_usecase.dart';
 import 'package:jperg_app/features/cart/presentation/bloc/cart_bloc.dart';
@@ -58,6 +59,10 @@ Future<void> runPhotoCheckout(
       final clientId = await sl<AuthService>().getUserId();
       await sl<SaveImagesForFreeUseCase>()(free, clientId: clientId);
       GalleryRefreshSignal.bump();
+      // A free save writes a PaidImage row at a price of zero — the endpoint's
+      // own words are "free is still a claim on the photo" — so these are
+      // owned in exactly the sense the download button asks about.
+      purchasedPhotosOrNull()?.add([for (final photo in free) photo.id]);
     } catch (_) {
       // Worth saying, not worth stopping for — the paid photos are the part
       // with money attached and the part they are waiting on.

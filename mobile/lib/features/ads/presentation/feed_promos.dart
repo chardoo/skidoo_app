@@ -53,6 +53,18 @@ class FeedPromos {
   int _requestPage = 1;
   final _hiddenRequestIds = <String>{};
 
+  /// Every request id shown to this reader since the app started.
+  ///
+  /// Static, and deliberately not cleared by [reset]: "once per launch" is a
+  /// promise about the launch, not about the feed widget, and a pull-to-refresh
+  /// that re-dealt the board from the top would repeat the card somebody just
+  /// scrolled past — which is the bug this whole rota was rewritten for.
+  static final Set<String> dealt = <String>{};
+
+  /// This instance's share of [dealt], so re-deciding a slot it already filled
+  /// does not treat its own card as somebody else's.
+  final _dealtHere = <String>{};
+
   bool _fetchingMore = false;
   bool _disposed = false;
 
@@ -93,8 +105,28 @@ class FeedPromos {
       slot >= 0 && slot < _impressionIds.length ? _impressionIds[slot] : null;
 
   /// Which request belongs in request slot [slot]. See [requestInSlot].
-  FeedRequestModel? requestForSlot(int slot) =>
-      requestInSlot(visibleRequests, slot);
+  ///
+  /// Stable for a given slot, which is the whole reason this instance's own
+  /// deals are held apart from the ledger. A feed rebuilds constantly, and if
+  /// marking a card as dealt also hid it from the slot it is *in*, slot 0
+  /// would answer with a different request on every frame — the card would
+  /// change under somebody's thumb.
+  FeedRequestModel? requestForSlot(int slot) {
+    final pick = requestInSlot(visibleRequests, slot, seen: _dealtElsewhere);
+    if (pick != null) {
+      dealt.add(pick.id);
+      _dealtHere.add(pick.id);
+    }
+    return pick;
+  }
+
+  /// Ids this launch has shown that are *not* this instance's own.
+  ///
+  /// The other feed's cards, and this feed's cards from before the last
+  /// refresh. Excluding them is what makes a request one card per launch
+  /// across both feeds and every pull-to-refresh; excluding this instance's
+  /// own would make its slots unstable.
+  Set<String> get _dealtElsewhere => dealt.difference(_dealtHere);
 
   // ── Fetching ──────────────────────────────────────────────────────────────
 
@@ -107,6 +139,11 @@ class FeedPromos {
     _firedImpressions.clear();
     _requests = const [];
     _requestPage = 1;
+    // Not `dealt` — the launch ledger outlives a refresh on purpose. Letting
+    // go of this instance's claim is what moves its cards into "already shown
+    // elsewhere", so the next deal starts after them instead of repeating the
+    // board from the top.
+    _dealtHere.clear();
   }
 
   /// The admin threw one of the switches while this feed was on screen.
@@ -138,7 +175,7 @@ class FeedPromos {
                 placement: placement, contextEventId: contextEventId)
             : Future<AdModel?>.value(null),
         requestsEnabled
-            ? _repo.getRequests(page: 1)
+            ? _repo.getRequests(page: 1, paced: true)
             : Future<List<FeedRequestModel>>.value(const []),
       ]);
       if (_disposed) return;
@@ -173,7 +210,7 @@ class FeedPromos {
                 placement: placement, contextEventId: contextEventId)
             : Future<AdModel?>.value(null),
         requestsEnabled
-            ? _repo.getRequests(page: nextPage)
+            ? _repo.getRequests(page: nextPage, paced: true)
             : Future<List<FeedRequestModel>>.value(const []),
       ]);
       if (_disposed) return;
@@ -268,41 +305,39 @@ class FeedPromos {
 
 /// Which of [requests] belongs in request slot [slot].
 ///
-/// Boosted requests take every other slot and cycle, so one comes back round
-/// rather than scrolling past once and being gone for the rest of the feed;
-/// everything else is dealt in the order the board sent it, once each. When the
-/// unboosted run out the remaining slots go to boosted requests too — reach is
-/// the thing that was paid for, and "appear at the top of photographer feeds"
-/// is the first line on the sheet somebody bought.
+/// **Once each, per launch.** Boosted first — that is what the boost buys and
+/// what the server's ordering already delivers — then everything else in the
+/// order the board sent it, and then nothing. A slot past the end of the board
+/// is empty.
 ///
-/// With nothing boosted this is the plain list in order, which is exactly what
-/// the feed did before boosts existed.
+/// It used to cycle: boosted requests took every other slot and came back
+/// round, and once the unboosted ran out they took *every* slot. On a board
+/// holding one boosted request — the ordinary case — that is the same card in
+/// half the feed and then in all of it. The intention was reach, and reach is
+/// the right thing to sell; repeating one card down a single scroll is not how
+/// a campaign delivers it. A campaign wins more slots across more sessions,
+/// capped per viewer per day, and is dropped outright if it would appear twice
+/// in one scroll (see [FeedPromos.loadMore]). This now works the same way: the
+/// boost decides *which* request is seen and how soon, the pacing decides how
+/// often it comes back, and a scroll never shows the same one twice.
 ///
-/// The server already sorts boosted first (`GET /ads/requests`). This is the
-/// other half of that promise: an ordering says which request is seen first, and
-/// only a rota can say how often it is seen again.
-FeedRequestModel? requestInSlot(List<FeedRequestModel> requests, int slot) {
+/// [seen] is what this launch has already dealt — see [FeedPromos.dealt].
+/// Passing it keeps a pull-to-refresh from starting the board again from the
+/// top, which would repeat everything the reader just scrolled past.
+FeedRequestModel? requestInSlot(
+  List<FeedRequestModel> requests,
+  int slot, {
+  Set<String> seen = const {},
+}) {
   if (slot < 0 || requests.isEmpty) return null;
 
-  final boosted = [
+  final pool = [
     for (final r in requests)
-      if (r.isBoosted) r
-  ];
-  if (boosted.isEmpty) {
-    return slot < requests.length ? requests[slot] : null;
-  }
-  final plain = [
+      if (r.isBoosted && !seen.contains(r.id)) r,
     for (final r in requests)
-      if (!r.isBoosted) r
+      if (!r.isBoosted && !seen.contains(r.id)) r,
   ];
-
-  var b = 0;
-  var p = 0;
-  for (var i = 0;; i++) {
-    final takeBoosted = i.isEven || p >= plain.length;
-    final pick = takeBoosted ? boosted[b++ % boosted.length] : plain[p++];
-    if (i == slot) return pick;
-  }
+  return slot < pool.length ? pool[slot] : null;
 }
 
 /// Opens the invitation sheet for [req] and applies whatever came back.

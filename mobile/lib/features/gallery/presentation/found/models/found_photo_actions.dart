@@ -61,31 +61,49 @@ class FoundPhotoActions {
   /// Every entry point that isn't Found you: like, comment, bookmark, share
   /// and send. The owner's switch closes the thread; the heart stays.
   ///
-  /// **No download.** Writing the file to the phone is offered in exactly one
-  /// place — Found you, on a photo the viewer has paid for — because that is
-  /// the only place the app knows the photo is theirs to keep. Discovery,
-  /// search, a profile grid, a shared `/p/` link and the fullscreen viewer all
-  /// show someone else's work: there is no purchase behind any of it, so a
-  /// download button there hands out a photographer's photo for free.
+  /// **The download follows the purchase, not the screen.** It used to be a
+  /// flat false here, on the reasoning that these surfaces show someone else's
+  /// work and there is no purchase behind any of it — so a download would hand
+  /// out a photographer's photo for free.
+  ///
+  /// The first half is right and the second is not. A photo somebody bought is
+  /// theirs wherever they are looking at it, and two of these surfaces are
+  /// full of them: the profile's Purchased grid is nothing else, and its Saved
+  /// grid holds anything they bookmarked, bought or not. Refusing the download
+  /// there told a paying customer to go and find the photo on another screen
+  /// to get the file they had already paid for.
+  ///
+  /// So [purchased] decides it, and it defaults to false: discovery, search
+  /// and a shared `/p/` link pass nothing and are unchanged.
   const FoundPhotoActions.unrestricted({
     required bool commentsEnabled,
     this.isPublic = true,
+    bool purchased = false,
   })  : like = true,
         comment = commentsEnabled,
         commentsDisabled = !commentsEnabled,
         save = true,
         share = true,
-        download = false;
+        download = purchased;
 
   /// The Found-you rules, applied to [photo].
   ///
   /// [saved] is whether the viewer has bookmarked this photo, which is what
   /// earns a *free* photo its download — see [download].
-  factory FoundPhotoActions.forFoundPhoto(Photo photo, {bool saved = false}) {
+  ///
+  /// [purchased] is the same fact as [Photo.isPurchased] arriving by another
+  /// route: only two endpoints put that flag on a picture, so a photo reached
+  /// any other way says false whether or not it was bought. Either is enough.
+  factory FoundPhotoActions.forFoundPhoto(
+    Photo photo, {
+    bool saved = false,
+    bool purchased = false,
+  }) {
+    final bought = photo.isPurchased || purchased;
     // Free needs no transaction to be the viewer's; priced does. `isPurchased`
     // also covers a free photo already saved, but the price test alone is
     // enough to unlock and says why without needing the save to have landed.
-    final unlocked = photo.price <= 0 || photo.isPurchased;
+    final unlocked = photo.price <= 0 || bought;
     if (!unlocked) return const FoundPhotoActions.none();
 
     return FoundPhotoActions._(
@@ -133,7 +151,7 @@ class FoundPhotoActions {
       // there to be looked at, and taking the file is the thing a claim is for.
       // A priced photo cannot reach here unbought at all — the gate above
       // turned it away.
-      download: !photo.isPublic || photo.isPurchased || saved,
+      download: !photo.isPublic || bought || saved,
       isPublic: photo.isPublic,
     );
   }

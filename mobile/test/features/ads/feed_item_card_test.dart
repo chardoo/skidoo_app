@@ -73,11 +73,18 @@ FeedRequestModel _request({
       'updatedAt': '2026-08-01T10:00:00+00:00',
     });
 
-Widget host(FeedItemData data) => ScreenUtilInit(
+/// [hasNavBar] is the scope the Home shell provides and the guest feed does
+/// not — see [FeedNavBarScope]. Defaulted true because this file is about a
+/// card in the Home feed.
+Widget host(FeedItemData data, {bool hasNavBar = true}) => ScreenUtilInit(
       designSize: const Size(390, 844),
       builder: (_, __) => MaterialApp(
         theme: ThemeData.dark().copyWith(extensions: [AppThemeExtension.dark]),
-        home: Scaffold(body: FeedItemCard(data: data)),
+        home: Scaffold(
+          body: hasNavBar
+              ? FeedNavBarScope(child: FeedItemCard(data: data))
+              : FeedItemCard(data: data),
+        ),
       ),
     );
 
@@ -241,6 +248,27 @@ void main() {
       await t.pump(const Duration(milliseconds: 400));
 
       expect(FeedChrome.visible.value, isTrue);
+    });
+
+    testWidgets('but not on a screen with no bar to step over', (t) async {
+      // The same bug the event card had. FeedChrome.visible is a static that
+      // outlives the shell owning the bar, so signing out and continuing as a
+      // guest left it set — and an ad in the guest feed, which has no bar,
+      // cleared ninety-six points for one anyway.
+      FeedChrome.hide();
+      await t.pumpWidget(
+          host(FeedItemData.fromAd(_ad(), onCtaTap: () {}), hasNavBar: false));
+      await t.pump();
+      final flagClear = t.getRect(find.text('Kwame Studios')).bottom;
+
+      FeedChrome.show();
+      await t.pumpWidget(
+          host(FeedItemData.fromAd(_ad(), onCtaTap: () {}), hasNavBar: false));
+      await t.pump(const Duration(milliseconds: 400));
+
+      expect(t.getRect(find.text('Kwame Studios')).bottom,
+          closeTo(flagClear, 1),
+          reason: 'with no bar below it, the flag must change nothing');
     });
 
     testWidgets('the copy steps over the bar when it appears', (t) async {

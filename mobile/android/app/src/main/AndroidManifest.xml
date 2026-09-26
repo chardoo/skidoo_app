@@ -69,11 +69,19 @@
 
          dataExtractionRules/fullBackupContent are not needed once this is
          false — they describe *what* to back up, and the answer is nothing. -->
+    <!-- android:enableOnBackInvokedCallback — predictive back. It lets the OS
+         ask the app what the previous screen looks like and animate towards it
+         as the back gesture is dragged, rather than only telling the app once
+         the gesture has finished. Without the flag Android 14+ never sends the
+         callback, and PredictiveBackPageTransitionsBuilder (see
+         core/theme/customThemeData.dart) quietly falls back to the plain
+         transition — the feature looks wired up and does nothing. -->
     <application
         android:label="jperg"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
         android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="false">
         <activity

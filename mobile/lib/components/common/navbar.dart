@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +9,43 @@ import 'package:jperg_app/core/navigation/chrome_visibility.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+
+/// How far the pill floats above the bottom of the screen.
+///
+/// It used to be the whole system inset, and on a phone with a home indicator
+/// that is about 34 dp — so the bar sat a visible band above the bottom edge
+/// and read as hovering rather than as the bottom of the app. Instagram's is
+/// lower, and it is lower because a home indicator is a *hint*, not a control:
+/// nothing is hit-tested there, so a floating bar may sit close to it.
+///
+/// A tall inset is a different thing and is honoured in full. On a phone with
+/// three-button navigation the inset is the button bar itself — 48 dp of real
+/// controls — and giving any of it back would put the tabs on top of Back and
+/// Home. The two cases are told apart by size, which is the only signal there
+/// is: [_kSlimInset] is above any home indicator and below any button bar.
+const double _kSlimInset = 40;
+
+/// What a slim indicator gives back, and the floor it may not go under.
+///
+/// 14 brings the bar down by about the width of the gap that was reading as
+/// hover, and 6 keeps a little air under it on a device that reports no inset
+/// at all — flush against the edge looks like a rendering fault rather than a
+/// decision.
+const double _kIndicatorGiveBack = 14;
+const double _kMinBottomGap = 6;
+
+/// The pill's own height. Named so [AppNavbar.bandHeight] can add it up
+/// without the feed having to guess at it.
+const double _kPillHeight = 58;
+
+double _bottomGap(BuildContext context) {
+  // viewPadding, not padding: `padding` goes to zero while the keyboard is up,
+  // and the bar would drop those 34 dp the moment somebody opened a keyboard
+  // on a screen that keeps it.
+  final inset = MediaQuery.viewPaddingOf(context).bottom;
+  if (inset > _kSlimInset) return inset;
+  return math.max(inset - _kIndicatorGiveBack, _kMinBottomGap);
+}
 
 /// The most space there is between two tabs.
 ///
@@ -62,6 +101,17 @@ class AppNavbar extends StatelessWidget {
   final ValueChanged<int> onchange;
   final int messageUnreadCount;
 
+  /// The strip along the bottom of the screen this bar occupies: the pill
+  /// itself, plus the gap it floats on.
+  ///
+  /// Anything laying itself out above the bar asks here rather than keeping a
+  /// figure of its own. The feed kept 96 — a fair guess when the gap was the
+  /// full home-indicator inset, and wrong the moment the bar moved down, which
+  /// left the caption sitting a visible band above a bar that had come to meet
+  /// it. One number, read from the thing it describes.
+  static double bandHeight(BuildContext context) =>
+      _bottomGap(context) + _kPillHeight.h;
+
   /// Index of the feed tab.
   ///
   /// The feed wraps itself in [DarkMediaSurface], which forces the dark palette
@@ -86,7 +136,10 @@ class AppNavbar extends StatelessWidget {
 
     return SafeArea(
       top: false,
-      minimum: EdgeInsets.only(bottom: AppSpacing.md.h),
+      // The bottom gap is worked out rather than taken, which is why this side
+      // is off and the figure arrives through `minimum` — see [_bottomGap].
+      bottom: false,
+      minimum: EdgeInsets.only(bottom: _bottomGap(context)),
       // Reading further narrows the bar to bare icons; coming back up opens
       // it. One notifier for this and the top tabs, so the two halves of the
       // chrome can never disagree about which way the thumb went — see
@@ -122,7 +175,7 @@ class AppNavbar extends StatelessWidget {
                 onDark: onDark,
                 padding: EdgeInsets.symmetric(horizontal: 10.w),
                 child: SizedBox(
-                  height: 58.h,
+                  height: _kPillHeight.h,
                   // Tabs size to their own content (not 4 equal Expanded slots) so
                   // the active tab's icon+label pill gets exactly the room it
                   // needs — equal-width slots left too little space for even the

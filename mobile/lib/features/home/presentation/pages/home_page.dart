@@ -416,26 +416,33 @@ class _HomeViewState extends State<_HomeView> {
         // showing. Unlike the one-shot VideoPauseNotifier.pauseAll() in
         // _changeTab, this reverses itself, so coming back to the feed resumes
         // rather than leaving it silent until the next swipe.
-        body: IndexedStack(
-          index: _selectedTab,
-          children: [
-            TickerMode(
-              enabled: _selectedTab == 0,
-              child: const HomeNavigationPage(),
-            ),
-            TickerMode(
-              enabled: _selectedTab == 1,
-              child: const ChatRoomsPage(),
-            ),
-            TickerMode(
-              enabled: _selectedTab == 2,
-              child: const NotificationsPage(),
-            ),
-            TickerMode(
-              enabled: _selectedTab == 3,
-              child: UserProfilePage(key: _profileKey),
-            ),
-          ],
+        // Everything in this shell has the bar below it; nothing outside does.
+        // Cards read the scope rather than a flag passed down, so the guest
+        // feed and a pushed shared-event page — both of which are routes
+        // beside this one rather than inside it — correctly report no bar.
+        // See [FeedNavBarScope].
+        body: FeedNavBarScope(
+          child: IndexedStack(
+            index: _selectedTab,
+            children: [
+              TickerMode(
+                enabled: _selectedTab == 0,
+                child: const HomeNavigationPage(),
+              ),
+              TickerMode(
+                enabled: _selectedTab == 1,
+                child: const ChatRoomsPage(),
+              ),
+              TickerMode(
+                enabled: _selectedTab == 2,
+                child: const NotificationsPage(),
+              ),
+              TickerMode(
+                enabled: _selectedTab == 3,
+                child: UserProfilePage(key: _profileKey),
+              ),
+            ],
+          ),
         ),
         // Listens rather than reading this build's value: a tap on a feed card
         // flips [FeedChrome] from outside this widget entirely, and nothing

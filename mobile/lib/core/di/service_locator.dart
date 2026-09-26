@@ -10,6 +10,9 @@ import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_key_datasource.dart';
 import 'package:jperg_app/features/discovery/data/datasources/client_saved_data_source.dart';
+import 'package:jperg_app/core/navigation/feed_chrome.dart';
+import 'package:jperg_app/features/gallery/data/purchased_photos.dart';
+import 'package:jperg_app/features/user_profile/data/repositories/profile_overview_repository.dart';
 import 'package:jperg_app/features/gallery/data/saved_photos.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/ads/data/datasources/feed_comment_data_source.dart';
@@ -412,6 +415,16 @@ Future<void> setupServiceLocator() async {
     'FollowRepository.followedIds',
     FollowRepository.clearSession,
   );
+  // The bar belongs to the signed-in shell, and this flag says whether it is
+  // up. Signing out leaves that shell for the guest feed, which has no bar at
+  // all — so a flag left set describes a bar nobody can see. The cards read
+  // [FeedNavBarScope] as well now and so are no longer fooled by it, but
+  // HomeNavigationPage still reads this one alone for its header.
+  SessionReset.register(
+    FeedChrome,
+    'FeedChrome.visible',
+    FeedChrome.hide,
+  );
   SessionReset.register(
     CartBloc,
     'CartBloc',
@@ -428,6 +441,19 @@ Future<void> setupServiceLocator() async {
     // in memory. Those are what refilled the inbox and the unread badge even
     // once the database beneath them had been cleared.
     () => sl<ChatBackgroundService>().disconnectAll(),
+  );
+  // Both id sets belong to the account that fetched them. Left standing, the
+  // next person to sign in on this phone gets a download button on photos they
+  // do not own and a filled bookmark on photos they never saved.
+  SessionReset.register(
+    PurchasedPhotos,
+    'PurchasedPhotos',
+    () => sl<PurchasedPhotos>().clear(),
+  );
+  SessionReset.register(
+    SavedPhotos,
+    'SavedPhotos',
+    () => sl<SavedPhotos>().clear(),
   );
   SessionReset.register(
     ChatDatabase,
@@ -613,6 +639,12 @@ Future<void> setupServiceLocator() async {
   // every rail, or saving in one viewer leaves the other showing unsaved.
   sl.registerSingleton<SavedPhotos>(
       SavedPhotos(ApiSavedPhotoStore(sl<ClientSavedDataSource>())));
+
+  // Which photos this account has bought. Singleton for the same reason as the
+  // bookmarks above — the download button reads it from two different viewers,
+  // and a purchase made in one has to light up the other.
+  sl.registerSingleton<PurchasedPhotos>(PurchasedPhotos(
+      ApiPurchasedPhotoStore(ProfileOverviewRepository(), sl<AuthService>())));
 
   // BLoCs (factories so each page gets a fresh instance)
   sl.registerFactory<ChatRoomsBloc>(() => ChatRoomsBloc(

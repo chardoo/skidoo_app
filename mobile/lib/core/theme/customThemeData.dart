@@ -16,11 +16,28 @@ class Styles {
   static const String displayFontFamily = AppTypography.displayFontFamily;
   static const String bodyFontFamily = AppTypography.bodyFontFamily;
 
-  // Touch platforms get the slide-in transition that carries the edge
-  // swipe-back gesture; desktop, which has no such gesture, keeps the fade.
+  // Each platform gets its own way of going back.
+  //
+  // iOS: the horizontal slide, which is also where the interactive edge
+  // swipe-back lives — it is built by [CupertinoPageTransitionsBuilder], not by
+  // the route, so replacing it there would silently remove the gesture from
+  // every MaterialPageRoute in the app.
+  //
+  // Android: the system's own predictive back. Android has not needed an
+  // app-drawn swipe-back since gesture navigation arrived — the edge swipe is
+  // the *system* back gesture and already pops the route — so what the
+  // Cupertino builder added here was not the gesture but a second, iOS-shaped
+  // animation running over it, sliding pages in from the right on a platform
+  // whose own transition is a zoom. [PredictiveBackPageTransitionsBuilder]
+  // animates with the system gesture instead, revealing the destination as the
+  // reader drags and springing back if they let go. It falls back to the
+  // ordinary Android transition below Android 14, so there is no floor to
+  // check for.
+  //
+  // Desktop has no back gesture at all and keeps the fade.
   static const PageTransitionsTheme _pageTransitions = PageTransitionsTheme(
     builders: {
-      TargetPlatform.android: AppPageTransitionsBuilder(),
+      TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
       TargetPlatform.iOS: AppPageTransitionsBuilder(),
       TargetPlatform.fuchsia: AppPageTransitionsBuilder(),
       TargetPlatform.macOS: AppFadePageTransitionsBuilder(),

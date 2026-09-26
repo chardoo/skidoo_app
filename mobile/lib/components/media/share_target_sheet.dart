@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -107,7 +108,7 @@ class ShareTargetSheet extends StatelessWidget {
                     Expanded(
                       child: _ShareTarget(
                         ext: ext,
-                        icon: Icons.ios_share_rounded,
+                        icon: AppIcons.systemShare,
                         label: 'External',
                         semanticLabel: 'Share outside the app',
                         onTap: () {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
 import 'package:jperg_app/components/media/share_target_sheet.dart';
 import 'package:jperg_app/core/cache/comment_counts.dart';
+import 'package:jperg_app/components/common/navbar.dart';
 import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/common/widgets/expandable_caption.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/top_comment_line.dart';
@@ -32,6 +34,7 @@ import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/navigation/feed_chrome.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/event_card/heart_burst.dart';
 import 'package:jperg_app/features/music/presentation/feed_music_controller.dart';
 import 'package:jperg_app/features/music/presentation/widgets/feed_music_pill.dart';
 import 'package:jperg_app/features/music/presentation/widgets/feed_volume_button.dart';
@@ -77,7 +80,8 @@ class FullBleedEventCard extends StatefulWidget {
   State<FullBleedEventCard> createState() => _FullBleedEventCardState();
 }
 
-class _FullBleedEventCardState extends State<FullBleedEventCard> {
+class _FullBleedEventCardState extends State<FullBleedEventCard>
+    with SingleTickerProviderStateMixin {
   final _mediaPageCtrl = PageController();
 
   FeedMusicController? _music;
@@ -417,6 +421,12 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     CommentCounts.instance.addListener(_rebuild);
   }
 
+  /// Drives the heart that bursts over the photo on a double-tap.
+  late final AnimationController _burst = AnimationController(
+    vsync: this,
+    duration: HeartBurst.duration,
+  );
+
   void _rebuild() {
     if (mounted) setState(() {});
   }
@@ -484,13 +494,16 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   /// seek the video.
   static const double _videoControlsBand = 40;
 
-  /// The strip along the bottom the floating nav bar occupies.
+  /// The air between the last line of the caption and the top of the bar.
   ///
-  /// Left clear of the caption scrim so the bar has real photo behind it to
-  /// frost. Roughly the pill's height plus the margin it floats on; it does
-  /// not have to be exact, only to keep the darkest end of the gradient out
-  /// from under the glass.
-  static const double _navBand = 96;
+  /// The caption is the post and the bar is a visitor, so the post runs as far
+  /// down the card as it can — but "as far as it can" is not "up against it".
+  /// This was 10 for one revision and the bar read as sitting on the text: a
+  /// pill of frosted glass has a soft edge, the description's last line hangs
+  /// descenders into the gap, and ten points of air disappears between the
+  /// two. 20 reads as clear while still being half of the 40-odd that started
+  /// this — the gap that looked like a margin somebody chose.
+  static const double _kCaptionOverBar = 20;
 
   /// Where the right-hand action rail sits: a little below the card's middle,
   /// as a fraction of the card rather than an offset from an edge, so it holds
@@ -529,10 +542,39 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   /// steps over it rather than being buried under frosted glass, which is what
   /// used to happen: the last line of a caption and the music pill sat behind
   /// the bar and simply could not be read.
-  double get _captionBottom {
-    final base = _activeMediaIsVideo ? (24 + _videoControlsBand).h : 24.h;
-    return FeedChrome.visible.value ? base + _navBand : base;
+  /// [context] because the bar's band depends on the device's bottom inset —
+  /// see [AppNavbar.bandHeight].
+  double _captionBottom(BuildContext context) {
+    final video = _activeMediaIsVideo ? _videoControlsBand.h : 0.0;
+    if (!_navBarUp) return video + 24.h;
+
+    // Just clear of the bar, not a band above it.
+    //
+    // This used to be 24 + a hardcoded 96, which put the last hashtag some 40
+    // dp above the top of the pill — a gap wide enough to read as a margin
+    // somebody chose, on a card where every other element is pressed to an
+    // edge. The bar publishes what it actually occupies now, so this is the
+    // real height plus the air it needs, and the two cannot drift apart again
+    // the next time the bar moves.
+    return AppNavbar.bandHeight(context) + video + _kCaptionOverBar.h;
   }
+
+  /// Whether there is a navigation bar below this card *and* it is up.
+  ///
+  /// Both halves, and the first one is the one that was missing.
+  /// [FeedChrome.visible] is a static that outlives the shell owning the bar,
+  /// so a card on a screen that has no bar read a `true` left over from the
+  /// Home feed and cleared ninety-six points for nothing — the description and
+  /// its hashtags floating with dead space beneath them. Logging out and
+  /// continuing as a guest was the reliable way to see it: the guest feed is a
+  /// route of its own with no bar, and the flag stayed set until the app was
+  /// restarted.
+  ///
+  /// [FeedNavBarScope] answers the first half by where this card is in the
+  /// tree, which is why a pushed shared-event page gets it right too — it is a
+  /// sibling of the Home shell, not a descendant.
+  bool get _navBarUp =>
+      FeedNavBarScope.of(context) && FeedChrome.visible.value;
 
   /// The description with its hashtags running on from the end of it.
   ///
@@ -560,6 +602,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
   @override
   void dispose() {
     widget.activeCardIndex.removeListener(_onActiveCardChanged);
+    _burst.dispose();
     FeedChrome.visible.removeListener(_rebuild);
     CommentCounts.instance.removeListener(_rebuild);
     _slideTimer?.cancel();
@@ -593,6 +636,42 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
     context.read<DiscoveryBloc>().add(DiscoveryReactionToggled(
           widget.event.id,
           isLike: !reaction.liked,
+          snapshot: _ownReaction,
+        ));
+  }
+
+  /// A double-tap on the photo: likes, and says so.
+  ///
+  /// **Likes — it does not toggle.** This used to call [_toggleLike], so a
+  /// second double-tap on a post took the like back off. Nobody double-taps a
+  /// photo to un-like it; they do it because the first one felt good, or
+  /// because they are not sure it registered. Taking the like away on the
+  /// gesture people repeat when they are unsure is the worst possible answer,
+  /// and it is the reason the burst matters: the heart is the app saying *yes,
+  /// that landed*. The rail's heart is where un-liking lives, where it is one
+  /// deliberate tap on a glyph that is visibly full.
+  ///
+  /// The burst plays every time regardless, including on a post already liked.
+  /// The gesture was made; it gets an answer.
+  void _doubleTapLike() {
+    if (!widget.isAuthenticated) {
+      widget.onTap();
+      return;
+    }
+
+    _burst
+      ..reset()
+      ..forward();
+    HapticFeedback.lightImpact();
+
+    final reaction =
+        context.read<DiscoveryBloc>().state.reactions[widget.event.id] ??
+            _ownReaction;
+    if (reaction.liked) return;
+
+    context.read<DiscoveryBloc>().add(DiscoveryReactionToggled(
+          widget.event.id,
+          isLike: true,
           snapshot: _ownReaction,
         ));
   }
@@ -770,7 +849,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
             pics: event.pictures,
             pageController: _mediaPageCtrl,
             showBlur: false,
-            onDoubleTap: _toggleLike,
+            onDoubleTap: _doubleTapLike,
             onTap: _onCardTapped,
             cardIndex: widget.cardIndex,
             activeCardIndex: widget.activeCardIndex,
@@ -778,7 +857,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
             // caption does. Only while the bar is actually up: with it hidden
             // the player owns the bottom edge and the controls belong on it.
             videoControlsBottomInset:
-                FeedChrome.visible.value ? _navBand : 0,
+                _navBarUp ? AppNavbar.bandHeight(context) : 0,
             onVideoEnded: _onVideoEnded,
             onMediaChanged: (i) {
               if (i == _mediaIndex) return;
@@ -811,19 +890,40 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           // reading as an opaque slab — no tint or blur radius could have
           // fixed that, because there was genuinely nothing back there to see.
           //
+          // ── The double-tap heart ────────────────────────────────────────
+          //
+          // Directly over the media and under everything else: it belongs to
+          // the photograph, and it must not land on top of the caption or the
+          // rail — a heart the size of a fist over somebody's own words reads
+          // as an error state for the fifth of a second it is there.
+          //
+          // Always in the tree rather than added and removed. It is a scale
+          // and an opacity on one glyph; keeping it mounted costs nothing and
+          // means a second double-tap replays it from the top instead of
+          // waiting for a rebuild.
+          Positioned.fill(
+            child: Center(child: HeartBurst(ctrl: _burst)),
+          ),
+
           // The caption sits above this band, so it keeps the contrast it
           // needs; the strip the bar occupies is left as photo.
+          //
+          // Only the strip a bar is actually using. With no bar below the card
+          // — the guest feed, a pushed shared-event page — the gradient runs
+          // to the bottom edge, where the caption now is. Held back regardless,
+          // it left a lit band under the darkest part of the scrim and the
+          // caption sitting above both. See [_navBarUp].
           //
           // The scrim, the caption and the rail are all chrome over the photo,
           // and all of it goes while a comment sheet is open — see
           // [CommentSheetHide]. The band above the sheet is media and nothing
           // else, which is what the designs draw.
-          const Positioned(
+          Positioned(
             left: 0,
             right: 0,
-            bottom: _navBand,
+            bottom: _navBarUp ? AppNavbar.bandHeight(context) : 0,
             height: 220,
-            child: CommentSheetHide(
+            child: const CommentSheetHide(
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
@@ -863,7 +963,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           // this card actually holds the feed's player: a mute button on a post
           // making no sound is a control with nothing to control, and there is
           // exactly one player, so at most one card can offer it.
-          if (_music != null && FeedChrome.visible.value)
+          if (_music != null && _navBarUp)
             ValueListenableBuilder<FeedMusicNowPlaying?>(
               valueListenable: _music!.nowPlaying,
               builder: (context, playing, _) {
@@ -872,7 +972,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
                 }
                 return Positioned(
                   right: 16.w,
-                  bottom: _navBand + 8,
+                  bottom: AppNavbar.bandHeight(context) + 8,
                   child: CommentSheetHide(
                     child: ValueListenableBuilder<bool>(
                       valueListenable: _music!.muted,
@@ -902,10 +1002,10 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
           // is what every player reads and what the one on screen listens to,
           // so setting it here reaches the player without this card having to
           // hold a reference to it.
-          if (_activeMediaIsVideo && FeedChrome.visible.value)
+          if (_activeMediaIsVideo && _navBarUp)
             Positioned(
               right: 16.w,
-              bottom: _navBand + 8,
+              bottom: AppNavbar.bandHeight(context) + 8,
               child: CommentSheetHide(
                 child: ValueListenableBuilder<bool>(
                   valueListenable: VideoMutePreference.notifier,
@@ -927,7 +1027,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard> {
             curve: Curves.easeOut,
             left: 16.w,
             right: 88.w,
-            bottom: _captionBottom,
+            bottom: _captionBottom(context),
             child: CommentSheetHide(
               // The block's height eases on the same curve and duration as its
               // position above, so the two stop disagreeing.

@@ -144,6 +144,49 @@ class ProfileOverviewRepository {
     await _dio.delete('/client/$userId/saved/$savedItemId');
   }
 
+  /// Photos this person has bought.
+  ///
+  /// Not the same list as Found, and the distinction is the reason this tab
+  /// exists: Found is what face recognition matched *them* in, which they may
+  /// or may not have paid for. This is what they paid for, which is mostly
+  /// photos of somebody else — a friend's shot from the same event, a picture
+  /// they simply wanted. The two lists overlap and neither contains the other.
+  ///
+  /// `POST`, and the client id goes in the body: that is what the endpoint
+  /// takes. It only ever serves the caller's own purchases — the server checks
+  /// the id against the token rather than trusting it — so the id passed here
+  /// has to be the signed-in one.
+  Future<LikedPage> getPurchasedPhotos(
+    String userId, {
+    int page = 1,
+    int limit = 30,
+  }) async {
+    final resp = await _dio.post('/client/dashboard', data: {
+      'clientId': userId,
+      'page': page,
+      'limit': limit,
+    });
+
+    final photos = <ProfilePhoto>[];
+    for (final row in _listUnder(resp.data, 'data')) {
+      final photo = ProfilePhoto.fromPurchase(row);
+      if (photo != null) photos.add(photo);
+    }
+
+    // The shared pagination envelope, read the same way the bookmarks list
+    // reads it. Counted off the rows rather than the parsed photos: a purchase
+    // whose picture has since been deleted is skipped above, and a page of
+    // nothing but those is still a page with more behind it.
+    final data = resp.data;
+    final pagination = data is Map ? data['pagination'] : null;
+    return LikedPage(
+      photos: photos,
+      hasMore: pagination is Map
+          ? pagination['hasNext'] == true
+          : _listUnder(resp.data, 'data').length >= limit,
+    );
+  }
+
   /// Remove a like outright — not a toggle.
   ///
   /// The heart on this screen means "take this off the list". Sending the
@@ -223,6 +266,7 @@ class ProfilePhoto {
     this.savedItemId,
     this.isEvent = false,
     this.likedAt,
+    this.isPurchased = false,
   });
 
   final String id;
@@ -246,6 +290,11 @@ class ProfilePhoto {
 
   /// When it was liked. Sorts the two liked lists into one grid.
   final String? likedAt;
+
+  /// Bought by this person, so the viewer must not draw the paid-preview
+  /// watermark over it. See [PaidPhotoWatermark.shouldMark] — a photo they own
+  /// wearing a "pay to unlock" mark is the app telling them they did not.
+  final bool isPurchased;
 
   bool get isVideo => mediaType == 'video';
 
@@ -279,6 +328,29 @@ class ProfilePhoto {
       eventName: json['eventName'] as String?,
       isEvent: true,
       likedAt: json['likedAt'] as String?,
+    );
+  }
+
+  /// A purchase row, which wraps the picture: `{"picture": {...}}`.
+  ///
+  /// Always a picture — you buy photos, not albums — so unlike the liked and
+  /// saved lists there is no event case to fold in.
+  static ProfilePhoto? fromPurchase(Map<String, dynamic> row) {
+    final picture = row['picture'];
+    // The row survives a picture its photographer has since deleted; the tile
+    // cannot.
+    if (picture is! Map<String, dynamic>) return null;
+    final url = picture['url'] as String?;
+    if (url == null || url.isEmpty) return null;
+
+    return ProfilePhoto(
+      id: picture['id'] as String? ?? '',
+      url: url,
+      width: (picture['width'] as num?)?.toInt(),
+      height: (picture['height'] as num?)?.toInt(),
+      mediaType: picture['mediaType'] as String? ?? 'image',
+      eventId: picture['eventId'] as String?,
+      isPurchased: true,
     );
   }
 

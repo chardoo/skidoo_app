@@ -18,9 +18,9 @@ class ProfilePhotoGrid extends StatefulWidget {
     required this.ext,
     required this.emptyTitle,
     required this.emptyHint,
-    required this.removeIcon,
-    required this.removeTooltip,
-    required this.onRemove,
+    this.removeIcon,
+    this.removeTooltip,
+    this.onRemove,
     required this.onOpen,
     this.onLoadMore,
     this.loadingMore = false,
@@ -41,9 +41,13 @@ class ProfilePhotoGrid extends StatefulWidget {
 
   /// The filled heart / bookmark on each tile — tapping it takes the photo out
   /// of the list it is in.
-  final IconData removeIcon;
-  final String removeTooltip;
-  final Future<void> Function(ProfilePhoto) onRemove;
+  ///
+  /// Omitted together for a grid with nothing to remove. The Purchased tab is
+  /// the one: un-liking and un-bookmarking undo something free and reversible,
+  /// and a purchase is neither.
+  final IconData? removeIcon;
+  final String? removeTooltip;
+  final Future<void> Function(ProfilePhoto)? onRemove;
 
   /// Tapping the tile opens what it stands for.
   final void Function(ProfilePhoto) onOpen;
@@ -149,7 +153,7 @@ class _ProfilePhotoGridState extends State<ProfilePhotoGrid> {
             ext: ext,
             removeIcon: removeIcon,
             removeTooltip: removeTooltip,
-            onRemove: () => onRemove(photo),
+            onRemove: onRemove == null ? null : () => onRemove(photo),
             onOpen: () => onOpen(photo),
           );
         },

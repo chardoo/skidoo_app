@@ -283,6 +283,10 @@ class MediaReactionRail extends StatelessWidget {
         labelColor: r.enabled ? null : _unavailable,
         enabled: r.enabled,
         busy: r.busy,
+        // What makes the glyph pop when the reaction turns on. Passed for
+        // every reaction, not just the heart: a bookmark landing deserves the
+        // same acknowledgement, and one rule beats a list of exceptions.
+        active: r.active,
         semanticLabel: r.semanticLabel,
         onTap: r.onTap,
       );

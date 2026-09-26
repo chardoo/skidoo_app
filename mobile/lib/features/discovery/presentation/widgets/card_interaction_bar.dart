@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -315,7 +316,7 @@ class _ExternalShareActionState extends State<_ExternalShareAction> {
               child: CircularProgressIndicator(
                   strokeWidth: 2, color: widget.ext.greetingColor),
             )
-          : Icon(Icons.ios_share_rounded,
+          : Icon(AppIcons.systemShare,
               color: widget.ext.greetingColor, size: 22.sp),
     );
   }

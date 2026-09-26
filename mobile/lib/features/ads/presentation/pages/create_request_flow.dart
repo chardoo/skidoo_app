@@ -1215,6 +1215,14 @@ class _DraftPhotos extends StatelessWidget {
   }
 }
 
+/// The flow's CTA — [AppButton] at this flow's height.
+///
+/// Was a hand-rolled ElevatedButton that reproduced the primary variant exactly
+/// (the same fill, the same 15/w700 white label, the same pill, the same 18 dp
+/// spinner) and therefore missed everything the shared button learned later:
+/// the press response, and the guard that stops an async handler being fired
+/// twice. Publishing a request posts it *and* uploads its photos, so a second
+/// press there is a second request with a second set of photos.
 class _PrimaryButton extends StatelessWidget {
   const _PrimaryButton({
     required this.label,
@@ -1224,39 +1232,22 @@ class _PrimaryButton extends StatelessWidget {
   });
 
   final String label;
+
+  /// Unused now that the colours come from the variant. Kept so the three call
+  /// sites read the same as the rest of the file, which passes `ext` everywhere.
   final AppThemeExtension ext;
+
   final VoidCallback? onPressed;
   final bool busy;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
+  Widget build(BuildContext context) => AppButton(
+        label: label,
+        onPressed: onPressed,
+        isLoading: busy,
+        fullWidth: true,
+        // The flow's own rhythm: a little taller than the app default.
         height: 52.h,
-        child: ElevatedButton(
-          onPressed: busy ? null : onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: ext.accentGold,
-            disabledBackgroundColor: ext.accentGold.withValues(alpha: 0.4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999.r),
-            ),
-          ),
-          child: busy
-              ? SizedBox(
-                  width: 18.r,
-                  height: 18.r,
-                  child: const CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-        ),
+        borderRadius: AppRadius.pill,
       );
 }

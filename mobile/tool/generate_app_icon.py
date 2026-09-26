@@ -73,14 +73,37 @@ SVG = ROOT / 'assets/logo/jperg_icon_white.svg'
 VIEWBOX_W, VIEWBOX_H = 78.0, 62.0
 
 FIELD = '#FFFFFF'
-MARK = '#1D9E75'
+
+# The darker of the brand's two greens — `accentGoldDark`, the one the splash
+# draws its wordmark in. Not `accentGold` (#1D9E75), which is what this was and
+# what made the icon look soft.
+#
+# Nothing about the rendering changed; the contrast did. #1D9E75 on white is
+# 3.39:1, the green the original icons used was 4.75:1, and this is 5.36:1.
+# Edge definition *is* contrast at icon sizes — a 40% drop in it reads as a
+# blurry icon even though every edge is in exactly the same place. That is the
+# whole of "the icon stopped being sharp"; see the note below before reaching
+# for a sharpening filter.
+MARK = '#16795B'
 WIDTH_FRACTION = 0.66
 LIFT_FRACTION = 0.025
 
 # Rendered once at this size and resampled down, rather than asking the
-# renderer for 20 px directly: one high-resolution pass keeps every size
-# identical in shape, and Lanczos is kinder to a thin diagonal than a
-# rasteriser working with 20 pixels to spend.
+# renderer for each size directly.
+#
+# Not a preference — qlmanage cannot do the latter. Asked for a thumbnail
+# smaller than the SVG's natural size it ignores the width and lays the
+# artwork out at some size of its own, then drops it in the top-left of the
+# canvas: at `-s 180` the mark comes out 40% of the tile instead of 66%, and
+# off-centre. Only a request that matches the SVG's own dimensions renders 1:1,
+# which is what this is.
+#
+# The resampling was investigated when the icon was reported as soft and is
+# not the cause. An exact integer reduction (a 1440 master down to 180) gives
+# an edge profile identical to this one to two decimal places, and an unsharp
+# mask afterwards does not recover sharpness — it builds the light halo and
+# dark rim that the *old* icons had from being exported lossily, which is a
+# different artefact wearing sharpness as a disguise. The cause was [MARK].
 MASTER = 2048
 
 IOS_DIR = ROOT / 'ios/Runner/Assets.xcassets/AppIcon.appiconset'

@@ -40,6 +40,7 @@ class _SpyRepo implements AdsRepository {
     int page = 1,
     int limit = 20,
     String? view,
+    bool paced = false,
   }) async {
     asked = true;
     return const [];

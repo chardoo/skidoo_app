@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/core/utils/gallery_refresh_signal.dart';
+import 'package:jperg_app/features/gallery/data/purchased_photos.dart';
 import 'package:jperg_app/features/cart/domain/repositories/cart_repository.dart';
 import 'package:jperg_app/features/cart/domain/usecases/download_image_usecase.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
@@ -139,6 +140,11 @@ class CartBloc extends Bloc<CartEvent, CartState> {
           (response['paidImages']['count'] as int) > 0) {
         // Newly purchased photos are now in the gallery — refresh it.
         GalleryRefreshSignal.bump();
+        // And the viewer still on screen behind this: the download button is
+        // drawn off the purchased id set, which would otherwise not know about
+        // these until the next session. Fed the ids rather than told to
+        // refetch — the cart is holding exactly what it just bought.
+        purchasedPhotosOrNull()?.add([for (final item in state.items) item.id]);
         emit(state.copyWith(
           status: CartStatus.paymentSuccess,
           items: [],

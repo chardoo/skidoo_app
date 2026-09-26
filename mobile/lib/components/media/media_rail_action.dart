@@ -26,6 +26,7 @@ class MediaRailAction extends StatefulWidget {
     this.iconSize,
     this.assetIcon,
     this.tapTargetSize,
+    this.active = false,
   });
 
   final IconData icon;
@@ -69,13 +70,24 @@ class MediaRailAction extends StatefulWidget {
   /// the target the size of the glyph, which is what a vertical rail wants.
   final double? tapTargetSize;
 
+  /// Whether the reaction is on — liked, saved.
+  ///
+  /// Drives the pop: the glyph overshoots and settles the moment this turns
+  /// true. Not a style flag — the caller already colours and fills the glyph
+  /// itself — but the *transition*, which is the part a tap needs
+  /// acknowledging. Without it a like was a silent colour swap on a glyph
+  /// under the thumb that had just hidden it.
+  final bool active;
+
   @override
   State<MediaRailAction> createState() => _MediaRailActionState();
 }
 
 class _MediaRailActionState extends State<MediaRailAction>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
+    with TickerProviderStateMixin {
+  /// The press: a small dip under the finger, released on tap-up. Says the
+  /// touch landed, and says nothing about what it did.
+  late final AnimationController _press = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 100),
     lowerBound: 0.85,
@@ -83,9 +95,53 @@ class _MediaRailActionState extends State<MediaRailAction>
     value: 1.0,
   );
 
+  /// The pop: what the reaction turning on looks like.
+  ///
+  /// A separate controller from the press because they are separate events and
+  /// they overlap — the finger is still down, holding the dip, when the state
+  /// flips. Driving both from one value made the pop start from wherever the
+  /// press happened to be and land wrong.
+  late final AnimationController _pop = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+  );
+
+  /// Overshoot and settle, rather than a swell.
+  ///
+  /// 1 → ~1.38 → 1: up in about 120 ms, settled by 320. (The tween names
+  /// 1.35 and `easeOutBack` carries it a little past; the peak is the curve's,
+  /// not the number's.) That overshoot is the whole effect — a scale that only
+  /// approaches its target reads as a slow zoom, and at this duration as
+  /// nothing much at all.
+  late final Animation<double> _popScale = TweenSequence<double>([
+    TweenSequenceItem(
+      tween: Tween(begin: 1.0, end: 1.35)
+          .chain(CurveTween(curve: Curves.easeOutBack)),
+      weight: 45,
+    ),
+    TweenSequenceItem(
+      tween: Tween(begin: 1.35, end: 1.0)
+          .chain(CurveTween(curve: Curves.easeOutCubic)),
+      weight: 55,
+    ),
+  ]).animate(_pop);
+
+  @override
+  void didUpdateWidget(MediaRailAction old) {
+    super.didUpdateWidget(old);
+    // On the way in only. Turning a reaction *off* is not an achievement and
+    // a heart that pops as it empties reads as a second like.
+    if (widget.active && !old.active) {
+      _pop
+        ..reset()
+        ..forward();
+    }
+  }
+
   @override
   void dispose() {
-    _ctrl.dispose();
+    _press.dispose();
+    _pop.dispose();
     super.dispose();
   }
 
@@ -140,16 +196,19 @@ class _MediaRailActionState extends State<MediaRailAction>
       label: widget.semanticLabel ?? widget.label,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: inert ? null : (_) => _ctrl.reverse(),
+        onTapDown: inert ? null : (_) => _press.reverse(),
         onTapUp: inert
             ? null
             : (_) {
-                _ctrl.forward();
+                _press.forward();
                 widget.onTap();
               },
-        onTapCancel: () => _ctrl.forward(),
+        onTapCancel: () => _press.forward(),
+        // Two scales, multiplied by nesting: the press dip belongs to the
+        // whole control, the pop to the glyph alone — a count that leapt
+        // 35% and back would pull the eye off the thing that changed.
         child: ScaleTransition(
-          scale: _ctrl,
+          scale: _press,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -157,10 +216,11 @@ class _MediaRailActionState extends State<MediaRailAction>
                 SizedBox(
                   width: widget.tapTargetSize,
                   height: widget.tapTargetSize,
-                  child: Center(child: glyph),
+                  child: Center(
+                      child: ScaleTransition(scale: _popScale, child: glyph)),
                 )
               else
-                glyph,
+                ScaleTransition(scale: _popScale, child: glyph),
               if (widget.label != null) ...[
                 SizedBox(height: 3.h),
                 Text(

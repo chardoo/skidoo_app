@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
 import 'package:jperg_app/components/media/media_rail_action.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/features/gallery/data/purchased_photos.dart';
 import 'package:jperg_app/features/gallery/data/saved_photos.dart';
 import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_photo_actions.dart';
@@ -64,6 +65,14 @@ class _FoundPhotoQuickActionsState extends State<FoundPhotoQuickActions> {
 
   final SavedPhotos? _saved = savedPhotosOrNull();
 
+  /// Which photos this account has bought.
+  ///
+  /// Consulted because the photo itself usually does not know: only the Found
+  /// list and the discovery feed carry `isPurchased`, so a photo opened from a
+  /// profile grid, an album or a link arrives saying false whether or not it
+  /// was bought. This is the app's own answer, fetched once a session.
+  final PurchasedPhotos? _purchased = purchasedPhotosOrNull();
+
   /// The OS save dialog is anchored to this on iPad/macOS, where a popover has
   /// to originate from something.
   final _downloadKey = GlobalKey();
@@ -71,9 +80,12 @@ class _FoundPhotoQuickActionsState extends State<FoundPhotoQuickActions> {
   @override
   void initState() {
     super.initState();
-    // Cheap and shared: the id set is fetched once per session, so asking here
-    // costs no request. It decides whether a free photo may be downloaded.
+    // Cheap and shared: each id set is fetched once per session, so asking
+    // here costs no request. Between them they decide whether the download is
+    // offered — a free photo earns it by being bookmarked, a priced one by
+    // having been bought.
     _saved?.ensureLoaded();
+    _purchased?.ensureLoaded();
   }
 
   /// Writes the file to the device via the branded-overlay pipeline every other
@@ -102,60 +114,74 @@ class _FoundPhotoQuickActionsState extends State<FoundPhotoQuickActions> {
   /// tap is replayed once the account exists.
   void _require(VoidCallback action) => requireAccount(context, action: action);
 
+  /// Bought, by either account of it: what the payload said, or what the id
+  /// set knows. See [_purchased] for why the payload is so often silent.
+  bool get _bought =>
+      widget.photo.isPurchased ||
+      (_purchased?.isPurchased(widget.photo.id) ?? false);
+
   FoundPhotoActions get _offered => widget.purchaseGated
       ? FoundPhotoActions.forFoundPhoto(
           widget.photo,
           saved: _saved?.isSaved(widget.photo.id) ?? false,
+          purchased: _bought,
         )
       : FoundPhotoActions.unrestricted(
           commentsEnabled: widget.photo.commentsEnabled,
           isPublic: widget.photo.isPublic,
+          purchased: _bought,
         );
 
   @override
   Widget build(BuildContext context) {
-    // Rebuilt whenever the saved set changes: bookmarking a free photo is what
-    // earns it a download, and the button has to appear when it happens rather
-    // than the next time the viewer is opened.
+    // Rebuilt whenever either id set changes: bookmarking a free photo is what
+    // earns it a download, and buying a priced one is, and the button has to
+    // appear when it happens rather than the next time the viewer is opened.
     return ValueListenableBuilder<int>(
       valueListenable: _saved?.revision ?? kNoSavedPhotos,
-      builder: (context, _, __) {
-        final offered = _offered;
-        // `download`, not `anyInBar`. The bar now carries the engagements of a
-        // private photo as well — see [FoundPhotoActions.anyInBar] — and this
-        // widget draws exactly one of the things in it.
-        //
-        // Zero width, not an empty box with a gap beside it: the name block
-        // next to this takes every pixel this does not, and on a photo with no
-        // download that is all of them.
-        if (!offered.download) return const SizedBox.shrink();
+      builder: (context, _, __) => ValueListenableBuilder<int>(
+        valueListenable: _purchased?.revision ?? kNoPurchasedPhotos,
+        builder: (context, _, __) => _bar(context),
+      ),
+    );
+  }
 
-        return Padding(
-          // The gap belongs to the button, so it disappears with it.
-          padding: EdgeInsets.only(left: AppSpacing.sm.w),
-          child: MediaRailAction(
-            key: _downloadKey,
-            // The outlined arrow, the same glyph [MediaReaction.download]
-            // declares for every other download in the app. This was the
-            // filled one — the only solid glyph on a surface where every
-            // reaction is hollow at rest, and on a private photo it sat
-            // directly beside engagements drawn from that rail, so the two
-            // read as different kinds of control.
-            //
-            // Nothing here is ever filled, because a fill means "active" and a
-            // download has no such state: having saved a photo once is not
-            // something this button can know.
-            icon: Icons.download_outlined,
-            // No count under it — the download has no number behind it, and a
-            // hardcoded zero is worse than nothing. `semanticLabel` carries
-            // what the missing text would have said.
-            semanticLabel: 'Download photo',
-            busy: _downloading,
-            tapTargetSize: 40.r,
-            onTap: () => _require(_download),
-          ),
-        );
-      },
+  /// The button itself, once both id sets have had their say.
+  Widget _bar(BuildContext context) {
+    final offered = _offered;
+    // `download`, not `anyInBar`. The bar now carries the engagements of a
+    // private photo as well — see [FoundPhotoActions.anyInBar] — and this
+    // widget draws exactly one of the things in it.
+    //
+    // Zero width, not an empty box with a gap beside it: the name block
+    // next to this takes every pixel this does not, and on a photo with no
+    // download that is all of them.
+    if (!offered.download) return const SizedBox.shrink();
+
+    return Padding(
+      // The gap belongs to the button, so it disappears with it.
+      padding: EdgeInsets.only(left: AppSpacing.sm.w),
+      child: MediaRailAction(
+        key: _downloadKey,
+        // The outlined arrow, the same glyph [MediaReaction.download]
+        // declares for every other download in the app. This was the
+        // filled one — the only solid glyph on a surface where every
+        // reaction is hollow at rest, and on a private photo it sat
+        // directly beside engagements drawn from that rail, so the two
+        // read as different kinds of control.
+        //
+        // Nothing here is ever filled, because a fill means "active" and a
+        // download has no such state: having saved a photo once is not
+        // something this button can know.
+        icon: Icons.download_outlined,
+        // No count under it — the download has no number behind it, and a
+        // hardcoded zero is worse than nothing. `semanticLabel` carries
+        // what the missing text would have said.
+        semanticLabel: 'Download photo',
+        busy: _downloading,
+        tapTargetSize: 40.r,
+        onTap: () => _require(_download),
+      ),
     );
   }
 }

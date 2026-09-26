@@ -164,9 +164,10 @@ class _AppMaterial extends StatelessWidget {
         //
         // It is here rather than there because `routes:` decides what a screen
         // is and not how it arrives: every entry in it becomes a
-        // MaterialPageRoute wearing the app's Cupertino slide, and there is one
-        // navigation in the app that must not slide — the splash handing over,
-        // which dissolves. `routes:` is also consulted *before* `onGenerateRoute`
+        // MaterialPageRoute wearing whichever transition the platform is given
+        // (see Styles' pageTransitions), and there is one navigation in the app
+        // that must wear none of them — the splash handing over, which
+        // dissolves. `routes:` is also consulted *before* `onGenerateRoute`
         // by WidgetsApp, so the two cannot be mixed: a name in the map never
         // reaches here. Everything else about this is unchanged, including
         // falling through to [onUnknownRoute] on a name that isn't listed.

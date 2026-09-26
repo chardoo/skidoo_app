@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -29,6 +30,22 @@ class AppIcons {
   static const comment = '$_root/Communication/Chat_Circle.svg';
   static const save = '$_root/Interface/Bookmark.svg';
   static const share = '$_root/Communication/Paper_Plane.svg';
+
+  /// "Hand this to another app" — the button that opens the system share
+  /// sheet, as opposed to [share], which sends something to someone inside
+  /// Jperg.
+  ///
+  /// From the icon font rather than the set, and different on each platform,
+  /// because this one names a piece of the operating system: iOS draws a box
+  /// with an arrow out of the top, Android three connected dots, and a reader
+  /// recognises the sheet they are about to get from the mark on the button.
+  /// The app drew the iOS box on both, which on Android is a glyph the system
+  /// does not use for anything.
+  static IconData get systemShare =>
+      defaultTargetPlatform == TargetPlatform.iOS ||
+              defaultTargetPlatform == TargetPlatform.macOS
+          ? Icons.ios_share_rounded
+          : Icons.share_rounded;
 
   // ── Chrome ────────────────────────────────────────────────────────────────
   static const search = '$_root/Interface/Search_Magnifying_Glass.svg';

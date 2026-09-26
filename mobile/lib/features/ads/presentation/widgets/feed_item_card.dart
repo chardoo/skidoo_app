@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/components/common/navbar.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:share_plus/share_plus.dart';
@@ -355,9 +356,13 @@ class _FeedItemCardState extends State<FeedItemCard> {
       CommentCounts.instance.countFor(widget.data.id) ??
       widget.data.commentCount;
 
-  /// The strip along the bottom the floating nav bar occupies, matched to the
-  /// event card's so the two kinds of page put their copy in the same place.
-  static const double _navBand = 96;
+  /// The air between this card's copy and the top of the bar, matched to the
+  /// event card's — the two kinds are dealt into one feed, and a difference
+  /// here shows up as the caption jumping height as somebody scrolls.
+  ///
+  /// The band itself is [AppNavbar.bandHeight], which is the bar's own figure
+  /// rather than a third copy of a number that used to be 96 everywhere.
+  static const double _kCaptionOverBar = 20;
 
   @override
   void initState() {
@@ -499,7 +504,18 @@ class _FeedItemCardState extends State<FeedItemCard> {
   /// Where the copy sits above the bottom edge — the event card's rule, so the
   /// two kinds of page agree: the block steps over the navigation bar when it
   /// appears rather than being buried under frosted glass.
-  double get _blockBottom => FeedChrome.visible.value ? _navBand + 12 : 24.h;
+  double _blockBottom(BuildContext context) => _navBarUp
+      ? AppNavbar.bandHeight(context) + _kCaptionOverBar.h
+      : 24.h;
+
+  /// Whether there is a navigation bar below this card *and* it is up.
+  ///
+  /// The same pair as the event card's, and the same bug without it:
+  /// [FeedChrome.visible] is a static that outlives the shell owning the bar,
+  /// so on a screen with no bar the copy cleared ninety-six points of nothing
+  /// and floated with dead space beneath it. See [FeedNavBarScope].
+  bool get _navBarUp =>
+      FeedNavBarScope.of(context) && FeedChrome.visible.value;
 
   @override
   Widget build(BuildContext context) {
@@ -533,7 +549,7 @@ class _FeedItemCardState extends State<FeedItemCard> {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: _blockBottom + 220.h,
+                bottom: _blockBottom(context) + 220.h,
                 child: CommentSheetHide(
                   child: MediaPageDots(
                       count: d.mediaList.length, current: _currentPage),
@@ -544,11 +560,14 @@ class _FeedItemCardState extends State<FeedItemCard> {
             // bottom for the same reason the event card's does: the nav bar
             // frosts what is behind it, and a near-black gradient gives it
             // nothing to frost. In a tile there is no bar, so it runs to the
-            // edge.
+            // edge — and on a full-bleed card with no bar under it either,
+            // which is what [_navBarUp] adds to the `fullBleed` test.
             Positioned(
               left: 0,
               right: 0,
-              bottom: widget.fullBleed ? _navBand : 0,
+              bottom: widget.fullBleed && _navBarUp
+                  ? AppNavbar.bandHeight(context)
+                  : 0,
               height: 320,
               child: const CommentSheetHide(
                 child: IgnorePointer(
@@ -632,7 +651,7 @@ class _FeedItemCardState extends State<FeedItemCard> {
               curve: Curves.easeOut,
               left: 16.w,
               right: 16.w,
-              bottom: _blockBottom,
+              bottom: _blockBottom(context),
               child: CommentSheetHide(
                 child: isAd
                     ? _CampaignCopy(data: d, ext: ext, onCta: _handleCta)
