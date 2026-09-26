@@ -11,6 +11,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_watcher.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/feedback/feedback_prompt.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 
 void main() async {
@@ -173,6 +174,12 @@ void main() async {
   // the re-registration below a returning user would only be reachable by push
   // again after an explicit sign-in. OneSignal.login is idempotent, so calling
   // it on every launch costs nothing.
+  // How many times this device has opened the app, which is half of what
+  // decides whether to ask for a rating — see [FeedbackPrompt]. Counted here
+  // rather than in the shell so a launch that ends on the feed still counts,
+  // and unawaited because nothing about starting up waits on a counter.
+  unawaited(FeedbackPrompt.noteLaunch());
+
   unawaited(() async {
     await PushNotificationService.instance.init();
 

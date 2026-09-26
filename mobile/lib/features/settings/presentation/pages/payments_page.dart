@@ -9,6 +9,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/settings/data/payments_api.dart';
+import 'package:jperg_app/features/settings/presentation/widgets/payment_receipt_sheet.dart';
 
 /// Everything this account has paid, and everything it has been paid.
 ///
@@ -32,20 +33,30 @@ class PaymentsPage extends StatefulWidget {
 
 /// The filters, in the order somebody reaches for them.
 ///
-/// Kind first, because "show me my boosts" is the common question and status
-/// is the follow-up. Both are lists rather than a single combined control: a
-/// pending boost is two answers, not a seventh chip.
+/// Kind first, status second. Both are lists rather than a single combined
+/// control: a pending purchase is two answers, not a seventh chip.
 enum _Kind {
   all('All', null),
   purchases('Purchases', 'purchase'),
-  boosts('Boosts', 'boost'),
-  campaigns('Campaigns', 'campaign'),
   bookings('Bookings', 'booking'),
-  payouts('Payouts', 'payout');
 
-  const _Kind(this.label, this.match);
+  // ── Studio money, which this screen does not show ───────────────────────
+  //
+  // Boosts, campaign spend and payouts belong to running a business, and the
+  // studio that runs it is on the web. Kept named here rather than deleted
+  // because [PaymentsApi] still merges both services and these are what comes
+  // back from the ads half — a kind this file cannot name is a kind it cannot
+  // filter out, and it would fall through into the list as an unlabelled row.
+  boosts('Boosts', 'boost', studio: true),
+  campaigns('Campaigns', 'campaign', studio: true),
+  payouts('Payouts', 'payout', studio: true);
+
+  const _Kind(this.label, this.match, {this.studio = false});
   final String label;
   final String? match;
+
+  /// Creator-side money. Never shown here; see the note above.
+  final bool studio;
 }
 
 enum _Status {
@@ -82,9 +93,26 @@ class _PaymentsPageState extends State<PaymentsPage> {
     });
   }
 
-  List<PaymentRecord> get _visible => [
+  /// Studio money, dropped before anything else looks at the list.
+  ///
+  /// The chips alone were not enough: with no Boosts chip on screen, `All`
+  /// still meant every row the two services returned, so a creator's boosts
+  /// appeared in the list under a filter bar that gave no way to take them
+  /// out again.
+  List<PaymentRecord> get _mine => [
         for (final r in _all)
-          if ((_kind.match == null || !_kinds.contains(_kind) ||
+          if (!_studioKinds.contains(r.kind)) r
+      ];
+
+  static final Set<String> _studioKinds = {
+    for (final k in _Kind.values)
+      if (k.studio && k.match != null) k.match!,
+  };
+
+  List<PaymentRecord> get _visible => [
+        for (final r in _mine)
+          if ((_kind.match == null ||
+                  !_kinds.contains(_kind) ||
                   r.kind == _kind.match) &&
               (_status.match == null || r.status == _status.match))
             r
@@ -92,16 +120,22 @@ class _PaymentsPageState extends State<PaymentsPage> {
 
   /// Only the kinds this account actually has, plus All.
   ///
-  /// A client has never bought a campaign and a photographer may never have
-  /// been paid out; six chips where two apply is a filter bar that mostly
-  /// filters to nothing. The chips follow the history rather than the roles,
-  /// so nothing has to know which parts of the app somebody uses.
+  /// Two filters at once. The chips follow the *history*, because six chips
+  /// where two apply is a bar that mostly filters to nothing — somebody who
+  /// has only ever bought photos gets All and Purchases and no dead controls.
+  ///
+  /// And they follow what this screen is *for*: studio money is excluded
+  /// whether or not the account has any, so a creator who opens this by some
+  /// other route still sees only the spending side. Bookings stay — a deposit
+  /// on a photographer is an explorer paying for something, and hiding money
+  /// somebody actually spent because a chip felt like one too many is the
+  /// wrong trade.
   List<_Kind> get _kinds {
-    final present = {for (final r in _all) r.kind};
+    final present = {for (final r in _mine) r.kind};
     return [
       _Kind.all,
       for (final k in _Kind.values)
-        if (k.match != null && present.contains(k.match)) k,
+        if (!k.studio && k.match != null && present.contains(k.match)) k,
     ];
   }
 
@@ -153,7 +187,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
                       onSelect: (i) => setState(() => _kind = _kinds[i]),
                     ),
                   ],
-                  if (_all.isNotEmpty) ...[
+                  if (_mine.isNotEmpty) ...[
                     SizedBox(height: AppSpacing.sm.h),
                     AppFilterRow(
                       labels: [for (final s in _Status.values) s.label],
@@ -174,7 +208,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
                               SizedBox(height: 80.h),
                               AppEmptyState(
                                 icon: Icons.receipt_long_outlined,
-                                message: _all.isEmpty
+                                message: _mine.isEmpty
                                     ? 'No payments yet'
                                     : 'Nothing matches those filters',
                               ),
@@ -182,13 +216,20 @@ class _PaymentsPageState extends State<PaymentsPage> {
                           )
                         : ListView.separated(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding: EdgeInsets.fromLTRB(AppSpacing.lg.w,
-                                AppSpacing.sm.h, AppSpacing.lg.w, AppSpacing.xxxl.h),
+                            padding: EdgeInsets.fromLTRB(
+                                AppSpacing.lg.w,
+                                AppSpacing.sm.h,
+                                AppSpacing.lg.w,
+                                AppSpacing.xxxl.h),
                             itemCount: rows.length,
                             separatorBuilder: (_, __) =>
                                 SizedBox(height: AppSpacing.sm.h),
-                            itemBuilder: (_, i) =>
-                                _PaymentTile(record: rows[i], ext: ext),
+                            itemBuilder: (context, i) => _PaymentTile(
+                              record: rows[i],
+                              ext: ext,
+                              onTap: () =>
+                                  PaymentReceiptSheet.show(context, rows[i]),
+                            ),
                           ),
                   ),
                 ],
@@ -201,10 +242,18 @@ class _PaymentsPageState extends State<PaymentsPage> {
 // ── One payment ───────────────────────────────────────────────────────────────
 
 class _PaymentTile extends StatelessWidget {
-  const _PaymentTile({required this.record, required this.ext});
+  const _PaymentTile({
+    required this.record,
+    required this.ext,
+    required this.onTap,
+  });
 
   final PaymentRecord record;
   final AppThemeExtension ext;
+
+  /// Opens the receipt. Every row has one — including a failed payment, which
+  /// is the row somebody is most likely to need to show to somebody else.
+  final VoidCallback onTap;
 
   /// Paid, waiting, or not gone through — said in a colour as well as a word,
   /// because the colour is what somebody scanning the list actually reads.
@@ -224,8 +273,18 @@ class _PaymentTile extends StatelessWidget {
     if (date == null) return null;
     final local = date.toLocal();
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${local.day} ${months[local.month - 1]} ${local.year}';
   }
@@ -234,75 +293,82 @@ class _PaymentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final (stateColor, stateLabel) = _state;
     final detail = [
-      if (record.subtitle != null && record.subtitle!.isNotEmpty) record.subtitle!,
+      if (record.subtitle != null && record.subtitle!.isNotEmpty)
+        record.subtitle!,
       if (_when != null) _when!,
     ].join(' · ');
 
-    return Container(
+    return Material(
       key: ValueKey('payment-${record.id}'),
-      padding: EdgeInsets.all(AppSpacing.md.w),
-      decoration: BoxDecoration(
-        color: ext.cardSurface,
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  record.title,
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
+      color: ext.cardSurface,
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.md.w),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      record.title,
+                      style: TextStyle(
+                        color: ext.greetingColor,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (detail.isNotEmpty) ...[
+                      SizedBox(height: 2.h),
+                      Text(
+                        detail,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: ext.searchHintColor,
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                if (detail.isNotEmpty) ...[
+              ),
+              SizedBox(width: AppSpacing.sm.w),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _amount,
+                    style: TextStyle(
+                      // Money coming in is the exception on this screen, so it is
+                      // the one that gets a colour.
+                      color: record.isIncoming
+                          ? ext.accentGold
+                          : ext.greetingColor,
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   SizedBox(height: 2.h),
                   Text(
-                    detail,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    stateLabel,
                     style: TextStyle(
-                      color: ext.searchHintColor,
+                      color: stateColor,
                       fontSize: 12.sp,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
-              ],
-            ),
-          ),
-          SizedBox(width: AppSpacing.sm.w),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _amount,
-                style: TextStyle(
-                  // Money coming in is the exception on this screen, so it is
-                  // the one that gets a colour.
-                  color: record.isIncoming ? ext.accentGold : ext.greetingColor,
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              SizedBox(height: 2.h),
-              Text(
-                stateLabel,
-                style: TextStyle(
-                  color: stateColor,
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w500,
-                ),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

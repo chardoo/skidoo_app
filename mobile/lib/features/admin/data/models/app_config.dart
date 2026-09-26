@@ -28,6 +28,10 @@ class AppConfig {
     this.feedSlideIntervalSeconds = 3,
     this.commentsEnabled = true,
     this.minCampaignBudgetGhs = 30.0,
+    this.feedbackEnabled = true,
+    this.feedbackPromptAfterSessions = 3,
+    this.feedbackPromptAfterDays = 2,
+    this.feedbackPromptRepeatDays = 90,
     this.contentTags = kContentTagFallback,
   });
 
@@ -56,6 +60,22 @@ class AppConfig {
 
   /// Minimum total campaign budget in GHS.
   final double minCampaignBudgetGhs;
+
+  /// Whether the app ever asks somebody what they think of it.
+  final bool feedbackEnabled;
+
+  /// How many launches before the question is worth asking. The point is to
+  /// ask somebody who has actually used the app rather than somebody who has
+  /// just seen a sign-up screen.
+  final int feedbackPromptAfterSessions;
+
+  /// And how many days. Both have to be met — five launches in one evening is
+  /// somebody trying the app out, not somebody with an opinion of it.
+  final int feedbackPromptAfterDays;
+
+  /// How long before asking again somebody who said "not now". Long enough
+  /// that the answer is respected rather than merely deferred.
+  final int feedbackPromptRepeatDays;
 
   /// The one tag vocabulary — the words this screen offers as interests, and
   /// the words a photographer picks from when tagging an album.
@@ -87,6 +107,13 @@ class AppConfig {
       commentsEnabled: data['comments_enabled'] as bool? ?? true,
       minCampaignBudgetGhs:
           (data['min_campaign_budget_ghs'] as num?)?.toDouble() ?? 30.0,
+      feedbackEnabled: data['feedback_enabled'] as bool? ?? true,
+      feedbackPromptAfterSessions:
+          (data['feedback_prompt_after_sessions'] as num?)?.toInt() ?? 3,
+      feedbackPromptAfterDays:
+          (data['feedback_prompt_after_days'] as num?)?.toInt() ?? 2,
+      feedbackPromptRepeatDays:
+          (data['feedback_prompt_repeat_days'] as num?)?.toInt() ?? 90,
       contentTags: () {
         final raw = data['content_tags'];
         if (raw is List && raw.isNotEmpty) {
@@ -105,6 +132,10 @@ class AppConfig {
         'feed_slide_interval_seconds': feedSlideIntervalSeconds,
         'comments_enabled': commentsEnabled,
         'min_campaign_budget_ghs': minCampaignBudgetGhs,
+        'feedback_enabled': feedbackEnabled,
+        'feedback_prompt_after_sessions': feedbackPromptAfterSessions,
+        'feedback_prompt_after_days': feedbackPromptAfterDays,
+        'feedback_prompt_repeat_days': feedbackPromptRepeatDays,
         'content_tags': contentTags,
       };
 

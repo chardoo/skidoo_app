@@ -66,20 +66,23 @@ void main() {
       );
 
   testWidgets('both services land in one list', (t) async {
+    // The ads half still matters to an explorer: a deposit on a photographer
+    // is recorded there. A boost would not appear — that is studio money and
+    // this screen does not carry it; see payments_explorer_only_test.
     await t.pumpWidget(host(fakeDio(
       main: [row('purchase', title: 'Photos', subtitle: '3 photos')],
-      ads: [row('boost', title: 'Boost', subtitle: '7 days · Wedding')],
+      ads: [row('booking', title: 'Deposit', subtitle: 'Wedding shoot')],
     )));
     await t.pumpAndSettle();
 
     expect(find.text('Photos'), findsOneWidget);
-    expect(find.text('Boost'), findsOneWidget);
+    expect(find.text('Deposit'), findsOneWidget);
   });
 
   testWidgets('newest first, however the two interleave', (t) async {
     await t.pumpWidget(host(fakeDio(
       main: [row('purchase', title: 'Older', date: '2026-09-01T10:00:00Z')],
-      ads: [row('boost', title: 'Newer', date: '2026-09-25T10:00:00Z')],
+      ads: [row('booking', title: 'Newer', date: '2026-09-25T10:00:00Z')],
     )));
     await t.pumpAndSettle();
 
@@ -102,9 +105,14 @@ void main() {
     expect(find.text('Photos'), findsOneWidget);
   });
 
-  testWidgets('a payout reads as money coming in', (t) async {
+  testWidgets('money coming back reads as coming in', (t) async {
+    // The sign, which is the thing being checked. A payout used to stand in
+    // for it and no longer reaches this screen — payouts are studio money —
+    // so the case is a refunded booking, which an explorer genuinely has.
     await t.pumpWidget(host(fakeDio(
-      main: [row('payout', direction: 'in', title: 'Payout', amount: 180)],
+      ads: [
+        row('booking', direction: 'in', title: 'Refund', amount: 180)
+      ],
     )));
     await t.pumpAndSettle();
 
@@ -150,17 +158,24 @@ void main() {
   });
 
   testWidgets('only the kinds this account has get a chip', (t) async {
-    // Six chips where two apply is a filter bar that mostly filters to
-    // nothing. A client has never bought a campaign.
+    // Chips where nothing applies is a filter bar that mostly filters to
+    // nothing. Somebody who has only bought photos gets All and Purchases.
+    await t.pumpWidget(host(fakeDio(main: [row('purchase')])));
+    await t.pumpAndSettle();
+
+    expect(find.text('Purchases'), findsOneWidget);
+    expect(find.text('Bookings'), findsNothing);
+  });
+
+  testWidgets('and a booking they made gets one', (t) async {
     await t.pumpWidget(host(fakeDio(
       main: [row('purchase')],
-      ads: [row('boost', title: 'Boost')],
+      ads: [row('booking', title: 'Deposit')],
     )));
     await t.pumpAndSettle();
 
-    expect(find.text('Campaigns'), findsNothing);
-    expect(find.text('Payouts'), findsNothing);
-    expect(find.text('Boosts'), findsOneWidget);
+    expect(find.text('Purchases'), findsOneWidget);
+    expect(find.text('Bookings'), findsOneWidget);
   });
 
   testWidgets('an account with no payments says so', (t) async {

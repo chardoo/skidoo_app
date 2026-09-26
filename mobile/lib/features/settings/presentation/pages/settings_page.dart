@@ -11,6 +11,7 @@ import 'package:jperg_app/features/settings/presentation/pages/account_security_
 import 'package:jperg_app/features/settings/presentation/pages/edit_profile_page.dart';
 import 'package:jperg_app/features/settings/presentation/pages/help_support_page.dart';
 import 'package:jperg_app/features/settings/presentation/pages/notification_settings_page.dart';
+import 'package:jperg_app/features/feedback/presentation/feedback_sheet.dart';
 import 'package:jperg_app/features/settings/presentation/pages/payments_page.dart';
 import 'package:jperg_app/features/settings/presentation/pages/privacy_settings_page.dart';
 import 'package:jperg_app/features/settings/presentation/pages/profile_settings_page.dart';
@@ -131,22 +132,46 @@ class SettingsPage extends StatelessWidget {
                           onTap: () =>
                               _open(context, const PrivacySettingsPage()),
                         ),
-                        // Every account has one, which is why it is here and
-                        // not under Photographer: a client has receipts for
-                        // the photos they bought, a creator has those plus
-                        // boosts, campaigns and payouts. The screen shows
-                        // whichever of those exist.
-                        SettingsRow(
-                          icon: Icons.receipt_long_outlined,
-                          label: 'Payments',
-                          subtitle: 'What you paid, and what you were paid',
-                          onTap: () => _open(context, const PaymentsPage()),
+                        // Explorers only.
+                        //
+                        // A creator's money is studio work — boosts, campaign
+                        // spend, booking balances, payouts — and the studio
+                        // lives on the web, where there is room to do it
+                        // properly. Half of it on a phone is worse than none:
+                        // somebody checks a payout here, finds no statement
+                        // and no way to reconcile it, and goes to the web
+                        // anyway having been told the app could help.
+                        //
+                        // What an explorer has is simpler and genuinely
+                        // belongs on the phone: they bought a photo, and they
+                        // want the receipt.
+                        ValueListenableBuilder<String>(
+                          valueListenable: AuthService.role,
+                          builder: (context, role, _) =>
+                              role == 'photographer'
+                                  ? const SizedBox.shrink()
+                                  : SettingsRow(
+                                      icon: Icons.receipt_long_outlined,
+                                      label: 'Payments',
+                                      subtitle: 'Your purchases and receipts',
+                                      onTap: () => _open(
+                                          context, const PaymentsPage()),
+                                    ),
                         ),
                       ],
                     ),
                     SettingsSection(
                       title: 'Preferences',
                       children: [
+                        // A prompt that appears on its own timetable is not a
+                        // channel: somebody with something to say today should
+                        // not have to wait for the app to ask them.
+                        SettingsRow(
+                          icon: Icons.lightbulb_outline_rounded,
+                          label: 'Suggest a feature',
+                          subtitle: 'Tell us what to build next',
+                          onTap: () => openFeedbackSheet(context),
+                        ),
                         SettingsRow(
                           icon: Icons.notifications_none_rounded,
                           label: 'Notifications',

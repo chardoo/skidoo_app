@@ -25,6 +25,8 @@ import 'package:flutter/foundation.dart';
 import 'package:jperg_app/core/utils/video_pause_notifier.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/feedback/feedback_prompt.dart';
+import 'package:jperg_app/features/feedback/presentation/feedback_sheet.dart';
 import 'package:jperg_app/features/location/presentation/location_mismatch_prompt.dart';
 
 /// Slides the header in and out with the feed's chrome.
@@ -184,7 +186,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         if (isGuest && _selectedTab >= _guestTabs.length) _selectedTab = 1;
       });
     }
-    if (!isGuest) _checkLocation();
+    if (!isGuest) {
+      _checkLocation();
+      _maybeAskForFeedback();
+    }
   }
 
   /// Ask once, quietly, whether the account's location is still right.
@@ -197,6 +202,29 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   void _checkLocation() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) LocationMismatchPrompt.maybeShow(context);
+    });
+  }
+
+  /// Ask what they think of the app, if it is time and they have not been
+  /// asked lately. [FeedbackPrompt] owns every one of those conditions.
+  ///
+  /// Held back a few seconds rather than fired with the frame, for two
+  /// reasons. One is courtesy: somebody who has just opened the app wanted to
+  /// see the app, and a sheet over the first thing they look at is the version
+  /// of this feature people close without reading. The other is that the
+  /// location prompt is deciding whether to appear at the same moment, and two
+  /// sheets racing for the same screen leaves whichever loses stacked behind
+  /// the other — so this waits long enough for that question to have been
+  /// settled, and asks again whether anything is already up.
+  void _maybeAskForFeedback() {
+    Future.delayed(const Duration(seconds: 4), () async {
+      if (!mounted) return;
+      if (!await FeedbackPrompt().shouldAsk()) return;
+      if (!mounted) return;
+      // Nothing on top: a route pushed over the shell, a sheet, the location
+      // prompt. ModalRoute.isCurrent is the one question that covers all three.
+      if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
+      await FeedbackSheet.show(context);
     });
   }
 
