@@ -50,23 +50,3 @@ class UploadStudioImageUseCase {
   }) =>
       _repository.uploadStudioImage(photographerId: photographerId, image: image);
 }
-
-class SubmitVerificationUseCase {
-  final PhotographerRepository _repository;
-  SubmitVerificationUseCase(this._repository);
-
-  Future<void> call({
-    required String photographerId,
-    required XFile idDocument,
-    required bool acceptedTerms,
-    required bool confirmedUploadRights,
-    required bool acceptedPayoutPolicy,
-  }) =>
-      _repository.submitVerification(
-        photographerId: photographerId,
-        idDocument: idDocument,
-        acceptedTerms: acceptedTerms,
-        confirmedUploadRights: confirmedUploadRights,
-        acceptedPayoutPolicy: acceptedPayoutPolicy,
-      );
-}

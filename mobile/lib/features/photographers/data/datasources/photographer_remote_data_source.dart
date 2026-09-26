@@ -41,13 +41,6 @@ abstract class PhotographerRemoteDataSource {
     required String photographerId,
     required XFile image,
   });
-  Future<void> submitVerification({
-    required String photographerId,
-    required XFile idDocument,
-    required bool acceptedTerms,
-    required bool confirmedUploadRights,
-    required bool acceptedPayoutPolicy,
-  });
 }
 
 class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
@@ -332,40 +325,6 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
       if (err.response == null) throw const app_ex.NetworkException();
       throw app_ex.ServerException(
           'Failed to upload studio image: ${err.response?.statusCode}');
-    } catch (e) {
-      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
-      throw app_ex.ServerException('Unexpected error: $e');
-    }
-  }
-
-  @override
-  Future<void> submitVerification({
-    required String photographerId,
-    required XFile idDocument,
-    required bool acceptedTerms,
-    required bool confirmedUploadRights,
-    required bool acceptedPayoutPolicy,
-  }) async {
-    try {
-      final formData = dio.FormData.fromMap({
-        'userId': photographerId,
-        'accepted_terms': acceptedTerms.toString(),
-        'confirmed_upload_rights': confirmedUploadRights.toString(),
-        'accepted_payout_policy': acceptedPayoutPolicy.toString(),
-        'file': dio.MultipartFile.fromBytes(
-          await idDocument.readAsBytes(),
-          filename: idDocument.name,
-        ),
-      });
-      await _api.dio.post(
-        '/photographer/verification',
-        data: formData,
-        options: dio.Options(contentType: 'multipart/form-data'),
-      );
-    } on dio.DioException catch (err) {
-      if (err.response == null) throw const app_ex.NetworkException();
-      throw app_ex.ServerException(
-          'Failed to submit verification: ${err.response?.statusCode}');
     } catch (e) {
       if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
       throw app_ex.ServerException('Unexpected error: $e');

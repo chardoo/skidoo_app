@@ -340,8 +340,6 @@ Future<void> setupServiceLocator() async {
       UploadPhotographerProfilePhotoUseCase(sl<PhotographerRepository>()));
   sl.registerSingleton<UploadStudioImageUseCase>(
       UploadStudioImageUseCase(sl<PhotographerRepository>()));
-  sl.registerSingleton<SubmitVerificationUseCase>(
-      SubmitVerificationUseCase(sl<PhotographerRepository>()));
 
   sl.registerFactory<PhotographerBloc>(() => PhotographerBloc(
         getPhotographersUseCase: sl<GetPhotographersUseCase>(),

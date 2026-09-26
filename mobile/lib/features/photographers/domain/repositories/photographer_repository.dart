@@ -64,11 +64,4 @@ abstract class PhotographerRepository {
   /// review and moves the role to photographer. It does **not** set the
   /// verified badge: that stays an admin decision, because a tick the person
   /// it describes can award themselves says nothing.
-  Future<void> submitVerification({
-    required String photographerId,
-    required XFile idDocument,
-    required bool acceptedTerms,
-    required bool confirmedUploadRights,
-    required bool acceptedPayoutPolicy,
-  });
 }

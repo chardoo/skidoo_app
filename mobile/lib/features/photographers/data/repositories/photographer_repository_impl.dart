@@ -181,28 +181,4 @@ class PhotographerRepositoryImpl implements PhotographerRepository {
     }
   }
 
-  @override
-  Future<void> submitVerification({
-    required String photographerId,
-    required XFile idDocument,
-    required bool acceptedTerms,
-    required bool confirmedUploadRights,
-    required bool acceptedPayoutPolicy,
-  }) async {
-    try {
-      await _remoteDataSource.submitVerification(
-        photographerId: photographerId,
-        idDocument: idDocument,
-        acceptedTerms: acceptedTerms,
-        confirmedUploadRights: confirmedUploadRights,
-        acceptedPayoutPolicy: acceptedPayoutPolicy,
-      );
-    } on NetworkException {
-      rethrow;
-    } on ServerException {
-      rethrow;
-    } catch (e) {
-      throw ServerException('Error submitting verification: $e');
-    }
-  }
 }

@@ -12,6 +12,7 @@ import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/portfolio_edit_page.dart';
 import 'package:jperg_app/features/settings/data/account_settings_api.dart';
+import 'package:jperg_app/features/verification/presentation/verification_page.dart';
 import 'package:jperg_app/features/settings/presentation/pages/change_password_page.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
 import 'package:jperg_app/services/auth_service.dart';
@@ -193,6 +194,27 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
                             SettingsRow(
                               label: 'Change Password',
                               onTap: _changePassword,
+                            ),
+                            // Creators only: the badge is about somebody being
+                            // paid for work, and a client has nothing to
+                            // verify. Watched rather than read once, for the
+                            // same reason the creator section below is — the
+                            // role can change while this page is open.
+                            ValueListenableBuilder<String>(
+                              valueListenable: AuthService.role,
+                              builder: (context, role, _) =>
+                                  role != 'photographer'
+                                      ? const SizedBox.shrink()
+                                      : SettingsRow(
+                                          label: 'Verification',
+                                          subtitle:
+                                              'Confirm your identity to be verified',
+                                          onTap: () => Navigator.of(context)
+                                              .push(MaterialPageRoute<void>(
+                                            builder: (_) =>
+                                                const VerificationPage(),
+                                          )),
+                                        ),
                             ),
                             // ── Two-factor — not shipped ──────────────────
                             //
