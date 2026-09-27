@@ -35,6 +35,7 @@ class AppConfig {
     this.contentTags = kContentTagFallback,
     this.premiumName = 'Premium',
     this.premiumEnabled = false,
+    this.premiumDeliveryHours = 48,
   });
 
   /// Whether ad slots appear in the home feed.
@@ -103,6 +104,13 @@ class AppConfig {
   final String premiumName;
   final bool premiumEnabled;
 
+  /// The window a member promises to deliver inside.
+  ///
+  /// On the card so the badge can say what it actually means: a photographer
+  /// scanning the feed learns the promise from the card rather than having to
+  /// have read the rules page.
+  final int premiumDeliveryHours;
+
   factory AppConfig.fromJson(Map<String, dynamic> json) {
     final data = json['data'] is Map<String, dynamic>
         ? json['data'] as Map<String, dynamic>
@@ -143,6 +151,12 @@ class AppConfig {
       premiumEnabled: () {
         final premium = data['premium'];
         return premium is Map<String, dynamic> && premium['enabled'] == true;
+      }(),
+      premiumDeliveryHours: () {
+        final premium = data['premium'];
+        final hours =
+            premium is Map<String, dynamic> ? premium['delivery_hours'] : null;
+        return (hours as num?)?.toInt() ?? 48;
       }(),
     );
   }

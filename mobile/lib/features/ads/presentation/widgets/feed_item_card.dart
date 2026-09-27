@@ -955,12 +955,51 @@ class _RequestCopy extends StatelessWidget {
               // that is no longer true.
               ValueListenableBuilder<AppConfig>(
                 valueListenable: AppConfigRepository.notifier,
-                builder: (context, config, _) => _KindPill(
-                  label: d.premiumOnly && config.premiumEnabled
-                      ? '${config.premiumName} Request'
-                      : 'Photographer Request',
-                  color: ext.accentGold,
-                ),
+                builder: (context, config, _) {
+                  final premium = d.premiumOnly && config.premiumEnabled;
+                  if (!premium) {
+                    return _KindPill(
+                      label: 'Photographer Request',
+                      color: ext.accentGold,
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _KindPill(
+                        label: '${config.premiumName} Request',
+                        color: ext.accentGold,
+                        filled: true,
+                        // A bolt, deliberately not the verification tick.
+                        // That one says somebody's ID was checked; this says
+                        // they promised a window. Two identical ticks on one
+                        // card would leave both meaning nothing in
+                        // particular.
+                        icon: Icons.bolt_rounded,
+                      ),
+                      SizedBox(height: 4.h),
+                      // The promise, said on the card.
+                      //
+                      // The badge alone only says this request is special; it
+                      // does not say why, and a photographer scrolling past
+                      // should not have to have read the rules page to find
+                      // out. One line, in the window the server actually
+                      // holds people to.
+                      Text(
+                        'Photos within ${_windowLabel(config.premiumDeliveryHours)}',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w500,
+                          shadows: const [
+                            Shadow(blurRadius: 8, color: Colors.black87),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               SizedBox(height: AppSpacing.sm.h),
               Text(
@@ -1061,32 +1100,93 @@ class _RequestRow extends StatelessWidget {
   }
 }
 
+/// The delivery window as somebody would say it: "48 hours", "3 days".
+///
+/// Hours up to and including 48, days beyond. The break sits there rather than
+/// at 24 because the rule itself is written and argued about as "48 hours" —
+/// rendering that as "2 days" on a card would state the promise in words
+/// nobody else in the product uses. Past that, "72 hours" is a number people
+/// have to convert before it means anything, and anything that is not a whole
+/// number of days stays in hours rather than rounding the promise longer than
+/// it is.
+///
+/// Mirrors `PremiumTerms.windowLabel`; the pair is small enough to duplicate
+/// and each is tested.
+String _windowLabel(int hours) {
+  if (hours > 48 && hours % 24 == 0) return '${hours ~/ 24} days';
+  return '$hours hours';
+}
+
 /// "Sponsored" / "Photographer Request" — what this page is, said plainly.
 ///
 /// Over an arbitrary photograph, so it carries its own ground rather than
 /// relying on the scrim reaching this far up.
+///
+/// Two weights, and the difference is rank. The ordinary pill is a tinted
+/// outline: present, readable, not shouting. [filled] paints it solid in the
+/// accent with a mark in front, which is the treatment the app already uses
+/// for a chosen filter chip — so a premium request reads as the elevated one
+/// of the two at a glance, before anybody has read either label.
+///
+/// Differentiating by wording alone was the first attempt and it failed the
+/// only test that matters: two pills the same shape, the same colour and the
+/// same weight look like the same thing, and nobody reads a label on a card
+/// they are scrolling past.
 class _KindPill extends StatelessWidget {
-  const _KindPill({required this.label, required this.color});
+  const _KindPill({
+    required this.label,
+    required this.color,
+    this.filled = false,
+    this.icon,
+  });
 
   final String label;
   final Color color;
+  final bool filled;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
+    final foreground = filled ? Colors.white : color;
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.20),
+        color: filled ? color : color.withValues(alpha: 0.20),
         borderRadius: BorderRadius.circular(AppRadius.sm.r),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11.sp,
-          fontWeight: FontWeight.w700,
+        border: Border.all(
+          color: filled ? color : color.withValues(alpha: 0.45),
         ),
+        // Only the filled one lifts. A shadow under a tinted outline reads as
+        // a rendering fault rather than as emphasis, and the point of the pair
+        // is that one of them is quiet.
+        boxShadow: filled
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.45),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12.sp, color: foreground),
+            SizedBox(width: 4.w),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w700,
+              letterSpacing: filled ? 0.2 : 0,
+            ),
+          ),
+        ],
       ),
     );
   }

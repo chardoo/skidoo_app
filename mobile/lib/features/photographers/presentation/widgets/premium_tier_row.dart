@@ -78,7 +78,7 @@ class _PremiumTierRowState extends State<PremiumTierRow> {
         children: [
           Row(
             children: [
-              Icon(Icons.verified_rounded, color: ext.accentGold, size: 20.sp),
+              Icon(Icons.bolt_rounded, color: ext.accentGold, size: 20.sp),
               SizedBox(width: AppSpacing.sm.w),
               Expanded(
                 child: Text(

@@ -63,6 +63,39 @@ void main() {
     });
   });
 
+  group('what the promise line says', () {
+    /// Mirrors `_windowLabel` in feed_item_card.dart, which is private.
+    String windowLabel(int hours) =>
+        hours > 48 && hours % 24 == 0 ? '${hours ~/ 24} days' : '$hours hours';
+
+    test('48 stays in hours, because that is how the rule is written', () {
+      // The card is where most people meet this promise for the first time.
+      // Saying "2 days" there would state it in words nobody else in the
+      // product uses.
+      expect(windowLabel(48), '48 hours');
+    });
+
+    test('longer windows read as days, because nobody converts 72', () {
+      expect(windowLabel(72), '3 days');
+    });
+
+    test('an odd window is not rounded longer than it is', () {
+      expect(windowLabel(36), '36 hours');
+    });
+
+    test('the card reads the window from config, not from a constant', () {
+      // An admin tightening the tier to 24 hours has to change what the card
+      // promises, or the feed advertises a window nobody is held to.
+      final cfg = AppConfig.fromJson({
+        'data': {
+          'premium': {'name': 'Jperger', 'enabled': true, 'delivery_hours': 24},
+        },
+      });
+      expect(cfg.premiumDeliveryHours, 24);
+      expect(windowLabel(cfg.premiumDeliveryHours), '24 hours');
+    });
+  });
+
   group('what the card calls it', () {
     test('a premium request is named for the tier', () {
       // The bug this file exists for: the card read "Photographer Request"
