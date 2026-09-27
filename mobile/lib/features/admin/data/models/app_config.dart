@@ -33,6 +33,8 @@ class AppConfig {
     this.feedbackPromptAfterDays = 2,
     this.feedbackPromptRepeatDays = 90,
     this.contentTags = kContentTagFallback,
+    this.premiumName = 'Premium',
+    this.premiumEnabled = false,
   });
 
   /// Whether ad slots appear in the home feed.
@@ -92,6 +94,15 @@ class AppConfig {
   /// other "Portrait".
   final List<String> contentTags;
 
+  /// What the premium creator tier is called, and whether it exists.
+  ///
+  /// Served rather than shipped because the name is still being decided: a
+  /// build that hardcoded it would label a card one thing while the server and
+  /// the admin panel said another. The default is the generic word, so a build
+  /// that reaches a server too old to send one still reads sensibly.
+  final String premiumName;
+  final bool premiumEnabled;
+
   factory AppConfig.fromJson(Map<String, dynamic> json) {
     final data = json['data'] is Map<String, dynamic>
         ? json['data'] as Map<String, dynamic>
@@ -120,6 +131,18 @@ class AppConfig {
           return raw.map((t) => t.toString()).toList(growable: false);
         }
         return kContentTagFallback;
+      }(),
+      // Nested, because the server sends the tier as one object — see
+      // `/config` in main. A server too old to send it leaves the defaults,
+      // which read as "no such tier".
+      premiumName: () {
+        final premium = data['premium'];
+        final name = premium is Map<String, dynamic> ? premium['name'] : null;
+        return name is String && name.trim().isNotEmpty ? name : 'Premium';
+      }(),
+      premiumEnabled: () {
+        final premium = data['premium'];
+        return premium is Map<String, dynamic> && premium['enabled'] == true;
       }(),
     );
   }

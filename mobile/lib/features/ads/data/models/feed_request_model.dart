@@ -7,12 +7,14 @@ class FeedRequestModel {
     required this.requesterId,
     required this.requesterName,
     required this.requesterType,
+    this.premiumOnly = false,
     required this.title,
     required this.description,
     required this.eventType,
     required this.location,
     required this.currency,
     required this.status,
+    
     this.budgetAmount,
     this.eventDate,
     this.eventTime,
@@ -49,6 +51,17 @@ class FeedRequestModel {
 
   /// "client" | "photographer"
   final String requesterType;
+
+  /// The requester asked for a creator who has promised a delivery window, so
+  /// only members can see or answer this.
+  ///
+  /// What the card says depends on it — a request for somebody under a promise
+  /// is a different offer from an ordinary one, and calling both "Photographer
+  /// Request" hides the only part a member is being shown it for.
+  ///
+  /// Goes false when the board gives up waiting and opens the request to
+  /// everybody, so the card stops making a claim that is no longer true.
+  final bool premiumOnly;
   final String title;
   final String description;
   final String eventType;
@@ -279,6 +292,7 @@ class FeedRequestModel {
           .toList(),
       viewerInterested: json['viewer_interested'] as bool? ?? false,
       viewerMessage: json['viewer_message'] as String?,
+      premiumOnly: json['premium_only'] as bool? ?? false,
     );
   }
 
@@ -297,6 +311,7 @@ class FeedRequestModel {
       requesterId: requesterId,
       requesterName: requesterName,
       requesterType: requesterType,
+      premiumOnly: premiumOnly,
       title: title,
       description: description,
       eventType: eventType,

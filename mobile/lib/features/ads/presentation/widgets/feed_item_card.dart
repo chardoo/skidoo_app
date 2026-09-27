@@ -11,6 +11,8 @@ import 'package:jperg_app/core/navigation/feed_chrome.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
+import 'package:jperg_app/features/admin/data/models/app_config.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
@@ -54,6 +56,7 @@ class FeedItemData {
     this.commentCount = 0,
     this.likeCount = 0,
     this.viewerLiked = false,
+    this.premiumOnly = false,
     this.eventDate,
     this.eventTime,
     this.location,
@@ -123,6 +126,14 @@ class FeedItemData {
   final String? budgetLabel;
 
   /// Whether this viewer has already answered.
+  /// A request that only premium members may answer.
+  ///
+  /// Requests only — a campaign is never one. What the pill says depends on
+  /// it: the requester asked for somebody under a delivery promise, and
+  /// calling that a "Photographer Request" hides the reason a member is being
+  /// shown it.
+  final bool premiumOnly;
+
   final bool viewerInterested;
 
   final String? ctaLabel;
@@ -281,6 +292,7 @@ class FeedItemData {
       coverageLabel: req.coverageLabel,
       budgetLabel: req.budgetLabel,
       viewerInterested: req.viewerInterested,
+      premiumOnly: req.premiumOnly,
       ctaLabel: req.viewerInterested ? 'Interest sent' : 'Express interest',
       ctaUrl: null,
       onCtaTap: onAnswerTap,
@@ -929,7 +941,27 @@ class _RequestCopy extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _KindPill(label: 'Photographer Request', color: ext.accentGold),
+              // What the card *is*, and on a premium request that is a
+              // different offer: the requester asked for somebody under a
+              // delivery promise, and only members can answer. Calling both
+              // "Photographer Request" hides the only reason a member is being
+              // shown this one.
+              //
+              // The tier's name is read from config rather than written here
+              // — it is still being decided, and a hardcoded word would label
+              // the card one thing while the rest of the app said another. The
+              // pill falls back to the ordinary label when the tier is off, so
+              // a request that fell back to everybody stops making a claim
+              // that is no longer true.
+              ValueListenableBuilder<AppConfig>(
+                valueListenable: AppConfigRepository.notifier,
+                builder: (context, config, _) => _KindPill(
+                  label: d.premiumOnly && config.premiumEnabled
+                      ? '${config.premiumName} Request'
+                      : 'Photographer Request',
+                  color: ext.accentGold,
+                ),
+              ),
               SizedBox(height: AppSpacing.sm.h),
               Text(
                 d.creatorName,
