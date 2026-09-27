@@ -13,6 +13,8 @@ import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/location/data/models/place.dart';
 import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/features/photographers/data/premium_service.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
 
 /// Posting a request: fill it in, read it back, publish.
 ///
@@ -136,6 +138,14 @@ class RequestDraft {
   /// Required. A request without a photo of the venue, the couple, the thing
   /// being shot gives a photographer nothing to answer.
   final List<XFile> photos = [];
+
+  /// Ask for a creator who has promised a delivery window.
+  ///
+  /// Narrows who can see and answer the request to members of the premium
+  /// tier. `eventDate` is already required by [isComplete], which is what
+  /// makes this safe to offer — the promise is measured from that date and the
+  /// server refuses the combination without one.
+  bool premiumOnly = false;
 
   bool get isComplete =>
       title.trim().isNotEmpty &&
@@ -526,6 +536,14 @@ class _NewRequestStepState extends State<_NewRequestStep> {
                 ext: ext,
                 onChanged: () => setState(_sync)),
           ),
+          // Only drawn once the terms are known, and only while the tier is
+          // switched on — an offer for a feature that has been wound down is
+          // an offer the server would refuse.
+          _PremiumOnlyField(
+            draft: widget.draft,
+            ext: ext,
+            onChanged: () => setState(_sync),
+          ),
           _Field(
             ext: ext,
             label: 'Description',
@@ -684,6 +702,7 @@ class _ReviewStepState extends State<_ReviewStep> {
         budgetMin: draft.budgetMin,
         budgetMax: draft.budgetMax,
         currency: 'GHS',
+        premiumOnly: draft.premiumOnly,
       );
 
       // Photos are part of the request, so a failure here is a failure to
@@ -926,6 +945,116 @@ PreferredSizeWidget _stepBar(
 ///
 /// The line underneath says what the choice does, because "who should see this"
 /// is a question a form has not asked anyone before.
+/// "Only a [tier] can answer this."
+///
+/// Fetches the terms rather than assuming them: the tier's name is a setting
+/// and still being decided, and the whole row disappears when the feature is
+/// off. Drawing a toggle the server would refuse — or one naming the tier
+/// something it is no longer called — is worse than drawing nothing.
+class _PremiumOnlyField extends StatefulWidget {
+  const _PremiumOnlyField({
+    required this.draft,
+    required this.ext,
+    required this.onChanged,
+  });
+
+  final RequestDraft draft;
+  final AppThemeExtension ext;
+  final VoidCallback onChanged;
+
+  @override
+  State<_PremiumOnlyField> createState() => _PremiumOnlyFieldState();
+}
+
+class _PremiumOnlyFieldState extends State<_PremiumOnlyField> {
+  PremiumTerms? _terms;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final status = await PremiumService(sl()).status();
+      if (mounted) setState(() => _terms = status.terms);
+    } catch (_) {
+      // Nothing. This is one optional line on a form somebody is in the middle
+      // of filling in, and an error about it would be noise.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final terms = _terms;
+    if (terms == null || !terms.enabled) return const SizedBox.shrink();
+
+    final ext = widget.ext;
+    return Padding(
+      padding: EdgeInsets.only(bottom: AppSpacing.lg.h),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          widget.draft.premiumOnly = !widget.draft.premiumOnly;
+          widget.onChanged();
+        },
+        child: Container(
+          padding: EdgeInsets.all(AppSpacing.md.w),
+          decoration: BoxDecoration(
+            color: ext.searchFieldFill,
+            borderRadius: BorderRadius.circular(AppRadius.sm.r),
+            border: Border.all(
+              color: widget.draft.premiumOnly
+                  ? ext.accentGold
+                  : ext.searchHintColor.withValues(alpha: 0.25),
+              width: widget.draft.premiumOnly ? 1.4 : 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Only a ${terms.name} can answer',
+                      style: TextStyle(
+                        color: ext.greetingColor,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: AppSpacing.xs.h),
+                    Text(
+                      'Creators who promise your photos within '
+                      '${terms.windowLabel} of the shoot.',
+                      style: TextStyle(
+                        color: ext.searchHintColor,
+                        fontSize: 12.sp,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: AppSpacing.md.w),
+              Switch.adaptive(
+                value: widget.draft.premiumOnly,
+                activeThumbColor: ext.accentGold,
+                onChanged: (value) {
+                  widget.draft.premiumOnly = value;
+                  widget.onChanged();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TargetAreasField extends StatelessWidget {
   const _TargetAreasField({
     required this.draft,

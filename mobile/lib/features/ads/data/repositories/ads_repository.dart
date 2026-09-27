@@ -323,6 +323,12 @@ class AdsRepository {
     String currency = 'GHS',
     bool commentsEnabled = true,
     String? visibleTo,
+
+    /// Ask for a creator who has promised a delivery window, so only they can
+    /// see and answer this. Requires [eventDate] — the promise is measured
+    /// from it, and the server refuses without one rather than quietly posting
+    /// an ordinary request.
+    bool premiumOnly = false,
   }) async {
     debugPrint(
         '$_tag postRequest → title="$title" eventType=$eventType location=$location budget=$budgetAmount $currency commentsEnabled=$commentsEnabled visibleTo=$visibleTo');
@@ -344,6 +350,7 @@ class AdsRepository {
       'currency': currency,
       'comments_enabled': commentsEnabled,
       if (visibleTo != null) 'visible_to': visibleTo,
+      if (premiumOnly) 'premium_only': true,
     });
     debugPrint(
         '$_tag postRequest ← status=${resp.statusCode} data=${resp.data}');
@@ -804,6 +811,39 @@ class AdsRepository {
     return data['booking'] is Map<String, dynamic>
         ? RequestBooking.fromJson(data['booking'] as Map<String, dynamic>)
         : null;
+  }
+
+  /// Hand the photographs to the client, and stop the delivery clock.
+  ///
+  /// Delivery is making the client an **owner** of [eventId], which is what
+  /// grants them access — so this does not record that photos were handed
+  /// over, it hands them over. There is no state in which the booking says
+  /// "delivered" and the client has nothing.
+  ///
+  /// The client's address is deliberately not a parameter. The server reads it
+  /// from the booking, because owners match on an email string and letting the
+  /// photographer type it would mean a typo costs them their badge.
+  ///
+  /// Returns whether it landed inside the promised window. Throws with the
+  /// server's own sentence when the album is empty or not theirs — those are
+  /// the two refusals a photographer can act on.
+  Future<DeliveryResult> deliverPhotos({
+    required String requestId,
+    required String eventId,
+  }) async {
+    debugPrint('$_tag deliverPhotos → request=$requestId album=$eventId');
+    final resp = await _dio.post(
+      '/ads/requests/$requestId/booking/deliver',
+      data: {'event_id': eventId},
+    );
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? const {};
+    return DeliveryResult(
+      deliveredAt:
+          DateTime.tryParse(data['delivered_at'] as String? ?? '')?.toLocal(),
+      eventId: data['event_id'] as String?,
+      dueAt: DateTime.tryParse(data['due_at'] as String? ?? '')?.toLocal(),
+      onTime: data['on_time'] as bool? ?? true,
+    );
   }
 
   /// "Report a problem" — freezes the release timer and puts the booking in
@@ -1406,4 +1446,26 @@ class ReachEstimate {
         totalReach: (j['estimated_total_reach'] as num?)?.toInt() ?? 0,
         currency: j['currency'] as String? ?? 'GHS',
       );
+}
+
+/// What came back from handing an album over.
+///
+/// [onTime] is the server's answer rather than one worked out here: the
+/// deadline lives on the booking, and two clocks — a phone's and a server's —
+/// disagreeing about whether somebody made it is the one thing this must not
+/// do.
+class DeliveryResult {
+  const DeliveryResult({
+    required this.deliveredAt,
+    required this.eventId,
+    required this.dueAt,
+    required this.onTime,
+  });
+
+  final DateTime? deliveredAt;
+  final String? eventId;
+
+  /// Null on an ordinary booking, which carries no promise.
+  final DateTime? dueAt;
+  final bool onTime;
 }

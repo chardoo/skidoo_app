@@ -14,6 +14,7 @@ import 'package:jperg_app/features/photographers/presentation/pages/portfolio_ed
 import 'package:jperg_app/features/settings/data/account_settings_api.dart';
 import 'package:jperg_app/features/verification/presentation/verification_page.dart';
 import 'package:jperg_app/features/settings/presentation/pages/change_password_page.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/premium_tier_row.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
@@ -259,6 +260,20 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
                                   ext: ext,
                                   onStart: _becomeCreator,
                                 ),
+                        ),
+                        // The premium tier, offered only to creators — it is a
+                        // promise about delivering photographs, which is not a
+                        // promise somebody without a portfolio can make.
+                        //
+                        // Watched for the same reason as the offer above: the
+                        // wizard that grants the role can finish while this
+                        // page is open, and a creator who has just become one
+                        // should see this appear rather than have to come back.
+                        ValueListenableBuilder<String>(
+                          valueListenable: AuthService.role,
+                          builder: (context, role, _) => role != 'photographer'
+                              ? const SizedBox.shrink()
+                              : const PremiumTierRow(),
                         ),
                         SettingsSection(
                           children: [

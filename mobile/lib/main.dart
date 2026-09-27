@@ -8,6 +8,7 @@ import 'package:jperg_app/app.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 // Temporarily disabled for presentation screenshots — re-enable with the call below.
 // import 'package:jperg_app/core/security/screenshot_guard.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/premium_invite_prompt.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_watcher.dart';
 import 'package:jperg_app/services/auth_service.dart';
@@ -179,6 +180,9 @@ void main() async {
   // rather than in the shell so a launch that ends on the feed still counts,
   // and unawaited because nothing about starting up waits on a counter.
   unawaited(FeedbackPrompt.noteLaunch());
+  // The premium tier's invitation is paced the same way — see
+  // [PremiumInvitePrompt], which owns every condition on when it appears.
+  unawaited(PremiumInvitePrompt.noteLaunch());
 
   unawaited(() async {
     await PushNotificationService.instance.init();

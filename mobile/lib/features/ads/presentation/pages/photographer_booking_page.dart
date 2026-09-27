@@ -12,6 +12,7 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/ads/data/models/booking_model.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
+import 'package:jperg_app/features/ads/presentation/widgets/deliver_photos_sheet.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/quote_composer_sheet.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
@@ -70,6 +71,19 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
         _error = 'Could not load this booking.';
       });
     }
+  }
+
+  /// Hand the album to the client.
+  ///
+  /// Reloads afterwards rather than patching state in place: delivering
+  /// changes what the booking says about itself, and the server is the one
+  /// that knows whether it landed inside the window.
+  Future<void> _deliverPhotos() async {
+    final delivered = await DeliverPhotosSheet.show(
+      context,
+      requestId: widget.request.id,
+    );
+    if (delivered && mounted) await _load();
   }
 
   Future<void> _sendQuote() async {
@@ -397,6 +411,37 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
                   ),
                 ),
               ],
+            ),
+          ],
+          // Handing the photographs over. Offered from the moment the job is
+          // paid for rather than only once it is finished: a photographer who
+          // has the edits ready on the night should not have to wait for the
+          // client to press anything before they can deliver — and on a
+          // premium booking, waiting is what costs them the badge.
+          if (booking != null && !canQuote) ...[
+            SizedBox(height: AppSpacing.lg.h),
+            SizedBox(
+              width: double.infinity,
+              height: 46.h,
+              child: OutlinedButton.icon(
+                onPressed: _busy ? null : _deliverPhotos,
+                icon: Icon(Icons.photo_library_outlined,
+                    size: 18.sp, color: ext.accentGold),
+                label: Text(
+                  'Deliver photos',
+                  style: TextStyle(
+                    color: ext.accentGold,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: ext.accentGold),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999.r),
+                  ),
+                ),
+              ),
             ),
           ],
           if (canQuote) ...[

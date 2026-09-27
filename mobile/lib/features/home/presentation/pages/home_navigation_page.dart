@@ -28,6 +28,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/features/feedback/feedback_prompt.dart';
 import 'package:jperg_app/features/feedback/presentation/feedback_sheet.dart';
 import 'package:jperg_app/features/location/presentation/location_mismatch_prompt.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/premium_invite_prompt.dart';
 
 /// Slides the header in and out with the feed's chrome.
 ///
@@ -189,6 +190,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     if (!isGuest) {
       _checkLocation();
       _maybeAskForFeedback();
+      _maybeOfferPremium();
     }
   }
 
@@ -225,6 +227,22 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       // prompt. ModalRoute.isCurrent is the one question that covers all three.
       if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
       await FeedbackSheet.show(context);
+    });
+  }
+
+  /// Offer the premium tier, if this creator could actually accept it and has
+  /// not been asked lately. [PremiumInvitePrompt] owns every one of those
+  /// conditions, including whether they have sent us an ID.
+  ///
+  /// Later than the feedback prompt on purpose. Two sheets racing for the same
+  /// screen leaves whichever loses stacked behind the other, and of the two
+  /// this is the one that can wait — it is an offer, not a question about the
+  /// app they are using right now.
+  void _maybeOfferPremium() {
+    Future.delayed(const Duration(seconds: 9), () async {
+      if (!mounted) return;
+      if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
+      await PremiumInvitePrompt.maybeShow(context);
     });
   }
 
