@@ -65,7 +65,18 @@ class GetOrCreateDirectRoomUseCase {
       permission = CanMessageResult.allowed();
     }
     if (!permission.canMessage) {
-      throw ServerException(permission.reason ?? 'RECIPIENT_NOT_ACCEPTING_DMS');
+      // An ApiException, not a bare ServerException, and the difference is the
+      // whole point: `chatErrorText` reads `code` to turn this into "This user
+      // is not accepting new conversations." A ServerException has no code, so
+      // it fell through to the caller's generic fallback — which meant the one
+      // refusal this check exists to explain was the one nobody ever saw
+      // explained. Every Message button reported "Could not open the
+      // conversation" instead.
+      throw ApiException(
+        'canMessage refused: ${permission.reason}',
+        statusCode: 403,
+        code: permission.reason ?? 'RECIPIENT_NOT_ACCEPTING_DMS',
+      );
     }
     return _repo.getOrCreateDirectRoom(
       recipientId: recipientId,

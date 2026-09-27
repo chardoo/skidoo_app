@@ -147,12 +147,18 @@ void main() {
     });
 
     test('a body that merely contains 400 does not trigger it either', () {
+      // The string "400" appearing in a body is not a status code, and was
+      // once read as one — which turned a server fault into a claim about the
+      // recipient's settings.
       final text = chatErrorText(
         const ApiException('Chat API error 500: {"detail":"row 400 failed"}',
             statusCode: 500),
         fallback: 'Could not open chat.',
       );
-      expect(text, 'Could not open chat.');
+      expect(text, isNot('This user is not accepting new conversations.'));
+      // And a 500 is now named as the outage it is: "please try again" is
+      // true here, where it would be wrong advice on a 403.
+      expect(text, 'Messaging is unavailable right now. Please try again shortly.');
     });
 
     test('no connection reads as no connection', () {

@@ -10,14 +10,38 @@ import 'package:jperg_app/core/error/exceptions.dart';
 String chatErrorText(Object error, {required String fallback}) {
   if (error is NetworkException) return 'No connection. Try again.';
   if (error is! ApiException) return fallback;
+
+  // The codes first: these two are worth wording ourselves, because the server
+  // states them for an API rather than for the person reading a snackbar.
   switch (error.code) {
     case 'RECIPIENT_NOT_ACCEPTING_DMS':
       return 'This user is not accepting new conversations.';
     case 'USER_BLOCKED':
       return 'You cannot message this user.';
-    default:
-      return fallback;
   }
+
+  // Then whatever the server actually said.
+  //
+  // It was going straight to the fallback before, which is how every failure
+  // on the Message button came out as "Could not open the conversation" — the
+  // same five words for a recipient who cannot be reached, a room the service
+  // refused to create, and a chat service that was simply down. The server
+  // writes these to be read; `uploadErrorText` beside this already prefers
+  // them for the same reason.
+  final serverSaid = error.serverMessage?.trim();
+  if (serverSaid != null && serverSaid.isNotEmpty) return serverSaid;
+
+  // Nothing quotable. Say which way it failed rather than repeating one
+  // sentence for every cause — "please try again" is wrong advice for a 403
+  // and right for a 500, and the two are worth telling apart.
+  final status = error.statusCode;
+  if (status == 401 || status == 403) {
+    return 'You cannot open this conversation.';
+  }
+  if (status != null && status >= 500) {
+    return 'Messaging is unavailable right now. Please try again shortly.';
+  }
+  return fallback;
 }
 
 /// Why an attachment would not upload, in words worth showing someone.
