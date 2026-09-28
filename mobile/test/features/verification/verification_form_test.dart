@@ -176,7 +176,83 @@ void main() {
       await t.tap(find.text('Submit for verification'));
       await t.pumpAndSettle();
 
-      expect(find.text('Waiting on review'), findsOneWidget);
+      expect(find.text('Pending verification'), findsOneWidget);
+    });
+  });
+
+  group('once the documents are in', () {
+    // The state somebody arrives in when they come back to check. The question
+    // they have is whether the documents got there, and the answer is not a
+    // blank form — which is what this used to show under the status card, and
+    // which reads as though the submission did not land.
+    final sent = VerificationStatus(
+      status: 'pending',
+      legalName: 'Kwame Mensah',
+      idNumberMasked: '••••6789',
+      submittedAt: DateTime(2026, 9, 14),
+    );
+
+    testWidgets('it says so, and does not reopen the form', (t) async {
+      await open(t, _FakeApi(current: sent));
+
+      expect(find.text('Pending verification'), findsOneWidget);
+      expect(find.textContaining('You sent your documents'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing,
+          reason: 'a form under the status reads as a submission that failed');
+    });
+
+    testWidgets('it shows enough to tell what was sent', (t) async {
+      // "Do you want to send it again" is only answerable if you can see what
+      // is already there. The last four only — a screen printing a whole ID
+      // number is one that can be photographed over a shoulder.
+      await open(t, _FakeApi(current: sent));
+
+      expect(find.textContaining('Kwame Mensah'), findsOneWidget);
+      expect(find.textContaining('••••6789'), findsOneWidget);
+      expect(find.textContaining('14 Sep 2026'), findsOneWidget);
+    });
+
+    testWidgets('resending is offered, and opens the form when asked',
+        (t) async {
+      await open(t, _FakeApi(current: sent));
+
+      await t.tap(find.text('Resend documents'));
+      await t.pumpAndSettle();
+
+      expect(find.byType(TextField), findsWidgets);
+      expect(find.text('Resubmit'), findsOneWidget);
+    });
+
+    testWidgets('and nothing is submitted by merely asking', (t) async {
+      // The button that opens the form must not be the button that sends it.
+      final api = _FakeApi(current: sent);
+      await open(t, api);
+
+      await t.tap(find.text('Resend documents'));
+      await t.pumpAndSettle();
+
+      expect(api.submissions, isEmpty);
+    });
+
+    testWidgets('resending returns to the status it produced', (t) async {
+      final api = _FakeApi(current: sent);
+      await open(t, api);
+      await t.tap(find.text('Resend documents'));
+      await t.pumpAndSettle();
+
+      await fill(t);
+      // Scrolled to first: the status card above the form pushes the button
+      // below the fold, and a tap that misses would leave this passing on the
+      // fill alone.
+      await t.ensureVisible(find.text('Resubmit'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Resubmit'));
+      await t.pumpAndSettle();
+
+      expect(api.submissions, hasLength(1));
+      expect(find.text('Pending verification'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing,
+          reason: 'back to the status, not left on a form already sent');
     });
   });
 

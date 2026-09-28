@@ -87,6 +87,17 @@ class _VerificationFormState extends State<VerificationForm> {
   bool _submitting = false;
   String? _error;
 
+  /// Whether somebody with a submission already in has asked to replace it.
+  ///
+  /// The form is behind this rather than under the status card. Waiting on a
+  /// review is a state, not a task: a screen that reports it and then opens a
+  /// blank form underneath reads as though the submission did not land, and
+  /// it puts a live Resubmit button one stray tap from replacing details that
+  /// are being looked at. Asking first is also the only way the page can
+  /// answer the question people actually arrive with, which is whether the
+  /// documents got there.
+  bool _resending = false;
+
   @override
   void initState() {
     super.initState();
@@ -157,8 +168,23 @@ class _VerificationFormState extends State<VerificationForm> {
       _submitting = false;
       _existing = refreshed;
       _number.clear();
+      // Back to the status, which now describes the submission just made.
+      _resending = false;
     });
     widget.onSubmitted?.call();
+  }
+
+  /// `14 Sep 2026`. The date they sent it, so "shortly" has something to be
+  /// measured against — a review that has been pending a week reads very
+  /// differently from one sent this morning, and only the person waiting can
+  /// tell which they are looking at.
+  static String _on(DateTime when) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final d = when.toLocal();
+    return '${d.day} ${months[d.month - 1]} ${d.year}';
   }
 
   Future<void> _pickDate() async {
@@ -207,6 +233,54 @@ class _VerificationFormState extends State<VerificationForm> {
       );
     }
 
+    // Already sent, and not yet asked to replace it. The answer to "did my
+    // documents arrive", and an offer rather than a form.
+    if (existing != null && existing.isPending && !_resending) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _StatusCard(
+            ext: ext,
+            icon: Icons.hourglass_top_rounded,
+            tone: ext.infoBlue,
+            title: 'Pending verification',
+            body: existing.submittedAt == null
+                ? 'You have sent your documents. Someone will check them '
+                    'shortly.'
+                : 'You sent your documents on ${_on(existing.submittedAt!)}. '
+                    'Someone will check them shortly.',
+          ),
+          if (existing.idNumberMasked != null) ...[
+            SizedBox(height: AppSpacing.sm.h),
+            Text(
+              // What was sent, so "do you want to send it again" is a question
+              // somebody can actually answer. The last four only — they typed
+              // it, so it is not a secret from them, but a screen printing a
+              // whole ID number is one that can be photographed over a
+              // shoulder.
+              'On file: ${existing.legalName ?? ''} · '
+              '${existing.idNumberMasked}',
+              style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+            ),
+          ],
+          SizedBox(height: AppSpacing.lg.h),
+          Text(
+            'Sent the wrong details?',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+          ),
+          SizedBox(height: AppSpacing.sm.h),
+          AppButton(
+            fullWidth: true,
+            variant: AppButtonVariant.secondary,
+            label: 'Resend documents',
+            onPressed: () => setState(() => _resending = true),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -216,8 +290,9 @@ class _VerificationFormState extends State<VerificationForm> {
             ext: ext,
             icon: Icons.hourglass_top_rounded,
             tone: ext.infoBlue,
-            title: 'Waiting on review',
-            body: 'We have your details. Someone will check them shortly.',
+            title: 'Replacing what you sent',
+            body: 'Your previous details are still being reviewed until this '
+                'one arrives.',
           ),
           SizedBox(height: AppSpacing.md.h),
         ],
