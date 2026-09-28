@@ -387,6 +387,7 @@ class WriteReviewPage extends StatefulWidget {
     this.photographerLocation,
     this.photographerFollowers = 0,
     this.photographerRating,
+    this.repo,
   });
 
   final String photographerId;
@@ -405,21 +406,52 @@ class WriteReviewPage extends StatefulWidget {
   final int photographerFollowers;
   final double? photographerRating;
 
+  /// For tests. The screen makes its own otherwise.
+  final ReviewsRepository? repo;
+
   @override
   State<WriteReviewPage> createState() => _WriteReviewPageState();
 }
 
 class _WriteReviewPageState extends State<WriteReviewPage> {
-  final _repo = ReviewsRepository();
+  late final ReviewsRepository _repo = widget.repo ?? ReviewsRepository();
   final _comment = TextEditingController();
   int _rating = 0;
   bool _saving = false;
 
-  /// Set when the server says this person has already reviewed this
-  /// photographer. The form stays on screen so they can see what they wrote,
-  /// but Publish is spent — leaving it live would invite a tap that is
-  /// guaranteed to fail, which is how this read as a broken button.
+  /// Set when this person has already reviewed this photographer — either
+  /// because the composer found their review on the way in, or because the
+  /// server said so on submit.
+  ///
+  /// It used to be discovered only the second way, which is the bug this
+  /// screen was reported for: an empty form, five stars to pick and a
+  /// paragraph to type, and a refusal at the end. The rule was right; not
+  /// saying so until after the work read as a broken button.
   bool _alreadyReviewed = false;
+
+  /// True until the existing review has been looked for. The form waits rather
+  /// than flashing an empty state it is about to fill.
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExisting();
+  }
+
+  Future<void> _loadExisting() async {
+    final existing = await _repo.mine(widget.photographerId);
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (existing == null) return;
+      // Shown rather than an empty form: it is theirs, and seeing it is the
+      // only way "already reviewed" means anything.
+      _alreadyReviewed = true;
+      _rating = existing.rating;
+      _comment.text = existing.comment ?? '';
+    });
+  }
 
   @override
   void dispose() {
@@ -482,7 +514,11 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
           ),
         ),
       ),
-      body: ListView(
+      // Held until the existing review has been looked for, rather than
+      // flashing an empty form it is about to fill in.
+      body: _loading
+          ? Center(child: CircularProgressIndicator(color: ext.accentGold))
+          : ListView(
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
           AppSpacing.lg.w,
@@ -500,6 +536,36 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
             ),
           ),
           SizedBox(height: AppSpacing.md.h),
+          // Said once, at the top, where somebody reads it before filling
+          // anything in — not as a snackbar after they have.
+          if (_alreadyReviewed) ...[
+            Container(
+              padding: EdgeInsets.all(AppSpacing.md.w),
+              decoration: BoxDecoration(
+                color: ext.accentGold.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(AppRadius.md.r),
+                border: Border.all(
+                    color: ext.accentGold.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.check_circle_outline_rounded,
+                      color: ext.accentGold, size: 18.sp),
+                  SizedBox(width: AppSpacing.sm.w),
+                  Expanded(
+                    child: Text(
+                      'You reviewed ${widget.photographerName}. This is what '
+                      'you wrote — a review stands once published.',
+                      style: TextStyle(
+                          color: ext.greetingColor, fontSize: 14.sp),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: AppSpacing.md.h),
+          ],
           Container(
             padding: EdgeInsets.all(AppSpacing.md.w),
             decoration: BoxDecoration(

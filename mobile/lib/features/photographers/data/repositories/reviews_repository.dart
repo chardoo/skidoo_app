@@ -9,7 +9,9 @@ const _tag = '[ReviewsRepository]';
 /// Ratings live with the main service rather than the ads one: they are a fact
 /// about the photographer, not about any request that led to them.
 class ReviewsRepository {
-  ReviewsRepository() : _dio = Api().dio;
+  /// [client] is for tests, which have no business opening sockets. Every
+  /// caller in the app uses the shared one.
+  ReviewsRepository({Dio? client}) : _dio = client ?? Api().dio;
 
   final Dio _dio;
 
@@ -72,6 +74,30 @@ class ReviewsRepository {
       debugPrint('$_tag leave REJECTED ${e.response?.statusCode} $code');
       if (message == null || message.isEmpty) rethrow;
       throw ReviewRejected(message, code: code);
+    }
+  }
+
+  /// What this person already wrote about that photographer, or null.
+  ///
+  /// Asked before the composer opens. Without it the screen showed an empty
+  /// form to somebody who had already reviewed, let them pick stars and type a
+  /// paragraph, and only refused on submit — so the once-only rule read as a
+  /// broken button.
+  ///
+  /// Null on failure as well as on "none": the composer opens either way, and
+  /// a network blip should cost the prefill rather than the ability to leave a
+  /// review at all. Submitting still gets the authoritative answer.
+  Future<Review?> mine(String photographerId) async {
+    try {
+      final resp =
+          await _dio.get('/client/photographers/$photographerId/review/mine');
+      final body = resp.data;
+      final data = body is Map ? body['data'] : null;
+      if (data is! Map) return null;
+      return Review.fromJson(Map<String, dynamic>.from(data));
+    } catch (e) {
+      debugPrint('$_tag mine failed: $e');
+      return null;
     }
   }
 }

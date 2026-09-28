@@ -114,6 +114,15 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
         _booking = results[1] as BookingState?;
         _loading = false;
       });
+
+      // Once there is somebody chosen, find out whether they can be reached
+      // before drawing a button that says they can. Unawaited: the list is
+      // already on screen and the pill starts live, which is the right
+      // default — the check only ever takes it away.
+      final chosen = _selected;
+      if (chosen != null) {
+        unawaited(_checkCanMessage(chosen));
+      }
     } catch (e) {
       debugPrint('[ReviewPhotographers] load ERROR: $e');
       if (!mounted) return;
@@ -219,6 +228,35 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     } catch (e) {
       debugPrint('[ReviewPhotographers] clearSelection ERROR: $e');
       if (mounted) AppSnackBar.error(context, 'Could not undo that.');
+    }
+  }
+
+  /// Why the chosen photographer cannot be messaged, or null.
+  ///
+  /// Asked once the selection is known. `CanMessageUseCase` exists precisely
+  /// so a Message button can be drawn in the state it is actually in, and this
+  /// screen was not calling it — so the button looked live, and the refusal
+  /// arrived as a red snackbar after the tap.
+  String? _messageBlocked;
+
+  Future<void> _checkCanMessage(RequestInterest person) async {
+    try {
+      final permission = await sl<CanMessageUseCase>().call(person.id);
+      if (!mounted) return;
+      setState(() {
+        _messageBlocked = permission.canMessage
+            ? null
+            : switch (permission.reason) {
+                'USER_BLOCKED' => 'You cannot message this user.',
+                'RECIPIENT_NOT_ACCEPTING_DMS' =>
+                  'This user is not accepting new conversations.',
+                _ => 'You cannot open this conversation.',
+              };
+      });
+    } catch (e) {
+      // Fails open, as the use case does: the server stays the authority, and
+      // a blip should not hide a button that works.
+      debugPrint('[ReviewPhotographers] canMessage check failed: $e');
     }
   }
 
@@ -786,6 +824,7 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
                       // The whole point of choosing someone is being able to
                       // talk to them.
                       onMessage: () => _message(selected),
+                      messageBlockedReason: _messageBlocked,
                     ),
                     // Hidden once money is held against this photographer.
                     // Swapping them would leave the escrow pointing at somebody

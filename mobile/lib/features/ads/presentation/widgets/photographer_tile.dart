@@ -21,6 +21,7 @@ class PhotographerTile extends StatelessWidget {
     required this.onTap,
     this.highlighted = false,
     this.onMessage,
+    this.messageBlockedReason,
   });
 
   final RequestInterest person;
@@ -30,6 +31,13 @@ class PhotographerTile extends StatelessWidget {
   /// The chosen one — a green rule down the left edge, as the design marks it.
   final bool highlighted;
   final VoidCallback? onMessage;
+
+  /// Why the conversation cannot be opened, when it cannot.
+  ///
+  /// The pill goes quiet and says so rather than staying live and failing on
+  /// tap — a button that looks available and answers with a red snackbar is
+  /// the version of this that gets reported as broken.
+  final String? messageBlockedReason;
 
   String get _name => (person.name?.trim().isNotEmpty ?? false)
       ? person.name!.trim()
@@ -123,24 +131,43 @@ class PhotographerTile extends StatelessWidget {
                           // A labelled pill once there is someone to talk to;
                           // a chevron while the row is still just a way in.
                           if (onMessage != null)
-                            GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: onMessage,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 14.w, vertical: 7.h,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      ext.accentGold.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(999.r),
-                                ),
-                                child: Text(
-                                  'Message',
-                                  style: TextStyle(
-                                    color: ext.accentGold,
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w500,
+                            Semantics(
+                              button: messageBlockedReason == null,
+                              label: messageBlockedReason ?? 'Message',
+                              child: Tooltip(
+                                message: messageBlockedReason ?? '',
+                                triggerMode: messageBlockedReason == null
+                                    ? TooltipTriggerMode.manual
+                                    : TooltipTriggerMode.tap,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: messageBlockedReason == null
+                                      ? onMessage
+                                      : null,
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 14.w, vertical: 7.h,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: messageBlockedReason == null
+                                          ? ext.accentGold
+                                              .withValues(alpha: 0.12)
+                                          : ext.searchFieldFill,
+                                      borderRadius:
+                                          BorderRadius.circular(999.r),
+                                    ),
+                                    child: Text(
+                                      messageBlockedReason == null
+                                          ? 'Message'
+                                          : 'Unavailable',
+                                      style: TextStyle(
+                                        color: messageBlockedReason == null
+                                            ? ext.accentGold
+                                            : ext.searchHintColor,
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
