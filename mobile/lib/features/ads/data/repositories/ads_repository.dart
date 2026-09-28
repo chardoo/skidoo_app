@@ -477,6 +477,13 @@ class AdsRepository {
     double? budgetMax,
     double? budgetAmount,
     bool? commentsEnabled,
+
+    /// Turn the delivery promise on or off after posting.
+    ///
+    /// Null leaves it as it is, which is what every other field here means and
+    /// what stops an edit of the title quietly opening a premium request to
+    /// everybody.
+    bool? premiumOnly,
   }) async {
     debugPrint(
         '$_tag updateRequest → id=$requestId title=$title location=$location commentsEnabled=$commentsEnabled');
@@ -496,6 +503,7 @@ class AdsRepository {
       if (budgetMax != null) 'budget_max': budgetMax,
       if (budgetAmount != null) 'budget_amount': budgetAmount,
       if (commentsEnabled != null) 'comments_enabled': commentsEnabled,
+      if (premiumOnly != null) 'premium_only': premiumOnly,
     });
     debugPrint('$_tag updateRequest ← status=${resp.statusCode}');
     final data = _unwrap<Map<String, dynamic>>(resp) ?? {};

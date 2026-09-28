@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/photographers/data/premium_service.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -737,6 +739,15 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
   late final TextEditingController _budgetCtrl;
   String? _eventType;
   bool _commentsEnabled = true;
+
+  /// Whether this request asks for a creator under a delivery promise.
+  ///
+  /// Seeded from the request, not defaulted: a form that opened this false
+  /// would quietly drop the promise from a request that had one the moment
+  /// somebody edited the title, and the requester would find out when
+  /// ordinary photographers started answering.
+  bool _premiumOnly = false;
+  PremiumTerms? _premiumTerms;
   bool _saving = false;
 
   /// Who the request reaches, editable here for the same reason the venue is:
@@ -757,6 +768,8 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
     );
     _eventType = r.eventType.isEmpty ? null : r.eventType;
     _commentsEnabled = r.commentsEnabled;
+    _premiumOnly = r.premiumOnly;
+    _loadPremiumTerms();
   }
 
   @override
@@ -820,6 +833,20 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
     }
   }
 
+  /// The tier's terms, so the row can name it and disappear when it is off.
+  ///
+  /// Fetched rather than assumed: the name is a setting and still being
+  /// decided, and drawing a control for a tier that has been wound down is an
+  /// edit the server would refuse.
+  Future<void> _loadPremiumTerms() async {
+    try {
+      final status = await PremiumService(sl()).status();
+      if (mounted) setState(() => _premiumTerms = status.terms);
+    } catch (_) {
+      // One optional row on a sheet somebody opened to change something else.
+    }
+  }
+
   Future<void> _save() async {
     final title = _titleCtrl.text.trim();
     if (title.isEmpty) return;
@@ -839,6 +866,10 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
         targetLocations: _targets.map((p) => p.toJson()).toList(),
         budgetAmount: double.tryParse(_budgetCtrl.text.trim()),
         commentsEnabled: _commentsEnabled,
+        // Only when the tier exists. Sending it to a server that has wound the
+        // feature down would have the edit refused or silently ignored, and
+        // neither is worth risking for a control the reader cannot see.
+        premiumOnly: _premiumTerms?.enabled == true ? _premiumOnly : null,
       );
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -994,6 +1025,49 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
                   onAdd: _addPhoto,
                   onRemove: _removePhoto,
                 ),
+                // Asking for a creator under a delivery promise, changed
+                // after the fact. Drawn only while the tier exists, and only
+                // enabled once there is an event date — the promise is
+                // measured from it and the server refuses the pair without
+                // one, so a switch that could be turned on without a date
+                // would only ever produce an error.
+                if (_premiumTerms?.enabled == true) ...[
+                  SizedBox(height: AppSpacing.xl.h),
+                  Material(
+                    color: ext.searchFieldFill,
+                    borderRadius: BorderRadius.circular(AppRadius.md.r),
+                    clipBehavior: Clip.antiAlias,
+                    child: SwitchListTile(
+                      value: _premiumOnly,
+                      onChanged: widget.request.eventDate == null
+                          ? null
+                          : (v) => setState(() => _premiumOnly = v),
+                      activeThumbColor: ext.accentGold,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
+                      title: Text(
+                        'Only a ${_premiumTerms!.name} can answer',
+                        style: TextStyle(
+                          color: ext.greetingColor,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        widget.request.eventDate == null
+                            ? 'Needs an event date — the promise is measured '
+                                'from it.'
+                            : 'Creators who promise your photos within '
+                                '${_premiumTerms!.windowLabel} of the shoot.',
+                        style: TextStyle(
+                          color: ext.searchHintColor,
+                          fontSize: 12.sp,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 SizedBox(height: AppSpacing.xl.h),
                 Material(
                   // Not a decorated Container: the tile's ink needs a Material
